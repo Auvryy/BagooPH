@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Head, router } from '@inertiajs/react';
+import PortalLink from '@/Components/PortalLink';
+import { visitPortal } from '@/utils/catalogueRuntime';
+import { paginationLabel } from '@/utils/catalogueNavigation';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import { 
@@ -82,20 +85,29 @@ interface Props {
 }
 
 export default function HubDeliveries({ activeHub, deliveries, counts, filters, eligibleRiders, basePath, canScan }: Props) {
+    return <HubRegistry key={activeHub?.id ?? 'unassigned'} {...{ activeHub, deliveries, counts, filters, eligibleRiders, basePath, canScan }} />;
+}
+
+function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, basePath, canScan }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedRiders, setSelectedRiders] = useState<Record<number, string>>({});
+    const pending = useRef(false);
+    const [busy, setBusy] = useState(false);
+    const [readError, setReadError] = useState('');
+    useEffect(() => setSearchTerm(filters.search || ''), [filters.search]);
+    const finish = () => { pending.current = false; setBusy(false); };
+    const listProps = ['auth', 'activeHub', 'hubs', 'basePath', 'deliveries', 'counts', 'eligibleRiders', 'filters', 'canScan', 'flash', 'errors'];
 
     const handleFilter = (status?: string, deliveryType?: string, search?: string) => {
-        router.get(
-            `${basePath}/deliveries`,
-            {
-                status: status !== undefined ? status : filters.status,
-                delivery_type: deliveryType !== undefined ? deliveryType : filters.delivery_type,
-                search: search !== undefined ? search : searchTerm,
-                hub_id: activeHub?.id,
-            },
-            { preserveState: true, preserveScroll: true }
-        );
+        if (pending.current) return;
+        pending.current = true; setBusy(true); setReadError('');
+        const query = new URLSearchParams({ status: status ?? filters.status, delivery_type: deliveryType ?? filters.delivery_type, search: search ?? searchTerm });
+        if (activeHub) query.set('hub_id', String(activeHub.id));
+        void visitPortal(`${basePath}/deliveries?${query}`, {
+            preserveState: true, preserveScroll: true, only: listProps,
+            onError: errors => setReadError(Object.values(errors)[0] || 'Could not update the parcel list. Check your connection and try again.'),
+            onFinish: finish, onCancel: finish,
+        });
     };
 
     const handleSearchSubmit = (e: React.FormEvent) => {
@@ -104,23 +116,25 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
     };
 
     const sortParcel = (delivery: DeliveryItem) => {
-        if (!delivery.guidance.can_act || delivery.guidance.action !== 'sort') return;
+        if (pending.current || !delivery.guidance.can_act || delivery.guidance.action !== 'sort') return;
+        pending.current = true; setBusy(true); setReadError('');
         router.post(`${basePath}/sort`, {
             delivery_id: delivery.id,
             hub_id: activeHub?.id,
             barangay: delivery.destination_barangay,
             bin: delivery.destination_bin,
-        }, { preserveScroll: true });
+        }, { preserveScroll: true, onError: errors => setReadError(Object.values(errors)[0] || 'Could not sort this parcel. Refresh the list and try again.'), onFinish: finish });
     };
 
     const assignRider = (delivery: DeliveryItem) => {
         const riderId = selectedRiders[delivery.id];
-        if (!delivery.guidance.can_act || delivery.guidance.action !== 'assign' || !delivery.guidance.eligible_rider_ids.includes(Number(riderId))) return;
+        if (pending.current || !delivery.guidance.can_act || delivery.guidance.action !== 'assign' || !delivery.guidance.eligible_rider_ids.includes(Number(riderId))) return;
+        pending.current = true; setBusy(true); setReadError('');
 
         router.post(`${basePath}/deliveries/${delivery.id}/assign-rider`, {
             rider_id: Number(riderId),
             hub_id: activeHub?.id,
-        }, { preserveScroll: true });
+        }, { preserveScroll: true, onError: errors => setReadError(Object.values(errors)[0] || 'Could not assign this rider. Refresh the list and try again.'), onFinish: finish });
     };
 
     return (
@@ -129,19 +143,21 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
             subtitle="Current facility queue, recorded custody and next steps"
             actions={
                 <div className="flex items-center gap-2">
-                    {canScan && <Link
+                    {canScan && <PortalLink
                         href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition uppercase tracking-wider"
                     >
                         <ScanLine className="w-3.5 h-3.5" />
                         <span>Floor Scanner</span>
-                    </Link>}
+                    </PortalLink>}
                 </div>
             }
         >
             <Head title="Parcels & Waybills — BagooPH" />
 
-            <div className="space-y-5 font-sans">
+            <div className="space-y-5 font-sans" aria-busy={busy || undefined}>
+                <p role="status" className={busy ? 'text-sm text-slate-600' : 'sr-only'}>{busy ? 'Updating parcel records…' : ''}</p>
+                {readError && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{readError}</p>}
                 <p className="text-sm text-slate-600">This queue includes parcels recorded at this facility and rider handovers awaiting intake. Today's handovers count distinct parcels released to transport, riders or buyers through retained scans.</p>
                 
                 {/* 1. TOP PARCEL KPI TILES */}
@@ -229,6 +245,8 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                         <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
                             type="text"
+                            aria-label="Search parcels"
+                            maxLength={120}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Search tracking number or recipient..."
@@ -381,6 +399,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                                 {delivery.guidance.can_act && delivery.guidance.action === 'sort' && (
                                                     <button
                                                         type="button"
+                                                        disabled={busy}
                                                         onClick={() => sortParcel(delivery)}
                                                         className="px-2.5 py-1.5 rounded-xs bg-slate-900 hover:bg-[#E00D42] text-white text-[10px] font-bold uppercase transition"
                                                     >
@@ -391,6 +410,8 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                                 {delivery.guidance.can_act && delivery.guidance.action === 'assign' && (
                                                     <div className="flex items-center justify-end gap-1.5 min-w-[260px]">
                                                         <select
+                                                            disabled={busy}
+                                                            aria-label={`Rider for ${delivery.tracking_number}`}
                                                             value={selectedRiders[delivery.id] || ''}
                                                             onChange={(event) => setSelectedRiders((current) => ({
                                                                 ...current,
@@ -409,7 +430,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                                         </select>
                                                         <button
                                                             type="button"
-                                                            disabled={!delivery.guidance.eligible_rider_ids.includes(Number(selectedRiders[delivery.id]))}
+                                                            disabled={busy || !delivery.guidance.eligible_rider_ids.includes(Number(selectedRiders[delivery.id]))}
                                                             onClick={() => assignRider(delivery)}
                                                             className="px-2.5 py-1.5 rounded-xs bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-40 text-white text-[10px] font-bold uppercase transition"
                                                         >
@@ -433,11 +454,12 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                 Page {deliveries.current_page} of {deliveries.last_page} ({deliveries.total} total)
                             </span>
                             <div className="flex items-center gap-1">
-                                {deliveries.links.map((link, idx) => (
-                                    <Link
+                                {deliveries.links.map((link, idx) => link.url ? (
+                                    <PortalLink
                                         key={idx}
-                                        href={link.url || '#'}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                        href={link.url}
+                                        only={listProps} preserveScroll preserveState
+                                        aria-current={link.active ? 'page' : undefined}
                                         className={`px-2.5 py-1 rounded-xs text-xs font-bold font-sans transition ${
                                             link.active
                                                 ? 'bg-[#E00D42] text-white'
@@ -445,8 +467,8 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
                                                 ? 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
                                                 : 'text-slate-300 pointer-events-none'
                                         }`}
-                                    />
-                                ))}
+                                    >{paginationLabel(link.label)}</PortalLink>
+                                ) : <span key={idx} aria-disabled="true" className="px-2.5 py-1 text-xs font-bold text-slate-500">{paginationLabel(link.label)}</span>)}
                             </div>
                         </div>
                     )}

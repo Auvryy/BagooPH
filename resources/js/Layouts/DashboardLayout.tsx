@@ -58,6 +58,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [hubSwitcherOpen, setHubSwitcherOpen] = useState(false);
+    const [switchingHub, setSwitchingHub] = useState<number | null>(null);
+    const hubSwitchPending = React.useRef(false);
     const userMenuTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const user = auth.user;
@@ -222,12 +224,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     };
 
     const navItems = getNavItems();
-    const SellerLink = role === 'seller' ? PortalLink : Link;
+    const WorkspaceLink = ['seller', 'logistics'].includes(role) ? PortalLink : Link;
 
     return (
         <div className="h-screen w-full flex overflow-hidden bg-[#F8FAFC] text-slate-900 font-sans antialiased selection:bg-[#E00D42] selection:text-white">
             
-            {role === 'seller' && <CatalogueNavigationNotice />}
+            {['seller', 'logistics'].includes(role) && <CatalogueNavigationNotice />}
             {/* Backdrop for mobile drawer */}
             {sidebarOpen && (
                 <div 
@@ -286,7 +288,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 <Building2 className="w-3 h-3 text-[#E00D42]" /> {canSwitchHubs ? 'Working Facility' : 'Assigned Facility'}
                             </span>
                             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-xs bg-slate-50 text-slate-700 border border-slate-300 uppercase font-sans">
-                                {activeHub?.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
+                                {activeHub ? activeHub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub' : 'No facility'}
                             </span>
                         </div>
 
@@ -295,17 +297,17 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             <button
                                 type="button"
                                 onClick={() => canSwitchHubs && setHubSwitcherOpen(!hubSwitcherOpen)}
-                                disabled={!canSwitchHubs}
+                                disabled={!canSwitchHubs || switchingHub !== null}
                                 className={`w-full flex items-center justify-between p-2 rounded-xs bg-white border border-slate-300 text-left transition shadow-2xs group ${
                                     canSwitchHubs ? 'hover:border-slate-400 cursor-pointer' : 'cursor-default'
                                 }`}
                             >
                                 <div className="min-w-0 flex-1">
                                     <p className={`text-xs font-bold text-slate-800 truncate transition ${canSwitchHubs ? 'group-hover:text-[#E00D42]' : ''}`}>
-                                        {activeHub?.name || logisticsCompany?.name || 'Logistics Terminal'}
+                                        {switchingHub !== null ? 'Changing facility…' : activeHub?.name || logisticsCompany?.name || 'No facility assigned'}
                                     </p>
                                     <p className="text-[10px] text-slate-500 font-sans truncate">
-                                        Station: {activeHub?.code || 'STATION-01'} • {activeHub?.city_municipality || 'Laguna'}
+                                        Station: {activeHub?.code || 'Not assigned'} • {activeHub?.city_municipality || 'Location not provided'}
                                     </p>
                                 </div>
                                 {canSwitchHubs && (
@@ -325,8 +327,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                 type="button"
                                                 onClick={() => {
                                                     setHubSwitcherOpen(false);
-                                                    if (h.id !== activeHub?.id) {
-                                                        router.post(route('hub.switchHub'), { hub_id: h.id }, { preserveScroll: true });
+                                                    if (h.id !== activeHub?.id && !hubSwitchPending.current) {
+                                                        hubSwitchPending.current = true;
+                                                        setSwitchingHub(h.id);
+                                                        router.post(route('hub.switchHub'), { hub_id: h.id }, { preserveScroll: true, onFinish: () => { hubSwitchPending.current = false; setSwitchingHub(null); } });
                                                     }
                                                 }}
                                                 className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer hover:bg-slate-50 ${
@@ -362,7 +366,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             </p>
                             {navItems.map((item) => (
                                 <div key={item.name}>
-                                    <SellerLink
+                                    <WorkspaceLink
                                         href={item.href}
                                         aria-expanded={item.children ? item.current : undefined}
                                         aria-current={item.current && !item.children ? 'page' : undefined}
@@ -381,7 +385,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         ) : item.current && (
                                             <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
                                         )}
-                                    </SellerLink>
+                                    </WorkspaceLink>
                                     {item.children && item.current && <div role="group" aria-label={`${item.name} pages`} className="ml-5 mt-1 space-y-0.5 border-l border-slate-300 pl-3">
                                         {item.children.map(child => <Link key={child.name} href={child.href} aria-current={child.current ? 'page' : undefined}
                                             className={`block rounded-lg px-3 py-2 text-xs transition ${child.current ? 'bg-rose-50 font-semibold text-[#C20836]' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
@@ -401,13 +405,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
                                     Company
                                 </p>
-                                {user?.canManageResources && user.resourceGovernanceUrl && <Link
+                                {user?.canManageResources && user.resourceGovernanceUrl && <PortalLink
                                     href={user.resourceGovernanceUrl}
                                     className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component === 'Governance/Resources' || component === 'Governance/ResourceRestriction' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                                ><ShieldAlert className="h-4 w-4 shrink-0" /><span>Resource activity</span></Link>}
-                                {user?.canManageResources && <Link href="/governance-history" className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component === 'Governance/History' || component === 'Governance/HistoryDetail' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><ShieldCheck className="h-4 w-4 shrink-0" /><span>Governance history</span></Link>}
-                                {user?.canManageResources && <Link href="/exceptions" className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component === 'Governance/Exceptions' || component === 'Governance/ExceptionDetail' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><ShieldCheck className="h-4 w-4 shrink-0" /><span>Delivery exceptions</span></Link>}
-                                <Link
+                                ><ShieldAlert className="h-4 w-4 shrink-0" /><span>Resource activity</span></PortalLink>}
+                                {user?.canManageResources && <PortalLink href="/governance-history" className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component === 'Governance/History' || component === 'Governance/HistoryDetail' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><ShieldCheck className="h-4 w-4 shrink-0" /><span>Governance history</span></PortalLink>}
+                                {user?.canManageResources && <PortalLink href="/exceptions" className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component === 'Governance/Exceptions' || component === 'Governance/ExceptionDetail' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><ShieldCheck className="h-4 w-4 shrink-0" /><span>Delivery exceptions</span></PortalLink>}
+                                <PortalLink
                                     href={route('hub.dashboard')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
                                         component === 'Hub/Dashboard' || route().current('hub.dashboard') || (route().current('hub.index') && !url.includes('/scan')) || url === '/hub' || url === '/hub/dashboard'
@@ -419,8 +423,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <LayoutDashboard className={`w-4 h-4 shrink-0 ${(component === 'Hub/Dashboard' || url === '/hub' || url === '/hub/dashboard') ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
                                         <span>Overview</span>
                                     </div>
-                                </Link>
-                                <Link
+                                </PortalLink>
+                                <PortalLink
                                     href={route('hub.network')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
                                         component === 'Hub/Network' || route().current('hub.network') || url.startsWith('/hub/network')
@@ -432,8 +436,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Building2 className={`w-4 h-4 shrink-0 ${(component === 'Hub/Network' || url.startsWith('/hub/network')) ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
                                         <span>Facility Network</span>
                                     </div>
-                                </Link>
-                                <Link
+                                </PortalLink>
+                                <PortalLink
                                     href={route('hub.fleet')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
                                         component === 'Hub/Fleet' || route().current('hub.fleet') || url.startsWith('/hub/fleet')
@@ -445,7 +449,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Truck className={`w-4 h-4 shrink-0 ${(component === 'Hub/Fleet' || url.startsWith('/hub/fleet')) ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
                                         <span>Fleet Management</span>
                                     </div>
-                                </Link>
+                                </PortalLink>
                             </div>
 
                             {/* Parcel operations */}
@@ -453,16 +457,16 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
                                     Operations
                                 </p>
-                                <Link
+                                <PortalLink
                                     href={route('hub.manifests.index')}
                                     className={'flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs transition ' + (component === 'Hub/Manifests' ? 'bg-[#E00D42] font-bold text-white' : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900')}
                                 >
                                     <Truck className="h-4 w-4 shrink-0" />
                                     <span>Manifests</span>
-                                </Link>
-                                <Link href={route('hub.recovery.index')} className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100">Delivery recovery</Link>
-                                <Link href="/handover-issues" aria-current={component.startsWith('Handover/') ? 'page' : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium ${component.startsWith('Handover/') ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" /><span>Handover issues</span></Link>
-                                <Link
+                                </PortalLink>
+                                <PortalLink href={route('hub.recovery.index')} className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100">Delivery recovery</PortalLink>
+                                <PortalLink href="/handover-issues" aria-current={component.startsWith('Handover/') ? 'page' : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium ${component.startsWith('Handover/') ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" /><span>Handover issues</span></PortalLink>
+                                <PortalLink
                                     href={route('hub.deliveries')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
                                         component === 'Hub/Deliveries' || route().current('hub.deliveries') || url.startsWith('/hub/deliveries')
@@ -474,7 +478,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Package className={`w-4 h-4 shrink-0 ${(component === 'Hub/Deliveries' || url.startsWith('/hub/deliveries')) ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
                                         <span>Parcels & Waybills</span>
                                     </div>
-                                </Link>
+                                </PortalLink>
                             </div>
 
                             {/* Facility tools */}
@@ -482,7 +486,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
                                     Facility tools
                                 </p>
-                                <Link
+                                <PortalLink
                                     href={route('hub.scan.station')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
                                         component === 'Hub/ScanStation' || route().current('hub.scan.station') || url.startsWith('/hub/scan')
@@ -494,8 +498,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <ScanLine className={`w-4 h-4 shrink-0 ${(component === 'Hub/ScanStation' || url.startsWith('/hub/scan')) ? 'text-white' : 'text-emerald-600 group-hover:text-emerald-700'}`} />
                                         <span>Scan Station</span>
                                     </div>
-                                </Link>
-                                <Link
+                                </PortalLink>
+                                <PortalLink
                                     href={route('hub.counter')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
                                         component === 'Hub/CounterPickup' || route().current('hub.counter') || url.startsWith('/hub/counter')
@@ -507,7 +511,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <Store className={`w-4 h-4 shrink-0 ${(component === 'Hub/CounterPickup' || url.startsWith('/hub/counter')) ? 'text-white' : 'text-blue-600 group-hover:text-blue-700'}`} />
                                         <span>Counter Self-Pickup</span>
                                     </div>
-                                </Link>
+                                </PortalLink>
                             </div>
                         </div>
                     )}

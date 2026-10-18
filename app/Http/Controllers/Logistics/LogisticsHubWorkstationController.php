@@ -550,7 +550,7 @@ class LogisticsHubWorkstationController extends Controller
      */
     public function deliveries(Request $request, HubParcelWorkstationService $workstation): Response
     {
-        $filters = $request->validate(['search' => 'nullable|string|max:120', 'status' => 'nullable|string|max:80', 'delivery_type' => 'nullable|string|in:all,doorstep,hub_self_pickup']);
+        $filters = $request->validate(['search' => 'nullable|string|max:120', 'status' => 'nullable|string|max:80', 'delivery_type' => 'nullable|string|in:all,doorstep,hub_self_pickup', 'page' => ['nullable', new AsciiPositiveInteger, 'integer', 'min:1', 'max:1000000']]);
         $user = $request->user();
         [$activeHub, $hubs] = $this->getActiveHub($request, $user);
 
@@ -559,79 +559,84 @@ class LogisticsHubWorkstationController extends Controller
         $deliveryType = $filters['delivery_type'] ?? 'all';
 
         $basePath = $request->is('hub/*') ? '/hub' : '';
-        $eligibleRiders = $this->eligibility->riderCandidates($activeHub)->get()->map(fn ($profile) => [
-            'id' => $profile->user_id,
-            'name' => $profile->user?->name ?? 'Rider',
-            'assigned_barangay' => $profile->assigned_barangay,
-            'vehicle_type' => $profile->vehicle_type,
-        ])->values();
+        $riders = null;
+        $eligibleRiders = function () use ($activeHub, &$riders) {
+            return $riders ??= $this->eligibility->riderCandidates($activeHub)->get()->map(fn ($profile) => [
+                'id' => $profile->user_id,
+                'name' => $profile->user?->name ?? 'Rider',
+                'assigned_barangay' => $profile->assigned_barangay,
+                'vehicle_type' => $profile->vehicle_type,
+            ])->values();
+        };
 
-        $query = $workstation->registry($activeHub)->with([
-            'order.buyer',
-            'order.items.product',
-            'originBayanHub',
-            'originMotherHub',
-            'destinationBayanHub',
-            'destinationMotherHub',
-            'assignedRider',
-            'courier',
-            'currentHub',
-            'latestCustodyCheckpoint',
-            'pickupClaim',
-        ]);
+        $deliveries = function () use ($activeHub, $workstation, $user, $eligibleRiders, $basePath, $search, $statusFilter, $deliveryType) {
+            $query = $workstation->registry($activeHub)->with([
+                'order.buyer',
+                'order.items.product',
+                'originBayanHub',
+                'originMotherHub',
+                'destinationBayanHub',
+                'destinationMotherHub',
+                'assignedRider',
+                'courier',
+                'currentHub',
+                'latestCustodyCheckpoint',
+                'pickupClaim',
+            ]);
 
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('tracking_number', 'like', "%{$search}%")
-                    ->orWhereHas('order', fn ($oq) => $oq->where('order_number', 'like', "%{$search}%"))
-                    ->orWhereHas('order.buyer', fn ($bq) => $bq->where('name', 'like', "%{$search}%"));
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
+                    $q->where('tracking_number', 'like', "%{$search}%")
+                        ->orWhereHas('order', fn ($oq) => $oq->where('order_number', 'like', "%{$search}%"))
+                        ->orWhereHas('order.buyer', fn ($bq) => $bq->where('name', 'like', "%{$search}%"));
+                });
+            }
+
+            $workstation->filter($query, $statusFilter, $activeHub);
+
+            if ($deliveryType !== 'all') {
+                $query->where('delivery_type', $deliveryType);
+            }
+
+            return $query->latest()->paginate(15)->withPath($basePath.'/deliveries')->withQueryString()->through(function ($d) use ($activeHub, $workstation, $user, $eligibleRiders, $basePath) {
+                $isAwaitingOriginIntake = $activeHub
+                    && $d->status === OrderStateMachineService::STATUS_PICKED_UP
+                    && $d->origin_bayan_hub_id === $activeHub->id
+                    && $d->current_hub_id === null;
+
+                return [
+                    'id' => $d->id,
+                    'tracking_number' => $d->tracking_number,
+                    'order_number' => $d->order?->order_number ?? 'N/A',
+                    'buyer_name' => $d->order?->buyer?->name ?? 'Customer',
+                    'buyer_phone' => $d->order?->buyer?->phone ?? 'N/A',
+                    'destination_barangay' => $d->order?->destination_barangay ?? 'N/A',
+                    'shipping_city' => $d->order?->shipping_city ?? 'N/A',
+                    'status' => $d->status,
+                    'delivery_type' => $d->delivery_type,
+                    'destination_bin' => $workstation->recordedBin($d),
+                    'current_hub' => $d->currentHub?->name ?? ($isAwaitingOriginIntake ? 'Awaiting origin hub intake' : 'In Transit'),
+                    'awaiting_origin_intake' => (bool) $isAwaitingOriginIntake,
+                    'items' => $d->order?->items?->map(fn ($item) => [
+                        'name' => $item->product?->name ?? 'Item',
+                        'quantity' => $item->quantity,
+                    ])->values() ?? [],
+                    'destination_hub' => $d->destinationBayanHub?->name ?? 'Local Hub',
+                    'rider_name' => $d->assignedRider?->name ?? 'Unassigned',
+                    'total_amount' => (float) ($d->order?->total_amount ?? 0),
+                    'payment_method' => $d->order?->payment_method ?? 'cod',
+                    'item_count' => $d->order?->items?->count() ?? 1,
+                    'created_at' => $d->created_at->format('M d, Y H:i'),
+                    'guidance' => $workstation->guidance($d, $activeHub, $user, $eligibleRiders(), $basePath),
+                ];
             });
-        }
-
-        $workstation->filter($query, $statusFilter, $activeHub);
-
-        if ($deliveryType !== 'all') {
-            $query->where('delivery_type', $deliveryType);
-        }
-
-        $deliveries = $query->latest()->paginate(15)->withQueryString()->through(function ($d) use ($activeHub, $workstation, $user, $eligibleRiders, $basePath) {
-            $isAwaitingOriginIntake = $activeHub
-                && $d->status === OrderStateMachineService::STATUS_PICKED_UP
-                && $d->origin_bayan_hub_id === $activeHub->id
-                && $d->current_hub_id === null;
-
-            return [
-                'id' => $d->id,
-                'tracking_number' => $d->tracking_number,
-                'order_number' => $d->order?->order_number ?? 'N/A',
-                'buyer_name' => $d->order?->buyer?->name ?? 'Customer',
-                'buyer_phone' => $d->order?->buyer?->phone ?? 'N/A',
-                'destination_barangay' => $d->order?->destination_barangay ?? 'N/A',
-                'shipping_city' => $d->order?->shipping_city ?? 'N/A',
-                'status' => $d->status,
-                'delivery_type' => $d->delivery_type,
-                'destination_bin' => $workstation->recordedBin($d),
-                'current_hub' => $d->currentHub?->name ?? ($isAwaitingOriginIntake ? 'Awaiting origin hub intake' : 'In Transit'),
-                'awaiting_origin_intake' => (bool) $isAwaitingOriginIntake,
-                'items' => $d->order?->items?->map(fn ($item) => [
-                    'name' => $item->product?->name ?? 'Item',
-                    'quantity' => $item->quantity,
-                ])->values() ?? [],
-                'destination_hub' => $d->destinationBayanHub?->name ?? 'Local Hub',
-                'rider_name' => $d->assignedRider?->name ?? 'Unassigned',
-                'total_amount' => (float) ($d->order?->total_amount ?? 0),
-                'payment_method' => $d->order?->payment_method ?? 'cod',
-                'item_count' => $d->order?->items?->count() ?? 1,
-                'created_at' => $d->created_at->format('M d, Y H:i'),
-                'guidance' => $workstation->guidance($d, $activeHub, $user, $eligibleRiders, $basePath),
-            ];
-        });
+        };
 
         return Inertia::render('Hub/Deliveries', [
             'activeHub' => $activeHub,
             'hubs' => $hubs,
             'deliveries' => $deliveries,
-            'counts' => $workstation->counts($activeHub),
+            'counts' => fn () => $workstation->counts($activeHub),
             'eligibleRiders' => $eligibleRiders,
             'basePath' => $basePath,
             'canScan' => $activeHub && $user->isLogistics() && $this->eligibility->canScan($user, $activeHub),
@@ -718,7 +723,21 @@ class LogisticsHubWorkstationController extends Controller
 
         session(['active_hub_id' => $hub->id]);
 
-        return back()->with('success', "Active facility switched to {$hub->name} ({$hub->code}).");
+        $basePath = $request->is('hub/*') ? '/hub' : '';
+        $previous = parse_url(url()->previous());
+        $path = $previous['path'] ?? '';
+        $pages = array_map(fn ($page) => $basePath.'/'.$page, ['dashboard', 'network', 'fleet', 'deliveries', 'scan', 'counter', 'manifests', 'roadmap']);
+        $query = [];
+        if (($previous['host'] ?? $request->getHost()) === $request->getHost() && in_array($path, $pages, true)) {
+            parse_str($previous['query'] ?? '', $query);
+        } else {
+            $path = $basePath.'/dashboard';
+        }
+        // An old explicit hub filter must not immediately undo the new session selection.
+        $query['hub_id'] = $hub->id;
+        unset($query['page']);
+
+        return redirect($path.'?'.http_build_query($query))->with('success', "Active facility switched to {$hub->name} ({$hub->code}).");
     }
 
     /**
