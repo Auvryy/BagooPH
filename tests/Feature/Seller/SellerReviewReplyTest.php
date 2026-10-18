@@ -39,7 +39,7 @@ class SellerReviewReplyTest extends TestCase
 
     public function test_reply_persists_and_edit_preserves_original_attribution_and_buyer_review(): void
     {
-        $before = $this->review->toArray();
+        $before = $this->review->fresh()->toArray();
         $this->actingAs($this->seller)->post(route('seller.reviews.reply', $this->review->id), ['reply_text' => 'Thank you for sharing your review.'])->assertSessionHas('success');
         $first = $this->review->reply()->firstOrFail();
         $this->travel(5)->minutes();

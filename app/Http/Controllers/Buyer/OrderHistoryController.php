@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Buyer;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\BuyerAccessService;
+use App\Services\Commerce\ReviewService;
 use App\Services\Notifications\NotificationCenterService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderTrackingService;
@@ -58,7 +59,15 @@ class OrderHistoryController extends Controller
         $adminOversight = $user->isAdmin() && $user->canAccessPortal();
         abort_unless($ownedBuyerOrder || $adminOversight, 403);
 
-        $order->load(['items.product.shop', 'items.review:id,order_item_id', 'delivery.courier', ...OrderTrackingService::relations()]);
+        $order->load(['items.product.shop', 'items.review', 'delivery.courier', ...OrderTrackingService::relations()]);
+        if ($ownedBuyerOrder && $user->canAccessPortal()) {
+            foreach ($order->items as $item) {
+                if ($item->review) {
+                    $editable = app(ReviewService::class)->canEdit($item->review);
+                    $item->review->setAttribute('edit_url', $editable ? route('buyer.reviews.update', $item->review, absolute: false) : null);
+                }
+            }
+        }
         $tracking = app(OrderTrackingService::class);
         $canConfirmReceipt = $canFulfillOrder && app(OrderWorkspaceService::class)->canConfirmReceipt($order, $user);
         $pickupClaim = $canFulfillOrder ? $order->delivery?->pickupClaim?->only(['reference', 'status', 'expires_at', 'code_issued_at', 'locked_until']) : null;

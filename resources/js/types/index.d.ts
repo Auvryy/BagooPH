@@ -197,7 +197,7 @@ export interface OrderItem {
     product: Product;
     shop?: Shop;
     order?: Order;
-    review?: { id: number; order_item_id: number } | null;
+    review?: { id: number; order_item_id: number; rating?: number; comment?: string | null; edit_url?: string | null; edited_at?: string | null } | null;
 }
 
 export interface Delivery {

@@ -524,6 +524,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
             Route::get('/disputes', [BuyerDisputeController::class, 'index'])->name('disputes.index');
             Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
             Route::post('/reviews', [BuyerReviewController::class, 'store'])->middleware('throttle:30,1')->name('reviews.store');
+            Route::patch('/reviews/{review}', [BuyerReviewController::class, 'update'])->whereNumber('review')->middleware('throttle:30,1')->name('reviews.update');
             Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
             Route::post('/vouchers/choices', [VoucherController::class, 'choices'])->middleware('throttle:60,1')->name('vouchers.choices');
             Route::post('/vouchers/best', [VoucherController::class, 'best'])->middleware('throttle:30,1')->name('vouchers.best');

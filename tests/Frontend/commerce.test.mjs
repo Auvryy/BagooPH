@@ -132,6 +132,18 @@ test('completed order details hide review creation once all items have saved rev
     assert.doesNotMatch(html, /Rate &amp; Upload Photos/);
 });
 
+test('review edit controls use the owned server action instead of assuming every saved review is editable', async () => {
+    for (const url of ['/buyer/reviews/1', null]) {
+        const html = await render(ui.Detail, 'Buyer/OrderDetail', {
+            order: { id: 4, order_number: 'BGO-EDIT', status: 'completed', payment_status: 'paid', total_amount: 250, subtotal: 250, shipping_fee: 0, created_at: '2026-10-01', items: [{ id: 10, product_id: product.id, quantity: 1, unit_price: 250, product, review: { id: 1, order_item_id: 10, rating: 4, comment: 'The bag arrived.', edit_url: url } }] },
+            canUsePortal: true, canConfirmReceipt: false, pickupClaim: null, pickupHub: null, pickupCodeUrl: null, orderNotices: [],
+        });
+        if (url) assert.match(html, /Edit review/);
+        else assert.doesNotMatch(html, /Edit review/);
+        assert.doesNotMatch(html, /Rate &amp; Upload Photos/);
+    }
+});
+
 const buyer = { id: 7, name: 'Ana Santos', role: 'buyer', email: 'buyer@bagoo.test', status: 'active', kyc_status: 'approved' };
 const lines = [
     { id: 10, product_id: 3, product, quantity: 2, unit_price: 250, subtotal: 500, color: 'Blue', size: 'M' },
