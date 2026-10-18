@@ -6402,3 +6402,33 @@ publication or deployment. Coverage/allocation, relative links, privacy and patc
 checks verify this planning handoff; no new runtime test or implementation-readiness
 increase is claimed for writing the plan. Future code changes require their own
 focused checks and build, and current results remain in this roadmap.
+
+### Buyer search control polish: October 19, 2026
+
+The first BP01 change adds a public **Ships from** province/area selection and
+accepts the advertised **4.5+** verified average-rating threshold. Area, category,
+price, stock and rating combine consistently; related results and spelling
+suggestions retain those constraints. Search, paging and prepared navigation
+retain the area in their URLs and distinguish different areas in cache identity.
+Individual purchase reviews still require integer stars.
+
+The source is the reviewed shop pickup city, never the seller's account residence
+or a buyer delivery address. The bundled Philippine hierarchy resolves only
+unique city names, including case/accent and City-of aliases. Repeated or unknown
+legacy city names remain visible under All provinces and areas and are excluded
+from a specific area; the control explains that limit. No street address or
+private review evidence is added to the filter payload. A separately reviewed
+structured pickup province is still needed to classify ambiguous legacy cities.
+
+Verification: **60 focused backend tests / 1,260 assertions** passed using SQLite
+`:memory:`, including combined filters, fractional boundaries, ambiguous locations,
+private-listing exclusion, suggestions and stable pagination. **25 frontend/helper
+checks** and the TypeScript/Vite production build passed. No browser walkthrough,
+development/production reseed, publication or Azure deployment was performed.
+
+Scoped engineering assessment: combined area discovery **3/10 to 7/10**, with
+ambiguous-city coverage explicitly limited; advertised average-rating control
+**5/10 to 8/10**. These ratings do not certify unrelated buyer flows. Bulk
+notification reading and the remaining polishing gates are still in progress.
+The user has also selected the full COD buyer-return prerequisites for subsequent
+implementation; online payment integration remains separate.

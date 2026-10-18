@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\Product;
 use App\Services\Commerce\BuyerDiscoveryService;
+use App\Services\Commerce\CatalogueLocationService;
 use App\Services\Commerce\PurchasePolicyService;
 use App\Services\Commerce\ReviewService;
 use App\Services\Commerce\SaleReminderService;
@@ -24,14 +25,13 @@ class BuyerProductController extends Controller
         $discovery = app(BuyerDiscoveryService::class);
         $filters = $discovery->selection($request);
         $products = $discovery->paginate($discovery->filter($discovery->catalogue(), $filters), $filters);
-        $related = $discovery->catalogue()->whereNotIn('products.id', $products->pluck('id'));
-        if ($filters['category'] !== 'all') {
-            $related->whereIn('category_id', $discovery->categoryIds($filters['category']));
-        }
+        $related = $discovery->filter($discovery->catalogue(), [...$filters, 'search' => ''])
+            ->whereNotIn('products.id', $products->pluck('id'));
 
         return Inertia::render('Buyer/Search', [
             'products' => $products,
             'categories' => fn () => $discovery->categories(),
+            'locations' => fn () => app(CatalogueLocationService::class)->areas(),
             'relatedProducts' => fn () => $related->orderByDesc('sales_count')->orderByDesc('products.id')->limit(6)->get(),
             'filters' => $filters,
             'suggestions' => fn () => $products->total() === 0 ? $discovery->suggestions($filters) : [],

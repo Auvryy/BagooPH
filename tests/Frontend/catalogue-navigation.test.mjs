@@ -11,7 +11,7 @@ import { createInertiaApp } from '@inertiajs/react';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-catalogue-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = buildSync({
-    stdin: { contents: "export * from '@/utils/catalogueNavigation'; export { default as Pagination } from '@/Components/CataloguePagination'; export { default as Home } from '@/Pages/Buyer/Home'; export { default as Search } from '@/Pages/Buyer/Search';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: "export * from '@/utils/catalogueNavigation'; export { default as Pagination } from '@/Components/CataloguePagination'; export { default as Home } from '@/Pages/Buyer/Home'; export { default as Search } from '@/Pages/Buyer/Search'; export { default as LocationFilter } from '@/Components/CatalogueLocationFilter';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
 });
 const output = join(temporary, 'navigation.mjs');
@@ -40,6 +40,24 @@ test('an explicit page change reveals and focuses the changed grid without a dec
     globalThis.document = { getElementById: id => ({ focus: options => calls.push([id, 'focus', options]), scrollIntoView: options => calls.push([id, 'scroll', options]) }) };
     try { ui.revealCatalogueResults(); } finally { delete globalThis.document; }
     assert.deepEqual(calls, [['catalogue-results', 'focus', { preventScroll: true }], ['catalogue-results', 'scroll', { block: 'start', behavior: 'auto' }]]);
+});
+
+test('area and fractional rating remain in search, reset and pagination destinations', () => {
+    const filters = { search: 'Bag', location: '1380600000', rating: '4.5', category: 'pet-supplies', sort: 'newest' };
+    assert.deepEqual(ui.catalogueFilters(filters, { location: undefined }), { search: 'Bag', category: 'pet-supplies', sort: 'newest', rating: '4.5' });
+    assert.equal(ui.catalogueUrl('/buyer/search', filters, { search: 'Hat' }), '/buyer/search?category=pet-supplies&location=1380600000&rating=4.5&search=Hat&sort=newest');
+});
+
+test('the labelled area control follows returned state and clearing it changes only location', () => {
+    const changes = [];
+    const props = { id: 'test-area', locations: [{ value: 'area-code', label: 'Metro Manila' }], value: 'area-code', onChange: value => changes.push(value) };
+    const tree = ui.LocationFilter(props);
+    const select = tree.props.children.find(child => child.type === 'select');
+    assert.equal(select.props.id, 'test-area'); assert.equal(select.props.value, 'area-code');
+    select.props.onChange({ target: { value: 'all' } }); select.props.onChange({ target: { value: 'area-code' } });
+    assert.deepEqual(changes, [undefined, 'area-code']);
+    const html = renderToStaticMarkup(createElement(ui.LocationFilter, props));
+    assert.match(html, /for="test-area"/); assert.match(html, /Ships from/); assert.match(html, /Metro Manila/);
 });
 
 async function render(page) {

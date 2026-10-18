@@ -36,7 +36,10 @@ class BuyerDiscoveryAndSavedProductsTest extends TestCase
             ['min_price[]=1', 'min_price'], ['min_price=-1', 'min_price'],
             ['min_price=1e2', 'min_price'], ['max_price=1.001', 'max_price'],
             ['min_price=200&max_price=100', 'max_price'], ['max_price=999999999', 'max_price'],
-            ['rating[]=4', 'rating'], ['rating=6', 'rating'], ['rating=4.5', 'rating'],
+            ['location[]=all', 'location'], ['location=unlisted', 'location'],
+            ['rating[]=4', 'rating'], ['rating=6', 'rating'], ['rating=4e0', 'rating'],
+            ['rating=NaN', 'rating'], ['rating=INF', 'rating'], ['rating=0.5', 'rating'],
+            ['rating=4.55', 'rating'], ['rating=5.1', 'rating'],
             ['in_stock=maybe', 'in_stock'], ['page=0', 'page'], ['page=1e1', 'page'],
             ['page[]=1', 'page'], ['page=1000001', 'page'],
         ];

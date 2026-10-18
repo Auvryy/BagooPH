@@ -69,13 +69,8 @@ class BuyerHomeController extends Controller
         $relatedProducts = [];
         if ($request->filled('search') || $request->filled('category')) {
             $matchedIds = $feedProducts->pluck('id')->toArray();
-            $relatedQuery = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
-                ->where('status', 'active')
+            $relatedQuery = $discovery->filter($discovery->catalogue(), [...$filters, 'search' => ''])
                 ->whereNotIn('id', $matchedIds);
-
-            if ($request->filled('category') && $request->input('category') !== 'all') {
-                $relatedQuery->whereIn('category_id', $discovery->categoryIds($filters['category']));
-            }
 
             $relatedProducts = $relatedQuery->orderBy('sales_count', 'desc')
                 ->take(6)
