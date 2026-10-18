@@ -652,7 +652,7 @@ class CodCashCustodyTest extends TestCase
         $handler = $this->handler($account);
         $this->restrictFlowAccount($rider, 'suspend');
         $before = $rider->fresh()->only(['role', 'status', 'kyc_status', 'restriction_version']);
-        $this->actingAs($rider)->get('/courier/deliveries')->assertRedirect('/login');
+        $this->actingAs($rider)->get('/courier/deliveries')->assertRedirect(route('account.status'));
         $this->post('/cash-handover/sign-in', ['email' => $rider->email, 'password' => 'password'])->assertRedirect('/cash-handover');
         $this->getJson('/cash-handover/'.$account->id)->assertOk();
         $this->handover($account, $rider, $handler, $account->expected_cents);
