@@ -6078,3 +6078,45 @@ Implementation commits:
 
 The combined PR title and body are prepared as a local draft. No GitHub
 publication or Azure deployment was performed for this delivery.
+
+## Buyer readiness planning: October 18, 2026
+
+The [three-delivery plan](buyer-readiness-plan/README.md) allocates B3-B14's
+92 scenarios to shopping/Bag (34), vouchers/checkout/payment (30), and
+orders/tracking/communication (28). B1 and the merged B2 address-book work remain
+separate. The user set checking for October 19 at 07:00 Asia/Manila and selected
+circular tracking milestones with current recorded location and useful existing
+tracking details. The proposed overnight windows reserve a final walkthrough,
+publication/deployment interval and buffer; they are planning assumptions.
+
+Static inspection confirms existing discovery/filter/paging, saved-product,
+inventory, voucher, idempotent COD checkout, order-tracking, completed-purchase
+review, text chat and notification foundations. This is not a fresh acceptance
+run for the remaining scenarios. Repair only actual defects and reuse those
+services rather than replacing previous work.
+
+Specific gaps and disagreements for the delivery audit:
+
+| Area | Executable finding | Delivery disposition |
+|---|---|---|
+| Shop following | `Marketplace/ShopDetail.tsx` uses component state and a fixed displayed following count. | Batch 1 assesses persistent owned following and real counts; the current button is not verified persistence. |
+| Discovery/product additions | `BuyerDiscoveryService` performs literal matching; current inventory selects colors and sizes rather than demonstrating an independently priced combination matrix. | Batch 1 checks typo handling, combinations and purchase caps explicitly; sale/vacation behavior needs its actual saved policy and estimate. |
+| Shipping and voucher policy | `CheckoutQuoteService` uses the current per-shop shipping calculation and rejects more than one Bagoo offer. | Batch 2 records tariff and additional shipping-slot decisions before changing prices or funding. |
+| Payment | `CommerceInputService` normalizes checkout to COD and `CheckoutOrderService` saves COD orders. | Batch 2 verifies supported COD and clear unsupported-method rejection; gateway/refund/expiry behavior is not implemented evidence. |
+| Buyer cancellation | `routes/web.php` and `OrderLifecycleService` expose seller cancellation; no buyer cancellation writer was found. | Batch 3 assesses an owned buyer action with explicit allowed states, existing claim/custody gates and once-only stock/funding effects. |
+| Buyer returns/refunds | `BuyerDisputeController` returns `available: false`. | Reuse the existing return/refund planning work. Full post-delivery requests, decisions and repayment remain unresolved scope, not a passing flow. |
+| Review policy | `ReviewService` allows creation with text up to 1,000 characters and five validated images; buyer review routes expose creation, not an edit writer. Public review output contains the stored buyer name. | Batch 3 resolves text/privacy limits, edit/window rules and photo behavior while retaining purchase verification and existing history. |
+| Chat and reminders | `ChatController::sendMessage` validates text and context but has no image upload field. Flash-sale reminder evidence was not found in the inspected buyer path. | Batch 3 treats attachments and actual sale subscriptions as additions; retain existing text ownership/read and lifecycle-notice checks. |
+| Parcel presentation | `OrderTrackingPanel` currently uses a status badge, text summary and plain checkpoint rows. | Batch 3 restores circular recorded milestones and current-step emphasis using existing history, holder, hub, time and next-step data, scoped to the buyer style. |
+
+The current 10% commission, explicit buyer completion, separate settlement and
+road/hub custody rules remain authoritative. Alternate sample assumptions cannot
+silently enable time-based completion, automatic seller fund release, maritime
+shipping, or a payment/refund service. Every allocated scenario needs an actual
+result or a plainly recorded unresolved feature/policy decision.
+
+This delivery changes planning documents only. No application behavior, database,
+frontend, tests, external publication, automation workflow or Azure deployment
+was changed. The code findings were inspected statically; no new readiness rating
+or acceptance pass is claimed. Documentation links, coverage allocation and
+patch whitespace are checked for the planning handoff.
