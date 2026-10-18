@@ -6120,3 +6120,54 @@ frontend, tests, external publication, automation workflow or Azure deployment
 was changed. The code findings were inspected statically; no new readiness rating
 or acceptance pass is claimed. Documentation links, coverage allocation and
 patch whitespace are checked for the planning handoff.
+
+
+## Buyer delivery 1: discovery, following and Bag pricing — October 19, 2026
+
+**Scoped assessment: 6.5/10 before → 8.3/10 after.** Store search now filters the
+whole eligible shop catalogue with validated categories, sorting and stable
+pagination. Typo suggestions use at most 250 eligible product names, respect the
+current filters and never silently replace the query. Live-search partial reads
+include suggestions so an earlier correction cannot remain under a new result.
+
+Shop following is now an owned database relationship with a unique buyer/shop
+pair, repeat-safe follow/unfollow, actual follower counts and a Followed shops
+page in the buyer menu. Restricted followed shops retain a removable generic
+entry without exposing their current details. Storefront editing remains owner
+only, public preview flags cannot enable it, and storefront chat opens the
+existing merchant conversation. Fixed voucher codes and free-delivery claims
+were removed in favor of actual available offers and quotes.
+
+The product UI previously added a configured size surcharge that the Bag and
+order writers omitted. The shared inventory selection now resolves that price in
+cents for additions, updates, Bag reads, quotes, order snapshots and Buy Again.
+Product options require an explicit choice; invalid typed quantities receive
+feedback rather than silently changing to another quantity. Removed and depleted
+variants are unavailable for selection while other valid Bag items remain usable.
+Buy Now identifies the returned owned Bag line explicitly.
+
+Validation evidence:
+
+- Discovery/storefront suite: **46 tests / 1,083 assertions**, passing.
+- Selection, inventory, Buy Again and storefront suite: **86 tests / 984
+  assertions**, passing, including surcharge snapshots and unavailable variants.
+- Buyer/finance regression: **692 tests**, with 691 passing and one stale
+  redirect expectation. The existing suspended-rider route already uses Account
+  status; the test expectation was corrected and that case passed separately
+  with **93 assertions**, retaining restricted access and cash custody checks.
+- Frontend discovery/commerce suite: **75 tests**, passing. Production build,
+  formatting and patch whitespace passed. No browser, Azure, reset or publication
+  verification is claimed.
+
+All 34 allocated scenarios were assessed against existing behavior and the above
+checks. This is not a claim that every external scenario was manually executed.
+Vacation mode, configurable cumulative purchase caps, a flash-sale/quota engine
+and a full color-by-size inventory matrix remain unimplemented features. Current
+colors have availability flags and sizes have shared stock/surcharges. A Buy Now
+request for an already matching Bag line still includes its accumulated quantity;
+the next checkout delivery must address exact requested quantities. Preserve the
+agreed 10% commission, COD, buyer receipt and deferred full-refund rules.
+
+Deployment requires the additive `shop_follows` migration; ordinary deployment
+migrations suffice. This delivery did not modify the development database. The
+branch PR title/body is a local draft, and only the user publishes commits.
