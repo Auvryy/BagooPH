@@ -19,6 +19,10 @@ and execution evidence belong in [the roadmap](../CORE_FLOW_ROADMAP.md).
 | 2 | B7 vouchers, B8 checkout, B9 payment | 30 | `fix/buyer-checkout-and-voucher-acceptance` | [Checkout and vouchers](02-checkout-and-vouchers.md) |
 | 3 | B10 tracking, B11 cancellation, B12 returns/refunds, B13 reviews, B14 messages/notifications | 28 | `fix/buyer-orders-and-communication-acceptance` | [Orders and communication](03-orders-and-communication.md) |
 
+See the dated [delivery results and agreed expectations](04-delivery-results.md)
+for the completed core repairs, verification and remaining feature gaps. The
+roadmap remains the authority for later implementation changes.
+
 All 92 scenarios have a home. These are allocations for assessment and repair,
 not 92 passing results. Module labels here identify buyer areas; they do not
 refer to the older admin B01-B18 branch sequence.

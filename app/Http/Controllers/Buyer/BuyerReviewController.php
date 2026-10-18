@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Buyer;
 use App\Http\Controllers\Controller;
 use App\Models\Review;
 use App\Services\Commerce\ReviewService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +25,7 @@ class BuyerReviewController extends Controller
     {
         try {
             $reviews->edit($request->user(), $review, $request->all());
-        } catch (ValidationException|\Illuminate\Auth\Access\AuthorizationException|HttpExceptionInterface $error) {
+        } catch (ValidationException|AuthorizationException|HttpExceptionInterface $error) {
             throw $error;
         } catch (\Throwable $error) {
             Log::warning('Buyer review edit could not be saved.', ['review_id' => $review->id, 'exception' => $error::class]);

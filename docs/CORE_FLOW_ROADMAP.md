@@ -6211,3 +6211,52 @@ A shipping subsidy reduces the actual fee within its cap; it does not grant a
 second simultaneous Bagoo slot or change merchandise settlement. No invented
 online success, refund or reused voucher is reported as passing those alternate
 assumptions. No schema migration is added in this delivery.
+
+
+## Buyer delivery 3: order actions, tracking and communication — October 19, 2026
+
+**Scoped order/tracking/review/chat assessment: 6.0/10 before → 8.6/10 after.**
+The buyer parcel detail now uses connected circular milestones with an explicit
+current stage, last recorded location and expandable original checkpoints. Missing
+scans remain unrecorded; every Mother Hub event stays in history. Doorstep handover,
+counter collection, return travel, cancellation and buyer receipt remain distinct.
+The shared default tracking panel retains its existing presentation for other roles.
+
+An active approved buyer can cancel an owned unpaid COD order before readiness,
+with a required reason. The locked action checks current payment, rider claims,
+custody and handover holds, restores selected stock and releases only applicable
+original funding once, and records the buyer as actor. It preserves delivery notes
+and sibling orders. Legacy paid orders require payment support; no refund is
+fabricated. Field errors and storage failures retain a clear recovery path.
+
+A verified completed-purchase review can receive one owned rating/text edit within
+30 days. Its original content is private, photos remain attached and unchanged
+successful retries are safe. Public names are masked, actual purchased options are
+shown and verified averages/counts use saved data. Existing 1,000-character review
+text and five 5-MB photo limits remain.
+
+Buyer and seller chat now accept one real JPG, PNG or WEBP image up to 5 MB through
+participant-only private links. New sends use owned UUID retry identity, file cleanup
+on rollback, context/ownership checks, bounded new-send rate and reduced response
+fields. Drafts survive failures, duplicate clicks are guarded and late reads cannot
+replace a newly selected conversation. Only messages in the returned read snapshot
+are acknowledged; newer arrivals remain unread. Native rider messaging remains
+separate and its backend contract checks pass.
+
+Evidence: integrated **855 tests / 20,558 assertions**; related native rider/seller
+checks **47 tests / 1,472 assertions**; all **436 frontend tests** passing. Final
+focused checks cover cancellation, communication, public review options and input
+boundaries; builds, formatting and patch whitespace pass. Testing used isolated
+SQLite, without browser automation or PostgreSQL concurrency claims.
+
+All 28 allocated areas were assessed with the retained rules. Full refunds and
+online payments remain deferred, completion remains buyer-confirmed, and flash
+reminders still require a real sale engine. The dated
+[delivery results](buyer-readiness-plan/04-delivery-results.md) list all retained
+expectations, remaining new features and manual-review pages. No claim is made
+that all 92 original browser scenarios passed unchanged.
+
+The three additive follows/review-history/private-chat migrations were applied
+locally; a read-only probe confirmed the new schema and **17 visible products**.
+No data was reset or reseeded. Azure, Flutter and GitHub publication were untouched.
+All three branch PR descriptions and the combined handoff remain local drafts.

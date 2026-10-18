@@ -79,6 +79,29 @@ The buyer tracking page shows Mother-Hub and Bayan-Hub checkpoints beneath `AT_S
 
 At `OUT_FOR_DELIVERY`, the buyer sees the COD amount and delivery reminder. After physical handover, the order is `DELIVERED`. Only the buyer's confirmation makes it `COMPLETED`; final settlement also requires platform-level COD reconciliation.
 
+An active approved buyer may cancel their own unpaid COD order before
+`READY_FOR_PICKUP`, with a reason and details when selecting Other reason. A rider
+claim, recorded handover, handover hold or recorded payment blocks this action.
+The order transaction restores the selected inventory and releases only its
+original voucher funding once. Other orders and retained redemption usage remain
+unchanged. Original delivery notes are retained; the cancellation has its own
+recorded reason and time. Online-paid legacy orders require payment support;
+cancellation does not imply a refund.
+
+After buyer-confirmed completion, each purchased item may receive one verified
+review with integer stars from one to five, text up to 1,000 characters and up to
+five JPG, PNG or WEBP photos of 5 MB each. The buyer may edit rating and text once
+within 30 days of posting, retaining the original content privately and keeping
+the existing photos. An unchanged successful edit retry is safe. Public reviews
+show masked buyer names and use verified saved ratings for averages and counts.
+
+Buyer–seller messages retain their actual product or owned-order context and
+allow text up to 1,000 characters plus one readable JPG, PNG or WEBP image up to
+5 MB. Images are private to the conversation participants. Failed sends preserve
+the draft; retrying the same send request cannot create another message or file.
+Opening conversation history acknowledges only the owned messages actually
+returned in that snapshot. Newer unseen messages remain unread.
+
 ## 3. Hub Self-Pickup
 
 The parcel still travels through the origin Bayan Hub, at least one Mother Hub, and destination Bayan Hub. When ready, the buyer receives the hub address, operating hours, seven-day expiry, and a link to private one-time claim-code access. The code is shown only through the owned order action and never included in a notification. Reminders are sent on days three and six.
