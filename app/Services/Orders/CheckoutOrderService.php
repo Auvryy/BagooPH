@@ -166,13 +166,14 @@ class CheckoutOrderService
 
                 foreach ($group as $item) {
                     $product = $item->product;
+                    $unitPrice = $this->inventory->unitPrice($product, $item->color, $item->size);
                     OrderItem::create([
                         'order_id' => $order->id,
                         'product_id' => $product->id,
                         'shop_id' => $product->shop_id,
                         'quantity' => $item->quantity,
-                        'unit_price' => $product->price,
-                        'subtotal' => CodMoney::cents($product->price) * $item->quantity / 100,
+                        'unit_price' => $unitPrice,
+                        'subtotal' => CodMoney::cents($unitPrice) * $item->quantity / 100,
                         'color' => $item->color,
                         'size' => $item->size,
                         'sku_snapshot' => $item->sku_snapshot,

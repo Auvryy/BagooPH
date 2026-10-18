@@ -17,6 +17,8 @@ const bundle = buildSync({
         export { default as Search } from '@/Pages/Buyer/Search';
         export { default as Product } from '@/Pages/Buyer/ProductDetail';
         export { default as Store } from '@/Pages/Marketplace/ShopDetail';
+        export { default as FollowedShops } from '@/Pages/Buyer/FollowedShops';
+        export { productQuantityError } from '@/utils/productQuantity';
         export { default as Reviews } from '@/Pages/Seller/Reviews';
         export { default as Detail } from '@/Pages/Buyer/OrderDetail';
         export { default as Purchases } from '@/Pages/Buyer/Profile';
@@ -98,11 +100,28 @@ test('seller reviews render saved replies and edit controls after refresh', asyn
     assert.doesNotMatch(html, /Top Rated Seller|Mall Merchant|within hours/);
 });
 test('storefront metrics use recorded reviews and a real shop opening date', async () => {
-    const html = await render(ui.Store, 'Marketplace/ShopDetail', { shop, products: paginated([product]), shopStats: summary });
+    const html = await render(ui.Store, 'Marketplace/ShopDetail', { shop, products: paginated([product]), shopStats: summary, filters: {}, categories: [], followerCount: 0, isFollowing: false });
     assert.match(html, /No ratings yet/);
     assert.match(html, /Review reply rate/);
     assert.match(html, /Shop opened/);
     assert.doesNotMatch(html, /4\.95|99%|98%|MALL PREFERRED|>MALL</);
+    assert.match(html, /0 followers/);
+    assert.doesNotMatch(html, /14\.2k|COIN10|PRIMESHIP|FREE DOORSTEP DELIVERY/);
+});
+
+test('unavailable followed shops retain removal without disclosing restricted storefront details', async () => {
+    const html = await render(ui.FollowedShops, 'Buyer/FollowedShops', { entries: paginated([{ id: 1, shop_id: shop.id, shop: null }]) });
+    assert.match(html, /Shop currently unavailable/);
+    assert.match(html, /Following/);
+    assert.doesNotMatch(html, /Bagoo Crafts/);
+});
+
+test('typed product quantities reject invalid values without silently converting them', () => {
+    for (const value of ['', '0', '01', '-1', '1.5', '1e1', 'abc', '100', ' 1', '１']) assert.ok(ui.productQuantityError(value, 99), value);
+    assert.equal(ui.productQuantityError('1', 1), null);
+    assert.equal(ui.productQuantityError('99', 99), null);
+    assert.match(ui.productQuantityError('3', 2), /only 2/);
+    assert.match(ui.productQuantityError('1', 0), /no more/);
 });
 test('completed order details hide review creation once all items have saved reviews', async () => {
     const html = await render(ui.Detail, 'Buyer/OrderDetail', {

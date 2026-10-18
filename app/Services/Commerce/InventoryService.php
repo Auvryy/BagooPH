@@ -4,12 +4,26 @@ namespace App\Services\Commerce;
 
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Services\Finance\CodMoney;
 use Illuminate\Support\Collection;
 use RuntimeException;
 
 class InventoryService
 {
     public const MAX_CART_LINE_QUANTITY = 99;
+
+    public function unitPrice(Product $product, ?string $color, ?string $size): string
+    {
+        $selection = $this->selection($product, $color, $size);
+        $option = collect($this->sizes($product))->firstWhere('name', $selection['size']);
+        $extra = $option['extra_price'] ?? 0;
+        if (! is_numeric($extra) || ! is_finite((float) $extra) || (float) $extra < 0 || (float) $extra > 99999999.99) {
+            throw new RuntimeException("The price for '{$product->name}' needs to be corrected by its shop.");
+        }
+        $cents = CodMoney::cents($product->price) + CodMoney::cents(number_format((float) $extra, 2, '.', ''));
+
+        return number_format($cents / 100, 2, '.', '');
+    }
 
     /**
      * @param  Collection<int, CartItem>  $productCartItems
@@ -58,7 +72,7 @@ class InventoryService
                 throw new RuntimeException('One or more selected products are unavailable.');
             }
 
-            $this->selection($product, $item->color, $item->size);
+            $this->unitPrice($product, $item->color, $item->size);
         }
 
         foreach ($items->groupBy('product_id') as $productId => $productItems) {

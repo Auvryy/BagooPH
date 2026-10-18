@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import VoucherOfferList from '@/Components/VoucherOfferList';
 import SavedProductButton from '@/Components/SavedProductButton';
+import { productQuantityError } from '@/utils/productQuantity';
 import RatingStars, { ratingLabel } from '@/Components/RatingStars';
 import { PageProps, Product, Review } from '@/types';
 import { 
@@ -89,15 +90,13 @@ export default function BuyerProductDetail({
 }: Props) {
     const colorsList = variations?.colors || [];
     const sizesList = variations?.sizes || [];
-    const [selectedColor, setSelectedColor] = useState<VariationColor | null>(
-        colorsList.find((color) => color.in_stock) || colorsList[0] || null
-    );
-    const [selectedSize, setSelectedSize] = useState<VariationSize | null>(sizesList[0] || null);
+    const [selectedColor, setSelectedColor] = useState<VariationColor | null>(null);
+    const [selectedSize, setSelectedSize] = useState<VariationSize | null>(null);
     const [quantityInput, setQuantityInput] = useState('1');
     const [selectedImage, setSelectedImage] = useState(product.featured_image || '');
     const [isAdding, setIsAdding] = useState(false);
+    const addBusy = useRef(false);
     const [addedSuccess, setAddedSuccess] = useState(false);
-    const [copiedVoucher, setCopiedVoucher] = useState(false);
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [copiedShareLink, setCopiedShareLink] = useState(false);
@@ -172,12 +171,12 @@ export default function BuyerProductDetail({
 
     // Dynamic price calculation based on selected size/variation
     const basePrice = Number(product.price);
-    const extraPrice = selectedSize ? selectedSize.extra_price : 0;
+    const extraPrice = Number(selectedSize?.extra_price ?? 0);
     const currentPrice = basePrice + extraPrice;
     
-    const baseCompare = product.compare_at_price ? Number(product.compare_at_price) : basePrice * 1.25;
-    const currentComparePrice = baseCompare + extraPrice;
-    const discountPct = Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100);
+    const baseCompare = product.compare_at_price ? Number(product.compare_at_price) : 0;
+    const currentComparePrice = baseCompare > basePrice ? baseCompare + extraPrice : 0;
+    const discountPct = currentComparePrice > currentPrice ? Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100) : 0;
 
     const selectionStock = Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
     const isProductOutOfStock = Number(product.stock) <= 0;
@@ -211,39 +210,25 @@ export default function BuyerProductDetail({
     };
 
     const handleQuantityInput = (value: string) => {
-        if (value === '') {
-            setQuantityInput('');
-            return;
-        }
-        if (!/^\d+$/.test(value)) return;
-
-        const parsed = Number(value);
-        if (parsed > maxAddableQuantity) {
-            setQuantityInput(String(Math.max(1, maxAddableQuantity)));
-            setCartFeedback({
-                type: 'error',
-                message: maxAddableQuantity > 0
-                    ? `You can add only ${maxAddableQuantity} more of this selection.`
-                    : isSelectionOutOfStock
-                        ? 'This product selection is currently out of stock.'
-                        : 'All currently available units are already in your Shopping Bag.',
-            });
-            return;
-        }
-
-        setQuantityInput(String(Math.max(1, parsed)));
-        setCartFeedback(null);
+        setQuantityInput(value);
+        const error = productQuantityError(value, maxAddableQuantity);
+        setCartFeedback(error ? { type: 'error', message: error } : null);
     };
 
-    useEffect(() => {
-        if (maxAddableQuantity > 0 && quantity > maxAddableQuantity) {
-            setQuantityInput(String(maxAddableQuantity));
-        }
-    }, [maxAddableQuantity, quantity]);
-
     const handleAddToBag = (buyNow: boolean = false) => {
+        if (addBusy.current) return;
         if (buyNow && buyerNeedsKycForPurchase(auth.user)) {
             setPurchaseGateMessage(buyerKycBlockMessage(auth.user));
+            return;
+        }
+
+        if ((colorsList.length > 0 && !selectedColor) || (sizesList.length > 0 && !selectedSize)) {
+            setCartFeedback({ type: 'error', message: 'Choose each product option before continuing.' });
+            return;
+        }
+        const quantityError = productQuantityError(quantityInput, maxAddableQuantity);
+        if (quantityError) {
+            setCartFeedback({ type: 'error', message: quantityError });
             return;
         }
 
@@ -257,6 +242,7 @@ export default function BuyerProductDetail({
             return;
         }
 
+        addBusy.current = true;
         setIsAdding(true);
         setAddedSuccess(false);
         setCartFeedback(null);
@@ -266,6 +252,7 @@ export default function BuyerProductDetail({
             quantity: quantity,
             color: selectedColor?.name,
             size: selectedSize?.name,
+            buy_now: buyNow,
         }, {
             preserveScroll: true,
             onSuccess: () => {
@@ -274,9 +261,6 @@ export default function BuyerProductDetail({
                 setCartFeedback({ type: 'success', message: `${quantity} added to your Shopping Bag.` });
                 setTimeout(() => setAddedSuccess(false), 2500);
 
-                if (buyNow) {
-                    router.get(route('checkout.index'));
-                }
             },
             onError: (errors) => {
                 setIsAdding(false);
@@ -286,6 +270,7 @@ export default function BuyerProductDetail({
                     message: String(errors.quantity || errors.product_id || 'The item could not be added. Please review the quantity and try again.'),
                 });
             },
+            onFinish: () => { addBusy.current = false; setIsAdding(false); },
         });
     };
 
@@ -294,11 +279,7 @@ export default function BuyerProductDetail({
         return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(num);
     };
 
-    const copyShopVoucher = () => {
-        navigator.clipboard.writeText('BAGOO20');
-        setCopiedVoucher(true);
-        setTimeout(() => setCopiedVoucher(false), 3000);
-    };
+
 
     // Gallery images combining primary + multi-angle shots + variant edition photos
     const rawImages = [
@@ -483,21 +464,6 @@ export default function BuyerProductDetail({
                             )}
                         </div>
 
-                        {/* Store Voucher Strip */}
-                        <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/60 flex items-center justify-between text-xs font-sans">
-                            <div className="flex items-center gap-2 text-amber-950 font-bold">
-                                <Tag className="w-4 h-4 text-amber-600" />
-                                <span>₱100 OFF VOUCHER (Min. Spend ₱1,500)</span>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={copyShopVoucher}
-                                className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg transition uppercase text-[11px]"
-                            >
-                                {copiedVoucher ? 'Claimed ✓' : 'Claim'}
-                            </button>
-                        </div>
-
                         {/* Delivery and payment information */}
                         <div className="space-y-2 font-sans text-xs text-slate-600 border-y border-slate-100 py-3">
                             <div className="flex items-center gap-3">
@@ -517,7 +483,7 @@ export default function BuyerProductDetail({
                                     <span className="text-slate-500 font-bold uppercase">
                                         {variations?.option1_name || 'Color / Edition'}:
                                     </span>
-                                    <span className="text-slate-900 font-black">{selectedColor?.name}</span>
+                                    <span className="text-slate-900 font-black">{selectedColor?.name || 'Choose an option'}</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {colorsList.map((color) => (
@@ -563,7 +529,7 @@ export default function BuyerProductDetail({
                                     <span className="text-slate-500 font-bold uppercase">
                                         {variations?.option2_name || 'Specification / Size'}:
                                     </span>
-                                    <span className="text-slate-900 font-black">{selectedSize?.name}</span>
+                                    <span className="text-slate-900 font-black">{selectedSize?.name || 'Choose an option'}</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {sizesList.map((size) => (
@@ -609,7 +575,8 @@ export default function BuyerProductDetail({
                                         pattern="[0-9]*"
                                         value={quantityInput}
                                         onChange={(event) => handleQuantityInput(event.target.value)}
-                                        onBlur={() => setQuantityInput(String(Math.min(Math.max(1, quantity), Math.max(1, maxAddableQuantity))))}
+                                        aria-invalid={productQuantityError(quantityInput, maxAddableQuantity) !== null}
+                                        maxLength={2}
                                         disabled={maxAddableQuantity < 1}
                                         aria-label="Product quantity"
                                         className="w-14 border-x border-y-0 border-slate-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900 focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] disabled:bg-slate-100 disabled:text-slate-400"

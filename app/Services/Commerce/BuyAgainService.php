@@ -41,11 +41,13 @@ class BuyAgainService
                 $product = null;
             }
             $maximum = 0;
+            $currentPrice = null;
             $reason = 'This listing is currently unavailable.';
             if ($product) {
                 $productItems = $bagItems->where('product_id', $product->id);
                 $matching = $productItems->first(fn ($line) => $line->color === $original->color && $line->size === $original->size);
                 try {
+                    $currentPrice = app(InventoryService::class)->unitPrice($product, $original->color, $original->size);
                     $limit = app(InventoryService::class)->maximumCartLineQuantity($product, $productItems, $original->color, $original->size, $matching?->id);
                     $maximum = max(0, $limit - ($matching?->quantity ?? 0));
                     $reason = $product->stock <= 0 ? 'This product is currently out of stock.' : 'Your Bag already contains the available quantity for this item.';
@@ -56,7 +58,7 @@ class BuyAgainService
 
             return [
                 'order_item_id' => $original->id, 'original_quantity' => $original->quantity,
-                'previous_unit_price' => $original->unit_price, 'current_unit_price' => $product?->price,
+                'previous_unit_price' => $original->unit_price, 'current_unit_price' => $currentPrice,
                 'color' => $original->color, 'size' => $original->size,
                 'name' => $product?->name ?? $original->sku_snapshot ?? 'Purchased item',
                 'product_url' => $product ? route('buyer.products.show', $product->slug, absolute: false) : null,
@@ -123,7 +125,12 @@ class BuyAgainService
                 if (! $product || $product->shop_id !== $original->shop_id) {
                     throw ValidationException::withMessages(['items' => 'One or more purchased items are no longer offered by the original shop. Nothing was added.']);
                 }
-                if ($selected['expected_unit_price'] !== $product->price) {
+                try {
+                    $currentPrice = app(InventoryService::class)->unitPrice($product, $original->color, $original->size);
+                } catch (RuntimeException $exception) {
+                    throw ValidationException::withMessages(['items' => $exception->getMessage().' Nothing was added.']);
+                }
+                if ($selected['expected_unit_price'] !== $currentPrice) {
                     throw ValidationException::withMessages(['items' => 'A price changed after your preview. Nothing was added. Open Buy again to review the current prices.']);
                 }
                 try {

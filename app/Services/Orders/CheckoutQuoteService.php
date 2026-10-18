@@ -49,7 +49,7 @@ class CheckoutQuoteService
     {
         $revisions = $selection instanceof Voucher ? collect([$selection->currentRevision]) : ($selection ?? collect());
         $shops = $items->groupBy(fn (CartItem $item) => $item->product->shop_id)->sortKeys()->map(function (Collection $group, int $shopId) use ($deliveryType) {
-            $subtotal = $group->sum(fn (CartItem $item) => CodMoney::cents($item->product->price) * $item->quantity);
+            $subtotal = $group->sum(fn (CartItem $item) => CodMoney::cents(app(InventoryService::class)->unitPrice($item->product, $item->color, $item->size)) * $item->quantity);
             $doorstep = $subtotal > 150000 ? 0 : 5000;
 
             return ['shop_id' => $shopId, 'shop_name' => $group->first()->product->shop->name, 'subtotal' => $subtotal,
@@ -135,8 +135,8 @@ class CheckoutQuoteService
             'shipping_discount' => $shippingDiscounts->sum() / 100,
             'total' => ($shops->sum('subtotal') + $shops->sum('shipping') - $discount) / 100, 'shops' => $shopQuotes,
             'items' => $items->map(fn (CartItem $item) => ['id' => $item->id, 'quantity' => $item->quantity,
-                'unit_price' => CodMoney::cents($item->product->price) / 100,
-                'subtotal' => CodMoney::cents($item->product->price) * $item->quantity / 100])->values()->all(),
+                'unit_price' => CodMoney::cents(app(InventoryService::class)->unitPrice($item->product, $item->color, $item->size)) / 100,
+                'subtotal' => CodMoney::cents(app(InventoryService::class)->unitPrice($item->product, $item->color, $item->size)) * $item->quantity / 100])->values()->all(),
             'voucher' => count($presented) === 1 ? $presented[0] : null, 'vouchers' => $presented,
             'voucher_error' => $reason, 'redemptions' => $redemptions,
             ...($reason && $failedRevisionId ? ['failed_revision_id' => $failedRevisionId] : [])];
