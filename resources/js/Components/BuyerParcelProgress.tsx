@@ -14,7 +14,7 @@ export default function BuyerParcelProgress({ tracking }: { tracking: OrderTrack
         </div>
         <ol aria-label="Parcel milestones" className={`grid gap-0 ${milestones.length > 8 ? 'lg:grid-cols-9' : 'lg:grid-cols-8'}`}>
             {milestones.map((step, index) => <li key={step.key} aria-current={step.current ? 'step' : undefined} data-recorded={step.recorded} className="relative flex min-w-0 gap-3 pb-6 last:pb-0 lg:flex-col lg:items-center lg:gap-2 lg:px-1 lg:pb-0 lg:text-center">
-                {index < milestones.length - 1 && <span aria-hidden="true" className="absolute left-[15px] top-8 h-[calc(100%-2rem)] w-px bg-slate-300 lg:left-[calc(50%+1rem)] lg:top-4 lg:h-px lg:w-[calc(100%-2rem)]" />}
+                {index < milestones.length - 1 && <span aria-hidden="true" className="absolute left-[15px] top-8 h-[calc(100%_-_2rem)] w-px bg-slate-300 lg:left-[calc(50%_+_1rem)] lg:top-4 lg:h-px lg:w-[calc(100%_-_2rem)]" />}
                 <span aria-hidden="true" className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${step.current ? 'border-[#E00D42] bg-[#E00D42] text-white ring-4 ring-rose-100' : step.recorded ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 bg-white text-slate-400'}`}>
                     {step.recorded ? <Check className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}
                 </span>
