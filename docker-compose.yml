@@ -1,5 +1,6 @@
 services:
-  app:
+  app: &app-runtime
+    image: bagoo-app:local
     build:
       context: .
       dockerfile: docker/php/Dockerfile
@@ -21,6 +22,18 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  scheduler:
+    <<: *app-runtime
+    container_name: bagoo_scheduler
+    command: ["php", "artisan", "schedule:work", "--no-interaction"]
+    init: true
+    stop_grace_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
 
   web:
     image: nginx:alpine
