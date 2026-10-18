@@ -25,6 +25,13 @@ roadmap remains the authority for later implementation changes. The additional
 [advanced shopping delivery](05-advanced-shopping.md) completes the five remaining
 feature areas on `feat/advanced-shopping-controls`, stacked after these branches.
 
+The later [buyer polishing plan](../buyer-polishing-plan/README.md) handles the
+review's 35 unresolved cases and additional rating-control finding. It separates
+small control repairs, retained-rule/boundary checks, remaining interactions and
+deployed reminder observation from deferred payment/return prerequisites. The
+57 likely passes are excluded from active follow-up at the user's request;
+their existing evidence does not become a completed manual Pass.
+
 All 92 scenarios have a home. These are allocations for assessment and repair,
 not 92 passing results. Module labels here identify buyer areas; they do not
 refer to the older admin B01-B18 branch sequence.
