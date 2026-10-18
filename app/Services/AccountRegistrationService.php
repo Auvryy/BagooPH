@@ -148,8 +148,8 @@ class AccountRegistrationService
                 [...$password, 'id_document', 'driver_license', 'or_cr_document', ...$policies],
             ],
             'logistics' => [
-                [...$name, 'birthday', 'company_name', 'company_code', 'email', 'company_email', 'phone', 'company_phone', ...$password],
-                ['operating_province', 'franchise_number', 'fleet_size', 'vehicle_types'],
+                [...$name, 'birthday', 'company_name', 'company_code', 'tin', 'email', 'company_email', 'phone', 'company_phone', ...$password],
+                ['operating_province', 'service_areas', 'franchise_number', 'fleet_size', 'vehicle_types'],
                 [...$location, 'company_address', 'business_permit', 'franchise_document', ...$policies],
             ],
         };

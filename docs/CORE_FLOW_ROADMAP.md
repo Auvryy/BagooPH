@@ -5932,3 +5932,20 @@ now register distinct roles without ambiguous account lookup or cross-role
 password resets. Company/shop duplicate blocking **6/10 to 8/10**. These ratings
 cover the tested identity behavior; Azure delivery, live mail, interactive
 browser checks and PostgreSQL concurrency are not established by SQLite checks.
+
+Logistics registration now requires a canonical unique TIN and a non-empty
+collection of declared service regions. The region checkboxes preserve every
+selected value, including NCR, Central Luzon and CALABARZON together; choosing
+coverage no longer overwrites the office province. Owner correction and admin
+review use the same fields. Reviewed TIN/region changes use identity correction;
+existing absent TINs are not invented by migration. The demo company seeder has
+an explicit synthetic TIN and declared coverage. Public company serialization
+does not expose TINs, and declared coverage does not activate facilities/routes.
+
+Field acceptance: **25 TIN/region tests / 198 assertions**, **208 related
+registration/governance checks / 2,408 assertions**, and **33 frontend checks**
+passed. A broader **1,571-test** authentication/admin run found two valid-review
+fixtures missing the newly required details; those fixtures were completed and
+their full affected files rerun. The production frontend build passed. Scoped
+logistics registration completeness is **5/10 to 8/10**; operational delivery
+coverage and live tax-identity verification are separate from these form checks.

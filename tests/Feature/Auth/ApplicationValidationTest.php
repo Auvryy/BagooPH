@@ -62,7 +62,7 @@ class ApplicationValidationTest extends TestCase
         } elseif ($role === 'courier') {
             $data += ['vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'N01-12-345678'];
         } elseif ($role === 'logistics') {
-            $data += ['company_name' => 'Bagoo Logistics', 'company_code' => 'BAGOO', 'fleet_size' => 2, 'vehicle_types' => ['motorcycle']];
+            $data += ['tin' => '900000001000', 'service_areas' => ['NCR', 'Region III', 'Region IV-A'], 'company_name' => 'Bagoo Logistics', 'company_code' => 'BAGOO', 'fleet_size' => 2, 'vehicle_types' => ['motorcycle']];
         }
         foreach (match ($role) {
             'seller' => ['id_document', 'business_permit'], 'courier' => ['id_document', 'driver_license', 'or_cr_document'], 'logistics' => ['business_permit'], default => []
@@ -81,7 +81,7 @@ class ApplicationValidationTest extends TestCase
         } elseif ($role === 'courier') {
             CourierProfile::factory()->create(['user_id' => $user->id, 'vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'TEST-LICENSE', 'is_available' => false]);
         } elseif ($role === 'logistics') {
-            LogisticsCompany::create(['user_id' => $user->id, 'name' => 'Bagoo Logistics', 'slug' => 'bagoo-logistics-'.$user->id, 'code' => 'BG'.$user->id, 'contact_email' => $user->email, 'contact_phone' => '+63281234567', 'address' => '12 Bagoo Street', 'status' => 'pending', 'is_active' => false]);
+            LogisticsCompany::create(['user_id' => $user->id, 'tin' => '900'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT).'000', 'service_areas' => ['NCR', 'Region IV-A'], 'name' => 'Bagoo Logistics', 'slug' => 'bagoo-logistics-'.$user->id, 'code' => 'BG'.$user->id, 'contact_email' => $user->email, 'contact_phone' => '+63281234567', 'address' => '12 Bagoo Street', 'status' => 'pending', 'is_active' => false]);
         }
         $this->addKycEvidence($user);
 

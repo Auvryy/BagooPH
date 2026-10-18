@@ -41,7 +41,7 @@ class IdentityCorrectionTest extends TestCase
         } elseif ($role === 'courier') {
             CourierProfile::create(['user_id' => $user->id, 'vehicle_type' => 'Motorcycle', 'plate_number' => 'BAG-123', 'is_available' => true]);
         } elseif ($role === 'logistics') {
-            LogisticsCompany::create(['user_id' => $user->id, 'name' => 'Bagoo Reviewed Company', 'slug' => 'reviewed-'.$user->id, 'code' => 'BG'.$user->id,
+            LogisticsCompany::create(['user_id' => $user->id, 'tin' => '900'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT).'000', 'service_areas' => ['NCR', 'Region IV-A'], 'name' => 'Bagoo Reviewed Company', 'slug' => 'reviewed-'.$user->id, 'code' => 'BG'.$user->id,
                 'contact_phone' => $user->phone, 'contact_email' => $user->email, 'address' => $user->address, 'status' => 'suspended', 'is_active' => false]);
         }
         if ($role === 'admin') {

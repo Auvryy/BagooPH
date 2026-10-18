@@ -187,7 +187,7 @@ class KycRegistrationTest extends TestCase
 
         $response = $this->post('/register', [...$this->registrationPolicies(), 'sex' => 'Female',
             'name' => 'Captain Arturo Santos',
-            'company_name' => 'Southern Freight Express',
+            'tin' => '900000001000', 'service_areas' => ['NCR', 'Region III', 'Region IV-A'], 'company_name' => 'Southern Freight Express',
             'company_code' => 'SFX',
             'email' => 'arturo@southernfreight.ph',
             'phone' => '+63 917 555 7777',
@@ -237,6 +237,7 @@ class KycRegistrationTest extends TestCase
         ]);
 
         $company = LogisticsCompany::create([
+            'tin' => '900000001000', 'service_areas' => ['NCR', 'Region IV-A'],
             'user_id' => $applicant->id,
             'name' => 'Pacific Express Cargo',
             'slug' => 'pacific-express-cargo',

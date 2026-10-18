@@ -27,6 +27,7 @@ class ApplicationRegistrationService
             } elseif ($user->isLogistics()) {
                 LogisticsCompany::create([
                     'user_id' => $user->id, 'name' => $details['company_name'],
+                    'tin' => $details['tin'], 'service_areas' => $details['service_areas'],
                     'slug' => (Str::substr(Str::slug($details['company_name']), 0, 220) ?: 'company').'-'.$user->id,
                     'code' => $details['company_code'] ?? Str::upper(Str::random(12)),
                     'contact_email' => $details['company_email'], 'contact_phone' => $details['company_phone'], 'address' => $details['company_address'],

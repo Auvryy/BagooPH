@@ -30,6 +30,9 @@ class ApplicationIdentityService
         if (str_contains($message, 'logistics_companies_name_key_unique') || str_contains($message, 'UNIQUE constraint failed: logistics_companies.name_key')) {
             return ['company_name' => 'This company name is already registered. Choose a different name.'];
         }
+        if (str_contains($message, 'logistics_companies_tin_unique') || str_contains($message, 'UNIQUE constraint failed: logistics_companies.tin')) {
+            return ['tin' => 'This TIN is already registered to a logistics company.'];
+        }
 
         return [];
     }

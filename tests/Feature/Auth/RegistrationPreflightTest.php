@@ -29,7 +29,7 @@ class RegistrationPreflightTest extends TestCase
             'password' => 'A valid passphrase 2026!', 'password_confirmation' => 'A valid passphrase 2026!',
             'shop_name' => 'Bagoo Shop', 'root_category_id' => $this->validMasterCategory()->id,
             'vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'N01-12-345678',
-            'company_name' => 'Bagoo Delivery', 'company_code' => 'BGT', 'fleet_size' => 2,
+            'tin' => '900000001000', 'service_areas' => ['NCR', 'Region III', 'Region IV-A'], 'company_name' => 'Bagoo Delivery', 'company_code' => 'BGT', 'fleet_size' => 2,
             'vehicle_types' => ['motorcycle'], 'franchise_number' => null,
             'id_document' => UploadedFile::fake()->create('id.pdf', 10, 'application/pdf'),
             'business_permit' => UploadedFile::fake()->create('permit.pdf', 10, 'application/pdf'),

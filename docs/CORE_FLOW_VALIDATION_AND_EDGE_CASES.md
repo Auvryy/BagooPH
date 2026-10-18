@@ -113,7 +113,9 @@ Frontend restrictions improve usability but never replace server validation. Cli
 
 ### Account, Profile, and Address
 
-- Registration rejects duplicate email/mobile identities, unsupported roles, malformed phone numbers, invalid files, and incomplete required consent.
+- Registration rejects email identities duplicated within the selected role, globally duplicated account mobiles, unsupported roles, malformed phone numbers, invalid files, and incomplete required consent.
+- Logistics company applications require a unique 12-digit TIN including the branch suffix, accepted compactly or with three-digit groups separated by hyphens. Preserve leading zeroes and reject malformed, missing, duplicate or non-ASCII values. Keep TINs private to owner and authorized review. Shop and company names each retain normalized uniqueness within their own directory; step warnings never replace final validation and database constraints.
+- Logistics service regions are a non-empty, distinct allowlisted collection independent of the office address. Save every selected region through registration and reviewed corrections. Declared regions do not create hubs, enable unsupported transport or bypass operational serviceability.
 - Shop names are unique across the platform after Unicode normalization, case folding and spacing normalization, including inactive shops. Preflight never reserves a name or mobile: final writes and reviewed corrections recheck ownership, and database constraints reject simultaneous conflicting writes with field errors. Legacy conflicts stop the migration before any changes. Separate shop/company public contacts and order-recipient numbers remain shareable.
 - An unapproved, rejected, suspended, or deleted buyer cannot place an order.
 - Saved-address create/update/delete actions are owner-scoped. A buyer cannot submit another user's address ID.

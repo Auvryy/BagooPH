@@ -30,7 +30,7 @@ class IdentityCorrectionService
         return [...self::IDENTITY_FIELDS, ...match ($user->role) {
             'seller' => ['shop_name', 'shop_address', 'shop_city', 'root_category_id'],
             'courier' => ['vehicle_type', 'plate_number', 'license_number'],
-            'logistics' => ['company_name', 'company_code'],
+            'logistics' => ['company_name', 'company_code', 'tin', 'service_areas'],
             default => [],
         }];
     }
@@ -147,6 +147,9 @@ class IdentityCorrectionService
         $fieldRules['birthday'] = ['required', new BirthDate];
         foreach ($this->fields($subject) as $field) {
             $rules['changes.'.$field] = ['sometimes', ...($fieldRules[$field] ?? ['nullable', 'string', 'max:100'])];
+        }
+        if ($subject->isLogistics()) {
+            $rules['changes.service_areas.*'] = $fieldRules['service_areas.*'];
         }
         foreach (['id_document', 'business_permit', 'driver_license', 'or_cr_document', 'franchise_document'] as $field) {
             $rules[$field] = ['bail', 'nullable', 'file', new RegistrationDocument];
@@ -370,7 +373,7 @@ class IdentityCorrectionService
         }
         if ($subject->isLogistics()) {
             $values = [];
-            foreach (['company_name' => 'name', 'company_code' => 'code'] as $input => $field) {
+            foreach (['company_name' => 'name', 'company_code' => 'code', 'tin' => 'tin', 'service_areas' => 'service_areas'] as $input => $field) {
                 if (array_key_exists($input, $correction->proposed)) {
                     $values[$field] = $correction->proposed[$input];
                 }

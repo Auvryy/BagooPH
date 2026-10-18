@@ -73,6 +73,8 @@ class LogisticsNetworkSeeder extends Seeder
             [
                 'user_id' => $companyAdmin->id,
                 'name' => 'Bagoo Express Dispatch Fleet',
+                'tin' => '900000001000',
+                'service_areas' => ['NCR', 'Region III', 'Region IV-A'],
                 'slug' => 'bagoo-express-dispatch-fleet',
                 'contact_email' => 'dispatch@bagooph.shop',
                 'contact_phone' => '+63 917 888 2246',

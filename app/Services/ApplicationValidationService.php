@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\BirthDate;
+use App\Rules\CompanyTin;
 use App\Rules\MasterCategory;
 use App\Rules\PhilippineContact;
 use App\Rules\PhilippineLicenseNumber;
@@ -38,8 +39,10 @@ class ApplicationValidationService
                 continue;
             }
             // Phone/postal digits must be ASCII before normalization can hide look-alikes.
-            $value = in_array($field, ['phone', 'shop_phone', 'company_phone', 'postal_code'], true) ? trim($value, ' ') : trim(Normalizer::normalize($value, Normalizer::FORM_KC), ' ');
-            if (in_array($field, ['phone', 'shop_phone', 'company_phone'], true)) {
+            $value = in_array($field, ['phone', 'shop_phone', 'company_phone', 'postal_code', 'tin'], true) ? trim($value, ' ') : trim(Normalizer::normalize($value, Normalizer::FORM_KC), ' ');
+            if ($field === 'tin') {
+                $value = CompanyTin::canonical($value) ?? $value;
+            } elseif (in_array($field, ['phone', 'shop_phone', 'company_phone'], true)) {
                 $landline = $field !== 'phone';
                 $value = PhilippineContact::canonical($value, $landline) ?? $value;
             } elseif (in_array($field, ['email', 'company_email'], true) && str_contains($value, '@')) {
@@ -82,6 +85,11 @@ class ApplicationValidationService
                 'operating_province' => $text('location', 2, 255),
                 'franchise_number' => [...$text('code', 2, 100), Rule::notIn(['PENDING-LTFRB'])], 'fleet_size' => ['nullable', 'integer', 'min:1', 'max:10000'],
                 'vehicle_types' => ['nullable', 'array', 'max:3'], 'vehicle_types.*' => ['bail', 'required', 'string', 'distinct', Rule::in(self::FLEET_TYPES)]];
+            $rules += [
+                'tin' => ['bail', 'required', 'string', new CompanyTin, Rule::unique('logistics_companies', 'tin')->ignore($user?->logisticsCompany?->id)],
+                'service_areas' => ['required', 'array', 'min:1', 'max:'.count(config('registration.service_regions'))],
+                'service_areas.*' => ['bail', 'required', 'string', 'distinct:strict', Rule::in(array_keys(config('registration.service_regions')))],
+            ];
         }
 
         return $rules;
@@ -164,12 +172,17 @@ class ApplicationValidationService
 
     public function submissionMessages(): array
     {
-        return ['company_code.regex' => 'Use 2–10 letters for your company initials, without numbers or symbols.'];
+        return ['company_code.regex' => 'Use 2–10 letters for your company initials, without numbers or symbols.',
+            'tin.required' => 'Enter your company TIN, including the branch code.',
+            'tin.unique' => 'This TIN is already registered to a logistics company.',
+            'service_areas.required' => 'Choose at least one service region.',
+            'service_areas.*.in' => 'Choose service regions from the available list.',
+            'service_areas.*.distinct' => 'Choose each service region only once.'];
     }
 
     public function fieldErrors(array $values, string $role, ?User $user = null): array
     {
-        return Validator::make($this->normalize($values, $role), $this->rules($role, $user))->errors()->toArray();
+        return Validator::make($this->normalize($values, $role), $this->rules($role, $user), $this->submissionMessages())->errors()->toArray();
     }
 
     public function values(User $user): array
@@ -182,6 +195,7 @@ class ApplicationValidationService
             $data += $profile->only(['vehicle_type', 'plate_number', 'license_number']);
         } elseif ($user->isLogistics() && $company = $user->logisticsCompany) {
             $data += ['company_name' => $company->name, 'company_code' => $company->code, 'company_email' => $company->contact_email, 'company_phone' => $company->contact_phone, 'company_address' => $company->address];
+            $data += ['tin' => $company->tin, 'service_areas' => $company->service_areas ?? []];
             $data += array_intersect_key($company->accreditation_details ?? [], array_flip(['operating_province', 'franchise_number', 'fleet_size', 'vehicle_types']));
         }
 
@@ -204,6 +218,7 @@ class ApplicationValidationService
             'vehicle_type' => 'Vehicle type', 'plate_number' => 'Plate number', 'license_number' => 'License number',
             'company_name' => 'Company name', 'company_code' => 'Company initials', 'company_email' => 'Company contact email',
             'company_phone' => 'Company contact number', 'company_address' => 'Company street address',
+            'tin' => 'Company TIN', 'service_areas' => 'Service regions',
             'operating_province' => 'Declared operating province',
             'franchise_number' => 'Declared franchise number', 'fleet_size' => 'Declared fleet size', 'vehicle_types' => 'Vehicle categories',
         ];
@@ -213,11 +228,13 @@ class ApplicationValidationService
                 continue;
             }
             $options = match ($field) {
-                'sex' => ['Female', 'Male', 'Other'], 'vehicle_type' => self::VEHICLES, 'vehicle_types' => self::FLEET_TYPES, default => []
+                'sex' => ['Female', 'Male', 'Other'], 'vehicle_type' => self::VEHICLES, 'vehicle_types' => self::FLEET_TYPES,
+                'service_areas' => array_keys(config('registration.service_regions')), default => []
             };
             [$minimum, $maximum] = match (true) {
                 in_array($field, ['first_name', 'last_name']) => [2, 50], $field === 'middle_name' => [1, 50],
                 $field === 'postal_code' => [4, 4], $field === 'plate_number' => [5, 8], $field === 'license_number' => [11, 13],
+                $field === 'tin' => [12, 15],
                 $field === 'company_code' => [2, 10], $field === 'fleet_size' => [1, 5], $field === 'franchise_number' => [2, 100],
                 str_contains($field, 'phone') => [null, 24], str_contains($field, 'address') => [5, 500],
                 str_contains($field, 'email') => [null, 255], default => [2, 255],
@@ -225,9 +242,9 @@ class ApplicationValidationService
             $required = in_array('required', $rules, true) || (in_array($field, ['first_name', 'last_name']) && ($user->first_name || $user->last_name))
                 || ($field === 'license_number' && filled($user->courierProfile?->license_number));
             $fields[] = ['key' => $field, 'label' => $labels[$field], 'required' => (bool) $required,
-                'type' => $field === 'vehicle_types' ? 'multiselect' : ($options ? 'select' : (str_contains($field, 'email') ? 'email' : (str_contains($field, 'phone') ? 'tel' : 'text'))), 'options' => $options,
+                'type' => in_array($field, ['vehicle_types', 'service_areas']) ? 'multiselect' : ($options ? 'select' : (str_contains($field, 'email') ? 'email' : (str_contains($field, 'phone') ? 'tel' : 'text'))), 'options' => $options,
                 'min_length' => $minimum, 'max_length' => $maximum,
-                'input_mode' => in_array($field, ['postal_code', 'fleet_size']) ? 'numeric' : null];
+                'input_mode' => in_array($field, ['postal_code', 'fleet_size', 'tin']) ? 'numeric' : null];
         }
 
         return ['values' => $this->values($user), 'fields' => $fields, 'errors' => $this->errors($user),

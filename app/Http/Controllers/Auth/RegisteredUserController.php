@@ -55,7 +55,7 @@ class RegisteredUserController extends Controller
      */
     public function createLogistics(): Response
     {
-        return Inertia::render('Auth/LogisticsRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits(), 'policies' => app(RegistrationPolicyService::class)->contract()]);
+        return Inertia::render('Auth/LogisticsRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits(), 'policies' => app(RegistrationPolicyService::class)->contract(), 'serviceRegions' => config('registration.service_regions')]);
     }
 
     public function validateRegistration(Request $request, AccountRegistrationService $registration): JsonResponse

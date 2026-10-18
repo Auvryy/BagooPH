@@ -113,7 +113,7 @@ class KycSubmissionService
                 if ($user->isLogistics()) {
                     $accreditation = $user->logisticsCompany->accreditation_details ?? [];
                     $companyUpdates = [];
-                    foreach (['company_name' => 'name', 'company_code' => 'code', 'company_email' => 'contact_email', 'company_phone' => 'contact_phone', 'company_address' => 'address'] as $field => $column) {
+                    foreach (['company_name' => 'name', 'company_code' => 'code', 'tin' => 'tin', 'service_areas' => 'service_areas', 'company_email' => 'contact_email', 'company_phone' => 'contact_phone', 'company_address' => 'address'] as $field => $column) {
                         if (array_key_exists($field, $changes)) {
                             $companyUpdates[$column] = $changes[$field];
                         }

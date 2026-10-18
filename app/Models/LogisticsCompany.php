@@ -4,12 +4,14 @@ namespace App\Models;
 
 use App\Models\Concerns\ReportsApplicationIdentityConflicts;
 use App\Models\Concerns\RetainsRestrictionHistory;
+use App\Rules\CompanyTin;
 use App\Services\ApplicationIdentityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Validator;
 
 class LogisticsCompany extends Model
 {
@@ -17,18 +19,25 @@ class LogisticsCompany extends Model
     use ReportsApplicationIdentityConflicts;
     use RetainsRestrictionHistory;
 
-    protected $hidden = ['name_key'];
+    protected $hidden = ['name_key', 'tin'];
 
     protected static function booted(): void
     {
         static::saving(function (LogisticsCompany $company): void {
             $company->name_key = ApplicationIdentityService::shopNameKey($company->name);
+            if ($company->tin !== null) {
+                $tin = CompanyTin::canonical($company->tin);
+                Validator::make(['tin' => $company->tin], ['tin' => [new CompanyTin]])->validate();
+                $company->tin = $tin;
+            }
         });
     }
 
     protected $fillable = [
         'user_id',
         'name',
+        'tin',
+        'service_areas',
         'slug',
         'code',
         'logo',
@@ -42,6 +51,7 @@ class LogisticsCompany extends Model
 
     protected $casts = [
         'accreditation_details' => 'array',
+        'service_areas' => 'array',
         'is_active' => 'boolean',
         'rider_intake_enabled' => 'boolean',
         'rider_intake_version' => 'integer',
