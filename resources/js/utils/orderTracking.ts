@@ -33,3 +33,10 @@ export function currentCourierAction(target: { id: number; status: string }, pic
         : target.status === 'out_for_delivery' ? task.nextAction === 'start_delivery'
             : ['delivered', 'delivery_failed'].includes(target.status) && task.nextAction === 'complete_delivery';
 }
+
+export function trackingDate(value: string | null | undefined): string {
+    const date = value ? new Date(value) : null;
+    return date && Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat('en-PH', {
+        dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila',
+    }).format(date) : 'Not recorded';
+}

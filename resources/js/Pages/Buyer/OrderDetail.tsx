@@ -251,7 +251,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                 {receiptError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800">{receiptError}</p>}
 
                 {order.status === 'cancelled' && cancellationReason && <p role="status" className="rounded-xl border border-slate-300 bg-white p-4 text-sm text-slate-700">Cancellation reason: {cancellationReason}</p>}
-                <OrderTrackingPanel tracking={order.tracking} onRefresh={refreshTracking} refreshing={trackingRefreshing || codeBusy || receiptBusy} error={trackingError} />
+                <OrderTrackingPanel variant="buyer" tracking={order.tracking} onRefresh={refreshTracking} refreshing={trackingRefreshing || codeBusy || receiptBusy} error={trackingError} />
 
                 {/* 2. DISPATCH & COURIER TELEMETRY */}
                 {delivery && (

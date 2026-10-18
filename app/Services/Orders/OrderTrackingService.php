@@ -129,6 +129,9 @@ class OrderTrackingService
 
         return [
             'commercial_status' => $status, 'status_label' => self::LABELS[$status],
+            'parcel_status' => $parcel?->status,
+            'delivery_type' => $order->delivery_type,
+            'placed_at' => $order->created_at?->toIso8601String(),
             'stage_label' => $parcel ? (self::STAGES[$parcel->status] ?? 'Parcel stage needs review') : 'Parcel record not available',
             'tone' => $notice || in_array($status, ['delivery_failed', 'returned', 'cancelled', 'unknown'], true)
                 ? 'attention' : (in_array($status, ['delivered', 'completed'], true) ? 'success' : 'progress'),
@@ -138,7 +141,7 @@ class OrderTrackingService
             'observed_at' => now()->toIso8601String(),
             'history' => $history && $parcel ? $parcel->checkpoints->filter(fn ($event) => $event->source_checkpoint_id === null && isset(self::EVENTS[$event->checkpoint_type]))
                 ->sortBy([['created_at', 'asc'], ['id', 'asc']])->map(fn ($event) => [
-                    'id' => $event->id, 'label' => self::EVENTS[$event->checkpoint_type],
+                    'id' => $event->id, 'type' => $event->checkpoint_type, 'label' => self::EVENTS[$event->checkpoint_type],
                     'location' => $event->hub?->name ?: ($event->location_name ?: 'Location not recorded'),
                     'created_at' => $event->created_at?->toIso8601String(),
                 ])->values()->all() : [],

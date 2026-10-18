@@ -227,6 +227,9 @@ export interface Delivery {
 
 export interface OrderTracking {
     commercial_status: string;
+    parcel_status?: string | null;
+    delivery_type?: string | null;
+    placed_at?: string | null;
     status_label: string;
     stage_label: string;
     tone: 'attention' | 'success' | 'progress';
@@ -236,7 +239,7 @@ export interface OrderTracking {
     responsible: string;
     notice: string | null;
     observed_at: string;
-    history: Array<{ id: number; label: string; location: string; created_at: string | null }>;
+    history: Array<{ id: number; type?: string; label: string; location: string; created_at: string | null }>;
     failure: { attempt_number: number; reason: string; attempted_at: string | null; retry_at: string | null } | null;
 }
 
