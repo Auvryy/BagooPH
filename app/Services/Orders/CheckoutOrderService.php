@@ -17,7 +17,7 @@ use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
 use App\Services\Commerce\InventoryService;
 use App\Services\Commerce\PhilippineAddressCatalog;
-use App\Services\Finance\CodMoney;
+use App\Services\Commerce\SalePriceService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
@@ -66,12 +66,13 @@ class CheckoutOrderService
         }
 
         $submissions = app(CheckoutSubmissionService::class);
-        $tokenHash = $submissions->tokenHash($buyer, $cart, $data['checkout_token'] ?? null);
+        $confirmationToken = $data['checkout_token'] ?? null;
+        $tokenHash = $submissions->tokenHash($buyer, $cart, $confirmationToken);
         $data = app(CommerceInputService::class)->checkout($data, $cartItemIds);
         $cartItemIds = $data['item_ids'];
         $requestHash = $submissions->fingerprint($data);
 
-        return DB::transaction(function () use ($buyer, $cart, $cartItemIds, $data, $submissions, $tokenHash, $requestHash) {
+        return DB::transaction(function () use ($buyer, $cart, $cartItemIds, $data, $submissions, $tokenHash, $requestHash, $confirmationToken) {
             // Serialize the owned Bag before lines and the seller/shop/category/product locks.
             if (! Cart::whereKey($cart->id)->where('user_id', $buyer->id)->lockForUpdate()->first()) {
                 throw new CheckoutException('This Shopping Bag is unavailable to your account.');
@@ -100,6 +101,8 @@ class CheckoutOrderService
             if ($items->count() !== count($selectedIds)) {
                 throw new CheckoutException('One or more selected Shopping Bag items are unavailable.');
             }
+            $bagQuantities = $items->pluck('quantity', 'id');
+            $items = app(CheckoutQuoteService::class)->withQuantities($items, $data['item_quantities'] ?? []);
 
             $products = app(ShopEligibilityService::class)->lockSaleProducts(
                 $items->pluck('product_id')->unique()->all(), [$buyer->id]
@@ -115,9 +118,10 @@ class CheckoutOrderService
                 }
                 $item->setRelation('product', $product);
             }
+            $submissions->assertCurrentPrices($cart, $confirmationToken);
 
             try {
-                $this->inventory->assertCheckoutAvailability($items, $products);
+                $this->inventory->assertCheckoutAvailability($items, $products, $buyer->id);
             } catch (RuntimeException $exception) {
                 throw new CheckoutException($exception->getMessage(), previous: $exception);
             }
@@ -126,6 +130,8 @@ class CheckoutOrderService
             $deliveryType = $data['delivery_type'] ?? 'doorstep';
             $revisions = app(VoucherSelectionService::class)->resolve($data, $items, lock: true);
             $quote = app(CheckoutQuoteService::class)->quote($items, $deliveryType, $revisions, $buyer);
+            // A clock boundary can change prices after the earlier check, even while rows stay locked.
+            $submissions->assertCurrentPrices($cart, $confirmationToken, $items);
             if ($quote['voucher_error']) {
                 throw new CheckoutException($quote['voucher_error']);
             }
@@ -166,17 +172,18 @@ class CheckoutOrderService
 
                 foreach ($group as $item) {
                     $product = $item->product;
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'product_id' => $product->id,
-                        'shop_id' => $product->shop_id,
-                        'quantity' => $item->quantity,
-                        'unit_price' => $product->price,
-                        'subtotal' => CodMoney::cents($product->price) * $item->quantity / 100,
-                        'color' => $item->color,
-                        'size' => $item->size,
-                        'sku_snapshot' => $item->sku_snapshot,
-                    ]);
+                    $lineQuote = collect($quote['items'])->firstWhere('id', $item->id);
+                    foreach ($lineQuote['price_segments'] as $segment) {
+                        if ($segment['product_sale_id']) {
+                            app(SalePriceService::class)->reserve($product, $segment['product_sale_id'], $segment['quantity']);
+                        }
+                        OrderItem::create([
+                            'order_id' => $order->id, 'product_id' => $product->id, 'shop_id' => $product->shop_id,
+                            'product_sale_id' => $segment['product_sale_id'], 'quantity' => $segment['quantity'],
+                            'unit_price' => $segment['unit_price'], 'subtotal' => $segment['subtotal'],
+                            'color' => $item->color, 'size' => $item->size, 'sku_snapshot' => $item->sku_snapshot,
+                        ]);
+                    }
 
                     $this->inventory->decrement(
                         $product,
@@ -232,7 +239,15 @@ class CheckoutOrderService
                 }
             }
 
-            CartItem::where('cart_id', $cart->id)->whereIn('id', $selectedIds)->delete();
+            foreach ($items as $item) {
+                $remaining = $bagQuantities[$item->id] - $item->quantity;
+                $line = CartItem::where('cart_id', $cart->id)->whereKey($item->id);
+                if ($remaining > 0) {
+                    $line->update(['quantity' => $remaining, 'unit_price' => $this->inventory->unitPrice($item->product, $item->color, $item->size)]);
+                } else {
+                    $line->delete();
+                }
+            }
 
             $submission = CheckoutSubmission::create([
                 'buyer_id' => $buyer->id, 'cart_id' => $cart->id, 'token_hash' => $tokenHash,

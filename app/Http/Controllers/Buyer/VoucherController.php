@@ -47,7 +47,7 @@ class VoucherController extends Controller
                 throw new CheckoutException('Choose an available Bayan Hub that supports self-pickup.');
             }
             $quotes = app(CheckoutQuoteService::class);
-            $items = $quotes->selectedItems($buyer, $data['item_ids']);
+            $items = $quotes->selectedItems($buyer, $data['item_ids'], $input['item_quantities'] ?? []);
             $preview = app(VoucherPreviewService::class)->preview($buyer, $items, $data['delivery_type'] ?? 'doorstep', $selection);
             $quote = $preview['quote'];
             $available = $quotes->offers($items, $data['delivery_type'] ?? 'doorstep', buyer: $buyer, selected: $preview['revisions']);
@@ -115,7 +115,7 @@ class VoucherController extends Controller
                 && ! LogisticsHub::eligible()->whereKey($data['pickup_hub_id'])->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)->exists()) {
                 throw new CheckoutException('Choose an available Bayan Hub that supports self-pickup.');
             }
-            $items = app(CheckoutQuoteService::class)->selectedItems($buyer, $data['item_ids']);
+            $items = app(CheckoutQuoteService::class)->selectedItems($buyer, $data['item_ids'], $request->input('item_quantities', []));
             $choices = app(VoucherChoiceService::class);
             $result = $best ? $choices->best($buyer, $items, $data['delivery_type'] ?? 'doorstep')
                 : $choices->options($buyer, $items, $data['delivery_type'] ?? 'doorstep', $request->all(), isset($data['shop_id']) ? (int) $data['shop_id'] : null);

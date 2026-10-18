@@ -21,14 +21,17 @@ class Review extends Model
         'rating',
         'comment',
         'images',
+        'edited_at', 'edit_fingerprint', 'original_content',
     ];
 
-    protected $hidden = ['submission_fingerprint'];
+    protected $hidden = ['submission_fingerprint', 'edit_fingerprint', 'original_content'];
 
     protected $casts = [
         'rating' => 'integer',
         'images' => 'array',
         'verified_purchase' => 'boolean',
+        'edited_at' => 'immutable_datetime',
+        'original_content' => 'array',
     ];
 
     public function product(): BelongsTo

@@ -83,7 +83,7 @@ class BuyerCheckoutTest extends TestCase
         );
     }
 
-    public function test_checkout_locks_order_to_cash_on_delivery_strictly(): void
+    public function test_checkout_rejects_unsupported_payment_without_creating_a_cod_order(): void
     {
         $buyer = User::factory()->create([
             'role' => 'buyer',
@@ -103,20 +103,12 @@ class BuyerCheckoutTest extends TestCase
             'shipping_postal_code' => '4027',
             'destination_barangay' => 'Poblacion III',
             'item_ids' => [$cartItem->id],
-            'payment_method' => 'card', // Even if card is submitted, backend locks to COD
+            'payment_method' => 'card',
         ]);
 
-        $response->assertRedirect(route('buyer.orders.index'));
-
-        $order = Order::first();
-        $this->assertNotNull($order);
-        $this->assertEquals('cod', $order->payment_method);
-        $this->assertEquals('pending', $order->payment_status);
-        $this->assertEquals('placed', $order->status);
-        $this->assertEquals(600.00, (float) $order->subtotal);
-        $this->assertEquals(50.00, (float) $order->shipping_fee);
-        $this->assertEquals(650.00, (float) $order->total_amount);
-        $this->assertEquals('+639123412341', $order->recipient_phone);
+        $response->assertSessionHasErrors('payment_method');
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseHas('cart_items', ['id' => $cartItem->id, 'quantity' => 2]);
     }
 
     public function test_checkout_waives_shipping_fee_for_orders_exceeding_threshold(): void

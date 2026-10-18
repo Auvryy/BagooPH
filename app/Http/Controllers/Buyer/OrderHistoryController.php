@@ -5,15 +5,21 @@ namespace App\Http\Controllers\Buyer;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\BuyerAccessService;
+use App\Services\Commerce\ReviewService;
 use App\Services\Notifications\NotificationCenterService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderTrackingService;
 use App\Services\Orders\OrderWorkspaceService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 class OrderHistoryController extends Controller
 {
@@ -53,7 +59,15 @@ class OrderHistoryController extends Controller
         $adminOversight = $user->isAdmin() && $user->canAccessPortal();
         abort_unless($ownedBuyerOrder || $adminOversight, 403);
 
-        $order->load(['items.product.shop', 'items.review:id,order_item_id', 'delivery.courier', ...OrderTrackingService::relations()]);
+        $order->load(['items.product.shop', 'items.review', 'delivery.courier', ...OrderTrackingService::relations()]);
+        if ($ownedBuyerOrder && $user->canAccessPortal()) {
+            foreach ($order->items as $item) {
+                if ($item->review) {
+                    $editable = app(ReviewService::class)->canEdit($item->review);
+                    $item->review->setAttribute('edit_url', $editable ? route('buyer.reviews.update', $item->review, absolute: false) : null);
+                }
+            }
+        }
         $tracking = app(OrderTrackingService::class);
         $canConfirmReceipt = $canFulfillOrder && app(OrderWorkspaceService::class)->canConfirmReceipt($order, $user);
         $pickupClaim = $canFulfillOrder ? $order->delivery?->pickupClaim?->only(['reference', 'status', 'expires_at', 'code_issued_at', 'locked_until']) : null;
@@ -67,6 +81,11 @@ class OrderHistoryController extends Controller
             'buyAgainUrl' => $ownedBuyerOrder && $user->canAccessPortal() && $order->status === 'completed'
                 ? route('buyer.orders.buy-again', $order, absolute: false) : null,
             'canConfirmReceipt' => $canConfirmReceipt,
+            'cancelOrderUrl' => $ownedBuyerOrder && app(OrderLifecycleService::class)->canBuyerCancel($order, $user)
+                ? route('buyer.orders.cancel', $order, absolute: false) : null,
+            'cancellationReasons' => OrderLifecycleService::BUYER_CANCELLATION_REASONS,
+            'cancellationReason' => $ownedBuyerOrder && $order->status === 'cancelled'
+                ? $order->delivery?->checkpoints()->where('checkpoint_type', 'cancelled')->value('notes') ?? $order->notes : null,
             'pickupClaim' => $pickupClaim,
             'pickupHub' => $pickupHub,
             'pickupCodeAvailable' => $pickupCodeAvailable,
@@ -103,5 +122,20 @@ class OrderHistoryController extends Controller
         }
 
         return back()->with('success', 'Order confirmed as received! Thank you for shopping with Bagoo.');
+    }
+
+    public function cancel(Request $request, Order $order): RedirectResponse
+    {
+        try {
+            app(OrderLifecycleService::class)->cancelByBuyer($order, $request->user(), $request->all());
+        } catch (ValidationException|AuthorizationException|HttpExceptionInterface $error) {
+            throw $error;
+        } catch (Throwable $error) {
+            Log::warning('Buyer cancellation could not be saved.', ['order_id' => $order->id, 'exception' => $error::class]);
+
+            return back()->withErrors(['reason' => 'We could not cancel this order. Your order is unchanged; try again.']);
+        }
+
+        return back()->with('success', 'Your order is cancelled. Its delivery will not proceed.');
     }
 }

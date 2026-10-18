@@ -32,7 +32,7 @@ export interface PurchaseQuote {
     shipping_discount: number;
     total: number;
     shops: { shop_id: number; shop_name: string; subtotal: number; shipping: number; doorstep_shipping: number; discount: number; product_discount?: number; shipping_discount?: number; total: number }[];
-    items: { id: number; quantity: number; unit_price: number; subtotal: number }[];
+    items: { id: number; quantity: number; unit_price: number; subtotal: number; price_segments?: import('@/Components/PriceSegments').PriceSegment[] }[];
     voucher: VoucherOffer | null;
     voucher_error: string | null;
     vouchers?: VoucherOffer[];
@@ -41,6 +41,7 @@ export interface PurchaseQuote {
 
 interface QuoteInput {
     item_ids: number[];
+    item_quantities?: Record<number, number>;
     delivery_type?: 'doorstep' | 'hub_self_pickup';
     code?: string;
     platform_voucher_revision_id?: number | null;

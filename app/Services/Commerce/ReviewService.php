@@ -31,7 +31,7 @@ class ReviewService
             'order_id' => ['bail', 'required_without:order_item_id', 'nullable', new AsciiPositiveInteger, 'integer'],
             'product_id' => ['bail', 'required_without:order_item_id', 'nullable', new AsciiPositiveInteger, 'integer'],
             'buyer_id' => 'prohibited', 'submission_fingerprint' => 'prohibited', 'verified_purchase' => 'prohibited',
-            'rating' => 'required|integer|min:1|max:5',
+            'rating' => ['bail', 'required', new AsciiPositiveInteger, 'integer', 'between:1,5'],
             'comment' => ['nullable', 'string', new ApplicationText('notes', 1, 1000)],
             'images' => 'nullable|array|max:5', 'images.*' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
         ])->validate();
@@ -126,6 +126,61 @@ class ReviewService
         });
     }
 
+    public function canEdit(Review $review): bool
+    {
+        return $review->edited_at === null && $review->created_at !== null
+            && now()->lte($review->created_at->copy()->addDays(30))
+            && Review::whereKey($review->id)->verifiedPurchase()->exists();
+    }
+
+    public function edit(User $actor, Review $review, array $input): Review
+    {
+        app(BuyerAccessService::class)->requirePortal($actor);
+        $data = Validator::make($input, [
+            'rating' => ['bail', 'required', new AsciiPositiveInteger, 'integer', 'between:1,5'],
+            'comment' => ['nullable', 'string', new ApplicationText('notes', 1, 1000)],
+            'images' => 'prohibited', 'buyer_id' => 'prohibited', 'product_id' => 'prohibited',
+            'order_id' => 'prohibited', 'order_item_id' => 'prohibited', 'edited_at' => 'prohibited',
+            'original_content' => 'prohibited', 'edit_fingerprint' => 'prohibited', 'submission_fingerprint' => 'prohibited',
+        ])->validate();
+
+        return DB::transaction(function () use ($actor, $review, $data) {
+            $order = Order::whereKey($review->order_id)->lockForUpdate()->firstOrFail();
+            $buyer = app(BuyerAccessService::class)->requirePortal($actor, lock: true);
+            if ($order->buyer_id !== $buyer->id || $review->buyer_id !== $buyer->id) {
+                throw new AuthorizationException('This review belongs to another buyer.');
+            }
+            $item = OrderItem::whereKey($review->order_item_id)->firstOrFail();
+            $shop = Shop::whereKey($item->shop_id)->lockForUpdate()->firstOrFail();
+            $product = Product::whereKey($review->product_id)->lockForUpdate()->firstOrFail();
+            $current = Review::whereKey($review->id)->lockForUpdate()->firstOrFail();
+            if ($current->buyer_id !== $buyer->id || $current->order_id !== $order->id || $current->order_item_id !== $item->id || $current->product_id !== $product->id) {
+                throw new AuthorizationException('This review is no longer available to your account.');
+            }
+            if ($order->status !== 'completed' || ! Review::whereKey($current->id)->verifiedPurchase()->exists()) {
+                throw ValidationException::withMessages(['rating' => 'Only a verified completed purchase review can be edited.']);
+            }
+            $fingerprint = hash('sha256', json_encode([$current->id, (int) $data['rating'], $data['comment'] ?? null], JSON_THROW_ON_ERROR));
+            if ($current->edited_at !== null) {
+                if ($current->edit_fingerprint && hash_equals($current->edit_fingerprint, $fingerprint)) {
+                    return $current;
+                }
+                throw ValidationException::withMessages(['rating' => 'This review has already used its one edit.']);
+            }
+            if (! $this->canEdit($current)) {
+                throw ValidationException::withMessages(['rating' => 'Reviews can be edited once within 30 days of posting.']);
+            }
+            $current->update(['original_content' => ['rating' => $current->rating, 'comment' => $current->comment,
+                'images' => $current->images, 'edited_by' => $buyer->id],
+                'rating' => $data['rating'], 'comment' => $data['comment'] ?? null,
+                'edited_at' => now(), 'edit_fingerprint' => $fingerprint]);
+            $product->update(['rating' => round((float) Review::where('product_id', $product->id)->verifiedPurchase()->avg('rating'), 2)]);
+            $shop->update(['rating' => round((float) Review::verifiedPurchase()->whereHas('product', fn (Builder $query) => $query->where('shop_id', $shop->id))->avg('rating'), 2)]);
+
+            return $current;
+        });
+    }
+
     public function shopSummary(Shop $shop): array
     {
         $reviews = Review::verifiedPurchase()->whereHas('product', fn (Builder $query) => $query->where('shop_id', $shop->id));
@@ -144,14 +199,30 @@ class ReviewService
     public function publicReviews(Product $product): void
     {
         $product->load(['reviews' => fn ($reviews) => $reviews->withPurchaseVerification()
-            ->with(['buyer:id,name,avatar', 'reply.shop:id,name'])->latest('id')]);
+            ->with(['buyer:id,name,avatar', 'reply.shop:id,name', 'orderItem:id,color,size'])->latest('id')]);
         $product->setRelation('reviews', $product->reviews->map(fn (Review $review) => [
-            ...$review->only(['id', 'rating', 'comment', 'images', 'created_at', 'verified_purchase']),
-            'buyer' => $review->buyer?->only(['name', 'avatar']),
+            ...$review->only(['id', 'rating', 'comment', 'images', 'created_at', 'edited_at', 'verified_purchase']),
+            'buyer' => $review->buyer ? ['name' => $this->publicBuyerName($review->buyer->name), 'avatar' => $review->buyer->avatar] : null,
+            'purchased_options' => $review->verified_purchase && ($review->orderItem?->color !== null || $review->orderItem?->size !== null)
+                ? $review->orderItem?->only(['color', 'size']) : null,
             'reply' => $review->reply ? [
                 ...$review->reply->only(['text', 'created_at', 'updated_at']),
                 'shop_name' => $review->reply->shop?->name,
             ] : null,
         ]));
+    }
+
+    private function publicBuyerName(?string $name): string
+    {
+        $parts = preg_split('/\s+/u', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY);
+        if (! $parts) {
+            return 'Buyer';
+        }
+        $initials = [mb_substr($parts[0], 0, 1).'***'];
+        if (count($parts) > 1) {
+            $initials[] = mb_substr($parts[count($parts) - 1], 0, 1).'***';
+        }
+
+        return implode(' ', $initials);
     }
 }

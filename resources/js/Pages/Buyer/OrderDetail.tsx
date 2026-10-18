@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
 import BuyerVoucherReceipt from '@/Components/Vouchers/BuyerVoucherReceipt';
+import BuyerCancelOrder from '@/Components/BuyerCancelOrder';
+import BuyerSavedReview from '@/Components/BuyerSavedReview';
 import OrderTrackingPanel, { trackingDate } from '@/Components/OrderTrackingPanel';
 import { claimWindow, nextClaimBoundary } from '@/utils/orderTracking';
 import { Order, PageProps } from '@/types';
@@ -31,6 +33,9 @@ interface Props {
     order: Order;
     canUsePortal: boolean;
     buyAgainUrl?: string | null;
+    cancelOrderUrl?: string | null;
+    cancellationReasons?: string[];
+    cancellationReason?: string | null;
     canConfirmReceipt: boolean;
     pickupClaim: { reference: string; status: string; expires_at: string; code_issued_at: string | null; locked_until: string | null } | null;
     pickupHub: {name: string; address: string; operating_hours: string | null} | null;
@@ -39,7 +44,7 @@ interface Props {
     orderNotices: Array<{id: string; data: {title: string; milestone: string}; read_at: string | null; created_at: string}>;
 }
 
-export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, canConfirmReceipt, pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [] }: Props) {
+export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, cancelOrderUrl, cancellationReasons = [], cancellationReason, canConfirmReceipt, pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [] }: Props) {
     const { auth } = usePage<PageProps>().props;
     const adminOversight = auth.user?.role === 'admin';
     const delivery = order.delivery;
@@ -78,7 +83,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
     const refreshTracking = () => {
         if (refreshPending.current || codePending.current || receiptPending.current) return;
         refreshPending.current = true; setTrackingRefreshing(true); setTrackingError('');
-        router.reload({ only: ['order', 'canUsePortal', 'buyAgainUrl', 'canConfirmReceipt', 'pickupClaim', 'pickupHub', 'pickupCodeUrl', 'pickupCodeAvailable', 'orderNotices', 'auth', 'flash'],
+        router.reload({ only: ['order', 'canUsePortal', 'buyAgainUrl', 'cancelOrderUrl', 'cancellationReasons', 'cancellationReason', 'canConfirmReceipt', 'pickupClaim', 'pickupHub', 'pickupCodeUrl', 'pickupCodeAvailable', 'orderNotices', 'auth', 'flash'],
             onError: errors => setTrackingError(Object.values(errors).join(' ') || 'Tracking could not refresh. Try again.'),
             onFinish: () => { refreshPending.current = false; setTrackingRefreshing(false); },
         });
@@ -103,6 +108,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
     const previewRef = useRef<string[]>([]);
     useEffect(() => () => previewRef.current.forEach(url => URL.revokeObjectURL(url)), []);
     const [previewImages, setPreviewImages] = useState<string[]>([]);
+    const [photoError, setPhotoError] = useState('');
 
     useEffect(() => {
         if (reviewModalOpen) {
@@ -129,7 +135,17 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            const filesArray = Array.from(e.target.files).slice(0, 5 - data.images.length);
+            const filesArray = Array.from(e.target.files);
+            e.target.value = '';
+            if (filesArray.length + data.images.length > 5) {
+                setPhotoError('Choose up to five photos in total.');
+                return;
+            }
+            if (filesArray.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) {
+                setPhotoError('Choose JPG, PNG or WEBP images, up to 5 MB each.');
+                return;
+            }
+            setPhotoError('');
             const newFiles = [...data.images, ...filesArray];
             setData('images', newFiles);
 
@@ -147,6 +163,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
         previewRef.current = updatedPreviews;
         setData('images', updatedFiles);
         setPreviewImages(updatedPreviews);
+        setPhotoError('');
     };
 
     const submitReview = (e: React.FormEvent) => {
@@ -234,6 +251,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                             </button>
                         )}
                         {canUsePortal && buyAgainUrl && <Link href={buyAgainUrl} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-bold text-[#E00D42] hover:bg-rose-50">Buy again</Link>}
+                        {canUsePortal && cancelOrderUrl && <BuyerCancelOrder url={cancelOrderUrl} reasons={cancellationReasons} disabled={trackingRefreshing || receiptBusy || codeBusy} />}
                         {order.status === 'completed' && (
                             <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-xl flex items-center gap-1.5">
                                 <Check className="w-4 h-4 text-emerald-600" />
@@ -245,7 +263,8 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
 
                 {receiptError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800">{receiptError}</p>}
 
-                <OrderTrackingPanel tracking={order.tracking} onRefresh={refreshTracking} refreshing={trackingRefreshing || codeBusy || receiptBusy} error={trackingError} />
+                {order.status === 'cancelled' && cancellationReason && <p role="status" className="rounded-xl border border-slate-300 bg-white p-4 text-sm text-slate-700">Cancellation reason: {cancellationReason}</p>}
+                <OrderTrackingPanel variant="buyer" tracking={order.tracking} onRefresh={refreshTracking} refreshing={trackingRefreshing || codeBusy || receiptBusy} error={trackingError} />
 
                 {/* 2. DISPATCH & COURIER TELEMETRY */}
                 {delivery && (
@@ -313,7 +332,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                                         <p className="text-xs text-slate-500 font-sans">
                                             Quantity: {item.quantity} × {formatPrice(item.unit_price)}
                                         </p>
-                                        {item.review && canUsePortal && <p className="text-xs font-semibold text-emerald-700">Review saved</p>}
+                                        {item.review && canUsePortal && <BuyerSavedReview review={item.review} />}
                                     </div>
                                 </div>
 
@@ -436,6 +455,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                                 </div>
 
                                 <UploadHint formats="JPG, PNG or WEBP" />
+                                {photoError && <p role="alert" className="text-xs text-red-700">{photoError}</p>}
                                 {recentlySuccessful && (
                                     <p className="text-xs text-emerald-600 font-sans font-bold flex items-center gap-1.5 p-2 bg-emerald-50 rounded-xl border border-emerald-200">
                                         <Check className="w-4 h-4" /> Review & photos submitted successfully!

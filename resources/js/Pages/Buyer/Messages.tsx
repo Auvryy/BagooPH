@@ -1,3 +1,6 @@
+import useMarketplaceComposer from '@/hooks/useMarketplaceComposer';
+import ChatImageField from '@/Components/ChatImageField';
+import ChatAttachment from '@/Components/ChatAttachment';
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
@@ -20,6 +23,7 @@ interface MessageItem {
     id: number;
     sender_id: number;
     message: string;
+    attachment_url?: string | null;
     created_at: string;
     product_id?: number | null;
     product?: {
@@ -57,10 +61,11 @@ export default function BuyerMessages({ conversations }: Props) {
     const { auth } = usePage<PageProps>().props;
     const [selectedConvIndex, setSelectedConvIndex] = useState(0);
     const [replyText, setReplyText] = useState('');
-    const [sending, setSending] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [mobileChatOpen, setMobileChatOpen] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [historyError, setHistoryError] = useState('');
+    const [historyRetry, setHistoryRetry] = useState(0);
 
     const displayConversations = conversations;
 
@@ -84,21 +89,15 @@ export default function BuyerMessages({ conversations }: Props) {
     };
 
     useEffect(() => {
-        if (currentConv?.messages) {
-            setActiveMessages(currentConv.messages);
-        }
-        if (currentConv?.user?.id && auth.user) {
-            fetch(`/chat/messages/${currentConv.user.id}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.messages && Array.isArray(data.messages)) {
-                        setActiveMessages(data.messages);
-                    }
-                    setTimeout(scrollToBottom, 60);
-                })
-                .catch(() => {});
-        }
-    }, [selectedConvIndex, currentConv?.user?.id]);
+        setActiveMessages(currentConv?.messages || []); setHistoryError('');
+        if (!currentConv?.user?.id || !auth.user) return;
+        const controller = new AbortController();
+        fetch(`/chat/messages/${currentConv.user.id}`, { signal: controller.signal, headers: { Accept: 'application/json' } })
+            .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
+            .then(data => { if (!controller.signal.aborted && Array.isArray(data.messages)) setActiveMessages(data.messages); })
+            .catch(() => { if (!controller.signal.aborted) setHistoryError('Could not update this conversation. Try again.'); });
+        return () => controller.abort();
+    }, [selectedConvIndex, currentConv?.user?.id, currentConv?.messages, historyRetry]);
 
     useEffect(() => {
         scrollToBottom();
@@ -115,44 +114,18 @@ export default function BuyerMessages({ conversations }: Props) {
         }
     };
 
-    const handleSendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const text = replyText.trim();
-        if (!text || sending || !currentConv?.user?.id) return;
-
-        setSending(true);
-
-        try {
-            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
-            const res = await fetch('/chat/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                body: JSON.stringify({
-                    receiver_id: currentConv.user.id,
-                    shop_id: currentConv.user.shop?.id || null,
-                    order_id: currentConv.order_id ?? null,
-                    message: text,
-                }),
-            });
-
-            const data = await res.json();
-            if (data.success && data.message) {
-                setActiveMessages(prev => {
-                    if (prev.some(m => m.id === data.message.id)) return prev;
-                    return [...prev, data.message];
-                });
-                setReplyText('');
-                currentConv.last_message = text;
-                currentConv.last_time = 'Just now';
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setSending(false);
+    const composer = useMarketplaceComposer(currentConv?.user?.id);
+    const sending = composer.sending;
+    const handleSendMessage = async (event: React.FormEvent) => {
+        event.preventDefault();
+        if (!currentConv?.user?.id) return;
+        const message = await composer.send<MessageItem>({ receiver_id: currentConv.user.id,
+            shop_id: currentConv.user.shop?.id || null,
+            order_id: currentConv.order_id ?? null, message: replyText });
+        if (message) {
+            setActiveMessages(previous => previous.some(row => row.id === message.id) ? previous : [...previous, message]);
+            setReplyText('');
+            currentConv.last_message = message.message || 'Photo'; currentConv.last_time = 'Just now';
         }
     };
 
@@ -314,6 +287,7 @@ export default function BuyerMessages({ conversations }: Props) {
                                                     </a>
                                                 )}
 
+                                                <ChatAttachment url={msg.attachment_url} />
                                                 <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                                                 <span className={`block font-sans text-[9px] mt-1 text-right ${isMe ? 'text-white/70' : 'text-slate-400'}`}>
                                                     {formatMessageTime(msg.created_at)}
@@ -327,9 +301,14 @@ export default function BuyerMessages({ conversations }: Props) {
                         </div>
 
                         {/* Chat Input Bar: Fixed at bottom */}
+                        {currentConv && currentConv.user.role !== 'courier' && <ChatImageField image={composer.image} onChange={composer.selectImage} disabled={sending} />}
+                        {historyError && <p role="alert" className="px-3 pt-2 text-xs text-red-700">{historyError} <button type="button" onClick={() => setHistoryRetry(value => value + 1)} className="font-semibold underline">Retry</button></p>}
+                        {composer.error && <p role="alert" className="px-3 pt-2 text-xs text-red-700">{composer.error}</p>}
                         <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0">
                             <input
                                 type="text"
+                                maxLength={1000}
+                                disabled={sending}
                                 value={replyText}
                                 onChange={(e) => setReplyText(e.target.value)}
                                 placeholder="Type your message or inquiry..."
@@ -337,7 +316,7 @@ export default function BuyerMessages({ conversations }: Props) {
                             />
                             <button
                                 type="submit"
-                                disabled={sending || !replyText.trim() || !currentConv}
+                                disabled={sending || (!replyText.trim() && !composer.image) || !currentConv}
                                 className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white rounded-xl font-sans text-xs font-bold uppercase transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                             >
                                 <Send className="w-3.5 h-3.5" />

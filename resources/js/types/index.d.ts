@@ -73,6 +73,7 @@ export interface User {
 }
 
 export interface Shop {
+    vacation_mode?: boolean;
     id: number;
     user_id: number;
     name: string;
@@ -118,7 +119,11 @@ export interface ProductImage {
     sort_order: number;
 }
 
+export interface SaleSummary { id: number; kind: 'store' | 'flash'; name: string; price: string | number; starts_at: string; ends_at: string; remaining_quantity: number | null }
+
 export interface Product {
+    sale_offer?: { server_now?: string; effective_price: number; active: SaleSummary | null; upcoming: SaleSummary | null };
+    purchase_limit?: number | null;
     compliance_restricted?: boolean;
     moderation_version?: number;
     compliance_feedback?: {
@@ -138,6 +143,7 @@ export interface Product {
     stock: number;
     sku?: string | null;
     variants?: {
+        combinations?: import('@/Components/VariantStockMatrix').StockCombination[];
         option1_name?: string | null;
         option2_name?: string | null;
         colors?: { id: string; name: string; hex: string; image_url?: string | null; gallery_index?: number | null; in_stock?: boolean }[];
@@ -197,7 +203,7 @@ export interface OrderItem {
     product: Product;
     shop?: Shop;
     order?: Order;
-    review?: { id: number; order_item_id: number } | null;
+    review?: { id: number; order_item_id: number; rating?: number; comment?: string | null; edit_url?: string | null; edited_at?: string | null } | null;
 }
 
 export interface Delivery {
@@ -227,6 +233,9 @@ export interface Delivery {
 
 export interface OrderTracking {
     commercial_status: string;
+    parcel_status?: string | null;
+    delivery_type?: string | null;
+    placed_at?: string | null;
     status_label: string;
     stage_label: string;
     tone: 'attention' | 'success' | 'progress';
@@ -236,7 +245,7 @@ export interface OrderTracking {
     responsible: string;
     notice: string | null;
     observed_at: string;
-    history: Array<{ id: number; label: string; location: string; created_at: string | null }>;
+    history: Array<{ id: number; type?: string; label: string; location: string; created_at: string | null }>;
     failure: { attempt_number: number; reason: string; attempted_at: string | null; retry_at: string | null } | null;
 }
 
@@ -290,6 +299,7 @@ export interface Review {
     comment?: string | null;
     images?: string[] | null;
     verified_purchase?: boolean;
+    purchased_options?: { color: string | null; size: string | null } | null;
     buyer?: Pick<User, 'name' | 'avatar'> | null;
     reply?: ReviewReply | null;
     created_at?: string;

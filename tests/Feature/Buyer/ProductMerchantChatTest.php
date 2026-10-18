@@ -15,9 +15,13 @@ class ProductMerchantChatTest extends TestCase
     use RefreshDatabase;
 
     private User $buyer;
+
     private User $seller;
+
     private Shop $shop;
+
     private Category $category;
+
     private Product $product;
 
     protected function setUp(): void
@@ -35,13 +39,14 @@ class ProductMerchantChatTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        $this->shop = Shop::factory()->create([
+        $this->shop = Shop::factory()->approved()->create([
             'user_id' => $this->seller->id,
             'name' => 'Metro Flagship Store',
             'status' => 'active',
         ]);
 
         $this->category = Category::factory()->create([
+            'parent_id' => $this->shop->root_category_id,
             'name' => 'Apparel',
             'is_active' => true,
         ]);

@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\Product;
 use App\Services\Commerce\BuyerDiscoveryService;
+use App\Services\Commerce\PurchasePolicyService;
 use App\Services\Commerce\ReviewService;
+use App\Services\Commerce\SaleReminderService;
 use App\Services\Vouchers\VoucherCollectionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -32,6 +34,7 @@ class BuyerProductController extends Controller
             'categories' => fn () => $discovery->categories(),
             'relatedProducts' => fn () => $related->orderByDesc('sales_count')->orderByDesc('products.id')->limit(6)->get(),
             'filters' => $filters,
+            'suggestions' => fn () => $products->total() === 0 ? $discovery->suggestions($filters) : [],
         ]);
     }
 
@@ -93,10 +96,12 @@ class BuyerProductController extends Controller
 
         return Inertia::render('Buyer/ProductDetail', [
             'product' => $product,
+            'saleReminder' => $request->user()?->isBuyer() ? app(SaleReminderService::class)->status($request->user(), $product->sale_offer['upcoming']['id'] ?? null) : null,
             'variations' => $variations,
             'relatedProducts' => $relatedProducts,
             'shopStats' => $shopStats,
             'cartQuantities' => $cartQuantities,
+            'purchaseAllowance' => app(PurchasePolicyService::class)->remaining($product, $request->user()?->id),
             'shopOffers' => app(VoucherCollectionService::class)->shopOffers($product->shop_id, $request->user()),
         ]);
     }

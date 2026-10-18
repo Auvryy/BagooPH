@@ -41,7 +41,7 @@ class BuyerVoucherSelectionTest extends TestCase
         }
         $this->createCheckoutNetwork($items->first()->product->shop, ['Pasig' => 'Metro Manila']);
         $this->actingAs($buyer);
-        $payload = ['item_ids' => $items->pluck('id')->all(), 'delivery_type' => 'doorstep',
+        $payload = ['item_ids' => $items->pluck('id')->all(), 'delivery_type' => 'doorstep', 'payment_method' => 'cod',
             'checkout_token' => app(CheckoutSubmissionService::class)->issue($buyer, $cart),
             'recipient_name' => $buyer->name, 'recipient_phone' => '09171234567', 'shipping_address' => '123 Mabini Street',
             'shipping_city' => 'Pasig', 'shipping_province' => 'Metro Manila', 'destination_barangay' => 'San Antonio', 'shipping_postal_code' => '1600'];

@@ -1,3 +1,6 @@
+import useMarketplaceComposer from '@/hooks/useMarketplaceComposer';
+import ChatImageField from '@/Components/ChatImageField';
+import ChatAttachment from '@/Components/ChatAttachment';
 import React, { useState, useEffect, useRef } from 'react';
 import { usePage } from '@inertiajs/react';
 import { PageProps, Product, Shop } from '@/types';
@@ -28,6 +31,7 @@ interface MessageItem {
     sender_id: number;
     receiver_id: number;
     message: string;
+    attachment_url?: string | null;
     created_at: string;
     sender?: {
         name: string;
@@ -56,7 +60,10 @@ export default function ChatModal({
     const [messages, setMessages] = useState<MessageItem[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(false);
-    const [sending, setSending] = useState(false);
+    const [historyError, setHistoryError] = useState('');
+    const [historyRetry, setHistoryRetry] = useState(0);
+    const composer = useMarketplaceComposer(`${receiverId}:${product?.id ?? ''}:${isOpen}`);
+    const sending = composer.sending;
     const [inquirySent, setInquirySent] = useState(false);
     const [cooldown, setCooldown] = useState(false);
     const lastSendTimeRef = useRef<number>(0);
@@ -71,20 +78,16 @@ export default function ChatModal({
     }, [product?.id]);
 
     useEffect(() => {
-        if (isOpen && currentUser) {
-            setLoading(true);
-            fetch(`/chat/messages/${receiverId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.messages) {
-                        setMessages(data.messages);
-                    }
-                    setLoading(false);
-                    setTimeout(scrollToBottom, 100);
-                })
-                .catch(() => setLoading(false));
-        }
-    }, [isOpen, receiverId, currentUser]);
+        if (!isOpen || !currentUser) return;
+        const controller = new AbortController();
+        setLoading(true); setHistoryError(''); setMessages([]);
+        fetch(`/chat/messages/${receiverId}`, { signal: controller.signal, headers: { Accept: 'application/json' } })
+            .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
+            .then(data => { if (!controller.signal.aborted && Array.isArray(data.messages)) setMessages(data.messages); })
+            .catch(() => { if (!controller.signal.aborted) setHistoryError('Could not load this conversation. Try again.'); })
+            .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+        return () => controller.abort();
+    }, [isOpen, receiverId, currentUser?.id, historyRetry]);
 
     useEffect(() => {
         scrollToBottom();
@@ -98,62 +101,26 @@ export default function ChatModal({
     );
 
     const sendMessagePayload = async (text: string, prodId?: number | null) => {
-        const now = Date.now();
-        if (now - lastSendTimeRef.current < 1200) {
-            return;
-        }
-        if (!text.trim() || sending || cooldown || !currentUser) return;
-
-        lastSendTimeRef.current = now;
-        setSending(true);
-        setCooldown(true);
-        setTimeout(() => setCooldown(false), 1200);
-
-        try {
-            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
-            const res = await fetch('/chat/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                body: JSON.stringify({
-                    receiver_id: receiverId,
-                    shop_id: shopId || product?.shop_id || product?.shop?.id || null,
-                    product_id: prodId !== undefined ? prodId : (hasInquiredProduct ? null : (product?.id || null)),
-                    message: text.trim(),
-                }),
-            });
-
-            const data = await res.json();
-            if (data.success && data.message) {
-                setMessages(prev => {
-                    if (prev.some(m => m.id === data.message.id)) return prev;
-                    return [...prev, data.message];
-                });
-                setNewMessage('');
-                if (product && (prodId || !hasInquiredProduct)) {
-                    setInquirySent(true);
-                }
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setSending(false);
+        if (!currentUser || sending || cooldown) return;
+        const sent = await composer.send<MessageItem>({ receiver_id: receiverId,
+            shop_id: shopId || product?.shop_id || product?.shop?.id || null,
+            product_id: prodId !== undefined ? prodId : (hasInquiredProduct ? null : product?.id || null), message: text });
+        if (sent) {
+            setMessages(previous => previous.some(message => message.id === sent.id) ? previous : [...previous, sent]);
+            setNewMessage('');
+            if (product && (prodId || !hasInquiredProduct)) setInquirySent(true);
+            setCooldown(true); setTimeout(() => setCooldown(false), 1200);
         }
     };
 
     const handleSendProductInquiry = async () => {
         if (!product || sending || cooldown || !currentUser) return;
-        setInquirySent(true);
         const text = `Hello! I would like to inquire about this product: ${product.name} (PHP ${Number(product.price).toFixed(2)}).`;
         await sendMessagePayload(text, product.id);
     };
 
     const handleSendSuggestion = async (quickText: string) => {
         if (!product || sending || cooldown || !currentUser) return;
-        setInquirySent(true);
         await sendMessagePayload(quickText, product.id);
     };
 
@@ -317,6 +284,7 @@ export default function ChatModal({
                                                     </a>
                                                 )}
 
+                                                <ChatAttachment url={msg.attachment_url} />
                                                 <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                                             </div>
                                             <span className="text-[9px] font-sans text-slate-400 mt-1 px-1">
@@ -347,9 +315,14 @@ export default function ChatModal({
                         )}
 
                         {/* Input Footer */}
+                        {historyError && <p role="alert" className="px-3 pt-2 text-xs text-red-700">{historyError} <button type="button" onClick={() => setHistoryRetry(value => value + 1)} className="font-semibold underline">Retry</button></p>}
+                        <ChatImageField image={composer.image} onChange={composer.selectImage} disabled={sending} />
+                        {composer.error && <p role="alert" className="px-3 pt-2 text-xs text-red-700">{composer.error}</p>}
                         <form onSubmit={handleSend} className="p-3 bg-white border-t border-slate-200 flex items-center gap-2 shrink-0">
                             <input
                                 type="text"
+                                maxLength={1000}
+                                disabled={sending}
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 placeholder={product && !hasInquiredProduct ? `Ask seller about ${product.name}...` : "Type your message to merchant..."}
@@ -357,7 +330,7 @@ export default function ChatModal({
                             />
                             <button
                                 type="submit"
-                                disabled={!newMessage.trim() || sending || cooldown}
+                                disabled={(!newMessage.trim() && !composer.image) || sending || cooldown}
                                 className="p-2.5 bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white rounded-xl shadow-xs transition cursor-pointer disabled:cursor-not-allowed"
                             >
                                 <Send className="w-4 h-4" />

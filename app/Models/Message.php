@@ -18,11 +18,22 @@ class Message extends Model
         'order_id',
         'message',
         'is_read',
+        'attachment_path', 'attachment_mime', 'attachment_size', 'attachment_hash',
+        'request_key',
     ];
 
     protected $casts = [
         'is_read' => 'boolean',
     ];
+
+    protected $hidden = ['attachment_path', 'attachment_hash', 'request_key'];
+
+    protected $appends = ['attachment_url'];
+
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        return $this->attachment_path ? route('chat.attachment', $this->id, absolute: false) : null;
+    }
 
     public function sender(): BelongsTo
     {

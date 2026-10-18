@@ -12,6 +12,7 @@ const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-order-tracking-'))
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = await build({
     stdin: { contents: `export { default as Panel, trackingDate } from '@/Components/OrderTrackingPanel';
+        export { buyerMilestones, originalBuyerJourney } from '@/utils/buyerParcelProgress';
         export { default as Detail } from '@/Pages/Buyer/OrderDetail';
         export { default as RestrictedOrders } from '@/Pages/Buyer/Orders';
         export { default as PublicTracking } from '@/Pages/Public/Tracking';
@@ -52,6 +53,52 @@ after(() => delete globalThis.orderTrackingRefresh);
 
 const now = Date.now();
 const iso = time => new Date(time).toISOString();
+
+test('buyer milestones show only recorded scans and retain every Mother Hub checkpoint', () => {
+    const history = [
+        { id: 1, type: 'courier_pickup', label: 'Collected', location: 'Shop', created_at: null },
+        { id: 2, type: 'arrived_at_mother_hub', label: 'Mother Hub received', location: 'Origin Mother Hub', created_at: null },
+        { id: 3, type: 'arrived_at_mother_hub', label: 'Mother Hub received', location: 'Destination Mother Hub', created_at: null },
+    ];
+    const data = { commercial_status: 'at_sorting_center', parcel_status: 'arrived_at_mother_hub', history };
+    const steps = ui.buyerMilestones(data);
+    assert.equal(steps.find(step => step.current)?.key, 'mother');
+    assert.equal(steps.find(step => step.key === 'origin').recorded, false);
+    assert.equal(steps.find(step => step.key === 'handover').recorded, false);
+    assert.equal(ui.originalBuyerJourney(data).length, 3);
+    assert.equal(ui.originalBuyerJourney({ ...data, history: [...history, history[1]] }).length, 3);
+});
+
+test('cancellation, failed attempts and returns never imply delivery or receipt', () => {
+    for (const state of [
+        { commercial_status: 'cancelled', parcel_status: 'cancelled', current: 'cancelled' },
+        { commercial_status: 'delivery_failed', parcel_status: 'delivery_failed', current: 'issue' },
+        { commercial_status: 'delivery_failed', parcel_status: 'return_in_transit', current: 'returning' },
+        { commercial_status: 'returned', parcel_status: 'returned', current: 'returned' },
+    ]) {
+        const steps = ui.buyerMilestones({ ...state, history: [] });
+        assert.equal(steps.find(step => step.current)?.key, state.current);
+        assert.equal(steps.find(step => step.key === 'handover').recorded, false);
+        assert.equal(steps.find(step => step.key === 'receipt').recorded, false);
+    }
+    const pickup = ui.buyerMilestones({ commercial_status: 'sorted', parcel_status: 'ready_for_hub_pickup', delivery_type: 'hub_self_pickup', history: [] });
+    assert.equal(pickup.find(step => step.key === 'last_mile').label, 'Hub collection');
+    assert.equal(pickup.find(step => step.key === 'handover').label, 'Collected');
+});
+
+test('the buyer rail has circular current-step markup without restyling the shared default panel', () => {
+    const data = { commercial_status: 'picked_up', parcel_status: 'picked_up', status_label: 'Picked up', stage_label: 'Collected from seller', history: [
+        { id: 1, type: 'courier_pickup', label: 'Collected from seller', location: 'Bagoo shop', created_at: null },
+    ] };
+    const buyer = renderToStaticMarkup(createElement(ui.Panel, { tracking: data, variant: 'buyer' }));
+    assert.match(buyer, /aria-label="Parcel milestones"/);
+    assert.match(buyer, /aria-current="step"/);
+    assert.match(buyer, /rounded-full/);
+    assert.match(buyer, /Last recorded location/);
+    assert.match(buyer, /Journey checkpoints \(1\)/);
+    assert.match(buyer, /Checkpoint not recorded|Not recorded/);
+    assert.doesNotMatch(renderToStaticMarkup(createElement(ui.Panel, { tracking: data })), /aria-label="Parcel milestones"/);
+});
 const claim = { reference: 'PUC-TRACKING', status: 'ready', expires_at: iso(now + 60_000), locked_until: null, code_issued_at: null };
 const tracking = { commercial_status: 'preparing', status_label: 'Seller preparing', stage_label: 'Pickup not assigned', tone: 'progress',
     custodian: 'Seller (handover recorded)', custody_recorded_at: '2026-10-11T00:00:00Z',

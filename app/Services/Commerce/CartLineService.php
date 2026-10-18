@@ -46,7 +46,10 @@ class CartLineService
         $item = $items->first(fn (CartItem $line) => $line->color === $color && $line->size === $size);
         $newQuantity = ($item?->quantity ?? 0) + $quantity;
         try {
-            $maximum = app(InventoryService::class)->maximumCartLineQuantity($product, $items, $color, $size, $item?->id);
+            app(PurchasePolicyService::class)->assertShopAccepting($product);
+            app(PurchasePolicyService::class)->assertQuantity($product, $cart->user_id, $items->sum('quantity') + $quantity);
+            $maximum = app(InventoryService::class)->maximumCartLineQuantity($product, $items, $color, $size, $item?->id, $cart->user_id);
+            $unitPrice = app(InventoryService::class)->unitPrice($product, $color, $size);
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);
         }
@@ -58,13 +61,13 @@ class CartLineService
                 : "Your Shopping Bag already contains the maximum available quantity of {$maximum}."]);
         }
         if ($item) {
-            $item->update(['quantity' => $newQuantity, 'unit_price' => $product->price]);
+            $item->update(['quantity' => $newQuantity, 'unit_price' => $unitPrice]);
 
             return $item;
         }
 
         return $cart->items()->create([
-            'product_id' => $product->id, 'quantity' => $quantity, 'unit_price' => $product->price,
+            'product_id' => $product->id, 'quantity' => $quantity, 'unit_price' => $unitPrice,
             'color' => $color, 'size' => $size,
             'sku_snapshot' => $product->sku.($color ? "-{$color}" : '').($size ? "-{$size}" : ''),
         ]);

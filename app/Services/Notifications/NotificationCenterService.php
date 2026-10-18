@@ -6,8 +6,10 @@ use App\Enums\UserRole;
 use App\Models\AccountReviewRequest;
 use App\Models\Advertisement;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\RestrictionAffectedWork;
 use App\Models\RiderCompanyRequest;
+use App\Models\SaleReminder;
 use App\Models\User;
 use App\Services\Advertisements\SellerPromotionService;
 use App\Services\BuyerAccessService;
@@ -28,7 +30,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class NotificationCenterService
 {
-    public const TYPES = ['order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event', 'settlement-event'];
+    public const TYPES = ['sale-reminder', 'order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event', 'settlement-event'];
 
     public function current(User $actor): User
     {
@@ -117,6 +119,15 @@ class NotificationCenterService
                     && $ad->shop()->where('user_id', $user->id)->exists()) {
                     return '/seller/promotions/'.$ad->id.$anchor;
                 }
+            }
+
+            return null;
+        }
+        if ($target === 'buyer-sale' && $user->isBuyer() && $user->canAccessPortal()) {
+            $product = Product::availableForSale()->whereKey((int) ($data['product_id'] ?? 0))->first();
+            if ($product && SaleReminder::whereKey((int) ($data['sale_reminder_id'] ?? 0))->where('buyer_id', $user->id)
+                ->whereHas('sale', fn ($sale) => $sale->where('product_id', $product->id))->exists()) {
+                return route('buyer.products.show', $product->slug, absolute: false);
             }
 
             return null;

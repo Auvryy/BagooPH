@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import ProductSaleOffer, { type SaleReminderState } from '@/Components/ProductSaleOffer';
+import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import VoucherOfferList from '@/Components/VoucherOfferList';
 import SavedProductButton from '@/Components/SavedProductButton';
+import { productQuantityError } from '@/utils/productQuantity';
 import RatingStars, { ratingLabel } from '@/Components/RatingStars';
 import { PageProps, Product, Review } from '@/types';
 import { 
@@ -50,6 +52,7 @@ interface VariationSize {
 }
 
 interface Variations {
+    combinations?: import('@/Components/VariantStockMatrix').StockCombination[];
     option1_name?: string | null;
     option2_name?: string | null;
     colors: VariationColor[];
@@ -65,6 +68,7 @@ interface ShopStats {
 }
 
 interface Props {
+    saleReminder?: SaleReminderState | null;
     shopOffers?: import('@/hooks/usePurchaseQuote').VoucherOffer[];
     product: Product & {
         reviews?: Review[];
@@ -72,6 +76,7 @@ interface Props {
     variations: Variations;
     relatedProducts: Product[];
     shopStats: ShopStats;
+    purchaseAllowance?: number | null;
     cartQuantities?: Array<{
         color?: string | null;
         size?: string | null;
@@ -82,22 +87,22 @@ interface Props {
 export default function BuyerProductDetail({
     product,
     variations,
+    saleReminder = null,
     relatedProducts,
     shopStats,
     cartQuantities = [],
+    purchaseAllowance = null,
     shopOffers = [],
 }: Props) {
     const colorsList = variations?.colors || [];
     const sizesList = variations?.sizes || [];
-    const [selectedColor, setSelectedColor] = useState<VariationColor | null>(
-        colorsList.find((color) => color.in_stock) || colorsList[0] || null
-    );
-    const [selectedSize, setSelectedSize] = useState<VariationSize | null>(sizesList[0] || null);
+    const [selectedColor, setSelectedColor] = useState<VariationColor | null>(null);
+    const [selectedSize, setSelectedSize] = useState<VariationSize | null>(null);
     const [quantityInput, setQuantityInput] = useState('1');
     const [selectedImage, setSelectedImage] = useState(product.featured_image || '');
     const [isAdding, setIsAdding] = useState(false);
+    const addBusy = useRef(false);
     const [addedSuccess, setAddedSuccess] = useState(false);
-    const [copiedVoucher, setCopiedVoucher] = useState(false);
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [copiedShareLink, setCopiedShareLink] = useState(false);
@@ -171,19 +176,24 @@ export default function BuyerProductDetail({
     );
 
     // Dynamic price calculation based on selected size/variation
-    const basePrice = Number(product.price);
-    const extraPrice = selectedSize ? selectedSize.extra_price : 0;
+    const basePrice = Number(product.sale_offer?.effective_price ?? product.price);
+    const selectedCombination = variations.combinations?.find(row => row.color === (selectedColor?.name ?? null) && row.size === (selectedSize?.name ?? null));
+    const extraPrice = Number(variations.combinations ? selectedCombination?.extra_price ?? 0 : selectedSize?.extra_price ?? 0);
     const currentPrice = basePrice + extraPrice;
     
-    const baseCompare = product.compare_at_price ? Number(product.compare_at_price) : basePrice * 1.25;
-    const currentComparePrice = baseCompare + extraPrice;
-    const discountPct = Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100);
+    const baseCompare = product.sale_offer?.active && basePrice < Number(product.price) ? Number(product.price) : product.compare_at_price ? Number(product.compare_at_price) : 0;
+    const currentComparePrice = baseCompare > basePrice ? baseCompare + extraPrice : 0;
+    const discountPct = currentComparePrice > currentPrice ? Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100) : 0;
 
-    const selectionStock = Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
+    const completeSelection = (!colorsList.length || selectedColor !== null) && (!sizesList.length || selectedSize !== null);
+    const selectionStock = variations.combinations ? Number(selectedCombination?.stock ?? (completeSelection ? 0 : product.stock)) : Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
+    const sizeAvailable = (size: VariationSize) => !variations.combinations || variations.combinations.some(row => row.size === size.name && (!selectedColor || row.color === selectedColor.name) && row.stock > 0);
     const isProductOutOfStock = Number(product.stock) <= 0;
     const isSelectionOutOfStock = selectedColor?.in_stock === false || selectionStock <= 0;
     const totalProductInCart = cartQuantities.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-    const selectedSizeInCart = selectedSize
+    const selectedSizeInCart = variations.combinations
+        ? cartQuantities.filter(item => (item.color ?? null) === (selectedColor?.name ?? null) && (item.size ?? null) === (selectedSize?.name ?? null)).reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+        : selectedSize
         ? cartQuantities
             .filter((item) => item.size === selectedSize.name)
             .reduce((sum, item) => sum + Number(item.quantity || 0), 0)
@@ -192,11 +202,12 @@ export default function BuyerProductDetail({
         (item.color ?? null) === (selectedColor?.name ?? null)
         && (item.size ?? null) === (selectedSize?.name ?? null)
     )?.quantity ?? 0;
-    const maxAddableQuantity = selectedColor?.in_stock === false
+    const maxAddableQuantity = product.shop?.vacation_mode || selectedColor?.in_stock === false
         ? 0
         : Math.max(0, Math.min(
             99 - selectedLineInCart,
             product.stock - totalProductInCart,
+            (purchaseAllowance ?? Number.MAX_SAFE_INTEGER) - totalProductInCart,
             selectionStock - selectedSizeInCart
         ));
     const quantity = Math.max(1, Number(quantityInput) || 1);
@@ -211,39 +222,25 @@ export default function BuyerProductDetail({
     };
 
     const handleQuantityInput = (value: string) => {
-        if (value === '') {
-            setQuantityInput('');
-            return;
-        }
-        if (!/^\d+$/.test(value)) return;
-
-        const parsed = Number(value);
-        if (parsed > maxAddableQuantity) {
-            setQuantityInput(String(Math.max(1, maxAddableQuantity)));
-            setCartFeedback({
-                type: 'error',
-                message: maxAddableQuantity > 0
-                    ? `You can add only ${maxAddableQuantity} more of this selection.`
-                    : isSelectionOutOfStock
-                        ? 'This product selection is currently out of stock.'
-                        : 'All currently available units are already in your Shopping Bag.',
-            });
-            return;
-        }
-
-        setQuantityInput(String(Math.max(1, parsed)));
-        setCartFeedback(null);
+        setQuantityInput(value);
+        const error = productQuantityError(value, maxAddableQuantity);
+        setCartFeedback(error ? { type: 'error', message: error } : null);
     };
 
-    useEffect(() => {
-        if (maxAddableQuantity > 0 && quantity > maxAddableQuantity) {
-            setQuantityInput(String(maxAddableQuantity));
-        }
-    }, [maxAddableQuantity, quantity]);
-
     const handleAddToBag = (buyNow: boolean = false) => {
+        if (addBusy.current) return;
         if (buyNow && buyerNeedsKycForPurchase(auth.user)) {
             setPurchaseGateMessage(buyerKycBlockMessage(auth.user));
+            return;
+        }
+
+        if ((colorsList.length > 0 && !selectedColor) || (sizesList.length > 0 && !selectedSize)) {
+            setCartFeedback({ type: 'error', message: 'Choose each product option before continuing.' });
+            return;
+        }
+        const quantityError = productQuantityError(quantityInput, maxAddableQuantity);
+        if (quantityError) {
+            setCartFeedback({ type: 'error', message: quantityError });
             return;
         }
 
@@ -257,6 +254,7 @@ export default function BuyerProductDetail({
             return;
         }
 
+        addBusy.current = true;
         setIsAdding(true);
         setAddedSuccess(false);
         setCartFeedback(null);
@@ -266,6 +264,7 @@ export default function BuyerProductDetail({
             quantity: quantity,
             color: selectedColor?.name,
             size: selectedSize?.name,
+            buy_now: buyNow,
         }, {
             preserveScroll: true,
             onSuccess: () => {
@@ -274,9 +273,6 @@ export default function BuyerProductDetail({
                 setCartFeedback({ type: 'success', message: `${quantity} added to your Shopping Bag.` });
                 setTimeout(() => setAddedSuccess(false), 2500);
 
-                if (buyNow) {
-                    router.get(route('checkout.index'));
-                }
             },
             onError: (errors) => {
                 setIsAdding(false);
@@ -286,6 +282,7 @@ export default function BuyerProductDetail({
                     message: String(errors.quantity || errors.product_id || 'The item could not be added. Please review the quantity and try again.'),
                 });
             },
+            onFinish: () => { addBusy.current = false; setIsAdding(false); },
         });
     };
 
@@ -294,11 +291,7 @@ export default function BuyerProductDetail({
         return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(num);
     };
 
-    const copyShopVoucher = () => {
-        navigator.clipboard.writeText('BAGOO20');
-        setCopiedVoucher(true);
-        setTimeout(() => setCopiedVoucher(false), 3000);
-    };
+
 
     // Gallery images combining primary + multi-angle shots + variant edition photos
     const rawImages = [
@@ -483,21 +476,6 @@ export default function BuyerProductDetail({
                             )}
                         </div>
 
-                        {/* Store Voucher Strip */}
-                        <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/60 flex items-center justify-between text-xs font-sans">
-                            <div className="flex items-center gap-2 text-amber-950 font-bold">
-                                <Tag className="w-4 h-4 text-amber-600" />
-                                <span>₱100 OFF VOUCHER (Min. Spend ₱1,500)</span>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={copyShopVoucher}
-                                className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg transition uppercase text-[11px]"
-                            >
-                                {copiedVoucher ? 'Claimed ✓' : 'Claim'}
-                            </button>
-                        </div>
-
                         {/* Delivery and payment information */}
                         <div className="space-y-2 font-sans text-xs text-slate-600 border-y border-slate-100 py-3">
                             <div className="flex items-center gap-3">
@@ -511,13 +489,16 @@ export default function BuyerProductDetail({
                         </div>
 
                         {/* VARIATION SELECTOR 1 */}
+                        <ProductSaleOffer product={product} reminder={saleReminder} />
+                        {product.shop?.vacation_mode && <p role="status" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">On vacation. This shop has paused new purchases. Your Bag and existing orders stay available.</p>}
+                        {product.purchase_limit && <p className="mb-4 text-sm text-slate-600">Limit {product.purchase_limit} per buyer across orders. You can buy {purchaseAllowance ?? product.purchase_limit} more.</p>}
                         {colorsList.length > 0 && (
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-xs font-sans">
                                     <span className="text-slate-500 font-bold uppercase">
                                         {variations?.option1_name || 'Color / Edition'}:
                                     </span>
-                                    <span className="text-slate-900 font-black">{selectedColor?.name}</span>
+                                    <span className="text-slate-900 font-black">{selectedColor?.name || 'Choose an option'}</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {colorsList.map((color) => (
@@ -563,7 +544,7 @@ export default function BuyerProductDetail({
                                     <span className="text-slate-500 font-bold uppercase">
                                         {variations?.option2_name || 'Specification / Size'}:
                                     </span>
-                                    <span className="text-slate-900 font-black">{selectedSize?.name}</span>
+                                    <span className="text-slate-900 font-black">{selectedSize?.name || 'Choose an option'}</span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {sizesList.map((size) => (
@@ -571,14 +552,15 @@ export default function BuyerProductDetail({
                                             key={size.id}
                                             type="button"
                                             onClick={() => setSelectedSize(size)}
-                                            className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition ${
+                                            disabled={!sizeAvailable(size)}
+                                            className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
                                                 selectedSize?.id === size.id
                                                     ? 'border-[#E00D42] bg-[#E00D42]/5 text-[#E00D42] shadow-2xs'
                                                     : 'border-slate-200 text-slate-700 hover:border-slate-400'
                                             }`}
                                         >
                                             <span>{size.name}</span>
-                                            {size.extra_price > 0 && (
+                                            {!variations.combinations && size.extra_price > 0 && (
                                                 <span className="text-[10px] text-slate-400 ml-1">
                                                     (+{formatPrice(size.extra_price)})
                                                 </span>
@@ -609,7 +591,8 @@ export default function BuyerProductDetail({
                                         pattern="[0-9]*"
                                         value={quantityInput}
                                         onChange={(event) => handleQuantityInput(event.target.value)}
-                                        onBlur={() => setQuantityInput(String(Math.min(Math.max(1, quantity), Math.max(1, maxAddableQuantity))))}
+                                        aria-invalid={productQuantityError(quantityInput, maxAddableQuantity) !== null}
+                                        maxLength={2}
                                         disabled={maxAddableQuantity < 1}
                                         aria-label="Product quantity"
                                         className="w-14 border-x border-y-0 border-slate-300 bg-white px-2 py-2 text-center text-xs font-bold text-slate-900 focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] disabled:bg-slate-100 disabled:text-slate-400"
@@ -860,6 +843,7 @@ export default function BuyerProductDetail({
 
                                     {/* Star Rating */}
                                     <RatingStars value={rev.rating} className="w-3.5 h-3.5" />
+                                    {rev.purchased_options && [rev.purchased_options.color, rev.purchased_options.size].some(Boolean) && <p className="text-xs text-slate-600">Purchased option: {[rev.purchased_options.color, rev.purchased_options.size].filter(Boolean).join(' · ')}</p>}
 
                                     {/* Review Comment */}
                                     <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line">{rev.comment}</p>

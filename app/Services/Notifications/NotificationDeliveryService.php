@@ -4,6 +4,7 @@ namespace App\Services\Notifications;
 
 use App\Models\NotificationDelivery;
 use App\Models\User;
+use App\Services\Commerce\SaleReminderService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -27,6 +28,14 @@ class NotificationDeliveryService
                 $delivery = NotificationDelivery::whereKey($id)->lockForUpdate()->firstOrFail();
                 if ($delivery->delivered_at) {
                     return true;
+                }
+                if ($delivery->discarded_at) {
+                    return false;
+                }
+                if ($delivery->type === 'sale-reminder' && ! app(SaleReminderService::class)->deliveryIsCurrent($delivery)) {
+                    $delivery->update(['discarded_at' => now(), 'last_attempt_at' => now()]);
+
+                    return false;
                 }
                 $existing = DB::table('notifications')->where('notifiable_type', User::class)
                     ->where('notifiable_id', $delivery->recipient_id)->where('source_key', $delivery->source_key)->first();
@@ -65,13 +74,18 @@ class NotificationDeliveryService
 
     public function deliverPending(int $limit = 100): array
     {
-        $ids = NotificationDelivery::whereNull('delivered_at')->where('available_at', '<=', now())
+        $ids = NotificationDelivery::whereNull('delivered_at')->whereNull('discarded_at')->where('available_at', '<=', now())
             ->orderBy('available_at')->orderBy('id')->limit($limit)->pluck('id');
         $delivered = 0;
+        $discarded = 0;
         foreach ($ids as $id) {
-            $delivered += (int) $this->deliver($id);
+            if ($this->deliver($id)) {
+                $delivered++;
+            } else {
+                $discarded += (int) NotificationDelivery::whereKey($id)->whereNotNull('discarded_at')->exists();
+            }
         }
 
-        return ['attempted' => $ids->count(), 'delivered' => $delivered, 'failed' => $ids->count() - $delivered];
+        return ['attempted' => $ids->count(), 'delivered' => $delivered, 'failed' => $ids->count() - $delivered - $discarded, 'discarded' => $discarded];
     }
 }

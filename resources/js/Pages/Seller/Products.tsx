@@ -1,3 +1,4 @@
+import VariantStockMatrix, { type StockCombination } from '@/Components/VariantStockMatrix';
 import UploadHint from '@/Components/UploadHint';
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -67,6 +68,7 @@ interface VariantSize {
 }
 
 interface ProductVariants {
+    combinations?: StockCombination[];
     option1_name?: string | null;
     option2_name?: string | null;
     colors: VariantColor[];
@@ -183,6 +185,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         price: string;
         compare_at_price: string;
         stock: string;
+        purchase_limit: string;
         sku: string;
         variants: string;
         featured_image: string;
@@ -196,6 +199,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         price: '',
         compare_at_price: '',
         stock: '25',
+        purchase_limit: '',
         sku: '',
         variants: '',
         featured_image: '',
@@ -211,6 +215,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         price: string;
         compare_at_price: string;
         stock: string;
+        purchase_limit: string;
         sku: string;
         variants: string;
         featured_image: string;
@@ -225,6 +230,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         price: '',
         compare_at_price: '',
         stock: '0',
+        purchase_limit: '',
         sku: '',
         variants: '',
         featured_image: '',
@@ -450,6 +456,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         setEditOption2Name(opt2Name);
 
         const variantsData: ProductVariants = {
+            combinations: product.variants?.combinations,
             option1_name: hasColors ? opt1Name : null,
             option2_name: hasSizes ? opt2Name : null,
             colors: (product.variants?.colors || []).map((c, idx) => {
@@ -485,6 +492,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
             price: String(product.price),
             compare_at_price: String(product.compare_at_price || ''),
             stock: String(product.stock),
+            purchase_limit: String(product.purchase_limit ?? ''),
             sku: product.sku || '',
             variants: (hasColors || hasSizes) ? JSON.stringify(variantsData) : '',
             featured_image: product.featured_image || '',
@@ -535,6 +543,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                 };
             }) : [],
             sizes: createHasOption2 ? createVariants.sizes : [],
+            combinations: createVariants.combinations,
         } : null;
 
         createForm.transform((data) => ({
@@ -609,6 +618,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                 };
             }) : [],
             sizes: editHasOption2 ? editVariants.sizes : [],
+            combinations: editVariants.combinations,
         } : null;
 
         editForm.transform((data) => ({
@@ -2083,7 +2093,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 <div className="space-y-1">
                                                     <button
                                                         type="button"
-                                                        onClick={() => openStockEditor(product)}
+                                                        onClick={() => product.variants?.combinations ? openEdit(product) : openStockEditor(product)}
                                                         aria-label={`Update available stock for ${product.name}`}
                                                         className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-[11px] font-bold transition hover:shadow-xs ${
                                                             product.stock > 5 ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-500' : (product.stock > 0 ? 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-500' : 'border-rose-300 bg-rose-50 text-rose-800 hover:border-rose-500')
@@ -2095,7 +2105,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                     <p className="text-[10px] text-slate-500">
                                                         {Number(product.open_order_units || 0)} reserved in open orders · Click to update
                                                     </p>
-                                                    {product.variants?.sizes?.length ? <details className="text-[11px] text-slate-600">
+                                                    {product.variants?.combinations ? <details className="text-[11px] text-slate-600"><summary className="cursor-pointer font-semibold">Combination stock</summary><ul className="mt-2 space-y-1">{product.variants.combinations.map((row, index) => <li key={index}>{[row.color, row.size].filter(Boolean).join(' / ')}: <strong>{row.stock}</strong> available</li>)}</ul></details> : product.variants?.sizes?.length ? <details className="text-[11px] text-slate-600">
                                                         <summary className="cursor-pointer font-semibold hover:text-[#E00D42]">{product.variants.option2_name || 'Variant'} quantities ({product.variants.sizes.length})</summary>
                                                         <ul className="mt-2 space-y-1">
                                                             {product.variants.sizes.map((variant, index) => <li key={variant.id || index}>{variant.name}: <strong>{sellerVariantStock(variant.stock, product.stock)}</strong>{variant.stock == null ? ' (listing stock)' : ' available'}</li>)}
@@ -2118,6 +2128,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 {Number(product.completed_units || 0)} completed
                                             </td>
                                             <td className="py-4 px-6 text-right space-x-1">
+                                                <Link href={route('seller.products.sales.index', product.id)} className="inline-flex rounded-lg px-2 py-2 text-xs font-bold text-[#E00D42] hover:bg-rose-50">Sales</Link>
                                                 <button
                                                     onClick={() => openEdit(product)}
                                                     className="p-2 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition"
@@ -2494,7 +2505,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                             </label>
                                             <input
                                                 type="number"
-                                                value={createForm.data.stock}
+                                                disabled={createVariants.combinations !== undefined}
+                                                value={createVariants.combinations ? createVariants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0) : createForm.data.stock}
                                                 onChange={(e) => createForm.setData('stock', e.target.value)}
                                                 required
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
@@ -2505,6 +2517,13 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(true)}
+                                <VariantStockMatrix colors={createHasOption1 ? createVariants.colors : []} sizes={createHasOption2 ? createVariants.sizes : []} value={createVariants.combinations} onChange={combinations => setCreateVariants(previous => ({ ...previous, combinations }))} error={createForm.errors.variants || Object.entries(createForm.errors).find(([field]) => field.startsWith('combinations.') || field.startsWith('colors.') || field.startsWith('sizes.'))?.[1]} />
+                                <div className="rounded-lg border border-slate-300 p-4">
+                                    <label className="block text-sm font-bold text-slate-900" htmlFor="createForm-purchase-limit">Purchase limit per buyer</label>
+                                    <input id="createForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={createForm.data.purchase_limit} onChange={event => createForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                                    <p className="mt-2 text-xs text-slate-600">Leave blank for no limit. Counts units across all orders for this product; cancelled orders release the allowance.</p>
+                                    {createForm.errors.purchase_limit && <p className="mt-1 text-sm text-rose-700">{createForm.errors.purchase_limit}</p>}
+                                </div>
 
                                 {renderGalleryManager(true)}
 
@@ -2658,7 +2677,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                             </label>
                                             <input
                                                 type="number"
-                                                value={editForm.data.stock}
+                                                disabled={editVariants.combinations !== undefined}
+                                                value={editVariants.combinations ? editVariants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0) : editForm.data.stock}
                                                 onChange={(e) => editForm.setData('stock', e.target.value)}
                                                 required
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
@@ -2739,6 +2759,13 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(false)}
+                                <VariantStockMatrix colors={editHasOption1 ? editVariants.colors : []} sizes={editHasOption2 ? editVariants.sizes : []} value={editVariants.combinations} onChange={combinations => setEditVariants(previous => ({ ...previous, combinations }))} error={editForm.errors.variants || Object.entries(editForm.errors).find(([field]) => field.startsWith('combinations.') || field.startsWith('colors.') || field.startsWith('sizes.'))?.[1]} />
+                                <div className="rounded-lg border border-slate-300 p-4">
+                                    <label className="block text-sm font-bold text-slate-900" htmlFor="editForm-purchase-limit">Purchase limit per buyer</label>
+                                    <input id="editForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={editForm.data.purchase_limit} onChange={event => editForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                                    <p className="mt-2 text-xs text-slate-600">Leave blank for no limit. Counts units across all orders for this product; cancelled orders release the allowance.</p>
+                                    {editForm.errors.purchase_limit && <p className="mt-1 text-sm text-rose-700">{editForm.errors.purchase_limit}</p>}
+                                </div>
 
                                 {renderGalleryManager(false)}
 

@@ -4,12 +4,30 @@ namespace App\Services\Commerce;
 
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Services\Finance\CodMoney;
 use Illuminate\Support\Collection;
 use RuntimeException;
 
 class InventoryService
 {
     public const MAX_CART_LINE_QUANTITY = 99;
+
+    public function unitPrice(Product $product, ?string $color, ?string $size): string
+    {
+        return app(SalePriceService::class)->unitPrice($product, $this->regularUnitPrice($product, $color, $size));
+    }
+
+    public function regularUnitPrice(Product $product, ?string $color, ?string $size): string
+    {
+        $selection = $this->selection($product, $color, $size);
+        $extra = $selection['extra_price'];
+        if (! is_numeric($extra) || ! is_finite((float) $extra) || (float) $extra < 0 || (float) $extra > 99999999.99) {
+            throw new RuntimeException("The price for '{$product->name}' needs to be corrected by its shop.");
+        }
+        $cents = CodMoney::cents($product->price) + CodMoney::cents(number_format((float) $extra, 2, '.', ''));
+
+        return number_format($cents / 100, 2, '.', '');
+    }
 
     /**
      * @param  Collection<int, CartItem>  $productCartItems
@@ -19,8 +37,10 @@ class InventoryService
         Collection $productCartItems,
         ?string $color,
         ?string $size,
-        ?int $currentItemId = null
+        ?int $currentItemId = null,
+        ?int $buyerId = null
     ): int {
+        app(PurchasePolicyService::class)->assertShopAccepting($product);
         $selection = $this->selection($product, $color, $size);
         $otherItems = $productCartItems->reject(
             fn (CartItem $item) => $currentItemId !== null && $item->id === $currentItemId
@@ -29,7 +49,9 @@ class InventoryService
         $remainingProductStock = $product->stock - $otherItems->sum('quantity');
         $remainingSelectionStock = $selection['stock'];
 
-        if ($selection['size'] !== null) {
+        if (isset($product->variants['combinations'])) {
+            $remainingSelectionStock -= $otherItems->filter(fn (CartItem $item) => $item->color === $selection['color'] && $item->size === $selection['size'])->sum('quantity');
+        } elseif ($selection['size'] !== null) {
             $remainingSelectionStock -= $otherItems
                 ->filter(fn (CartItem $item) => $item->size === $selection['size'])
                 ->sum('quantity');
@@ -38,6 +60,7 @@ class InventoryService
         return max(0, min(
             self::MAX_CART_LINE_QUANTITY,
             $remainingProductStock,
+            (app(PurchasePolicyService::class)->remaining($product, $buyerId) ?? PHP_INT_MAX) - $otherItems->sum('quantity'),
             $remainingSelectionStock
         ));
     }
@@ -46,7 +69,7 @@ class InventoryService
      * @param  Collection<int, CartItem>  $items
      * @param  Collection<int, Product>  $products
      */
-    public function assertCheckoutAvailability(Collection $items, Collection $products): void
+    public function assertCheckoutAvailability(Collection $items, Collection $products, ?int $buyerId = null): void
     {
         foreach ($items as $item) {
             if ($item->quantity < 1 || $item->quantity > self::MAX_CART_LINE_QUANTITY) {
@@ -58,12 +81,14 @@ class InventoryService
                 throw new RuntimeException('One or more selected products are unavailable.');
             }
 
-            $this->selection($product, $item->color, $item->size);
+            $this->unitPrice($product, $item->color, $item->size);
         }
 
         foreach ($items->groupBy('product_id') as $productId => $productItems) {
             $product = $products->get($productId);
             $requestedProductQuantity = $productItems->sum('quantity');
+            app(PurchasePolicyService::class)->assertShopAccepting($product);
+            app(PurchasePolicyService::class)->assertQuantity($product, $buyerId, $requestedProductQuantity);
 
             if ($requestedProductQuantity > $product->stock) {
                 throw new RuntimeException(
@@ -71,6 +96,17 @@ class InventoryService
                 );
             }
 
+            if (isset($product->variants['combinations'])) {
+                foreach ($productItems->groupBy(fn ($item) => json_encode([$item->color, $item->size])) as $rows) {
+                    $first = $rows->first();
+                    $stock = $this->selection($product, $first->color, $first->size)['stock'];
+                    if ($rows->sum('quantity') > $stock) {
+                        throw new RuntimeException("The selected options for '{$product->name}' have only {$stock} units available.");
+                    }
+                }
+
+                continue;
+            }
             $sizes = $this->sizes($product);
             if ($sizes === []) {
                 continue;
@@ -98,7 +134,16 @@ class InventoryService
         }
 
         $variants = $product->variants;
-        if (is_array($variants) && $selection['size'] !== null) {
+        if (isset($variants['combinations'])) {
+            foreach ($variants['combinations'] as &$row) {
+                if ($row['color'] === $selection['color'] && $row['size'] === $selection['size']) {
+                    $row['stock'] -= $quantity;
+                    break;
+                }
+            }
+            unset($row);
+            $product->variants = $variants;
+        } elseif (is_array($variants) && $selection['size'] !== null) {
             foreach ($variants['sizes'] as &$variantSize) {
                 if (($variantSize['name'] ?? null) === $selection['size']) {
                     $variantSize['stock'] = (int) $variantSize['stock'] - $quantity;
@@ -114,10 +159,24 @@ class InventoryService
         $product->save();
     }
 
-    public function restore(Product $product, int $quantity, ?string $size): void
+    public function restore(Product $product, int $quantity, ?string $size, ?string $color = null): void
     {
         $variants = $product->variants;
-        if (is_array($variants) && $size !== null && $this->sizes($product) !== []) {
+        if (isset($variants['combinations'])) {
+            $found = false;
+            foreach ($variants['combinations'] as &$row) {
+                if ($row['color'] === $color && $row['size'] === $size) {
+                    $row['stock'] += $quantity;
+                    $found = true;
+                    break;
+                }
+            }
+            unset($row);
+            if (! $found) {
+                throw new RuntimeException('The original product options must be restored before this order can be cancelled.');
+            }
+            $product->variants = $variants;
+        } elseif (is_array($variants) && $size !== null && $this->sizes($product) !== []) {
             foreach ($variants['sizes'] as &$variantSize) {
                 if (($variantSize['name'] ?? null) === $size) {
                     $variantSize['stock'] = (int) ($variantSize['stock'] ?? 0) + $quantity;
@@ -172,7 +231,18 @@ class InventoryService
             throw new RuntimeException("'{$product->name}' does not offer the selected size or specification.");
         }
 
+        $extra = $selectedSize['extra_price'] ?? 0;
+        if (isset($product->variants['combinations'])) {
+            $row = collect($product->variants['combinations'])->first(fn ($row) => ($row['color'] ?? null) === $color && ($row['size'] ?? null) === $size);
+            if (! $row) {
+                throw new RuntimeException("The selected options for '{$product->name}' are unavailable.");
+            }
+            $available = min($product->stock, (int) $row['stock']);
+            $extra = $row['extra_price'] ?? 0;
+        }
+
         return [
+            'extra_price' => $extra,
             'color' => $color,
             'size' => $size,
             'stock' => max(0, $available),

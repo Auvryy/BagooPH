@@ -49,6 +49,42 @@ class BuyerDiscoveryService
             ->availableForSale()->withReviewSummary();
     }
 
+    public function suggestions(array $filters): array
+    {
+        $search = mb_strtolower($filters['search']);
+        // A small eligible catalogue sample bounds work while keeping private listings out.
+        if (! preg_match('/\A[a-z ]{3,100}\z/', $search)) {
+            return [];
+        }
+        $tokens = preg_split('/ +/', trim($search));
+        if (count($tokens) > 4) {
+            return [];
+        }
+        $names = $this->filter($this->catalogue(), [...$filters, 'search' => ''])
+            ->orderByDesc('sales_count')->orderByDesc('products.id')->limit(250)->pluck('products.name');
+        $words = array_unique(preg_split('/[^a-z]+/', strtolower($names->implode(' ')), -1, PREG_SPLIT_NO_EMPTY));
+        $corrected = [];
+        foreach ($tokens as $token) {
+            $best = $token;
+            $distance = strlen($token) < 5 ? 2 : 3;
+            foreach ($words as $word) {
+                if (strlen($word) < 3 || strlen($word) > 32 || abs(strlen($word) - strlen($token)) >= $distance) {
+                    continue;
+                }
+                $candidate = levenshtein($token, $word);
+                if ($candidate < $distance) {
+                    $best = $word;
+                    $distance = $candidate;
+                }
+            }
+            $corrected[] = $best;
+        }
+        $suggestion = implode(' ', $corrected);
+
+        return $suggestion !== $search && $this->filter($this->catalogue(), [...$filters, 'search' => $suggestion])->exists()
+            ? [$suggestion] : [];
+    }
+
     public function categoryIds(string $slug): array
     {
         $category = Category::where('slug', $slug)->where('is_active', true)->first();
@@ -82,11 +118,12 @@ class BuyerDiscoveryService
         if ($filters['category'] !== 'all') {
             $products->whereIn('products.category_id', $this->categoryIds($filters['category']));
         }
+        $price = app(SalePriceService::class)->cataloguePriceSql();
         if ($filters['min_price'] !== '') {
-            $products->where('price', '>=', $filters['min_price']);
+            $products->whereRaw($price['sql'].' >= CAST(? AS DECIMAL(12,2))', [...$price['bindings'], $filters['min_price']]);
         }
         if ($filters['max_price'] !== '') {
-            $products->where('price', '<=', $filters['max_price']);
+            $products->whereRaw($price['sql'].' <= CAST(? AS DECIMAL(12,2))', [...$price['bindings'], $filters['max_price']]);
         }
         if ($filters['in_stock']) {
             $products->where('stock', '>', 0);
@@ -101,9 +138,10 @@ class BuyerDiscoveryService
     public function paginate(Builder $products, array $filters, int $perPage = 24): LengthAwarePaginator
     {
         $products->reorder();
+        $price = app(SalePriceService::class)->cataloguePriceSql();
         match ($filters['sort']) {
-            'price_asc' => $products->orderBy('price'),
-            'price_desc' => $products->orderByDesc('price'),
+            'price_asc' => $products->orderByRaw($price['sql'].' ASC', $price['bindings']),
+            'price_desc' => $products->orderByRaw($price['sql'].' DESC', $price['bindings']),
             'top_sales' => $products->orderByDesc('sales_count'),
             'top_rated' => $products->orderByRaw('verified_rating DESC NULLS LAST'),
             'newest' => $products->latest('products.created_at'),

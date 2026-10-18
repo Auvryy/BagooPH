@@ -25,6 +25,7 @@ class Shop extends Model
         'user_id',
         'root_category_id',
         'is_default',
+        'vacation_mode',
         'name',
         'slug',
         'description',
@@ -53,6 +54,7 @@ class Shop extends Model
 
     protected $casts = [
         'is_default' => 'boolean',
+        'vacation_mode' => 'boolean',
         'rating' => 'float',
         'review_submitted_at' => 'immutable_datetime',
         'reviewed_at' => 'immutable_datetime',

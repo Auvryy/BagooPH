@@ -1,3 +1,4 @@
+import PriceSegments from '@/Components/PriceSegments';
 import UploadHint from '@/Components/UploadHint';
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
@@ -59,6 +60,7 @@ interface Props {
     addressBookLimit?: number;
     pickupHubs?: PickupHubItem[];
     checkoutToken: string;
+    itemQuantities?: Record<number, number>;
 }
 
 export default function CheckoutIndex({ 
@@ -74,6 +76,7 @@ export default function CheckoutIndex({
     addressBookLimit = 10,
     pickupHubs = [],
     checkoutToken,
+    itemQuantities = {},
 }: Props) {
     const { flash } = usePage<PageProps>().props;
 
@@ -154,6 +157,7 @@ export default function CheckoutIndex({
     const { data, setData, post, processing, errors } = useForm({
         checkout_token: checkoutToken,
         item_ids: items.map(i => i.id),
+        item_quantities: itemQuantities,
         recipient_name: initialAddress?.recipient_name || user.name || '',
         recipient_phone: initialAddress?.phone || user.phone || '',
         shipping_address: initialAddress?.street || user.address || '',
@@ -220,6 +224,7 @@ export default function CheckoutIndex({
 
     const quoteInput = {
         item_ids: data.item_ids,
+        item_quantities: data.item_quantities,
         delivery_type: data.delivery_type,
         code: data.voucher_code,
         platform_voucher_revision_id: data.platform_voucher_revision_id,
@@ -406,7 +411,7 @@ export default function CheckoutIndex({
                         <ul className="list-disc pl-4 space-y-1">
                             {Array.from(new Set(Object.values(errors))).map(error => <li key={error}>{error}</li>)}
                         </ul>
-                        {errors.checkout_token && <Link href={route('checkout.index')} className="font-semibold underline">Reload checkout</Link>}
+                        {errors.checkout_token && <Link href={route('checkout.index', { items: data.item_ids.join(','), ...(Object.keys(data.item_quantities).length === 1 ? { quantity: Object.values(data.item_quantities)[0] } : {}) })} className="font-semibold underline">Reload checkout</Link>}
                     </div>
                 )}
 
@@ -842,7 +847,7 @@ export default function CheckoutIndex({
 
                                         <div className="text-right shrink-0">
                                             <p className="text-slate-500 text-[11px]">
-                                                {quotedItems.get(item.id)?.quantity ?? item.quantity} × {quotePrice(quotedItems.get(item.id)?.unit_price ?? Number(item.product?.price))}
+                                                <PriceSegments segments={quotedItems.get(item.id)?.price_segments} quantity={quotedItems.get(item.id)?.quantity ?? item.quantity} unitPrice={quotedItems.get(item.id)?.unit_price ?? Number(item.unit_price)} />
                                             </p>
                                             <p className="font-bold text-slate-900 text-sm">
                                                 {quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}
@@ -1155,7 +1160,7 @@ export default function CheckoutIndex({
                                             <div key={item.id} className="py-2 flex items-center justify-between text-xs">
                                                 <div className="truncate pr-2">
                                                     <span className="font-semibold text-slate-800 block truncate">{item.product?.name}</span>
-                                                    <span className="text-slate-500 text-[11px]">Qty: {quotedItems.get(item.id)?.quantity ?? item.quantity} × {quotePrice(quotedItems.get(item.id)?.unit_price ?? Number(item.product?.price))}</span>
+                                                    <span className="text-slate-500 text-[11px]">Qty: <PriceSegments segments={quotedItems.get(item.id)?.price_segments} quantity={quotedItems.get(item.id)?.quantity ?? item.quantity} unitPrice={quotedItems.get(item.id)?.unit_price ?? Number(item.unit_price)} /></span>
                                                 </div>
                                                 <span className="font-bold text-slate-900 shrink-0">{quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}</span>
                                             </div>

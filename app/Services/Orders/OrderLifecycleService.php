@@ -12,6 +12,7 @@ use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\InventoryService;
+use App\Services\Commerce\SalePriceService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Notifications\LifecycleNoticeService;
@@ -38,6 +39,11 @@ class OrderLifecycleService
     ];
 
     public const BATCH_LIMIT = 50;
+
+    public const BUYER_CANCELLATION_REASONS = [
+        'Ordered by mistake', 'Need to change delivery details', 'Need to change an item or quantity',
+        'No longer needed', 'Other reason',
+    ];
 
     private const SELLER_TRANSITIONS = [
         'placed' => 'confirmed',
@@ -243,21 +249,102 @@ class OrderLifecycleService
             ])->validate();
             $reason = $data['reason'].(! empty($data['notes']) ? ': '.$data['notes'] : '');
 
-            app(VoucherFundingService::class)->releaseCancellation($lockedOrder, $seller, $reason);
-
-            foreach ($lockedOrder->items as $item) {
-                $product = Product::whereKey($item->product_id)->lockForUpdate()->first();
-                if ($product) {
-                    $this->inventory->restore($product, $item->quantity, $item->size);
-                }
-            }
-
-            $lockedOrder->update(['status' => 'cancelled', 'notes' => $reason]);
-            $lockedOrder->delivery?->update(['status' => 'cancelled']);
-            app(LifecycleNoticeService::class)->order($lockedOrder, 'cancelled');
-
-            return $lockedOrder->fresh();
+            return $this->cancelLocked($lockedOrder, $seller, $reason);
         });
+    }
+
+    public function canBuyerCancel(Order $order, User $buyer): bool
+    {
+        return $buyer->isBuyer() && $buyer->canAccessPortal() && $order->buyer_id === $buyer->id
+            && $this->buyerCancellationIssue($order) === null;
+    }
+
+    private function buyerCancellationIssue(Order $order): ?string
+    {
+        if (! in_array($order->status, OrderWorkspaceService::PREPARATION, true)) {
+            return 'The seller has marked this order ready for pickup or delivery has started. It can no longer be cancelled here.';
+        }
+        if ($order->payment_method !== 'cod') {
+            return 'Contact support to review the payment before cancelling this order.';
+        }
+        if ($order->payment_status !== 'pending' || $order->codAccount) {
+            return 'A payment is already recorded. Contact support about this order.';
+        }
+        $parcel = $order->delivery;
+        if (! $parcel) {
+            return null;
+        }
+        if (app(HandoverHoldService::class)->held($parcel)) {
+            return 'This parcel has a handover review in progress. Contact support before changing this order.';
+        }
+        if (! $this->isUnclaimed($parcel)) {
+            return 'A rider has already claimed this parcel. Contact the seller or support.';
+        }
+        $custody = DeliveryCheckpoint::lastCustody($parcel);
+        $recorded = $parcel->checkpoints()->whereNull('source_checkpoint_id')->whereNotNull('custody_after')->exists();
+        if ($recorded && ($custody['kind'] ?? null) !== 'seller') {
+            return 'A parcel handover is already recorded. Contact the seller or support.';
+        }
+
+        return null;
+    }
+
+    public function cancelByBuyer(Order $order, User $buyer, array $input): Order
+    {
+        $data = Validator::make($input, [
+            'reason' => ['required', 'string', Rule::in(self::BUYER_CANCELLATION_REASONS)],
+            'notes' => [Rule::requiredIf(($input['reason'] ?? null) === 'Other reason'), 'nullable', 'string', new ApplicationText('notes', 1, 500)],
+        ])->validate();
+
+        return DB::transaction(function () use ($order, $buyer, $data) {
+            $locked = $this->lockSellerOrder($order->id);
+            $buyer = app(BuyerAccessService::class)->requirePortal($buyer, lock: true);
+            if ($locked->buyer_id !== $buyer->id) {
+                throw new AuthorizationException('This order belongs to another buyer.');
+            }
+            if ($locked->status === 'cancelled') {
+                return $locked;
+            }
+            if ($issue = $this->buyerCancellationIssue($locked)) {
+                throw ValidationException::withMessages(['reason' => $issue]);
+            }
+            $reason = $data['reason'].(! empty($data['notes']) ? ': '.$data['notes'] : '');
+
+            return $this->cancelLocked($locked, $buyer, $reason, byBuyer: true);
+        });
+    }
+
+    private function cancelLocked(Order $order, User $actor, string $reason, bool $byBuyer = false): Order
+    {
+        // Keep product locks before funding locks, matching checkout, and restore each size once.
+        $products = Product::whereIn('id', $order->items->pluck('product_id'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        $funding = app(VoucherFundingService::class);
+        if ($byBuyer) {
+            $funding->releaseBuyerCancellation($order, $actor, $reason);
+        } else {
+            $funding->releaseCancellation($order, $actor, $reason);
+        }
+        foreach ($order->items as $item) {
+            if ($product = $products->get($item->product_id)) {
+                $this->inventory->restore($product, $item->quantity, $item->size, $item->color);
+                app(SalePriceService::class)->release($item);
+            }
+        }
+        $parcel = $order->delivery;
+        $source = $parcel ? DeliveryCheckpoint::state($parcel->setRelation('order', $order)) : null;
+        $custody = $parcel ? DeliveryCheckpoint::lastCustody($parcel) : null;
+        $order->update($byBuyer ? ['status' => 'cancelled'] : ['status' => 'cancelled', 'notes' => $reason]);
+        $parcel?->update(['status' => 'cancelled']);
+        if ($byBuyer && $parcel) {
+            DeliveryCheckpoint::firstOrCreate(['delivery_id' => $parcel->id, 'checkpoint_type' => 'cancelled'], [
+                'location_name' => 'Buyer cancellation', 'notes' => $reason, 'scanned_by_id' => $actor->id,
+                'scan_provenance' => 'not_scanned', 'source_state' => $source,
+                'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custody, 'custody_after' => $custody,
+            ]);
+        }
+        app(LifecycleNoticeService::class)->order($order, 'cancelled');
+
+        return $order->fresh();
     }
 
     public function buyerComplete(Order $order, User $buyer): Order

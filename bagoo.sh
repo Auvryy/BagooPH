@@ -40,6 +40,7 @@ case "$cmd" in
     docker compose exec app npm "$@"
     ;;
   deploy)
+    docker compose stop scheduler
     docker compose build app
     docker compose run --rm --no-deps app composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
     docker compose run --rm --no-deps app npm ci
@@ -50,11 +51,17 @@ case "$cmd" in
     docker compose exec app php artisan optimize:clear
     docker compose exec app php artisan config:cache
     docker compose exec app php artisan view:cache
-    echo "Deployment checks passed. Frontend assets and Laravel caches are ready."
+    docker compose up -d --no-deps scheduler
+    echo "Deployment checks passed. Frontend assets, Laravel caches and the scheduler are ready."
     ;;
   verify)
     docker compose exec app sh -lc 'test -f public/build/manifest.json || { echo "Missing public/build/manifest.json. Run ./bagoo.sh deploy." >&2; exit 1; }'
     docker compose exec app php artisan migrate:status --no-ansi --pending=1
+    if [ -z "$(docker compose ps --status running -q scheduler)" ]; then
+      echo "The scheduler is not running. Run ./bagoo.sh deploy before verifying." >&2
+      exit 1
+    fi
+    docker compose exec -T scheduler php artisan schedule:list --no-ansi
     echo "Deployment verification passed."
     ;;
   composer)
@@ -80,8 +87,8 @@ case "$cmd" in
     echo "  seed         Run database seeders"
     echo "  fresh        Run fresh migrations and seed demo data"
     echo "  npm          Run npm commands inside app container"
-    echo "  deploy       Build assets, migrate, and warm production caches"
-    echo "  verify       Confirm compiled assets and migration status"
+    echo "  deploy       Build assets, migrate, warm caches and start the scheduler"
+    echo "  verify       Confirm assets, migrations and the running scheduler"
     echo "  composer     Run composer commands inside app container"
     echo "  bash         Open bash shell inside app container"
     echo "  test         Run tests inside app container"

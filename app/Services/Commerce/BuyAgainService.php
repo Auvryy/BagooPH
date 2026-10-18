@@ -35,20 +35,24 @@ class BuyAgainService
         $products = app(BuyerDiscoveryService::class)->catalogue()->whereIn('products.id', $items->pluck('product_id'))->get()->keyBy('id');
         $cart = Cart::where('user_id', $actor->id)->first();
         $bagItems = $cart?->items()->whereIn('product_id', $items->pluck('product_id'))->get() ?? collect();
-        $rows = $items->map(function ($original) use ($products, $bagItems) {
+        $rows = $items->map(function ($original) use ($products, $bagItems, $actor) {
             $product = $products->get($original->product_id);
             if ($product && $product->shop_id !== $original->shop_id) {
                 $product = null;
             }
             $maximum = 0;
+            $currentPrice = null;
             $reason = 'This listing is currently unavailable.';
             if ($product) {
                 $productItems = $bagItems->where('product_id', $product->id);
                 $matching = $productItems->first(fn ($line) => $line->color === $original->color && $line->size === $original->size);
                 try {
-                    $limit = app(InventoryService::class)->maximumCartLineQuantity($product, $productItems, $original->color, $original->size, $matching?->id);
+                    $currentPrice = app(InventoryService::class)->unitPrice($product, $original->color, $original->size);
+                    $limit = app(InventoryService::class)->maximumCartLineQuantity($product, $productItems, $original->color, $original->size, $matching?->id, $actor->id);
                     $maximum = max(0, $limit - ($matching?->quantity ?? 0));
-                    $reason = $product->stock <= 0 ? 'This product is currently out of stock.' : 'Your Bag already contains the available quantity for this item.';
+                    $allowance = app(PurchasePolicyService::class)->remaining($product, $actor->id);
+                    $reason = $product->stock <= 0 ? 'This product is currently out of stock.'
+                        : ($allowance === 0 ? "You have reached this product’s limit of {$product->purchase_limit} units per buyer." : 'Your Bag already contains the available quantity for this item.');
                 } catch (RuntimeException $exception) {
                     $reason = $exception->getMessage();
                 }
@@ -56,7 +60,7 @@ class BuyAgainService
 
             return [
                 'order_item_id' => $original->id, 'original_quantity' => $original->quantity,
-                'previous_unit_price' => $original->unit_price, 'current_unit_price' => $product?->price,
+                'previous_unit_price' => $original->unit_price, 'current_unit_price' => $currentPrice,
                 'color' => $original->color, 'size' => $original->size,
                 'name' => $product?->name ?? $original->sku_snapshot ?? 'Purchased item',
                 'product_url' => $product ? route('buyer.products.show', $product->slug, absolute: false) : null,
@@ -123,7 +127,12 @@ class BuyAgainService
                 if (! $product || $product->shop_id !== $original->shop_id) {
                     throw ValidationException::withMessages(['items' => 'One or more purchased items are no longer offered by the original shop. Nothing was added.']);
                 }
-                if ($selected['expected_unit_price'] !== $product->price) {
+                try {
+                    $currentPrice = app(InventoryService::class)->unitPrice($product, $original->color, $original->size);
+                } catch (RuntimeException $exception) {
+                    throw ValidationException::withMessages(['items' => $exception->getMessage().' Nothing was added.']);
+                }
+                if ($selected['expected_unit_price'] !== $currentPrice) {
                     throw ValidationException::withMessages(['items' => 'A price changed after your preview. Nothing was added. Open Buy again to review the current prices.']);
                 }
                 try {

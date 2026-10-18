@@ -17,6 +17,8 @@ const bundle = buildSync({
         export { default as Search } from '@/Pages/Buyer/Search';
         export { default as Product } from '@/Pages/Buyer/ProductDetail';
         export { default as Store } from '@/Pages/Marketplace/ShopDetail';
+        export { default as FollowedShops } from '@/Pages/Buyer/FollowedShops';
+        export { productQuantityError } from '@/utils/productQuantity';
         export { default as Reviews } from '@/Pages/Seller/Reviews';
         export { default as Detail } from '@/Pages/Buyer/OrderDetail';
         export { default as Purchases } from '@/Pages/Buyer/Profile';
@@ -75,13 +77,14 @@ test('an unrated product card displays an honest empty state', () => {
 test('public product reviews distinguish legacy rows and render persisted seller replies', async () => {
     const html = await render(ui.Product, 'Buyer/ProductDetail', {
         product: { ...product, reviews: [
-            { id: 1, rating: 4, verified_purchase: true, buyer: { name: 'Verified Buyer' }, comment: 'The bag arrived.', reply: { text: 'Thank you for your review.', shop_name: shop.name, created_at: '2026-10-01', updated_at: '2026-10-02' } },
+            { id: 1, rating: 4, verified_purchase: true, buyer: { name: 'Verified Buyer' }, purchased_options: { color: 'Natural', size: 'Large' }, comment: 'The bag arrived.', reply: { text: 'Thank you for your review.', shop_name: shop.name, created_at: '2026-10-01', updated_at: '2026-10-02' } },
             { id: 2, rating: 5, verified_purchase: false, buyer: { name: 'Older Buyer' }, comment: 'An older review.' },
         ] }, variations: { colors: [], sizes: [] }, relatedProducts: [], shopStats: summary,
     });
     assert.match(html, /Verified Purchase/);
     assert.match(html, /Unverified legacy review/);
     assert.match(html, /Thank you for your review\./);
+    assert.match(html, /Purchased option: Natural · Large/);
     assert.match(html, /No ratings yet/);
     assert.match(html, /0 Verified Reviews/);
     assert.doesNotMatch(html, /Lowest Price Guaranteed|MALL VERIFIED|PREFERRED|within hours|5\.0 Stars|Guaranteed delivery in/);
@@ -98,11 +101,28 @@ test('seller reviews render saved replies and edit controls after refresh', asyn
     assert.doesNotMatch(html, /Top Rated Seller|Mall Merchant|within hours/);
 });
 test('storefront metrics use recorded reviews and a real shop opening date', async () => {
-    const html = await render(ui.Store, 'Marketplace/ShopDetail', { shop, products: paginated([product]), shopStats: summary });
+    const html = await render(ui.Store, 'Marketplace/ShopDetail', { shop, products: paginated([product]), shopStats: summary, filters: {}, categories: [], followerCount: 0, isFollowing: false });
     assert.match(html, /No ratings yet/);
     assert.match(html, /Review reply rate/);
     assert.match(html, /Shop opened/);
     assert.doesNotMatch(html, /4\.95|99%|98%|MALL PREFERRED|>MALL</);
+    assert.match(html, /0 followers/);
+    assert.doesNotMatch(html, /14\.2k|COIN10|PRIMESHIP|FREE DOORSTEP DELIVERY/);
+});
+
+test('unavailable followed shops retain removal without disclosing restricted storefront details', async () => {
+    const html = await render(ui.FollowedShops, 'Buyer/FollowedShops', { entries: paginated([{ id: 1, shop_id: shop.id, shop: null }]) });
+    assert.match(html, /Shop currently unavailable/);
+    assert.match(html, /Following/);
+    assert.doesNotMatch(html, /Bagoo Crafts/);
+});
+
+test('typed product quantities reject invalid values without silently converting them', () => {
+    for (const value of ['', '0', '01', '-1', '1.5', '1e1', 'abc', '100', ' 1', '１']) assert.ok(ui.productQuantityError(value, 99), value);
+    assert.equal(ui.productQuantityError('1', 1), null);
+    assert.equal(ui.productQuantityError('99', 99), null);
+    assert.match(ui.productQuantityError('3', 2), /only 2/);
+    assert.match(ui.productQuantityError('1', 0), /no more/);
 });
 test('completed order details hide review creation once all items have saved reviews', async () => {
     const html = await render(ui.Detail, 'Buyer/OrderDetail', {
@@ -111,6 +131,18 @@ test('completed order details hide review creation once all items have saved rev
     });
     assert.match(html, /Review saved/);
     assert.doesNotMatch(html, /Rate &amp; Upload Photos/);
+});
+
+test('review edit controls use the owned server action instead of assuming every saved review is editable', async () => {
+    for (const url of ['/buyer/reviews/1', null]) {
+        const html = await render(ui.Detail, 'Buyer/OrderDetail', {
+            order: { id: 4, order_number: 'BGO-EDIT', status: 'completed', payment_status: 'paid', total_amount: 250, subtotal: 250, shipping_fee: 0, created_at: '2026-10-01', items: [{ id: 10, product_id: product.id, quantity: 1, unit_price: 250, product, review: { id: 1, order_item_id: 10, rating: 4, comment: 'The bag arrived.', edit_url: url } }] },
+            canUsePortal: true, canConfirmReceipt: false, pickupClaim: null, pickupHub: null, pickupCodeUrl: null, orderNotices: [],
+        });
+        if (url) assert.match(html, /Edit review/);
+        else assert.doesNotMatch(html, /Edit review/);
+        assert.doesNotMatch(html, /Rate &amp; Upload Photos/);
+    }
 });
 
 const buyer = { id: 7, name: 'Ana Santos', role: 'buyer', email: 'buyer@bagoo.test', status: 'active', kyc_status: 'approved' };

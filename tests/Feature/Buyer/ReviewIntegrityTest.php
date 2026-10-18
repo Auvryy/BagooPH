@@ -14,6 +14,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -55,6 +56,65 @@ class ReviewIntegrityTest extends TestCase
     private function savedReview(array $extra = []): Review
     {
         return app(ReviewService::class)->create($this->buyer, $this->input($extra));
+    }
+
+    public function test_review_has_one_owned_edit_with_retry_and_private_original_content(): void
+    {
+        $review = $this->savedReview();
+        $this->actingAs($this->buyer)->patch(route('buyer.reviews.update', $review), ['rating' => 2, 'comment' => 'The zip needs improvement.'])->assertSessionHas('success');
+        $this->assertSame(2, $review->fresh()->rating);
+        $this->assertSame(4, $review->fresh()->original_content['rating']);
+        $editedAt = $review->fresh()->edited_at->toIso8601String();
+        $this->patch(route('buyer.reviews.update', $review), ['rating' => 2, 'comment' => 'The zip needs improvement.'])->assertSessionHas('success');
+        $this->assertSame($editedAt, $review->fresh()->edited_at->toIso8601String());
+        $this->patchJson(route('buyer.reviews.update', $review), ['rating' => 3, 'comment' => 'Another change.'])->assertUnprocessable();
+        $this->assertSame(2, $review->fresh()->rating);
+        $this->get(route('buyer.orders.show', $this->order))->assertInertia(fn (Assert $page) => $page
+            ->where('order.items.0.review.edit_url', null)->missing('order.items.0.review.original_content')->missing('order.items.0.review.edit_fingerprint'));
+        $this->actingAs(User::factory()->create())->patchJson(route('buyer.reviews.update', $review), ['rating' => 1])->assertForbidden();
+    }
+
+    public function test_review_edit_window_has_an_inclusive_thirty_day_boundary(): void
+    {
+        $review = $this->savedReview();
+        $this->travelTo($review->created_at->copy()->addDays(30));
+        $this->actingAs($this->buyer)->patch(route('buyer.reviews.update', $review), ['rating' => 3, 'comment' => 'Updated after using the bag.'])->assertSessionHas('success');
+        $review = $this->savedReview(['order_item_id' => OrderItem::factory()->create(['order_id' => $this->order->id, 'shop_id' => $this->shop->id, 'product_id' => $this->product->id])->id]);
+        $this->travelTo($review->created_at->copy()->addDays(30)->addSecond());
+        $this->patchJson(route('buyer.reviews.update', $review), ['rating' => 3])->assertUnprocessable();
+        $this->assertNull($review->fresh()->edited_at);
+    }
+
+    public function test_edited_review_keeps_photos_updates_real_averages_and_masks_public_names(): void
+    {
+        $this->buyer->update(['name' => 'Ana Santos']);
+        $this->item->update(['color' => 'Natural', 'size' => 'Large']);
+        $review = $this->savedReview(['images' => [UploadedFile::fake()->image('bag.jpg')]]);
+        $photos = $review->images;
+        $this->actingAs($this->buyer)->patch(route('buyer.reviews.update', $review), ['rating' => 2, 'comment' => 'The strap is too short.'])->assertSessionHas('success');
+        $this->assertSame($photos, $review->fresh()->images);
+        $this->assertSame('2.00', (string) $this->product->fresh()->rating);
+        app(ReviewService::class)->publicReviews($this->product);
+        $this->assertSame('A*** S***', $this->product->reviews[0]['buyer']['name']);
+        $this->assertSame(['color' => 'Natural', 'size' => 'Large'], $this->product->reviews[0]['purchased_options']);
+        $this->assertArrayNotHasKey('original_content', $this->product->reviews[0]);
+        $this->assertCount(1, Storage::disk('public')->allFiles('reviews'));
+    }
+
+    public function test_failed_edit_rolls_back_content_and_does_not_consume_the_edit(): void
+    {
+        $review = $this->savedReview();
+        Event::listen('eloquent.updated: '.Product::class, fn () => throw new \RuntimeException('Simulated summary failure.'));
+        try {
+            app(ReviewService::class)->edit($this->buyer, $review, ['rating' => 2]);
+            $this->fail('The update should have failed.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('Simulated summary failure.', $error->getMessage());
+        }
+        $this->assertSame(4, $review->fresh()->rating);
+        $this->assertNull($review->fresh()->edited_at);
+        $this->assertNull($review->fresh()->original_content);
+        $this->assertSame('4.00', (string) $this->product->fresh()->rating);
     }
 
     public function test_purchase_identity_is_derived_and_the_order_detail_marks_the_item_reviewed(): void

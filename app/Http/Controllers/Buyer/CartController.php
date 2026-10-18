@@ -48,12 +48,20 @@ class CartController extends Controller
         $cart->load(['items.product.shop']);
         $eligibleIds = Product::availableForSale()->whereIn('id', $cart->items->pluck('product_id'))->pluck('id');
         foreach ($cart->items as $item) {
-            if ($item->product) {
-                $item->setAttribute('unit_price', $item->product->price);
-            }
             $available = $eligibleIds->contains($item->product_id) && $item->product?->stock > 0;
+            $reason = 'This listing is unavailable for new purchases. You can remove it from your Bag.';
+            if ($available) {
+                try {
+                    $inventory = app(InventoryService::class);
+                    $inventory->assertCheckoutAvailability(collect([$item]), collect([$item->product_id => $item->product]), $cart->user_id);
+                    $item->setAttribute('unit_price', $inventory->unitPrice($item->product, $item->color, $item->size));
+                } catch (RuntimeException $exception) {
+                    $available = false;
+                    $reason = $exception->getMessage();
+                }
+            }
             $item->setAttribute('available_for_purchase', $available);
-            $item->setAttribute('unavailable_reason', $available ? null : 'This listing is unavailable for new purchases. You can remove it from your Bag.');
+            $item->setAttribute('unavailable_reason', $available ? null : $reason);
         }
 
         if ($request->expectsJson()) {
@@ -64,7 +72,7 @@ class CartController extends Controller
                 return response()->json(['message' => 'One or more selected Shopping Bag items are unavailable.'], 422);
             }
             try {
-                app(InventoryService::class)->assertCheckoutAvailability($selected, $selected->pluck('product')->keyBy('id'));
+                app(InventoryService::class)->assertCheckoutAvailability($selected, $selected->pluck('product')->keyBy('id'), $cart->user_id);
             } catch (RuntimeException $exception) {
                 return response()->json(['message' => $exception->getMessage()], 422);
             }
@@ -101,14 +109,22 @@ class CartController extends Controller
             'quantity' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'min:1', 'max:99'],
             'color' => 'nullable|string|max:50',
             'size' => 'nullable|string|max:50',
+            'buy_now' => ['nullable', 'boolean'],
         ]);
+        $buyNow = (bool) ($validated['buy_now'] ?? false);
+        if ($buyNow) {
+            if (! $request->user()) {
+                return redirect()->guest(route('login'));
+            }
+            app(BuyerAccessService::class)->requirePortal($request->user());
+        }
 
         $cart = $this->getCart($request);
         $quantity = (int) ($validated['quantity'] ?? 1);
         $color = $this->normalizeOption($validated['color'] ?? null);
         $size = $this->normalizeOption($validated['size'] ?? null);
 
-        $product = DB::transaction(function () use ($request, $cart, $validated, $quantity, $color, $size, $lines) {
+        [$product, $line] = DB::transaction(function () use ($request, $cart, $validated, $quantity, $color, $size, $lines) {
             Cart::whereKey($cart->id)->lockForUpdate()->firstOrFail();
             try {
                 $product = app(ShopEligibilityService::class)->lockSaleProducts([$validated['product_id']], $request->user() ? [$request->user()->id] : [])->get($validated['product_id']);
@@ -122,10 +138,14 @@ class CartController extends Controller
                 throw ValidationException::withMessages(['product_id' => 'This product is no longer available.']);
             }
 
-            $lines->addLocked($cart, $product, $quantity, $color, $size);
+            $line = $lines->addLocked($cart, $product, $quantity, $color, $size);
 
-            return $product;
+            return [$product, $line];
         });
+
+        if ($buyNow) {
+            return redirect()->route('checkout.index', ['items' => $line->id, 'quantity' => $quantity]);
+        }
 
         return back()->with('success', "'{$product->name}' added to your shopping bag!");
     }
@@ -178,8 +198,10 @@ class CartController extends Controller
                     $productItems,
                     $lockedItem->color,
                     $lockedItem->size,
-                    $lockedItem->id
+                    $lockedItem->id,
+                    $cart->user_id
                 );
+                $unitPrice = $inventory->unitPrice($product, $lockedItem->color, $lockedItem->size);
             } catch (RuntimeException $exception) {
                 throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);
             }
@@ -192,7 +214,7 @@ class CartController extends Controller
 
             $lockedItem->update([
                 'quantity' => $quantity,
-                'unit_price' => $product->price,
+                'unit_price' => $unitPrice,
             ]);
         });
 

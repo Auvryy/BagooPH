@@ -26,7 +26,9 @@ use App\Http\Controllers\Buyer\CheckoutController;
 use App\Http\Controllers\Buyer\CustomerServiceAssistantController;
 use App\Http\Controllers\Buyer\OrderHistoryController;
 use App\Http\Controllers\Buyer\PickupClaimController;
+use App\Http\Controllers\Buyer\SaleReminderController;
 use App\Http\Controllers\Buyer\SavedProductController;
+use App\Http\Controllers\Buyer\ShopFollowController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CodCashController;
@@ -51,14 +53,15 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\RegistrationPolicyController;
+use App\Http\Controllers\Seller\ProductSaleController;
 use App\Http\Controllers\Seller\PromotionController as SellerPromotionController;
-use App\Http\Controllers\Seller\SellerAiAssistantController;
-use App\Http\Controllers\Seller\SellerDashboardController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Seller\SellerAiAssistantController;
+use App\Http\Controllers\Seller\SellerDashboardController;
 use App\Http\Controllers\Seller\SellerDisputeController;
 use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
@@ -506,6 +509,9 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::post('/profile', [BuyerProfileController::class, 'update'])->middleware('buyer.approved:account')->name('profile.update');
         Route::middleware('buyer.approved')->group(function () {
             Route::get('/saved-products', [SavedProductController::class, 'index'])->name('saved-products.index');
+            Route::get('/followed-shops', [ShopFollowController::class, 'index'])->name('followed-shops.index');
+            Route::post('/followed-shops/{shop}', [ShopFollowController::class, 'store'])->whereNumber('shop')->name('followed-shops.store');
+            Route::delete('/followed-shops/{shop}', [ShopFollowController::class, 'destroy'])->whereNumber('shop')->name('followed-shops.destroy');
             Route::get('/orders/{order}/buy-again', [BuyAgainController::class, 'show'])->whereNumber('order')->name('orders.buy-again');
             Route::post('/orders/{order}/buy-again', [BuyAgainController::class, 'store'])->whereNumber('order')->name('orders.buy-again.store');
             Route::post('/saved-products/{product}', [SavedProductController::class, 'store'])->whereNumber('product')->name('saved-products.store');
@@ -520,6 +526,9 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
             Route::get('/disputes', [BuyerDisputeController::class, 'index'])->name('disputes.index');
             Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
             Route::post('/reviews', [BuyerReviewController::class, 'store'])->middleware('throttle:30,1')->name('reviews.store');
+            Route::patch('/reviews/{review}', [BuyerReviewController::class, 'update'])->whereNumber('review')->middleware('throttle:30,1')->name('reviews.update');
+            Route::post('/sale-reminders/{sale}', [SaleReminderController::class, 'store'])->where('sale', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('sale-reminders.store');
+            Route::delete('/sale-reminders/{sale}', [SaleReminderController::class, 'destroy'])->where('sale', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('sale-reminders.destroy');
             Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
             Route::post('/vouchers/choices', [VoucherController::class, 'choices'])->middleware('throttle:60,1')->name('vouchers.choices');
             Route::post('/vouchers/best', [VoucherController::class, 'best'])->middleware('throttle:30,1')->name('vouchers.best');
@@ -533,6 +542,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::get('/orders', [OrderHistoryController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/confirm', [OrderHistoryController::class, 'confirmReceived'])->name('orders.confirm');
+        Route::post('/orders/{order}/cancel', [OrderHistoryController::class, 'cancel'])->whereNumber('order')->middleware('buyer.approved')->name('orders.cancel');
         Route::post('/orders/{order}/pickup-code', [PickupClaimController::class, 'issue'])->middleware('throttle:10,1')->name('orders.pickup-code');
         Route::patch('/order-notices/{notification}/read', [OrderHistoryController::class, 'readNotice'])->name('orders.notice-read');
     });
@@ -598,7 +608,8 @@ Route::middleware('auth')->group(function () {
 
     // Live Chat / Messaging Endpoints
     Route::get('/messages', [ChatController::class, 'buyerInbox'])->middleware('buyer.approved')->name('messages');
-    Route::get('/chat/messages/{receiverId}', [ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::get('/chat/messages/{receiverId}', [ChatController::class, 'getMessages'])->where('receiverId', '[1-9][0-9]{0,17}')->name('chat.messages');
+    Route::get('/chat/attachments/{message}', [ChatController::class, 'attachment'])->where('message', '[1-9][0-9]{0,17}')->name('chat.attachment');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
 });
 
@@ -610,6 +621,10 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->group(function () {
     Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
     Route::get('/products', [SellerProductController::class, 'index'])->name('products.index');
+    Route::get('/products/{product}/sales', [ProductSaleController::class, 'index'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.index');
+    Route::post('/products/{product}/sales', [ProductSaleController::class, 'store'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.store');
+    Route::put('/products/{product}/sales/{sale}', [ProductSaleController::class, 'update'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.update');
+    Route::post('/products/{product}/sales/{sale}/end', [ProductSaleController::class, 'end'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.end');
     Route::post('/products', [SellerProductController::class, 'store'])->name('products.store');
     Route::post('/products/assist-description', [SellerAiAssistantController::class, 'generateDescription'])
         ->middleware('throttle:20,1')

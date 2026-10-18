@@ -27,8 +27,8 @@ export default function ProductCard({
     saveControl,
     showDeliveryBadge = true,
 }: ProductCardProps) {
-    const priceNum = Number(product.price);
-    const compareNum = product.compare_at_price ? Number(product.compare_at_price) : null;
+    const priceNum = Number(product.sale_offer?.effective_price ?? product.price);
+    const compareNum = product.sale_offer?.active && priceNum < Number(product.price) ? Number(product.price) : product.compare_at_price ? Number(product.compare_at_price) : null;
     const discountPct = compareNum && compareNum > priceNum
         ? Math.round(((compareNum - priceNum) / compareNum) * 100)
         : null;
@@ -77,6 +77,7 @@ export default function ProductCard({
                     </div>
                 )}
 
+                {product.shop?.vacation_mode && <span className="absolute left-2 top-2 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">On vacation</span>}
                 {isOutOfStock && (
                     <span className="absolute right-2 top-2 z-10 rounded-sm border border-slate-700 bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white">
                         Out of stock
@@ -123,11 +124,11 @@ export default function ProductCard({
                     {/* Price Block */}
                     <div className="flex items-baseline gap-1.5 pt-0.5 font-sans">
                         <span className="text-sm sm:text-base font-black text-[#E00D42]">
-                            {formatPrice(product.price)}
+                            {formatPrice(priceNum)}
                         </span>
                         {compareNum && compareNum > priceNum && (
                             <span className="text-[10px] text-slate-400 line-through">
-                                {formatPrice(product.compare_at_price)}
+                                {formatPrice(compareNum)}
                             </span>
                         )}
                     </div>
@@ -170,7 +171,7 @@ export default function ProductCard({
                             e.stopPropagation();
                             onQuickAdd(product);
                         }}
-                        disabled={isAdding || isOutOfStock}
+                        disabled={isAdding || isOutOfStock || product.shop?.vacation_mode}
                         className={`w-full py-1.5 px-2 rounded-xs font-sans text-[9px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs ${
                             isSuccess
                                 ? 'bg-emerald-600 text-white'

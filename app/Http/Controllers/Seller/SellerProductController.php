@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Rules\AsciiPositiveInteger;
 use App\Services\Commerce\SellerInventoryService;
 use App\Services\Commerce\SellerSalesMetricsService;
+use App\Services\Commerce\VariantMatrixService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -35,7 +38,7 @@ class SellerProductController extends Controller
             $query = $this->salesMetrics
                 ->withProductLifecycleTotals(Product::query()->where('shop_id', $shop->id))
                 ->withCount('orderItems')
-                ->with(['category', 'images', 'moderationDecisions' => fn ($decisions) => $decisions->latest('id')->limit(1)]);
+                ->with(['category', 'images', 'sales', 'moderationDecisions' => fn ($decisions) => $decisions->latest('id')->limit(1)]);
             $products = $this->inventory->paginate($this->inventory->filter($query, $filters), $filters);
 
             $products->through(function (Product $product) {
@@ -75,9 +78,10 @@ class SellerProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'nullable|exists:categories,id',
-            'price' => 'required|numeric|min:0.01',
-            'compare_at_price' => 'nullable|numeric|gt:price',
-            'stock' => 'required|integer|min:0',
+            'price' => ['required', 'numeric', 'between:0.01,99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
+            'compare_at_price' => ['nullable', 'numeric', 'gt:price', 'max:99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
+            'stock' => 'required|integer|min:0|max:1000000',
+            'purchase_limit' => ['nullable', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
             'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')],
             'description' => 'required|string',
             'featured_image' => 'nullable|string',
@@ -107,6 +111,9 @@ class SellerProductController extends Controller
             : 'BGO-'.$cleanPrefix.'-'.strtoupper(Str::random(5));
 
         $validated['variants'] = $this->sanitizeVariants($request, (int) $validated['stock']);
+        if (isset($validated['variants']['combinations'])) {
+            $validated['stock'] = array_sum(array_column($validated['variants']['combinations'], 'stock'));
+        }
 
         unset($validated['image_file'], $validated['image_files'], $validated['gallery_manifest']);
 
@@ -139,9 +146,10 @@ class SellerProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'nullable|exists:categories,id',
-            'price' => 'required|numeric|min:0.01',
-            'compare_at_price' => 'nullable|numeric|gt:price',
-            'stock' => 'required|integer|min:0',
+            'price' => ['required', 'numeric', 'between:0.01,99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
+            'compare_at_price' => ['nullable', 'numeric', 'gt:price', 'max:99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
+            'stock' => 'required|integer|min:0|max:1000000',
+            'purchase_limit' => ['nullable', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
             'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')->ignore($product)],
             'description' => 'required|string',
             'featured_image' => 'nullable|string',
@@ -169,6 +177,11 @@ class SellerProductController extends Controller
 
         if ($request->has('variants')) {
             $validated['variants'] = $this->sanitizeVariants($request, (int) $validated['stock']);
+            app(VariantMatrixService::class)->assertRestorable($product, $validated['variants']);
+        }
+        $effectiveVariants = array_key_exists('variants', $validated) ? $validated['variants'] : $product->variants;
+        if (isset($effectiveVariants['combinations'])) {
+            $validated['stock'] = array_sum(array_column($effectiveVariants['combinations'], 'stock'));
         }
 
         unset($validated['image_file'], $validated['image_files'], $validated['gallery_manifest']);
@@ -210,6 +223,9 @@ class SellerProductController extends Controller
                 throw ValidationException::withMessages(['category_id' => 'This product needs an approved category before stock can be changed.']);
             }
             app(ShopEligibilityService::class)->categoryFor($shop, $lockedProduct->category_id);
+            if (isset($lockedProduct->variants['combinations'])) {
+                throw ValidationException::withMessages(['quantity' => 'Edit the product and update each option combination. Combined stock is calculated from those rows.']);
+            }
             $newStock = $validated['mode'] === 'add'
                 ? $lockedProduct->stock + (int) $validated['quantity']
                 : (int) $validated['quantity'];
@@ -238,14 +254,37 @@ class SellerProductController extends Controller
         }
 
         $variantsRaw = $request->input('variants');
+        if ($variantsRaw === null || $variantsRaw === '') {
+            return null;
+        }
         if (is_string($variantsRaw)) {
             $variantsRaw = json_decode($variantsRaw, true);
         }
 
         if (! is_array($variantsRaw)) {
-            return null;
+            throw ValidationException::withMessages(['variants' => 'Enter valid product options before saving.']);
         }
 
+        foreach (['colors', 'sizes'] as $group) {
+            if (isset($variantsRaw[$group]) && is_array($variantsRaw[$group])) {
+                foreach ($variantsRaw[$group] as &$option) {
+                    if (is_array($option) && isset($option['name']) && is_string($option['name'])) {
+                        $option['name'] = trim($option['name']);
+                    }
+                }
+                unset($option);
+            }
+        }
+        Validator::make($variantsRaw, [
+            'colors' => ['sometimes', 'array', 'list', 'max:40'],
+            'colors.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
+            'sizes' => ['sometimes', 'array', 'list', 'max:40'],
+            'sizes.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
+            'sizes.*.stock' => ['sometimes', 'nullable', 'regex:/\A[0-9]+\z/', 'integer', 'between:0,1000000'],
+            'sizes.*.extra_price' => ['sometimes', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0,99999999.99'],
+            'option1_name' => ['nullable', 'string', 'max:100'],
+            'option2_name' => ['nullable', 'string', 'max:100'],
+        ])->validate();
         $colors = [];
         if (! empty($variantsRaw['colors']) && is_array($variantsRaw['colors'])) {
             foreach ($variantsRaw['colors'] as $idx => $color) {
@@ -281,13 +320,20 @@ class SellerProductController extends Controller
         }
 
         if (empty($colors) && empty($sizes)) {
+            if (isset($variantsRaw['combinations'])) {
+                throw ValidationException::withMessages(['variants' => 'Add an option group before configuring combination stock.']);
+            }
+
             return null;
         }
 
         $option1Name = ! empty($variantsRaw['option1_name']) ? trim((string) $variantsRaw['option1_name']) : (! empty($colors) ? 'Color / Edition' : null);
         $option2Name = ! empty($variantsRaw['option2_name']) ? trim((string) $variantsRaw['option2_name']) : (! empty($sizes) ? 'Specification / Size' : null);
 
+        $matrix = app(VariantMatrixService::class)->validate($variantsRaw, $colors, $sizes);
+
         return [
+            ...($matrix !== null ? ['combinations' => $matrix] : []),
             'option1_name' => $option1Name,
             'option2_name' => $option2Name,
             'colors' => $colors,

@@ -6078,3 +6078,282 @@ Implementation commits:
 
 The combined PR title and body are prepared as a local draft. No GitHub
 publication or Azure deployment was performed for this delivery.
+
+## Buyer readiness planning: October 18, 2026
+
+The [three-delivery plan](buyer-readiness-plan/README.md) allocates B3-B14's
+92 scenarios to shopping/Bag (34), vouchers/checkout/payment (30), and
+orders/tracking/communication (28). B1 and the merged B2 address-book work remain
+separate. The user set checking for October 19 at 07:00 Asia/Manila and selected
+circular tracking milestones with current recorded location and useful existing
+tracking details. The proposed overnight windows reserve a final walkthrough,
+publication/deployment interval and buffer; they are planning assumptions.
+
+Static inspection confirms existing discovery/filter/paging, saved-product,
+inventory, voucher, idempotent COD checkout, order-tracking, completed-purchase
+review, text chat and notification foundations. This is not a fresh acceptance
+run for the remaining scenarios. Repair only actual defects and reuse those
+services rather than replacing previous work.
+
+Specific gaps and disagreements for the delivery audit:
+
+| Area | Executable finding | Delivery disposition |
+|---|---|---|
+| Shop following | `Marketplace/ShopDetail.tsx` uses component state and a fixed displayed following count. | Batch 1 assesses persistent owned following and real counts; the current button is not verified persistence. |
+| Discovery/product additions | `BuyerDiscoveryService` performs literal matching; current inventory selects colors and sizes rather than demonstrating an independently priced combination matrix. | Batch 1 checks typo handling, combinations and purchase caps explicitly; sale/vacation behavior needs its actual saved policy and estimate. |
+| Shipping and voucher policy | `CheckoutQuoteService` uses the current per-shop shipping calculation and rejects more than one Bagoo offer. | Batch 2 records tariff and additional shipping-slot decisions before changing prices or funding. |
+| Payment | `CommerceInputService` normalizes checkout to COD and `CheckoutOrderService` saves COD orders. | Batch 2 verifies supported COD and clear unsupported-method rejection; gateway/refund/expiry behavior is not implemented evidence. |
+| Buyer cancellation | `routes/web.php` and `OrderLifecycleService` expose seller cancellation; no buyer cancellation writer was found. | Batch 3 assesses an owned buyer action with explicit allowed states, existing claim/custody gates and once-only stock/funding effects. |
+| Buyer returns/refunds | `BuyerDisputeController` returns `available: false`. | Reuse the existing return/refund planning work. Full post-delivery requests, decisions and repayment remain unresolved scope, not a passing flow. |
+| Review policy | `ReviewService` allows creation with text up to 1,000 characters and five validated images; buyer review routes expose creation, not an edit writer. Public review output contains the stored buyer name. | Batch 3 resolves text/privacy limits, edit/window rules and photo behavior while retaining purchase verification and existing history. |
+| Chat and reminders | `ChatController::sendMessage` validates text and context but has no image upload field. Flash-sale reminder evidence was not found in the inspected buyer path. | Batch 3 treats attachments and actual sale subscriptions as additions; retain existing text ownership/read and lifecycle-notice checks. |
+| Parcel presentation | `OrderTrackingPanel` currently uses a status badge, text summary and plain checkpoint rows. | Batch 3 restores circular recorded milestones and current-step emphasis using existing history, holder, hub, time and next-step data, scoped to the buyer style. |
+
+The current 10% commission, explicit buyer completion, separate settlement and
+road/hub custody rules remain authoritative. Alternate sample assumptions cannot
+silently enable time-based completion, automatic seller fund release, maritime
+shipping, or a payment/refund service. Every allocated scenario needs an actual
+result or a plainly recorded unresolved feature/policy decision.
+
+This delivery changes planning documents only. No application behavior, database,
+frontend, tests, external publication, automation workflow or Azure deployment
+was changed. The code findings were inspected statically; no new readiness rating
+or acceptance pass is claimed. Documentation links, coverage allocation and
+patch whitespace are checked for the planning handoff.
+
+
+## Buyer delivery 1: discovery, following and Bag pricing — October 19, 2026
+
+**Scoped assessment: 6.5/10 before → 8.3/10 after.** Store search now filters the
+whole eligible shop catalogue with validated categories, sorting and stable
+pagination. Typo suggestions use at most 250 eligible product names, respect the
+current filters and never silently replace the query. Live-search partial reads
+include suggestions so an earlier correction cannot remain under a new result.
+
+Shop following is now an owned database relationship with a unique buyer/shop
+pair, repeat-safe follow/unfollow, actual follower counts and a Followed shops
+page in the buyer menu. Restricted followed shops retain a removable generic
+entry without exposing their current details. Storefront editing remains owner
+only, public preview flags cannot enable it, and storefront chat opens the
+existing merchant conversation. Fixed voucher codes and free-delivery claims
+were removed in favor of actual available offers and quotes.
+
+The product UI previously added a configured size surcharge that the Bag and
+order writers omitted. The shared inventory selection now resolves that price in
+cents for additions, updates, Bag reads, quotes, order snapshots and Buy Again.
+Product options require an explicit choice; invalid typed quantities receive
+feedback rather than silently changing to another quantity. Removed and depleted
+variants are unavailable for selection while other valid Bag items remain usable.
+Buy Now identifies the returned owned Bag line explicitly.
+
+Validation evidence:
+
+- Discovery/storefront suite: **46 tests / 1,083 assertions**, passing.
+- Selection, inventory, Buy Again and storefront suite: **86 tests / 984
+  assertions**, passing, including surcharge snapshots and unavailable variants.
+- Buyer/finance regression: **692 tests**, with 691 passing and one stale
+  redirect expectation. The existing suspended-rider route already uses Account
+  status; the test expectation was corrected and that case passed separately
+  with **93 assertions**, retaining restricted access and cash custody checks.
+- Frontend discovery/commerce suite: **75 tests**, passing. Production build,
+  formatting and patch whitespace passed. No browser, Azure, reset or publication
+  verification is claimed.
+
+All 34 allocated scenarios were assessed against existing behavior and the above
+checks. This is not a claim that every external scenario was manually executed.
+Vacation mode, configurable cumulative purchase caps, a flash-sale/quota engine
+and a full color-by-size inventory matrix remain unimplemented features. Current
+colors have availability flags and sizes have shared stock/surcharges. A Buy Now
+request for an already matching Bag line still includes its accumulated quantity;
+the next checkout delivery must address exact requested quantities. Preserve the
+agreed 10% commission, COD, buyer receipt and deferred full-refund rules.
+
+Deployment requires the additive `shop_follows` migration; ordinary deployment
+migrations suffice. This delivery did not modify the development database. The
+branch PR title/body is a local draft, and only the user publishes commits.
+
+
+## Buyer delivery 2: checkout consent and exact quantities — October 19, 2026
+
+**Scoped checkout assessment: 7.3/10 before → 8.7/10 after.** New confirmation
+credentials bind the displayed merchandise prices to the owned Bag. A changed
+base price, size surcharge or Bag contents requires a fresh checkout review;
+changing prices during page preparation cannot silently update the consent.
+The selected products are locked before this final comparison. The snapshot
+conservatively covers the complete Bag, so an unrelated Bag change also asks for
+reload. Unused older confirmations require reload, while saved successful COD
+submissions retain original-result replay, including application-key rotation.
+
+Buy Now now carries its requested quantity through checkout, voucher previews,
+choices and best-offer calculation. Only that quantity is purchased; any earlier
+matching Bag quantity and other lines remain. Quantities are validated against
+owned selected lines and actual stock. The order transaction updates or removes
+the correct Bag lines and repeats return the original orders without another
+stock, funding or Bag change. This resolves delivery 1's matching-line limitation.
+
+Unsupported online payment requests now fail with a clear COD-only message;
+missing payment choice is rejected. The interface retains its explicit COD and
+confirmation flow. Quote and confirmation error feedback preserve the requested
+items and Buy Now quantity when reloading checkout.
+
+Evidence: **705 buyer/finance tests / 15,109 assertions** passed. The final focused
+run passed **116 tests / 1,046 assertions**, including the page-preparation race,
+partial checkout, funding, rollback and retained replay. Relevant frontend checks
+passed **55 tests** in total; formatting, patch whitespace and production build
+passed. Verification used isolated SQLite and static/rendering checks; no deployed
+browser, PostgreSQL concurrency or live payment acceptance is claimed.
+
+All 30 allocated areas were assessed. Agreed differences retain 10% commission,
+COD only, the existing per-shop shipping calculation, one offer per shop plus
+one Bagoo offer, existing cancellation usage accounting and a 500-character
+checkout note. Gateway callbacks/payment expiry and full refunds remain deferred.
+A shipping subsidy reduces the actual fee within its cap; it does not grant a
+second simultaneous Bagoo slot or change merchandise settlement. No invented
+online success, refund or reused voucher is reported as passing those alternate
+assumptions. No schema migration is added in this delivery.
+
+
+## Buyer delivery 3: order actions, tracking and communication — October 19, 2026
+
+**Scoped order/tracking/review/chat assessment: 6.0/10 before → 8.6/10 after.**
+The buyer parcel detail now uses connected circular milestones with an explicit
+current stage, last recorded location and expandable original checkpoints. Missing
+scans remain unrecorded; every Mother Hub event stays in history. Doorstep handover,
+counter collection, return travel, cancellation and buyer receipt remain distinct.
+The shared default tracking panel retains its existing presentation for other roles.
+
+An active approved buyer can cancel an owned unpaid COD order before readiness,
+with a required reason. The locked action checks current payment, rider claims,
+custody and handover holds, restores selected stock and releases only applicable
+original funding once, and records the buyer as actor. It preserves delivery notes
+and sibling orders. Legacy paid orders require payment support; no refund is
+fabricated. Field errors and storage failures retain a clear recovery path.
+
+A verified completed-purchase review can receive one owned rating/text edit within
+30 days. Its original content is private, photos remain attached and unchanged
+successful retries are safe. Public names are masked, actual purchased options are
+shown and verified averages/counts use saved data. Existing 1,000-character review
+text and five 5-MB photo limits remain.
+
+Buyer and seller chat now accept one real JPG, PNG or WEBP image up to 5 MB through
+participant-only private links. New sends use owned UUID retry identity, file cleanup
+on rollback, context/ownership checks, bounded new-send rate and reduced response
+fields. Drafts survive failures, duplicate clicks are guarded and late reads cannot
+replace a newly selected conversation. Only messages in the returned read snapshot
+are acknowledged; newer arrivals remain unread. Native rider messaging remains
+separate and its backend contract checks pass.
+
+Evidence: integrated **855 tests / 20,558 assertions**; related native rider/seller
+checks **47 tests / 1,472 assertions**; all **436 frontend tests** passing. Final
+focused checks cover cancellation, communication, public review options and input
+boundaries; builds, formatting and patch whitespace pass. Testing used isolated
+SQLite, without browser automation or PostgreSQL concurrency claims.
+
+All 28 allocated areas were assessed with the retained rules. Full refunds and
+online payments remain deferred, completion remains buyer-confirmed, and flash
+reminders still require a real sale engine. The dated
+[delivery results](buyer-readiness-plan/04-delivery-results.md) list all retained
+expectations, remaining new features and manual-review pages. No claim is made
+that all 92 original browser scenarios passed unchanged.
+
+The three additive follows/review-history/private-chat migrations were applied
+locally; a read-only probe confirmed the new schema and **17 visible products**.
+No data was reset or reseeded. Azure, Flutter and GitHub publication were untouched.
+All three branch PR descriptions and the combined handoff remain local drafts.
+
+
+## Advanced buyer and seller shopping — October 19, 2026
+
+The five feature gaps left after the three buyer deliveries now have saved
+settings and operational paths on `feat/advanced-shopping-controls`. The branch
+contains those predecessor deliveries. [The advanced shopping plan](buyer-readiness-plan/05-advanced-shopping.md)
+records the rules, review pages and deployment steps. These additions preserve
+10% commission, COD, explicit buyer receipt, shop/category approval and the
+canonical parcel custody route; full post-delivery refunds remain deferred.
+
+| Scoped feature | Before | After | Change and evidence |
+|---|---:|---:|---|
+| Vacation purchasing policy | 0/10 | 8.5/10 | Previously absent. The sole shop's seller saves vacation mode; approved listings stay visible with a label, new purchases stop, and existing orders can still be prepared. |
+| Cumulative buyer purchase limits | 0/10 | 8.5/10 | Previously absent. A configurable product cap counts non-cancelled order units across options and sessions. Bag changes and locked final checkout recheck it; early cancellation releases the allowance once. |
+| Independent option stock | 5.5/10 | 8.6/10 | Shared size stock remains supported; sellers can explicitly configure every combination's stock and surcharge. Combined stock is derived, invalid/missing/duplicate rows fail, and cancellation restores the exact pair. Open-order options cannot be removed or change stock mode. |
+| Timed prices and flash quota | 0/10 | 8.5/10 | Previously absent. Owned schedules reject overlaps, allow adjacent slots and permitted store-price edits, and retain ended schedules. Checkout separates flash and fallback quantities, applies option surcharges, preserves voucher/funding rules and stores each actual price. Cancellation restores only its original flash allocation once. |
+| Owned sale reminders | 0/10 | 8.4/10 | Previously absent. Buyers opt into future flash slots and can opt out. The minute scheduler records one reminder within ten minutes before the start; failed delivery retries remain durable, cancelled/late notices are discarded, and rejoining resumes only an undelivered intent. Actual delivery state controls the interface. |
+
+Zero is scoped to an absent feature, not a rating of the existing marketplace.
+The ratings reflect isolated checks and source review; they do not establish
+simultaneous PostgreSQL behavior, live email delivery or a deployed browser pass.
+
+### Price, stock and recovery boundaries
+
+- The final checkout holds the shared product locks while verifying buyer caps,
+  physical stock, timed prices and quota. Quoted promotional units do not reserve
+  stock. Another buyer's quota change requires a fresh price review. A second
+  comparison binds the final quote to the buyer's displayed prices, including a
+  sale ending between the initial check and quote calculation.
+- Successful checkout retries retain their original result after a sale ends or
+  prices change. A rollback after quota reservation restores the entire order,
+  stock, quota, Bag and funding transaction. Existing order items retain their
+  actual prices and selected options.
+- Store/flash reductions are seller-funded through the charged merchandise price.
+  Voucher minimums use that actual subtotal. Platform voucher funding and shipping
+  remain separate, with no invented platform subsidy for a sale reduction.
+- Future slots can be edited before they run, but recorded reminders freeze their
+  times. Running flash terms stay fixed; a running store sale may change its price
+  for new orders. End now stops new use. A discount never raises an item above
+  its current regular base price.
+- Legacy null size stock still falls back to listing stock; an explicit zero stays
+  sold out. Combination rows require explicit counts rather than guessing how
+  older stock should be split. Product prices reject excess decimals and values
+  outside the supported money range before they reach the sale engine.
+- The broader seller check found an older expectation that a guest's preview query
+  enabled seller controls. The existing owner-only implementation was retained;
+  the expectation now checks guests, buyers, foreign sellers and the actual owner.
+
+### Local rollout and evidence limits
+
+Three additive migrations installed the purchase controls, sale allocations and
+reminders locally. A read-only check confirms all new schema fields, **17 products,
+17 visible products and four orders**, with no reset, reseed or fabricated live
+promotion. Existing products retain their original stock mode and no timed sale
+until the seller configures one. Scheduler inspection confirms the new reminder
+command alongside the existing notification delivery worker.
+
+The seller's product Sales page exposes schedule creation, allowed edits, history
+and End now. Buyer product pages show real prices, remaining quota, countdowns
+and owned reminder controls; catalogue sorting/filtering use the current sale
+base price. Bag and checkout show distinct priced quantities rather than charging
+all units the lowest flash price. Existing portal layouts and typography remain.
+
+Verification: the integrated isolated SQLite gate passed **1,147 tests / 23,822
+assertions**, including buyer, seller, finance, notifications, product moderation,
+stock variants, uploads and tracking. Final pricing/funding follow-ups passed
+**86 tests / 756 assertions** after keeping subtotal arithmetic in integer cents.
+Related rider API and seller order checks passed **47 tests / 1,472 assertions**.
+The final recovery gate passed **77 tests / 742 assertions** for limits, reorder
+behavior, reminders and notification delivery. All **448 frontend/helper tests**,
+the production build, formatting and patch whitespace
+passed. The first expanded run exposed two new null-stock compatibility failures
+and one stale preview expectation; these were corrected before the passing run.
+
+Local commits: `88b09e8` adds vacation mode and buyer caps; `47f5e07` adds independent
+combination stock; `79be6bf` retains the owner-only storefront preview expectation;
+`365d1f8` adds timed pricing, retained quota allocations and durable reminders.
+`42fd462` exposes the seller/buyer controls and priced quantities; `ef3ed0d`
+clarifies a reached cap during reordering; `4c8f054` manages the deployment
+scheduler. The final evidence commit hash is reported in the handoff.
+The local PR draft covers the combined branch scope. No GitHub publication,
+Azure deployment, Flutter edit, browser automation or PostgreSQL test reset was
+performed by this delivery.
+
+The final deployment review found that schedule registration previously lacked a
+managed Compose process. The new scheduler shares the app image, mounted code,
+environment and database dependency and publishes no port. Deployment stops it
+before dependency changes and starts it only after migrations and caches succeed;
+verification rejects a missing worker. The application scheduler was not started
+against the local development records during these checks. Configuration checks,
+registered-command inspection and controlled deployment success/failure tests
+support the prepared rollout; they do not establish a running Azure service.
+
+A final reorder check also gives a reached purchase cap its own accurate message,
+instead of claiming that an empty Bag contains the remaining stock. Existing
+reorder ownership, stock and retry behavior remain covered by the focused gate.
