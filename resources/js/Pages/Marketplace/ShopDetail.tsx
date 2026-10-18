@@ -1,7 +1,13 @@
 import VoucherOfferList from '@/Components/VoucherOfferList';
 import React, { useState, useRef, useEffect } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import ShopFollowButton from '@/Components/ShopFollowButton';
+import PortalLink from '@/Components/PortalLink';
+import ChatModal from '@/Components/ChatModal';
+import CatalogueErrors from '@/Components/CatalogueErrors';
+import { CatalogueFilters, catalogueFilters } from '@/utils/catalogueNavigation';
+import { Category } from '@/types';
 import RatingStars, { ratingLabel, recordedRating } from '@/Components/RatingStars';
 import { PaginatedData, Product, Shop } from '@/types';
 import { getDomainUrl } from '@/utils/domain';
@@ -44,15 +50,16 @@ interface Props {
     shopStats: { rating: number | null; review_count: number; response_rate: string | null; joined: string | null };
     isOwner?: boolean;
     isPreview?: boolean;
+    filters: CatalogueFilters;
+    categories: Category[];
+    isFollowing: boolean;
+    followerCount: number;
 }
 
-export default function ShopDetail({ shop, products, shopStats, isOwner = false, isPreview = false, shopOffers = [] }: Props) {
-    const isQueryPreview = typeof window !== 'undefined' && (
-        new URLSearchParams(window.location.search).has('preview') ||
-        window.location.pathname.includes('/preview')
-    );
-    const isPreviewMode = Boolean(isPreview || isOwner || isQueryPreview);
-    const canManageStore = Boolean(isOwner || isPreviewMode);
+export default function ShopDetail({ shop, products, shopStats, isOwner = false, isPreview = false, shopOffers = [], filters = {}, categories = [], isFollowing = false, followerCount = 0 }: Props) {
+    const isPreviewMode = Boolean(isOwner && isPreview);
+    const canManageStore = isOwner;
+    const [chatOpen, setChatOpen] = useState(false);
 
     const bannerFileRef = useRef<HTMLInputElement | null>(null);
     const logoFileRef = useRef<HTMLInputElement | null>(null);
@@ -118,28 +125,10 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
         });
     };
 
-    const [searchInShop, setSearchInShop] = useState('');
-    const [selectedCategoryTab, setSelectedCategoryTab] = useState('all');
-    const [isFollowed, setIsFollowed] = useState(false);
-    const [copiedVoucher, setCopiedVoucher] = useState<string | null>(null);
-
-    const formatPrice = (val: string | number | undefined | null) => {
-        const num = Number(val || 0);
-        return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(num);
-    };
-
-    const copyVoucher = (code: string) => {
-        navigator.clipboard.writeText(code);
-        setCopiedVoucher(code);
-        setTimeout(() => setCopiedVoucher(null), 3000);
-    };
-
-    const filteredProducts = products.data.filter(product => {
-        const matchesSearch = !searchInShop.trim() || 
-            product.name.toLowerCase().includes(searchInShop.toLowerCase()) ||
-            product.description.toLowerCase().includes(searchInShop.toLowerCase());
-        return matchesSearch;
-    });
+    const [searchInShop, setSearchInShop] = useState(filters.search || '');
+    useEffect(() => setSearchInShop(filters.search || ''), [filters.search]);
+    const applyFilters = (updates: CatalogueFilters) => router.get(route('shop.show', shop.slug), catalogueFilters(filters, updates), { preserveState: true, preserveScroll: true });
+    const formatPrice = (val: string | number | undefined | null) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(val || 0));
 
     return (
         <BuyerLayout 
@@ -300,31 +289,22 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                                     </button>
                                 ) : (
                                     <>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsFollowed(!isFollowed)}
-                                            className={`flex-1 md:flex-initial px-5 py-2.5 rounded-xs font-bold uppercase transition flex items-center justify-center gap-1.5 ${
-                                                isFollowed 
-                                                    ? 'bg-slate-100 text-slate-700 border border-slate-300' 
-                                                    : 'bg-slate-900 hover:bg-black text-white shadow-xs'
-                                            }`}
-                                        >
-                                            <Heart className={`w-3.5 h-3.5 ${isFollowed ? 'fill-[#E00D42] text-[#E00D42]' : ''}`} />
-                                            <span>{isFollowed ? 'Following (14.2k)' : '+ Follow Shop'}</span>
-                                        </button>
+                                        <ShopFollowButton shopId={shop.id} following={isFollowing} />
 
                                         <button
                                             type="button"
+                                            onClick={() => setChatOpen(true)}
                                             className="flex-1 md:flex-initial px-5 py-2.5 rounded-xs bg-[#E00D42] hover:bg-[#C20836] text-white font-bold uppercase transition shadow-xs flex items-center justify-center gap-1.5"
                                         >
                                             <MessageSquare className="w-3.5 h-3.5" />
-                                            <span>Live Chat</span>
+                                            <span>Chat with shop</span>
                                         </button>
                                     </>
                                 )}
                             </div>
                         </div>
 
+                        <p className="mt-4 text-xs text-slate-500">{followerCount.toLocaleString('en-PH')} {followerCount === 1 ? 'follower' : 'followers'}</p>
                         {/* Store Statistics Grid (2px Radius & High-Visibility Borders) */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-slate-200 font-sans text-xs">
                             <div className="p-3.5 rounded-xs bg-slate-50 border border-slate-300 space-y-1">
@@ -353,54 +333,6 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                     </div>
                 </div>
 
-                {/* 2. STORE EXCLUSIVE VOUCHER STRIP */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 font-sans text-xs">
-                    <div className="p-4 rounded-xs bg-gradient-to-r from-rose-50 to-rose-100/60 border border-rose-300 flex items-center justify-between">
-                        <div className="space-y-1">
-                            <span className="px-2 py-0.5 rounded-xs bg-[#E00D42] text-white text-[9px] font-bold uppercase">STORE EXCLUSIVE</span>
-                            <h4 className="font-black text-sm text-slate-900">₱150 OFF DISCOUNT</h4>
-                            <p className="text-[10px] text-slate-500">Min. Spend ₱1,500 • Code: PRIME150</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => copyVoucher('PRIME150')}
-                            className="px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-bold rounded-xs text-[11px] uppercase transition shadow-2xs"
-                        >
-                            {copiedVoucher === 'PRIME150' ? 'Claimed ✓' : 'Claim'}
-                        </button>
-                    </div>
-
-                    <div className="p-4 rounded-xs bg-gradient-to-r from-emerald-50 to-emerald-100/60 border border-emerald-300 flex items-center justify-between">
-                        <div className="space-y-1">
-                            <span className="px-2 py-0.5 rounded-xs bg-emerald-600 text-white text-[9px] font-bold uppercase">SHIPPING PASS</span>
-                            <h4 className="font-black text-sm text-slate-900">FREE DOORSTEP DELIVERY</h4>
-                            <p className="text-[10px] text-slate-500">Min. Spend ₱0 • Code: PRIMESHIP</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => copyVoucher('PRIMESHIP')}
-                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xs text-[11px] uppercase transition shadow-2xs"
-                        >
-                            {copiedVoucher === 'PRIMESHIP' ? 'Claimed ✓' : 'Claim'}
-                        </button>
-                    </div>
-
-                    <div className="p-4 rounded-xs bg-gradient-to-r from-amber-50 to-amber-100/60 border border-amber-300 flex items-center justify-between">
-                        <div className="space-y-1">
-                            <span className="px-2 py-0.5 rounded-xs bg-amber-500 text-white text-[9px] font-bold uppercase">FLASH COUPON</span>
-                            <h4 className="font-black text-sm text-slate-900">10% CASHBACK COINS</h4>
-                            <p className="text-[10px] text-slate-500">All Categories • Code: COIN10</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => copyVoucher('COIN10')}
-                            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xs text-[11px] uppercase transition shadow-2xs"
-                        >
-                            {copiedVoucher === 'COIN10' ? 'Claimed ✓' : 'Claim'}
-                        </button>
-                    </div>
-                </div>
-
                 {shopOffers.length > 0 && <section aria-label="Shop offers" className="space-y-3"><h2 className="font-bold text-slate-900">Shop offers</h2><VoucherOfferList offers={shopOffers} allowSave /></section>}
                 {/* 3. STORE PRODUCTS CATALOG WITH IN-STORE SEARCH */}
                 <div className="space-y-4">
@@ -409,26 +341,35 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                         <div className="flex items-center gap-2">
                             <ShoppingBag className="w-5 h-5 text-[#E00D42]" />
                             <h3 className="font-black text-slate-900 text-base">Store Catalog & All Products</h3>
-                            <span className="text-xs font-sans text-slate-500">({filteredProducts.length} listings)</span>
+                            <span className="text-xs font-sans text-slate-500">({products.total} listings)</span>
                         </div>
 
                         {/* Search Inside Shop */}
-                        <div className="w-full sm:w-80">
-                            <div className="relative">
+                        <form onSubmit={event => { event.preventDefault(); applyFilters({ search: searchInShop.trim() }); }} className="flex w-full items-center gap-2 sm:w-96">
+                            <div className="relative min-w-0 flex-1">
                                 <input
                                     type="text"
                                     value={searchInShop}
                                     onChange={(e) => setSearchInShop(e.target.value)}
+                                    maxLength={100}
+                                    aria-label="Search in this shop"
                                     placeholder="Search in this shop..."
                                     className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xs text-xs focus:ring-2 focus:ring-[#E00D42] focus:bg-white text-slate-900 placeholder-slate-400"
                                 />
                                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                             </div>
-                        </div>
+                            <button type="submit" className="rounded-lg bg-[#E00D42] px-3 py-2 text-xs font-bold text-white">Search</button>
+                        </form>
                     </div>
 
+                    <div className="flex flex-wrap gap-3">
+                        <label className="text-xs text-slate-600">Category<select value={filters.category || 'all'} onChange={event => applyFilters({ category: event.target.value })} className="ml-2 rounded-lg border-slate-300 text-xs"><option value="all">All shop categories</option>{categories.map(category => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></label>
+                        <label className="text-xs text-slate-600">Sort<select value={filters.sort || 'relevance'} onChange={event => applyFilters({ sort: event.target.value })} className="ml-2 rounded-lg border-slate-300 text-xs"><option value="relevance">Recommended</option><option value="newest">Newest</option><option value="price_asc">Price: low to high</option><option value="price_desc">Price: high to low</option><option value="top_sales">Best selling</option><option value="top_rated">Highest rated</option></select></label>
+                        <PortalLink href={route('shop.show', shop.slug)} className="self-center text-xs font-semibold text-[#E00D42]">Reset filters</PortalLink>
+                    </div>
+                    <CatalogueErrors />
                     {/* Products Grid */}
-                    {filteredProducts.length === 0 ? (
+                    {products.data.length === 0 ? (
                         <div className="bg-white rounded-md p-12 text-center border border-slate-300 space-y-3">
                             <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
                             <h4 className="font-bold text-slate-800 text-base">No products match your search in this store</h4>
@@ -436,7 +377,7 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
-                            {filteredProducts.map((product) => {
+                            {products.data.map((product) => {
                                 const priceNum = Number(product.price);
                                 const compareNum = product.compare_at_price ? Number(product.compare_at_price) : null;
                                 const discountPct = compareNum && compareNum > priceNum 
@@ -462,11 +403,7 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                                                 </span>
                                             )}
 
-                                            <div className="absolute bottom-2 left-2">
-                                                <span className="px-1.5 py-0.5 rounded-xs bg-emerald-600/90 backdrop-blur-xs text-white font-sans text-[8px] font-bold uppercase flex items-center gap-0.5 shadow-2xs">
-                                                    <Truck className="w-2.5 h-2.5" /> FREE DELIVERY
-                                                </span>
-                                            </div>
+
                                         </div>
 
                                         {/* Product Info */}
@@ -503,9 +440,15 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                             })}
                         </div>
                     )}
+                    <nav aria-label="Shop product pages" className="flex items-center justify-center gap-4 text-sm">
+                        {products.prev_page_url && <PortalLink href={products.prev_page_url} className="rounded-lg border border-slate-300 bg-white px-3 py-2">Previous</PortalLink>}
+                        <span>Page {products.current_page} of {products.last_page}</span>
+                        {products.next_page_url && <PortalLink href={products.next_page_url} className="rounded-lg border border-slate-300 bg-white px-3 py-2">Next</PortalLink>}
+                    </nav>
                 </div>
 
             </div>
+            <ChatModal isOpen={chatOpen} onClose={() => setChatOpen(false)} receiverId={shop.user_id} shopId={shop.id} receiverName={shop.name} shopName={shop.name} />
 
             {/* Merchant Storefront Branding & Bio Edit Modal */}
             {canManageStore && editModalOpen && (

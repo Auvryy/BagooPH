@@ -28,6 +28,7 @@ interface Props {
     products: PaginatedData<Product>;
     categories: (Category & { products_count?: number })[];
     relatedProducts?: Product[];
+    suggestions?: string[];
     filters: {
         search?: string;
         category?: string;
@@ -43,6 +44,7 @@ export default function SearchPage({
     products,
     categories,
     relatedProducts = [],
+    suggestions = [],
     filters,
 }: Props) {
     const [minPrice, setMinPrice] = useState(filters.min_price || '');
@@ -430,6 +432,7 @@ export default function SearchPage({
                                 <div className="bg-white rounded-2xl p-12 text-center space-y-3 border border-slate-200 shadow-xs">
                                     <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
                                     <h3 className="text-base font-bold text-slate-800 font-sans">No products matched your search</h3>
+                                    {suggestions.length > 0 && <p className="text-sm text-slate-600">Did you mean {suggestions.map(suggestion => <CatalogueLink key={suggestion} href={catalogueUrl(route('buyer.search'), filters, { search: suggestion })} className="font-bold text-[#E00D42] underline">{suggestion}</CatalogueLink>)}?</p>}
                                     <p className="text-xs text-slate-500 font-sans max-w-md mx-auto">
                                         We couldn't find exact matches for your filters. Try checking spelling, using more general keywords, or resetting your filters.
                                     </p>

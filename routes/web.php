@@ -27,6 +27,7 @@ use App\Http\Controllers\Buyer\CustomerServiceAssistantController;
 use App\Http\Controllers\Buyer\OrderHistoryController;
 use App\Http\Controllers\Buyer\PickupClaimController;
 use App\Http\Controllers\Buyer\SavedProductController;
+use App\Http\Controllers\Buyer\ShopFollowController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CodCashController;
@@ -506,6 +507,9 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::post('/profile', [BuyerProfileController::class, 'update'])->middleware('buyer.approved:account')->name('profile.update');
         Route::middleware('buyer.approved')->group(function () {
             Route::get('/saved-products', [SavedProductController::class, 'index'])->name('saved-products.index');
+            Route::get('/followed-shops', [ShopFollowController::class, 'index'])->name('followed-shops.index');
+            Route::post('/followed-shops/{shop}', [ShopFollowController::class, 'store'])->whereNumber('shop')->name('followed-shops.store');
+            Route::delete('/followed-shops/{shop}', [ShopFollowController::class, 'destroy'])->whereNumber('shop')->name('followed-shops.destroy');
             Route::get('/orders/{order}/buy-again', [BuyAgainController::class, 'show'])->whereNumber('order')->name('orders.buy-again');
             Route::post('/orders/{order}/buy-again', [BuyAgainController::class, 'store'])->whereNumber('order')->name('orders.buy-again.store');
             Route::post('/saved-products/{product}', [SavedProductController::class, 'store'])->whereNumber('product')->name('saved-products.store');

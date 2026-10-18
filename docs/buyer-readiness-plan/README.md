@@ -36,6 +36,12 @@ Record an agreed expected result or an explicit unresolved gap for every
 disagreement. Never silently change a project invariant, label a missing feature
 as passed, or mark an unresolved case inapplicable without review.
 
+The agreed review decision is to retain Bagoo's existing rules: 10% commission,
+COD checkout, buyer-confirmed completion and deferred full post-delivery refunds.
+Record these as agreed differences rather than failed implementations of the
+alternate assumptions. This decision does not exempt ordinary missing features
+or validation defects from assessment and repair.
+
 | Topic | Existing Bagoo rule or observed boundary | Required disposition |
 |---|---|---|
 | Payment | COD is the implemented checkout method; there is no card/wallet gateway delivery in this plan. | Verify COD and reject unsupported payment attempts clearly. Online payment, gateway callbacks and payment expiry require separate scope. |

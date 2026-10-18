@@ -218,7 +218,7 @@ test('live search replaces typing history with coherent partial props and reject
     const current = f.visits.at(-1);
     assert.doesNotThrow(() => current.options.onBeforeUpdate());
     assert.equal(current.options.replace, true);
-    assert.deepEqual(current.options.only, ['products', 'relatedProducts', 'filters']);
+    assert.deepEqual(current.options.only, ['products', 'relatedProducts', 'filters', 'suggestions']);
     assert.equal(f.prepared.length, 0);
 });
 

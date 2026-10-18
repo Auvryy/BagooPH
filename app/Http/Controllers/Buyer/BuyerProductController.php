@@ -32,6 +32,7 @@ class BuyerProductController extends Controller
             'categories' => fn () => $discovery->categories(),
             'relatedProducts' => fn () => $related->orderByDesc('sales_count')->orderByDesc('products.id')->limit(6)->get(),
             'filters' => $filters,
+            'suggestions' => fn () => $products->total() === 0 ? $discovery->suggestions($filters) : [],
         ]);
     }
 

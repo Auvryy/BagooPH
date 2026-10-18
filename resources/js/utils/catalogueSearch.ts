@@ -80,7 +80,7 @@ export class CatalogueSearch {
         this.options.notify({ status: 'loading', message: 'Loading search results.' });
         this.options.visit(url, {
             preserveState: true, preserveScroll: live, replace: live,
-            ...(live ? { only: ['products', 'relatedProducts', 'filters'] } : {}),
+            ...(live ? { only: ['products', 'relatedProducts', 'filters', 'suggestions'] } : {}),
             onCancelToken: token => { if (sequence === this.sequence) this.cancelVisit = token.cancel; else token.cancel(); },
             onBeforeUpdate: () => {
                 // Inertia 2's update callback is notification-only; false does not abort it.
