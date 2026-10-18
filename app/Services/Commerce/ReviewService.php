@@ -199,10 +199,12 @@ class ReviewService
     public function publicReviews(Product $product): void
     {
         $product->load(['reviews' => fn ($reviews) => $reviews->withPurchaseVerification()
-            ->with(['buyer:id,name,avatar', 'reply.shop:id,name'])->latest('id')]);
+            ->with(['buyer:id,name,avatar', 'reply.shop:id,name', 'orderItem:id,color,size'])->latest('id')]);
         $product->setRelation('reviews', $product->reviews->map(fn (Review $review) => [
             ...$review->only(['id', 'rating', 'comment', 'images', 'created_at', 'edited_at', 'verified_purchase']),
             'buyer' => $review->buyer ? ['name' => $this->publicBuyerName($review->buyer->name), 'avatar' => $review->buyer->avatar] : null,
+            'purchased_options' => $review->verified_purchase && ($review->orderItem?->color !== null || $review->orderItem?->size !== null)
+                ? $review->orderItem?->only(['color', 'size']) : null,
             'reply' => $review->reply ? [
                 ...$review->reply->only(['text', 'created_at', 'updated_at']),
                 'shop_name' => $review->reply->shop?->name,

@@ -827,6 +827,7 @@ export default function BuyerProductDetail({
 
                                     {/* Star Rating */}
                                     <RatingStars value={rev.rating} className="w-3.5 h-3.5" />
+                                    {rev.purchased_options && [rev.purchased_options.color, rev.purchased_options.size].some(Boolean) && <p className="text-xs text-slate-600">Purchased option: {[rev.purchased_options.color, rev.purchased_options.size].filter(Boolean).join(' · ')}</p>}
 
                                     {/* Review Comment */}
                                     <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line">{rev.comment}</p>

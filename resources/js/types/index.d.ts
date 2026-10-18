@@ -293,6 +293,7 @@ export interface Review {
     comment?: string | null;
     images?: string[] | null;
     verified_purchase?: boolean;
+    purchased_options?: { color: string | null; size: string | null } | null;
     buyer?: Pick<User, 'name' | 'avatar'> | null;
     reply?: ReviewReply | null;
     created_at?: string;

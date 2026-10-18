@@ -77,13 +77,14 @@ test('an unrated product card displays an honest empty state', () => {
 test('public product reviews distinguish legacy rows and render persisted seller replies', async () => {
     const html = await render(ui.Product, 'Buyer/ProductDetail', {
         product: { ...product, reviews: [
-            { id: 1, rating: 4, verified_purchase: true, buyer: { name: 'Verified Buyer' }, comment: 'The bag arrived.', reply: { text: 'Thank you for your review.', shop_name: shop.name, created_at: '2026-10-01', updated_at: '2026-10-02' } },
+            { id: 1, rating: 4, verified_purchase: true, buyer: { name: 'Verified Buyer' }, purchased_options: { color: 'Natural', size: 'Large' }, comment: 'The bag arrived.', reply: { text: 'Thank you for your review.', shop_name: shop.name, created_at: '2026-10-01', updated_at: '2026-10-02' } },
             { id: 2, rating: 5, verified_purchase: false, buyer: { name: 'Older Buyer' }, comment: 'An older review.' },
         ] }, variations: { colors: [], sizes: [] }, relatedProducts: [], shopStats: summary,
     });
     assert.match(html, /Verified Purchase/);
     assert.match(html, /Unverified legacy review/);
     assert.match(html, /Thank you for your review\./);
+    assert.match(html, /Purchased option: Natural · Large/);
     assert.match(html, /No ratings yet/);
     assert.match(html, /0 Verified Reviews/);
     assert.doesNotMatch(html, /Lowest Price Guaranteed|MALL VERIFIED|PREFERRED|within hours|5\.0 Stars|Guaranteed delivery in/);

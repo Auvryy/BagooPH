@@ -88,6 +88,7 @@ class ReviewIntegrityTest extends TestCase
     public function test_edited_review_keeps_photos_updates_real_averages_and_masks_public_names(): void
     {
         $this->buyer->update(['name' => 'Ana Santos']);
+        $this->item->update(['color' => 'Natural', 'size' => 'Large']);
         $review = $this->savedReview(['images' => [UploadedFile::fake()->image('bag.jpg')]]);
         $photos = $review->images;
         $this->actingAs($this->buyer)->patch(route('buyer.reviews.update', $review), ['rating' => 2, 'comment' => 'The strap is too short.'])->assertSessionHas('success');
@@ -95,6 +96,7 @@ class ReviewIntegrityTest extends TestCase
         $this->assertSame('2.00', (string) $this->product->fresh()->rating);
         app(ReviewService::class)->publicReviews($this->product);
         $this->assertSame('A*** S***', $this->product->reviews[0]['buyer']['name']);
+        $this->assertSame(['color' => 'Natural', 'size' => 'Large'], $this->product->reviews[0]['purchased_options']);
         $this->assertArrayNotHasKey('original_content', $this->product->reviews[0]);
         $this->assertCount(1, Storage::disk('public')->allFiles('reviews'));
     }
