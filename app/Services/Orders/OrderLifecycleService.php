@@ -39,6 +39,11 @@ class OrderLifecycleService
 
     public const BATCH_LIMIT = 50;
 
+    public const BUYER_CANCELLATION_REASONS = [
+        'Ordered by mistake', 'Need to change delivery details', 'Need to change an item or quantity',
+        'No longer needed', 'Other reason',
+    ];
+
     private const SELLER_TRANSITIONS = [
         'placed' => 'confirmed',
         'pending' => 'confirmed',
@@ -243,21 +248,82 @@ class OrderLifecycleService
             ])->validate();
             $reason = $data['reason'].(! empty($data['notes']) ? ': '.$data['notes'] : '');
 
-            app(VoucherFundingService::class)->releaseCancellation($lockedOrder, $seller, $reason);
-
-            foreach ($lockedOrder->items as $item) {
-                $product = Product::whereKey($item->product_id)->lockForUpdate()->first();
-                if ($product) {
-                    $this->inventory->restore($product, $item->quantity, $item->size);
-                }
-            }
-
-            $lockedOrder->update(['status' => 'cancelled', 'notes' => $reason]);
-            $lockedOrder->delivery?->update(['status' => 'cancelled']);
-            app(LifecycleNoticeService::class)->order($lockedOrder, 'cancelled');
-
-            return $lockedOrder->fresh();
+            return $this->cancelLocked($lockedOrder, $seller, $reason);
         });
+    }
+
+    public function canBuyerCancel(Order $order, User $buyer): bool
+    {
+        if (! $buyer->isBuyer() || ! $buyer->canAccessPortal() || $order->buyer_id !== $buyer->id
+            || ! in_array($order->status, OrderWorkspaceService::PREPARATION, true) || $order->codAccount) {
+            return false;
+        }
+        $parcel = $order->delivery;
+        if (! $parcel) {
+            return true;
+        }
+        $custody = DeliveryCheckpoint::lastCustody($parcel);
+        $recordedCustody = $parcel->checkpoints()->whereNull('source_checkpoint_id')->whereNotNull('custody_after')->exists();
+
+        return $this->isUnclaimed($parcel) && ! app(HandoverHoldService::class)->held($parcel)
+            && (! $recordedCustody || ($custody['kind'] ?? null) === 'seller');
+    }
+
+    public function cancelByBuyer(Order $order, User $buyer, array $input): Order
+    {
+        $data = Validator::make($input, [
+            'reason' => ['required', 'string', Rule::in(self::BUYER_CANCELLATION_REASONS)],
+            'notes' => [Rule::requiredIf(($input['reason'] ?? null) === 'Other reason'), 'nullable', 'string', new ApplicationText('notes', 1, 500)],
+        ])->validate();
+
+        return DB::transaction(function () use ($order, $buyer, $data) {
+            $locked = $this->lockSellerOrder($order->id);
+            $buyer = app(BuyerAccessService::class)->requirePortal($buyer, lock: true);
+            if ($locked->buyer_id !== $buyer->id) {
+                throw new AuthorizationException('This order belongs to another buyer.');
+            }
+            if ($locked->status === 'cancelled') {
+                return $locked;
+            }
+            if (! $this->canBuyerCancel($locked, $buyer)) {
+                throw ValidationException::withMessages(['reason' => 'This order is already ready for pickup or has entered delivery. It can no longer be cancelled here.']);
+            }
+            $reason = $data['reason'].(! empty($data['notes']) ? ': '.$data['notes'] : '');
+
+            return $this->cancelLocked($locked, $buyer, $reason, byBuyer: true);
+        });
+    }
+
+    private function cancelLocked(Order $order, User $actor, string $reason, bool $byBuyer = false): Order
+    {
+        // Keep product locks before funding locks, matching checkout, and restore each size once.
+        $products = Product::whereIn('id', $order->items->pluck('product_id'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        $funding = app(VoucherFundingService::class);
+        if ($byBuyer) {
+            $funding->releaseBuyerCancellation($order, $actor, $reason);
+        } else {
+            $funding->releaseCancellation($order, $actor, $reason);
+        }
+        foreach ($order->items as $item) {
+            if ($product = $products->get($item->product_id)) {
+                $this->inventory->restore($product, $item->quantity, $item->size);
+            }
+        }
+        $parcel = $order->delivery;
+        $source = $parcel ? DeliveryCheckpoint::state($parcel->setRelation('order', $order)) : null;
+        $custody = $parcel ? DeliveryCheckpoint::lastCustody($parcel) : null;
+        $order->update($byBuyer ? ['status' => 'cancelled'] : ['status' => 'cancelled', 'notes' => $reason]);
+        $parcel?->update(['status' => 'cancelled']);
+        if ($byBuyer && $parcel) {
+            DeliveryCheckpoint::firstOrCreate(['delivery_id' => $parcel->id, 'checkpoint_type' => 'cancelled'], [
+                'location_name' => 'Buyer cancellation', 'notes' => $reason, 'scanned_by_id' => $actor->id,
+                'scan_provenance' => 'not_scanned', 'source_state' => $source,
+                'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custody, 'custody_after' => $custody,
+            ]);
+        }
+        app(LifecycleNoticeService::class)->order($order, 'cancelled');
+
+        return $order->fresh();
     }
 
     public function buyerComplete(Order $order, User $buyer): Order

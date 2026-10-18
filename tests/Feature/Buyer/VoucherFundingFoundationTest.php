@@ -436,6 +436,28 @@ class VoucherFundingFoundationTest extends TestCase
         $this->assertSame(10, $items[0]->product->fresh()->stock);
     }
 
+    public function test_buyer_cancellation_releases_only_its_order_funding_once_with_the_buyer_as_actor(): void
+    {
+        [$buyer, , $items, $input] = $this->checkout(['1000.00', '500.00']);
+        $offer = $this->offer(attributes: ['discount_value' => 90, 'max_discount' => 90]);
+        $input['platform_voucher_revision_id'] = $offer->id;
+        $this->post(route('checkout.store'), $input)->assertSessionHas('success');
+        $orders = Order::orderBy('id')->get();
+        $order = $orders->first();
+        $sibling = $orders->last();
+        $this->post(route('buyer.orders.cancel', $order), ['reason' => 'Ordered by mistake'])->assertSessionHas('success');
+        $this->post(route('buyer.orders.cancel', $order), ['reason' => 'Ordered by mistake'])->assertSessionHas('success');
+        $allocation = VoucherOrderAllocation::where('order_id', $order->id)->firstOrFail();
+        $release = $allocation->fundingEntries()->where('event_type', 'release')->sole();
+        $this->assertSame($buyer->id, $release->actor_id);
+        $this->assertSame(1, $offer->voucher->fresh()->used_count);
+        $this->assertSame('placed', $sibling->fresh()->status);
+        $this->assertSame(10, $items[0]->product->fresh()->stock);
+        $this->assertSame(9, $items[1]->product->fresh()->stock);
+        $this->assertSame(0, VoucherOrderAllocation::where('order_id', $sibling->id)->firstOrFail()->fundingEntries()->where('event_type', 'release')->count());
+        $this->assertSame(3000, $offer->balance->fresh()->committed_cents);
+    }
+
     public function test_shop_savings_cannot_exceed_the_original_seller_share(): void
     {
         [, , $items, $input] = $this->checkout(['100.00']);

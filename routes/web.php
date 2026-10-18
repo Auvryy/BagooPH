@@ -537,6 +537,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::get('/orders', [OrderHistoryController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/confirm', [OrderHistoryController::class, 'confirmReceived'])->name('orders.confirm');
+        Route::post('/orders/{order}/cancel', [OrderHistoryController::class, 'cancel'])->whereNumber('order')->middleware('buyer.approved')->name('orders.cancel');
         Route::post('/orders/{order}/pickup-code', [PickupClaimController::class, 'issue'])->middleware('throttle:10,1')->name('orders.pickup-code');
         Route::patch('/order-notices/{notification}/read', [OrderHistoryController::class, 'readNotice'])->name('orders.notice-read');
     });

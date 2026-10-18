@@ -9,7 +9,9 @@ use App\Models\User;
 use App\Models\VoucherOrderAllocation;
 use App\Models\VoucherRedemption;
 use App\Models\VoucherRevisionBalance;
+use App\Services\BuyerAccessService;
 use App\Services\Finance\CodMoney;
+use App\Services\Orders\OrderLifecycleService;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +90,14 @@ class VoucherFundingService
             && (! $order->delivery || ($order->delivery->status === 'unassigned' && ! $order->delivery->courier_id && ! $order->delivery->assigned_rider_id))
             && ! $order->codAccount, 403);
         $this->finishCommitments($order, $seller, 'release', $reason);
+    }
+
+    public function releaseBuyerCancellation(Order $order, User $buyer, string $reason): void
+    {
+        $buyer = app(BuyerAccessService::class)->requirePortal($buyer);
+        $order = Order::with('delivery')->findOrFail($order->id);
+        abort_unless(app(OrderLifecycleService::class)->canBuyerCancel($order, $buyer), 403);
+        $this->finishCommitments($order, $buyer, 'release', $reason);
     }
 
     public function recordExpense(Order $order, User $admin, SellerSettlementEvent $event): void

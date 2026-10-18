@@ -9,11 +9,16 @@ use App\Services\Notifications\NotificationCenterService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderTrackingService;
 use App\Services\Orders\OrderWorkspaceService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 class OrderHistoryController extends Controller
 {
@@ -67,6 +72,11 @@ class OrderHistoryController extends Controller
             'buyAgainUrl' => $ownedBuyerOrder && $user->canAccessPortal() && $order->status === 'completed'
                 ? route('buyer.orders.buy-again', $order, absolute: false) : null,
             'canConfirmReceipt' => $canConfirmReceipt,
+            'cancelOrderUrl' => $ownedBuyerOrder && app(OrderLifecycleService::class)->canBuyerCancel($order, $user)
+                ? route('buyer.orders.cancel', $order, absolute: false) : null,
+            'cancellationReasons' => OrderLifecycleService::BUYER_CANCELLATION_REASONS,
+            'cancellationReason' => $ownedBuyerOrder && $order->status === 'cancelled'
+                ? $order->delivery?->checkpoints()->where('checkpoint_type', 'cancelled')->value('notes') ?? $order->notes : null,
             'pickupClaim' => $pickupClaim,
             'pickupHub' => $pickupHub,
             'pickupCodeAvailable' => $pickupCodeAvailable,
@@ -103,5 +113,20 @@ class OrderHistoryController extends Controller
         }
 
         return back()->with('success', 'Order confirmed as received! Thank you for shopping with Bagoo.');
+    }
+
+    public function cancel(Request $request, Order $order): RedirectResponse
+    {
+        try {
+            app(OrderLifecycleService::class)->cancelByBuyer($order, $request->user(), $request->all());
+        } catch (ValidationException|AuthorizationException|HttpExceptionInterface $error) {
+            throw $error;
+        } catch (Throwable $error) {
+            Log::warning('Buyer cancellation could not be saved.', ['order_id' => $order->id, 'exception' => $error::class]);
+
+            return back()->withErrors(['reason' => 'We could not cancel this order. Your order is unchanged; try again.']);
+        }
+
+        return back()->with('success', 'Your order is cancelled. Its delivery will not proceed.');
     }
 }
