@@ -6357,3 +6357,48 @@ support the prepared rollout; they do not establish a running Azure service.
 A final reorder check also gives a reached purchase cap its own accurate message,
 instead of claiming that an empty Bag contains the remaining stock. Existing
 reorder ownership, stock and retry behavior remain covered by the focused gate.
+
+
+## Buyer acceptance review and polishing plan — October 19, 2026
+
+The user published the combined shopping delivery and current `main` at
+`7c1bb59` includes it. A fresh local evidence review then passed **803 backend
+tests / 14,007 assertions** and **447 frontend/helper checks**. Backend tests used
+isolated SQLite memory; no application behavior, development/production reset,
+browser walkthrough or Azure deployment was performed during this review.
+
+The original acceptance record remains stricter than the automated forecast:
+three confirmed gaps, 23 blocked and 66 Not Run, with no inferred manual Pass.
+Of the unexecuted scenarios, 57 have positive equivalent automated evidence and
+nine need a particular missing interaction or boundary observation. The user
+explicitly excludes those 57 likely passes from the active polishing backlog;
+their existing tests remain available for related regression risk.
+
+| Confirmed active gap | Executable evidence | Planned disposition |
+|---|---|---|
+| Combined location filtering | `BuyerDiscoveryService` has no location selection/filter, and catalogue URL helpers do not retain one. Reviewed shop data currently establishes address/city, not a separate province/region field. | BP01 traces the actual approved pickup-location source, handles ambiguous legacy data and implements the supported combined filter without private address disclosure. |
+| Fractional rating control | The buyer search control sends a 4.5 threshold; server selection uses an integer-only rule, and an existing test labels that advertised value malformed. | BP01 aligns UI/server average thresholds and tests the real control request while preserving integer individual review stars. This finding is additional to the original cases. |
+| Explicit bulk notification read | `NotificationController` supports one-notice and displayed-preview acknowledgement, with no bulk-all control/action. | BP01 adds an explicit owned snapshot action with correct badge/list refresh, replay/failure behavior and no acknowledgement of foreign or later notices. |
+| Positive buyer return flow | `BuyerDisputeController` still returns `available: false`; complete buyer requests, seller decisions, escalation and repayment are absent. | Retain the positive failure and three dependent blocks under existing return/refund planning ownership. The separate negative pre-delivery check remains in BP03. |
+
+The [polishing plan](buyer-polishing-plan/README.md) and
+[case ledger](buyer-polishing-plan/CASE_COVERAGE.md) allocate every active item:
+two original cases plus the additional rating finding in BP01; 15 rule/boundary
+cases in BP02; six interaction checks in BP03; one scheduled reminder observation
+in BP04; seven payment/prepaid-cancellation prerequisites and four buyer-return
+prerequisites. This accounts for **all 35 unresolved original cases plus one
+additional finding** without duplicating the excluded 57 likely passes.
+
+The blocked expectations do not authorize a different commercial system.
+Preserve COD, 10% commission, separate funding/shipping, the existing seller-funded
+cap, retained redemption usage, supported shipping routes, documented note/review
+limits, buyer-confirmed completion and independent cash settlement. Record a
+justified aligned expectation and its actual result; changing a label or passing
+an alternative behavior does not pass the unchanged original requirement.
+
+Planning branch: `docs/buyer-polishing-plan`. It changes documentation only and
+does not start the proposed coding branches, payment provider, refund flow,
+publication or deployment. Coverage/allocation, relative links, privacy and patch
+checks verify this planning handoff; no new runtime test or implementation-readiness
+increase is claimed for writing the plan. Future code changes require their own
+focused checks and build, and current results remain in this roadmap.
