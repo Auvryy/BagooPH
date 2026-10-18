@@ -20,7 +20,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -61,8 +60,6 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('advertisement-events', fn (Request $request) => Limit::perMinute(60)
             ->by(hash('sha256', 'advertisement-events|'.$request->ip())));
-
-        Vite::prefetch(concurrency: 3);
 
         if (app()->environment('production')) {
             URL::forceScheme('https');
