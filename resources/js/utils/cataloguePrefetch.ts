@@ -55,6 +55,7 @@ export interface Preparation {
 export interface CatalogueTransport {
     prepare: (url: string, headers: Record<string, string>, account: string) => Preparation;
     flush: (url: string, headers: Record<string, string>) => void;
+    prepareComponent?: (component: string) => Promise<unknown>;
 }
 interface Entry {
     url: string;
@@ -72,6 +73,9 @@ export class CataloguePrefetch {
     private entries = new Map<string, Entry>();
     private failures = new Map<string, number>();
     private active?: Entry & Preparation;
+    private codePermitted = false;
+    private code = new Map<string, number>();
+    private codeRequest?: { component: string; done: Promise<boolean> };
     constructor(private transport: CatalogueTransport, private environment: () => CatalogueEnvironment, private now = Date.now) {}
 
     observe(page: CatalogueSnapshot) {
@@ -80,15 +84,37 @@ export class CataloguePrefetch {
         this.enabled = page.props.cataloguePrefetchEnabled === true;
         this.permitted = (!page.props.auth?.user || page.props.auth.user.role === 'buyer')
             && !Object.keys(page.props.errors ?? {}).length && !Object.values(page.props.flash ?? {}).some(Boolean);
-        if (!this.enabled || !this.permitted) this.clear();
+        this.codePermitted = ['buyer', 'seller'].includes(page.props.auth?.user?.role)
+            && !Object.keys(page.props.errors ?? {}).length && !Object.values(page.props.flash ?? {}).some(Boolean);
+        if (!this.enabled || (!this.permitted && !this.codePermitted)) this.clear();
     }
     headers(): Record<string, string> {
         return { 'X-Bagoo-Catalogue': '1', 'X-Bagoo-Catalogue-Context': `${this.generation}:${this.context}` };
     }
-    allowed(idle = false) {
+    allowed(idle = false, codeOnly = false) {
         const env = this.environment();
         const slow = env.connection?.saveData || ['slow-2g', '2g'].includes(env.connection?.effectiveType ?? '');
-        return this.enabled && this.permitted && !this.busy && env.visible && env.online && !slow && (!idle || !!env.connection?.effectiveType);
+        return this.enabled && (codeOnly ? this.codePermitted : this.permitted) && !this.busy && env.visible && env.online && !slow && (!idle || !!env.connection?.effectiveType);
+    }
+    prepareCode(component: string): Promise<boolean> {
+        this.prune();
+        if (!this.allowed(false, true) || !this.transport.prepareComponent) return Promise.resolve(false);
+        if ((this.code.get(component) ?? 0) > this.now()) return Promise.resolve(true);
+        if (this.codeRequest?.component === component) return this.codeRequest.done;
+        if (this.codeRequest || this.active || this.failures.has(`code:${component}`)) return Promise.resolve(false);
+        const generation = this.generation;
+        const request = { component, done: Promise.resolve(false) };
+        this.codeRequest = request;
+        request.done = Promise.resolve().then(() => this.transport.prepareComponent!(component)).then(() => {
+            if (generation !== this.generation) return false;
+            while (this.code.size >= cataloguePolicy.maxEntries) this.code.delete(this.code.keys().next().value!);
+            this.code.set(component, this.now() + cataloguePolicy.ttl);
+            return true;
+        }, () => {
+            if (generation === this.generation) this.failed(`code:${component}`);
+            return false;
+        }).finally(() => { if (this.codeRequest === request) this.codeRequest = undefined; });
+        return request.done;
     }
     setBusy(busy: boolean) { this.busy = busy; }
     private prune() {
@@ -108,7 +134,7 @@ export class CataloguePrefetch {
         if (!url || !this.allowed(idle) || url === canonicalCatalogueUrl(env.currentUrl, env.origin)) return Promise.resolve(false);
         if (this.entries.has(url)) return Promise.resolve(true);
         if (this.active?.url === url) return this.active.done;
-        if (this.active || this.failures.has(url)) return Promise.resolve(false);
+        if (this.active || this.codeRequest || this.failures.has(url)) return Promise.resolve(false);
         const generation = this.generation;
         const headers = this.headers();
         const request = this.transport.prepare(url, headers, this.context);
@@ -161,5 +187,8 @@ export class CataloguePrefetch {
         this.cancelActive();
         for (const entry of this.entries.values()) this.transport.flush(entry.url, entry.headers);
         this.entries.clear(); this.failures.clear();
+        this.code.clear();
+        // Imports cannot be aborted. Retain their budget until they settle;
+        // the generation prevents late completion restoring prepared state.
     }
 }

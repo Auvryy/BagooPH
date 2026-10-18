@@ -29,6 +29,7 @@ import CustomerServiceAssistant from '@/Components/CustomerServiceAssistant';
 import { getDomainUrl } from '@/utils/domain';
 import useCatalogueSearch from '@/hooks/useCatalogueSearch';
 import CatalogueNavigationNotice from '@/Components/CatalogueNavigationNotice';
+import PortalLink from '@/Components/PortalLink';
 
 interface Props {
     children: React.ReactNode;
@@ -191,7 +192,7 @@ export default function BuyerLayout({
                     </div>
 
                     <div className="flex items-center gap-4 text-white/70">
-                        <Link href={route('buyer.orders.index')} className="hover:text-white transition hidden sm:inline">Track Order</Link>
+                        <PortalLink href={route('buyer.orders.index')} className="hover:text-white transition hidden sm:inline">Track Order</PortalLink>
                         <span className="text-white/20 hidden sm:inline">/</span>
                         <span className="text-[#E00D42] font-semibold">PHP ₱ (PH)</span>
                     </div>
@@ -204,7 +205,7 @@ export default function BuyerLayout({
                     <div className="flex items-center justify-between gap-4 sm:gap-6">
                         
                         {/* Logo */}
-                        <Link href={route('buyer.index')} className="flex items-center gap-3 shrink-0 group">
+                        <PortalLink href={route('buyer.index')} className="flex items-center gap-3 shrink-0 group">
                             <BagooLogo className="w-9 h-9 sm:w-10 sm:h-10 group-hover:scale-105 transition-transform" rounded="rounded-xs" />
                             <div className="flex flex-col">
                                 <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none">
@@ -214,7 +215,7 @@ export default function BuyerLayout({
                                     Marketplace
                                 </span>
                             </div>
-                        </Link>
+                        </PortalLink>
 
                         {/* Search Bar */}
                         <div className="flex-1 max-w-2xl hidden md:block">
@@ -310,7 +311,7 @@ export default function BuyerLayout({
                                     onMouseLeave={handleUserDropdownLeave}
                                 >
                                     <div className="h-9 sm:h-11 flex items-stretch rounded-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-[11px] sm:text-xs font-bold shadow-2xs group">
-                                        <Link
+                                        <PortalLink
                                             href={route('buyer.orders.index')}
                                             className="flex min-w-0 items-center gap-1.5 sm:gap-2 pl-2.5 sm:pl-4 pr-1 sm:pr-2 focus:outline-hidden"
                                         >
@@ -326,7 +327,7 @@ export default function BuyerLayout({
                                                 </div>
                                             )}
                                             <span className="truncate max-w-[80px] sm:max-w-[100px] hidden sm:inline font-semibold">{auth.user.name.split(' ')[0]}</span>
-                                        </Link>
+                                        </PortalLink>
                                         <button
                                             type="button"
                                             onClick={toggleUserDropdown}
@@ -368,26 +369,26 @@ export default function BuyerLayout({
                                                     </div>
                                                 </div>
 
-                                                <Link 
+                                                <PortalLink
                                                     href={route('buyer.profile', { tab: 'account' })} 
                                                     className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                                 >
                                                     <UserIcon className="w-4 h-4 text-[#E00D42]" />
                                                     <span>Profile & Settings</span>
-                                                </Link>
+                                                </PortalLink>
 
 
-                                                <Link 
+                                                <PortalLink
                                                     href={route('buyer.orders.index')}
                                                     className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                                 >
                                                     <Package className="w-4 h-4 text-indigo-500" />
                                                     <span>My Orders</span>
-                                                </Link>
+                                                </PortalLink>
 
-                                                <Link href={route('buyer.saved-products.index')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition">
+                                                <PortalLink href={route('buyer.saved-products.index')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition">
                                                     <Heart className="h-4 w-4 text-[#E00D42]" /><span>Saved products</span>
-                                                </Link>
+                                                </PortalLink>
 
                                                 <Link 
                                                     href={route('buyer.messages')} 
@@ -540,9 +541,9 @@ export default function BuyerLayout({
                     <div>
                         <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs">Platform Directory</h5>
                         <ul className="space-y-2 text-slate-500">
-                            <li><Link href={route('marketplace')} className="hover:text-[#E00D42]">Marketplace Home</Link></li>
-                            <li><Link href={route('buyer.search')} className="hover:text-[#E00D42]">Search 14 Departments</Link></li>
-                            <li><Link href={route('buyer.orders.index')} className="hover:text-[#E00D42]">Track Purchases</Link></li>
+                            <li><PortalLink href={route('marketplace')} className="hover:text-[#E00D42]">Marketplace Home</PortalLink></li>
+                            <li><PortalLink href={route('buyer.search')} className="hover:text-[#E00D42]">Search 14 Departments</PortalLink></li>
+                            <li><PortalLink href={route('buyer.orders.index')} className="hover:text-[#E00D42]">Track Purchases</PortalLink></li>
                             <li><Link href={route('buyer.cart')} className="hover:text-[#E00D42]">Shopping Bag</Link></li>
                         </ul>
                     </div>

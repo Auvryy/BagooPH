@@ -3,6 +3,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import PortalLink from '@/Components/PortalLink';
+import { visitPortal } from '@/utils/catalogueRuntime';
+import useResolvedPage from '@/hooks/useResolvedPage';
 import ListingAssistantPanel from '@/Components/ListingAssistantPanel';
 import { Category, PaginatedData, Product, Shop } from '@/types';
 import { newListingStatus, sellerInventoryQuery, sellerVariantStock, SellerInventoryFilters } from '@/utils/sellerInventory';
@@ -78,6 +81,7 @@ interface Props {
 }
 
 export default function SellerProducts({ products, categories, shop, filters = {} }: Props) {
+    useResolvedPage(products.current_page);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [stockProduct, setStockProduct] = useState<Product | null>(null);
@@ -88,6 +92,9 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const [statusFilter, setStatusFilter] = useState<SellerInventoryFilters['status']>(filters.status ?? 'all');
     const [stockFilter, setStockFilter] = useState<SellerInventoryFilters['stock']>(filters.stock ?? 'all');
     const [filtering, setFiltering] = useState(false);
+    const filteringGuard = useRef(false);
+    const [filterError, setFilterError] = useState('');
+    const listProps = ['products', 'filters', 'shop', 'categories', 'auth', 'flash', 'errors'];
     const createSubmitting = useRef(false);
     const createDescriptionRef = useRef<HTMLTextAreaElement>(null);
     const editDescriptionRef = useRef<HTMLTextAreaElement>(null);
@@ -1887,21 +1894,24 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
     const submitProductSearch = (event: React.FormEvent) => {
         event.preventDefault();
-        if (filtering) return;
-        router.get(route('seller.products.index'), sellerInventoryQuery({ search: searchQuery, category_id: categoryFilter, status: statusFilter, stock: stockFilter }), {
-            preserveScroll: true,
-            replace: true,
-            onStart: () => setFiltering(true),
-            onFinish: () => setFiltering(false),
+        loadProducts(sellerInventoryQuery({ search: searchQuery, category_id: categoryFilter, status: statusFilter, stock: stockFilter }));
+    };
+
+    const loadProducts = (query: Record<string, string | number>) => {
+        if (filteringGuard.current || createForm.processing || editForm.processing || stockForm.processing || isRemovingProduct) return;
+        filteringGuard.current = true; setFiltering(true); setFilterError('');
+        const target = new URL(route('seller.products.index'), window.location.origin);
+        for (const [key, value] of Object.entries(query)) target.searchParams.set(key, String(value));
+        void visitPortal(target.pathname + target.search, { only: listProps, preserveState: true, preserveScroll: true, replace: true,
+            onError: errors => setFilterError(Object.values(errors).join(' ')),
+            onFinish: () => { filteringGuard.current = false; setFiltering(false); },
+            onCancel: () => { filteringGuard.current = false; setFiltering(false); },
         });
     };
 
     const clearProductSearch = () => {
         setSearchQuery('');
-        router.get(route('seller.products.index'), sellerInventoryQuery({ category_id: categoryFilter, status: statusFilter, stock: stockFilter }), {
-            preserveScroll: true,
-            replace: true,
-        });
+        loadProducts(sellerInventoryQuery({ category_id: categoryFilter, status: statusFilter, stock: stockFilter }));
     };
 
     const clearProductFilters = () => {
@@ -1909,7 +1919,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         setCategoryFilter('');
         setStatusFilter('all');
         setStockFilter('all');
-        router.get(route('seller.products.index'), {}, { preserveScroll: true, replace: true });
+        loadProducts({});
     };
 
     const hasFilters = Object.keys(sellerInventoryQuery(filters)).length > 0;
@@ -1931,6 +1941,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
             <Head title="Products — BagooPH Seller" />
 
             <div className="space-y-6 font-sans">
+                {filterError && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">{filterError}</p>}
                 
                 {/* Search and Stats Filter */}
                 <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-300 shadow-2xs space-y-4">
@@ -2140,9 +2151,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     const label = isPrevious ? 'Previous' : isNext ? 'Next' : link.label;
 
                                     return link.url ? (
-                                        <Link
+                                        <PortalLink
                                             key={`${label}-${index}`}
                                             href={link.url}
+                                            only={listProps}
+                                            preserveState
                                             preserveScroll
                                             className={`min-w-8 rounded-sm border px-3 py-1.5 text-center text-xs font-bold transition ${
                                                 link.active
@@ -2151,7 +2164,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                             }`}
                                         >
                                             {label}
-                                        </Link>
+                                        </PortalLink>
                                     ) : (
                                         <span
                                             key={`${label}-${index}`}

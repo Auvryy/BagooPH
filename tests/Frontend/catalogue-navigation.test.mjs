@@ -88,3 +88,26 @@ test('the actual home and search pages render new product records and the active
         }
     }
 });
+
+test('department links prepare the exact filtered search and reset only its page or category', async () => {
+    let view;
+    const result = await createInertiaApp({
+        page: { component: 'Buyer/Search', url: '/buyer/search?page=2', version: null, props: {
+            auth: { user: null }, flash: {}, cartCount: 0, categories: [{ id: 1, name: 'Pet Supplies', slug: 'pet-supplies', products_count: 4 }],
+            filters: { search: 'Bag', min_price: '0', category: 'apparel', sort: 'newest' }, relatedProducts: [],
+            products: { data: [], current_page: 2, last_page: 2, per_page: 24, total: 25, links: [] },
+        } },
+        resolve: () => ui.Search, setup: ({ App, props }) => { view = createElement(App, props); return view; }, render: () => renderToStaticMarkup(view),
+    });
+    const anchors = [...result.body.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)];
+    const department = anchors.find(([, , body]) => body.includes('Pet Supplies'));
+    const all = anchors.find(([, , body]) => body.includes('All Departments'));
+    assert.ok(department); assert.ok(all);
+    assert.match(department[1], /category=pet-supplies/);
+    for (const anchor of [department, all]) {
+        for (const query of ['min_price=0', 'search=Bag', 'sort=newest']) assert.ok(anchor[1].includes(query));
+        assert.doesNotMatch(anchor[1], /page=2/);
+    }
+    assert.doesNotMatch(all[1], /category=/);
+    assert.match(department[1], /focus-visible:outline/);
+});

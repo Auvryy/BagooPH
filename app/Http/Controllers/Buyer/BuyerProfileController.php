@@ -29,8 +29,6 @@ class BuyerProfileController extends Controller
     {
         $user = app(BuyerAccessService::class)->requireOrderHistory($request->user());
 
-        $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
-
         $wallet = [
             'available' => false,
             'balance' => null,
@@ -42,33 +40,46 @@ class BuyerProfileController extends Controller
         $workspace = app(OrderWorkspaceService::class);
         $status = $workspace->selection($request, 'buyer', 'order_status');
         $owned = Order::where('buyer_id', $user->id);
-        $counts = $workspace->counts($owned, 'buyer');
-        $orders = $workspace->paginate($workspace->stable($workspace->filter(clone $owned, 'buyer', $status))
-            ->with(['items.product.shop', 'delivery.courier:id,name', ...OrderTrackingService::relations(history: false)]), 12);
-        foreach ($orders as $order) {
-            $order->setAttribute('can_confirm_receipt', $workspace->canConfirmReceipt($order, $user));
-            $order->setAttribute('can_buy_again', $order->buyer_id === $user->id && $user->canAccessPortal() && $order->status === 'completed');
-            app(OrderTrackingService::class)->attach($order, history: false);
-        }
+        $counts = null;
+        $countOrders = function () use (&$counts, $workspace, $owned) {
+            return $counts ??= $workspace->counts(clone $owned, 'buyer');
+        };
+        $settings = null;
+        $accountSettings = function () use (&$settings, $user) {
+            return $settings ??= app(AccountSettingsService::class)->presentation($user);
+        };
+        $available = null;
+        $offers = function () use (&$available, $user) {
+            return $available ??= $user->canAccessPortal() ? app(CheckoutQuoteService::class)->offers(buyer: $user) : ['offers' => [], 'count' => 0];
+        };
 
         $initialTab = $request->query('tab', 'orders');
-        $available = $user->canAccessPortal() ? app(CheckoutQuoteService::class)->offers(buyer: $user) : ['offers' => [], 'count' => 0];
-        $vouchers = app(VoucherCollectionService::class)->collection($user, $request);
 
         return Inertia::render('Buyer/Profile', [
-            ...app(AccountSettingsService::class)->presentation($user),
+            'identityCorrection' => fn () => $accountSettings()['identityCorrection'],
+            'emailSettings' => fn () => $accountSettings()['emailSettings'],
             'user' => [...$user->toArray(), ...app(VerificationDocumentService::class)->links($user)],
-            'addresses' => $addresses,
+            'addresses' => fn () => $user->addresses()->orderByDesc('is_default')->oldest()->get(),
             'wallet' => $wallet,
-            'orders' => $orders,
-            'ordersCount' => $counts['all'],
-            'orderCounts' => $counts,
+            'orders' => function () use ($workspace, $owned, $status, $user) {
+                $orders = $workspace->paginate($workspace->stable($workspace->filter(clone $owned, 'buyer', $status))
+                    ->with(['items.product.shop', 'delivery.courier:id,name', ...OrderTrackingService::relations(history: false)]), 12);
+                foreach ($orders as $order) {
+                    $order->setAttribute('can_confirm_receipt', $workspace->canConfirmReceipt($order, $user));
+                    $order->setAttribute('can_buy_again', $order->buyer_id === $user->id && $user->canAccessPortal() && $order->status === 'completed');
+                    app(OrderTrackingService::class)->attach($order, history: false);
+                }
+
+                return $orders;
+            },
+            'ordersCount' => fn () => $countOrders()['all'],
+            'orderCounts' => $countOrders,
             'currentOrderStatus' => $status,
             'initialTab' => $initialTab,
             'canUsePortal' => $user->canAccessPortal(),
-            'availableVouchers' => $available['offers'],
-            'availableVoucherCount' => $available['count'],
-            'voucherCollection' => $vouchers,
+            'availableVouchers' => fn () => $offers()['offers'],
+            'availableVoucherCount' => fn () => $offers()['count'],
+            'voucherCollection' => fn () => app(VoucherCollectionService::class)->collection($user, $request),
         ]);
     }
 

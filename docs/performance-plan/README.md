@@ -14,6 +14,11 @@ For the selected PF01 delivery, see [its implementation evidence](../CORE_FLOW_R
 and [the deployment/manual acceptance guide](ACCEPTANCE.md). Later role batches
 retain their own selection and acceptance boundaries.
 
+For the selected PF02 delivery, see [its buyer/seller implementation evidence](../CORE_FLOW_ROADMAP.md#october-18-2026-pf02-buyer-and-seller-navigation)
+and the [private-navigation acceptance checks](ACCEPTANCE.md#buyer-and-seller-navigation).
+Private destinations prepare reviewed page code; their records and permissions
+still come from a fresh authorized request on activation.
+
 ## Delivery order
 
 | Batch | Outcome | Suggested branch | Dependency |

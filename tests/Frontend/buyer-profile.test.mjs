@@ -186,36 +186,43 @@ test('purchase submenu opens immediately for every active purchase filter and st
     }
 });
 
-test('switching purchase groups from another profile tab loads the existing status route and resets pagination', async () => {
-    const original = router.get; const visits = [];
-    router.get = (...args) => visits.push(args);
-    try {
-        await render({ initialTab: 'wallet', currentOrderStatus: 'all', orders: { data: [], current_page: 2, last_page: 2, per_page: 12, total: 13 } });
-        globalThis.buyerProfileNavigation.onSelect('issues');
-        await render({ initialTab: 'account', currentOrderStatus: 'cancelled' });
-        globalThis.buyerProfileNavigation.onSelect('progress');
-        assert.equal(visits[0][0], '/buyer/profile');
-        assert.deepEqual(visits[0][1], { tab: 'orders', order_status: 'delivery_failed' });
-        assert.equal(visits[1][0], '/buyer/profile');
-        assert.deepEqual(visits[1][1], { tab: 'orders', order_status: 'all' });
-        assert.ok(visits.every(visit => visit[2].only.includes('initialTab') && visit[2].preserveScroll));
-    } finally { router.get = original; }
+test('switching purchase groups from another profile tab makes a fresh scoped request and resets pagination', async t => {
+    const original = router.visit; const visits = [];
+    const oldWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    router.visit = (...args) => visits.push(args);
+    t.after(() => { router.visit = original; if (oldWindow) Object.defineProperty(globalThis, 'window', oldWindow); else delete globalThis.window; });
+    await render({ initialTab: 'wallet', currentOrderStatus: 'all', orders: { data: [], current_page: 2, last_page: 2, per_page: 12, total: 13 } });
+    Object.defineProperty(globalThis, 'window', { value: { location: new URL('https://bagoo.test/buyer/profile') }, configurable: true });
+    globalThis.buyerProfileNavigation.onSelect('issues');
+    assert.equal(visits[0][0], '/buyer/profile?tab=orders&order_status=delivery_failed');
+    visits[0][1].onFinish({});
+    delete globalThis.window;
+    await render({ initialTab: 'account', currentOrderStatus: 'cancelled' });
+    Object.defineProperty(globalThis, 'window', { value: { location: new URL('https://bagoo.test/buyer/profile') }, configurable: true });
+    globalThis.buyerProfileNavigation.onSelect('progress');
+    assert.equal(visits[1][0], '/buyer/profile?tab=orders&order_status=all');
+    assert.ok(visits.every(visit => visit[1].fresh && visit[1].only.includes('auth') && visit[1].only.includes('initialTab') && visit[1].preserveScroll));
+    visits[1][1].onFinish({});
 });
 
-test('profile filters reset the page and refresh retains the selected exception and current page', async () => {
+test('profile filters guard duplicate requests, reset the page and refresh the current exception page', async t => {
     await render({ currentOrderStatus: 'returned', orders: { data: [], current_page: 2, last_page: 2, per_page: 12, total: 13 } });
-    const original = router.get; const visits = [];
-    router.get = (...args) => visits.push(args);
-    try {
-        globalThis.buyerProfileFilters.onChange('cancelled');
-        globalThis.buyerProfileFilters.onRefresh();
-        assert.equal(visits[0][0], '/buyer/profile');
-        assert.deepEqual(visits[0][1], { tab: 'orders', order_status: 'cancelled' });
-        assert.equal(visits[1][0], '/buyer/profile?page=2');
-        assert.deepEqual(visits[1][1], { tab: 'orders', order_status: 'returned' });
-        assert.equal(visits[1][2].preserveScroll, true);
-        assert.ok(visits[1][2].only.includes('orderCounts'));
-    } finally { router.get = original; }
+    const original = router.visit; const visits = [];
+    const oldWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    Object.defineProperty(globalThis, 'window', { value: { location: new URL('https://bagoo.test/buyer/profile') }, configurable: true });
+    router.visit = (...args) => visits.push(args);
+    t.after(() => { router.visit = original; if (oldWindow) Object.defineProperty(globalThis, 'window', oldWindow); else delete globalThis.window; });
+    globalThis.buyerProfileFilters.onChange('cancelled');
+    globalThis.buyerProfileFilters.onRefresh();
+    assert.equal(visits.length, 1);
+    assert.equal(visits[0][0], '/buyer/profile?tab=orders&order_status=cancelled');
+    visits[0][1].onFinish({});
+    globalThis.buyerProfileFilters.onRefresh();
+    assert.equal(visits[1][0], '/buyer/profile?page=2&tab=orders&order_status=returned');
+    assert.equal(visits[1][1].preserveScroll, true);
+    assert.ok(visits[1][1].only.includes('orderCounts'));
+    assert.ok(!visits[1][1].only.includes('addresses'));
+    visits[1][1].onFinish({});
 });
 
 test('purchase controls and sidebar sit outside the focusable results region; footer remains in the outer page', async () => {
