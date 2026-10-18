@@ -50,7 +50,9 @@ class BuyAgainService
                     $currentPrice = app(InventoryService::class)->unitPrice($product, $original->color, $original->size);
                     $limit = app(InventoryService::class)->maximumCartLineQuantity($product, $productItems, $original->color, $original->size, $matching?->id, $actor->id);
                     $maximum = max(0, $limit - ($matching?->quantity ?? 0));
-                    $reason = $product->stock <= 0 ? 'This product is currently out of stock.' : 'Your Bag already contains the available quantity for this item.';
+                    $allowance = app(PurchasePolicyService::class)->remaining($product, $actor->id);
+                    $reason = $product->stock <= 0 ? 'This product is currently out of stock.'
+                        : ($allowance === 0 ? "You have reached this product’s limit of {$product->purchase_limit} units per buyer." : 'Your Bag already contains the available quantity for this item.');
                 } catch (RuntimeException $exception) {
                     $reason = $exception->getMessage();
                 }

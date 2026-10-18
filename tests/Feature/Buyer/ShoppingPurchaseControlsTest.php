@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\Commerce\BuyAgainService;
 use App\Services\Commerce\PurchasePolicyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -141,5 +142,18 @@ class ShoppingPurchaseControlsTest extends TestCase
         $this->assertSame('preparing', $order->fresh()->status);
         $this->assertTrue($shop->fresh()->vacation_mode);
         $this->assertSame(19, $product->fresh()->stock);
+    }
+
+    public function test_reorder_preview_explains_a_reached_limit_without_claiming_the_bag_is_full(): void
+    {
+        [$buyer, $shop, $product] = $this->fixture();
+        $order = Order::factory()->create(['buyer_id' => $buyer->id, 'status' => 'completed']);
+        OrderItem::factory()->create(['order_id' => $order->id, 'product_id' => $product->id, 'shop_id' => $shop->id, 'quantity' => 2, 'color' => null, 'size' => null]);
+        $preview = app(BuyAgainService::class)->preview($buyer, $order);
+        $this->assertFalse($preview['items'][0]['can_select']);
+        $this->assertSame(0, $preview['items'][0]['maximum_quantity']);
+        $this->assertStringContainsString('limit of 2', $preview['items'][0]['unavailable_reason']);
+        $this->assertStringNotContainsString('Bag already contains', $preview['items'][0]['unavailable_reason']);
+        $this->assertDatabaseCount('cart_items', 0);
     }
 }
