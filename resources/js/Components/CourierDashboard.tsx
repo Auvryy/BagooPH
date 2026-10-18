@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { Link } from '@inertiajs/react';
+import PortalLink from '@/Components/PortalLink';
 import { ArrowRight, CheckCircle2, Package, PackageCheck, Target, Truck, type LucideIcon } from 'lucide-react';
 import { CourierBadge, CourierPanel, courierButton, courierInput } from '@/Components/CourierUI';
 import { courierActivitySeries, courierDate, courierPath } from '@/utils/courier';
@@ -37,7 +37,7 @@ export function CourierDashboardSummary({ available, pickups, deliveries, comple
             const classes = 'block h-full w-full rounded-[8px] p-4 text-left transition-colors hover:bg-[#FFFAFB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] motion-reduce:transition-none';
             return <CourierPanel key={label} className="min-w-0">{tab
                 ? <button type="button" onClick={() => onSelect(tab)} className={classes} aria-label={`View ${label.toLowerCase()}`}>{content}</button>
-                : <Link href={courierPath('/earnings')} className={classes} aria-label="View completed trips">{content}</Link>}</CourierPanel>;
+                : <PortalLink href={courierPath('/earnings')} className={classes} aria-label="View completed trips">{content}</PortalLink>}</CourierPanel>;
         })}
     </section>;
 }
@@ -88,7 +88,7 @@ export function CourierDeliveryOverview({ activity, activePickups, pickupLimit, 
 export function CourierRecentDeliveries({ activity, completedToday }: { activity: CourierActivity[]; completedToday?: number }) {
     const visible = activity.slice(0, 5);
     return <CourierPanel className="min-w-0 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-semibold">Recent deliveries</h2>{completedToday !== undefined && <CourierBadge tone="brand">{completedToday} today</CourierBadge>}</div><Link href={courierPath('/earnings')} className="inline-flex min-h-12 items-center gap-2 text-sm font-semibold text-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">View all trips<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-semibold">Recent deliveries</h2>{completedToday !== undefined && <CourierBadge tone="brand">{completedToday} today</CourierBadge>}</div><PortalLink href={courierPath('/earnings')} className="inline-flex min-h-12 items-center gap-2 text-sm font-semibold text-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">View all trips<ArrowRight className="h-4 w-4" aria-hidden="true" /></PortalLink></div>
         {!visible.length ? <p className="py-8 text-base text-slate-600">No recent deliveries. Recorded final-mile deliveries at your current hub will appear here.</p> : <>
             <div className="mt-3 hidden min-[860px]:block">
                 <table className="w-full table-fixed border-separate border-spacing-0 text-left text-sm"><caption className="sr-only">Latest recorded final-mile deliveries at your current company and hub</caption><thead><tr className="text-slate-600"><th className="w-[22%] rounded-l-[8px] bg-slate-100 px-3 py-3 font-medium" scope="col">Parcel</th><th className="w-[29%] bg-slate-100 px-3 py-3 font-medium" scope="col">Recipient</th><th className="w-[18%] bg-slate-100 px-3 py-3 font-medium" scope="col">Recorded</th><th className="w-[16%] bg-slate-100 px-3 py-3 font-medium" scope="col">Payment</th><th className="w-[15%] rounded-r-[8px] bg-slate-100 px-3 py-3 font-medium" scope="col">Status</th></tr></thead><tbody>{visible.map((trip) => <tr key={trip.id}><td className="break-all border-b border-slate-100/80 px-3 py-4 font-medium">{trip.trackingNumber}<span className="mt-1 block text-xs font-normal text-slate-600">{trip.orderNumber}</span></td><td className="border-b border-slate-100/80 px-3 py-4"><span className="block break-words font-medium">{trip.recipientName || 'Not provided'}</span><span className="mt-1 block break-words text-xs leading-relaxed text-slate-600">{trip.deliveryAddress || 'Address not provided'}</span></td><td className="border-b border-slate-100/80 px-3 py-4 text-xs leading-relaxed text-slate-600">{courierDate(trip.deliveredAt)}</td><td className="break-words border-b border-slate-100/80 px-3 py-4">{trip.paymentMethod || 'Not provided'}</td><td className="border-b border-slate-100/80 px-3 py-4"><CourierBadge tone="success">Delivered</CourierBadge></td></tr>)}</tbody></table>

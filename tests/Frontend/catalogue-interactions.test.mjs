@@ -8,7 +8,7 @@ import { build as buildBundle } from 'esbuild';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-catalogue-interactions-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const build = await buildBundle({
-    stdin: { contents: "export { default as Search } from '@/hooks/useCatalogueSearch'; export { default as Link } from '@/Components/CatalogueLink'; export { default as Notice } from '@/Components/CatalogueNavigationNotice'; export { default as PortalLink } from '@/Components/PortalLink'; export { default as ResolvedPage } from '@/hooks/useResolvedPage';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: "export { default as Search } from '@/hooks/useCatalogueSearch'; export { default as Link } from '@/Components/CatalogueLink'; export { default as Notice } from '@/Components/CatalogueNavigationNotice'; export { default as PortalLink } from '@/Components/PortalLink'; export { default as ResolvedPage } from '@/hooks/useResolvedPage'; export { default as Registry } from '@/Pages/Hub/Deliveries';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'controlled-catalogue-interactions', setup(builder) {
         builder.onResolve({ filter: /^react$/ }, () => ({ path: 'hooks', namespace: 'catalogue-hooks' }));
@@ -19,9 +19,12 @@ const build = await buildBundle({
         ` }));
         builder.onResolve({ filter: /^@inertiajs\/react$/ }, () => ({ path: 'inertia', namespace: 'catalogue-inertia' }));
         builder.onLoad({ filter: /.*/, namespace: 'catalogue-inertia' }, () => ({ loader: 'js', contents: `
+            export const Head = () => null; export const Link = 'a';
             export const usePage = () => globalThis.catalogueHarness.page;
             export const router = { on: (...args) => globalThis.catalogueHarness.on(...args), replace: options => globalThis.catalogueHarness.replacements.push(options) };
         ` }));
+        builder.onResolve({ filter: /Layouts\/DashboardLayout$/ }, () => ({path:'layout',namespace:'catalogue-layout'}));
+        builder.onLoad({filter:/.*/,namespace:'catalogue-layout'}, () => ({contents:'export default props => props.children;'}));
         builder.onResolve({ filter: /utils\/catalogueRuntime$/ }, () => ({ path: 'runtime', namespace: 'catalogue-runtime' }));
         builder.onLoad({ filter: /.*/, namespace: 'catalogue-runtime' }, () => ({ loader: 'js', contents: `
             export const cataloguePrefetch = {
@@ -181,4 +184,28 @@ test('inactive order pagination cannot overwrite another profile section URL', t
     const h = harness(t, () => ui.ResolvedPage(1, false));
     h.window.location = new URL('https://bagoo.test/buyer/profile?tab=vouchers&page=2');
     h.render(); assert.equal(h.replacements.length, 0);
+});
+
+
+test('hub registry filters make one fresh coherent visit and retain useful input after a rejected read', t => {
+    const props = {activeHub:{id:2}, deliveries:{data:[],current_page:1,last_page:1,total:0,links:[]},
+        counts:{all:0,in_hub:0,out_for_delivery:0,ready_pickup:0,handovers_today:0}, filters:{search:'BGO',status:'in_hub',delivery_type:'doorstep'}, eligibleRiders:[],basePath:'/hub',canScan:false};
+    const Registry = input => { const root=ui.Registry(input); return root.type(root.props); };
+    const h = harness(t,Registry,props);
+    const all = tree => !tree || typeof tree !== 'object' ? [] : [tree,...[tree.props?.children].flat(Infinity).flatMap(all)];
+    let tree=h.render(); const form=all(tree).find(n=>n.type==='form');
+    const input=all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Search parcels');
+    assert.equal(input.props.maxLength,120); input.props.onChange({target:{value:'BGO-NEW'}}); tree=h.render();
+    const submit=all(tree).find(n=>n.type==='form').props.onSubmit;
+    submit({preventDefault(){}}); submit({preventDefault(){}});
+    assert.equal(h.visits.length,1);
+    const visit=h.visits[0]; const url=new URL(visit.url,'https://bagoo.test');
+    assert.equal(url.searchParams.get('hub_id'),'2'); assert.equal(url.searchParams.get('search'),'BGO-NEW');
+    assert.equal(url.searchParams.get('status'),'in_hub'); assert.equal(url.searchParams.get('delivery_type'),'doorstep');
+    assert.equal(url.searchParams.has('page'),false);
+    for (const prop of ['auth','activeHub','deliveries','counts','filters','eligibleRiders','canScan']) assert.ok(visit.options.only.includes(prop));
+    visit.options.onError({search:'Please correct this search.'}); visit.options.onFinish();
+    tree=h.render(); assert.ok(all(tree).some(n=>n.props?.role==='alert'&&n.props.children==='Please correct this search.'));
+    assert.equal(all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Search parcels').props.value,'BGO-NEW');
+    form.props.onSubmit({preventDefault(){}}); assert.equal(h.visits.length,2);
 });

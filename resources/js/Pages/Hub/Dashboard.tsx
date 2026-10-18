@@ -1,5 +1,6 @@
 import React from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import PortalLink from '@/Components/PortalLink';
 import {
     AlertTriangle,
     Building2,
@@ -163,20 +164,20 @@ export default function HubDashboard({
             )}
             actions={(
                 <div className="flex items-center gap-2">
-                    <Link
+                    <PortalLink
                         href={route('hub.counter')}
                         className="hidden sm:inline-flex items-center gap-2 rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                     >
                         <Store className="h-4 w-4" />
                         Counter pickup
-                    </Link>
-                    <Link
+                    </PortalLink>
+                    <PortalLink
                         href={route('hub.scan.station')}
                         className="inline-flex items-center gap-2 rounded-xs bg-[#E00D42] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#C20836]"
                     >
                         <ScanLine className="h-4 w-4" />
                         Scan parcel
-                    </Link>
+                    </PortalLink>
                 </div>
             )}
         >
@@ -291,7 +292,7 @@ export default function HubDashboard({
                         ) : (
                             <div className="divide-y divide-slate-200">
                                 {activeAttention.map((item) => (
-                                    <Link
+                                    <PortalLink
                                         key={item.key}
                                         href={item.href}
                                         className="flex items-center justify-between gap-4 px-4 py-3 transition hover:bg-slate-50"
@@ -303,7 +304,7 @@ export default function HubDashboard({
                                             <span className="truncate text-sm font-medium text-slate-800">{item.label}</span>
                                         </div>
                                         <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
-                                    </Link>
+                                    </PortalLink>
                                 ))}
                             </div>
                         )}
@@ -317,9 +318,9 @@ export default function HubDashboard({
                             <h2 className="text-sm font-bold text-slate-900">Parcel journey</h2>
                             <p className="mt-0.5 text-xs text-slate-500">Current physical custody across the road network</p>
                         </div>
-                        <Link href={route('hub.deliveries')} className="text-xs font-semibold text-[#E00D42] hover:underline">
+                        <PortalLink href={route('hub.deliveries')} className="text-xs font-semibold text-[#E00D42] hover:underline">
                             View parcels
-                        </Link>
+                        </PortalLink>
                     </div>
 
                     <div className="hidden p-6 md:block">
@@ -328,7 +329,7 @@ export default function HubDashboard({
                             {flowStages.map((stage) => {
                                 const Icon = stage.icon;
                                 return (
-                                    <Link
+                                    <PortalLink
                                         key={stage.label}
                                         href={route('hub.deliveries', { status: stage.status })}
                                         className="group relative z-10 flex flex-col items-center text-center"
@@ -338,12 +339,12 @@ export default function HubDashboard({
                                         </span>
                                         <span className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900">{stage.value}</span>
                                         <span className="mt-0.5 text-xs font-semibold text-slate-600 group-hover:text-slate-900">{stage.label}</span>
-                                    </Link>
+                                    </PortalLink>
                                 );
                             })}
                         </div>
                         <div className="mt-3 grid grid-cols-4 gap-6">
-                            <Link
+                            <PortalLink
                                 href={route('hub.counter')}
                                 className="relative col-start-3 flex items-center justify-center gap-3 border-t border-dashed border-sky-300 pt-4 text-left group"
                             >
@@ -354,7 +355,7 @@ export default function HubDashboard({
                                     <span className="block text-base font-extrabold text-slate-900">{parcelFlow.counter_pickup}</span>
                                     <span className="block text-xs font-semibold text-slate-600 group-hover:text-sky-700">Counter pickup branch</span>
                                 </span>
-                            </Link>
+                            </PortalLink>
                         </div>
                     </div>
 
@@ -363,7 +364,7 @@ export default function HubDashboard({
                             const Icon = stage.icon;
                             return (
                                 <React.Fragment key={stage.label}>
-                                    <Link href={route('hub.deliveries', { status: stage.status })} className="grid grid-cols-[44px_1fr] gap-3">
+                                    <PortalLink href={route('hub.deliveries', { status: stage.status })} className="grid grid-cols-[44px_1fr] gap-3">
                                         <div className="flex flex-col items-center">
                                             <span className="flex h-10 w-10 items-center justify-center rounded-md border-2 border-slate-300 bg-white text-slate-600">
                                                 <Icon className="h-4 w-4" />
@@ -380,7 +381,7 @@ export default function HubDashboard({
                                                 </div>
                                             )}
                                         </div>
-                                    </Link>
+                                    </PortalLink>
                                 </React.Fragment>
                             );
                         })}
@@ -393,9 +394,9 @@ export default function HubDashboard({
                             <h2 className="text-sm font-bold text-slate-900">Facilities</h2>
                             <p className="mt-0.5 text-xs text-slate-500">Capacity and operational load</p>
                         </div>
-                        <Link href={route('hub.network')} className="text-xs font-semibold text-[#E00D42] hover:underline">
+                        <PortalLink href={route('hub.network')} className="text-xs font-semibold text-[#E00D42] hover:underline">
                             Facility network
-                        </Link>
+                        </PortalLink>
                     </div>
 
                     {facilities.length === 0 ? (
@@ -470,9 +471,9 @@ export default function HubDashboard({
                             <h2 className="text-sm font-bold text-slate-900">Recent scan activity</h2>
                             <p className="mt-0.5 text-xs text-slate-500">Latest verified custody events</p>
                         </div>
-                        <Link href={route('hub.scan.station')} className="text-xs font-semibold text-[#E00D42] hover:underline">
+                        <PortalLink href={route('hub.scan.station')} className="text-xs font-semibold text-[#E00D42] hover:underline">
                             Open scanner
-                        </Link>
+                        </PortalLink>
                     </div>
 
                     {recentActivity.length === 0 ? (

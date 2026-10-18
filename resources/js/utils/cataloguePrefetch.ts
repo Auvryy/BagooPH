@@ -31,8 +31,12 @@ export interface CatalogueSnapshot {
 }
 export function catalogueAccountKey(page: CatalogueSnapshot): string {
     const user = page.props.auth?.user;
+    const rider = user?.courier_profile;
     return JSON.stringify([page.version, user?.id ?? null, user?.role, user?.status, user?.kyc_status,
-        user?.activeHub?.id, user?.logisticsCompany?.id]);
+        user?.activeHub?.id, user?.logisticsCompany?.id, page.props.activeHub?.id,
+        rider?.logistics_company_id, rider?.assigned_hub_id, rider?.assigned_barangay, rider?.vehicle_id, rider?.is_available,
+        page.props.isOnline, page.props.scope?.isOperational,
+        ...['pickupTasks', 'finalMileTasks'].map(key => page.props.queues?.[key]?.map((parcel: { id: number; status: string }) => [parcel.id, parcel.status]))]);
 }
 export function preparedCatalogueComponent(path: string): string | undefined {
     if (/^\/(?:buyer\/)?product\/[^/]+\/?$/.test(path)) return 'Buyer/ProductDetail';
@@ -84,7 +88,7 @@ export class CataloguePrefetch {
         this.enabled = page.props.cataloguePrefetchEnabled === true;
         this.permitted = (!page.props.auth?.user || page.props.auth.user.role === 'buyer')
             && !Object.keys(page.props.errors ?? {}).length && !Object.values(page.props.flash ?? {}).some(Boolean);
-        this.codePermitted = ['buyer', 'seller'].includes(page.props.auth?.user?.role)
+        this.codePermitted = ['buyer', 'seller', 'courier', 'logistics'].includes(page.props.auth?.user?.role)
             && !Object.keys(page.props.errors ?? {}).length && !Object.values(page.props.flash ?? {}).some(Boolean);
         if (!this.enabled || (!this.permitted && !this.codePermitted)) this.clear();
     }

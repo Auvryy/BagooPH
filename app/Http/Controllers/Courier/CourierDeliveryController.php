@@ -7,6 +7,7 @@ use App\Models\Delivery;
 use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
+use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Services\AccountSettingsService;
 use App\Services\Courier\CourierMessagingService;
@@ -50,6 +51,22 @@ class CourierDeliveryController extends Controller
             'courierProfile.hub',
             'courierProfile.vehicle',
         ]);
+        $work = null;
+        $workPayload = function () use ($user, &$work): array {
+            return $work ??= $this->dashboardPayload($user);
+        };
+
+        return Inertia::render('Courier/Deliveries', [
+            'recoveryRequestToken' => fn () => (string) Str::uuid(),
+            'scope' => $this->scopePayload($user->courierProfile),
+            'isOnline' => (bool) $user->courierProfile?->is_available,
+            'stats' => fn () => $workPayload()['stats'],
+            'queues' => fn () => $workPayload()['queues'],
+        ]);
+    }
+
+    private function dashboardPayload(User $user): array
+    {
         $profile = $user->courierProfile;
 
         $availableJobs = collect();
@@ -88,10 +105,7 @@ class CourierDeliveryController extends Controller
         $parcels = new Collection([...$availableJobs, ...$pickupTasks, ...$finalMileTasks]);
         $parcels->loadMissing(array_map(fn ($relation) => substr($relation, strlen('delivery.')), OrderTrackingService::relations(history: false)));
 
-        return Inertia::render('Courier/Deliveries', [
-            'recoveryRequestToken' => (string) Str::uuid(),
-            'scope' => $this->scopePayload($profile),
-            'isOnline' => (bool) $profile?->is_available,
+        return [
             'stats' => [
                 'availablePickups' => $availableJobs->count(),
                 'activePickups' => $pickupTasks->count(),
@@ -105,7 +119,7 @@ class CourierDeliveryController extends Controller
                 'finalMileTasks' => $finalMileTasks->map(fn (Delivery $delivery) => $this->finalMilePayload($delivery))->values(),
                 'recentActivity' => $recentActivity->map(fn (Delivery $delivery) => $this->activityPayload($delivery))->values(),
             ],
-        ]);
+        ];
     }
 
     public function claim(Request $request, Delivery $delivery): RedirectResponse

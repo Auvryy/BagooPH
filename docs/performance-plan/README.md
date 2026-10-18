@@ -19,6 +19,11 @@ and the [private-navigation acceptance checks](ACCEPTANCE.md#buyer-and-seller-na
 Private destinations prepare reviewed page code; their records and permissions
 still come from a fresh authorized request on activation.
 
+For the selected PF03 delivery, see [its rider/logistics implementation evidence](../CORE_FLOW_ROADMAP.md#october-18-2026-pf03-rider-and-logistics-navigation)
+and the [operational navigation checks](ACCEPTANCE.md#rider-web-and-logistics-navigation).
+Rider and logistics destinations prepare code only. Queues, placement, facility
+selection, scans and action tokens still use current authorized requests.
+
 ## Delivery order
 
 | Batch | Outcome | Suggested branch | Dependency |

@@ -152,7 +152,7 @@ export default function ScanStation({
 
     const barcodeInputRef = useRef<HTMLInputElement | null>(null);
     const pendingRequest = useRef<AbortController | null>(null);
-    useOperationalRefresh(isSubmitting, ['recentScans', 'pendingOriginIntake', 'counterPickups', 'counterTotal', 'stats']);
+    useOperationalRefresh(isSubmitting, ['activeHub', 'hubs', 'basePath', 'recentScans', 'pendingOriginIntake', 'counterPickups', 'counterTotal', 'stats']);
     useEffect(() => {
         setLastResult(null);
         setScanError(null);

@@ -1,6 +1,6 @@
 # Browsing and Portal Navigation Acceptance
 
-Use this guide after publishing and deploying a reviewed PF01 or PF02 branch. Current
+Use this guide after publishing and deploying a reviewed PF01, PF02 or PF03 branch. Current
 local test results, implementation scope and ratings belong in
 [the roadmap](../CORE_FLOW_ROADMAP.md#october-16-2026-pf01-buyer-pagination-and-responsive-search).
 These manual checks supplement automated evidence; they are not a statement
@@ -9,7 +9,7 @@ that Azure or a device has already passed.
 ## Configuration
 
 `CATALOGUE_PREFETCH_ENABLED` controls the reviewed buyer catalogue preparation
-and PF02 buyer/seller page-code preparation.
+and PF02/PF03 buyer, seller, rider and logistics page-code preparation.
 Its default is `true` in `config/catalogue.php`; `.env.example` includes the
 setting. Set it to `false` and apply the normal deployment/config-cache refresh
 to disable speculative data loading. The next ordinary response communicates
@@ -23,7 +23,7 @@ budget applies to speculative catalogue page data. PF02 shares that coordinator
 with one reviewed page-code preparation at a time; an import can load dependent
 static chunks. This is not a limit on every asset/notification request.
 
-Use the normal [deployment workflow](../WEB_AUTH_DEPLOYMENT.md). PF01 and PF02 introduce
+Use the normal [deployment workflow](../WEB_AUTH_DEPLOYMENT.md). PF01-PF03 introduce
 no schema migration or catalogue reseeding requirement. Do not reset a database
 to check pagination; use enough existing eligible products or isolated fixtures.
 
@@ -88,3 +88,31 @@ until it settles and cannot restore invalidated context metadata. Neither a
 local build nor a controlled transport test measures real Azure click latency.
 Run explicitly authorized browser/device checks separately. PF03-PF05 retain
 their own implementation and measurement gates.
+
+## Rider web and logistics navigation
+
+PF03 prepares reviewed static page code and retains fresh page-data requests.
+Read [the implementation audit](../CORE_FLOW_ROADMAP.md#october-18-2026-pf03-rider-and-logistics-navigation)
+for source decisions and local verification. This does not change the Flutter
+project or establish a production speed measurement.
+
+| Check | Expected result |
+|---|---|
+| Rider intent | Dashboard, Trips and Profile links prepare their component after deliberate hover/focus. Touch stays immediate. Preparation issues no destination queue, completed-trip, profile or message GET; Messages and COD are outside the preparation map. |
+| Logistics intent | Reviewed Overview, Network, Fleet, Parcels, Scan Station, Counter and manifest navigation can prepare component code. No facility selection, manifest token, scan lookup, counter verification or other page data is requested in advance. Company administrators and handlers keep their existing separate authority. |
+| Fresh opening | Activating a reviewed link immediately requests the exact current path/query with fresh authorization. A pending code import does not delay the request or provide an old duty, assignment, stock, permission or queue snapshot. Root and existing portal-host paths keep the current origin. |
+| Facility selection | From a supported workspace with an explicit old `hub_id`, select another owned hub. The redirect keeps compatible filters, replaces that hub ID and resets paging. The facility label, records, counts and rider candidates agree. Repeated switching is blocked while the request is pending. A handler cannot switch to another facility. |
+| Parcel registry | Search, status, delivery type, hub and page retain their exact identity. A failed filter read keeps the input and gives useful feedback. Sorting and assignment prevent duplicate submissions and report server validation. Disabled pagination does not navigate. New hub context clears the old local rider selection. |
+| Refresh priority | An intentional navigation, manual Refresh or submitted action cancels the old automatic queue refresh. An already delivered obsolete poll result is rejected before applying props. Scans refresh the current auth/facility and queue props together. The existing 15-second rest policy remains; new preparation adds no polling loop. |
+| Context change | Changed account, company, assigned hub, barangay, vehicle, duty or returned pickup/final-mile phase clears preparation metadata. A late import cannot restore the old generation. Returning to a tab and supported cross-tab invalidation still discard prepared context. |
+| Stale operational action | A parcel moved, claimed, scanned or restricted by another actor requires the existing current server decision and recovery path. Preparation never submits a claim, toggles duty, records receipt, dispatches a manifest, issues a pickup secret or changes cash custody. |
+| Network and recovery | Hidden/offline/Save-Data/very slow clients skip speculative preparation. Hidden/offline pages cancel current automatic refreshes; functional queue refresh retains its existing cadence when available. A failed reviewed navigation offers a visible Try again destination. Disable the existing configuration flag to stop preparation after the next ordinary response. |
+| Presentation | Preserve the rider's blush canvas, 8px corners, 1280px navigation breakpoint, drawer/sidebar transitions, independent message scrolling and bottom-navigation clearance. Preserve the logistics sidebar grouping, tables and controls. Rider retry controls keep visible focus and usable touch areas. |
+
+Private records are not retained in a speculative response cache. The existing
+10-second preparation metadata and shared one-candidate budget cover page code;
+an import can load dependent static chunks and cannot be aborted once started.
+Code readiness does not eliminate fresh server work, image loading or rendering.
+Do not infer Flutter/device behavior, simultaneous PostgreSQL acceptance or an
+Azure latency reduction from the local SQLite and controlled frontend checks.
+PF04 and PF05 retain their separate selection and measurement requirements.
