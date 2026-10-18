@@ -257,7 +257,8 @@ class SellerCategoryApprovalTest extends TestCase
         $this->assertSame($old->id, $user->shop->fresh()->root_category_id);
         $this->assertSame($kyc, $user->fresh()->kyc_status);
         $this->assertSame('inactive', $user->fresh()->status);
-        $this->get('/pending-approval')->assertInertia(fn (Assert $page) => $page->where('sellerCategory.can_correct', false));
+        $this->get('/pending-approval')->assertRedirect(route('account.status'));
+        $this->get('/account/status')->assertInertia(fn (Assert $page) => $page->where('status.can_correct_application', false));
     }
 
     public function test_foreign_shop_target_and_non_seller_category_corrections_are_rejected(): void

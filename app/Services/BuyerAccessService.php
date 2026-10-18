@@ -143,6 +143,11 @@ class BuyerAccessService
     public function signInDestination(Request $request): RedirectResponse
     {
         $user = $this->current($request->user());
+        if (in_array($user->status, ['suspended', 'inactive'], true) || $user->kyc_status === 'rejected') {
+            $request->session()->forget('url.intended');
+
+            return redirect()->route('account.status')->with('info', app(AccountReviewService::class)->heading($user)['title']);
+        }
         if ($user->isBuyer() && $user->canAccessPortal()) {
             return redirect()->intended(route('buyer.index', absolute: false));
         }

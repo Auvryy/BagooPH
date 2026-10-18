@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountEmailController;
+use App\Http\Controllers\AccountReviewController;
 use App\Http\Controllers\Admin\AccountClosureController;
 use App\Http\Controllers\Admin\AccountRestrictionController;
 use App\Http\Controllers\Admin\AdminDashboardController;
@@ -148,6 +149,8 @@ Route::middleware(['auth', 'verified'])->prefix('handover-issues')->name('handov
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/account/status', [AccountReviewController::class, 'status'])->name('account.status');
+    Route::post('/account/review-requests', [AccountReviewController::class, 'store'])->middleware('throttle:10,1')->name('account.reviews.store');
     Route::middleware('verified')->prefix('financial-oversight')->name('financial-oversight.')->group(function () {
         Route::get('/', [FinancialOversightController::class, 'index'])->name('index');
         Route::get('/{order}', [FinancialOversightController::class, 'show'])->whereNumber('order')->name('show');
@@ -370,6 +373,9 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes, $reg
         $registerResourceRestrictionRoutes();
         Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/users', [AdminDashboardController::class, 'users']);
+        Route::get('/account-reviews', [AccountReviewController::class, 'index']);
+        Route::get('/account-reviews/{reviewRequest}', [AccountReviewController::class, 'show'])->where('reviewRequest', '[1-9][0-9]{0,17}');
+        Route::post('/account-reviews/{reviewRequest}/decision', [AccountReviewController::class, 'decide'])->where('reviewRequest', '[1-9][0-9]{0,17}')->middleware('throttle:20,1');
         Route::get('/users/{userId}/context', [GovernanceHistoryController::class, 'account'])->whereNumber('userId');
         Route::get('/users/{user}/closure', [AccountClosureController::class, 'show'])->whereNumber('user');
         Route::post('/users/{user}/closure', [AccountClosureController::class, 'store'])->whereNumber('user');
@@ -684,6 +690,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     $registerResourceRestrictionRoutes();
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
+    Route::get('/account-reviews', [AccountReviewController::class, 'index'])->name('account-reviews.index');
+    Route::get('/account-reviews/{reviewRequest}', [AccountReviewController::class, 'show'])->where('reviewRequest', '[1-9][0-9]{0,17}')->name('account-reviews.show');
+    Route::post('/account-reviews/{reviewRequest}/decision', [AccountReviewController::class, 'decide'])->where('reviewRequest', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('account-reviews.decide');
     Route::get('/users/{userId}/context', [GovernanceHistoryController::class, 'account'])->whereNumber('userId')->name('users.context');
     Route::get('/users/{user}/closure', [AccountClosureController::class, 'show'])->whereNumber('user')->name('users.closure');
     Route::post('/users/{user}/closure', [AccountClosureController::class, 'store'])->whereNumber('user')->name('users.closure.store');

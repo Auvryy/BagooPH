@@ -34,9 +34,9 @@ class AccountIdentityService
                 return $roles;
             }
         }
-        $domain = env('APP_DOMAIN', 'bagooph.shop');
 
-        return in_array($host, [$domain, 'www.'.$domain], true) ? ['buyer'] : [];
+        // The shared host also serves each role's path aliases; its forms select the account type.
+        return [];
     }
 
     public function scope(Builder $query, Request $request): Builder
@@ -70,6 +70,6 @@ class AccountIdentityService
 
     public static function duplicateMessage(string $role): string
     {
-        return 'This email is already registered for a '.self::label($role).' account. Sign in instead.';
+        return 'This email is already registered for '.($role === 'admin' ? 'an ' : 'a ').self::label($role).' account. Sign in instead.';
     }
 }

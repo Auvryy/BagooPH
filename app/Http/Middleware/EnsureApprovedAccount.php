@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\UserRole;
+use App\Services\AccountReviewService;
 use App\Services\BuyerAccessService;
 use Closure;
 use Illuminate\Http\Request;
@@ -22,6 +23,14 @@ class EnsureApprovedAccount
         $request->setUserResolver(fn () => $user);
 
         abort_unless(UserRole::tryFrom($user->role), 403, 'A recognized account role is required.');
+
+        if (in_array($user->status, ['suspended', 'inactive'], true) || $user->kyc_status === 'rejected') {
+            $status = app(AccountReviewService::class)->heading($user);
+
+            return $request->expectsJson()
+                ? response()->json(['message' => $status['title'].'. '.$status['message'], 'account_status_url' => '/account/status'], 403)
+                : redirect()->route('account.status')->with('error', $status['title']);
+        }
 
         if ($user->canAccessPortal()) {
             return $next($request);

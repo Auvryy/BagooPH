@@ -48,7 +48,7 @@ class SharedPortalAccessTest extends TestCase
 
         foreach ($pages as $page) {
             $response = $this->actingAs($actor)->get($prefix.'/'.$page)->assertRedirect();
-            $this->assertStringEndsWith($status === 'suspended' ? '/login' : '/pending-approval', $response->headers->get('Location'));
+            $this->assertStringEndsWith(in_array($status, ['suspended', 'inactive'], true) || $kyc === 'rejected' ? '/account/status' : '/pending-approval', $response->headers->get('Location'));
         }
 
         $this->actingAs($actor);
@@ -56,7 +56,7 @@ class SharedPortalAccessTest extends TestCase
             ? $this->patch($prefix.'/products/'.$product->id.'/stock', ['mode' => 'set', 'quantity' => 99])
             : $this->post($prefix.'/switch-hub', ['hub_id' => $hub->id]);
         $response->assertRedirect();
-        $this->assertStringEndsWith($status === 'suspended' ? '/login' : '/pending-approval', $response->headers->get('Location'));
+        $this->assertStringEndsWith(in_array($status, ['suspended', 'inactive'], true) || $kyc === 'rejected' ? '/account/status' : '/pending-approval', $response->headers->get('Location'));
         $this->assertSame($status, $actor->fresh()->status);
         $this->assertSame($kyc, $actor->fresh()->kyc_status);
         if ($product) {
@@ -64,18 +64,15 @@ class SharedPortalAccessTest extends TestCase
         } else {
             $response->assertSessionMissing('active_hub_id');
         }
-        if ($status === 'suspended') {
-            $this->assertGuest();
-            $response->assertSessionHasErrors('email');
-        }
+        $this->assertAuthenticatedAs($actor);
 
         if ($role === 'logistics' && $prefix === 'http://localhost/hub') {
             $response = $this->actingAs($actor)->get($prefix)->assertRedirect();
-            $this->assertStringEndsWith($status === 'suspended' ? '/login' : '/pending-approval', $response->headers->get('Location'));
+            $this->assertStringEndsWith(in_array($status, ['suspended', 'inactive'], true) || $kyc === 'rejected' ? '/account/status' : '/pending-approval', $response->headers->get('Location'));
         }
 
         $response = $this->actingAs($actor)->get('http://localhost/dashboard')->assertRedirect();
-        $this->assertStringEndsWith($status === 'suspended' ? '/login' : '/pending-approval', $response->headers->get('Location'));
+        $this->assertStringEndsWith(in_array($status, ['suspended', 'inactive'], true) || $kyc === 'rejected' ? '/account/status' : '/pending-approval', $response->headers->get('Location'));
     }
 
     #[DataProvider('restrictedWorkerAccounts')]
@@ -84,12 +81,8 @@ class SharedPortalAccessTest extends TestCase
         $actor = User::factory()->create(['role' => $role, 'status' => $status, 'kyc_status' => $kyc]);
         $loginBase = str_starts_with($prefix, 'http://localhost/') ? 'http://localhost' : $prefix;
         $response = $this->post($loginBase.'/login', ['email' => $actor->email, 'password' => 'password'])->assertRedirect();
-        $this->assertStringEndsWith($status === 'suspended' ? '/login' : '/pending-approval', $response->headers->get('Location'));
-        if ($status === 'suspended') {
-            $this->assertGuest();
-        } else {
-            $this->assertAuthenticatedAs($actor);
-        }
+        $this->assertStringEndsWith(in_array($status, ['suspended', 'inactive'], true) || $kyc === 'rejected' ? '/account/status' : '/pending-approval', $response->headers->get('Location'));
+        $this->assertAuthenticatedAs($actor);
     }
 
     public static function restrictedAdmins(): array
@@ -114,12 +107,20 @@ class SharedPortalAccessTest extends TestCase
 
         $loginBase = str_starts_with($prefix, 'http://localhost/') ? 'http://localhost' : $prefix;
         $this->post($loginBase.'/login', ['email' => $admin->email, 'password' => 'password'])->assertRedirect();
-        $this->assertGuest();
+        if (in_array($status, ['inactive', 'suspended'], true)) {
+            $this->assertAuthenticatedAs($admin);
+        } else {
+            $this->assertGuest();
+        }
 
         foreach (['dashboard', 'users', 'products', 'kyc', 'logistics'] as $page) {
             $response = $this->actingAs($admin)->get($prefix.'/'.$page)->assertRedirect();
-            $this->assertStringEndsWith('/login', $response->headers->get('Location'));
-            $this->assertGuest();
+            $this->assertStringEndsWith(in_array($status, ['inactive', 'suspended'], true) ? '/account/status' : '/login', $response->headers->get('Location'));
+            if (in_array($status, ['inactive', 'suspended'], true)) {
+                $this->assertAuthenticatedAs($admin);
+            } else {
+                $this->assertGuest();
+            }
         }
 
         foreach ([
@@ -128,8 +129,12 @@ class SharedPortalAccessTest extends TestCase
             ['POST', '/kyc/'.$applicant->id.'/reject', ['reason' => 'Document is unreadable.']],
         ] as [$method, $path, $payload]) {
             $response = $this->actingAs($admin)->call($method, $prefix.$path, $payload)->assertRedirect();
-            $this->assertStringEndsWith('/login', $response->headers->get('Location'));
-            $this->assertGuest();
+            $this->assertStringEndsWith(in_array($status, ['inactive', 'suspended'], true) ? '/account/status' : '/login', $response->headers->get('Location'));
+            if (in_array($status, ['inactive', 'suspended'], true)) {
+                $this->assertAuthenticatedAs($admin);
+            } else {
+                $this->assertGuest();
+            }
         }
 
         $this->assertSame($before, $applicant->fresh()->getAttributes());
@@ -137,8 +142,12 @@ class SharedPortalAccessTest extends TestCase
         $this->assertSame(7, $product->fresh()->stock);
         $this->assertDatabaseCount('product_moderation_decisions', 0);
         $response = $this->actingAs($admin)->get('http://localhost/dashboard')->assertRedirect();
-        $this->assertStringEndsWith('/login', $response->headers->get('Location'));
-        $this->assertGuest();
+        $this->assertStringEndsWith(in_array($status, ['inactive', 'suspended'], true) ? '/account/status' : '/login', $response->headers->get('Location'));
+        if (in_array($status, ['inactive', 'suspended'], true)) {
+            $this->assertAuthenticatedAs($admin);
+        } else {
+            $this->assertGuest();
+        }
     }
 
     public static function approvedWorkers(): array
@@ -255,8 +264,12 @@ class SharedPortalAccessTest extends TestCase
         Auth::forgetGuards();
 
         $response = $this->post($prefix.'/products/'.$product->id.'/moderation')->assertRedirect();
-        $this->assertStringEndsWith('/login', $response->headers->get('Location'));
-        $this->assertGuest();
+        $this->assertStringEndsWith(in_array($status, ['inactive', 'suspended'], true) ? '/account/status' : '/login', $response->headers->get('Location'));
+        if (in_array($status, ['inactive', 'suspended'], true)) {
+            $this->assertAuthenticatedAs($admin);
+        } else {
+            $this->assertGuest();
+        }
         $this->assertSame($before, $product->fresh()->getAttributes());
         $this->assertDatabaseCount('product_moderation_decisions', 0);
     }

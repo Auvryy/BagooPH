@@ -105,12 +105,12 @@ class PrivateVerificationDocumentsTest extends TestCase
         $owner = $this->applicant();
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'suspended']);
         foreach (['/admin/kyc', 'http://admin.localhost/kyc'] as $prefix) {
-            $this->actingAs($admin)->get($prefix)->assertRedirect(route('login'));
-            $this->assertGuest();
-            $this->actingAs($admin)->post($prefix.'/'.$owner->id.'/approve')->assertRedirect(route('login'));
-            $this->assertGuest();
-            $this->actingAs($admin)->post($prefix.'/'.$owner->id.'/reject', ['reason' => 'Document needs review'])->assertRedirect(route('login'));
-            $this->assertGuest();
+            $this->actingAs($admin)->get($prefix)->assertRedirect(route('account.status'));
+            $this->assertAuthenticatedAs($admin);
+            $this->actingAs($admin)->post($prefix.'/'.$owner->id.'/approve')->assertRedirect(route('account.status'));
+            $this->assertAuthenticatedAs($admin);
+            $this->actingAs($admin)->post($prefix.'/'.$owner->id.'/reject', ['reason' => 'Document needs review'])->assertRedirect(route('account.status'));
+            $this->assertAuthenticatedAs($admin);
         }
         $this->assertSame('pending_approval', $owner->fresh()->kyc_status);
     }

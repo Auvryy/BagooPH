@@ -84,8 +84,8 @@ class BuyerAccessAlignmentTest extends TestCase
     {
         return [
             ['active', 'none', 'kyc.pending'], ['active', 'pending_approval', 'kyc.pending'],
-            ['active', 'rejected', 'kyc.pending'], ['active', 'approved', 'buyer.index'], ['active', 'verified', 'buyer.index'],
-            ['inactive', 'approved', 'buyer.orders.index'], ['suspended', 'verified', 'buyer.orders.index'],
+            ['active', 'rejected', 'account.status'], ['active', 'approved', 'buyer.index'], ['active', 'verified', 'buyer.index'],
+            ['inactive', 'approved', 'account.status'], ['suspended', 'verified', 'account.status'],
             ['pending_approval', 'pending_approval', 'kyc.pending'], ['unknown', 'approved', 'login'], ['active', 'unknown', 'login'],
         ];
     }

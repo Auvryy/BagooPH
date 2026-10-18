@@ -120,8 +120,8 @@ class WebSessionTransitionTest extends TestCase
         $this->post($host.'/logout')->assertStatus(409);
         $worker->update(['status' => 'suspended']);
         $this->post($host.'/login', ['email' => $worker->email, 'password' => 'password'])
-            ->assertStatus(409)->assertHeader('X-Inertia-Location', '/login')->assertSessionHasErrors('email');
-        $this->assertGuest();
+            ->assertStatus(409)->assertHeader('X-Inertia-Location', '/account/status');
+        $this->assertAuthenticatedAs($worker);
     }
 
     public function test_current_host_redirect_preserves_query_and_external_redirect_preserves_its_origin(): void

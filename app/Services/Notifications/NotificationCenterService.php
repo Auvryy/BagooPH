@@ -3,6 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Enums\UserRole;
+use App\Models\AccountReviewRequest;
 use App\Models\Advertisement;
 use App\Models\Order;
 use App\Models\RestrictionAffectedWork;
@@ -146,7 +147,11 @@ class NotificationCenterService
             return '/hub/delivery-recovery';
         }
         if ($target === 'account-status') {
-            return $user->isBuyer() ? '/buyer/profile?tab=account&application=1' : '/pending-approval';
+            return '/account/status';
+        }
+        if ($target === 'account-review-admin' && $user->isAdmin() && $user->canAccessPortal()
+            && AccountReviewRequest::whereKey($data['review_request_id'] ?? 0)->exists()) {
+            return '/admin/account-reviews/'.(int) $data['review_request_id'];
         }
         if ($target === 'identity-correction' && $user->isKycApproved()) {
             return '/account/settings#identity-correction';

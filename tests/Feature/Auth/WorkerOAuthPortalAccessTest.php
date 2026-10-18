@@ -47,7 +47,10 @@ class WorkerOAuthPortalAccessTest extends TestCase
         Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
 
         $response = $this->get(route('auth.google.callback'))->assertRedirect();
-        if ($status === 'suspended' || ($role === 'admin' && $status !== 'active')) {
+        if (in_array($status, ['suspended', 'inactive'], true) || $kyc === 'rejected') {
+            $response->assertRedirect(route('account.status'));
+            $this->assertAuthenticatedAs($actor);
+        } elseif ($role === 'admin' && $status !== 'active') {
             $response->assertRedirect(route('login'))->assertSessionHasErrors('email');
             $this->assertGuest();
         } elseif ($status !== 'active' || ! in_array($kyc, ['approved', 'verified'], true) && $role !== 'admin') {

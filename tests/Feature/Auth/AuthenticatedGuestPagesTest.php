@@ -165,8 +165,8 @@ class AuthenticatedGuestPagesTest extends TestCase
     public function test_stale_suspended_worker_and_closed_account_sessions_do_not_get_portal_access(): void
     {
         $user = User::factory()->create(['role' => 'courier', 'status' => 'suspended']);
-        $this->actingAs($user)->get('/login')->assertRedirect('/login')->assertSessionHasErrors('email');
-        $this->assertGuest();
+        $this->actingAs($user)->get('/login')->assertRedirect('/account/status');
+        $this->assertAuthenticatedAs($user);
         $user->forceFill(['status' => 'inactive', 'closed_at' => now()])->save();
         $this->actingAs($user)->getJson('/auth/session')->assertForbidden();
         $this->assertGuest();

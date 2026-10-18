@@ -305,7 +305,7 @@ class ProductModerationTest extends TestCase
         $stale = User::findOrFail($admin->id);
         $admin->update(['status' => 'inactive']);
         foreach (['/admin', 'http://admin.localhost'] as $host) {
-            $this->actingAs($stale)->get($host.'/products/'.$product->id.'/moderation')->assertRedirect('/login');
+            $this->actingAs($stale)->get($host.'/products/'.$product->id.'/moderation')->assertRedirect('/account/status');
             $this->actingAs($stale)->postJson($host.'/products/'.$product->id.'/moderation', $this->input($product))->assertForbidden();
         }
         $this->assertDatabaseCount('product_moderation_decisions', 0);
