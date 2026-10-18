@@ -5705,3 +5705,87 @@ Local implementation commits:
 
 The documentation commit's hash is reported in the handoff. The combined PR
 title/body remains a local draft; no agent push, merge or deployment was made.
+
+## October 18, 2026: PF03 rider and logistics navigation
+
+Implemented the selected [PF03 plan](performance-plan/03-rider-and-logistics-navigation.md)
+on `perf/rider-logistics-navigation`, based on merged `main` at `14b589f`.
+This improves likely-page preparation and operational refresh handling while
+preserving the rider and logistics portals' own layout and authority.
+
+### Audited destinations and freshness
+
+| Surface | Source decision and implemented behavior |
+|---|---|
+| Rider Dashboard, Trips and Profile | `CourierDeliveryController::index`, `earnings` and `profile` return current work/history or personal and placement data. Sidebar, bottom navigation, account and dashboard-history links prepare only their actual component code; activation always makes a fresh authorized request. |
+| Rider Messages, notifications and COD | Keep reads and acknowledgement tied to intentional display/selection and retain the existing cash actions. They remain outside the preparation map. No native client or Flutter project is modified. |
+| Hub Overview, Network, Fleet and Parcels | `LogisticsHubWorkstationController` resolves current authorized company/facility scope and can update the selected facility session. Prepare reviewed code from the sidebar and dashboard; page data stays fresh. Company administrators and assigned handlers retain separate access. |
+| Scan Station and Counter | Current custody, handler authority, claim state and counters require current reads. Prepare code only; hover/focus does not inspect a waybill, fetch a secret, reserve a rider or record custody/collection. |
+| Manifest list/detail | `LogisticsManifestController::page` reads current authority and creates a session creation token for an owning company administrator. Prepare the component without requesting list/detail data or action tokens. Actual opening and commands still run current server guards. |
+| Finance, private evidence, governance and recovery actions | Remain outside the preparation map and use their existing authorized requests. No decision form, proof or financial snapshot is cached by this delivery. |
+
+### Before and after
+
+| Area | Before | Implemented result |
+|---|---|---|
+| Likely navigation | Rider and hub links started loading their page code after activation. | Reviewed pointer/focus intent shares the existing 150ms delay and one-candidate budget. Touch remains immediate, and an activation starts its fresh request without waiting for a speculative import. |
+| Context observation | Preparation observed ordinary navigation; the installed adapter does not emit that event for replacements/reloads. Rider placement, duty and returned work phases were absent from its context key. | Successful replacements/reloads update the current page, and intent observes the rendered page including errors. Metadata keys include current placement, duty, vehicle, barangay and pickup/final-mile IDs/stages, plus the existing identity/hub/asset scope. Late invalidated imports cannot restore metadata. |
+| Queue refreshes | Local submission guards paused the existing poll, but layout actions or hub changes could overlap it. An already returned obsolete response had no context-generation check. | Intentional requests cancel the old poll and pause new polls while pending. A generation check rejects obsolete responses before page update. Hidden/offline changes and unmount also release requests. The existing visible/online 15-second rest policy and independent message scrolling remain. |
+| Facility switching | A redirect back to a filtered old hub URL could undo the new session selection. The sidebar could also show invented fallback facility details. | The server replaces the hub filter and resets the page on supported workspace returns, keeping compatible filters. Foreign/unsupported return URLs fall back to the local dashboard. Pending switches cannot repeat, and missing facility details use honest labels. |
+| Parcel registry | Filter updates loaded full page props and had no local pending/error recovery. Hub changes could preserve local rider choices. | Focused fresh updates carry matching identity, facility, list, counts, filters and current rider candidates. Input and server errors survive a failure, mutations prevent duplicates, and a keyed hub boundary clears local choices. Paging uses current-origin paths and truly disabled controls. |
+| Unrequested read work | Rider context-only reads built work queues/history, and hub count-only reads built parcel rows and eligible-rider lists. | Lazy controller props avoid that unrequested work and share request-local results when requested together. Normal full work reads still run the existing current business queries; no claim of lower full-page database time is made. |
+
+The implementation retains the rider's blush canvas, local 8px corners,
+1280px breakpoint, 280px sidebar, 260ms transitions, reduced-motion behavior,
+chat panes and mobile clearances. Hub sidebar grouping, table hierarchy and
+geometry stay in place. Retry and pending feedback use existing portal styling
+and useful focus/touch controls. No global CSS/theme, font, dependency or image
+system was replaced.
+
+### Verification and assessment
+
+- Rider, logistics, shared portal access, buyer catalogue/navigation and seller
+  navigation regression: **1,218 tests / 52,755 assertions passed** in Docker
+  using isolated SQLite `:memory:` and task-local storage/config. The updated
+  focused selection also passed: **10 tests / 428 assertions**, including
+  root/subdomain hub switching, current duty/placement, count-only reads,
+  private-prefetch rejection, invalid page values and foreign return URLs.
+- Full frontend suite: **397 tests passed**. Coverage includes actual link
+  intent, touch/keyboard handling, shared budgets, stale context/imports,
+  replacement/reload observation, fresh activation, duplicate filter clicks,
+  retained field errors and obsolete queue callbacks after facility/actions.
+- TypeScript/Vite production build and changed PHP style (**4 files**) passed.
+  The host build reached Vite but could not replace root-owned generated assets;
+  the normal Docker build completed. No ownership or dependency change was needed.
+- Static review retained existing rider CSS and both portal layouts. Generated
+  assets for all ten reviewed components, documentation links, whitespace,
+  ignored private tooling and branch content/history were checked. No visible
+  browser or device testing was performed.
+
+**Scoped rider web navigation assessment: 6/10 before -> 8/10 after.**
+**Scoped logistics navigation assessment: 5/10 before -> 8/10 after.**
+These assess local navigation correctness, preparation and fresh-context
+handling. They do not raise overall courier, logistics, security or project
+readiness. The facility-switch defect and obsolete refresh risk are addressed;
+actual server work, image loading and rendering still contribute to waiting.
+
+No private page response cache is introduced. Code preparation uses bounded,
+short-lived metadata over ordinary static module loading. Existing session,
+mutation, tab and connection safeguards remain; a started import cannot be
+aborted and keeps its slot until settlement. Cancelling a browser request does
+not prove that already-started server work stopped.
+
+Use the normal pull/deploy/verify workflow. No schema migration, reset, reseed,
+new service, Flutter change or native API change is required. No push, merge,
+Azure deployment, visible browser or screenshot check was performed. Device
+visuals, real Azure timing and simultaneous PostgreSQL requests remain separate
+acceptance work in [the guide](performance-plan/ACCEPTANCE.md#rider-web-and-logistics-navigation).
+PF04 and PF05 remain separate selections.
+
+Local implementation commits:
+
+- `047ef3f` — `perf(rider): prepare web navigation and protect fresh queue reads`.
+- `dfbe94d` — `perf(logistics): keep prepared workspaces in the selected facility`.
+
+The documentation commit's generated hash is reported in the final handoff.
+The separate PR title/body remains a local draft and has not been saved on GitHub.
