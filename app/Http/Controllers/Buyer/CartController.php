@@ -53,7 +53,7 @@ class CartController extends Controller
             if ($available) {
                 try {
                     $inventory = app(InventoryService::class);
-                    $inventory->assertCheckoutAvailability(collect([$item]), collect([$item->product_id => $item->product]));
+                    $inventory->assertCheckoutAvailability(collect([$item]), collect([$item->product_id => $item->product]), $cart->user_id);
                     $item->setAttribute('unit_price', $inventory->unitPrice($item->product, $item->color, $item->size));
                 } catch (RuntimeException $exception) {
                     $available = false;
@@ -72,7 +72,7 @@ class CartController extends Controller
                 return response()->json(['message' => 'One or more selected Shopping Bag items are unavailable.'], 422);
             }
             try {
-                app(InventoryService::class)->assertCheckoutAvailability($selected, $selected->pluck('product')->keyBy('id'));
+                app(InventoryService::class)->assertCheckoutAvailability($selected, $selected->pluck('product')->keyBy('id'), $cart->user_id);
             } catch (RuntimeException $exception) {
                 return response()->json(['message' => $exception->getMessage()], 422);
             }
@@ -198,7 +198,8 @@ class CartController extends Controller
                     $productItems,
                     $lockedItem->color,
                     $lockedItem->size,
-                    $lockedItem->id
+                    $lockedItem->id,
+                    $cart->user_id
                 );
                 $unitPrice = $inventory->unitPrice($product, $lockedItem->color, $lockedItem->size);
             } catch (RuntimeException $exception) {

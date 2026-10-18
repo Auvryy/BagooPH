@@ -121,7 +121,7 @@ class CheckoutOrderService
             $submissions->assertCurrentPrices($cart, $confirmationToken);
 
             try {
-                $this->inventory->assertCheckoutAvailability($items, $products);
+                $this->inventory->assertCheckoutAvailability($items, $products, $buyer->id);
             } catch (RuntimeException $exception) {
                 throw new CheckoutException($exception->getMessage(), previous: $exception);
             }

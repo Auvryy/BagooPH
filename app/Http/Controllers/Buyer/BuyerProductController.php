@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\Product;
 use App\Services\Commerce\BuyerDiscoveryService;
+use App\Services\Commerce\PurchasePolicyService;
 use App\Services\Commerce\ReviewService;
 use App\Services\Vouchers\VoucherCollectionService;
 use Illuminate\Http\Request;
@@ -98,6 +99,7 @@ class BuyerProductController extends Controller
             'relatedProducts' => $relatedProducts,
             'shopStats' => $shopStats,
             'cartQuantities' => $cartQuantities,
+            'purchaseAllowance' => app(PurchasePolicyService::class)->remaining($product, $request->user()?->id),
             'shopOffers' => app(VoucherCollectionService::class)->shopOffers($product->shop_id, $request->user()),
         ]);
     }

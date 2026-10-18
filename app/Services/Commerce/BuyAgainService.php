@@ -35,7 +35,7 @@ class BuyAgainService
         $products = app(BuyerDiscoveryService::class)->catalogue()->whereIn('products.id', $items->pluck('product_id'))->get()->keyBy('id');
         $cart = Cart::where('user_id', $actor->id)->first();
         $bagItems = $cart?->items()->whereIn('product_id', $items->pluck('product_id'))->get() ?? collect();
-        $rows = $items->map(function ($original) use ($products, $bagItems) {
+        $rows = $items->map(function ($original) use ($products, $bagItems, $actor) {
             $product = $products->get($original->product_id);
             if ($product && $product->shop_id !== $original->shop_id) {
                 $product = null;
@@ -48,7 +48,7 @@ class BuyAgainService
                 $matching = $productItems->first(fn ($line) => $line->color === $original->color && $line->size === $original->size);
                 try {
                     $currentPrice = app(InventoryService::class)->unitPrice($product, $original->color, $original->size);
-                    $limit = app(InventoryService::class)->maximumCartLineQuantity($product, $productItems, $original->color, $original->size, $matching?->id);
+                    $limit = app(InventoryService::class)->maximumCartLineQuantity($product, $productItems, $original->color, $original->size, $matching?->id, $actor->id);
                     $maximum = max(0, $limit - ($matching?->quantity ?? 0));
                     $reason = $product->stock <= 0 ? 'This product is currently out of stock.' : 'Your Bag already contains the available quantity for this item.';
                 } catch (RuntimeException $exception) {

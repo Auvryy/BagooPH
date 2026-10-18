@@ -77,6 +77,7 @@ export default function ProductCard({
                     </div>
                 )}
 
+                {product.shop?.vacation_mode && <span className="absolute left-2 top-2 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">On vacation</span>}
                 {isOutOfStock && (
                     <span className="absolute right-2 top-2 z-10 rounded-sm border border-slate-700 bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white">
                         Out of stock
@@ -170,7 +171,7 @@ export default function ProductCard({
                             e.stopPropagation();
                             onQuickAdd(product);
                         }}
-                        disabled={isAdding || isOutOfStock}
+                        disabled={isAdding || isOutOfStock || product.shop?.vacation_mode}
                         className={`w-full py-1.5 px-2 rounded-xs font-sans text-[9px] font-bold uppercase tracking-wider transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs ${
                             isSuccess
                                 ? 'bg-emerald-600 text-white'

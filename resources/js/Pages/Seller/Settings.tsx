@@ -26,6 +26,7 @@ export default function SellerSettings({ shop, shopReview, categories }: Props) 
     const [fileVersion, setFileVersion] = useState(0);
     const { data, setData, post, processing, recentlySuccessful, errors, setDefaults } = useForm({
         name: shop.name || '',
+        vacation_mode: shop.vacation_mode ?? false,
         description: shop.description || '',
         phone: shop.phone || '',
         address: shop.address || '',
@@ -46,6 +47,7 @@ export default function SellerSettings({ shop, shopReview, categories }: Props) 
                 const values = {
                     ...data,
                     phone: saved.phone || '',
+                    vacation_mode: saved.vacation_mode ?? false,
                     description: saved.description || '',
                     logo: saved.logo || '',
                     banner: saved.banner || '',
@@ -98,6 +100,13 @@ export default function SellerSettings({ shop, shopReview, categories }: Props) 
                 </div>
                 
                 <SellerShopReview shop={shopReview} categories={categories} />
+                <section className="rounded-lg border border-slate-300 bg-white p-5">
+                    <label className="flex items-start gap-3">
+                        <input type="checkbox" checked={data.vacation_mode} onChange={event => setData('vacation_mode', event.target.checked)} className="mt-1 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" />
+                        <span><span className="font-bold text-slate-900">Vacation mode</span><span className="mt-1 block text-sm text-slate-600">Keep your products visible while pausing new purchases. Continue preparing and handing over existing orders. Save settings to apply this change.</span></span>
+                    </label>
+                    {errors.vacation_mode && <p className="mt-2 text-sm text-rose-700">{errors.vacation_mode}</p>}
+                </section>
 
                 <form onSubmit={submit} className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-2xs space-y-6">
                     

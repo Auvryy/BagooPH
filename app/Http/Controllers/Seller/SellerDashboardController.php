@@ -155,6 +155,7 @@ class SellerDashboardController extends Controller
 
         $rules = [
             'description' => 'nullable|string|max:5000',
+            'vacation_mode' => ['sometimes', 'required', 'boolean'],
             'phone' => ['sometimes', 'required', 'string', new PhilippineContact(true)],
         ];
 
@@ -204,6 +205,9 @@ class SellerDashboardController extends Controller
             $shop->phone = $validated['phone'];
         }
 
+        if (array_key_exists('vacation_mode', $validated)) {
+            $shop->vacation_mode = $validated['vacation_mode'];
+        }
         $shop->save();
 
         return back()->with('success', 'Storefront settings updated successfully.');

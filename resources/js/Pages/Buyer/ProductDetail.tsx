@@ -73,6 +73,7 @@ interface Props {
     variations: Variations;
     relatedProducts: Product[];
     shopStats: ShopStats;
+    purchaseAllowance?: number | null;
     cartQuantities?: Array<{
         color?: string | null;
         size?: string | null;
@@ -86,6 +87,7 @@ export default function BuyerProductDetail({
     relatedProducts,
     shopStats,
     cartQuantities = [],
+    purchaseAllowance = null,
     shopOffers = [],
 }: Props) {
     const colorsList = variations?.colors || [];
@@ -191,11 +193,12 @@ export default function BuyerProductDetail({
         (item.color ?? null) === (selectedColor?.name ?? null)
         && (item.size ?? null) === (selectedSize?.name ?? null)
     )?.quantity ?? 0;
-    const maxAddableQuantity = selectedColor?.in_stock === false
+    const maxAddableQuantity = product.shop?.vacation_mode || selectedColor?.in_stock === false
         ? 0
         : Math.max(0, Math.min(
             99 - selectedLineInCart,
             product.stock - totalProductInCart,
+            (purchaseAllowance ?? Number.MAX_SAFE_INTEGER) - totalProductInCart,
             selectionStock - selectedSizeInCart
         ));
     const quantity = Math.max(1, Number(quantityInput) || 1);
@@ -477,6 +480,8 @@ export default function BuyerProductDetail({
                         </div>
 
                         {/* VARIATION SELECTOR 1 */}
+                        {product.shop?.vacation_mode && <p role="status" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">On vacation. This shop has paused new purchases. Your Bag and existing orders stay available.</p>}
+                        {product.purchase_limit && <p className="mb-4 text-sm text-slate-600">Limit {product.purchase_limit} per buyer across orders. You can buy {purchaseAllowance ?? product.purchase_limit} more.</p>}
                         {colorsList.length > 0 && (
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-xs font-sans">

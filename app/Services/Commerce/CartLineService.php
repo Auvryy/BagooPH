@@ -46,7 +46,9 @@ class CartLineService
         $item = $items->first(fn (CartItem $line) => $line->color === $color && $line->size === $size);
         $newQuantity = ($item?->quantity ?? 0) + $quantity;
         try {
-            $maximum = app(InventoryService::class)->maximumCartLineQuantity($product, $items, $color, $size, $item?->id);
+            app(PurchasePolicyService::class)->assertShopAccepting($product);
+            app(PurchasePolicyService::class)->assertQuantity($product, $cart->user_id, $items->sum('quantity') + $quantity);
+            $maximum = app(InventoryService::class)->maximumCartLineQuantity($product, $items, $color, $size, $item?->id, $cart->user_id);
             $unitPrice = app(InventoryService::class)->unitPrice($product, $color, $size);
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['quantity' => $exception->getMessage()]);

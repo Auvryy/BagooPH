@@ -91,6 +91,7 @@ class Product extends Model
         'price',
         'compare_at_price',
         'stock',
+        'purchase_limit',
         'sku',
         'variants',
         'featured_image',
@@ -108,6 +109,7 @@ class Product extends Model
         'weight_kg' => 'decimal:2',
         'rating' => 'decimal:2',
         'stock' => 'integer',
+        'purchase_limit' => 'integer',
         'sales_count' => 'integer',
         'variants' => 'array',
     ];

@@ -183,6 +183,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         price: string;
         compare_at_price: string;
         stock: string;
+        purchase_limit: string;
         sku: string;
         variants: string;
         featured_image: string;
@@ -196,6 +197,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         price: '',
         compare_at_price: '',
         stock: '25',
+        purchase_limit: '',
         sku: '',
         variants: '',
         featured_image: '',
@@ -211,6 +213,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         price: string;
         compare_at_price: string;
         stock: string;
+        purchase_limit: string;
         sku: string;
         variants: string;
         featured_image: string;
@@ -225,6 +228,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         price: '',
         compare_at_price: '',
         stock: '0',
+        purchase_limit: '',
         sku: '',
         variants: '',
         featured_image: '',
@@ -485,6 +489,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
             price: String(product.price),
             compare_at_price: String(product.compare_at_price || ''),
             stock: String(product.stock),
+            purchase_limit: String(product.purchase_limit ?? ''),
             sku: product.sku || '',
             variants: (hasColors || hasSizes) ? JSON.stringify(variantsData) : '',
             featured_image: product.featured_image || '',
@@ -2505,6 +2510,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(true)}
+                                <div className="rounded-lg border border-slate-300 p-4">
+                                    <label className="block text-sm font-bold text-slate-900" htmlFor="createForm-purchase-limit">Purchase limit per buyer</label>
+                                    <input id="createForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={createForm.data.purchase_limit} onChange={event => createForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                                    <p className="mt-2 text-xs text-slate-600">Leave blank for no limit. Counts units across all orders for this product; cancelled orders release the allowance.</p>
+                                    {createForm.errors.purchase_limit && <p className="mt-1 text-sm text-rose-700">{createForm.errors.purchase_limit}</p>}
+                                </div>
 
                                 {renderGalleryManager(true)}
 
@@ -2739,6 +2750,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(false)}
+                                <div className="rounded-lg border border-slate-300 p-4">
+                                    <label className="block text-sm font-bold text-slate-900" htmlFor="editForm-purchase-limit">Purchase limit per buyer</label>
+                                    <input id="editForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={editForm.data.purchase_limit} onChange={event => editForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                                    <p className="mt-2 text-xs text-slate-600">Leave blank for no limit. Counts units across all orders for this product; cancelled orders release the allowance.</p>
+                                    {editForm.errors.purchase_limit && <p className="mt-1 text-sm text-rose-700">{editForm.errors.purchase_limit}</p>}
+                                </div>
 
                                 {renderGalleryManager(false)}
 

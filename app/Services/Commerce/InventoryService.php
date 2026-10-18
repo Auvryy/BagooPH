@@ -33,8 +33,10 @@ class InventoryService
         Collection $productCartItems,
         ?string $color,
         ?string $size,
-        ?int $currentItemId = null
+        ?int $currentItemId = null,
+        ?int $buyerId = null
     ): int {
+        app(PurchasePolicyService::class)->assertShopAccepting($product);
         $selection = $this->selection($product, $color, $size);
         $otherItems = $productCartItems->reject(
             fn (CartItem $item) => $currentItemId !== null && $item->id === $currentItemId
@@ -52,6 +54,7 @@ class InventoryService
         return max(0, min(
             self::MAX_CART_LINE_QUANTITY,
             $remainingProductStock,
+            (app(PurchasePolicyService::class)->remaining($product, $buyerId) ?? PHP_INT_MAX) - $otherItems->sum('quantity'),
             $remainingSelectionStock
         ));
     }
@@ -60,7 +63,7 @@ class InventoryService
      * @param  Collection<int, CartItem>  $items
      * @param  Collection<int, Product>  $products
      */
-    public function assertCheckoutAvailability(Collection $items, Collection $products): void
+    public function assertCheckoutAvailability(Collection $items, Collection $products, ?int $buyerId = null): void
     {
         foreach ($items as $item) {
             if ($item->quantity < 1 || $item->quantity > self::MAX_CART_LINE_QUANTITY) {
@@ -78,6 +81,8 @@ class InventoryService
         foreach ($items->groupBy('product_id') as $productId => $productItems) {
             $product = $products->get($productId);
             $requestedProductQuantity = $productItems->sum('quantity');
+            app(PurchasePolicyService::class)->assertShopAccepting($product);
+            app(PurchasePolicyService::class)->assertQuantity($product, $buyerId, $requestedProductQuantity);
 
             if ($requestedProductQuantity > $product->stock) {
                 throw new RuntimeException(

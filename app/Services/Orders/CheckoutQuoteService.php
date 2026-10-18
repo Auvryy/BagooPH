@@ -37,7 +37,7 @@ class CheckoutQuoteService
         }
         $items = $this->withQuantities($items, $quantities);
         try {
-            app(InventoryService::class)->assertCheckoutAvailability($items, $items->pluck('product')->keyBy('id'));
+            app(InventoryService::class)->assertCheckoutAvailability($items, $items->pluck('product')->keyBy('id'), $buyer->id);
         } catch (RuntimeException $exception) {
             throw new CheckoutException($exception->getMessage(), previous: $exception);
         }

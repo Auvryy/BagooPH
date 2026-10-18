@@ -73,6 +73,7 @@ export interface User {
 }
 
 export interface Shop {
+    vacation_mode?: boolean;
     id: number;
     user_id: number;
     name: string;
@@ -119,6 +120,7 @@ export interface ProductImage {
 }
 
 export interface Product {
+    purchase_limit?: number | null;
     compliance_restricted?: boolean;
     moderation_version?: number;
     compliance_feedback?: {

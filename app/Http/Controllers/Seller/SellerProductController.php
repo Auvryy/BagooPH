@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Rules\AsciiPositiveInteger;
 use App\Services\Commerce\SellerInventoryService;
 use App\Services\Commerce\SellerSalesMetricsService;
 use App\Services\ShopEligibilityService;
@@ -77,7 +78,8 @@ class SellerProductController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'price' => 'required|numeric|min:0.01',
             'compare_at_price' => 'nullable|numeric|gt:price',
-            'stock' => 'required|integer|min:0',
+            'stock' => 'required|integer|min:0|max:1000000',
+            'purchase_limit' => ['nullable', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
             'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')],
             'description' => 'required|string',
             'featured_image' => 'nullable|string',
@@ -141,7 +143,8 @@ class SellerProductController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'price' => 'required|numeric|min:0.01',
             'compare_at_price' => 'nullable|numeric|gt:price',
-            'stock' => 'required|integer|min:0',
+            'stock' => 'required|integer|min:0|max:1000000',
+            'purchase_limit' => ['nullable', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
             'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')->ignore($product)],
             'description' => 'required|string',
             'featured_image' => 'nullable|string',
