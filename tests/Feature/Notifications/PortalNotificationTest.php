@@ -58,7 +58,7 @@ class PortalNotificationTest extends TestCase
 
     private function company(User $owner): LogisticsCompany
     {
-        return LogisticsCompany::create(['user_id' => $owner->id, 'name' => 'Bagoo Notification Fleet',
+        return LogisticsCompany::create(['user_id' => $owner->id, 'name' => 'Bagoo Notification Fleet '.$owner->id,
             'slug' => 'notification-fleet-'.$owner->id, 'code' => 'NTF-'.$owner->id, 'status' => 'active', 'is_active' => true]);
     }
 
@@ -97,7 +97,7 @@ class PortalNotificationTest extends TestCase
             $this->assertNotSame($other->id, $notice['id']);
             $this->assertSame(['title', 'body'], array_keys($notice['data']));
             $this->assertNull($notice['read_at']);
-            $this->assertSame($kind === 'buyer' ? '/buyer/profile?tab=account&application=1' : '/pending-approval', $notice['href']);
+            $this->assertSame('/account/status', $notice['href']);
         }
         $this->assertSame(9, $owner->unreadNotifications()->count());
         $unseen = $this->notice($owner, 'arrived-after-preview');
@@ -123,7 +123,7 @@ class PortalNotificationTest extends TestCase
             $this->patchJson($host.'/notifications/read-displayed', ['ids' => $invalid])->assertUnprocessable();
         }
         $this->patch($host.'/notifications/'.$owned->id.'/read', ['open' => true])
-            ->assertRedirect($kind === 'buyer' ? '/buyer/profile?tab=account&application=1' : '/pending-approval')->assertSessionHas('success');
+            ->assertRedirect('/account/status')->assertSessionHas('success');
         $this->assertNotNull($owned->fresh()->read_at);
     }
 

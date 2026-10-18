@@ -98,6 +98,11 @@ class RiderAccountService
 
     public function assertAccessible(User $user): void
     {
+        if ($user->isCourier() && $user->closed_at === null && in_array($user->status, ['suspended', 'inactive'], true)) {
+            $state = $user->status === 'suspended' ? 'suspended' : 'deactivated';
+            throw new HttpResponseException(response()->json(['message' => 'Your rider account is '.$state.'. Sign in on the website to view Account status and request a review.',
+                'account_status_url' => '/account/status'], 403));
+        }
         if (! $user->isCourier() || $user->closed_at !== null
             || ! in_array($user->status, ['active', 'pending_approval'], true)
             || ! in_array($user->kyc_status, ['approved', 'verified', 'pending_approval', 'rejected'], true)

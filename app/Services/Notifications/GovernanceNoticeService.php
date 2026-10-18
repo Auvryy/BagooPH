@@ -47,8 +47,10 @@ class GovernanceNoticeService
             }
         } elseif ($event instanceof KycDecision) {
             $this->send($event, 'kyc_review', [$event->user_id => 'account-status'],
-                $event->decision === 'approved' ? 'Your application review was approved' : 'Your application needs a correction',
-                'Open your account status for the review outcome and permitted next steps. Activity and resource eligibility still apply.');
+                $event->decision === 'approved' ? 'Your application was approved' : 'Your application was rejected',
+                $event->decision === 'approved'
+                    ? 'Your application was approved. Sign in to see your current account status. Any separate account or shop/company restriction still applies.'
+                    : 'Reason: '.$event->reason."\nSign in to correct your application or request a review.");
         } elseif ($event instanceof ShopReviewDecision) {
             // Original-shop and correction decisions already have their own account event.
             if (! $event->kyc_decision_id && ! $event->identity_correction_request_id) {
@@ -69,7 +71,10 @@ class GovernanceNoticeService
             };
             $this->send($event, 'restriction', array_fill_keys(array_unique($recipients), 'account-status'),
                 'Your '.$subject.' was '.$action,
-                'Existing order, parcel, and cash responsibilities remain recorded. Approval and resource eligibility are checked separately.');
+                ($event->owner_feedback ? 'Reason: '.$event->owner_feedback."\n" : '').'Existing orders, parcels and cash responsibilities stay recorded. '.
+                (in_array($event->subject_type, ['account', 'shop', 'company'], true)
+                    ? 'Sign in to see your status and request a review if needed.'
+                    : 'Contact your company administrator about this change.'));
         } elseif ($event instanceof IdentityCorrectionDecision) {
             $request = IdentityCorrectionRequest::findOrFail($event->correction_request_id);
             $this->send($event, 'identity_correction', [$request->user_id => 'identity-correction'],
@@ -138,9 +143,13 @@ class GovernanceNoticeService
             if (! $id || ! User::whereKey($id)->exists()) {
                 continue;
             }
-            $this->delivery->record((int) $id, 'governance-event', 'governance:'.$kind.':'.$event->id,
+            $delivery = $this->delivery->record((int) $id, 'governance-event', 'governance:'.$kind.':'.$event->id,
                 ['title' => $title, 'body' => $body, 'target' => $target,
                     'governance_source' => $kind, 'governance_id' => $event->id] + $context);
+            if ($event instanceof KycDecision || $event instanceof ShopReviewDecision
+                || ($event instanceof RestrictionDecision && in_array($event->subject_type, ['account', 'shop', 'company'], true))) {
+                app(AccountStatusDeliveryService::class)->requireEmail($delivery);
+            }
         }
     }
 }

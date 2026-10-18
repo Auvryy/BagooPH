@@ -8,6 +8,14 @@ export function uppercaseOperationalCode(value: string): string {
     return value.replace(/[a-z]/g, character => character.toUpperCase());
 }
 
+export function companyTinError(value: string): string | undefined {
+    const tin = value.replace(/^ +| +$/g, '');
+    if (!tin) return 'Enter your company TIN, including the branch code.';
+    const match = /^(?:[0-9]{12}|[0-9]{3}(?:-[0-9]{3}){3})$/.exec(tin);
+    return match?.[0] === tin
+        ? undefined : 'Enter a 12-digit TIN, including the branch code, such as 123-456-789-000.';
+}
+
 export function rejectOverlongRegistrationPaste(event: ClipboardEvent<HTMLFormElement>, onError: (field: string, message: string) => void): void {
     const input = event.target as HTMLInputElement;
     // Mobile/business components handle supported whole-number prefixes themselves.

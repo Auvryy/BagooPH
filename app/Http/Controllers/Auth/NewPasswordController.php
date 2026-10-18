@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\AccountIdentityService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class NewPasswordController extends Controller
         return Inertia::render('Auth/ResetPassword', [
             'email' => $request->email,
             'token' => $request->route('token'),
+            'role' => app(AccountIdentityService::class)->selectedRole($request) ?? 'buyer',
         ]);
     }
 
@@ -43,8 +45,9 @@ class NewPasswordController extends Controller
         // Here we will attempt to reset the user's password. If it is successful we
         // will update the password on an actual user model and persist it to the
         // database. Otherwise we will parse the error and return the response.
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+        $owner = app(AccountIdentityService::class)->signInAccount($request, $request->input('email'));
+        $status = ! $owner || $owner->closed_at !== null ? Password::INVALID_USER : Password::reset(
+            $request->only('password', 'password_confirmation', 'token') + ['id' => $owner->id, 'email' => $owner->email, 'role' => $owner->role],
             function ($user) use ($request) {
                 $user->forceFill([
                     'password' => Hash::make($request->password),
@@ -63,7 +66,7 @@ class NewPasswordController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'email' => [trans($status)],
+            'email' => ['This reset link has expired or does not belong to this account. Request a new link for the correct account type.'],
         ]);
     }
 }

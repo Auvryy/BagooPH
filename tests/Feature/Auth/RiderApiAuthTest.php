@@ -54,7 +54,7 @@ class RiderApiAuthTest extends TestCase
         $rider = $this->rider();
         $this->postJson('/api/v1/auth/tokens', ['email' => $rider->email, 'password' => 'wrong', 'device_name' => 'Test'])->assertStatus(422);
         $this->postJson('/api/v1/auth/tokens', ['email' => 'unknown@example.test', 'password' => 'wrong', 'device_name' => 'Test'])->assertStatus(422);
-        $this->login($this->rider(['role' => 'buyer']))->assertForbidden();
+        $this->login($this->rider(['role' => 'buyer']))->assertUnprocessable();
         $this->postJson('/api/v1/auth/tokens', ['email' => $rider->email, 'password' => 'Password1234', 'device_name' => 'Test', 'role' => 'courier'])->assertJsonValidationErrors('role');
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }

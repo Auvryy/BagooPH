@@ -5894,3 +5894,105 @@ retain the unperformed browser/device and deployed network/session checks.
 Flutter and simultaneous PostgreSQL behavior are outside this local acceptance.
 No overall admin security, whole-system readiness, Azure performance or thesis
 readiness rating is raised by this scoped work.
+
+## October 18, 2026: Account identity and registration review
+
+The [account registration and review delivery](auth-plan/ACCOUNT_REGISTRATION_AND_REVIEW.md)
+uses `fix/account-registration-and-review` with separate logical commits. One
+normalized sign-in email may now belong to different fixed roles, while original
+and verified recovery emails remain unique within each role. Accounts retain
+their own passwords, approval, restrictions and records. Sign-in forms identify
+the role, dedicated portal hosts constrain it, and ambiguous older requests must
+choose an account type. The shared host supports each portal's path aliases.
+
+Password broker tokens use the account ID; links carry the real email and role.
+Registration codes are role-bound. Google linking, additional recovery addresses,
+native courier entry, personnel placement and demo lookups select the intended
+account. Original registration addresses and ownership guards remain intact.
+Existing unconsumed email-only reset links and worker codes may need resending.
+The identity migration deliberately requires a roll-forward repair rather than
+collapsing different roles back to globally unique email ownership.
+
+Company and shop names reject normalized duplicates on preflight and final
+submission, with database protection against a persistence race. Existing
+conflicting company names stop migration for controlled correction; no company
+is silently renamed or removed. Logistics registration now requires a unique
+canonical 12-digit TIN and multiple declared service regions, independently of
+the office province. Corrections/admin review retain those values; public lists
+do not expose private TINs. Existing missing TINs are not fabricated. The demo
+company seeder contains an explicit synthetic TIN and declared coverage. Declared
+regions do not activate unsupported facilities or transport routes.
+
+Rejected, suspended and deactivated owners can authenticate into **Account status**
+and send a **Request review** explanation. Every ordinary protected operation
+still checks current eligibility. Owned correction/history and documented custody
+or cash recovery keep their existing boundaries. Closed accounts remain closed.
+Separate shop/company restrictions are shown without changing the account role;
+legacy companies disabled through their activity flag are included.
+
+The admin queue supports a reasoned decline, returning a rejected application to
+pending evidence review, reactivation through the existing gates, and closing an
+outdated request. It prevents self-review, foreign ownership, duplicate pending
+requests, stale decisions and reuse of an old acceptance to lift a newer
+restriction. Declined unchanged cases wait 24 hours before resubmission. Requests
+and decisions are retained; reopening never approves an application or removes an
+independent restriction. Admin and owner notifications link to the correct view.
+
+Committed approval/rejection and account/shop/company activity decisions now
+create required email delivery intents. Review outcomes also notify the owner.
+Delivery failure leaves the decision saved and is retried by the existing
+notification command; Account status reports a pending email. Signing in does
+not send another decision email. New activity decisions explicitly mark feedback
+shared with the owner. Historic internal restriction notes remain private, and
+missing shared feedback does not prevent requesting review.
+
+Verification:
+
+- **2,595 broader authentication, admin, notification, buyer and rider tests /
+  36,559 assertions passed**. The final review-identifier boundary checks were
+  also verified in the focused appeal run below.
+- **46 appeal tests / 572 assertions**, including ownership, restricted work,
+  current-state review, self-review prevention, retained evidence, visible
+  notifications, legacy company activity and oversized review identifiers.
+- **218 focused review/notification regression tests / 2,809 assertions** passed
+  before the final identifier boundary assertions. The email cases verify all
+  public application roles, all five account activity roles, committed delivery,
+  rollback, preferred recipients, duplicate events and retry.
+- **414 frontend checks**, TypeScript/Vite production build, PHP formatting and
+  patch whitespace checks passed. No browser automation was used.
+- Earlier foundation checks include **296 identity-related regression tests /
+  3,545 assertions**, **2 populated migration checks / 16 assertions**, and
+  **25 TIN/region cases / 198 assertions**. Older global-email, logout and notice
+  destination assertions were updated for the explicit new policy, retaining
+  protected-operation denial and unchanged owned data.
+
+Normal local migrations applied successfully on the existing PostgreSQL database,
+including the previously pending main migrations. No fresh/reset or reseeding was
+performed. All automated database tests used isolated SQLite `:memory:`; applying
+a normal migration does not establish PostgreSQL concurrency behavior. Azure,
+interactive browser/device behavior and real SMTP/inbox delivery remain
+unverified. SMTP can deliver at least once if a process stops between sending and
+recording success. Follow the [deployment checks](WEB_AUTH_DEPLOYMENT.md#account-registration-and-review-update)
+after the user publishes and pulls the branch; retain the scheduler and real mail
+configuration. Existing companies missing TINs need owner correction rather than
+a fabricated tax identity.
+
+| Scoped assessment | Before | After | User-visible improvement |
+|---|---:|---:|---|
+| Role-aware email identity | 4/10 | 8/10 | Separate roles can share a mailbox without ambiguous sign-in or cross-role recovery. |
+| Duplicate company/shop blocking | 6/10 | 8/10 | Final submissions and database writes enforce normalized uniqueness. |
+| Logistics registration completeness | 5/10 | 8/10 | Required private TIN and every selected region survive review and correction. |
+| Account status and owner review | 3/10 | 8/10 | Clear feedback, saved appeals and admin responses retain operational restrictions. |
+
+These are assessments of the tested scope, not a higher rating for unverified
+fulfillment, transport coverage, deployed mail or unrelated system flows.
+
+Implementation commits:
+
+- `761dfbd` — separate shared emails by account role and block duplicate companies.
+- `18fc13d` — require logistics TIN and retain multiple service regions.
+- `9cdac65` — send clear status emails and retry failed delivery.
+- `ff8e0da` — add owner appeals with guarded admin decisions.
+
+The combined pull request title/body is a local draft. Local commits, publication,
+merge and deployed verification remain separate events.

@@ -74,7 +74,7 @@ test('a stale registration email request redirects the current account instead o
     assert.deepEqual(targets, ['/deliveries']);
     assert.equal(states.at(-1).status, 'redirecting');
     assert.equal(states.at(-1).message, 'Returning to your account.');
-    assert.deepEqual(JSON.parse(request.options.body), { email: 'random-address@bagoo.test' });
+    assert.deepEqual(JSON.parse(request.options.body), { email: 'random-address@bagoo.test', role: 'buyer' });
     await controller.checkNow();
     assert.deepEqual(targets, ['/deliveries']);
 });

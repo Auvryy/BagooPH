@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AccountReviewRequest;
 use App\Models\CourierProfile;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
@@ -424,6 +425,9 @@ class ResourceRestrictionService
         $type = array_search($resource::class, self::TYPES, true);
         if ($type === false) {
             return false;
+        }
+        if (in_array($type, ['shop', 'company'], true) && AccountReviewRequest::where('subject_type', $type)->where('subject_id', $resource->id)->exists()) {
+            return true;
         }
         $query = RestrictionDecision::where(fn ($q) => $q->where('subject_type', $type)->where('subject_id', $resource->id));
         if ($type === 'company' || $type === 'hub') {

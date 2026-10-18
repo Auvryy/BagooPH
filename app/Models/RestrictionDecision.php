@@ -12,7 +12,7 @@ class RestrictionDecision extends Model
 
     protected $dateFormat = 'Y-m-d H:i:s.u';
 
-    protected $fillable = ['subject_type', 'subject_id', 'actor_id', 'actor_role', 'actor_name', 'source_token', 'action', 'reason', 'before_state', 'after_state', 'decided_at'];
+    protected $fillable = ['subject_type', 'subject_id', 'actor_id', 'actor_role', 'actor_name', 'source_token', 'action', 'reason', 'owner_feedback', 'before_state', 'after_state', 'decided_at'];
 
     protected $hidden = ['source_token', 'before_state', 'after_state'];
 

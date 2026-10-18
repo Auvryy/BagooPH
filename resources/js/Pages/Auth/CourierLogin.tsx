@@ -15,6 +15,7 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
     const [showPassword, setShowPassword] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
+        role: 'courier',
         email: '',
         password: '',
         remember: true as boolean,
@@ -96,7 +97,7 @@ export default function CourierLogin({ status, canResetPassword }: Props) {
                         </label>
                         {canResetPassword && (
                             <Link
-                                href={route('password.request')}
+                                href={route('password.request', { role: 'courier' })}
                                 className="text-xs text-slate-500 hover:text-emerald-600 transition"
                             >
                                 Forgot password?

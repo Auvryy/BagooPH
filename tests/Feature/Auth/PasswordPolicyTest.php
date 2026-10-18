@@ -34,7 +34,7 @@ class PasswordPolicyTest extends TestCase
         $this->post('/reset-password', $data)->assertSessionHasErrors('password');
         $this->postJson('/api/password/reset-otp', $data)->assertJsonValidationErrors('password');
         $this->assertDatabaseCount('users', 1);
-        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->getEmailForPasswordReset()]);
     }
 
     public static function acceptedPasswords(): array

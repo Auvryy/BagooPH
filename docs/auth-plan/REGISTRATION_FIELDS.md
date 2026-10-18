@@ -14,7 +14,7 @@ for rejection, retry, permissions and persistence checks.
 | First Google signup | Verified provider email is fixed; required first/last names, sex and adult birthday; optional middle initial, mobile and postal code | Optional address controls, required policy acknowledgement; private ID and approval use the buyer application afterward |
 | Seller web signup | Separated names, required sex, adult birthday, email, password/confirmation, Philippine account mobile; optional postal code | One unique shop name/root category, pickup address, private ID and business permit |
 | Courier web/native signup | Names, required sex, adult birthday, email, mobile, password/confirmation; optional postal code | Application address, vehicle, plate and licence identifiers, private ID, driver’s licence and OR/CR; native submission also needs verified email and device name |
-| Logistics web signup | Separated names, required sex, adult birthday, email, account mobile, password/confirmation; optional postal code | Company name/initials, application address, declared fleet/service details, business permit and optional franchise evidence |
+| Logistics web signup | Separated names, required sex, adult birthday, email, account mobile, password/confirmation; optional postal code | Unique company name/initials and 12-digit TIN, multiple required service regions, office address, declared fleet details, business permit and optional franchise evidence |
 | Platform Admin | Controlled account provisioning and existing login | No public admin signup or role-conversion option |
 
 Sex and postal code are visible on all four public forms and the first Google
@@ -72,15 +72,29 @@ Corrections do not approve the account or replace the original sign-in email.
 
 ## Registration email checks
 
+Company TIN entry accepts exactly 12 ASCII digits including the branch suffix,
+with optional hyphens in `000-000-000-000` groups; save the compact value. New
+logistics applications require it and one or more distinct service regions.
+Existing missing values remain missing until supplied through correction;
+approval readiness shows those gaps. TINs are unique across logistics companies
+and stay out of public company serialization. Region declarations use the
+[PSA region list](https://psa.gov.ph/classification/psgc/regions), including NIR,
+without changing the project's supported operational transport network.
+
+Company and shop names are unique within their respective directories after
+Unicode, case and whitespace normalization. Both step checks and final
+submissions reject duplicates; the database must reject a competing insert too.
+
 Buyer, seller, courier and logistics signup check email availability after a
 500 ms typing pause or on blur. Local format feedback, the read-only lookup,
 preflight and final signup must agree on normalized addresses, malformed input,
-controls and length limits. Ownership checks include case/space equivalents,
-other roles and verified additional addresses. An earlier successful check
+controls and length limits. Ownership checks include case/space equivalents
+and verified additional addresses within the selected account role. The same
+email can register another role with separate credentials and approval. An earlier successful check
 never reserves an address or bypasses final validation or database uniqueness.
 
 Blank or incomplete input does not request availability. Editing, changing the
-active step or opening verification cancels pending checks; outdated responses
+active step, account type or opening verification cancels pending checks; outdated responses
 cannot replace current feedback. Requests have a ten-second timeout and respect
 the server retry cooldown. Failed checks must not claim availability. Existing
 field errors take priority, and lookup results reveal no account details.

@@ -13,7 +13,7 @@ class VoucherDemoSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('email', 'admin@bagoo.test')->first();
+        $admin = User::where('role', 'admin')->where('email', 'admin@bagoo.test')->first();
         $shop = Shop::eligible()->whereHas('user', fn ($q) => $q->where('email', 'seller@bagoo.test'))->first();
         if (! $admin?->isAdmin() || ! $admin->canAccessPortal() || ! $shop) {
             return;

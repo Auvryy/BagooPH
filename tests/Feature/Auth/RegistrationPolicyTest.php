@@ -29,7 +29,7 @@ class RegistrationPolicyTest extends TestCase
             'birthday' => '2000-01-01', 'phone' => '09171234567', 'address' => '12 Bagoo Street', 'city' => 'Makati',
             'shop_name' => 'Bagoo Shop', 'root_category_id' => $this->validMasterCategory()->id,
             'vehicle_type' => 'Motorcycle', 'plate_number' => 'AB-12345', 'license_number' => 'N01-12-345678',
-            'company_name' => 'Bagoo Logistics', 'company_code' => 'BGL', 'fleet_size' => '1',
+            'tin' => '900000001000', 'service_areas' => ['NCR', 'Region III', 'Region IV-A'], 'company_name' => 'Bagoo Logistics', 'company_code' => 'BGL', 'fleet_size' => '1',
             'vehicle_types' => ['motorcycle'],
             ...array_fill_keys(['id_document', 'business_permit', 'driver_license', 'or_cr_document'], UploadedFile::fake()->createWithContent('document.pdf', "%PDF-1.4\nBagoo evidence\n%%EOF")),
         ];

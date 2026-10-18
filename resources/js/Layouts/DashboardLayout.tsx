@@ -94,6 +94,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Shop reviews', href: route('admin.shops.index'), icon: Store, current: component === 'Admin/ShopReviews' },
                 { name: 'KYC Queue', href: route('admin.kyc.index'), icon: ShieldCheck, current: component.startsWith('Admin/Kyc') || route().current('admin.kyc.*') || url.startsWith('/admin/kyc') },
                 { name: 'Users', href: route('admin.users'), icon: Users, current: component.startsWith('Admin/Users') || component === 'Admin/AccountContext' || route().current('admin.users*') || url.startsWith('/admin/users') },
+                { name: 'Review requests', href: route('admin.account-reviews.index'), icon: ShieldCheck, current: component.startsWith('Admin/AccountReview') },
                 { name: 'Products', href: route('admin.products'), icon: Package, current: component.startsWith('Admin/Products') || route().current('admin.products*') || url.startsWith('/admin/products') },
                 { name: 'Voucher campaigns', href: route('admin.vouchers.index'), icon: Tag, current: component.startsWith('Admin/Voucher') },
                 { name: 'Advertisements', href: route('admin.advertisements.index'), icon: ImagePlus, current: component.startsWith('Admin/Advertisements/') },
@@ -659,6 +660,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                 <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
                                             </div>
                                         </div>
+
+                                        <Link href={route('account.status')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition">
+                                            <ShieldCheck className="w-4 h-4 text-slate-400" /><span>Account status</span>
+                                        </Link>
 
                                         {role === 'seller' && (
                                             <Link

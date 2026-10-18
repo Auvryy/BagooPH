@@ -1,4 +1,5 @@
 import UploadHint from '@/Components/UploadHint';
+import ServiceRegionFields from '@/Components/ServiceRegionFields';
 import { RegistrationSexField, RegistrationPostalCodeField } from '@/Components/RegistrationDemographics';
 import RegistrationPolicyAcknowledgement, { RegistrationPolicies } from '@/Components/RegistrationPolicyAcknowledgement';
 import PasswordRequirements from '@/Components/PasswordRequirements';
@@ -41,7 +42,7 @@ import RegistrationEmailFeedback from '@/Components/RegistrationEmailFeedback';
 import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
-export default function LogisticsRegister({ birthDateLimits, policies }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies }) {
+export default function LogisticsRegister({ birthDateLimits, policies, serviceRegions }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies; serviceRegions: Record<string, string> }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
@@ -64,6 +65,8 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
         sex: string;
         company_name: string;
         company_code: string;
+        tin: string;
+        service_areas: string[];
         email: string;
         phone: string;
         address: string;
@@ -92,6 +95,8 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
         sex: '',
         company_name: '',
         company_code: '',
+        tin: '',
+        service_areas: [],
         email: '',
         phone: '',
         address: '',
@@ -117,7 +122,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
     const fieldFeedback = (event: React.FormEvent<HTMLFormElement>) => {
         const input = event.target as HTMLInputElement;
         const field = input.name as keyof typeof data;
-        if (!field || !(field in data) || input.type === 'file') return;
+        if (!field || !(field in data) || input.type === 'file' || field === 'service_areas') return;
         const value = input.type === 'checkbox' ? input.checked : input.value;
         const message = registrationInputErrors({ ...data, [field]: value }, birthDateLimits)[field];
         clearErrors(field);
@@ -128,7 +133,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
         setStepErrors(fieldErrors);
         if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
     }, birthDateLimits);
-    const emailAvailability = useRegistrationEmailAvailability(data.email, currentStep === 1 && !processing && !validating && !showOtpModal);
+    const emailAvailability = useRegistrationEmailAvailability(data.email, currentStep === 1 && !processing && !validating && !showOtpModal, 'logistics');
 
     useEffect(() => {
         if (data.otp_token) setData('otp_token', '');
@@ -411,6 +416,15 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                             </div>
                         </div>
 
+                        <div className="space-y-1">
+                            <label htmlFor="company-tin" className="block text-xs font-semibold text-slate-800">Company TIN *</label>
+                            <input id="company-tin" name="tin" type="text" inputMode="numeric" minLength={12} maxLength={15} value={data.tin}
+                                onChange={event => setData('tin', event.target.value)} aria-invalid={Boolean(stepErrors.tin || errors.tin)} aria-describedby="company-tin-help company-tin-error"
+                                placeholder="123-456-789-000" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" />
+                            <p id="company-tin-help" className="text-xs text-slate-600">Enter 12 digits including the branch code. Hyphens are optional.</p>
+                            <InputError id="company-tin-error" message={stepErrors.tin || errors.tin} role="status" aria-live="polite" />
+                        </div>
+
                         <PersonalNameFields values={data} errors={{ ...errors, ...stepErrors }} context="Authorised representative" onChange={(field, value) => {
                             setData(field, value);
                             clearErrors(field, 'name' as keyof typeof data);
@@ -550,7 +564,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                                 <span>Regulatory Accreditation & Fleet Profile</span>
                             </div>
                             <p className="text-[11px] text-blue-800 leading-relaxed font-sans">
-                                Declare your active LTFRB Certificate of Public Convenience (CPC) or franchise details, primary dispatch province, and vehicle capabilities.
+                                Declare your franchise details, service regions and vehicle capabilities.
                             </p>
                         </div>
 
@@ -577,52 +591,21 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
                             )}
                         </div>
 
-                        {/* Fleet Size & Primary Operating Province */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
-                                    Declared Active Fleet Units
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                        <Truck className="w-4 h-4" />
-                                    </div>
-                                    <input name="fleet_size"
-                                        type="text" inputMode="numeric" maxLength={5}
-                                        min={1}
-                                        max={10000}
-                                        value={data.fleet_size}
-                                        onChange={e => setData('fleet_size', e.target.value)}
-                                        className="w-full pl-9 pr-3 py-2 text-sm font-sans bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
-                                    />
-                                </div>
-                                {(stepErrors.fleet_size || errors.fleet_size) && <p className="text-xs text-[#E00D42]">{stepErrors.fleet_size || errors.fleet_size}</p>}
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 font-sans">
-                                    Primary Operating Region
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                        <Compass className="w-4 h-4" />
-                                    </div>
-                                    <select
-                                        value={data.province}
-                                        onChange={e => setData('province', e.target.value)}
-                                        className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-[#E00D42] focus:border-[#E00D42] transition"
-                                    >
-                                        <option value="Laguna">Laguna (CALABARZON Corridor)</option>
-                                        <option value="Metro Manila">Metro Manila (NCR Sortation)</option>
-                                        <option value="Batangas">Batangas (Southern Gateway)</option>
-                                        <option value="Cavite">Cavite (Mid-Luzon Express)</option>
-                                        <option value="Rizal">Rizal (East Freight Sector)</option>
-                                        <option value="Pampanga">Pampanga (North Luzon Hub)</option>
-                                        <option value="Cebu">Cebu (Visayas Central Hub)</option>
-                                    </select>
-                                </div>
-                            </div>
+                        <div className="space-y-1">
+                            <label htmlFor="fleet-size" className="block text-xs font-semibold text-slate-800">Declared active fleet units</label>
+                            <input id="fleet-size" name="fleet_size" type="text" inputMode="numeric" maxLength={5} value={data.fleet_size}
+                                onChange={event => setData('fleet_size', event.target.value)}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" />
+                            <InputError message={stepErrors.fleet_size || errors.fleet_size} />
                         </div>
+
+                        <ServiceRegionFields options={serviceRegions} values={data.service_areas}
+                            onChange={values => {
+                                setData('service_areas', values);
+                                clearErrors('service_areas');
+                                setStepErrors(previous => ({ ...previous, service_areas: values.length ? '' : 'Choose at least one service region.' }));
+                            }}
+                            error={stepErrors.service_areas || errors.service_areas || Object.entries(errors).find(([key]) => key.startsWith('service_areas.'))?.[1]} />
 
                         {/* Vehicle Categories Checkboxes */}
                         <div className="space-y-2">
@@ -883,6 +866,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
 
             {/* Email OTP Verification Modal */}
             <OtpModal
+                role="logistics"
                 isOpen={showOtpModal}
                 onClose={() => setShowOtpModal(false)}
                 email={data.email}

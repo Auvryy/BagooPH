@@ -225,9 +225,9 @@ class AccountRestrictionTest extends TestCase
         $actor->update(['status' => 'suspended']);
         foreach (['http://localhost/admin', 'http://admin.localhost'] as $host) {
             $this->actingAs($actor)->getJson($host.'/users/'.$subject->id.'/activity')->assertForbidden();
-            $this->assertGuest();
+            $this->assertAuthenticatedAs($actor);
             $this->actingAs($actor)->postJson($host.'/users/'.$subject->id.'/activity', $input)->assertForbidden();
-            $this->assertGuest();
+            $this->assertAuthenticatedAs($actor);
             $this->actingAs($subject)->postJson($host.'/users/'.$subject->id.'/activity', $input)->assertForbidden();
         }
         $this->expectException(HttpException::class);

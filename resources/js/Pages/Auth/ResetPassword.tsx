@@ -8,12 +8,14 @@ import { ArrowRight, Lock, Mail } from 'lucide-react';
 interface Props {
     token: string;
     email: string;
+    role?: string;
 }
 
-export default function ResetPassword({ token, email }: Props) {
+export default function ResetPassword({ token, email, role = 'buyer' }: Props) {
     const { data, setData, post, processing, errors, reset } = useForm({
         token: token,
         email: email,
+        role,
         password: '',
         password_confirmation: '',
     });
@@ -35,6 +37,7 @@ export default function ResetPassword({ token, email }: Props) {
             <Head title="Reset Password — BagooPH" />
 
             <form onSubmit={submit} className="space-y-4 font-sans">
+                <p className="text-sm text-slate-600">Resetting your {role === 'courier' ? 'rider' : role} account password.</p>
                 <div>
                     <label className="block text-[11px] font-bold text-black uppercase tracking-wider mb-1">
                         Email Address

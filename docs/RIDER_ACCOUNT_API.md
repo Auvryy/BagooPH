@@ -33,8 +33,13 @@ The server assigns the immutable courier role and pending approval statuses.
 
 Credentials are the existing account credentials, with case-insensitive email
 lookup. Invalid credentials produce 422; invalid input has Laravel `errors`.
-Wrong-role, closed, suspended, inactive, unknown or underage-ineligible accounts
-receive 403. Pending/rejected applications may see only their own holding data.
+The native sign-in always selects the courier identity, even when another role
+uses the same email. A non-courier password cannot authenticate that identity.
+Closed, suspended, inactive, unknown or underage-ineligible accounts receive 403.
+For suspended/deactivated riders, the response includes an understandable message
+and `account_status_url: /account/status`; they can sign in on the website to
+request a review. This does not grant a native operational token or change Flutter
+client files. Pending/rejected applications may see only their own holding data.
 An approved account flag is account eligibility, not placement, duty or authority
 to perform a parcel action.
 

@@ -33,11 +33,15 @@ class AccountRestrictionService
         if (is_string($input['reason'] ?? null)) {
             $input['reason'] = trim(\Normalizer::normalize($input['reason'], \Normalizer::FORM_KC), ' ');
         }
+        if (is_string($input['owner_feedback'] ?? null)) {
+            $input['owner_feedback'] = trim(\Normalizer::normalize($input['owner_feedback'], \Normalizer::FORM_KC), ' ');
+        }
 
         return Validator::make($input, [
             'action' => 'required|in:suspend,deactivate,reactivate',
             'source_token' => 'required|string|regex:/\A[a-f0-9]{64}\z/',
             'reason' => ['bail', 'required', 'string', new ApplicationText('notes', 5, 1000)],
+            'owner_feedback' => ['bail', 'nullable', 'string', new ApplicationText('notes', 5, 1000)],
             'affected_work_confirmed' => 'required|accepted',
             'role' => 'prohibited', 'status' => 'prohibited', 'kyc_status' => 'prohibited',
             'is_available' => 'prohibited', 'actor_id' => 'prohibited', 'restriction_version' => 'prohibited',
@@ -167,7 +171,8 @@ class AccountRestrictionService
     {
         $existing = RestrictionDecision::where('subject_type', $type)->where('subject_id', $id)->where('source_token', $data['source_token'])->first();
         if ($existing) {
-            $this->requireCurrent($existing->actor_id === $actor->id && $existing->action === $data['action'] && $existing->reason === $data['reason'], $current, 'This source was already decided differently. Reload its current state.');
+            $this->requireCurrent($existing->actor_id === $actor->id && $existing->action === $data['action'] && $existing->reason === $data['reason']
+                && $existing->owner_feedback === ($data['owner_feedback'] ?? null), $current, 'This source was already decided differently. Reload its current state.');
         }
 
         return $existing;
@@ -179,6 +184,7 @@ class AccountRestrictionService
             'subject_type' => $type, 'subject_id' => $id, 'actor_id' => $actor->id,
             'actor_role' => $actor->role, 'actor_name' => $actor->name,
             'source_token' => $data['source_token'], 'action' => $data['action'], 'reason' => $data['reason'],
+            'owner_feedback' => $data['owner_feedback'] ?? null,
             'before_state' => $before, 'after_state' => $after, 'decided_at' => now(),
         ]);
         if ($data['action'] !== 'reactivate') {

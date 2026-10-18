@@ -22,10 +22,11 @@ class AccountRegistrationService
 
     public function emailAvailability(Request $request): array
     {
-        $values = app(ApplicationValidationService::class)->registrationValues($request->only('email'), 'buyer');
+        $role = $request->validate(['role' => ['nullable', 'string', 'in:buyer,seller,courier,logistics']])['role'] ?? 'buyer';
+        $values = app(ApplicationValidationService::class)->registrationValues($request->only('email'), $role);
         $validated = Validator::make($values, ['email' => ApplicationValidationService::emailRules()])->validate();
 
-        return ['email' => $validated['email'], 'available' => ! UniqueAccountEmail::taken($validated['email'])];
+        return ['email' => $validated['email'], 'role' => $role, 'available' => ! UniqueAccountEmail::taken($validated['email'], role: $role)];
     }
 
     public function preflight(Request $request): void
@@ -147,8 +148,8 @@ class AccountRegistrationService
                 [...$password, 'id_document', 'driver_license', 'or_cr_document', ...$policies],
             ],
             'logistics' => [
-                [...$name, 'birthday', 'company_name', 'company_code', 'email', 'company_email', 'phone', 'company_phone', ...$password],
-                ['operating_province', 'franchise_number', 'fleet_size', 'vehicle_types'],
+                [...$name, 'birthday', 'company_name', 'company_code', 'tin', 'email', 'company_email', 'phone', 'company_phone', ...$password],
+                ['operating_province', 'service_areas', 'franchise_number', 'fleet_size', 'vehicle_types'],
                 [...$location, 'company_address', 'business_permit', 'franchise_document', ...$policies],
             ],
         };
@@ -164,7 +165,7 @@ class AccountRegistrationService
         $separatedName = $this->prepare($request, $role);
         $validated = $request->validate($this->rules($role, $separatedName, $request->input('vehicle_type')), $this->messages());
 
-        if ($requireVerifiedEmail && ! app(OtpService::class)->hasValidToken($validated['email'], (string) $request->input('otp_token'), 'registration')) {
+        if ($requireVerifiedEmail && ! app(OtpService::class)->hasValidToken($validated['email'], (string) $request->input('otp_token'), 'registration', role: $role)) {
             throw ValidationException::withMessages(['otp_token' => 'Verify your email before submitting your rider application.']);
         }
 
@@ -214,7 +215,7 @@ class AccountRegistrationService
         try {
             $user = DB::transaction(function () use ($request, $requireVerifiedEmail, $account, $validated, $franchisePath) {
                 $token = $request->input('otp_token');
-                $verified = $token && app(OtpService::class)->validateAndBurnToken($validated['email'], $token, 'registration');
+                $verified = $token && app(OtpService::class)->validateAndBurnToken($validated['email'], $token, 'registration', role: $account['role']);
                 if ($requireVerifiedEmail && ! $verified) {
                     throw ValidationException::withMessages(['otp_token' => 'Your verification session expired. Verify your email again.']);
                 }
@@ -230,7 +231,7 @@ class AccountRegistrationService
             if ($exception instanceof QueryException && in_array($exception->errorInfo[0] ?? null, ['23000', '23505'], true)) {
                 $detail = $exception->errorInfo[2] ?? '';
                 if (str_contains($detail, 'users_email') || str_contains($detail, 'users.email') || str_contains($detail, 'account_emails_email') || str_contains($detail, 'account_emails.email')) {
-                    throw ValidationException::withMessages(['email' => 'This email address is already registered.']);
+                    throw ValidationException::withMessages(['email' => AccountIdentityService::duplicateMessage($role)]);
                 }
                 if (str_contains($detail, 'logistics_companies_code') || str_contains($detail, 'logistics_companies.code')) {
                     throw ValidationException::withMessages(['company_code' => 'This company code is already registered.']);

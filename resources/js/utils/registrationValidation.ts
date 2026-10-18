@@ -2,7 +2,7 @@ import type { BirthDateLimits } from '@/Components/BirthDateInput';
 import { mobileNumberError } from '@/Components/PhoneInput';
 import { AuthRequestError, authRequest, registrationFormData, validEmailFormat } from '@/utils/authRequests';
 import { passwordError } from '@/utils/passwordPolicy';
-import { companyInitialsError, documentError, licenseNumberError, plateNumberError, registrationTextError } from '@/utils/registrationFields';
+import { companyInitialsError, companyTinError, documentError, licenseNumberError, plateNumberError, registrationTextError } from '@/utils/registrationFields';
 
 export type PersonalNameField = 'first_name' | 'middle_initial' | 'last_name';
 export type PersonalNameValues = Record<PersonalNameField, string>;
@@ -102,8 +102,10 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
         if (checking(1)) {
             add('company_name', registrationTextError(value('company_name'), 2, 255, true));
             add('company_code', companyInitialsError(value('company_code')));
+            add('tin', companyTinError(value('tin')));
         }
         if (checking(2)) {
+            if (!Array.isArray(data.service_areas) || data.service_areas.length < 1 || data.service_areas.length > 18 || new Set(data.service_areas).size !== data.service_areas.length) errors.service_areas = 'Choose at least one service region, without duplicates.';
             add('franchise_number', registrationTextError(value('franchise_number'), 2, 100, false, true));
             if (value('franchise_number').toUpperCase() === 'PENDING-LTFRB') errors.franchise_number = 'Enter your real franchise number or leave it blank.';
             add('operating_province', registrationTextError(value('operating_province'), 2, 255));

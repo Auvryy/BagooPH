@@ -9,6 +9,15 @@ class AccountEmail extends Model
 {
     protected $fillable = ['user_id', 'email', 'verified_at'];
 
+    protected $hidden = ['role'];
+
+    protected static function booted(): void
+    {
+        static::creating(function (AccountEmail $address): void {
+            $address->role = User::findOrFail($address->user_id)->role;
+        });
+    }
+
     protected function casts(): array
     {
         return ['is_original' => 'boolean', 'verified_at' => 'datetime'];

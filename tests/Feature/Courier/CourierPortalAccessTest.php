@@ -36,7 +36,7 @@ class CourierPortalAccessTest extends TestCase
 
         foreach (['deliveries', 'earnings', 'messages', 'profile'] as $page) {
             $response = $this->get($prefix.'/'.$page)->assertRedirect();
-            $this->assertStringEndsWith('/pending-approval', $response->headers->get('Location'));
+            $this->assertStringEndsWith($status === 'inactive' || $kyc === 'rejected' ? '/account/status' : '/pending-approval', $response->headers->get('Location'));
         }
         $this->post($prefix.'/deliveries/'.$delivery->id.'/claim')->assertRedirect();
         $this->patch($prefix.'/deliveries/'.$delivery->id.'/status', ['status' => 'picked_up', 'barcode' => $delivery->tracking_number])->assertRedirect();
@@ -44,7 +44,8 @@ class CourierPortalAccessTest extends TestCase
         $this->post($prefix.'/messages/send', ['delivery_id' => $delivery->id, 'message' => 'Pickup note'])->assertRedirect();
         $this->patch($prefix.'/profile/account', ['name' => 'Changed Rider'])->assertRedirect();
         $this->put($prefix.'/profile/password', ['current_password' => 'password', 'password' => 'ChangedPassword!'])->assertRedirect();
-        $this->postJson($prefix.'/messages/read', ['delivery_id' => $delivery->id, 'phase' => 'pickup', 'through_message_id' => 1])->assertRedirect();
+        $response = $this->postJson($prefix.'/messages/read', ['delivery_id' => $delivery->id, 'phase' => 'pickup', 'through_message_id' => 1]);
+        $status === 'inactive' || $kyc === 'rejected' ? $response->assertForbidden() : $response->assertRedirect();
 
         $this->assertSame($before, $delivery->fresh()->getAttributes());
         $this->assertDatabaseCount('delivery_checkpoints', 0);
@@ -74,12 +75,12 @@ class CourierPortalAccessTest extends TestCase
         $this->postJson($prefix.'/messages/read', ['delivery_id' => 1, 'phase' => 'pickup', 'through_message_id' => 1])->assertForbidden();
     }
 
-    public function test_suspended_riders_are_logged_out_on_both_portal_urls(): void
+    public function test_suspended_riders_are_held_at_account_status_on_both_portal_urls(): void
     {
         foreach (['/courier', 'http://courier.localhost'] as $prefix) {
             $rider = User::factory()->create(['role' => 'courier', 'status' => 'suspended', 'kyc_status' => 'approved']);
-            $this->actingAs($rider)->get($prefix.'/deliveries')->assertRedirect(route('login'));
-            $this->assertGuest();
+            $this->actingAs($rider)->get($prefix.'/deliveries')->assertRedirect(route('account.status'));
+            $this->assertAuthenticatedAs($rider);
         }
     }
 

@@ -201,3 +201,36 @@ Camera use requires a secure browser context, permission and supported native
 barcode detection. Unsupported clients retain manual or handheld-scanner entry
 with visible feedback. Test actual print size, camera distance and device focus;
 automated component checks do not certify optical recognition on every device.
+
+
+## Account registration and review update
+
+After publishing and pulling this branch, use the normal `deploy` and `verify`
+commands above. The five October 18 `090000` through `090400` migrations preserve
+existing records; a fresh database or reseed is unnecessary. Check migration
+status before testing shared-role email sign-in or Account status.
+
+The identity migration makes email and Google identity uniqueness role-specific
+and retains original account IDs/emails. Its reverse migration intentionally
+refuses to collapse those identities: use a reviewed roll-forward repair.
+Existing duplicate normalized company names stop migration with conflicting IDs;
+correct those records deliberately rather than deleting them. Existing companies
+without TINs remain missing them until an owner supplies a correction. Re-running
+a normal deployment does not run the demo seeder or invent a real tax identity.
+Old unconsumed email-only reset links and worker registration codes may require a
+new request after the identity migration.
+
+Keep the existing real mail transport configured privately, and run the existing
+Laravel scheduler. `notifications:deliver-pending` retries both in-app notices and
+required account-status emails. Failed mail leaves the decision committed and an
+owned pending-email message on Account status. A retry does not repeat approval
+or reactivation; SMTP delivery can still be at least once if a process stops after
+sending but before recording success. Never use a log mailer as proof of delivery.
+
+Check a same-email pair of separate roles, independent passwords/recovery links,
+several selected service regions, duplicate company/shop names and a duplicate
+TIN. Sign in with rejected, suspended and deactivated owners: they must see their
+own status and Request review while protected work remains blocked. Check admin
+review, an outdated request, reopening an application without approval, ordinary
+reactivation eligibility and the owner response. Verify actual inbox delivery on
+the deployed mail service; local mail fakes and SQLite tests do not establish it.

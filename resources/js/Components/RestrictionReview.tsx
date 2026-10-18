@@ -18,7 +18,7 @@ export type RestrictionSubject = {
     history: { id: number; action: string; reason: string; actor: string; decided_at: string; before_status: string; after_status: string; affected_work_count: number }[];
 };
 
-export default function RestrictionReview({ subject, endpoint }: { subject: RestrictionSubject; endpoint: string }) {
+export default function RestrictionReview({ subject, endpoint, reviewToken }: { subject: RestrictionSubject; endpoint: string; reviewToken?: string }) {
     const [action, setAction] = useState(subject.actions[0] ?? '');
     const [reason, setReason] = useState('');
     const [confirmed, setConfirmed] = useState(false);
@@ -31,7 +31,7 @@ export default function RestrictionReview({ subject, endpoint }: { subject: Rest
         event.preventDefault();
         setProcessing(true); setMessage(''); setErrors({}); setConflict(false);
         try {
-            await axios.post(endpoint, { action, reason, affected_work_confirmed: confirmed, source_token: subject.source_token }, { headers: { Accept: 'application/json' } });
+            await axios.post(endpoint, { action, reason, owner_feedback: reason, affected_work_confirmed: confirmed, source_token: subject.source_token, ...(reviewToken ? { review_token: reviewToken } : {}) }, { headers: { Accept: 'application/json' } });
             await refreshPage();
         } catch (error) {
             if (axios.isAxiosError(error)) {
@@ -78,7 +78,8 @@ export default function RestrictionReview({ subject, endpoint }: { subject: Rest
                 <select id="restriction-action" value={action} onChange={event => setAction(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]">
                     {subject.actions.map(value => <option key={value} value={value}>{value.charAt(0).toUpperCase() + value.slice(1)}</option>)}
                 </select>
-                <label htmlFor="restriction-reason" className="mt-4 block text-sm font-medium">Reason</label>
+                <label htmlFor="restriction-reason" className="mt-4 block text-sm font-medium">Feedback for the owner</label>
+                <p className="mt-1 text-xs text-slate-500">This explanation is saved with the decision and sent to the owner. Keep private investigation details out of it.</p>
                 <textarea id="restriction-reason" value={reason} onChange={event => setReason(event.target.value)} maxLength={1000} rows={4} placeholder="Explain the issue and the work that needs attention." className="mt-1 w-full rounded-lg border border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" />
                 <label className="mt-4 flex items-start gap-3 text-sm"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} className="mt-1 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" />I reviewed the current approval, resource scope and affected work. I understand that this decision does not complete a recovery or handover.</label>
                 <button type="submit" disabled={processing || conflict || !confirmed || reason.trim().length < 5} className="mt-4 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{processing ? 'Saving decision...' : `${action.charAt(0).toUpperCase() + action.slice(1)} ${subject.type}`}</button>

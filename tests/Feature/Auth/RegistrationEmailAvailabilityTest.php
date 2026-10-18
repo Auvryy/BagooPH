@@ -24,9 +24,12 @@ class RegistrationEmailAvailabilityTest extends TestCase
     public function test_role_forms_can_check_normalized_email_without_creating_accounts_or_sending_mail(string $host): void
     {
         Mail::fake();
+        $role = match ($host) {
+            'seller.localhost' => 'seller', 'courier.localhost' => 'courier', 'hub.localhost' => 'logistics', default => 'buyer'
+        };
         $this->postJson('http://'.$host.'/register/email/validate', [
-            'email' => '  Applicant@BAGOO.TEST  ', 'role' => 'admin', 'user_id' => 99,
-        ])->assertOk()->assertExactJson(['email' => 'applicant@bagoo.test', 'available' => true])
+            'email' => '  Applicant@BAGOO.TEST  ', 'role' => $role, 'user_id' => 99,
+        ])->assertOk()->assertExactJson(['email' => 'applicant@bagoo.test', 'role' => $role, 'available' => true])
             ->assertHeader('Cache-Control', 'no-store, private');
         foreach (['users', 'account_emails', 'shops', 'courier_profiles', 'logistics_companies', 'email_otps', 'account_policy_acceptances'] as $table) {
             $this->assertDatabaseCount($table, 0);
@@ -37,16 +40,16 @@ class RegistrationEmailAvailabilityTest extends TestCase
 
     public static function roles(): array
     {
-        return array_map(fn ($role) => [$role], ['buyer', 'seller', 'courier', 'logistics', 'admin']);
+        return array_map(fn ($role) => [$role], ['buyer', 'seller', 'courier', 'logistics']);
     }
 
     #[DataProvider('roles')]
-    public function test_primary_emails_are_unavailable_across_roles_and_case_variants(string $role): void
+    public function test_primary_emails_are_unavailable_within_the_same_role_and_case_variants(string $role): void
     {
         $user = User::factory()->create(['email' => 'existing@bagoo.test', 'role' => $role]);
         $before = $user->fresh()->getAttributes();
-        $this->postJson('/register/email/validate', ['email' => '  EXISTING@BAGOO.TEST  '])
-            ->assertOk()->assertExactJson(['email' => 'existing@bagoo.test', 'available' => false]);
+        $this->postJson('/register/email/validate', ['email' => '  EXISTING@BAGOO.TEST  ', 'role' => $role])
+            ->assertOk()->assertExactJson(['email' => 'existing@bagoo.test', 'role' => $role, 'available' => false]);
         $this->assertSame($before, $user->fresh()->getAttributes());
         $this->assertDatabaseCount('users', 1);
     }
@@ -56,7 +59,7 @@ class RegistrationEmailAvailabilityTest extends TestCase
         $user = User::factory()->create();
         $user->accountEmails()->create(['email' => 'contact@bagoo.test', 'verified_at' => now()]);
         $this->postJson('/register/email/validate', ['email' => 'CONTACT@bagoo.test'])
-            ->assertOk()->assertExactJson(['email' => 'contact@bagoo.test', 'available' => false]);
+            ->assertOk()->assertExactJson(['email' => 'contact@bagoo.test', 'role' => 'buyer', 'available' => false]);
         $this->assertDatabaseCount('account_emails', 2);
     }
 
@@ -109,7 +112,7 @@ class RegistrationEmailAvailabilityTest extends TestCase
     {
         foreach (['buyer+orders@bagoo.test', 'dispatch@delivery-team.ph'] as $email) {
             $this->postJson('/register/email/validate', ['email' => $email])
-                ->assertOk()->assertExactJson(['email' => $email, 'available' => true]);
+                ->assertOk()->assertExactJson(['email' => $email, 'role' => 'buyer', 'available' => true]);
         }
         $this->postJson('/register/email/validate', [])->assertUnprocessable()->assertJsonValidationErrors('email');
         $this->assertDatabaseCount('users', 0);
@@ -126,7 +129,7 @@ class RegistrationEmailAvailabilityTest extends TestCase
     public function test_availability_cannot_bypass_final_uniqueness_when_someone_else_takes_the_address(): void
     {
         $this->postJson('/register/email/validate', ['email' => 'applicant@bagoo.test'])->assertJsonPath('available', true);
-        User::factory()->create(['email' => 'applicant@bagoo.test', 'role' => 'seller']);
+        User::factory()->create(['email' => 'applicant@bagoo.test', 'role' => 'buyer']);
         $data = $this->registrationPolicies() + ['sex' => 'Female',
             'role' => 'buyer', 'first_name' => 'Ana', 'last_name' => 'Peña', 'email' => 'APPLICANT@BAGOO.TEST',
             'password' => 'Strong Password 2026!', 'password_confirmation' => 'Strong Password 2026!',

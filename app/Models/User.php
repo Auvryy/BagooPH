@@ -175,6 +175,12 @@ class User extends Authenticatable implements MustVerifyEmailContract
         parent::sendPasswordResetNotification($token);
     }
 
+    public function getEmailForPasswordReset(): string
+    {
+        // Broker tokens belong to one account, even when other roles share its email.
+        return 'account:'.$this->getKey();
+    }
+
     public function isSeller(): bool
     {
         return $this->role === 'seller';

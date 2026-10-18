@@ -21,6 +21,7 @@ export default function HubLogin({ status, canResetPassword }: Props) {
     const [showPassword, setShowPassword] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
+        role: 'logistics',
         email: '',
         password: '',
         remember: true as boolean,
@@ -102,7 +103,7 @@ export default function HubLogin({ status, canResetPassword }: Props) {
                         </label>
                         {canResetPassword && (
                             <Link
-                                href={route('password.request')}
+                                href={route('password.request', { role: 'logistics' })}
                                 className="text-xs text-slate-500 hover:text-indigo-600 transition"
                             >
                                 Forgot password?

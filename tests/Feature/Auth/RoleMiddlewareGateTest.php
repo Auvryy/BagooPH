@@ -29,7 +29,7 @@ class RoleMiddlewareGateTest extends TestCase
         $response->assertRedirect(route('kyc.pending'));
     }
 
-    public function test_rejected_user_is_held_at_pending_approval(): void
+    public function test_rejected_user_is_held_at_account_status(): void
     {
         $user = User::factory()->create([
             'role' => 'seller',
@@ -39,7 +39,7 @@ class RoleMiddlewareGateTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)->get('/seller/dashboard');
-        $response->assertRedirect(route('kyc.pending'));
+        $response->assertRedirect(route('account.status'));
     }
 
     public function test_approved_seller_accesses_seller_dashboard(): void
@@ -97,7 +97,7 @@ class RoleMiddlewareGateTest extends TestCase
         $response->assertStatus(200);
     }
 
-    public function test_suspended_user_is_logged_out_and_blocked(): void
+    public function test_suspended_user_has_review_access_and_is_blocked_from_work(): void
     {
         $user = User::factory()->create([
             'role' => 'seller',
@@ -106,8 +106,7 @@ class RoleMiddlewareGateTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)->get('/seller/dashboard');
-        $this->assertGuest();
-        $response->assertRedirect(route('login'));
-        $response->assertSessionHasErrors('email');
+        $this->assertAuthenticatedAs($user);
+        $response->assertRedirect(route('account.status'));
     }
 }

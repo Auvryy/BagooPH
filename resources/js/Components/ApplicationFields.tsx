@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import InputError from '@/Components/InputError';
 import { combinedPersonalNameError, personalNameError } from '@/utils/registrationValidation';
-import { businessContactError, companyInitialsError, licenseNumberError, plateNumberError, registrationTextError } from '@/utils/registrationFields';
+import { businessContactError, companyInitialsError, companyTinError, licenseNumberError, plateNumberError, registrationTextError } from '@/utils/registrationFields';
 import { mobileNumberError } from '@/Components/PhoneInput';
 
 export type ApplicationValues = Record<string, string | number | string[] | null>;
@@ -35,6 +35,7 @@ export default function ApplicationFields({ application, values, errors, onChang
         if (field.key === 'middle_name') return personalNameError(value, field.label, false);
         if (field.key === 'postal_code') return value && !/^[0-9]{4}$/.test(value) ? 'Use exactly 4 digits.' : undefined;
         if (field.key === 'company_code') return companyInitialsError(value);
+        if (field.key === 'tin') return companyTinError(value);
         if (field.key === 'plate_number') return plateNumberError(value, String(values.vehicle_type ?? ''));
         if (field.key === 'license_number') return !value && !field.required ? undefined : licenseNumberError(value);
         if (field.key === 'fleet_size') return value && (!/^[1-9][0-9]{0,4}$/.test(value) || Number(value) > 10000) ? 'Use a whole number from 1 to 10,000.' : undefined;
@@ -89,6 +90,7 @@ export default function ApplicationFields({ application, values, errors, onChang
                                     }} />
                             )}
                             {field.type === 'tel' && <p className="mt-1 text-xs text-slate-500">{field.key === 'phone' ? 'Use your Philippine mobile number, such as 09171234567.' : 'Use a Philippine number; business landlines need an area code.'}</p>}
+                            {field.key === 'tin' && <p className="mt-1 text-xs text-slate-600">Use 12 digits including the branch code, such as 123-456-789-000.</p>}
                             <InputError id={`application-${field.key}-error`} role="status" aria-live="polite" message={error} />
                         </div>
                     );

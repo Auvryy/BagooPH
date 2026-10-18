@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Rules\UniqueAccountEmail;
 use App\Services\AccountEmailService;
+use App\Services\AccountIdentityService;
 use App\Services\ApplicationValidationService;
 use App\Services\OtpService;
 use Illuminate\Auth\Events\PasswordReset;
@@ -35,25 +36,32 @@ class OtpVerificationController extends Controller
 
         $email = strtolower(trim($validated['email']));
         $purpose = $validated['purpose'] ?? 'registration';
+        $role = $purpose === 'registration'
+            ? ($request->validate(['role' => ['nullable', 'string', 'in:buyer,seller,courier,logistics']])['role'] ?? 'buyer')
+            : app(AccountIdentityService::class)->selectedRole($request);
+        if ($purpose === 'registration' && $role === 'admin') {
+            throw ValidationException::withMessages(['role' => 'Admin accounts are created by platform administration.']);
+        }
+        $owner = $purpose === 'password_reset' ? app(AccountEmailService::class)->recoveryOwner($email, role: $role) : null;
 
         // Validate account existence based on purpose
         if ($purpose === 'registration') {
-            if (UniqueAccountEmail::taken($email)) {
+            if (UniqueAccountEmail::taken($email, role: $role ?? 'buyer')) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'An account with this email already exists. Please sign in instead.',
+                    'message' => AccountIdentityService::duplicateMessage($role ?? 'buyer'),
                 ], 422);
             }
         } elseif ($purpose === 'password_reset') {
-            if (! app(AccountEmailService::class)->recoveryOwner($email)) {
+            if (! $owner) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No account found matching this email address.',
+                    'message' => 'Check your email and account type, then try again.',
                 ], 404);
             }
         }
 
-        $result = $this->otpService->sendOtp($email, $purpose, $purpose === 'password_reset' ? app(AccountEmailService::class)->recoveryOwner($email)?->id : null);
+        $result = $this->otpService->sendOtp($email, $purpose, $owner?->id, $purpose === 'registration' ? ($role ?? 'buyer') : 'buyer');
 
         if (! $result['success']) {
             $status = $result['status'] ?? 429;
@@ -80,8 +88,15 @@ class OtpVerificationController extends Controller
         $email = strtolower(trim($validated['email']));
         $code = trim($validated['code']);
         $purpose = $validated['purpose'] ?? 'registration';
+        $role = $purpose === 'registration'
+            ? ($request->validate(['role' => ['nullable', 'string', 'in:buyer,seller,courier,logistics']])['role'] ?? 'buyer')
+            : app(AccountIdentityService::class)->selectedRole($request);
+        $owner = $purpose === 'password_reset' ? app(AccountEmailService::class)->recoveryOwner($email, role: $role) : null;
+        if ($purpose === 'password_reset' && ! $owner) {
+            throw ValidationException::withMessages(['email' => 'Check your email and account type, then try again.']);
+        }
 
-        $result = $this->otpService->verifyOtp($email, $code, $purpose, $purpose === 'password_reset' ? app(AccountEmailService::class)->recoveryOwner($email)?->id : null);
+        $result = $this->otpService->verifyOtp($email, $code, $purpose, $owner?->id, $purpose === 'registration' ? ($role ?? 'buyer') : 'buyer');
 
         if (! $result['success']) {
             return response()->json($result, 422);
@@ -126,7 +141,8 @@ class OtpVerificationController extends Controller
             return back()->withErrors(['code' => 'Verification code is required.']);
         }
 
-        $owner = app(AccountEmailService::class)->recoveryOwner($email);
+        $role = app(AccountIdentityService::class)->selectedRole($request);
+        $owner = app(AccountEmailService::class)->recoveryOwner($email, role: $role);
         if (! $owner) {
             throw ValidationException::withMessages(['email' => 'This address cannot recover an account.']);
         }
@@ -138,7 +154,7 @@ class OtpVerificationController extends Controller
             $token = $result['token'];
         }
         DB::transaction(function () use ($email, $token, $owner, $validated) {
-            $user = app(AccountEmailService::class)->recoveryOwner($email, lock: true);
+            $user = app(AccountEmailService::class)->recoveryOwner($email, lock: true, role: $owner->role);
             if (! $user || $user->id !== $owner->id || ! $this->otpService->validateAndBurnToken($email, $token, 'password_reset', $user->id)) {
                 throw ValidationException::withMessages(['code' => 'Invalid or expired verification session. Request a new code.']);
             }

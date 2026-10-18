@@ -55,7 +55,7 @@ class RegisteredUserController extends Controller
      */
     public function createLogistics(): Response
     {
-        return Inertia::render('Auth/LogisticsRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits(), 'policies' => app(RegistrationPolicyService::class)->contract()]);
+        return Inertia::render('Auth/LogisticsRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits(), 'policies' => app(RegistrationPolicyService::class)->contract(), 'serviceRegions' => config('registration.service_regions')]);
     }
 
     public function validateRegistration(Request $request, AccountRegistrationService $registration): JsonResponse
@@ -114,6 +114,9 @@ class RegisteredUserController extends Controller
         }
 
         // If user is already active and approved, redirect to their role dashboard
+        if ($user->isKycApproved() && in_array($user->status, ['inactive', 'suspended'], true)) {
+            return redirect()->route('account.status');
+        }
         if ($user->canAccessPortal()) {
             return redirect()->route('dashboard');
         }

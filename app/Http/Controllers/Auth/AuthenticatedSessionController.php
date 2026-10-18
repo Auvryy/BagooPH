@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\EnsureAccountOpen;
 use App\Http\Middleware\EnsureApprovedAccount;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\AccountIdentityService;
+use App\Services\AccountReviewService;
 use App\Services\AuthenticatedSessionRedirect;
 use App\Services\BuyerAccessService;
 use Illuminate\Http\RedirectResponse;
@@ -105,6 +108,17 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
+        if ($user->closed_at !== null) {
+            return Inertia::location(app(EnsureAccountOpen::class)->handle($request, fn () => redirect('/login')));
+        }
+
+        if (app(AccountReviewService::class)->needsAttention($user)) {
+            $request->session()->forget('url.intended');
+            Inertia::clearHistory();
+
+            return Inertia::location(redirect()->route('account.status')->with('info', app(AccountReviewService::class)->heading($user)['title']));
+        }
+
         $destination = $user->isBuyer()
             ? app(BuyerAccessService::class)->signInDestination($request)
             : app(EnsureApprovedAccount::class)->handle($request, function (Request $request): RedirectResponse {
@@ -140,7 +154,9 @@ class AuthenticatedSessionController extends Controller
 
         Inertia::clearHistory();
 
-        return Inertia::location($destination);
+        return Inertia::location($destination->with('success', $user->canAccessPortal()
+            ? 'Your '.AccountIdentityService::label($user->role).' account is approved. Welcome back.'
+            : 'Your application is under review. You can check its status here.'));
     }
 
     /**

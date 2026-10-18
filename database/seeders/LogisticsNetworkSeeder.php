@@ -15,8 +15,8 @@ class LogisticsNetworkSeeder extends Seeder
 {
     public function run(): void
     {
-        $buyer = User::where('email', 'buyer@bagoo.test')->firstOrFail();
-        $finalMileRider = User::where('email', 'rider@bagoo.test')->firstOrFail();
+        $buyer = User::where('role', 'buyer')->where('email', 'buyer@bagoo.test')->firstOrFail();
+        $finalMileRider = User::where('role', 'courier')->where('email', 'rider@bagoo.test')->firstOrFail();
 
         $companyAdmin = $this->logisticsUser(
             'logistics.admin@bagoo.test',
@@ -52,7 +52,7 @@ class LogisticsNetworkSeeder extends Seeder
         );
 
         $pickupRider = User::updateOrCreate(
-            ['email' => 'pickup.rider@bagoo.test'],
+            ['email' => 'pickup.rider@bagoo.test', 'role' => 'courier'],
             [
                 'name' => 'Los Banos Pickup Rider',
                 'email_verified_at' => now(),
@@ -73,6 +73,8 @@ class LogisticsNetworkSeeder extends Seeder
             [
                 'user_id' => $companyAdmin->id,
                 'name' => 'Bagoo Express Dispatch Fleet',
+                'tin' => '900000001000',
+                'service_areas' => ['NCR', 'Region III', 'Region IV-A'],
                 'slug' => 'bagoo-express-dispatch-fleet',
                 'contact_email' => 'dispatch@bagooph.shop',
                 'contact_phone' => '+63 917 888 2246',
@@ -239,7 +241,7 @@ class LogisticsNetworkSeeder extends Seeder
         string $postalCode
     ): User {
         return User::updateOrCreate(
-            ['email' => $email],
+            ['email' => $email, 'role' => 'logistics'],
             [
                 'name' => $name,
                 'email_verified_at' => now(),

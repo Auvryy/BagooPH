@@ -164,6 +164,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
                                         <div className="rounded-[8px] border border-slate-300 bg-white p-2 shadow-xl">
                                             <p className="break-words px-3 py-2 text-sm font-semibold">{auth.user?.name}<span className="mt-1 block break-all font-normal text-slate-600">{auth.user?.email}</span></p>
                                             <PortalLink href={courierPath('/profile')} className={`${courierButton} w-full justify-start border-transparent`}><UserRound className="h-4 w-4" aria-hidden="true" />Account settings</PortalLink>
+                                            <Link href={route('account.status')} className={`${courierButton} w-full justify-start border-transparent`}><UserRound className="h-4 w-4" aria-hidden="true" />Account status</Link>
                                             <Link href="/logout" method="post" as="button" className={`${courierButton} w-full justify-start border-transparent`}><LogOut className="h-4 w-4" aria-hidden="true" />Sign out</Link>
                                         </div>
                                     </div>

@@ -377,6 +377,10 @@ export default function BuyerLayout({
                                                     <span>Profile & Settings</span>
                                                 </PortalLink>
 
+                                                <Link href={route('account.status')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition">
+                                                    <UserIcon className="w-4 h-4 text-slate-400" /><span>Account status</span>
+                                                </Link>
+
 
                                                 <PortalLink
                                                     href={route('buyer.orders.index')}

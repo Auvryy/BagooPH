@@ -260,7 +260,7 @@ class ShopReviewTest extends TestCase
         [$admin, $seller, $shop] = $this->application();
         $this->actingAs($seller)->post('/admin/shops/'.$shop->id.'/approve', $this->payload($shop))->assertForbidden();
         $admin->update(['status' => 'inactive']);
-        $this->actingAs($admin)->post('/admin/shops/'.$shop->id.'/approve', $this->payload($shop))->assertRedirect('/login');
+        $this->actingAs($admin)->post('/admin/shops/'.$shop->id.'/approve', $this->payload($shop))->assertRedirect('/account/status');
         $this->assertDatabaseCount('shop_review_decisions', 0);
     }
 

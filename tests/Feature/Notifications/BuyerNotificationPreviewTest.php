@@ -80,7 +80,7 @@ class BuyerNotificationPreviewTest extends TestCase
         $buyer = User::factory()->create();
         $notice = $this->notice($buyer, 'approval-open');
         $this->actingAs($buyer)->patch('/notifications/'.$notice->id.'/read', ['open' => true])
-            ->assertRedirect('/buyer/profile?tab=account&application=1')->assertSessionHas('success');
+            ->assertRedirect('/account/status')->assertSessionHas('success');
         $this->assertNotNull($notice->fresh()->read_at);
         $this->get('/buyer/profile?tab=account&application=1')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('initialTab', 'account')->where('buyerApplication.can_use_portal', true)

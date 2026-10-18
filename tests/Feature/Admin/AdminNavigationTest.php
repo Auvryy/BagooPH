@@ -111,7 +111,7 @@ class AdminNavigationTest extends TestCase
         $this->actingAs($admin)->get($base.'/users')->assertOk();
         $admin->update(['status' => 'suspended']);
         $this->getJson($base.'/users')->assertForbidden();
-        $this->getJson($base.'/products')->assertUnauthorized();
+        $this->getJson($base.'/products')->assertForbidden();
         foreach (['buyer', 'seller', 'courier', 'logistics'] as $role) {
             $this->actingAs(User::factory()->create(['role' => $role]))->getJson($base.'/users')->assertForbidden();
             $this->getJson($base.'/products')->assertForbidden();

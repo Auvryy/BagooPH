@@ -62,7 +62,7 @@ class ApplicationValidationTest extends TestCase
         } elseif ($role === 'courier') {
             $data += ['vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'N01-12-345678'];
         } elseif ($role === 'logistics') {
-            $data += ['company_name' => 'Bagoo Logistics', 'company_code' => 'BAGOO', 'fleet_size' => 2, 'vehicle_types' => ['motorcycle']];
+            $data += ['tin' => '900000001000', 'service_areas' => ['NCR', 'Region III', 'Region IV-A'], 'company_name' => 'Bagoo Logistics', 'company_code' => 'BAGOO', 'fleet_size' => 2, 'vehicle_types' => ['motorcycle']];
         }
         foreach (match ($role) {
             'seller' => ['id_document', 'business_permit'], 'courier' => ['id_document', 'driver_license', 'or_cr_document'], 'logistics' => ['business_permit'], default => []
@@ -81,7 +81,7 @@ class ApplicationValidationTest extends TestCase
         } elseif ($role === 'courier') {
             CourierProfile::factory()->create(['user_id' => $user->id, 'vehicle_type' => 'Motorcycle', 'plate_number' => 'ABC-123', 'license_number' => 'TEST-LICENSE', 'is_available' => false]);
         } elseif ($role === 'logistics') {
-            LogisticsCompany::create(['user_id' => $user->id, 'name' => 'Bagoo Logistics', 'slug' => 'bagoo-logistics-'.$user->id, 'code' => 'BG'.$user->id, 'contact_email' => $user->email, 'contact_phone' => '+63281234567', 'address' => '12 Bagoo Street', 'status' => 'pending', 'is_active' => false]);
+            LogisticsCompany::create(['user_id' => $user->id, 'tin' => '900'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT).'000', 'service_areas' => ['NCR', 'Region IV-A'], 'name' => 'Bagoo Logistics', 'slug' => 'bagoo-logistics-'.$user->id, 'code' => 'BG'.$user->id, 'contact_email' => $user->email, 'contact_phone' => '+63281234567', 'address' => '12 Bagoo Street', 'status' => 'pending', 'is_active' => false]);
         }
         $this->addKycEvidence($user);
 
@@ -175,13 +175,13 @@ class ApplicationValidationTest extends TestCase
     public function test_case_equivalent_email_is_rejected_by_validation_and_database(): void
     {
         Storage::fake('local');
-        $original = User::factory()->create(['email' => 'Juan@Bagoo.test']);
+        $original = User::factory()->create(['email' => 'Juan@Bagoo.test', 'role' => 'seller']);
         $this->post('/register', array_replace($this->payload('seller'), ['email' => 'juan@bagoo.test']))->assertSessionHasErrors('email');
         $this->assertDatabaseCount('users', 1);
         $this->assertDatabaseCount('shops', 0);
         $this->assertSame([], Storage::disk('local')->allFiles());
         try {
-            User::factory()->create(['email' => 'JUAN@bagoo.test']);
+            User::factory()->create(['email' => 'JUAN@bagoo.test', 'role' => 'seller']);
             $this->fail('The database must enforce case-equivalent email identity.');
         } catch (QueryException $exception) {
             $this->assertSame('23000', $exception->errorInfo[0]);
@@ -193,7 +193,7 @@ class ApplicationValidationTest extends TestCase
     {
         Storage::fake('local');
         Event::listen('eloquent.creating: '.User::class, function (User $user) {
-            DB::table('users')->insert(['name' => 'Race Winner', 'email' => strtoupper($user->email), 'password' => 'test-placeholder']);
+            DB::table('users')->insert(['name' => 'Race Winner', 'role' => $user->role, 'email' => strtoupper($user->email), 'password' => 'test-placeholder']);
         });
         $this->post('/register', $this->payload('seller'))->assertSessionHasErrors('email');
         $this->assertDatabaseCount('users', 0);
@@ -339,7 +339,7 @@ class ApplicationValidationTest extends TestCase
     {
         $emails = require database_path('migrations/2026_10_08_000001_create_account_emails_table.php');
         $emails->down();
-        DB::statement('DROP INDEX users_email_case_insensitive_unique');
+        DB::statement('DROP INDEX users_email_role_unique');
         $first = User::factory()->create(['email' => 'duplicate@bagoo.test']);
         $second = User::factory()->create(['email' => 'DUPLICATE@bagoo.test']);
         $before = [$first->fresh()->getRawOriginal(), $second->fresh()->getRawOriginal()];

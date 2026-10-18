@@ -61,7 +61,8 @@ class GovernanceNotificationTest extends TestCase
         } elseif ($role === 'logistics') {
             LogisticsCompany::create(['user_id' => $user->id, 'name' => 'Bagoo Notice Network', 'slug' => 'notice-network-'.$user->id,
                 'code' => 'NT'.$user->id, 'contact_email' => $user->email, 'contact_phone' => $user->phone,
-                'address' => $user->address, 'status' => 'pending', 'is_active' => false]);
+                'address' => $user->address, 'status' => 'pending', 'is_active' => false,
+                'tin' => '700000000001', 'service_areas' => ['NCR']]);
         }
 
         return $user->fresh();
@@ -102,7 +103,7 @@ class GovernanceNotificationTest extends TestCase
             $this->assertStringNotContainsString($private, $encoded);
         }
         $this->actingAs($subject)->get('http://localhost/notifications')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->has('notices.data', 1)->where('notices.data.0.id', $notice->id)->where('notices.data.0.href', $subject->isBuyer() ? '/buyer/profile?tab=account&application=1' : '/pending-approval')
+            ->has('notices.data', 1)->where('notices.data.0.id', $notice->id)->where('notices.data.0.href', '/account/status')
             ->where('notificationSummary.unread', 1));
     }
 
@@ -161,14 +162,16 @@ class GovernanceNotificationTest extends TestCase
         $admin = $this->createApprovedUser('admin');
         $service = app(AccountRestrictionService::class);
         $input = ['action' => $action, 'reason' => 'PRIVATE_REVIEW_REASON must remain in the governed record.',
+            'owner_feedback' => 'Your application documents need a clearer replacement.',
             'affected_work_confirmed' => true, 'source_token' => $service->token($service->state($subject))];
         $this->actingAs($admin)->postJson('/admin/users/'.$subject->id.'/activity', $input)->assertOk();
         $this->postJson('/admin/users/'.$subject->id.'/activity', $input)->assertOk();
         $notice = $subject->notifications()->where('type', 'governance-event')->sole();
         $this->assertSame('governance:restriction:'.RestrictionDecision::sole()->id, $notice->source_key);
+        $this->assertStringContainsString($input['owner_feedback'], $notice->data['body']);
         $this->assertStringNotContainsString('PRIVATE_REVIEW_REASON', json_encode($notice->data));
         $this->actingAs($subject)->get('/notifications')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->has('notices.data', 1)->where('notices.data.0.href', $subject->isBuyer() ? '/buyer/profile?tab=account&application=1' : '/pending-approval'));
+            ->has('notices.data', 1)->where('notices.data.0.href', '/account/status'));
         $this->getJson('/admin/users')->assertForbidden();
         $this->actingAs($admin)->patchJson('/notifications/'.$notice->id.'/read')->assertNotFound();
     }
@@ -181,7 +184,7 @@ class GovernanceNotificationTest extends TestCase
         $this->post('/admin/kyc/'.$subject->id.'/reject', $payload)->assertSessionHas('success');
         $notice = $subject->notifications()->sole();
         $this->actingAs($subject)->get('/notifications')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('notices.data.0.id', $notice->id)->where('notices.data.0.href', $subject->isBuyer() ? '/buyer/profile?tab=account&application=1' : '/pending-approval'));
+            ->where('notices.data.0.id', $notice->id)->where('notices.data.0.href', '/account/status'));
         $firstRead = $this->patchJson('/notifications/'.$notice->id.'/read')->assertOk()->json('read_at');
         $this->travel(1)->hours();
         $this->patchJson('/notifications/'.$notice->id.'/read')->assertJsonPath('read_at', $firstRead);

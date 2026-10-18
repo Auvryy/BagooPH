@@ -27,7 +27,7 @@ class SellerDemoSeeder extends Seeder
         $createdFiles = [];
         try {
             DB::transaction(function () use (&$createdFiles) {
-                $seller = User::firstOrCreate(['email' => 'seller@bagoo.test'], [
+                $seller = User::firstOrCreate(['email' => 'seller@bagoo.test', 'role' => 'seller'], [
                     'name' => 'Los Banos Seller', 'password' => 'Password1234', 'email_verified_at' => now(),
                     'role' => 'seller', 'phone' => '+639170000003', 'address' => 'Lopez Avenue, Batong Malake',
                     'city' => 'Los Banos, Laguna', 'postal_code' => '4030', 'status' => 'active',
@@ -109,7 +109,7 @@ class SellerDemoSeeder extends Seeder
         if ($issues = $review->issues($shop, $submission)) {
             throw new RuntimeException('The demo fixture is incomplete: '.implode(' ', $issues));
         }
-        $admin = User::firstOrCreate(['email' => 'admin@bagoo.test'], [
+        $admin = User::firstOrCreate(['email' => 'admin@bagoo.test', 'role' => 'admin'], [
             'name' => 'Bagoo Admin', 'role' => 'admin', 'password' => 'Password1234',
             'email_verified_at' => now(), 'status' => 'active', 'kyc_status' => 'approved', 'kyc_reviewed_at' => now(),
         ]);

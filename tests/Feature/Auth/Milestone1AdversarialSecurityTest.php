@@ -97,13 +97,13 @@ class Milestone1AdversarialSecurityTest extends TestCase
         ]);
 
         $response = $this->actingAs($seller)->get('/seller/dashboard');
-        $response->assertRedirect(route('kyc.pending'));
+        $response->assertRedirect(route('account.status'));
 
         $postResponse = $this->actingAs($seller)->post('/seller/products', [
             'name' => 'Adversarial Product',
             'price' => 100,
         ]);
-        $postResponse->assertRedirect(route('kyc.pending'));
+        $postResponse->assertRedirect(route('account.status'));
     }
 
     public function test_rejected_courier_blocked_from_courier_endpoints(): void
@@ -117,7 +117,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
         ]);
 
         $response = $this->actingAs($courier)->get('/courier/deliveries');
-        $response->assertRedirect(route('kyc.pending'));
+        $response->assertRedirect(route('account.status'));
     }
 
     public function test_pending_and_rejected_users_blocked_from_logistics_hub(): void
@@ -140,7 +140,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
         ]);
 
         $response2 = $this->actingAs($rejectedUser)->get('/hub');
-        $response2->assertRedirect(route('kyc.pending'));
+        $response2->assertRedirect(route('account.status'));
     }
 
     /*
@@ -149,7 +149,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    public function test_suspended_seller_is_immediately_logged_out_and_session_destroyed(): void
+    public function test_suspended_seller_is_held_at_status_without_portal_access(): void
     {
         $suspendedSeller = User::factory()->create([
             'role' => 'seller',
@@ -160,12 +160,11 @@ class Milestone1AdversarialSecurityTest extends TestCase
 
         $response = $this->actingAs($suspendedSeller)->get('/seller/dashboard');
 
-        $this->assertGuest();
-        $response->assertRedirect(route('login'));
-        $response->assertSessionHasErrors('email');
+        $this->assertAuthenticatedAs($suspendedSeller);
+        $response->assertRedirect(route('account.status'));
     }
 
-    public function test_suspended_buyer_sign_in_opens_only_existing_orders_and_still_denies_checkout(): void
+    public function test_suspended_buyer_sign_in_opens_status_and_still_denies_checkout(): void
     {
         $user = User::factory()->create([
             'email' => 'suspended.victim@bagoo.test',
@@ -181,7 +180,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
         ]);
 
         $this->assertAuthenticatedAs($user);
-        $response->assertRedirect(route('buyer.orders.index'));
+        $response->assertRedirect(route('account.status'));
         $this->get('/buyer/checkout')->assertRedirect(route('kyc.pending'));
         $this->post('/checkout', [])->assertRedirect(route('kyc.pending'));
         $this->assertSame('suspended', $user->fresh()->status);
@@ -513,7 +512,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
         $response->assertRedirect(route('kyc.pending'));
     }
 
-    public function test_dashboard_routes_rejected_user_to_pending_approval(): void
+    public function test_dashboard_routes_rejected_user_to_account_status(): void
     {
         $rejectedSeller = User::factory()->create([
             'role' => 'seller',
@@ -523,7 +522,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
         ]);
 
         $response = $this->actingAs($rejectedSeller)->get('/dashboard');
-        $response->assertRedirect(route('kyc.pending'));
+        $response->assertRedirect(route('account.status'));
     }
 
     public function test_dashboard_routes_approved_admin_to_admin_dashboard(): void
@@ -786,7 +785,7 @@ class Milestone1AdversarialSecurityTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    public function test_mid_session_rejection_immediately_diverts_subsequent_requests_to_pending_approval(): void
+    public function test_mid_session_rejection_immediately_diverts_subsequent_requests_to_account_status(): void
     {
         $seller = User::factory()->create([
             'role' => 'seller',
@@ -812,10 +811,10 @@ class Milestone1AdversarialSecurityTest extends TestCase
         ]);
 
         // Subsequent request is immediately intercepted
-        $this->actingAs($seller)->get('/seller/dashboard')->assertRedirect(route('kyc.pending'));
+        $this->actingAs($seller)->get('/seller/dashboard')->assertRedirect(route('account.status'));
     }
 
-    public function test_mid_session_suspension_immediately_terminates_session_on_next_request(): void
+    public function test_mid_session_suspension_immediately_blocks_operations_and_retains_review_access(): void
     {
         $seller = User::factory()->create([
             'role' => 'seller',
@@ -839,10 +838,10 @@ class Milestone1AdversarialSecurityTest extends TestCase
             'status' => 'suspended',
         ]);
 
-        // Next request kills the session and logs user out
+        // Next request blocks portal work while retaining access to owned review requests
         $response = $this->actingAs($seller)->get('/seller/dashboard');
-        $this->assertGuest();
-        $response->assertRedirect(route('login'));
+        $this->assertAuthenticatedAs($seller);
+        $response->assertRedirect(route('account.status'));
     }
 
     public function test_courier_resubmission_updates_driver_license_and_or_cr_paths(): void

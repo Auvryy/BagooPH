@@ -51,6 +51,7 @@ interface PendingApprovalProps {
 
 export default function PendingApproval({ user, shop, courierProfile, logisticsCompany, birthDate, sellerCategory, application }: PendingApprovalProps) {
     const isRejected = user.kyc_status === 'rejected';
+    const isRestricted = ['suspended', 'inactive'].includes(user.status ?? '');
 
     const idInputRef = useRef<HTMLInputElement>(null);
     const permitInputRef = useRef<HTMLInputElement>(null);
@@ -111,17 +112,18 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
 
     return (
         <GuestLayout
-            title={isRejected ? "KYC Verification Action Required" : "Account Verification Pending"}
+            title={isRestricted ? (user.status === 'suspended' ? 'Your account is suspended' : 'Your account is deactivated') : isRejected ? 'Your application was rejected' : 'Your application is under review'}
             subtitle={
-                isRejected 
-                    ? "Your verification documents were flagged by compliance. Please review feedback and resubmit." 
-                    : "Your application is currently under review by the Bagoo Platform Governance Team."
+                isRestricted ? 'Correct permitted application details here. Open Account status to read the restriction and request a review.'
+                    : isRejected ? 'Read the feedback and correct your application, or request another review from Account status.'
+                    : 'An admin needs to review your application before you can use this portal.'
             }
             headerBadge="GOVERNANCE // KYC GATE"
         >
             <Head title="Account Verification Status — BagooPH" />
 
             <div className="space-y-6 font-sans text-xs">
+                <Link href={route('account.status')} className="inline-block text-sm font-semibold text-[#E00D42] underline underline-offset-2">Account status and review requests</Link>
                 <div className="flex items-center justify-between gap-3"><Link href="/notifications" className="font-semibold text-[#E00D42]">View your account updates</Link><NotificationLink /></div>
                 {user.kyc_status === 'pending_approval' && (birthDate.needs_correction || application.can_correct) && (
                     <form onSubmit={handleResubmit} className="space-y-3 rounded-xl border border-amber-300 bg-white p-4">
@@ -173,7 +175,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                                 </div>
                                 <div>
                                     <span className="font-bold text-sm block">Application Status: IN REVIEW</span>
-                                    <span className="text-[10px] text-amber-700">Estimated turnaround: 2–24 business hours</span>
+                                    <span className="text-xs text-amber-700">You will receive an update after the review.</span>
                                 </div>
                             </div>
 

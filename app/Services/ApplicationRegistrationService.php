@@ -15,7 +15,7 @@ class ApplicationRegistrationService
     public function register(array $account, array $details): User
     {
         return DB::transaction(function () use ($account, $details) {
-            Validator::make($account, ['email' => [new UniqueAccountEmail]])->validate();
+            Validator::make($account, ['email' => [new UniqueAccountEmail(role: $account['role'])]])->validate();
             $franchisePath = $account['_franchise_path'] ?? null;
             unset($account['_franchise_path']);
             if ($account['role'] === 'seller') {
@@ -27,6 +27,7 @@ class ApplicationRegistrationService
             } elseif ($user->isLogistics()) {
                 LogisticsCompany::create([
                     'user_id' => $user->id, 'name' => $details['company_name'],
+                    'tin' => $details['tin'], 'service_areas' => $details['service_areas'],
                     'slug' => (Str::substr(Str::slug($details['company_name']), 0, 220) ?: 'company').'-'.$user->id,
                     'code' => $details['company_code'] ?? Str::upper(Str::random(12)),
                     'contact_email' => $details['company_email'], 'contact_phone' => $details['company_phone'], 'address' => $details['company_address'],

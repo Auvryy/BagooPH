@@ -20,6 +20,7 @@ const bundle = buildSync({
         "export { default as AddressSelector } from '@/Components/PhilippineAddressSelector';",
         "export { default as PolicyAcknowledgement } from '@/Components/RegistrationPolicyAcknowledgement';",
         "export { default as ApplicationFields } from '@/Components/ApplicationFields';",
+        "export { default as ServiceRegions } from '@/Components/ServiceRegionFields';",
         "export { default as PersonalNames } from '@/Components/PersonalNameFields';",
         "export * from '@/Components/PhoneInput';",
         "export { default as Phone } from '@/Components/PhoneInput';",
@@ -212,7 +213,7 @@ test('derived and nested server errors return to their visible registration fiel
 const limits = { today: '2026-10-12', past_maximum: '2026-10-11', adult_maximum: '2008-10-12' };
 const policies = { terms_version: '2026-10-12', privacy_version: '2026-10-12', terms_url: '/terms/2026-10-12', privacy_url: '/privacy/2026-10-12', required: true };
 const identity = role => ({ role, first_name: 'Ana-María', middle_initial: 'J.', last_name: 'O’Connor', email: 'applicant@bagoo.test', birthday: '1999-04-15', phone: '+639171234567', city: 'Makati', address: '12 Bagoo Street', sex: 'Female', postal_code: '0123',
-    password: 'BagooPassword2026!', password_confirmation: 'BagooPassword2026!', shop_name: 'Bagoo Shop', root_category_id: '1', company_name: 'Bagoo Logistics', company_code: 'BGL', fleet_size: '1', vehicle_types: ['motorcycle'], vehicle_type: 'Motorcycle', plate_number: 'AB-12345', license_number: 'N01-12-345678', policy_accepted: true,
+    password: 'BagooPassword2026!', password_confirmation: 'BagooPassword2026!', shop_name: 'Bagoo Shop', root_category_id: '1', company_name: 'Bagoo Logistics', company_code: 'BGL', tin: '900000001000', service_areas: ['NCR', 'Region III', 'Region IV-A'], fleet_size: '1', vehicle_types: ['motorcycle'], vehicle_type: 'Motorcycle', plate_number: 'AB-12345', license_number: 'N01-12-345678', policy_accepted: true,
     id_document: new File(['%PDF-1.4'], 'id.pdf', { type: 'application/pdf' }), business_permit: new File(['%PDF-1.4'], 'permit.pdf', { type: 'application/pdf' }), driver_license: new File(['%PDF-1.4'], 'license.pdf', { type: 'application/pdf' }), or_cr_document: new File(['%PDF-1.4'], 'registration.pdf', { type: 'application/pdf' }) });
 
 test('each personal name immediately rejects digits and hidden or unsupported characters while allowing real punctuation', () => {
@@ -515,4 +516,22 @@ test('first Google signup collects the same buyer details while relying on the v
     assert.deepEqual(ui.registrationInputErrors(values, limits, undefined, true), {});
     assert.ok(ui.registrationInputErrors({ ...values, birthday: '' }, limits, undefined, true).birthday);
     assert.ok(ui.registrationInputErrors({ ...values, postal_code: '12345' }, limits, undefined, true).postal_code);
+});
+
+test('company TIN feedback accepts the two supported forms and rejects malformed or hidden input', () => {
+    for (const value of ['900000001000', '900-000-001-000', ' 900-000-001-000 ']) assert.equal(ui.companyTinError(value), undefined);
+    for (const value of ['', '90000000100', '9000000010000', 'ABC000001000', '９０００００００１０００', '900000001000\n', '900 000 001 000']) assert.ok(ui.companyTinError(value), value);
+    assert.equal(ui.registrationErrorStep('logistics', { tin: 'Invalid TIN.' }), 1);
+    assert.equal(ui.registrationErrorStep('logistics', { 'service_areas.1': 'Choose a listed region.' }), 2);
+});
+
+test('service regions display every selected value using independent checkbox controls', () => {
+    const html = renderToStaticMarkup(createElement(ui.ServiceRegions, {
+        options: { NCR: 'National Capital Region', 'Region III': 'Central Luzon', 'Region IV-A': 'CALABARZON' },
+        values: ['NCR', 'Region III', 'Region IV-A'], onChange() {},
+    }));
+    assert.equal((html.match(/checked=""/g) ?? []).length, 3);
+    assert.match(html, /National Capital Region, Central Luzon, CALABARZON/);
+    assert.match(html, /office address is entered separately/);
+    assert.match(html, /Service regions/);
 });

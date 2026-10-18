@@ -41,7 +41,7 @@ class KycDecisionGovernanceTest extends TestCase
         } elseif ($role === 'courier') {
             CourierProfile::create(['user_id' => $user->id, 'vehicle_type' => 'Motorcycle', 'plate_number' => 'TEST-123', 'or_cr_status' => 'Pending Verification', 'is_available' => false]);
         } elseif ($role === 'logistics') {
-            LogisticsCompany::create(['user_id' => $user->id, 'name' => 'Bagoo Application Logistics', 'slug' => 'bagoo-logistics-'.$user->id, 'code' => 'B'.$user->id, 'contact_email' => $user->email, 'contact_phone' => $user->phone, 'address' => $user->address, 'status' => 'pending', 'is_active' => false]);
+            LogisticsCompany::create(['user_id' => $user->id, 'tin' => '900'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT).'000', 'service_areas' => ['NCR', 'Region IV-A'], 'name' => 'Bagoo Application Logistics', 'slug' => 'bagoo-logistics-'.$user->id, 'code' => 'B'.$user->id, 'contact_email' => $user->email, 'contact_phone' => $user->phone, 'address' => $user->address, 'status' => 'pending', 'is_active' => false]);
         }
         $this->addKycEvidence($user);
 

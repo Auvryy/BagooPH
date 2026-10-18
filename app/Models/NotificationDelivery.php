@@ -15,7 +15,9 @@ class NotificationDelivery extends Model
     protected function casts(): array
     {
         return ['data' => 'array', 'available_at' => 'immutable_datetime', 'last_attempt_at' => 'immutable_datetime',
-            'delivered_at' => 'immutable_datetime', 'attempts' => 'integer'];
+            'delivered_at' => 'immutable_datetime', 'attempts' => 'integer',
+            'email_required' => 'boolean', 'email_delivered_at' => 'immutable_datetime',
+            'email_attempts' => 'integer', 'email_last_attempt_at' => 'immutable_datetime', 'email_available_at' => 'immutable_datetime'];
     }
 
     protected static function booted(): void

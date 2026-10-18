@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\EnsureApprovedAccount;
 use App\Models\User;
+use App\Services\AccountIdentityService;
 use App\Services\ApplicationValidationService;
 use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
@@ -29,6 +30,7 @@ class GoogleOAuthController extends Controller
     public function redirectToGoogle(Request $request): RedirectResponse
     {
         $request->session()->forget('registration.google');
+        $request->session()->put('auth.google.role', app(AccountIdentityService::class)->selectedRole($request) ?? 'buyer');
 
         return Socialite::driver('google')->redirect();
     }
@@ -56,12 +58,20 @@ class GoogleOAuthController extends Controller
             ]);
         }
 
-        // 1. Look for existing user with this google_id
-        $user = User::where('google_id', $googleId)->first();
+        if ($role = $request->session()->pull('auth.google.role')) {
+            $request->merge(['role' => $role]);
+        }
+        $identities = app(AccountIdentityService::class);
+        $role = $identities->selectedRole($request);
+        $matches = $identities->scope(User::query(), $request)->where('google_id', $googleId)->limit(2)->get();
+        if ($matches->count() > 1) {
+            return redirect()->route('login')->withErrors(['email' => 'Open the sign-in page for the account type you want to use, then try Google again.']);
+        }
+        $user = $matches->first();
 
         // 2. If not found by google_id, check if existing account has the same email
         if (! $user) {
-            $user = User::whereRaw('LOWER(email) = LOWER(?)', [$email])->first();
+            $user = User::where('role', $role ?? 'buyer')->whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($email))])->first();
 
             if ($user) {
                 if ($user->google_id !== null && $user->google_id !== $googleId) {
@@ -77,6 +87,9 @@ class GoogleOAuthController extends Controller
                 }
                 $user->save();
             } else {
+                if ($role !== null && $role !== 'buyer') {
+                    return redirect()->route('login')->withErrors(['email' => 'Create your '.AccountIdentityService::label($role).' account first, then sign in.']);
+                }
                 // 3. Register as a new buyer
                 $applications = app(ApplicationValidationService::class);
                 $identity = $applications->registrationValues(['name' => $googleUser->getName() ?: 'Buyer', 'email' => $email], 'buyer');

@@ -106,7 +106,7 @@ class WebSessionTransitionTest extends TestCase
             ->assertStatus(302)->assertHeader('Location', '/login')->assertSessionHasErrors('email');
         $this->assertGuest();
         $this->withCookie(config('session.cookie'), app('session')->driver()->getId())->flushHeaders()->get($host.'/login')->assertInertia(fn (Assert $page) => $page
-            ->component('Auth/CourierLogin')->where('auth.user', null)->where('errors.email', trans('auth.failed')));
+            ->component('Auth/CourierLogin')->where('auth.user', null)->where('errors.email', 'Email or password is incorrect for your rider account.'));
     }
 
     public function test_pending_account_is_sent_to_holding_and_suspended_worker_is_denied(): void
@@ -120,8 +120,8 @@ class WebSessionTransitionTest extends TestCase
         $this->post($host.'/logout')->assertStatus(409);
         $worker->update(['status' => 'suspended']);
         $this->post($host.'/login', ['email' => $worker->email, 'password' => 'password'])
-            ->assertStatus(409)->assertHeader('X-Inertia-Location', '/login')->assertSessionHasErrors('email');
-        $this->assertGuest();
+            ->assertStatus(409)->assertHeader('X-Inertia-Location', '/account/status');
+        $this->assertAuthenticatedAs($worker);
     }
 
     public function test_current_host_redirect_preserves_query_and_external_redirect_preserves_its_origin(): void
