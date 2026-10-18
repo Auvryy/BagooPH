@@ -1,3 +1,6 @@
+import useMarketplaceComposer from '@/hooks/useMarketplaceComposer';
+import ChatImageField from '@/Components/ChatImageField';
+import ChatAttachment from '@/Components/ChatAttachment';
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
@@ -18,6 +21,7 @@ interface MessageItem {
     sender_id: number;
     receiver_id: number;
     message: string;
+    attachment_url?: string | null;
     created_at: string;
     product?: {
         id?: number;
@@ -49,9 +53,10 @@ export default function SellerMessages({ conversations, shop }: Props) {
     const [activeUser, setActiveUser] = useState<User | null>(conversations[0]?.user || null);
     const [messages, setMessages] = useState<MessageItem[]>(conversations[0]?.messages || []);
     const [replyText, setReplyText] = useState('');
-    const [sending, setSending] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [historyError, setHistoryError] = useState('');
+    const [historyRetry, setHistoryRetry] = useState(0);
     const activeConversation = conversations.find((conversation) => conversation.user.id === activeUser?.id);
 
     const scrollToBottom = () => {
@@ -59,55 +64,32 @@ export default function SellerMessages({ conversations, shop }: Props) {
     };
 
     useEffect(() => {
-        if (activeUser) {
-            fetch(`/chat/messages/${activeUser.id}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.messages) {
-                        setMessages(data.messages);
-                    }
-                    setTimeout(scrollToBottom, 50);
-                });
-        }
-    }, [activeUser]);
+        setMessages(activeConversation?.messages || []); setHistoryError('');
+        if (!activeUser) return;
+        const controller = new AbortController();
+        fetch(`/chat/messages/${activeUser.id}`, { signal: controller.signal, headers: { Accept: 'application/json' } })
+            .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
+            .then(data => { if (!controller.signal.aborted && Array.isArray(data.messages)) setMessages(data.messages); })
+            .catch(() => { if (!controller.signal.aborted) setHistoryError('Could not update this conversation. Try again.'); });
+        return () => controller.abort();
+    }, [activeUser?.id, activeConversation?.messages, historyRetry]);
 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
-    const handleSend = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!replyText.trim() || !activeUser || sending) return;
-
-        setSending(true);
-        const text = replyText.trim();
-        setReplyText('');
-
-        try {
-            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
-            const res = await fetch('/chat/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                body: JSON.stringify({
-                    receiver_id: activeUser.id,
-                    shop_id: shop.id,
-                    order_id: activeConversation?.order_id ?? null,
-                    message: text,
-                }),
-            });
-
-            const data = await res.json();
-            if (data.success && data.message) {
-                setMessages(prev => [...prev, data.message]);
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setSending(false);
+    const composer = useMarketplaceComposer(activeConversation?.user?.id);
+    const sending = composer.sending;
+    const handleSend = async (event: React.FormEvent) => {
+        event.preventDefault();
+        if (!activeConversation?.user?.id) return;
+        const message = await composer.send<MessageItem>({ receiver_id: activeConversation.user.id,
+            shop_id: shop.id,
+            order_id: activeConversation.order_id ?? null, message: replyText });
+        if (message) {
+            setMessages(previous => previous.some(row => row.id === message.id) ? previous : [...previous, message]);
+            setReplyText('');
+            activeConversation.last_message = message.message || 'Photo'; activeConversation.last_time = 'Just now';
         }
     };
 
@@ -245,7 +227,8 @@ export default function SellerMessages({ conversations, shop }: Props) {
                                                 </a>
                                             )}
 
-                                            <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                                            <ChatAttachment url={msg.attachment_url} />
+                                                <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                                         </div>
                                         <span className="text-[9px] font-sans text-slate-400 mt-1 px-1">
                                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -257,9 +240,14 @@ export default function SellerMessages({ conversations, shop }: Props) {
                         </div>
 
                         {/* Reply Form */}
+                        {activeConversation && activeConversation.user.role !== 'courier' && <ChatImageField image={composer.image} onChange={composer.selectImage} disabled={sending} />}
+                        {historyError && <p role="alert" className="px-3 pt-2 text-xs text-red-700">{historyError} <button type="button" onClick={() => setHistoryRetry(value => value + 1)} className="font-semibold underline">Retry</button></p>}
+                        {composer.error && <p role="alert" className="px-3 pt-2 text-xs text-red-700">{composer.error}</p>}
                         <form onSubmit={handleSend} className="p-3 border-t border-slate-200 flex items-center gap-2 bg-white">
                             <input
                                 type="text"
+                                maxLength={1000}
+                                disabled={sending}
                                 value={replyText}
                                 onChange={(e) => setReplyText(e.target.value)}
                                 placeholder={`Reply to ${activeUser.name}...`}
@@ -267,7 +255,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                             />
                             <button
                                 type="submit"
-                                disabled={!replyText.trim() || sending}
+                                disabled={(!replyText.trim() && !composer.image) || sending}
                                 className="p-2.5 bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-50 text-white rounded-xl shadow-xs transition"
                             >
                                 <Send className="w-4 h-4" />

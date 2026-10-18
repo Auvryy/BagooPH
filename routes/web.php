@@ -604,7 +604,8 @@ Route::middleware('auth')->group(function () {
 
     // Live Chat / Messaging Endpoints
     Route::get('/messages', [ChatController::class, 'buyerInbox'])->middleware('buyer.approved')->name('messages');
-    Route::get('/chat/messages/{receiverId}', [ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::get('/chat/messages/{receiverId}', [ChatController::class, 'getMessages'])->where('receiverId', '[1-9][0-9]{0,17}')->name('chat.messages');
+    Route::get('/chat/attachments/{message}', [ChatController::class, 'attachment'])->where('message', '[1-9][0-9]{0,17}')->name('chat.attachment');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
 });
 
