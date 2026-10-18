@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Services\Commerce\BuyerDiscoveryService;
 use App\Services\Commerce\PurchasePolicyService;
 use App\Services\Commerce\ReviewService;
+use App\Services\Commerce\SaleReminderService;
 use App\Services\Vouchers\VoucherCollectionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -95,6 +96,7 @@ class BuyerProductController extends Controller
 
         return Inertia::render('Buyer/ProductDetail', [
             'product' => $product,
+            'saleReminder' => $request->user()?->isBuyer() ? app(SaleReminderService::class)->status($request->user(), $product->sale_offer['upcoming']['id'] ?? null) : null,
             'variations' => $variations,
             'relatedProducts' => $relatedProducts,
             'shopStats' => $shopStats,

@@ -8,6 +8,7 @@ use App\Models\CheckoutSubmission;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\BuyerAccessService;
+use App\Services\Commerce\SalePriceService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -44,10 +45,10 @@ class CheckoutSubmissionService
         return $hash;
     }
 
-    public function assertCurrentPrices(Cart $cart, string $token): void
+    public function assertCurrentPrices(Cart $cart, string $token, ?Collection $presentedItems = null): void
     {
         [, $nonce] = explode('.', $token);
-        if (! hash_equals(substr($nonce, 32), $this->priceSnapshot($cart))) {
+        if (! hash_equals(substr($nonce, 32), $this->priceSnapshot($cart, $presentedItems))) {
             throw ValidationException::withMessages(['checkout_token' => 'Your Bag or a product price changed. Reload checkout, review the updated total and confirm again.']);
         }
     }
@@ -64,7 +65,8 @@ class CheckoutSubmissionService
             $extra = $matrix['extra_price'] ?? $size['extra_price'] ?? 0;
 
             return [$item->id, $item->product_id, $item->quantity, $item->color, $item->size,
-                $item->product?->price, is_numeric($extra) ? number_format((float) $extra, 2, '.', '') : null];
+                $item->product?->price, is_numeric($extra) ? number_format((float) $extra, 2, '.', '') : null,
+                $shown?->getAttribute('checkout_price_context') ?? ($item->product ? app(SalePriceService::class)->context($item->product) : null)];
         })->all();
 
         return substr(hash('sha256', json_encode($rows, JSON_THROW_ON_ERROR)), 0, 32);

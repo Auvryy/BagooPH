@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Advertisements\AdvertisementMeasurementService;
+use App\Services\Commerce\SaleReminderService;
 use App\Services\Logistics\RiderCompanyOfferService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -32,3 +33,16 @@ Artisan::command('rider-companies:expire-offers {--limit=100}', function () {
 })->purpose('Retain expired rider company offer decisions without changing custody');
 
 Schedule::command('rider-companies:expire-offers')->everyMinute()->withoutOverlapping();
+
+Artisan::command('sales:send-reminders {--limit=100}', function () {
+    $limit = filter_var($this->option('limit'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 1000]]);
+    if ($limit === false) {
+        $this->error('Use a limit from 1 to 1000.');
+
+        return 2;
+    }
+    $count = app(SaleReminderService::class)->dispatchDue($limit);
+    $this->info("Recorded {$count} due sale reminders.");
+})->purpose('Send owned reminders shortly before upcoming flash slots');
+
+Schedule::command('sales:send-reminders')->everyMinute()->withoutOverlapping();

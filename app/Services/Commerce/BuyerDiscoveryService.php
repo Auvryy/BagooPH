@@ -118,11 +118,12 @@ class BuyerDiscoveryService
         if ($filters['category'] !== 'all') {
             $products->whereIn('products.category_id', $this->categoryIds($filters['category']));
         }
+        $price = app(SalePriceService::class)->cataloguePriceSql();
         if ($filters['min_price'] !== '') {
-            $products->where('price', '>=', $filters['min_price']);
+            $products->whereRaw($price['sql'].' >= CAST(? AS DECIMAL(12,2))', [...$price['bindings'], $filters['min_price']]);
         }
         if ($filters['max_price'] !== '') {
-            $products->where('price', '<=', $filters['max_price']);
+            $products->whereRaw($price['sql'].' <= CAST(? AS DECIMAL(12,2))', [...$price['bindings'], $filters['max_price']]);
         }
         if ($filters['in_stock']) {
             $products->where('stock', '>', 0);
@@ -137,9 +138,10 @@ class BuyerDiscoveryService
     public function paginate(Builder $products, array $filters, int $perPage = 24): LengthAwarePaginator
     {
         $products->reorder();
+        $price = app(SalePriceService::class)->cataloguePriceSql();
         match ($filters['sort']) {
-            'price_asc' => $products->orderBy('price'),
-            'price_desc' => $products->orderByDesc('price'),
+            'price_asc' => $products->orderByRaw($price['sql'].' ASC', $price['bindings']),
+            'price_desc' => $products->orderByRaw($price['sql'].' DESC', $price['bindings']),
             'top_sales' => $products->orderByDesc('sales_count'),
             'top_rated' => $products->orderByRaw('verified_rating DESC NULLS LAST'),
             'newest' => $products->latest('products.created_at'),

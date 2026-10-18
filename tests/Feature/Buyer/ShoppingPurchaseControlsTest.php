@@ -114,4 +114,32 @@ class ShoppingPurchaseControlsTest extends TestCase
         $this->put(route('seller.products.update', $product), [...$payload, 'purchase_limit' => null])->assertSessionHasNoErrors();
         $this->assertNull($product->fresh()->purchase_limit);
     }
+
+    public function test_regular_prices_remain_valid_inputs_for_the_sale_and_money_services(): void
+    {
+        [, $shop, $product] = $this->fixture();
+        $payload = ['name' => $product->name, 'price' => 100, 'stock' => 20, 'description' => 'A durable everyday item.', 'status' => 'active'];
+        $this->actingAs($shop->user);
+        foreach ([0, '1.001', '100000000.00', '1e3'] as $invalid) {
+            $this->put(route('seller.products.update', $product), [...$payload, 'price' => $invalid])->assertSessionHasErrors('price');
+            $this->assertSame('100.00', $product->fresh()->price);
+        }
+        $this->put(route('seller.products.update', $product), [...$payload, 'price' => 250])->assertSessionHasNoErrors();
+        $this->assertSame('250.00', $product->fresh()->price);
+    }
+
+    public function test_vacation_does_not_stop_the_seller_preparing_an_existing_order(): void
+    {
+        [$buyer, $shop, $product] = $this->fixture();
+        $this->createCheckoutNetwork($shop, ['Taguig City' => 'Metro Manila']);
+        $this->actingAs($buyer)->post(route('cart.store'), ['product_id' => $product->id, 'quantity' => 1])->assertSessionHasNoErrors();
+        $this->post(route('checkout.store'), $this->input($buyer))->assertSessionHasNoErrors();
+        $order = Order::firstOrFail();
+        $shop->update(['vacation_mode' => true]);
+        $this->actingAs($shop->user)->get(route('seller.orders.index'))->assertOk();
+        $this->post(route('seller.orders.acceptAndPack', $order))->assertSessionHasNoErrors();
+        $this->assertSame('preparing', $order->fresh()->status);
+        $this->assertTrue($shop->fresh()->vacation_mode);
+        $this->assertSame(19, $product->fresh()->stock);
+    }
 }

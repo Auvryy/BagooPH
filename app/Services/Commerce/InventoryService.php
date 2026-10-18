@@ -14,6 +14,11 @@ class InventoryService
 
     public function unitPrice(Product $product, ?string $color, ?string $size): string
     {
+        return app(SalePriceService::class)->unitPrice($product, $this->regularUnitPrice($product, $color, $size));
+    }
+
+    public function regularUnitPrice(Product $product, ?string $color, ?string $size): string
+    {
         $selection = $this->selection($product, $color, $size);
         $extra = $selection['extra_price'];
         if (! is_numeric($extra) || ! is_finite((float) $extra) || (float) $extra < 0 || (float) $extra > 99999999.99) {

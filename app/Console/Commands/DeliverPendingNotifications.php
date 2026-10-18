@@ -21,7 +21,7 @@ class DeliverPendingNotifications extends Command
             return self::INVALID;
         }
         $result = $service->deliverPending($limit);
-        $this->info("Attempted {$result['attempted']}; delivered {$result['delivered']}; pending retry {$result['failed']}.");
+        $this->info("Attempted {$result['attempted']}; delivered {$result['delivered']}; pending retry {$result['failed']}; expired or cancelled {$result['discarded']}.");
         $email = app(AccountStatusDeliveryService::class)->deliverPending($limit);
         $this->info("Account emails: attempted {$email['attempted']}; sent {$email['delivered']}; pending retry {$email['failed']}.");
 

@@ -12,6 +12,7 @@ use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\InventoryService;
+use App\Services\Commerce\SalePriceService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Notifications\LifecycleNoticeService;
@@ -326,6 +327,7 @@ class OrderLifecycleService
         foreach ($order->items as $item) {
             if ($product = $products->get($item->product_id)) {
                 $this->inventory->restore($product, $item->quantity, $item->size, $item->color);
+                app(SalePriceService::class)->release($item);
             }
         }
         $parcel = $order->delivery;

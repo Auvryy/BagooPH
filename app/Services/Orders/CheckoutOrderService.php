@@ -17,7 +17,7 @@ use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
 use App\Services\Commerce\InventoryService;
 use App\Services\Commerce\PhilippineAddressCatalog;
-use App\Services\Finance\CodMoney;
+use App\Services\Commerce\SalePriceService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
@@ -130,6 +130,8 @@ class CheckoutOrderService
             $deliveryType = $data['delivery_type'] ?? 'doorstep';
             $revisions = app(VoucherSelectionService::class)->resolve($data, $items, lock: true);
             $quote = app(CheckoutQuoteService::class)->quote($items, $deliveryType, $revisions, $buyer);
+            // A clock boundary can change prices after the earlier check, even while rows stay locked.
+            $submissions->assertCurrentPrices($cart, $confirmationToken, $items);
             if ($quote['voucher_error']) {
                 throw new CheckoutException($quote['voucher_error']);
             }
@@ -170,18 +172,18 @@ class CheckoutOrderService
 
                 foreach ($group as $item) {
                     $product = $item->product;
-                    $unitPrice = $this->inventory->unitPrice($product, $item->color, $item->size);
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'product_id' => $product->id,
-                        'shop_id' => $product->shop_id,
-                        'quantity' => $item->quantity,
-                        'unit_price' => $unitPrice,
-                        'subtotal' => CodMoney::cents($unitPrice) * $item->quantity / 100,
-                        'color' => $item->color,
-                        'size' => $item->size,
-                        'sku_snapshot' => $item->sku_snapshot,
-                    ]);
+                    $lineQuote = collect($quote['items'])->firstWhere('id', $item->id);
+                    foreach ($lineQuote['price_segments'] as $segment) {
+                        if ($segment['product_sale_id']) {
+                            app(SalePriceService::class)->reserve($product, $segment['product_sale_id'], $segment['quantity']);
+                        }
+                        OrderItem::create([
+                            'order_id' => $order->id, 'product_id' => $product->id, 'shop_id' => $product->shop_id,
+                            'product_sale_id' => $segment['product_sale_id'], 'quantity' => $segment['quantity'],
+                            'unit_price' => $segment['unit_price'], 'subtotal' => $segment['subtotal'],
+                            'color' => $item->color, 'size' => $item->size, 'sku_snapshot' => $item->sku_snapshot,
+                        ]);
+                    }
 
                     $this->inventory->decrement(
                         $product,

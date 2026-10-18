@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Commerce\SalePriceService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -116,7 +117,19 @@ class Product extends Model
 
     protected $attributes = ['compliance_restricted' => false, 'moderation_version' => 0];
 
-    protected $hidden = ['verified_rating'];
+    protected $appends = ['sale_offer'];
+
+    public function sales(): HasMany
+    {
+        return $this->hasMany(ProductSale::class);
+    }
+
+    public function getSaleOfferAttribute(): array
+    {
+        return app(SalePriceService::class)->present($this);
+    }
+
+    protected $hidden = ['verified_rating', 'sales'];
 
     public function moderationDecisions(): HasMany
     {
@@ -130,7 +143,7 @@ class Product extends Model
 
     public function scopeAvailableForSale(Builder $query): Builder
     {
-        return app(ShopEligibilityService::class)->availableProducts($query);
+        return app(ShopEligibilityService::class)->availableProducts($query)->with(['sales' => fn ($sales) => $sales->whereNull('ended_at')->where('ends_at', '>', now())->orderBy('id')]);
     }
 
     public function category(): BelongsTo
@@ -174,7 +187,7 @@ class Product extends Model
 
     public function hasRetainedReferences(): bool
     {
-        return $this->orderItems()->exists() || $this->reviews()->exists()
+        return $this->sales()->exists() || $this->orderItems()->exists() || $this->reviews()->exists()
             || CartItem::where('product_id', $this->id)->exists() || $this->moderationDecisions()->exists()
             || SavedProduct::where('product_id', $this->id)->exists();
     }

@@ -38,7 +38,7 @@ class SellerProductController extends Controller
             $query = $this->salesMetrics
                 ->withProductLifecycleTotals(Product::query()->where('shop_id', $shop->id))
                 ->withCount('orderItems')
-                ->with(['category', 'images', 'moderationDecisions' => fn ($decisions) => $decisions->latest('id')->limit(1)]);
+                ->with(['category', 'images', 'sales', 'moderationDecisions' => fn ($decisions) => $decisions->latest('id')->limit(1)]);
             $products = $this->inventory->paginate($this->inventory->filter($query, $filters), $filters);
 
             $products->through(function (Product $product) {
@@ -78,8 +78,8 @@ class SellerProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'nullable|exists:categories,id',
-            'price' => 'required|numeric|min:0.01',
-            'compare_at_price' => 'nullable|numeric|gt:price',
+            'price' => ['required', 'numeric', 'between:0.01,99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
+            'compare_at_price' => ['nullable', 'numeric', 'gt:price', 'max:99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
             'stock' => 'required|integer|min:0|max:1000000',
             'purchase_limit' => ['nullable', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
             'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')],
@@ -146,8 +146,8 @@ class SellerProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'nullable|exists:categories,id',
-            'price' => 'required|numeric|min:0.01',
-            'compare_at_price' => 'nullable|numeric|gt:price',
+            'price' => ['required', 'numeric', 'between:0.01,99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
+            'compare_at_price' => ['nullable', 'numeric', 'gt:price', 'max:99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
             'stock' => 'required|integer|min:0|max:1000000',
             'purchase_limit' => ['nullable', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
             'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')->ignore($product)],
@@ -280,7 +280,7 @@ class SellerProductController extends Controller
             'colors.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
             'sizes' => ['sometimes', 'array', 'list', 'max:40'],
             'sizes.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
-            'sizes.*.stock' => ['sometimes', 'regex:/\A[0-9]+\z/', 'integer', 'between:0,1000000'],
+            'sizes.*.stock' => ['sometimes', 'nullable', 'regex:/\A[0-9]+\z/', 'integer', 'between:0,1000000'],
             'sizes.*.extra_price' => ['sometimes', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0,99999999.99'],
             'option1_name' => ['nullable', 'string', 'max:100'],
             'option2_name' => ['nullable', 'string', 'max:100'],
