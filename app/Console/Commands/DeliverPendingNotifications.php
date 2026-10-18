@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\Notifications\AccountStatusDeliveryService;
 use App\Services\Notifications\NotificationDeliveryService;
 use Illuminate\Console\Command;
 
@@ -9,7 +10,7 @@ class DeliverPendingNotifications extends Command
 {
     protected $signature = 'notifications:deliver-pending {--limit=100 : Maximum due deliveries to attempt}';
 
-    protected $description = 'Retry due persistent in-app notification deliveries';
+    protected $description = 'Retry due persistent in-app notifications and account status emails';
 
     public function handle(NotificationDeliveryService $service): int
     {
@@ -21,7 +22,9 @@ class DeliverPendingNotifications extends Command
         }
         $result = $service->deliverPending($limit);
         $this->info("Attempted {$result['attempted']}; delivered {$result['delivered']}; pending retry {$result['failed']}.");
+        $email = app(AccountStatusDeliveryService::class)->deliverPending($limit);
+        $this->info("Account emails: attempted {$email['attempted']}; sent {$email['delivered']}; pending retry {$email['failed']}.");
 
-        return $result['failed'] ? self::FAILURE : self::SUCCESS;
+        return $result['failed'] || $email['failed'] ? self::FAILURE : self::SUCCESS;
     }
 }
