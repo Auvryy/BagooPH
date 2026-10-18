@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PaginatedData, Product } from '@/types';
+import AdminDirectoryPagination from '@/Components/AdminDirectoryPagination';
 
 interface Props {
     products: PaginatedData<Product>;
@@ -33,10 +34,7 @@ export default function AdminProducts({ products, moderationBaseUrl }: Props) {
                     </tbody>
                 </table>
             </div>
-            <div className="flex items-center justify-between border-t border-slate-300 px-5 py-4 text-sm">
-                <span className="text-slate-500">Page {products.current_page} of {products.last_page}</span>
-                <div className="flex gap-3">{products.prev_page_url && <Link href={products.prev_page_url}>Previous</Link>}{products.next_page_url && <Link href={products.next_page_url}>Next</Link>}</div>
-            </div>
+            <AdminDirectoryPagination page={products} kind="products" />
         </div>
     </DashboardLayout>;
 }

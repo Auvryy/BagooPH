@@ -32,6 +32,17 @@ export function portalPageComponent(href: string, origin: string, page: Catalogu
         if (section !== 'manifests' && /\/\d+\/?$/.test(path)) return;
         return ({ dashboard: 'Hub/Dashboard', network: 'Hub/Network', fleet: 'Hub/Fleet', deliveries: 'Hub/Deliveries', scan: 'Hub/ScanStation', counter: 'Hub/CounterPickup', manifests: 'Hub/Manifests' } as Record<string, string>)[section ?? ''];
     }
+    if (role === 'admin') {
+        if (path === '/governance-history') return 'Governance/History';
+        const section = path.match(/^\/admin\/(dashboard|users|products)\/?$/)?.[1]
+            ?? (url.hostname.startsWith('admin.') ? path.match(/^\/(dashboard|users|products)\/?$/)?.[1] : undefined);
+        return ({ dashboard: 'Admin/Dashboard', users: 'Admin/Users', products: 'Admin/Products' } as Record<string, string>)[section ?? ''];
+    }
+}
+
+export function adminDirectoryProps(kind: 'users' | 'products'): string[] {
+    return ['auth', 'cataloguePrefetchEnabled', 'flash', 'errors', kind,
+        ...(kind === 'users' ? ['filters', 'activityBaseUrl'] : ['moderationBaseUrl'])];
 }
 
 export type BuyerProfileTab = 'orders' | 'account' | 'addresses' | 'wallet' | 'vouchers';

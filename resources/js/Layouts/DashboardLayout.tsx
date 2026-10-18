@@ -224,12 +224,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     };
 
     const navItems = getNavItems();
-    const WorkspaceLink = ['seller', 'logistics'].includes(role) ? PortalLink : Link;
+    const WorkspaceLink = ['seller', 'logistics', 'admin'].includes(role) ? PortalLink : Link;
 
     return (
         <div className="h-screen w-full flex overflow-hidden bg-[#F8FAFC] text-slate-900 font-sans antialiased selection:bg-[#E00D42] selection:text-white">
             
-            {['seller', 'logistics'].includes(role) && <CatalogueNavigationNotice />}
+            {['seller', 'logistics', 'admin'].includes(role) && <CatalogueNavigationNotice />}
             {/* Backdrop for mobile drawer */}
             {sidebarOpen && (
                 <div 
