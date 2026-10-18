@@ -6171,3 +6171,43 @@ agreed 10% commission, COD, buyer receipt and deferred full-refund rules.
 Deployment requires the additive `shop_follows` migration; ordinary deployment
 migrations suffice. This delivery did not modify the development database. The
 branch PR title/body is a local draft, and only the user publishes commits.
+
+
+## Buyer delivery 2: checkout consent and exact quantities — October 19, 2026
+
+**Scoped checkout assessment: 7.3/10 before → 8.7/10 after.** New confirmation
+credentials bind the displayed merchandise prices to the owned Bag. A changed
+base price, size surcharge or Bag contents requires a fresh checkout review;
+changing prices during page preparation cannot silently update the consent.
+The selected products are locked before this final comparison. The snapshot
+conservatively covers the complete Bag, so an unrelated Bag change also asks for
+reload. Unused older confirmations require reload, while saved successful COD
+submissions retain original-result replay, including application-key rotation.
+
+Buy Now now carries its requested quantity through checkout, voucher previews,
+choices and best-offer calculation. Only that quantity is purchased; any earlier
+matching Bag quantity and other lines remain. Quantities are validated against
+owned selected lines and actual stock. The order transaction updates or removes
+the correct Bag lines and repeats return the original orders without another
+stock, funding or Bag change. This resolves delivery 1's matching-line limitation.
+
+Unsupported online payment requests now fail with a clear COD-only message;
+missing payment choice is rejected. The interface retains its explicit COD and
+confirmation flow. Quote and confirmation error feedback preserve the requested
+items and Buy Now quantity when reloading checkout.
+
+Evidence: **705 buyer/finance tests / 15,109 assertions** passed. The final focused
+run passed **116 tests / 1,046 assertions**, including the page-preparation race,
+partial checkout, funding, rollback and retained replay. Relevant frontend checks
+passed **55 tests** in total; formatting, patch whitespace and production build
+passed. Verification used isolated SQLite and static/rendering checks; no deployed
+browser, PostgreSQL concurrency or live payment acceptance is claimed.
+
+All 30 allocated areas were assessed. Agreed differences retain 10% commission,
+COD only, the existing per-shop shipping calculation, one offer per shop plus
+one Bagoo offer, existing cancellation usage accounting and a 500-character
+checkout note. Gateway callbacks/payment expiry and full refunds remain deferred.
+A shipping subsidy reduces the actual fee within its cap; it does not grant a
+second simultaneous Bagoo slot or change merchandise settlement. No invented
+online success, refund or reused voucher is reported as passing those alternate
+assumptions. No schema migration is added in this delivery.
