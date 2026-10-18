@@ -24,6 +24,12 @@ and the [operational navigation checks](ACCEPTANCE.md#rider-web-and-logistics-na
 Rider and logistics destinations prepare code only. Queues, placement, facility
 selection, scans and action tokens still use current authorized requests.
 
+PF04 and PF05 were explicitly selected together on `perf/admin-navigation-release`,
+with separate implementation and measurement commits. See [the combined implementation evidence](../CORE_FLOW_ROADMAP.md#october-18-2026-pf04-pf05-admin-navigation-and-measured-acceptance),
+[reproducible local measurements](MEASUREMENTS.md) and
+[admin/release checks](ACCEPTANCE.md#platform-admin-navigation).
+Their role, freshness and measurement gates remain distinct within that delivery.
+
 ## Delivery order
 
 | Batch | Outcome | Suggested branch | Dependency |

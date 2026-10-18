@@ -8,7 +8,7 @@ import { build as buildBundle } from 'esbuild';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-catalogue-interactions-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const build = await buildBundle({
-    stdin: { contents: "export { default as Search } from '@/hooks/useCatalogueSearch'; export { default as Link } from '@/Components/CatalogueLink'; export { default as Notice } from '@/Components/CatalogueNavigationNotice'; export { default as PortalLink } from '@/Components/PortalLink'; export { default as ResolvedPage } from '@/hooks/useResolvedPage'; export { default as Registry } from '@/Pages/Hub/Deliveries';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: "export { default as Search } from '@/hooks/useCatalogueSearch'; export { default as Link } from '@/Components/CatalogueLink'; export { default as Notice } from '@/Components/CatalogueNavigationNotice'; export { default as PortalLink } from '@/Components/PortalLink'; export { default as ResolvedPage } from '@/hooks/useResolvedPage'; export { default as Registry } from '@/Pages/Hub/Deliveries'; export { default as AdminUsers } from '@/Pages/Admin/Users'; export { default as AdminPagination } from '@/Components/AdminDirectoryPagination';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'controlled-catalogue-interactions', setup(builder) {
         builder.onResolve({ filter: /^react$/ }, () => ({ path: 'hooks', namespace: 'catalogue-hooks' }));
@@ -53,7 +53,7 @@ function harness(t, component = ui.Search, props) {
     for (const [key, value] of Object.entries({ window, document, navigator, route: () => '/buyer/search' })) Object.defineProperty(globalThis, key, { value, configurable: true });
     const slots = [], effects = [], listeners = new Map(); let cursor = 0, queued = [];
     const h = {
-        page: { component: 'Buyer/Search', url: '/buyer/search?search=Bag', props: { filters: { search: 'Bag', category: 'apparel', min_price: '0' } } },
+        page: { component: 'Buyer/Search', url: '/buyer/search?search=Bag', props: { errors: {}, filters: { search: 'Bag', category: 'apparel', min_price: '0' } } },
         prepared: [], visits: [], cancelled: [], replacements: [], window, document, navigator,
         state(initial) { const index = cursor++; if (!(index in slots)) slots[index] = typeof initial === 'function' ? initial() : initial; return [slots[index], value => { slots[index] = typeof value === 'function' ? value(slots[index]) : value; }]; },
         ref(initial) { return this.state(() => ({ current: initial }))[0]; },
@@ -208,4 +208,50 @@ test('hub registry filters make one fresh coherent visit and retain useful input
     tree=h.render(); assert.ok(all(tree).some(n=>n.props?.role==='alert'&&n.props.children==='Please correct this search.'));
     assert.equal(all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Search parcels').props.value,'BGO-NEW');
     form.props.onSubmit({preventDefault(){}}); assert.equal(h.visits.length,2);
+});
+
+test('admin directory search guards duplicates, narrows coherent reads and follows returned history filters', t => {
+    const props = { users: { data: [], total: 0, current_page: 1, last_page: 1, links: [] },
+        filters: { search: 'Maria', role: 'buyer' }, activityBaseUrl: '/admin/users' };
+    const h = harness(t, ui.AdminUsers, props);
+    const all = tree => !tree || typeof tree !== 'object' ? [] : [tree, ...[tree.props?.children].flat(Infinity).flatMap(all)];
+    let tree = h.render();
+    let input = all(tree).find(n => n.type === 'input');
+    assert.equal(input.props.maxLength, 100); assert.equal(input.props.value, 'Maria');
+    input.props.onChange({ target: { value: '  Maria Santos  ' } });
+    tree = h.render();
+    const form = all(tree).find(n => n.type === 'form');
+    form.props.onSubmit({ preventDefault() {} }); form.props.onSubmit({ preventDefault() {} });
+    assert.equal(h.visits.length, 1);
+    assert.equal(h.visits[0].url, '/admin/users?search=Maria+Santos&role=buyer');
+    for (const key of ['auth', 'cataloguePrefetchEnabled', 'users', 'filters', 'activityBaseUrl', 'errors', 'flash']) assert.ok(h.visits[0].options.only.includes(key));
+    assert.ok(!h.visits[0].options.only.includes('products'));
+    assert.equal(all(h.render()).find(n => n.type === 'form').props['aria-busy'], true);
+    h.page.props.errors = { search: 'Use 100 characters or fewer.' }; h.visits[0].options.onFinish();
+    tree = h.render();
+    assert.ok(all(tree).some(n => n.props?.role === 'alert'));
+    assert.equal(all(tree).find(n => n.type === 'input').props.value, '  Maria Santos  ');
+    props.filters = { search: 'Previous query', role: 'seller' }; tree = h.render();
+    input = all(tree).find(n => n.type === 'input'); assert.equal(input.props.value, 'Previous query');
+    all(tree).find(n => n.type === 'button' && n.props.children === 'buyer').props.onClick();
+    assert.equal(h.visits[1].url, '/admin/users?search=Previous+query&role=buyer');
+});
+
+test('admin pagination exposes current/disabled pages and repairs a clamped URL without another request', t => {
+    const props = { kind: 'users', page: { total: 32, current_page: 3, last_page: 3, links: [
+        { label: '&laquo; Previous', url: 'http://bagoo.test/admin/users?role=buyer&search=Maria&page=2', active: false },
+        { label: '3', url: '/admin/users?role=buyer&search=Maria&page=3', active: true },
+        { label: 'Next &raquo;', url: null, active: false },
+    ] } };
+    const h = harness(t, ui.AdminPagination, props);
+    h.window.location = new URL('https://bagoo.test/admin/users?role=buyer&search=Maria&page=1000000');
+    const all = tree => !tree || typeof tree !== 'object' ? [] : [tree, ...[tree.props?.children].flat(Infinity).flatMap(all)];
+    const nodes = all(h.render());
+    assert.ok(nodes.some(n => n.props?.['aria-current'] === 'page' && n.type === 'span'));
+    assert.ok(nodes.some(n => n.props?.['aria-disabled'] === 'true' && !n.props?.href));
+    const previous = nodes.find(n => n.props?.href);
+    assert.equal(previous.props.href, '/admin/users?role=buyer&search=Maria&page=2');
+    assert.ok(previous.props.only.includes('users'));
+    assert.deepEqual(h.replacements, [{ url: '/admin/users?role=buyer&search=Maria&page=3', preserveState: true, preserveScroll: true }]);
+    assert.equal(h.visits.length, 0);
 });

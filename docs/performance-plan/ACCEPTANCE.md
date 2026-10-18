@@ -1,6 +1,6 @@
 # Browsing and Portal Navigation Acceptance
 
-Use this guide after publishing and deploying a reviewed PF01, PF02 or PF03 branch. Current
+Use this guide after publishing and deploying the reviewed PF01-PF05 deliveries. Current
 local test results, implementation scope and ratings belong in
 [the roadmap](../CORE_FLOW_ROADMAP.md#october-16-2026-pf01-buyer-pagination-and-responsive-search).
 These manual checks supplement automated evidence; they are not a statement
@@ -9,7 +9,7 @@ that Azure or a device has already passed.
 ## Configuration
 
 `CATALOGUE_PREFETCH_ENABLED` controls the reviewed buyer catalogue preparation
-and PF02/PF03 buyer, seller, rider and logistics page-code preparation.
+and reviewed buyer, seller, rider, logistics and admin page-code preparation.
 Its default is `true` in `config/catalogue.php`; `.env.example` includes the
 setting. Set it to `false` and apply the normal deployment/config-cache refresh
 to disable speculative data loading. The next ordinary response communicates
@@ -17,13 +17,13 @@ the setting to the client and clears its prepared-page state. Existing loaded
 tabs need an ordinary request or reload to receive changed server configuration.
 
 Normal product links, pagination, search submission and server validation remain
-available with the flag disabled. The flag does not disable the existing Vite
-asset-prefetch feature or browser caching of static files. The one-request
-budget applies to speculative catalogue page data. PF02 shares that coordinator
-with one reviewed page-code preparation at a time; an import can load dependent
-static chunks. This is not a limit on every asset/notification request.
+available with the flag disabled. PF05 removes the blanket load-triggered Vite
+asset waterfall. Normal initial module preloads and browser caching of static
+files remain available. The one-candidate budget is shared by speculative
+catalogue page data and reviewed page-code preparation; an import can load
+dependent static chunks. This is not a limit on every asset/notification request.
 
-Use the normal [deployment workflow](../WEB_AUTH_DEPLOYMENT.md). PF01-PF03 introduce
+Use the normal [deployment workflow](../WEB_AUTH_DEPLOYMENT.md). PF01-PF05 introduce
 no schema migration or catalogue reseeding requirement. Do not reset a database
 to check pagination; use enough existing eligible products or isolated fixtures.
 
@@ -46,8 +46,8 @@ to check pagination; use enough existing eligible products or isolated fixtures.
 | Fresh purchasing | Bag changes invalidate relevant prepared state. Checkout still checks current price, stock, eligibility and offers; preparation reserves nothing. |
 | Disable path | Turn the flag off through the normal reviewed deployment/config refresh. Ordinary browsing works and no new speculative catalogue data requests start after the client receives the setting. |
 
-When reviewing requests, distinguish page-data preparation from the existing
-static-asset prefetching. Record route/query/page, foreground versus speculative
+When reviewing requests, distinguish page-data preparation, reviewed component
+imports and normal initial module loading. Record route/query/page, foreground versus speculative
 request count, cache use, transferred data and timing. Never log credentials,
 private evidence, bearer tokens or the contents of owned page responses.
 
@@ -115,4 +115,60 @@ an import can load dependent static chunks and cannot be aborted once started.
 Code readiness does not eliminate fresh server work, image loading or rendering.
 Do not infer Flutter/device behavior, simultaneous PostgreSQL acceptance or an
 Azure latency reduction from the local SQLite and controlled frontend checks.
-PF04 and PF05 retain their separate selection and measurement requirements.
+PF04 and PF05 add the selected admin and measured local acceptance below.
+
+## Platform Admin navigation
+
+PF04 prepares only `Admin/Dashboard`, `Admin/Users`, `Admin/Products` and the
+`Governance/History` list. Exact root/subdomain aliases and current account
+context remain part of the reviewed map. No private admin page response is
+prefetched or retained as decision authority.
+
+| Check | Expected result |
+|---|---|
+| Intent and opening | Deliberate hover/focus may import reviewed page code. Touch remains immediate. Activating a link makes a fresh authorized request; a pending import never delays the start of that request. |
+| Directories | User search and role selection reset paging, retain useful input, prevent duplicate submissions and expose pending/error/empty results. Page numbers, rows and filters agree, including tied timestamps, an emptied last page and Back/Forward. Product paging retains current listing/compliance state. |
+| Smaller fresh reads | Same-component updates include current identity, the enabled setting, feedback, directory rows and their filter/base-path props together. A context-only read skips directory work. The list contains only displayed fields; inspection links still load their own current details. |
+| Review authority | KYC, shops, corrections, restrictions, closures, product moderation, private evidence, advertisements and finance remain outside the preparation map. Another reviewer's change produces current state or the existing conflict/refresh result when a decision is attempted. |
+| No background effects | Intent creates no approval, restriction, document inspection, advertisement view/click, message acknowledgement, cash event or consumed flash/error feedback. Marked private data-prefetch requests receive a rejection before directory/controller work. |
+| Access and recovery | Guests, another role, a revoked/expired session and changed account retain current denials. A failed reviewed navigation offers Try again; input remains usable after validation. Account/build/access changes invalidate metadata, and late imports cannot restore it. |
+| Budget and presentation | Hidden/offline/Save-Data/very slow clients skip preparation. The existing shared flag disables it after the next ordinary response. Preserve the admin sidebar, header, table layout and Plus Jakarta Sans; search and pagination retain visible focus, active and disabled controls. |
+
+## Combined release checks
+
+[Local measurements](MEASUREMENTS.md) cover all selected portals, ten paired
+samples per representative cold/prepared/in-flight/expired scenario, adverse
+preparation, search scheduling, actual endpoint query/payload costs and static
+asset budgets. They do not establish browser rendering or deployed latency.
+The following remain explicit manual/deployment acceptance steps; they were not
+performed by routine automation in this delivery.
+
+1. Publish/review the combined branch, deploy using the normal workflow and
+   verify the intended build. No database reset or reseeding is required.
+2. In each portal, compare a cold opening with a deliberate prepared opening
+   of its reviewed destination. Record route/query/page, source page, device,
+   network conditions, build, click-to-meaningful-render time, median/p90 over
+   at least ten repetitions, request count and transferred bytes. Separate
+   page data, JavaScript, images and rendering; do not reuse controlled timings
+   as observed device results.
+3. Check mouse, keyboard, touch/scroll, rapid navigation, search composition,
+   clearing, filtering, page boundaries and Back/Forward. Confirm current
+   records and feedback before measuring speed.
+4. Repeat under slow/offline recovery, Save-Data, a hidden/returned tab,
+   incomplete and expired preparation. Actual navigation must remain usable;
+   a speculative failure must not become an empty successful page or a retry
+   loop. The removed global waterfall must not return.
+5. Check sign-out/in and another account/tab, changed company/hub/placement,
+   approval/access revocation, a relevant mutation and delayed old responses.
+   Reopen review and operational pages after another authorized actor changes
+   the record; decisions must still use current state and safeguards.
+6. Disable `CATALOGUE_PREFETCH_ENABLED`, refresh normal deployment/config cache
+   and make an ordinary request in each existing tab. New policy preparation
+   must stop; direct links, forms, focused updates and fresh decisions must
+   continue. Re-enable only after reviewing the observed request/latency cost.
+
+Stop or disable preparation if records/permissions are wrong, queues overwrite
+newer actions, background activity mutates a workflow, requests become unbounded
+or measured cold/server behavior materially regresses. Keep actual failures and
+unperformed checks visible. Flutter, simultaneous PostgreSQL acceptance and
+Azure/device verification retain their separate boundaries.

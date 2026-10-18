@@ -90,12 +90,54 @@ test('code preparation observes feedback, disabled settings, foreground work and
         f => f.policy.observe({ ...snapshot(), props: { ...snapshot().props, cataloguePrefetchEnabled: false } }),
         f => f.policy.observe({ ...snapshot(), props: { ...snapshot().props, flash: { success: 'Saved.' } } }),
         f => f.policy.observe({ ...snapshot(), props: { ...snapshot().props, errors: { phone: 'Correct this.' } } }),
-        f => f.policy.observe(snapshot('admin')),
+        f => f.policy.observe(snapshot('unsupported')),
     ];
     for (const configure of cases) {
         const f = fixture(); configure(f);
         assert.equal(await f.policy.prepareCode('Buyer/Profile'), false);
         assert.equal(f.imports.length, 0); assert.equal(f.requests.length, 0);
+    }
+});
+
+test('admin preparation stays on reviewed lists and never fetches private page data', async () => {
+    const admin = snapshot('admin');
+    for (const [prefix, origin] of [['/admin', 'https://bagoo.test'], ['', 'https://admin.bagoo.test']]) {
+        for (const [path, component] of Object.entries({ dashboard: 'Admin/Dashboard', users: 'Admin/Users', products: 'Admin/Products' })) {
+            assert.equal(ui.portalPageComponent(`${prefix}/${path}?page=2&search=Maria`, origin, admin), component);
+        }
+        assert.equal(ui.portalPageComponent('/governance-history?source=product&page=2', origin, admin), 'Governance/History');
+        for (const path of ['kyc', 'shops', 'identity-corrections', 'users/7/context', 'users/7/activity', 'users/7/closure', 'products/7/moderation', 'advertisements', 'cod', 'resources']) {
+            assert.equal(ui.portalPageComponent(`${prefix}/${path}`, origin, admin), undefined);
+        }
+    }
+    assert.equal(ui.portalPageComponent('/users', 'https://bagoo.test', admin), undefined);
+    assert.equal(ui.portalPageComponent('https://foreign.test/admin/users', 'https://bagoo.test', admin), undefined);
+    const f = fixture(); f.policy.observe(admin);
+    assert.equal(await f.policy.prepare('/admin/users'), false);
+    const work = f.policy.prepareCode('Admin/Users'); await tick();
+    assert.equal(f.imports.length, 1); assert.equal(f.requests.length, 0);
+    f.imports[0].finish(); assert.equal(await work, true);
+    for (const kind of ['users', 'products']) {
+        const props = ui.adminDirectoryProps(kind);
+        for (const key of ['auth', 'cataloguePrefetchEnabled', 'flash', 'errors', kind]) assert.ok(props.includes(key));
+        assert.ok(!props.includes(kind === 'users' ? 'products' : 'users'));
+    }
+});
+
+test('every selected private portal rejects stale preparation after account, build or access changes', async () => {
+    for (const role of ['buyer', 'seller', 'courier', 'logistics', 'admin']) {
+        for (const change of [
+            page => { page.props.auth.user.id++; },
+            page => { page.props.auth.user.status = 'suspended'; },
+            page => { page.props.auth.user.kyc_status = 'rejected'; },
+            page => { page.version = 'build-two'; },
+            page => { page.props.auth.user = null; },
+        ]) {
+            const f = fixture(), page = snapshot(role); f.policy.observe(page);
+            const work = f.policy.prepareCode(`${role}/List`); await tick();
+            change(page); f.policy.observe(page); f.imports[0].finish();
+            assert.equal(await work, false); assert.equal(f.requests.length, 0);
+        }
     }
 });
 

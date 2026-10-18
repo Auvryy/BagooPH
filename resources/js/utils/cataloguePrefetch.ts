@@ -88,7 +88,7 @@ export class CataloguePrefetch {
         this.enabled = page.props.cataloguePrefetchEnabled === true;
         this.permitted = (!page.props.auth?.user || page.props.auth.user.role === 'buyer')
             && !Object.keys(page.props.errors ?? {}).length && !Object.values(page.props.flash ?? {}).some(Boolean);
-        this.codePermitted = ['buyer', 'seller', 'courier', 'logistics'].includes(page.props.auth?.user?.role)
+        this.codePermitted = ['buyer', 'seller', 'courier', 'logistics', 'admin'].includes(page.props.auth?.user?.role)
             && !Object.keys(page.props.errors ?? {}).length && !Object.values(page.props.flash ?? {}).some(Boolean);
         if (!this.enabled || (!this.permitted && !this.codePermitted)) this.clear();
     }
