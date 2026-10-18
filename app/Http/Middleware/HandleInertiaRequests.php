@@ -28,9 +28,10 @@ class HandleInertiaRequests extends Middleware
 
     public function handle(Request $request, Closure $next): Response
     {
-        $cataloguePrefetch = $request->prefetch() && $request->header('X-Bagoo-Catalogue') === '1';
+        $speculative = $request->prefetch();
+        $cataloguePrefetch = $speculative && $request->header('X-Bagoo-Catalogue') === '1';
         try {
-            if ($cataloguePrefetch && (! config('catalogue.prefetch_enabled') || ! $request->isMethod('GET')
+            if ($speculative && (! $cataloguePrefetch || ! config('catalogue.prefetch_enabled') || ! $request->isMethod('GET')
                 || ! $request->header('X-Inertia') || ($request->user() && ! $request->user()->isBuyer())
                 || ! in_array($request->route()?->getActionName(), [
                     BuyerHomeController::class.'@index', BuyerProductController::class.'@search', BuyerProductController::class.'@show',
@@ -39,7 +40,7 @@ class HandleInertiaRequests extends Middleware
             }
             $response = parent::handle($request, $next);
         } finally {
-            if ($cataloguePrefetch && $request->hasSession()) {
+            if ($speculative && $request->hasSession()) {
                 // Background browsing must not consume the next intentional visit's feedback.
                 $request->session()->reflash();
             }

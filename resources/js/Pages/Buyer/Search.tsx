@@ -5,7 +5,8 @@ import ProductCard from '@/Components/ProductCard';
 import CatalogueErrors from '@/Components/CatalogueErrors';
 import SavedProductButton from '@/Components/SavedProductButton';
 import CataloguePagination from '@/Components/CataloguePagination';
-import { catalogueFilters } from '@/utils/catalogueNavigation';
+import CatalogueLink from '@/Components/CatalogueLink';
+import { catalogueFilters, catalogueUrl } from '@/utils/catalogueNavigation';
 import { Category, PaginatedData, Product } from '@/types';
 import { 
     Search as SearchIcon, 
@@ -159,10 +160,10 @@ export default function SearchPage({
                         <div className="space-y-2.5">
                             <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider">Department</h4>
                             <div className="space-y-1 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
-                                <button
-                                    type="button"
-                                    onClick={() => applyFilter({ category: undefined })}
-                                    className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs ${
+                                <CatalogueLink
+                                    preserveState preserveScroll
+                                    href={catalogueUrl(route('buyer.search'), filters, { category: undefined })}
+                                    className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${
                                         !filters.category || filters.category === 'all'
                                             ? 'bg-[#E00D42] text-white font-bold'
                                             : 'text-slate-700 hover:bg-slate-50'
@@ -170,13 +171,13 @@ export default function SearchPage({
                                 >
                                     <span>All Departments</span>
                                     <span className="text-[10px] opacity-80">{categories.reduce((acc, c) => acc + (c.products_count || 0), 0)}</span>
-                                </button>
+                                </CatalogueLink>
                                 {categories.map((cat) => (
-                                    <button
+                                    <CatalogueLink
                                         key={cat.id}
-                                        type="button"
-                                        onClick={() => applyFilter({ category: cat.slug })}
-                                        className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs ${
+                                        preserveState preserveScroll
+                                        href={catalogueUrl(route('buyer.search'), filters, { category: cat.slug })}
+                                        className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${
                                             filters.category === cat.slug
                                                 ? 'bg-[#E00D42] text-white font-bold'
                                                 : 'text-slate-700 hover:bg-slate-50'
@@ -184,7 +185,7 @@ export default function SearchPage({
                                     >
                                         <span className="truncate">{cat.name}</span>
                                         <span className="text-[10px] opacity-75 font-sans">({cat.products_count ?? 0})</span>
-                                    </button>
+                                    </CatalogueLink>
                                 ))}
                             </div>
                         </div>
@@ -381,9 +382,9 @@ export default function SearchPage({
                                 {activeCategory && (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800 shadow-2xs">
                                         <span>Dept: {activeCategory.name}</span>
-                                        <button onClick={() => applyFilter({ category: undefined })} className="hover:text-[#E00D42]">
+                                        <CatalogueLink preserveState preserveScroll href={catalogueUrl(route('buyer.search'), filters, { category: undefined })} aria-label="Clear department" className="hover:text-[#E00D42]">
                                             <X className="w-3 h-3" />
-                                        </button>
+                                        </CatalogueLink>
                                     </span>
                                 )}
 
@@ -526,10 +527,10 @@ export default function SearchPage({
                                 <div className="space-y-2">
                                     <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider">Department</h4>
                                     <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => { applyFilter({ category: undefined }); setMobileFilterOpen(false); }}
-                                            className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs ${
+                                        <CatalogueLink
+                                            preserveState preserveScroll
+                                            href={catalogueUrl(route('buyer.search'), filters, { category: undefined })} onClick={() => setMobileFilterOpen(false)}
+                                            className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${
                                                 !filters.category || filters.category === 'all'
                                                     ? 'bg-[#E00D42] text-white font-bold'
                                                     : 'text-slate-700 hover:bg-slate-50'
@@ -537,13 +538,13 @@ export default function SearchPage({
                                         >
                                             <span>All Departments</span>
                                             <span className="text-[10px] opacity-80">{categories.reduce((acc, c) => acc + (c.products_count || 0), 0)}</span>
-                                        </button>
+                                        </CatalogueLink>
                                         {categories.map((cat) => (
-                                            <button
+                                            <CatalogueLink
                                                 key={cat.id}
-                                                type="button"
-                                                onClick={() => { applyFilter({ category: cat.slug }); setMobileFilterOpen(false); }}
-                                                className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs ${
+                                                preserveState preserveScroll
+                                                href={catalogueUrl(route('buyer.search'), filters, { category: cat.slug })} onClick={() => setMobileFilterOpen(false)}
+                                                className={`w-full text-left px-2.5 py-1.5 rounded-lg font-sans transition flex items-center justify-between text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${
                                                     filters.category === cat.slug
                                                         ? 'bg-[#E00D42] text-white font-bold'
                                                         : 'text-slate-700 hover:bg-slate-50'
@@ -551,7 +552,7 @@ export default function SearchPage({
                                             >
                                                 <span className="truncate">{cat.name}</span>
                                                 <span className="text-[10px] opacity-75 font-sans">({cat.products_count ?? 0})</span>
-                                            </button>
+                                            </CatalogueLink>
                                         ))}
                                     </div>
                                 </div>

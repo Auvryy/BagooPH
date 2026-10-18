@@ -139,6 +139,38 @@ test('the runtime bridges cached and fresh visits, cancellation and session boun
         assert.equal(channel.lastMessage, 'invalidate');
         assert.ok(flushed.length);
     });
+    await t.test('private intent prepares code only and activation immediately makes a fresh authorized request', async () => {
+        ui.cataloguePrefetch.clear();
+        ui.cataloguePrefetch.observe(page);
+        let loaded;
+        warmGate = new Promise(resolve => { loaded = resolve; });
+        const before = requests.length;
+        const prep = ui.preparePortal('/buyer/saved-products?page=2', { ...page, component: 'Buyer/Home' }); await tick();
+        assert.equal(components.at(-1), 'Buyer/SavedProducts');
+        assert.equal(requests.length, before, 'no owned response is requested on intent');
+        const count = visits.length;
+        ui.visitPortal('/buyer/saved-products?page=2');
+        assert.equal(visits.length, count + 1, 'slow code does not delay the foreground visit');
+        assert.equal(visits.at(-1).options.fresh, true);
+        assert.equal(visits.at(-1).options.headers.Purpose, undefined);
+        assert.equal(visits.at(-1).options.headers['X-Bagoo-Catalogue'], undefined);
+        assert.equal(visits.at(-1).options.headers['X-Bagoo-Navigation'], '1');
+        visits.at(-1).options.onFinish({});
+        loaded(); warmGate = undefined; assert.equal(await prep, false, 'activation invalidates the old preparation generation');
+    });
+    await t.test('private network failures retain a retry destination instead of becoming an empty list', async () => {
+        let error;
+        ui.visitPortal('/buyer/profile?tab=addresses', { onError: value => { error = value; } });
+        emit('exception', { exception: new Error('Offline') });
+        assert.match(error.navigation, /try again/i);
+        assert.equal(notices.at(-1), '/buyer/profile?tab=addresses');
+        visits.at(-1).options.onFinish({});
+    });
+    await t.test('unreviewed destinations keep their normal error handling without private preparation headers', () => {
+        ui.visitPortal('/messages');
+        assert.equal(visits.at(-1).options.fresh, true);
+        assert.equal(visits.at(-1).options.headers, undefined);
+    });
     await t.test('ordinary non-catalogue navigation carries no cache context headers', async () => {
         await ui.visitCatalogue('/buyer/profile');
         assert.equal(visits.at(-1).options.headers, undefined);

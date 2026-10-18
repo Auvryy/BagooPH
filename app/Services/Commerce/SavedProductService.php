@@ -50,7 +50,7 @@ class SavedProductService
         }
         $publicProducts = app(BuyerDiscoveryService::class)->catalogue()->whereIn('products.id', $page->pluck('product_id'))->get()->keyBy('id');
 
-        return $page->through(fn (SavedProduct $entry) => [
+        return $page->withPath(request()->getPathInfo())->through(fn (SavedProduct $entry) => [
             'id' => $entry->id,
             'product_id' => $entry->product_id,
             'saved_at' => $entry->created_at,

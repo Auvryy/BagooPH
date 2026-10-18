@@ -90,7 +90,7 @@ class OrderWorkspaceService
             $page = (clone $orders)->paginate($perPage, ['*'], 'page', $page->lastPage())->withQueryString();
         }
 
-        return $page;
+        return $page->withPath(request()->getPathInfo());
     }
 
     public function canConfirmReceipt(Order $order, User $buyer): bool

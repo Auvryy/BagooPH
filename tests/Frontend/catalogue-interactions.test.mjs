@@ -8,7 +8,7 @@ import { build as buildBundle } from 'esbuild';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-catalogue-interactions-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const build = await buildBundle({
-    stdin: { contents: "export { default as Search } from '@/hooks/useCatalogueSearch'; export { default as Link } from '@/Components/CatalogueLink'; export { default as Notice } from '@/Components/CatalogueNavigationNotice';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: "export { default as Search } from '@/hooks/useCatalogueSearch'; export { default as Link } from '@/Components/CatalogueLink'; export { default as Notice } from '@/Components/CatalogueNavigationNotice'; export { default as PortalLink } from '@/Components/PortalLink'; export { default as ResolvedPage } from '@/hooks/useResolvedPage';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'controlled-catalogue-interactions', setup(builder) {
         builder.onResolve({ filter: /^react$/ }, () => ({ path: 'hooks', namespace: 'catalogue-hooks' }));
@@ -20,7 +20,7 @@ const build = await buildBundle({
         builder.onResolve({ filter: /^@inertiajs\/react$/ }, () => ({ path: 'inertia', namespace: 'catalogue-inertia' }));
         builder.onLoad({ filter: /.*/, namespace: 'catalogue-inertia' }, () => ({ loader: 'js', contents: `
             export const usePage = () => globalThis.catalogueHarness.page;
-            export const router = { on: (...args) => globalThis.catalogueHarness.on(...args) };
+            export const router = { on: (...args) => globalThis.catalogueHarness.on(...args), replace: options => globalThis.catalogueHarness.replacements.push(options) };
         ` }));
         builder.onResolve({ filter: /utils\/catalogueRuntime$/ }, () => ({ path: 'runtime', namespace: 'catalogue-runtime' }));
         builder.onLoad({ filter: /.*/, namespace: 'catalogue-runtime' }, () => ({ loader: 'js', contents: `
@@ -28,6 +28,8 @@ const build = await buildBundle({
                 prepare: url => { globalThis.catalogueHarness.prepared.push(url); return Promise.resolve(true); },
                 prioritize() {}, cancel: url => globalThis.catalogueHarness.cancelled.push(url)
             };
+            export const preparePortal = url => { globalThis.catalogueHarness.prepared.push(url); return Promise.resolve(true); };
+            export const visitPortal = (url, options = {}) => visitCatalogue(url, options);
             export const visitCatalogue = (url, options = {}) => {
                 const harness = globalThis.catalogueHarness;
                 harness.visits.push({ url, options });
@@ -49,7 +51,7 @@ function harness(t, component = ui.Search, props) {
     const slots = [], effects = [], listeners = new Map(); let cursor = 0, queued = [];
     const h = {
         page: { component: 'Buyer/Search', url: '/buyer/search?search=Bag', props: { filters: { search: 'Bag', category: 'apparel', min_price: '0' } } },
-        prepared: [], visits: [], cancelled: [], window, document, navigator,
+        prepared: [], visits: [], cancelled: [], replacements: [], window, document, navigator,
         state(initial) { const index = cursor++; if (!(index in slots)) slots[index] = typeof initial === 'function' ? initial() : initial; return [slots[index], value => { slots[index] = typeof value === 'function' ? value(slots[index]) : value; }]; },
         ref(initial) { return this.state(() => ({ current: initial }))[0]; },
         effect(callback, deps) { const index = cursor++; const old = effects[index]; if (!old || !deps || deps.some((value, i) => !Object.is(value, old.deps[i]))) { queued.push(() => { old?.cleanup?.(); effects[index] = { deps, cleanup: callback() }; }); } },
@@ -132,4 +134,51 @@ test('navigation errors present a visible retry for the failed page and clear on
     assert.equal(h.render(), null);
     h.window.dispatchEvent(new CustomEvent('bagoo:catalogue-error', { detail: { href: '/product/bag' } }));
     h.emit('before', { visit: { headers: {}, method: 'get' } }); assert.equal(h.render(), null);
+});
+
+
+test('portal links prepare code on deliberate focus or hover and cancel abandoned intent', t => {
+    const props = { href: '/buyer/saved-products', children: 'Saved products' };
+    const h = harness(t, ui.PortalLink, props);
+    let link = h.render();
+    link.props.onPointerEnter({ pointerType: 'mouse' }); t.mock.timers.tick(149);
+    assert.equal(h.prepared.length, 0);
+    link.props.onPointerLeave({}); t.mock.timers.tick(20); assert.equal(h.prepared.length, 0);
+    link.props.onFocus({}); t.mock.timers.tick(150); assert.deepEqual(h.prepared, ['/buyer/saved-products']);
+    link.props.onFocus({}); props.href = '/buyer/profile'; h.render(); t.mock.timers.tick(200);
+    assert.equal(h.prepared.length, 1, 'an old destination cannot warm after its link changes');
+    link = h.render(); link.props.onTouchStart({});
+    assert.deepEqual(h.prepared, ['/buyer/saved-products', '/buyer/profile']);
+});
+
+test('portal links preserve modified clicks, other origins and downloads while guarding duplicate ordinary clicks', t => {
+    const props = { href: '/buyer/saved-products', children: 'Saved products' };
+    const h = harness(t, ui.PortalLink, props);
+    const event = extra => ({ button: 0, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; }, ...extra });
+    for (const extra of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { button: 1 }]) {
+        const click = event(extra); h.render().props.onClick(click); assert.equal(click.defaultPrevented, false);
+    }
+    props.href = 'https://foreign.test/buyer/profile'; const external = event(); h.render().props.onClick(external);
+    assert.equal(external.defaultPrevented, false);
+    props.href = '/buyer/saved-products'; props.download = 'saved.txt'; const download = event(); h.render().props.onClick(download);
+    assert.equal(download.defaultPrevented, false);
+    delete props.download;
+    h.render().props.onClick(event()); h.render().props.onClick(event());
+    assert.equal(h.visits.length, 1); assert.equal(h.render().props['aria-busy'], true);
+    h.visits[0].options.onFinish({}); assert.equal(h.render().props['aria-busy'], undefined);
+    h.render().props.onClick(event()); assert.equal(h.visits.length, 2);
+});
+
+
+test('an emptied last page corrects only the page parameter after the fresh server result', t => {
+    const h = harness(t, () => ui.ResolvedPage(1));
+    h.window.location = new URL('https://bagoo.test/buyer/saved-products?page=2&search=Bag');
+    h.render();
+    assert.deepEqual(h.replacements, [{ url: '/buyer/saved-products?page=1&search=Bag', preserveState: true, preserveScroll: true }]);
+});
+
+test('inactive order pagination cannot overwrite another profile section URL', t => {
+    const h = harness(t, () => ui.ResolvedPage(1, false));
+    h.window.location = new URL('https://bagoo.test/buyer/profile?tab=vouchers&page=2');
+    h.render(); assert.equal(h.replacements.length, 0);
 });

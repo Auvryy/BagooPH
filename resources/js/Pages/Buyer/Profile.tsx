@@ -15,6 +15,9 @@ import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
 import { OrderTrackingStatus } from '@/Components/OrderTrackingPanel';
 import { setupBuyerProfileWorkspace } from '@/utils/buyerProfileWorkspace';
 import { buyerOrderIssueStages, isBuyerOrderIssue } from '@/utils/orderWorkspace';
+import { buyerProfileProps } from '@/utils/portalNavigation';
+import { visitPortal } from '@/utils/catalogueRuntime';
+import useResolvedPage from '@/hooks/useResolvedPage';
 import '../../../css/buyer-profile.css';
 import { User, Order, Address, PageProps, PaginatedData } from '@/types';
 import { 
@@ -133,6 +136,7 @@ export default function BuyerProfile({
     });
 
     const selectedOrderStatus = currentOrderStatus;
+    useResolvedPage(orders.current_page, activeTab === 'orders');
     const showingOrderIssues = isBuyerOrderIssue(selectedOrderStatus);
     const workspaceRef = useRef<HTMLDivElement>(null);
     const orderScrollRef = useRef<HTMLDivElement>(null);
@@ -147,20 +151,25 @@ export default function BuyerProfile({
         if (accountScrollRef.current) accountScrollRef.current.scrollTop = 0;
     }, [activeTab]);
     const [orderBusy, setOrderBusy] = useState(false);
+    const sectionPending = useRef(false);
     const [orderActionError, setOrderActionError] = useState('');
     const [receiptPending, setReceiptPending] = useState<number | null>(null);
     const receiptGuard = useRef(false);
     const loadOrderPage = (target: string, query: Record<string, string> = {}) => {
-        if (orderBusy || receiptGuard.current) return;
+        if (sectionPending.current || receiptGuard.current) return;
+        sectionPending.current = true;
         setOrderBusy(true); setOrderActionError('');
-        router.get(target, query, { preserveState: true, preserveScroll: true,
-            only: ['orders', 'ordersCount', 'orderCounts', 'currentOrderStatus', 'initialTab', 'flash'],
+        const destination = new URL(target, window.location.origin);
+        for (const [key, value] of Object.entries(query)) destination.searchParams.set(key, value);
+        void visitPortal(destination.pathname + destination.search, { preserveState: true, preserveScroll: true,
+            only: buyerProfileProps('orders'),
             onError: errors => setOrderActionError(Object.values(errors).join(' ')),
-            onFinish: () => setOrderBusy(false),
+            onFinish: () => { sectionPending.current = false; setOrderBusy(false); },
+            onCancel: () => { sectionPending.current = false; setOrderBusy(false); },
         });
     };
     const confirmReceipt = (id: number) => {
-        if (receiptGuard.current || !confirm('Confirm that you received this order?')) return;
+        if (sectionPending.current || receiptGuard.current || !confirm('Confirm that you received this order?')) return;
         receiptGuard.current = true; setReceiptPending(id); setOrderActionError('');
         router.post(route('buyer.orders.confirm', id), {}, { preserveScroll: true,
             onError: errors => setOrderActionError(Object.values(errors).join(' ')),
@@ -177,30 +186,21 @@ export default function BuyerProfile({
     const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatar || null);
     const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
-    // Tab switcher that updates URL history client-side without full-page network reloads
+    // Recheck the selected section on the server before displaying its records.
     const handleTabChange = (tabId: TabType) => {
+        if (sectionPending.current || receiptGuard.current) return;
         if (activeTab === tabId && typeof window !== 'undefined' && (window.location.search.includes(`tab=${tabId}`) || (tabId === 'orders' && window.location.pathname.endsWith('/orders')))) {
             return;
         }
 
-        setActiveTab(tabId);
-
-        const targetUrl = route('buyer.profile', { tab: tabId, order_status: currentOrderStatus, page: orders.current_page });
-        try {
-            router.push({
-                url: targetUrl,
-                props: (currentProps: any) => ({
-                    ...currentProps,
-                    initialTab: tabId,
-                }),
-                preserveState: true,
-                preserveScroll: true,
-            });
-        } catch {
-            if (typeof window !== 'undefined') {
-                window.history.pushState(null, '', targetUrl);
-            }
-        }
+        const targetUrl = route('buyer.profile', { tab: tabId, ...(tabId === 'orders' ? { order_status: currentOrderStatus, page: orders.current_page } : {}) });
+        sectionPending.current = true;
+        setOrderBusy(true); setOrderActionError('');
+        void visitPortal(targetUrl, { only: buyerProfileProps(tabId), preserveState: true, preserveScroll: true,
+            onError: errors => setOrderActionError(Object.values(errors).join(' ')),
+            onFinish: () => { sectionPending.current = false; setOrderBusy(false); },
+            onCancel: () => { sectionPending.current = false; setOrderBusy(false); },
+        });
     };
 
     const openPurchaseGroup = (group: 'progress' | 'issues') => {
@@ -485,6 +485,8 @@ export default function BuyerProfile({
                     </Link>
                 </div>
 
+                {orderBusy && <p role="status" className="text-xs text-slate-500">Loading current details…</p>}
+                {orderActionError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{orderActionError}</p>}
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -563,6 +565,8 @@ export default function BuyerProfile({
                                     <button
                                         key={item.id}
                                         type="button"
+                                        disabled={orderBusy || receiptPending !== null}
+                                        aria-busy={orderBusy || undefined}
                                         onClick={() => handleTabChange(item.id)}
                                         className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl font-bold transition text-left cursor-pointer ${
                                             isActive
@@ -629,7 +633,6 @@ export default function BuyerProfile({
                                 />
 
                                 <div ref={orderScrollRef} data-buyer-profile-scroll scroll-region="" role="region" aria-label="Purchase results" tabIndex={0} className={`buyer-profile-scroll mt-4 space-y-4 lg:mt-0 ${filteredOrders.length === 0 ? 'flex flex-col' : ''}`} aria-busy={orderBusy}>
-                                {orderActionError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{orderActionError}</p>}
                                 {orderBusy && <p role="status" className="text-xs text-slate-500">Loading orders…</p>}
 
                                 {/* Orders List Cards */}

@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { catalogueAccountKey, canonicalCatalogueUrl, CatalogueEnvironment, CataloguePrefetch, CatalogueSnapshot, CatalogueTransport, preparedCatalogueComponent, cataloguePolicy } from './cataloguePrefetch';
 import { SupersededCatalogueVisit } from './catalogueNavigation';
+import { portalPageComponent } from './portalNavigation';
 
 export function catalogueEnvironment(): CatalogueEnvironment {
     const connection = (navigator as Navigator & { connection?: CatalogueEnvironment['connection'] }).connection;
@@ -9,6 +10,7 @@ export function catalogueEnvironment(): CatalogueEnvironment {
 
 const transport: CatalogueTransport = {
     flush: (url, headers) => router.flush(url, { headers }),
+    prepareComponent: component => router.resolveComponent(component),
     prepare(url, headers, account) {
         let cancel: (() => void) | undefined;
         let cancelled = false;
@@ -51,6 +53,34 @@ let broadcast: BroadcastChannel | undefined;
 let installed = false;
 let foreground = 0;
 let managedVisit: { href: string; failed: () => void } | undefined;
+let currentPage: (CatalogueSnapshot & { component?: string }) | undefined;
+
+export function preparePortal(href: string, page: CatalogueSnapshot & { component?: string }) {
+    const component = portalPageComponent(href, window.location.origin, page);
+    if (component && component !== page.component) return cataloguePrefetch.prepareCode(component);
+    if (canonicalCatalogueUrl(href, window.location.origin)) return cataloguePrefetch.prepare(href);
+    return Promise.resolve(false);
+}
+
+export function visitPortal(href: string, options: Parameters<typeof router.visit>[1] = {}) {
+    const url = new URL(href, window.location.origin);
+    if (url.origin !== window.location.origin) { router.visit(href, options); return; }
+    if (canonicalCatalogueUrl(href, window.location.origin)) return visitCatalogue(href, options);
+    href = url.pathname + url.search + url.hash;
+    if (!currentPage || !portalPageComponent(href, window.location.origin, currentPage)) {
+        router.visit(href, { ...options, fresh: true });
+        return;
+    }
+    invalidateCatalogue();
+    cataloguePrefetch.setBusy(true);
+    const current = { href, failed: () => options.onError?.({ navigation: 'Could not load this page. Please try again.' }) };
+    managedVisit = current;
+    const release = () => { if (managedVisit === current) managedVisit = undefined; cataloguePrefetch.setBusy(foreground > 0); };
+    router.visit(href, { ...options, fresh: true, headers: { ...options.headers, 'X-Bagoo-Navigation': '1' },
+        onFinish: visit => { release(); options.onFinish?.(visit); },
+        onCancel: () => { release(); options.onCancel?.(); },
+    });
+}
 
 export async function visitCatalogue(href: string, options: Parameters<typeof router.visit>[1] = {}) {
     const destination = canonicalCatalogueUrl(href, window.location.origin);
@@ -92,12 +122,13 @@ export function invalidateCatalogue(notify = true) {
 export function installCatalogueNavigation(initial: CatalogueSnapshot) {
     if (installed) return;
     installed = true;
+    currentPage = initial;
     cataloguePrefetch.observe(initial);
     router.on('before', event => {
         const visit = event.detail.visit;
         if (visit.prefetch || visit.headers.Purpose === 'prefetch') return;
         navigation++;
-        if (visit.headers['X-Bagoo-Catalogue'] !== '1') managedVisit = undefined;
+        if (visit.headers['X-Bagoo-Catalogue'] !== '1' && visit.headers['X-Bagoo-Navigation'] !== '1') managedVisit = undefined;
         if (visit.method !== 'get') invalidateCatalogue();
         else if (!canonicalCatalogueUrl(visit.url.href, window.location.origin) || visit.headers['X-Bagoo-Catalogue'] !== '1') cataloguePrefetch.clear();
         else cataloguePrefetch.prioritize(visit.url.href);
@@ -108,7 +139,7 @@ export function installCatalogueNavigation(initial: CatalogueSnapshot) {
     router.on('finish', event => {
         if (!event.detail.visit.prefetch && event.detail.visit.headers.Purpose !== 'prefetch') { foreground = Math.max(0, foreground - 1); cataloguePrefetch.setBusy(foreground > 0); }
     });
-    router.on('navigate', event => cataloguePrefetch.observe(event.detail.page));
+    router.on('navigate', event => { currentPage = event.detail.page; cataloguePrefetch.observe(event.detail.page); });
     const failed = (event: { preventDefault: () => void }) => {
         if (!managedVisit) return;
         const current = managedVisit; managedVisit = undefined;
