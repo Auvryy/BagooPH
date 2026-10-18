@@ -6,6 +6,7 @@ use App\Exceptions\CheckoutException;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\LogisticsHub;
+use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
@@ -14,6 +15,7 @@ use App\Services\Orders\CheckoutOrderService;
 use App\Services\Orders\CheckoutQuoteService;
 use App\Services\Orders\CheckoutSubmissionService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -62,8 +64,16 @@ class CheckoutController extends Controller
         }
 
         $quotes = app(CheckoutQuoteService::class);
+        $selection = $request->validate(['quantity' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'between:1,99']]);
+        $quantities = [];
+        if (isset($selection['quantity'])) {
+            if ($checkoutItems->count() !== 1) {
+                throw ValidationException::withMessages(['quantity' => 'Choose one product for Buy Now.']);
+            }
+            $quantities = [$checkoutItems->first()->id => (int) $selection['quantity']];
+        }
         try {
-            $checkoutItems = $quotes->selectedItems($user, $checkoutItems->pluck('id')->all());
+            $checkoutItems = $quotes->selectedItems($user, $checkoutItems->pluck('id')->all(), $quantities);
             $quote = $quotes->quote($checkoutItems);
         } catch (CheckoutException $exception) {
             return redirect()->route('buyer.cart')->with('error', $exception->getMessage());
@@ -84,6 +94,7 @@ class CheckoutController extends Controller
         return Inertia::render('Checkout/Index', [
             'cart' => $cart,
             'items' => $checkoutItems,
+            'itemQuantities' => $quantities,
             'subtotal' => $quote['subtotal'],
             'shippingFee' => $quote['shipping_fee'],
             'total' => $quote['total'],
@@ -96,7 +107,7 @@ class CheckoutController extends Controller
             'defaultAddressId' => $defaultAddress?->id,
             'addressBookLimit' => BuyerAddressService::LIMIT,
             'pickupHubs' => $pickupHubs,
-            'checkoutToken' => app(CheckoutSubmissionService::class)->issue($user, $cart),
+            'checkoutToken' => app(CheckoutSubmissionService::class)->issue($user, $cart, $checkoutItems),
         ]);
     }
 
@@ -113,7 +124,7 @@ class CheckoutController extends Controller
         return back()->with('success', 'Valid ID uploaded successfully! Your verification is now under review.');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $user = app(BuyerAccessService::class)->requirePortal($request->user());
 
@@ -146,6 +157,10 @@ class CheckoutController extends Controller
             }
             throw $e;
         } catch (CheckoutException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
             return back()->with('error', $e->getMessage());
         } catch (Throwable $e) {
             Log::warning('Checkout could not be saved.', ['buyer_id' => $user->id, 'exception' => get_class($e)]);

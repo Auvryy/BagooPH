@@ -52,7 +52,7 @@ class VoucherFundingFoundationTest extends TestCase
         $payload = ['checkout_token' => app(CheckoutSubmissionService::class)->issue($buyer, $cart), 'item_ids' => $items->pluck('id')->all(),
             'recipient_name' => $buyer->name, 'recipient_phone' => '09171234567', 'shipping_address' => '123 Mabini Street',
             'shipping_city' => 'Pasig', 'shipping_province' => 'Metro Manila', 'shipping_postal_code' => '1600',
-            'destination_barangay' => 'San Antonio', 'delivery_type' => 'doorstep'];
+            'destination_barangay' => 'San Antonio', 'delivery_type' => 'doorstep', 'payment_method' => 'cod'];
         $this->actingAs($buyer);
 
         return [$buyer, $cart, $items, $payload];

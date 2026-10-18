@@ -192,6 +192,22 @@ test('quote refresh cancels a previous selection and ignores a late response', a
     } finally { h.close(); }
 });
 
+test('Buy Now keeps the requested quantity in checkout and every voucher quote request', async () => {
+    await render(ui.Checkout, 'Checkout/Index', { ...checkoutProps, itemQuantities: { 10: 2 } });
+    assert.deepEqual(globalThis.voucherQuoteInput.item_quantities, { 10: 2 });
+    const h = harness();
+    try {
+        const selected = { ...input, item_quantities: { 10: 2 } };
+        h.render(selected); h.flush();
+        assert.deepEqual(h.requests[0].args[1].item_quantities, { 10: 2 });
+        h.requests[0].resolve({ data: { quote } }); await settle();
+        assert.equal(h.render(selected).ready, true);
+        assert.equal(h.render({ ...selected, item_quantities: { 10: 1 } }).ready, false);
+        h.flush();
+        assert.deepEqual(h.requests[1].args[1].item_quantities, { 10: 1 });
+    } finally { h.close(); }
+});
+
 test('a rejected voucher keeps the new base quote and its reason while blocking confirmation', async () => {
     const h = harness();
     try {

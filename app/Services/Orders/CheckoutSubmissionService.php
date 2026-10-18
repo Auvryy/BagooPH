@@ -15,20 +15,20 @@ use Illuminate\Validation\ValidationException;
 
 class CheckoutSubmissionService
 {
-    public function issue(User $actor, Cart $cart): string
+    public function issue(User $actor, Cart $cart, ?Collection $presentedItems = null): string
     {
         $buyer = app(BuyerAccessService::class)->requirePortal($actor);
         abort_unless(Cart::whereKey($cart->id)->where('user_id', $buyer->id)->exists(), 403);
 
-        $nonce = Str::random(64);
+        $nonce = Str::random(32).$this->priceSnapshot($cart, $presentedItems);
 
-        return 'v1.'.$nonce.'.'.$this->signature($buyer, $cart, $nonce);
+        return 'v2.'.$nonce.'.'.$this->signature($buyer, $cart, $nonce);
     }
 
     public function tokenHash(User $buyer, Cart $cart, mixed $token): string
     {
         Validator::make(['checkout_token' => $token], [
-            'checkout_token' => ['bail', 'required', 'string', 'size:132', 'regex:/\Av1\.[A-Za-z0-9]{64}\.[a-f0-9]{64}\z/'],
+            'checkout_token' => ['bail', 'required', 'string', 'size:132', 'regex:/\Av[12]\.[A-Za-z0-9]{64}\.[a-f0-9]{64}\z/'],
         ], ['checkout_token.*' => 'Reload checkout before confirming your order.'])->validate();
 
         $hash = hash('sha256', $token);
@@ -37,11 +37,36 @@ class CheckoutSubmissionService
             return $hash;
         }
         [, $nonce, $signature] = explode('.', $token);
-        if (! hash_equals($this->signature($buyer, $cart, $nonce), $signature)) {
+        if (! str_starts_with($token, 'v2.') || ! hash_equals($this->signature($buyer, $cart, $nonce), $signature)) {
             throw ValidationException::withMessages(['checkout_token' => 'Reload checkout before confirming your order.']);
         }
 
         return $hash;
+    }
+
+    public function assertCurrentPrices(Cart $cart, string $token): void
+    {
+        [, $nonce] = explode('.', $token);
+        if (! hash_equals(substr($nonce, 32), $this->priceSnapshot($cart))) {
+            throw ValidationException::withMessages(['checkout_token' => 'Your Bag or a product price changed. Reload checkout, review the updated total and confirm again.']);
+        }
+    }
+
+    private function priceSnapshot(Cart $cart, ?Collection $presentedItems = null): string
+    {
+        $presented = ($presentedItems ?? collect())->keyBy('id');
+        $rows = $cart->items()->with('product')->orderBy('id')->get()->map(function ($item) use ($presented) {
+            if ($shown = $presented->get($item->id)) {
+                $item->setRelation('product', $shown->product);
+            }
+            $size = collect($item->product?->variants['sizes'] ?? [])->firstWhere('name', $item->size);
+            $extra = $size['extra_price'] ?? 0;
+
+            return [$item->id, $item->product_id, $item->quantity, $item->color, $item->size,
+                $item->product?->price, is_numeric($extra) ? number_format((float) $extra, 2, '.', '') : null];
+        })->all();
+
+        return substr(hash('sha256', json_encode($rows, JSON_THROW_ON_ERROR)), 0, 32);
     }
 
     public function fingerprint(array $data, int $version = 2): string
@@ -84,6 +109,6 @@ class CheckoutSubmissionService
             throw new CheckoutException('Checkout is temporarily unavailable. Please try again later.');
         }
 
-        return hash_hmac('sha256', 'buyer-checkout:v1:'.$buyer->id.':'.$cart->id.':'.$nonce, $key);
+        return hash_hmac('sha256', 'buyer-checkout:v2:'.$buyer->id.':'.$cart->id.':'.$nonce, $key);
     }
 }

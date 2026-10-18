@@ -86,6 +86,7 @@ class CheckoutReplayTest extends TestCase
         [$buyer, $cart, $product, $payload] = $this->checkout();
         [$second, $secondLine] = $this->addShop($cart);
         $payload['item_ids'][] = $secondLine->id;
+        $payload['checkout_token'] = app(CheckoutSubmissionService::class)->issue($buyer, $cart);
         $payload['save_address'] = true;
         $payload['voucher_code'] = ' save_10 ';
         $voucher = $this->voucher();
@@ -225,6 +226,7 @@ class CheckoutReplayTest extends TestCase
         [$buyer, $cart, $product, $payload] = $this->checkout();
         [$second, $line] = $this->addShop($cart);
         $payload['item_ids'][] = $line->id;
+        $payload['checkout_token'] = app(CheckoutSubmissionService::class)->issue($buyer, $cart);
         $payload['voucher_code'] = 'SAVE_10';
         $payload['save_address'] = true;
         $voucher = $this->voucher();
@@ -306,7 +308,7 @@ class CheckoutReplayTest extends TestCase
         $payload['shipping_province'] = ' metro manila ';
         $payload['shipping_address'] = ' '.str_repeat('Ａ', 500).' ';
         $payload['save_address'] = true;
-        $payload['payment_method'] = 'card';
+        $payload['payment_method'] = 'cod';
         $payload['total_amount'] = 0;
         $payload['status'] = 'completed';
         $payload['buyer_id'] = 999999;
@@ -391,6 +393,7 @@ class CheckoutReplayTest extends TestCase
         [$buyer, $cart, $product, $payload] = $this->checkout();
         [$second, $line] = $this->addShop($cart, 'Lipa');
         $payload['item_ids'][] = $line->id;
+        $payload['checkout_token'] = app(CheckoutSubmissionService::class)->issue($buyer, $cart);
         $payload['voucher_code'] = 'SAVE_10';
         $payload['save_address'] = true;
         $voucher = $this->voucher();

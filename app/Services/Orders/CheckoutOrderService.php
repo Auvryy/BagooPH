@@ -66,12 +66,13 @@ class CheckoutOrderService
         }
 
         $submissions = app(CheckoutSubmissionService::class);
-        $tokenHash = $submissions->tokenHash($buyer, $cart, $data['checkout_token'] ?? null);
+        $confirmationToken = $data['checkout_token'] ?? null;
+        $tokenHash = $submissions->tokenHash($buyer, $cart, $confirmationToken);
         $data = app(CommerceInputService::class)->checkout($data, $cartItemIds);
         $cartItemIds = $data['item_ids'];
         $requestHash = $submissions->fingerprint($data);
 
-        return DB::transaction(function () use ($buyer, $cart, $cartItemIds, $data, $submissions, $tokenHash, $requestHash) {
+        return DB::transaction(function () use ($buyer, $cart, $cartItemIds, $data, $submissions, $tokenHash, $requestHash, $confirmationToken) {
             // Serialize the owned Bag before lines and the seller/shop/category/product locks.
             if (! Cart::whereKey($cart->id)->where('user_id', $buyer->id)->lockForUpdate()->first()) {
                 throw new CheckoutException('This Shopping Bag is unavailable to your account.');
@@ -100,6 +101,8 @@ class CheckoutOrderService
             if ($items->count() !== count($selectedIds)) {
                 throw new CheckoutException('One or more selected Shopping Bag items are unavailable.');
             }
+            $bagQuantities = $items->pluck('quantity', 'id');
+            $items = app(CheckoutQuoteService::class)->withQuantities($items, $data['item_quantities'] ?? []);
 
             $products = app(ShopEligibilityService::class)->lockSaleProducts(
                 $items->pluck('product_id')->unique()->all(), [$buyer->id]
@@ -115,6 +118,7 @@ class CheckoutOrderService
                 }
                 $item->setRelation('product', $product);
             }
+            $submissions->assertCurrentPrices($cart, $confirmationToken);
 
             try {
                 $this->inventory->assertCheckoutAvailability($items, $products);
@@ -233,7 +237,15 @@ class CheckoutOrderService
                 }
             }
 
-            CartItem::where('cart_id', $cart->id)->whereIn('id', $selectedIds)->delete();
+            foreach ($items as $item) {
+                $remaining = $bagQuantities[$item->id] - $item->quantity;
+                $line = CartItem::where('cart_id', $cart->id)->whereKey($item->id);
+                if ($remaining > 0) {
+                    $line->update(['quantity' => $remaining, 'unit_price' => $this->inventory->unitPrice($item->product, $item->color, $item->size)]);
+                } else {
+                    $line->delete();
+                }
+            }
 
             $submission = CheckoutSubmission::create([
                 'buyer_id' => $buyer->id, 'cart_id' => $cart->id, 'token_hash' => $tokenHash,

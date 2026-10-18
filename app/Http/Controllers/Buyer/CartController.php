@@ -144,7 +144,7 @@ class CartController extends Controller
         });
 
         if ($buyNow) {
-            return redirect()->route('checkout.index', ['items' => $line->id]);
+            return redirect()->route('checkout.index', ['items' => $line->id, 'quantity' => $quantity]);
         }
 
         return back()->with('success', "'{$product->name}' added to your shopping bag!");

@@ -59,6 +59,7 @@ interface Props {
     addressBookLimit?: number;
     pickupHubs?: PickupHubItem[];
     checkoutToken: string;
+    itemQuantities?: Record<number, number>;
 }
 
 export default function CheckoutIndex({ 
@@ -74,6 +75,7 @@ export default function CheckoutIndex({
     addressBookLimit = 10,
     pickupHubs = [],
     checkoutToken,
+    itemQuantities = {},
 }: Props) {
     const { flash } = usePage<PageProps>().props;
 
@@ -154,6 +156,7 @@ export default function CheckoutIndex({
     const { data, setData, post, processing, errors } = useForm({
         checkout_token: checkoutToken,
         item_ids: items.map(i => i.id),
+        item_quantities: itemQuantities,
         recipient_name: initialAddress?.recipient_name || user.name || '',
         recipient_phone: initialAddress?.phone || user.phone || '',
         shipping_address: initialAddress?.street || user.address || '',
@@ -220,6 +223,7 @@ export default function CheckoutIndex({
 
     const quoteInput = {
         item_ids: data.item_ids,
+        item_quantities: data.item_quantities,
         delivery_type: data.delivery_type,
         code: data.voucher_code,
         platform_voucher_revision_id: data.platform_voucher_revision_id,
@@ -406,7 +410,7 @@ export default function CheckoutIndex({
                         <ul className="list-disc pl-4 space-y-1">
                             {Array.from(new Set(Object.values(errors))).map(error => <li key={error}>{error}</li>)}
                         </ul>
-                        {errors.checkout_token && <Link href={route('checkout.index')} className="font-semibold underline">Reload checkout</Link>}
+                        {errors.checkout_token && <Link href={route('checkout.index', { items: data.item_ids.join(','), ...(Object.keys(data.item_quantities).length === 1 ? { quantity: Object.values(data.item_quantities)[0] } : {}) })} className="font-semibold underline">Reload checkout</Link>}
                     </div>
                 )}
 

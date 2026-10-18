@@ -3,12 +3,14 @@
 namespace App\Services\Commerce;
 
 use App\Rules\ApplicationText;
+use App\Rules\AsciiPositiveInteger;
 use App\Rules\PhilippineContact;
 use App\Services\ApplicationValidationService;
 use App\Services\Orders\VoucherSelectionService;
 use Closure;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Normalizer;
 
 class CommerceInputService
@@ -37,12 +39,18 @@ class CommerceInputService
             'notes' => $this->text('notes', 1, 500),
             'delivery_type' => ['nullable', Rule::in(['doorstep', 'hub_self_pickup'])],
             'pickup_hub_id' => ['bail', 'required_if:delivery_type,hub_self_pickup', 'nullable', $this->identifier(), 'integer'],
-            'payment_method' => ['nullable', Rule::in(['cod', 'card', 'bank_transfer', 'e_wallet'])],
+            'payment_method' => ['required', Rule::in(['cod'])],
             'voucher_code' => ['bail', 'nullable', 'string', 'max:50', 'regex:/\A[A-Z0-9_-]+\z/'],
             'save_address' => ['nullable', 'boolean'],
             'item_ids' => ['required', 'array', 'list', 'min:1'],
             'item_ids.*' => ['bail', 'required', $this->identifier(), 'integer', 'distinct'],
-        ])->validate();
+        ], ['payment_method.in' => 'Choose cash on delivery. Online payments are not available.',
+            'payment_method.required' => 'Choose cash on delivery before placing your order.'])->validate();
+
+        $quantities = $this->quantities($input['item_quantities'] ?? [], $itemIds);
+        if ($quantities !== []) {
+            $data['item_quantities'] = $quantities;
+        }
 
         foreach (['shipping_latitude', 'shipping_longitude', 'landmark', 'notes', 'voucher_code', 'pickup_hub_id'] as $field) {
             $data[$field] ??= null;
@@ -104,6 +112,26 @@ class CommerceInputService
         ])->validate();
 
         return array_map('intval', $data['item_ids']);
+    }
+
+    public function quantities(mixed $input, array $ids): array
+    {
+        $data = Validator::make(['item_quantities' => $input], [
+            'item_quantities' => ['present', 'array'],
+            'item_quantities.*' => ['bail', 'required', new AsciiPositiveInteger, 'integer', 'between:1,99'],
+        ])->validate()['item_quantities'];
+        if ($data === []) {
+            return [];
+        }
+        $keys = array_map('strval', array_keys($data));
+        $expected = array_map('strval', $ids);
+        if (count($keys) !== count($expected) || array_diff($keys, $expected) || array_diff($expected, $keys)) {
+            throw ValidationException::withMessages(['item_quantities' => 'Choose a quantity for each selected Bag item only.']);
+        }
+        $data = array_map('intval', $data);
+        ksort($data, SORT_NUMERIC);
+
+        return $data;
     }
 
     private function normalize(array $input, array $aliases): array

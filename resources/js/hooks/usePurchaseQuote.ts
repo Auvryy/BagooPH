@@ -41,6 +41,7 @@ export interface PurchaseQuote {
 
 interface QuoteInput {
     item_ids: number[];
+    item_quantities?: Record<number, number>;
     delivery_type?: 'doorstep' | 'hub_self_pickup';
     code?: string;
     platform_voucher_revision_id?: number | null;

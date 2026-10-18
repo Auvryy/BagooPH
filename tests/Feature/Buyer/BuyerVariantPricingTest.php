@@ -92,7 +92,7 @@ class BuyerVariantPricingTest extends TestCase
         $other = Product::factory()->create(['shop_id' => $shop->id]);
         $this->post(route('cart.store'), ['product_id' => $other->id, 'quantity' => 2])->assertSessionHasNoErrors();
         $this->post(route('cart.store'), ['product_id' => $product->id, 'quantity' => 1, 'color' => 'Red', 'size' => 'Large', 'buy_now' => true])
-            ->assertSessionHasNoErrors()->assertRedirect(route('checkout.index', ['items' => Cart::where('user_id', $buyer->id)->firstOrFail()->items()->where('product_id', $product->id)->firstOrFail()->id]));
+            ->assertSessionHasNoErrors()->assertRedirect(route('checkout.index', ['items' => Cart::where('user_id', $buyer->id)->firstOrFail()->items()->where('product_id', $product->id)->firstOrFail()->id, 'quantity' => 1]));
         $this->assertDatabaseHas('cart_items', ['product_id' => $other->id, 'quantity' => 2]);
         $this->assertDatabaseCount('orders', 0);
     }

@@ -22,7 +22,7 @@ use RuntimeException;
 
 class CheckoutQuoteService
 {
-    public function selectedItems(User $buyer, array $ids): Collection
+    public function selectedItems(User $buyer, array $ids, mixed $quantities = []): Collection
     {
         $buyer = app(BuyerAccessService::class)->requirePortal($buyer);
         $ids = app(CommerceInputService::class)->selection($ids);
@@ -35,6 +35,7 @@ class CheckoutQuoteService
         if ($items->contains(fn (CartItem $item) => ! $eligible->contains($item->product_id))) {
             throw new CheckoutException('One or more selected products or shops are unavailable.');
         }
+        $items = $this->withQuantities($items, $quantities);
         try {
             app(InventoryService::class)->assertCheckoutAvailability($items, $items->pluck('product')->keyBy('id'));
         } catch (RuntimeException $exception) {
@@ -42,6 +43,22 @@ class CheckoutQuoteService
         }
 
         return $items;
+    }
+
+    public function withQuantities(Collection $items, mixed $quantities = []): Collection
+    {
+        $quantities = app(CommerceInputService::class)->quantities($quantities, $items->pluck('id')->all());
+
+        return $items->map(function (CartItem $item) use ($quantities) {
+            $quantity = $quantities[$item->id] ?? $item->quantity;
+            if ($quantity > $item->quantity) {
+                throw new CheckoutException('A selected quantity exceeds the amount in your Bag. Review your selection.');
+            }
+            $copy = clone $item;
+            $copy->quantity = $quantity;
+
+            return $copy;
+        });
     }
 
     /** Current prices come from selectedItems or the locked final checkout. */
