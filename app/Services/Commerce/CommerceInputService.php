@@ -67,12 +67,13 @@ class CommerceInputService
         $input = $this->normalize($input, ['recipient_name' => 'name', 'phone' => 'phone', 'street' => 'address',
             'city' => 'city', 'province' => 'province', 'barangay' => 'barangay', 'postal_code' => 'postal_code']);
         $data = Validator::make($input, [
+            'region' => ['bail', 'required', 'string', 'regex:/\A[0-9]{10}\z/'],
             'recipient_name' => $this->text('name', 2, 100, true),
             'phone' => ['bail', 'required', 'string', new PhilippineContact],
             'street' => $this->text('address', 5, 500, true),
             'city' => $this->text('location', 2, 100, true),
-            'province' => $this->text('location', 2, 100),
-            'barangay' => $this->text('location', 2, 100),
+            'province' => $this->text('location', 2, 100, true),
+            'barangay' => $this->text('location', 2, 100, true),
             'postal_code' => ['bail', 'nullable', 'string', 'regex:/\A[0-9]{4}\z/'],
             'latitude' => $this->coordinate('longitude', 90),
             'longitude' => $this->coordinate('latitude', 180),
@@ -92,7 +93,7 @@ class CommerceInputService
         $data['type'] ??= 'Home';
         $data['is_default'] = (bool) ($data['is_default'] ?? false);
 
-        return $data;
+        return app(PhilippineAddressCatalog::class)->validate($data);
     }
 
     public function selection(array $ids): array

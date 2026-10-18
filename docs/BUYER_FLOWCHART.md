@@ -30,6 +30,34 @@ Successful checkout and My Purchases links open the existing purchases and track
 
 Account settings keep the original sign-in email and allow verified additional contact/recovery addresses with current-password confirmation and an emailed code. Buyers edit contact numbers and profile photos directly; address changes require an active approved account. Saving a photo updates the profile and header from the saved result. Addresses apply to future orders; existing order snapshots remain intact. Present recorded first, middle and last names separately; never guess missing components from a legacy combined name. Legal name, birth date and private identity evidence use the correction request and history beside identity information in settings, with Platform Admin review. Unreviewed buyers correct their application in the marketplace modal.
 
+### Delivery address book
+
+An active approved buyer may save up to **10** delivery addresses. Recipient name
+is an editable delivery contact, separate from the account's reviewed legal
+identity. Require recipient, Philippine mobile number, region, province/area,
+city/municipality, barangay and meaningful street details. Postal code is optional
+in the address book and must contain four digits when supplied; checkout retains
+its own required postal-code rule.
+
+Location choices follow their selected parents. Changing a region, province/area
+or city clears its descendants, and direct submissions must satisfy the same
+hierarchy. Keep entered contact and street details when location loading fails;
+show a retry action and wait for usable choices before saving. NCR uses Metro
+Manila as its area. Geographic validity does not promise an available delivery
+route.
+
+The first saved address is default. Adding another preserves that default unless
+the buyer explicitly chooses a replacement. Changing the default leaves exactly
+one selected, and checkout preselects its saved recipient and location. A default
+address cannot be deleted, including when it is the only address: choose or add
+another default first. Existing addresses remain editable when the book is full;
+checkout can use a new address without saving it.
+
+Read, edit, default and delete operations must remain scoped to the owning buyer.
+Address changes never update an existing order, parcel or waybill. Printed
+recipient details use the order snapshot, including barangay, province and postal
+code; missing historical values must not be replaced by current profile data.
+
 ## 2. Doorstep Delivery
 
 ```text

@@ -7,12 +7,12 @@ import { companyInitialsError, companyTinError, documentError, licenseNumberErro
 export type PersonalNameField = 'first_name' | 'middle_initial' | 'last_name';
 export type PersonalNameValues = Record<PersonalNameField, string>;
 
-export function personalNameError(value: string, label: string, required = true): string | undefined {
+export function personalNameError(value: string, label: string, required = true, maximum = 50): string | undefined {
     if (/[\p{C}\u034f\ufe00-\ufe0f]/u.test(value)) return 'Remove hidden characters from your name.';
     const name = value.normalize('NFKC').replace(/^ +| +$/g, '');
     if (!name) return required ? label + ' is required.' : undefined;
     const minimum = required ? 2 : 1;
-    if (Array.from(name).length < minimum || Array.from(name).length > 50) return label + ' must contain ' + minimum + ' to 50 characters.';
+    if (Array.from(name).length < minimum || Array.from(name).length > maximum) return label + ' must contain ' + minimum + ' to ' + maximum + ' characters.';
     if (!/^[\p{Script=Latin}\p{M} .’'\-]+$/u.test(name) || !/\p{Script=Latin}/u.test(name)) {
         return 'Use letters, spaces, apostrophes, hyphens or periods. Numbers and other symbols are not allowed.';
     }

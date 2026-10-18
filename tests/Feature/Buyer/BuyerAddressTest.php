@@ -78,11 +78,12 @@ class BuyerAddressTest extends TestCase
         ]);
 
         $response = $this->actingAs($buyer)->post('/buyer/addresses', [
+            'region' => '1300000000',
             'recipient_name' => 'Juan Dela Cruz',
             'phone' => '+63 917 111 2222',
             'province' => 'Metro Manila',
             'city' => 'Taguig City',
-            'barangay' => 'BGC',
+            'barangay' => 'Fort Bonifacio',
             'street' => 'Unit 1204 High Street Residences',
             'postal_code' => '1634',
             'type' => 'Home',
@@ -93,9 +94,9 @@ class BuyerAddressTest extends TestCase
 
         $this->assertDatabaseHas('addresses', [
             'user_id' => $buyer->id,
-            'recipient_name' => $buyer->name,
+            'recipient_name' => 'Juan Dela Cruz',
             'phone' => '+639171112222',
-            'city' => 'Taguig City',
+            'city' => 'City of Taguig',
             'street' => 'Unit 1204 High Street Residences',
             'is_default' => true, // First address automatically becomes default
         ]);
@@ -111,6 +112,9 @@ class BuyerAddressTest extends TestCase
         $this->assertEquals(0, $buyer->addresses()->count());
 
         $this->actingAs($buyer)->post('/buyer/addresses', [
+            'region' => '1300000000',
+            'province' => 'Metro Manila',
+            'barangay' => 'Poblacion',
             'recipient_name' => 'First Address',
             'phone' => '+63 917 111 0000',
             'city' => 'Makati',
@@ -137,9 +141,12 @@ class BuyerAddressTest extends TestCase
         ]);
 
         $this->actingAs($buyer)->post('/buyer/addresses', [
-            'recipient_name' => 'Address 2',
+            'region' => '1300000000',
+            'province' => 'Metro Manila',
+            'recipient_name' => 'Address Two',
             'phone' => '+63 917 000 0002',
             'city' => 'Pasig',
+            'barangay' => 'San Antonio',
             'street' => 'Street 2',
             'is_default' => false,
         ]);
@@ -165,9 +172,12 @@ class BuyerAddressTest extends TestCase
         ]);
 
         $this->actingAs($buyer)->post('/buyer/addresses', [
-            'recipient_name' => 'Address 2',
+            'region' => '1300000000',
+            'province' => 'Metro Manila',
+            'recipient_name' => 'Address Two',
             'phone' => '+63 917 000 0002',
             'city' => 'Pasig',
+            'barangay' => 'San Antonio',
             'street' => 'Street 2',
             'is_default' => true,
         ]);
@@ -212,7 +222,7 @@ class BuyerAddressTest extends TestCase
         $this->assertTrue($addr2->is_default);
     }
 
-    public function test_user_can_delete_address_and_oldest_becomes_default(): void
+    public function test_default_cannot_be_deleted_until_another_default_is_chosen(): void
     {
         $buyer = User::factory()->create(['role' => 'buyer']);
 
@@ -234,7 +244,9 @@ class BuyerAddressTest extends TestCase
             'is_default' => true,
         ]);
 
-        $response = $this->actingAs($buyer)->delete("/buyer/addresses/{$addr2->id}");
+        $this->actingAs($buyer)->delete("/buyer/addresses/{$addr2->id}")->assertSessionHasErrors('address_book');
+        $this->post("/buyer/addresses/{$addr1->id}/default")->assertSessionHasNoErrors();
+        $response = $this->delete("/buyer/addresses/{$addr2->id}");
         $response->assertRedirect();
         $response->assertSessionHas('success');
 
@@ -350,13 +362,13 @@ class BuyerAddressTest extends TestCase
         $savedAddress = Address::where('user_id', $buyer->id)->first();
         $this->assertSame('New Address Recipient', Order::where('buyer_id', $buyer->id)->firstOrFail()->recipient_name);
         $this->assertNotNull($savedAddress);
-        $this->assertEquals($buyer->name, $savedAddress->recipient_name);
+        $this->assertEquals('New Address Recipient', $savedAddress->recipient_name);
         $this->assertEquals('+639185556666', $savedAddress->phone);
         $this->assertEquals('99 Sunset Blvd', $savedAddress->street);
-        $this->assertEquals('Pasig City', $savedAddress->city);
+        $this->assertEquals('City of Pasig', $savedAddress->city);
     }
 
-    public function test_address_recipient_name_is_strictly_locked_to_user_real_name_ignoring_payload(): void
+    public function test_delivery_recipient_is_editable_without_changing_the_registered_name(): void
     {
         $buyer = User::factory()->create([
             'name' => 'Maria Clara Santos',
@@ -365,18 +377,21 @@ class BuyerAddressTest extends TestCase
             'kyc_status' => 'approved',
         ]);
 
-        // Attempt to spoof recipient name via address book endpoint
+        // Delivery recipients are separate from reviewed account identity.
         $this->actingAs($buyer)->post('/buyer/addresses', [
-            'recipient_name' => 'Fake Spoofed Name',
+            'region' => '1300000000',
+            'province' => 'Metro Manila',
+            'recipient_name' => 'Delivery Recipient',
             'phone' => '+63 917 123 4567',
             'city' => 'Quezon City',
+            'barangay' => 'Central',
             'street' => '101 Katipunan Ave',
             'type' => 'Home',
         ]);
 
         $address = Address::where('user_id', $buyer->id)->first();
         $this->assertNotNull($address);
-        $this->assertEquals('Maria Clara Santos', $address->recipient_name);
-        $this->assertNotEquals('Fake Spoofed Name', $address->recipient_name);
+        $this->assertEquals('Delivery Recipient', $address->recipient_name);
+        $this->assertEquals('Maria Clara Santos', $buyer->fresh()->name);
     }
 }

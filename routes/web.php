@@ -511,9 +511,11 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
             Route::post('/saved-products/{product}', [SavedProductController::class, 'store'])->whereNumber('product')->name('saved-products.store');
             Route::delete('/saved-products/{product}', [SavedProductController::class, 'destroy'])->whereNumber('product')->name('saved-products.destroy');
             Route::post('/addresses', [BuyerProfileController::class, 'storeAddress'])->name('addresses.store');
-            Route::patch('/addresses/{address}', [BuyerProfileController::class, 'updateAddress'])->name('addresses.update');
-            Route::post('/addresses/{address}/default', [BuyerProfileController::class, 'setDefaultAddress'])->name('addresses.default');
-            Route::delete('/addresses/{address}', [BuyerProfileController::class, 'destroyAddress'])->name('addresses.destroy');
+            Route::get('/address-locations', [BuyerProfileController::class, 'addressLocations'])->name('addresses.locations');
+            Route::get('/addresses/{address}/edit', [BuyerProfileController::class, 'editAddress'])->where('address', '[1-9][0-9]{0,17}')->name('addresses.edit');
+            Route::patch('/addresses/{address}', [BuyerProfileController::class, 'updateAddress'])->where('address', '[1-9][0-9]{0,17}')->name('addresses.update');
+            Route::post('/addresses/{address}/default', [BuyerProfileController::class, 'setDefaultAddress'])->where('address', '[1-9][0-9]{0,17}')->name('addresses.default');
+            Route::delete('/addresses/{address}', [BuyerProfileController::class, 'destroyAddress'])->where('address', '[1-9][0-9]{0,17}')->name('addresses.destroy');
             Route::get('/messages', [ChatController::class, 'buyerInbox'])->name('messages');
             Route::get('/disputes', [BuyerDisputeController::class, 'index'])->name('disputes.index');
             Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');

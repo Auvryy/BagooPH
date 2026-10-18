@@ -118,7 +118,9 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - Logistics service regions are a non-empty, distinct allowlisted collection independent of the office address. Save every selected region through registration and reviewed corrections. Declared regions do not create hubs, enable unsupported transport or bypass operational serviceability.
 - Shop names are unique across the platform after Unicode normalization, case folding and spacing normalization, including inactive shops. Preflight never reserves a name or mobile: final writes and reviewed corrections recheck ownership, and database constraints reject simultaneous conflicting writes with field errors. Legacy conflicts stop the migration before any changes. Separate shop/company public contacts and order-recipient numbers remain shareable.
 - An unapproved, rejected, suspended, or deleted buyer cannot place an order.
-- Saved-address create/update/delete actions are owner-scoped. A buyer cannot submit another user's address ID.
+- Saved-address reads, edits, default changes and deletion are owner-scoped and require the documented buyer access. Another buyer or role cannot use a manipulated address ID.
+- Saved delivery recipients are editable independently of reviewed account identity. Require a real Philippine mobile and complete parent-linked region, province/area, city/municipality and barangay plus meaningful street details. Normalize accepted mobile forms; reject fabricated parent relationships on the server.
+- Enforce a maximum of ten saved addresses under the buyer's mutation lock, including optional saves during checkout. The first address is default; later additions preserve it unless explicitly replaced. Reject deleting any current default until another address is selected. A failed insert, switch, deletion or checkout save preserves records, defaults, stock and checkout retry state.
 - Checkout snapshots the recipient and address. Later profile edits never rewrite an existing order or waybill.
 - A serviceability check uses normalized location data and the logistics network, not a buyer-controlled province label or GPS pin alone.
 

@@ -10,7 +10,7 @@ import VoucherOfferList from '@/Components/VoucherOfferList';
 import BuyerVoucherCollection, { BuyerVoucherCollectionData } from '@/Components/Vouchers/BuyerVoucherCollection';
 import { VoucherOffer } from '@/hooks/usePurchaseQuote';
 import PhoneInput from '@/Components/PhoneInput';
-import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
+import BuyerAddressEditor from '@/Components/BuyerAddressEditor';
 import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
 import { OrderTrackingStatus } from '@/Components/OrderTrackingPanel';
 import { setupBuyerProfileWorkspace } from '@/utils/buyerProfileWorkspace';
@@ -70,6 +70,8 @@ interface WalletData {
 interface Props {
     user: User;
     addresses: Address[];
+    editingAddressId?: number | null;
+    addressBookLimit?: number;
     wallet: WalletData;
     orders: PaginatedData<Order>;
     orderCounts: Record<string, number>;
@@ -93,7 +95,9 @@ interface ProfileFormData {
 
 export default function BuyerProfile({ 
     user, 
-    addresses: initialAddresses, 
+    addresses: initialAddresses,
+    editingAddressId = null,
+    addressBookLimit = 10,
     wallet: initialWallet, 
     orders,
     orderCounts,
@@ -178,8 +182,9 @@ export default function BuyerProfile({
     };
     const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
     const wallet = initialWallet;
-    const [showAddressModal, setShowAddressModal] = useState(false);
-    const [editingAddress, setEditingAddress] = useState<number | null>(null);
+    const [showAddressModal, setShowAddressModal] = useState(Boolean(editingAddressId));
+    const [editingAddress, setEditingAddress] = useState<number | null>(editingAddressId);
+    const addressGuard = useRef(false);
     const [addressPending, setAddressPending] = useState<number | null>(null);
     const [addressActionError, setAddressActionError] = useState('');
 
@@ -262,20 +267,6 @@ export default function BuyerProfile({
         password: '',
         password_confirmation: '',
     });
-
-    // New Address Form (PSGC)
-    const addressForm = useForm({
-        recipient_name: user.name,
-        phone: user.phone || '',
-        province: user.province || '',
-        city: user.city || '',
-        barangay: user.barangay || '',
-        street: user.address || '',
-        postal_code: user.postal_code || '',
-        type: 'Home',
-        is_default: false,
-    });
-    const { data: newAddress, setData: setNewAddress } = addressForm;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -402,40 +393,30 @@ export default function BuyerProfile({
         });
     };
 
-    const handleAddAddress = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newAddress.street || addressForm.processing) return;
-
-        const options = {
-            preserveScroll: true,
-            onSuccess: () => {
-                setShowAddressModal(false);
-                setEditingAddress(null);
-                addressForm.reset();
-            },
-        };
-        if (editingAddress) addressForm.patch(route('buyer.addresses.update', editingAddress), options);
-        else addressForm.post(route('buyer.addresses.store'), options);
-    };
-
     const openAddress = (address?: Address) => {
-        addressForm.clearErrors();
-        setEditingAddress(address?.id ?? null);
-        setNewAddress({ recipient_name: user.name, phone: address?.phone || user.phone || '', province: address?.province || '', city: address?.city || '', barangay: address?.barangay || '', street: address?.street || '', postal_code: address?.postal_code || '', type: address?.type || 'Home', is_default: address?.is_default ?? false });
+        if (!canUsePortal || (!address && addresses.length >= addressBookLimit)) return;
+        setAddressActionError('');
+        if (address) {
+            router.get(route('buyer.addresses.edit', address.id), {}, { preserveScroll: true });
+            return;
+        }
+        setEditingAddress(null);
         setShowAddressModal(true);
     };
     const addressOptions = {
         preserveScroll: true,
         onError: (errors: Record<string, string>) => setAddressActionError(Object.values(errors).join(' ')),
-        onFinish: () => setAddressPending(null),
+        onFinish: () => { addressGuard.current = false; setAddressPending(null); },
     };
     const setDefaultAddress = (id: number) => {
-        if (addressPending !== null) return;
+        if (addressGuard.current) return;
+        addressGuard.current = true;
         setAddressPending(id); setAddressActionError('');
         router.post(route('buyer.addresses.default', id), {}, addressOptions);
     };
     const handleDeleteAddress = (id: number) => {
-        if (addressPending !== null || !confirm('Are you sure you want to delete this delivery address?')) return;
+        if (addressGuard.current || !confirm('Delete this saved address? Existing orders keep their delivery details.')) return;
+        addressGuard.current = true;
         setAddressPending(id); setAddressActionError('');
         router.delete(route('buyer.addresses.destroy', id), addressOptions);
     };
@@ -1250,14 +1231,14 @@ export default function BuyerProfile({
                             <div data-buyer-profile-scroll scroll-region="" role="region" aria-label="Delivery addresses" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll flex flex-col gap-6 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs">
                                 <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
                                     <div>
-                                        <h3 className="text-base font-black text-slate-900">PSGC Delivery Address Book</h3>
-                                        <p className="text-xs text-slate-500 font-sans">Manage doorstep drop-off destinations for Bagoo Express riders</p>
+                                        <h3 className="text-base font-black text-slate-900">Delivery addresses</h3>
+                                        <p className="text-xs text-slate-500 font-sans">Save up to {addressBookLimit} addresses for future deliveries. {addresses.length} of {addressBookLimit} saved.</p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => openAddress()}
-                                        disabled={!canUsePortal}
-                                        className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-xl text-xs font-sans font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
+                                        disabled={!canUsePortal || addresses.length >= addressBookLimit}
+                                        className="disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-xl text-xs font-sans font-bold uppercase transition flex items-center gap-1.5 shadow-xs"
                                     >
                                         <Plus className="w-3.5 h-3.5" />
                                         <span>Add New Address</span>
@@ -1266,6 +1247,7 @@ export default function BuyerProfile({
 
                                 <div className={addresses.length === 0 ? 'flex min-h-[16rem] flex-1 flex-col gap-4 lg:min-h-0' : 'space-y-4'}>
                                     {!canUsePortal && <p className="rounded-xl border border-slate-300 bg-slate-50 p-3 text-xs text-slate-600">Address changes become available when your buyer account is active and approved.</p>}
+                                    {addresses.length >= addressBookLimit && <p role="status" className="rounded-xl border border-slate-300 bg-slate-50 p-3 text-xs text-slate-700">Your address book is full. Remove a non-default address before adding another.</p>}
                                     {addressActionError && <p role="alert" className="text-sm text-rose-700">{addressActionError}</p>}
                                     {addressPending !== null && <p role="status" className="text-sm text-slate-600">Updating your address book...</p>}
                                     {addresses.length === 0 && (
@@ -1282,8 +1264,8 @@ export default function BuyerProfile({
                                                 addr.is_default ? 'bg-amber-50/40 border-amber-300 shadow-xs' : 'bg-slate-50 border-slate-200'
                                             }`}
                                         >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2 font-sans text-xs">
+                                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2 font-sans text-xs">
                                                     <span className="font-bold text-slate-900">{addr.recipient_name}</span>
                                                     <span className="text-slate-400">•</span>
                                                     <span className="text-slate-600">{addr.phone}</span>
@@ -1292,7 +1274,7 @@ export default function BuyerProfile({
                                                     </span>
                                                 </div>
 
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex flex-wrap items-center gap-3">
                                                     <button type="button" disabled={!canUsePortal || addressPending !== null} onClick={() => openAddress(addr)} className="text-[11px] font-semibold text-[#C20836] underline disabled:opacity-50">Edit</button>
                                                     {addr.is_default ? (
                                                         <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-sans font-bold">
@@ -1309,13 +1291,14 @@ export default function BuyerProfile({
                                                         </button>
                                                     )}
 
-                                                    {addresses.length > 1 && (
+                                                    {(
                                                         <button
                                                             type="button"
                                                             onClick={() => handleDeleteAddress(addr.id)}
-                                                            disabled={!canUsePortal || addressPending !== null}
-                                                            className="text-slate-400 hover:text-rose-600 transition p-1 cursor-pointer"
-                                                            title="Delete address"
+                                                            disabled={!canUsePortal || addressPending !== null || addr.is_default}
+                                                            className="text-slate-400 hover:text-rose-600 transition p-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                                            title={addr.is_default ? 'Choose another default before deleting this address' : 'Delete address'}
+                                                            aria-label={addr.is_default ? 'Default address cannot be deleted' : 'Delete address'}
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                         </button>
@@ -1323,9 +1306,11 @@ export default function BuyerProfile({
                                                 </div>
                                             </div>
 
+                                            {addr.is_default && <p className="text-xs text-slate-500">To remove this address, choose another saved address as default first.</p>}
                                             <p className="text-xs text-slate-700 font-sans">
-                                                {[addr.street, addr.barangay, addr.city, addr.province].filter(Boolean).join(', ')}
+                                                {[addr.street, addr.barangay, addr.city, addr.province, addr.postal_code].filter(Boolean).join(', ')}
                                             </p>
+                                            {addr.region_name && <p className="text-xs text-slate-500">{addr.region_name}</p>}
                                         </div>
                                     ))}
                                 </div>
@@ -1364,104 +1349,7 @@ export default function BuyerProfile({
 
                 </div>
 
-                {/* 3. MODAL: ADD PSGC ADDRESS */}
-                {showAddressModal && (
-                    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-4 font-sans animate-scale-in max-h-[92vh] overflow-y-auto">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 font-sans">
-                                <h3 className="font-bold text-slate-900 text-sm uppercase">{editingAddress ? 'Edit delivery address' : 'Add Philippine delivery address'}</h3>
-                                <button onClick={() => setShowAddressModal(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
-                            </div>
-
-                            <form onSubmit={handleAddAddress} className="space-y-4 text-xs">
-                                {addressForm.errors.recipient_name && <p role="alert" className="text-rose-600">{addressForm.errors.recipient_name}</p>}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-bold text-slate-700 mb-1 font-sans flex items-center justify-between">
-                                            <span>Recipient Name</span>
-                                            <span className="text-[10px] text-slate-400 font-sans font-normal flex items-center gap-1">
-                                                <Lock className="w-3 h-3 text-slate-400" />
-                                                Verified Real Name
-                                            </span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={user.name}
-                                            readOnly
-                                            disabled
-                                            className="w-full rounded-xl bg-slate-100 border border-slate-200 p-2.5 text-xs text-slate-600 cursor-not-allowed select-none font-medium"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-700 mb-1 font-sans">Phone Number</label>
-                                        <PhoneInput
-                                            value={newAddress.phone}
-                                            onChange={(val) => setNewAddress({ ...newAddress, phone: val })}
-                                            placeholder="917 123 4567"
-                                            accentColor="primary"
-                                            error={addressForm.errors.phone}
-                                            helperText="10-digit mobile number (e.g. 917 123 4567)"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <PhilippineAddressSelector
-                                    values={{
-                                        province: newAddress.province,
-                                        city: newAddress.city,
-                                        municipality: newAddress.city,
-                                        barangay: newAddress.barangay,
-                                        address: newAddress.street,
-                                    }}
-                                    onChange={(addr) => {
-                                        setNewAddress(prev => ({
-                                            ...prev,
-                                            province: addr.province,
-                                            city: addr.city || addr.municipality,
-                                            barangay: addr.barangay,
-                                            street: addr.address,
-                                        }));
-                                    }}
-                                    accentColor="primary"
-                                    errors={{province: addressForm.errors.province, city: addressForm.errors.city,
-                                        municipality: addressForm.errors.city, barangay: addressForm.errors.barangay, address: addressForm.errors.street}}
-                                    required={true}
-                                    streetLabel="Street Name, Building, House No."
-                                    streetPlaceholder="e.g. Unit 402, High Street Tower, 26th St."
-                                />
-
-                                <div>
-                                    <label className="block font-bold text-slate-700 mb-1" htmlFor="address-postal-code">Postal code (optional)</label>
-                                    <input id="address-postal-code" type="text" inputMode="numeric" maxLength={4} pattern="[0-9]{4}"
-                                        value={newAddress.postal_code} onChange={event => addressForm.setData('postal_code', event.target.value)}
-                                        className="w-full rounded-xl border border-slate-300 p-2.5 text-xs" />
-                                    {addressForm.errors.postal_code && <p className="text-rose-600 mt-1">{addressForm.errors.postal_code}</p>}
-                                </div>
-
-                                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                                    <label className="flex items-center gap-2 font-sans text-xs cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={newAddress.is_default}
-                                            onChange={(e) => setNewAddress({ ...newAddress, is_default: e.target.checked })}
-                                            className="rounded text-[#E00D42] focus:ring-[#E00D42]"
-                                        />
-                                        <span>Set as default shipping address</span>
-                                    </label>
-
-                                    <button
-                                        type="submit"
-                                        disabled={addressForm.processing}
-                                        className="px-5 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold uppercase rounded-xl transition shadow-xs"
-                                    >
-                                        {addressForm.processing ? 'Saving...' : editingAddress ? 'Save changes' : 'Save address'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
+                {showAddressModal && <BuyerAddressEditor user={user} address={addresses.find(address => address.id === editingAddress)} count={addresses.length} limit={addressBookLimit} onClose={() => setShowAddressModal(false)} />}
 
             </div>
         </BuyerLayout>

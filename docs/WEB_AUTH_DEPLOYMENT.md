@@ -234,3 +234,27 @@ own status and Request review while protected work remains blocked. Check admin
 review, an outdated request, reopening an application without approval, ordinary
 reactivation eligibility and the owner response. Verify actual inbox delivery on
 the deployed mail service; local mail fakes and SQLite tests do not establish it.
+
+## Buyer address book update
+
+After publishing and pulling the address-book branch, run the normal
+`./bagoo.sh deploy` and `./bagoo.sh verify`. Confirm
+`2026_10_18_120000_add_region_to_saved_addresses` is **Ran**. This additive
+migration keeps existing saved addresses and order snapshots; it requires no
+fresh database or reseed. Older addresses retain a missing region until their
+owner saves a valid selection. The form can resolve an unambiguous existing
+province/city when opened, without silently rewriting stored records.
+
+On the deployed buyer portal, add and reload an address with a different delivery
+recipient, change parent locations, switch the default and try deleting the
+current default. Check the ten-address limit and checkout's default recipient.
+An address-book postal code may be empty; checkout still requires its own postal
+code. Edit a previously used address and check that the existing buyer order,
+seller view and printed waybill retain the original recipient and complete
+location. Check a failed location request and retry on the actual device.
+
+The local geographic reference is shipped with the code and has no new runtime
+service or secret configuration. Its [source and cutoff](../resources/data/philippine-addresses/README.md)
+are documented separately. Saving an address does not promise that checkout has
+a serviceable parcel route. Automated local checks do not establish Azure,
+interactive browser or printer behavior.

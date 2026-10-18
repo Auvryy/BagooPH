@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\LogisticsHub;
 use App\Services\BuyerAccessService;
+use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
 use App\Services\KycSubmissionService;
 use App\Services\Orders\CheckoutOrderService;
@@ -93,6 +94,7 @@ class CheckoutController extends Controller
             'kycFeedback' => $user->kyc_feedback,
             'addresses' => $addresses,
             'defaultAddressId' => $defaultAddress?->id,
+            'addressBookLimit' => BuyerAddressService::LIMIT,
             'pickupHubs' => $pickupHubs,
             'checkoutToken' => app(CheckoutSubmissionService::class)->issue($user, $cart),
         ]);

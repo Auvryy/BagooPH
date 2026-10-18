@@ -19,6 +19,8 @@ export interface Address {
     user_id: number;
     recipient_name: string;
     phone: string;
+    region?: string | null;
+    region_name?: string | null;
     province?: string | null;
     city: string;
     barangay?: string | null;

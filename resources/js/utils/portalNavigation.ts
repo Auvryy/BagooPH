@@ -51,7 +51,7 @@ export function buyerProfileProps(tab: BuyerProfileTab): string[] {
     const sections: Record<BuyerProfileTab, string[]> = {
         orders: ['orders', 'ordersCount', 'orderCounts', 'currentOrderStatus'],
         account: ['identityCorrection', 'emailSettings'],
-        addresses: ['addresses'],
+        addresses: ['addresses', 'editingAddressId', 'addressBookLimit'],
         wallet: ['wallet'],
         vouchers: ['availableVouchers', 'availableVoucherCount', 'voucherCollection'],
     };

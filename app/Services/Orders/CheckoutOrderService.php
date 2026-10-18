@@ -16,6 +16,7 @@ use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
 use App\Services\Commerce\InventoryService;
+use App\Services\Commerce\PhilippineAddressCatalog;
 use App\Services\Finance\CodMoney;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Notifications\LifecycleNoticeService;
@@ -209,13 +210,26 @@ class CheckoutOrderService
             }
 
             if ($data['save_address']) {
-                app(BuyerAddressService::class)->create($buyer, [
-                    'phone' => $data['recipient_phone'], 'province' => $data['shipping_province'],
-                    'city' => $data['shipping_city'], 'barangay' => $data['destination_barangay'],
-                    'street' => $data['shipping_address'], 'postal_code' => $data['shipping_postal_code'],
-                    'latitude' => $data['shipping_latitude'], 'longitude' => $data['shipping_longitude'],
-                    'landmark' => $data['landmark'], 'type' => 'Home', 'is_default' => false,
-                ]);
+                try {
+                    app(BuyerAddressService::class)->create($buyer, [
+                        'recipient_name' => $data['recipient_name'],
+                        'region' => app(PhilippineAddressCatalog::class)->regionFor($data['shipping_province'], $data['shipping_city']),
+                        'phone' => $data['recipient_phone'], 'province' => $data['shipping_province'],
+                        'city' => $data['shipping_city'], 'barangay' => $data['destination_barangay'],
+                        'street' => $data['shipping_address'], 'postal_code' => $data['shipping_postal_code'],
+                        'latitude' => $data['shipping_latitude'], 'longitude' => $data['shipping_longitude'],
+                        'landmark' => $data['landmark'], 'type' => 'Home', 'is_default' => false,
+                    ]);
+                } catch (ValidationException $exception) {
+                    $fields = ['phone' => 'recipient_phone', 'street' => 'shipping_address', 'city' => 'shipping_city',
+                        'province' => 'shipping_province', 'barangay' => 'destination_barangay', 'postal_code' => 'shipping_postal_code',
+                        'latitude' => 'shipping_latitude', 'longitude' => 'shipping_longitude', 'region' => 'shipping_province'];
+                    $errors = [];
+                    foreach ($exception->errors() as $field => $messages) {
+                        $errors[$fields[$field] ?? $field] = $messages;
+                    }
+                    throw ValidationException::withMessages($errors);
+                }
             }
 
             CartItem::where('cart_id', $cart->id)->whereIn('id', $selectedIds)->delete();
