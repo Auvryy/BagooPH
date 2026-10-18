@@ -2093,7 +2093,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 <div className="space-y-1">
                                                     <button
                                                         type="button"
-                                                        onClick={() => openStockEditor(product)}
+                                                        onClick={() => product.variants?.combinations ? openEdit(product) : openStockEditor(product)}
                                                         aria-label={`Update available stock for ${product.name}`}
                                                         className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-[11px] font-bold transition hover:shadow-xs ${
                                                             product.stock > 5 ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-500' : (product.stock > 0 ? 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-500' : 'border-rose-300 bg-rose-50 text-rose-800 hover:border-rose-500')
@@ -2105,7 +2105,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                     <p className="text-[10px] text-slate-500">
                                                         {Number(product.open_order_units || 0)} reserved in open orders · Click to update
                                                     </p>
-                                                    {product.variants?.sizes?.length ? <details className="text-[11px] text-slate-600">
+                                                    {product.variants?.combinations ? <details className="text-[11px] text-slate-600"><summary className="cursor-pointer font-semibold">Combination stock</summary><ul className="mt-2 space-y-1">{product.variants.combinations.map((row, index) => <li key={index}>{[row.color, row.size].filter(Boolean).join(' / ')}: <strong>{row.stock}</strong> available</li>)}</ul></details> : product.variants?.sizes?.length ? <details className="text-[11px] text-slate-600">
                                                         <summary className="cursor-pointer font-semibold hover:text-[#E00D42]">{product.variants.option2_name || 'Variant'} quantities ({product.variants.sizes.length})</summary>
                                                         <ul className="mt-2 space-y-1">
                                                             {product.variants.sizes.map((variant, index) => <li key={variant.id || index}>{variant.name}: <strong>{sellerVariantStock(variant.stock, product.stock)}</strong>{variant.stock == null ? ' (listing stock)' : ' available'}</li>)}
@@ -2128,6 +2128,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 {Number(product.completed_units || 0)} completed
                                             </td>
                                             <td className="py-4 px-6 text-right space-x-1">
+                                                <Link href={route('seller.products.sales.index', product.id)} className="inline-flex rounded-lg px-2 py-2 text-xs font-bold text-[#E00D42] hover:bg-rose-50">Sales</Link>
                                                 <button
                                                     onClick={() => openEdit(product)}
                                                     className="p-2 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition"

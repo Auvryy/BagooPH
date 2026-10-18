@@ -1,3 +1,4 @@
+import ProductSaleOffer, { type SaleReminderState } from '@/Components/ProductSaleOffer';
 import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
@@ -67,6 +68,7 @@ interface ShopStats {
 }
 
 interface Props {
+    saleReminder?: SaleReminderState | null;
     shopOffers?: import('@/hooks/usePurchaseQuote').VoucherOffer[];
     product: Product & {
         reviews?: Review[];
@@ -85,6 +87,7 @@ interface Props {
 export default function BuyerProductDetail({
     product,
     variations,
+    saleReminder = null,
     relatedProducts,
     shopStats,
     cartQuantities = [],
@@ -173,16 +176,18 @@ export default function BuyerProductDetail({
     );
 
     // Dynamic price calculation based on selected size/variation
-    const basePrice = Number(product.price);
+    const basePrice = Number(product.sale_offer?.effective_price ?? product.price);
     const selectedCombination = variations.combinations?.find(row => row.color === (selectedColor?.name ?? null) && row.size === (selectedSize?.name ?? null));
-    const extraPrice = Number(selectedCombination?.extra_price ?? selectedSize?.extra_price ?? 0);
+    const extraPrice = Number(variations.combinations ? selectedCombination?.extra_price ?? 0 : selectedSize?.extra_price ?? 0);
     const currentPrice = basePrice + extraPrice;
     
-    const baseCompare = product.compare_at_price ? Number(product.compare_at_price) : 0;
+    const baseCompare = product.sale_offer?.active && basePrice < Number(product.price) ? Number(product.price) : product.compare_at_price ? Number(product.compare_at_price) : 0;
     const currentComparePrice = baseCompare > basePrice ? baseCompare + extraPrice : 0;
     const discountPct = currentComparePrice > currentPrice ? Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100) : 0;
 
-    const selectionStock = variations.combinations ? Number(selectedCombination?.stock ?? 0) : Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
+    const completeSelection = (!colorsList.length || selectedColor !== null) && (!sizesList.length || selectedSize !== null);
+    const selectionStock = variations.combinations ? Number(selectedCombination?.stock ?? (completeSelection ? 0 : product.stock)) : Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
+    const sizeAvailable = (size: VariationSize) => !variations.combinations || variations.combinations.some(row => row.size === size.name && (!selectedColor || row.color === selectedColor.name) && row.stock > 0);
     const isProductOutOfStock = Number(product.stock) <= 0;
     const isSelectionOutOfStock = selectedColor?.in_stock === false || selectionStock <= 0;
     const totalProductInCart = cartQuantities.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
@@ -484,6 +489,7 @@ export default function BuyerProductDetail({
                         </div>
 
                         {/* VARIATION SELECTOR 1 */}
+                        <ProductSaleOffer product={product} reminder={saleReminder} />
                         {product.shop?.vacation_mode && <p role="status" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">On vacation. This shop has paused new purchases. Your Bag and existing orders stay available.</p>}
                         {product.purchase_limit && <p className="mb-4 text-sm text-slate-600">Limit {product.purchase_limit} per buyer across orders. You can buy {purchaseAllowance ?? product.purchase_limit} more.</p>}
                         {colorsList.length > 0 && (
@@ -546,14 +552,15 @@ export default function BuyerProductDetail({
                                             key={size.id}
                                             type="button"
                                             onClick={() => setSelectedSize(size)}
-                                            className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition ${
+                                            disabled={!sizeAvailable(size)}
+                                            className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
                                                 selectedSize?.id === size.id
                                                     ? 'border-[#E00D42] bg-[#E00D42]/5 text-[#E00D42] shadow-2xs'
                                                     : 'border-slate-200 text-slate-700 hover:border-slate-400'
                                             }`}
                                         >
                                             <span>{size.name}</span>
-                                            {size.extra_price > 0 && (
+                                            {!variations.combinations && size.extra_price > 0 && (
                                                 <span className="text-[10px] text-slate-400 ml-1">
                                                     (+{formatPrice(size.extra_price)})
                                                 </span>

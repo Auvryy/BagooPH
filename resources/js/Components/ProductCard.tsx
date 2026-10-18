@@ -27,8 +27,8 @@ export default function ProductCard({
     saveControl,
     showDeliveryBadge = true,
 }: ProductCardProps) {
-    const priceNum = Number(product.price);
-    const compareNum = product.compare_at_price ? Number(product.compare_at_price) : null;
+    const priceNum = Number(product.sale_offer?.effective_price ?? product.price);
+    const compareNum = product.sale_offer?.active && priceNum < Number(product.price) ? Number(product.price) : product.compare_at_price ? Number(product.compare_at_price) : null;
     const discountPct = compareNum && compareNum > priceNum
         ? Math.round(((compareNum - priceNum) / compareNum) * 100)
         : null;
@@ -124,11 +124,11 @@ export default function ProductCard({
                     {/* Price Block */}
                     <div className="flex items-baseline gap-1.5 pt-0.5 font-sans">
                         <span className="text-sm sm:text-base font-black text-[#E00D42]">
-                            {formatPrice(product.price)}
+                            {formatPrice(priceNum)}
                         </span>
                         {compareNum && compareNum > priceNum && (
                             <span className="text-[10px] text-slate-400 line-through">
-                                {formatPrice(product.compare_at_price)}
+                                {formatPrice(compareNum)}
                             </span>
                         )}
                     </div>

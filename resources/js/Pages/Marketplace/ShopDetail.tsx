@@ -378,8 +378,8 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
                             {products.data.map((product) => {
-                                const priceNum = Number(product.price);
-                                const compareNum = product.compare_at_price ? Number(product.compare_at_price) : null;
+                                const priceNum = Number(product.sale_offer?.effective_price ?? product.price);
+                                const compareNum = product.sale_offer?.active && priceNum < Number(product.price) ? Number(product.price) : product.compare_at_price ? Number(product.compare_at_price) : null;
                                 const discountPct = compareNum && compareNum > priceNum 
                                     ? Math.round(((compareNum - priceNum) / compareNum) * 100)
                                     : null;
@@ -397,6 +397,7 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                                                 className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                                             />
 
+                                            {product.shop?.vacation_mode && <span className="absolute left-2 top-2 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">On vacation</span>}
                                             {discountPct && (
                                                 <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-xs bg-amber-400 text-slate-950 font-sans text-[9px] font-black shadow-2xs">
                                                     -{discountPct}%
@@ -416,11 +417,11 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                                                 {/* Price */}
                                                 <div className="flex items-baseline gap-1.5 pt-0.5">
                                                     <span className="text-sm font-black text-[#E00D42]">
-                                                        {formatPrice(product.price)}
+                                                        {formatPrice(priceNum)}
                                                     </span>
                                                     {compareNum && compareNum > priceNum && (
                                                         <span className="text-[10px] text-slate-400 line-through">
-                                                            {formatPrice(product.compare_at_price)}
+                                                            {formatPrice(compareNum)}
                                                         </span>
                                                     )}
                                                 </div>

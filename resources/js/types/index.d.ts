@@ -119,7 +119,10 @@ export interface ProductImage {
     sort_order: number;
 }
 
+export interface SaleSummary { id: number; kind: 'store' | 'flash'; name: string; price: string | number; starts_at: string; ends_at: string; remaining_quantity: number | null }
+
 export interface Product {
+    sale_offer?: { server_now?: string; effective_price: number; active: SaleSummary | null; upcoming: SaleSummary | null };
     purchase_limit?: number | null;
     compliance_restricted?: boolean;
     moderation_version?: number;

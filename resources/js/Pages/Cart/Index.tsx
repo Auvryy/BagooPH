@@ -1,3 +1,4 @@
+import PriceSegments from '@/Components/PriceSegments';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
@@ -508,9 +509,10 @@ export default function CartIndex({ cart, items, quote: initialQuote }: Props) {
                                                         )}
                                                     </div>
 
-                                                    <span className="font-bold text-slate-900 min-w-[80px] text-right">
-                                                        {selectedIds.includes(item.id) ? quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.unit_price) * item.quantity) : formatPrice(Number(item.unit_price) * item.quantity)}
-                                                    </span>
+                                                    <div className="font-bold text-slate-900 min-w-[80px] text-right">
+                                                        {selectedIds.includes(item.id) ? quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.unit_price) * item.quantity) : item.product?.sale_offer?.active?.kind === 'flash' && item.quantity > (item.product.sale_offer.active.remaining_quantity ?? 0) ? 'Select for total' : formatPrice(Number(item.unit_price) * item.quantity)}
+                                                        {selectedIds.includes(item.id) && (quotedItems.get(item.id)?.price_segments?.length ?? 0) > 1 && <div className="mt-2 text-xs font-normal text-slate-600"><PriceSegments segments={quotedItems.get(item.id)?.price_segments} quantity={item.quantity} unitPrice={Number(item.unit_price)} /></div>}
+                                                    </div>
 
                                                     <button
                                                         type="button"
