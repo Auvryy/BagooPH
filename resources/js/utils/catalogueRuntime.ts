@@ -56,6 +56,9 @@ let managedVisit: { href: string; failed: () => void } | undefined;
 let currentPage: (CatalogueSnapshot & { component?: string }) | undefined;
 
 export function preparePortal(href: string, page: CatalogueSnapshot & { component?: string }) {
+    // Reloads and replace visits do not emit navigate in the installed adapter.
+    // Link intent must use the page currently rendered, including errors and scope.
+    cataloguePrefetch.observe(page);
     const component = portalPageComponent(href, window.location.origin, page);
     if (component && component !== page.component) return cataloguePrefetch.prepareCode(component);
     if (canonicalCatalogueUrl(href, window.location.origin)) return cataloguePrefetch.prepare(href);
@@ -140,6 +143,7 @@ export function installCatalogueNavigation(initial: CatalogueSnapshot) {
         if (!event.detail.visit.prefetch && event.detail.visit.headers.Purpose !== 'prefetch') { foreground = Math.max(0, foreground - 1); cataloguePrefetch.setBusy(foreground > 0); }
     });
     router.on('navigate', event => { currentPage = event.detail.page; cataloguePrefetch.observe(event.detail.page); });
+    router.on('success', event => { currentPage = event.detail.page; cataloguePrefetch.observe(event.detail.page); });
     const failed = (event: { preventDefault: () => void }) => {
         if (!managedVisit) return;
         const current = managedVisit; managedVisit = undefined;

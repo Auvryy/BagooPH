@@ -20,6 +20,18 @@ export function portalPageComponent(href: string, origin: string, page: Catalogu
             ?? (url.hostname.startsWith('seller.') ? path.match(/^\/(dashboard|products|orders|preview)\/?$/)?.[1] : undefined);
         return ({ dashboard: 'Seller/Dashboard', products: 'Seller/Products', orders: 'Seller/Orders', preview: 'Marketplace/ShopDetail' } as Record<string, string>)[section ?? ''];
     }
+    if (role === 'courier') {
+        const section = path.match(/^\/courier\/(deliveries|earnings|profile)\/?$/)?.[1]
+            ?? (url.hostname.startsWith('courier.') ? path.match(/^\/(deliveries|earnings|profile)\/?$/)?.[1] : undefined);
+        return ({ deliveries: 'Courier/Deliveries', earnings: 'Courier/Earnings', profile: 'Courier/Profile' } as Record<string, string>)[section ?? ''];
+    }
+    if (role === 'logistics') {
+        const section = path.match(/^\/hub\/(dashboard|network|fleet|deliveries|scan|counter|manifests)(?:\/\d+)?\/?$/)?.[1]
+            ?? (url.hostname.startsWith('hub.') ? path.match(/^\/(dashboard|network|fleet|deliveries|scan|counter|manifests)(?:\/\d+)?\/?$/)?.[1] : undefined);
+        // Only manifest detail has a numeric suffix; never treat action URLs as pages.
+        if (section !== 'manifests' && /\/\d+\/?$/.test(path)) return;
+        return ({ dashboard: 'Hub/Dashboard', network: 'Hub/Network', fleet: 'Hub/Fleet', deliveries: 'Hub/Deliveries', scan: 'Hub/ScanStation', counter: 'Hub/CounterPickup', manifests: 'Hub/Manifests' } as Record<string, string>)[section ?? ''];
+    }
 }
 
 export type BuyerProfileTab = 'orders' | 'account' | 'addresses' | 'wallet' | 'vouchers';

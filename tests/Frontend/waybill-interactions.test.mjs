@@ -21,8 +21,9 @@ const bundle = await build({ stdin: { contents: "export {default as Camera} from
         builder.onResolve({ filter: /^@inertiajs\/react$/ }, () => ({ path: 'inertia', namespace: 'waybill-inertia' }));
         builder.onLoad({ filter: /.*/, namespace: 'waybill-inertia' }, () => ({ contents: `
             export const Head = () => null; export const Link = 'a';
+            export const usePage = () => ({props:globalThis.waybillHarness.props});
             export const usePoll = (interval,options,policy) => { globalThis.waybillHarness.poll={interval,options,policy}; return {start(){},stop(){}}; };
-            export const router = { reload: options => {globalThis.waybillHarness.reloads++; options.onSuccess?.(); options.onFinish?.();}, get(){} };
+            export const router = { on: (...args) => globalThis.waybillHarness.on(...args), reload: options => {globalThis.waybillHarness.reloads++; options.onSuccess?.(); options.onFinish?.();}, get(){} };
         ` }));
         builder.onResolve({ filter: /Layouts\/DashboardLayout$/ }, () => ({ path: 'layout', namespace: 'waybill-layout' }));
         builder.onLoad({ filter: /.*/, namespace: 'waybill-layout' }, () => ({ contents: 'export default props => props.children;' }));
@@ -48,8 +49,10 @@ const reply = (confirmed = false) => ({ success: true, confirmed, message: confi
 function harness(t, Component = ui.Camera, initial = { onScan() {} }) {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const originals = Object.fromEntries(['window', 'document', 'navigator', 'fetch', 'route'].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
-    const slots = [], effects = []; let cursor = 0, queued = [], disposed = false;
+    const slots = [], effects = [], listeners = new Map(); let cursor = 0, queued = [], disposed = false;
     const h = {
+        on(name, callback) { const list = listeners.get(name) ?? new Set(); list.add(callback); listeners.set(name,list); return () => list.delete(callback); },
+        emit(name, visit) { for (const callback of listeners.get(name) ?? []) callback({detail:{visit}}); },
         props: initial, reloads: 0, calls: [], values: [], stopped: 0, selected: [], focused: 0,
         video: { readyState: 2, srcObject: null, play: async () => {} },
         state(initial) { const index = cursor++; if (!(index in slots)) slots[index] = typeof initial === 'function' ? initial() : initial; return [slots[index], value => { assert.equal(disposed, false, 'Unmounted views must not receive state updates'); slots[index] = typeof value === 'function' ? value(slots[index]) : value; }]; },
@@ -61,8 +64,8 @@ function harness(t, Component = ui.Camera, initial = { onScan() {} }) {
         close() { if (disposed) return; effects.forEach(effect => effect?.cleanup?.()); disposed = true; },
         stream() { return { getTracks: () => [{ stop() { h.stopped++; } }] }; },
     };
-    const window = { location: Object.assign(new URL('https://hub.bagoo.test/scan'), { reload() { h.reloads++; } }), BarcodeDetector: class { async detect() { return h.values; } } };
-    const document = { visibilityState: 'visible', cookie: 'XSRF-TOKEN=current-token', querySelector: () => ({ content: 'stale-token' }) };
+    const window = Object.assign(new EventTarget(), { location: Object.assign(new URL('https://hub.bagoo.test/scan'), { reload() { h.reloads++; } }), BarcodeDetector: class { async detect() { return h.values; } } });
+    const document = Object.assign(new EventTarget(), { visibilityState: 'visible', cookie: 'XSRF-TOKEN=current-token', querySelector: () => ({ content: 'stale-token' }) });
     const navigator = { onLine: true, mediaDevices: { getUserMedia: async () => h.stream() } };
     const fetch = async (path, options) => { h.calls.push({ path, options, body: JSON.parse(options.body) }); return h.response ? h.response(path, options) : Response.json(reply()); };
     for (const [name, value] of Object.entries({ window, document, navigator, fetch, route: () => ({ current: () => false }) })) Object.defineProperty(globalThis, name, { value, configurable: true });
@@ -143,4 +146,27 @@ test('operational polling is bounded and pauses on hidden/offline pages and duri
     h.document.visibilityState = 'visible'; h.navigator.onLine = false; assert.equal(h.poll.options().onBefore(), false);
     h.navigator.onLine = true; let cancelled = 0; h.poll.options().onCancelToken({ cancel: () => cancelled++ });
     h.props = { busy: true }; h.render(); assert.equal(h.poll.options().onBefore(), false); assert.equal(cancelled, 1);
+});
+
+
+test('facility changes and foreground work reject even an already delivered old poll response', t => {
+    const h = harness(t, () => ui.Refresh(false, ['queues']), {activeHub:{id:1}}); h.render();
+    let cancelled = 0; const old = h.poll.options(); old.onCancelToken({cancel:() => cancelled++});
+    const visit = {headers:{},method:'post'};
+    h.emit('before',visit); h.emit('start',visit);
+    assert.equal(cancelled,1); assert.equal(h.poll.options().onBefore(),false);
+    assert.throws(() => old.onBeforeUpdate(), /newer catalogue request/);
+    h.props = {activeHub:{id:2}}; h.render();
+    h.emit('finish',visit); assert.equal(h.poll.options().onBefore(),true);
+    const current = h.poll.options(); current.onCancelToken({cancel:() => cancelled++});
+    old.onFinish();
+    h.document.visibilityState = 'hidden'; h.document.dispatchEvent(new Event('visibilitychange'));
+    assert.equal(cancelled,2,'an old finish must not release the new poll cancellation handle');
+    assert.throws(() => current.onBeforeUpdate(), /newer catalogue request/);
+    h.document.visibilityState = 'visible';
+    const next = h.poll.options(); next.onCancelToken({cancel:() => cancelled++});
+    const pollVisit = {headers:next.headers}; h.emit('before',pollVisit); h.emit('start',pollVisit);
+    assert.equal(cancelled,2,'a poll must not cancel itself');
+    assert.deepEqual(next.only,['auth','queues']); next.onBeforeUpdate();
+    h.navigator.onLine=false; h.window.dispatchEvent(new Event('offline')); assert.equal(cancelled,3);
 });

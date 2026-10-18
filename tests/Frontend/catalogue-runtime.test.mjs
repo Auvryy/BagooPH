@@ -175,4 +175,33 @@ test('the runtime bridges cached and fresh visits, cancellation and session boun
         await ui.visitCatalogue('/buyer/profile');
         assert.equal(visits.at(-1).options.headers, undefined);
     });
+    await t.test('rider and logistics intent loads code while activation immediately requests current records', async () => {
+        for (const [role, href, component] of [['courier','/courier/earnings','Courier/Earnings'],['logistics','/hub/deliveries?hub_id=2&page=3','Hub/Deliveries']]) {
+            const operational = {...page, component: role === 'courier' ? 'Courier/Deliveries' : 'Hub/Dashboard', props:{...page.props,auth:{user:{id:8,role,status:'active',kyc_status:'approved'}}}};
+            emit('navigate',{page:operational});
+            const count=requests.length;
+            assert.equal(await ui.preparePortal(href,operational),true);
+            assert.equal(components.at(-1),component); assert.equal(requests.length,count);
+            ui.visitPortal(href);
+            assert.equal(visits.at(-1).url,href); assert.equal(visits.at(-1).options.fresh,true);
+            assert.equal(visits.at(-1).options.headers['X-Bagoo-Navigation'],'1');
+            assert.equal(visits.at(-1).options.headers.Purpose,undefined);
+            visits.at(-1).options.onFinish({});
+        }
+        emit('navigate',{page});
+    });
+
+    await t.test('replace and reload responses refresh operational scope without relying on navigate', async () => {
+        const hub = {...page, component:'Hub/Dashboard',props:{...page.props,activeHub:{id:9},auth:{user:{id:9,role:'logistics',status:'active',kyc_status:'approved'}}}};
+        emit('success',{page:hub});
+        ui.visitPortal('/hub/deliveries?hub_id=9');
+        assert.equal(visits.at(-1).options.headers['X-Bagoo-Navigation'],'1');
+        visits.at(-1).options.onFinish({});
+        const count=components.length;
+        const failed={...hub,props:{...hub.props,errors:{hub_id:'Select a current facility.'}}};
+        assert.equal(await ui.preparePortal('/hub/fleet',failed),false);
+        assert.equal(components.length,count,'intent must observe newly rendered errors even when no success event fired');
+        emit('success',{page});
+    });
+
 });

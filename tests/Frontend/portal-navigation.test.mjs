@@ -90,7 +90,7 @@ test('code preparation observes feedback, disabled settings, foreground work and
         f => f.policy.observe({ ...snapshot(), props: { ...snapshot().props, cataloguePrefetchEnabled: false } }),
         f => f.policy.observe({ ...snapshot(), props: { ...snapshot().props, flash: { success: 'Saved.' } } }),
         f => f.policy.observe({ ...snapshot(), props: { ...snapshot().props, errors: { phone: 'Correct this.' } } }),
-        f => f.policy.observe(snapshot('courier')), f => f.policy.observe(snapshot('admin')),
+        f => f.policy.observe(snapshot('admin')),
     ];
     for (const configure of cases) {
         const f = fixture(); configure(f);
@@ -120,4 +120,47 @@ test('profile partial requests keep the current identity plus the selected coher
     assert.ok(ui.buyerProfileProps('addresses').includes('addresses'));
     assert.ok(ui.buyerProfileProps('account').includes('identityCorrection'));
     assert.ok(ui.buyerProfileProps('vouchers').includes('availableVoucherCount'));
+});
+
+
+test('rider and logistics preparation maps only reviewed pages on their own portal', () => {
+    for (const [role, root, host, routes] of [
+        ['courier', '/courier', 'courier', {deliveries:'Courier/Deliveries', earnings:'Courier/Earnings', profile:'Courier/Profile'}],
+        ['logistics', '/hub', 'hub', {dashboard:'Hub/Dashboard', network:'Hub/Network', fleet:'Hub/Fleet', deliveries:'Hub/Deliveries', scan:'Hub/ScanStation', counter:'Hub/CounterPickup', manifests:'Hub/Manifests'}],
+    ]) {
+        for (const [prefix, origin] of [[root, 'https://bagoo.test'], ['', `https://${host}.bagoo.test`]]) {
+            for (const [path, component] of Object.entries(routes)) {
+                assert.equal(ui.portalPageComponent(`${prefix}/${path}?hub_id=2&page=3`, origin, snapshot(role)), component);
+            }
+            for (const path of ['messages', 'cod', 'deliveries/7/claim', 'deliveries/7/status', 'counter/verify', 'manifests/7/dispatch', 'switch-hub']) {
+                assert.equal(ui.portalPageComponent(`${prefix}/${path}`, origin, snapshot(role)), undefined);
+            }
+            assert.equal(ui.portalPageComponent(`${prefix}/manifests/7`, origin, snapshot(role)), role === 'logistics' ? 'Hub/Manifests' : undefined);
+        }
+        assert.equal(ui.portalPageComponent('/deliveries', 'https://bagoo.test', snapshot(role)), undefined);
+        assert.equal(ui.portalPageComponent(`${root}/deliveries`, 'https://foreign.test', snapshot('buyer')), undefined);
+    }
+});
+
+test('operational portals prepare no page data and discard late code after placement, duty, phase or hub changes', async () => {
+    for (const role of ['courier', 'logistics']) {
+        for (const change of [
+            page => { page.props.auth.user.courier_profile = {logistics_company_id:4}; },
+            page => { page.props.auth.user.courier_profile = {assigned_hub_id:9}; },
+            page => { page.props.auth.user.courier_profile = {assigned_barangay:'Poblacion II'}; },
+            page => { page.props.auth.user.courier_profile = {vehicle_id:5}; },
+            page => { page.props.isOnline = false; },
+            page => { page.props.activeHub = {id:9}; },
+            page => { page.props.queues = {finalMileTasks:[{id:7,status:'out_for_delivery'}]}; },
+        ]) {
+            const f = fixture(); const page = snapshot(role); f.policy.observe(page);
+            const work = f.policy.prepareCode(role === 'courier' ? 'Courier/Earnings' : 'Hub/Manifests'); await tick();
+            assert.equal(f.imports.length, 1); assert.equal(f.requests.length, 0);
+            assert.equal(await f.policy.prepare('/product/bag'), false);
+            const changed = structuredClone(page); change(changed); f.policy.observe(changed);
+            assert.equal(await f.policy.prepareCode('Hub/Dashboard'), false, 'unabortable old import retains the shared slot');
+            f.imports[0].finish(); assert.equal(await work, false);
+            assert.equal(f.requests.length, 0);
+        }
+    }
 });
