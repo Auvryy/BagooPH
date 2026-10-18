@@ -6,18 +6,23 @@ use App\Models\Address;
 use App\Models\User;
 use App\Services\BuyerAccessService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class BuyerAddressService
 {
+    public const LIMIT = 10;
+
     public function create(User $actor, array $input): Address
     {
         app(BuyerAccessService::class)->requirePortal($actor);
 
         return DB::transaction(function () use ($actor, $input) {
             $buyer = app(BuyerAccessService::class)->requirePortal($actor, lock: true);
-            $input['recipient_name'] = $buyer->name;
             $data = app(CommerceInputService::class)->address($input);
             $addresses = $buyer->addresses()->orderBy('id')->lockForUpdate()->get();
+            if ($addresses->count() >= self::LIMIT) {
+                throw ValidationException::withMessages(['address_book' => 'You can save up to 10 addresses. Remove a non-default address before adding another.']);
+            }
             $data['is_default'] = $addresses->isEmpty() || $data['is_default'];
             if ($data['is_default']) {
                 foreach ($addresses->where('is_default', true) as $address) {
@@ -43,9 +48,7 @@ class BuyerAddressService
 
     public function update(User $actor, Address $address, array $input): void
     {
-        $this->mutate($actor, $address, function ($addresses, Address $owned) use ($actor, $input) {
-            $buyer = app(BuyerAccessService::class)->requirePortal($actor);
-            $input['recipient_name'] = $buyer->name;
+        $this->mutate($actor, $address, function ($addresses, Address $owned) use ($input) {
             $data = app(CommerceInputService::class)->address($input);
             // Keeping the current default avoids leaving the address book without one.
             $data['is_default'] = $owned->is_default || $data['is_default'];
@@ -61,12 +64,10 @@ class BuyerAddressService
     public function delete(User $actor, Address $address): void
     {
         $this->mutate($actor, $address, function ($addresses, Address $owned) {
-            $wasDefault = $owned->is_default;
-            $owned->delete();
-            if ($wasDefault) {
-                $replacement = $addresses->except($owned->id)->sortBy([['created_at', 'asc'], ['id', 'asc']])->first();
-                $replacement?->update(['is_default' => true]);
+            if ($owned->is_default) {
+                throw ValidationException::withMessages(['address_book' => 'Choose another address as default before deleting this one.']);
             }
+            $owned->delete();
         });
     }
 

@@ -27,6 +27,13 @@ class CommerceInputValidationTest extends TestCase
     use InteractsWithCheckoutNetwork;
     use RefreshDatabase;
 
+    private function addressData(array $overrides = []): array
+    {
+        return array_replace(['region' => '1300000000', 'recipient_name' => 'Maria Santos', 'phone' => '09171234567',
+            'province' => 'Metro Manila', 'city' => 'Pasig', 'barangay' => 'San Antonio',
+            'street' => '123 Mabini Street', 'postal_code' => '1600', 'is_default' => true], $overrides);
+    }
+
     private function checkout(): array
     {
         $buyer = User::factory()->create(['name' => 'Maria Santos']);
@@ -135,8 +142,7 @@ class CommerceInputValidationTest extends TestCase
         $buyer = User::factory()->create(['name' => 'Maria Santos']);
         $default = $this->address($buyer, true);
         $before = $default->fresh()->getRawOriginal();
-        $payload = ['phone' => '09171234567', 'province' => 'Metro Manila', 'city' => 'Pasig',
-            'barangay' => 'San Antonio', 'street' => '123 Mabini Street', 'postal_code' => '1600', 'is_default' => true];
+        $payload = $this->addressData();
         $payload[$field] = $value;
 
         $this->actingAs($buyer)->from('/buyer/profile')->post('/buyer/addresses', $payload)
@@ -149,6 +155,12 @@ class CommerceInputValidationTest extends TestCase
     public static function invalidAddressFields(): array
     {
         return [
+            'recipient missing' => ['recipient_name', null],
+            'recipient short' => ['recipient_name', 'A'],
+            'recipient digits' => ['recipient_name', 'Name 123'],
+            'recipient long' => ['recipient_name', str_repeat('A', 101)],
+            'recipient hidden' => ['recipient_name', "And\u{200B}rea"],
+            'region unknown' => ['region', '9999999999'],
             'phone malformed' => ['phone', 'hello'],
             'phone control before trim' => ['phone', "09171234567\n"],
             'street markup' => ['street', '<b>123 Mabini Street</b>'],
@@ -176,7 +188,7 @@ class CommerceInputValidationTest extends TestCase
         $buyer = User::factory()->create(['name' => 'Maria Santos']);
         $default = $this->address($buyer, true);
         $before = $default->fresh()->getRawOriginal();
-        $payload = ['phone' => '09171234567', 'city' => 'Pasig', 'street' => '123 Mabini Street', 'is_default' => true];
+        $payload = $this->addressData();
         $payload[$field] = $value;
         try {
             app(BuyerAddressService::class)->create($buyer, $payload);
@@ -191,15 +203,16 @@ class CommerceInputValidationTest extends TestCase
     public function test_address_normalizes_valid_values_without_truncating_a_500_character_street(): void
     {
         $buyer = User::factory()->create(['name' => 'Maria Santos']);
-        $address = app(BuyerAddressService::class)->create($buyer, ['recipient_name' => 'Untrusted Recipient',
+        $address = app(BuyerAddressService::class)->create($buyer, ['region' => '1300000000', 'recipient_name' => 'Delivery Recipient', 'barangay' => 'San Antonio',
             'phone' => ' 63 (917) 123-4567 ', 'street' => ' '.str_repeat('Ａ', 500).' ',
             'city' => ' Ｐａｓｉｇ ', 'province' => ' Metro Manila ', 'postal_code' => ' 1600 ',
             'latitude' => '14.5000000', 'longitude' => '121.0000000', 'type' => 'Office']);
 
-        $this->assertSame('Maria Santos', $address->recipient_name);
+        $this->assertSame('Delivery Recipient', $address->recipient_name);
+        $this->assertSame('Maria Santos', $buyer->fresh()->name);
         $this->assertSame('+639171234567', $address->phone);
         $this->assertSame(str_repeat('A', 500), $address->fresh()->street);
-        $this->assertSame('Pasig', $address->city);
+        $this->assertSame('City of Pasig', $address->city);
         $this->assertSame('1600', $address->postal_code);
         $this->assertSame(14.5, $address->latitude);
         $this->assertTrue($address->is_default);
@@ -212,20 +225,20 @@ class CommerceInputValidationTest extends TestCase
         $first = $this->address($buyer, false);
         $default = $this->address($buyer, true);
         $before = $buyer->addresses()->orderBy('id')->get()->map->getRawOriginal()->all();
-        Event::listen('eloquent.updating: '.Address::class, function (Address $address) use ($first) {
-            if ($address->id === $first->id && $address->is_default) {
-                throw new RuntimeException('Default address storage failed.');
+        Event::listen($action === 'switch' ? 'eloquent.updating: '.Address::class : 'eloquent.deleting: '.Address::class, function (Address $address) use ($first, $action) {
+            if ($address->id === $first->id && ($action === 'delete' || $address->is_default)) {
+                throw new RuntimeException('Address storage failed.');
             }
         });
         try {
             if ($action === 'switch') {
                 app(BuyerAddressService::class)->setDefault($buyer, $first);
             } else {
-                app(BuyerAddressService::class)->delete($buyer, $default);
+                app(BuyerAddressService::class)->delete($buyer, $first);
             }
             $this->fail('The default write must fail.');
         } catch (RuntimeException $exception) {
-            $this->assertSame('Default address storage failed.', $exception->getMessage());
+            $this->assertSame('Address storage failed.', $exception->getMessage());
         }
         $this->assertSame($before, $buyer->addresses()->orderBy('id')->get()->map->getRawOriginal()->all());
     }
@@ -249,7 +262,7 @@ class CommerceInputValidationTest extends TestCase
         }
         User::whereKey($buyer->id)->update(['status' => 'suspended']);
         try {
-            app(BuyerAddressService::class)->create($buyer, ['phone' => '09171234567', 'city' => 'Pasig', 'street' => '123 Mabini Street']);
+            app(BuyerAddressService::class)->create($buyer, $this->addressData());
             $this->fail('Current buyer eligibility must be checked.');
         } catch (AuthorizationException) {
             $this->assertDatabaseCount('addresses', 1);
@@ -280,8 +293,7 @@ class CommerceInputValidationTest extends TestCase
         $this->withoutExceptionHandling();
 
         try {
-            $this->actingAs($buyer)->post('/buyer/addresses', ['phone' => '09171234567', 'city' => 'Pasig',
-                'street' => '123 Mabini Street', 'is_default' => true]);
+            $this->actingAs($buyer)->post('/buyer/addresses', $this->addressData());
             $this->fail('Address storage failure must propagate.');
         } catch (RuntimeException $exception) {
             $this->assertSame('Address storage failed.', $exception->getMessage());
@@ -390,8 +402,8 @@ class CommerceInputValidationTest extends TestCase
             'pickup_address' => '100 Origin Street', 'delivery_address' => '100 Legacy Street',
             'delivery_recipient_name' => 'Legacy Recipient 123', 'delivery_phone' => 'legacy-phone']);
         $before = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal()];
-        $first = app(BuyerAddressService::class)->create($buyer, ['phone' => '09171234567', 'city' => 'Pasig', 'street' => '123 Mabini Street']);
-        $second = app(BuyerAddressService::class)->create($buyer, ['phone' => '09181234567', 'city' => 'Manila', 'street' => '456 Rizal Street']);
+        $first = app(BuyerAddressService::class)->create($buyer, $this->addressData());
+        $second = app(BuyerAddressService::class)->create($buyer, $this->addressData(['phone' => '09181234567', 'street' => '456 Rizal Street', 'is_default' => false]));
         app(BuyerAddressService::class)->setDefault($buyer, $second);
         app(BuyerAddressService::class)->delete($buyer, $first);
         $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal()]);

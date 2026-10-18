@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Buyer;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\Order;
+use App\Rules\ApplicationText;
 use App\Rules\BirthDate;
 use App\Services\AccountSettingsService;
 use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
+use App\Services\Commerce\PhilippineAddressCatalog;
 use App\Services\IdentityCorrectionService;
 use App\Services\Orders\CheckoutQuoteService;
 use App\Services\Orders\OrderTrackingService;
@@ -17,6 +19,7 @@ use App\Services\Orders\OrderWorkspaceService;
 use App\Services\ProfileInputService;
 use App\Services\VerificationDocumentService;
 use App\Services\Vouchers\VoucherCollectionService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -28,6 +31,11 @@ class BuyerProfileController extends Controller
     public function index(Request $request): Response
     {
         $user = app(BuyerAccessService::class)->requireOrderHistory($request->user());
+        $editingAddress = $request->route('address');
+        if ($editingAddress instanceof Address) {
+            app(BuyerAccessService::class)->requirePortal($user);
+            abort_unless($editingAddress->user_id === $user->id, 403, 'This address is not available to your account.');
+        }
 
         $wallet = [
             'available' => false,
@@ -60,6 +68,8 @@ class BuyerProfileController extends Controller
             'emailSettings' => fn () => $accountSettings()['emailSettings'],
             'user' => [...$user->toArray(), ...app(VerificationDocumentService::class)->links($user)],
             'addresses' => fn () => $user->addresses()->orderByDesc('is_default')->oldest()->get(),
+            'editingAddressId' => $editingAddress instanceof Address ? $editingAddress->id : null,
+            'addressBookLimit' => BuyerAddressService::LIMIT,
             'wallet' => $wallet,
             'orders' => function () use ($workspace, $owned, $status, $user) {
                 $orders = $workspace->paginate($workspace->stable($workspace->filter(clone $owned, 'buyer', $status))
@@ -144,6 +154,23 @@ class BuyerProfileController extends Controller
         app(BuyerAddressService::class)->create($user, $request->all());
 
         return back()->with('success', 'Address added successfully.');
+    }
+
+    public function editAddress(Request $request, Address $address): Response
+    {
+        $request->query->set('tab', 'addresses');
+
+        return $this->index($request);
+    }
+
+    public function addressLocations(Request $request): JsonResponse
+    {
+        app(BuyerAccessService::class)->requirePortal($request->user());
+        $input = $request->validate(['region' => ['nullable', 'string', 'regex:/\A[0-9]{10}\z/'],
+            'province' => ['nullable', 'string', new ApplicationText('location', 2, 100)],
+            'city' => ['nullable', 'string', new ApplicationText('location', 2, 100)]]);
+
+        return response()->json(app(PhilippineAddressCatalog::class)->options($input))->header('Cache-Control', 'no-store, private');
     }
 
     public function setDefaultAddress(Request $request, Address $address): RedirectResponse
