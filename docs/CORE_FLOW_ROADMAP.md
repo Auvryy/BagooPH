@@ -5996,3 +5996,85 @@ Implementation commits:
 
 The combined pull request title/body is a local draft. Local commits, publication,
 merge and deployed verification remain separate events.
+
+## Buyer delivery address book: October 18, 2026
+
+Branch: `fix/buyer-address-book`, based on the merged account-registration update.
+This delivery concerns saved delivery addresses, checkout's use of those contacts
+and existing recipient snapshots. It does not change reviewed legal identity,
+registration location selectors, transport coverage or the rider mobile project.
+
+Previously, saving an address replaced its entered recipient with the account
+name, dependent locations were not checked against one complete local hierarchy,
+the address count was unlimited, and deleting the default silently selected a
+replacement. Checkout also preferred the account name over the selected address.
+The seller waybill omitted parts of the destination and could substitute current
+profile contacts for missing historical recipient details.
+
+The address service now retains the actual delivery recipient, checks complete
+parent-linked locations, accepts valid Philippine mobile formats, enforces ten
+saved addresses and requires an explicit replacement before deleting any default.
+All mutations share the existing buyer lock and ownership/eligibility checks;
+checkout saves obey the same limits within its existing transaction. Errors from
+that optional save use the checkout's visible shipping fields. A full book can
+still place an order with a new address without saving it.
+
+The buyer editor follows the surrounding white panels, rounded fields and red
+actions. It retains entered details after validation or location failure, cancels
+obsolete lookups, bounds a read to ten seconds, offers retry and waits for usable
+choices before saving. It loads only relevant choices from a local geographic
+reference, with a bounded in-memory cache of public location choices. The
+[reference attribution and cutoff](../resources/data/philippine-addresses/README.md)
+are explicit; valid geography does not bypass network serviceability.
+
+Acceptance evidence uses independently written project cases:
+
+| Requirement | Verified behavior |
+|---|---|
+| Saved details | Entered recipient, location and label survive reload without changing the account name; adding another address preserves the first default. |
+| Linked locations | Server and form use the same parent hierarchy; parent changes clear descendants and stale replies cannot restore them. |
+| Required values | Missing, empty, whitespace-only, unsafe and overlong values produce field errors without changing existing saved addresses. |
+| Mobile numbers | Accepted local and international Philippine forms normalize consistently; short, long and foreign values fail. |
+| Capacity | The tenth address saves; direct and checkout attempts at an eleventh fail without replacing the default or consuming checkout state. |
+| Default selection | Changing the default leaves exactly one and checkout uses its actual saved recipient. |
+| Deletion | The current default is protected even when it is the sole address; explicitly select another before deletion. |
+| Historical delivery | A real checkout followed by address edit and deletion leaves order/parcel records and buyer/seller details unchanged; the waybill prints complete saved recipient details without live-profile fallbacks. |
+| Ownership | Another buyer and other roles cannot read or mutate a foreign saved address, including edited identifiers and direct requests. |
+
+Verification:
+
+- **864 backend tests / 61,925 assertions passed** across Buyer, Seller,
+  geographic-reference integrity and selected normal fulfillment lifecycle cases.
+- **39 final address acceptance tests / 327 assertions passed**, including an
+  additional explicit check that editing persisted before the historical address
+  was deleted. An updated legacy-fixture run also passed 11 tests / 56 assertions.
+- **426 frontend checks passed**; the final 12 address-specific checks also
+  passed after bounding location requests. These cover rendered controls and
+  recipient snapshots, validation, changed parents, delayed replies and recovery.
+- TypeScript/Vite production build passed in Docker, PHP formatting and patch
+  whitespace checks passed. Host output permissions required using the existing
+  Docker build command. No browser automation was used.
+
+The additive region migration was applied to the existing local PostgreSQL
+database, with no reset or reseed and no pending migrations afterward. Existing
+address values are retained and a missing legacy region is not fabricated.
+Automated database tests used SQLite `:memory:` only; they do not establish
+PostgreSQL concurrency behavior. Azure, real browser interaction, camera/printer
+output and the separate mobile application remain unverified for this delivery.
+After publication, follow the [address deployment checks](WEB_AUTH_DEPLOYMENT.md#buyer-address-book-update).
+
+| Scoped assessment | Before | After | Basis and remaining limit |
+|---|---:|---:|---|
+| Buyer saved-address reliability | 4/10 | 8/10 | Required fields, hierarchy, capacity, default rules, privacy and checkout rollback now have automated evidence; deployed browser review remains. |
+| Historical recipient display | 6/10 | 8/10 | Orders remain unchanged and the printed recipient uses the complete snapshot; physical print review remains. |
+
+These ratings apply to this address-book scope and do not raise readiness for
+unrelated buyer modules or unsupported delivery routes.
+
+Implementation commits:
+
+- `a5c9ef4` — enforce address validation, limits and defaults.
+- `458144e` — align address forms and preserve recipient displays.
+
+The combined PR title and body are prepared as a local draft. No GitHub
+publication or Azure deployment was performed for this delivery.

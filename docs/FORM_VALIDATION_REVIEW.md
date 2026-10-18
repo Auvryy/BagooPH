@@ -78,6 +78,17 @@ by rejecting everything.
 | Files and images | Show subtle allowed-format and maximum-MB guidance beside every upload control, matching its actual server limit. Check required evidence, allowed content and extensions, videos and renamed invalid content, empty files, exact byte limits, count limits, private access and replacement/rollback cleanup. Browser file filters never replace server validation. |
 | Confirmation controls | Default unchecked state, keyboard use, missing/false values and direct-request bypass. A required acknowledgement needs actual readable content and server-side acceptance. |
 
+For a delivery address book, review the complete sequence as well as each field:
+save and reload actual recipient details, change parent locations, reach the
+saved-address limit, switch the default, attempt a forbidden default deletion,
+and try another owner's identifier. Repeat optional address saves through
+checkout so that a second entry point cannot bypass the limit. Place an order
+before editing or deleting its saved address, then compare its buyer view, seller
+view and printed recipient details with the original snapshot. Exercise failed
+location loading, retry and out-of-order responses; a delayed response must not
+restore a selection from a previous parent. These checks concern delivery contacts
+and must not silently change reviewed legal identity.
+
 Treat a duplicate at its documented scope as a separate case from an invalid
 format. Test equivalent representations, another role's account, a different
 owner and the race between validation and persistence. A database constraint
