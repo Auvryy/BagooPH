@@ -82,7 +82,7 @@ class SellerStorefrontBrandingTest extends TestCase
         );
     }
 
-    public function test_accessing_shop_with_preview_query_parameter_enables_preview_flag(): void
+    public function test_preview_query_cannot_enable_seller_controls_for_guests_or_other_accounts(): void
     {
         $shop = Shop::factory()->approved()->create([
             'user_id' => User::factory()->create(['role' => 'seller'])->id,
@@ -91,13 +91,15 @@ class SellerStorefrontBrandingTest extends TestCase
             'description' => 'Original handcrafted items',
         ]);
 
-        $response = $this->get(route('shop.show', ['slug' => $shop->slug, 'preview' => 'true']));
-
-        $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => $page
-            ->component('Marketplace/ShopDetail')
-            ->where('isPreview', true)
-        );
+        $url = route('shop.show', ['slug' => $shop->slug, 'preview' => 'true']);
+        $this->get($url)->assertOk()->assertInertia(fn ($page) => $page
+            ->component('Marketplace/ShopDetail')->where('isOwner', false)->where('isPreview', false));
+        foreach (['buyer', 'seller'] as $role) {
+            $this->actingAs(User::factory()->create(['role' => $role]))->get($url)->assertOk()->assertInertia(fn ($page) => $page
+                ->component('Marketplace/ShopDetail')->where('isOwner', false)->where('isPreview', false));
+        }
+        $this->actingAs($shop->user)->get($url)->assertOk()->assertInertia(fn ($page) => $page
+            ->component('Marketplace/ShopDetail')->where('isOwner', true)->where('isPreview', true));
     }
 
     public function test_shop_owner_can_update_storefront_branding_and_bio(): void
