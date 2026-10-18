@@ -78,6 +78,6 @@ class SellerInventoryService
             $page = (clone $query)->paginate(10, ['*'], 'page', $page->lastPage());
         }
 
-        return $page->appends(array_filter($filters, fn ($value) => $value !== null && $value !== '' && $value !== 'all'));
+        return $page->withPath(request()->getPathInfo())->appends(array_filter($filters, fn ($value) => $value !== null && $value !== '' && $value !== 'all'));
     }
 }

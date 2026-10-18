@@ -3,6 +3,8 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import BagooLogo from '@/Components/BagooLogo';
 import NotificationLink from '@/Components/NotificationLink';
+import PortalLink from '@/Components/PortalLink';
+import CatalogueNavigationNotice from '@/Components/CatalogueNavigationNotice';
 import { getDomainUrl } from '@/utils/domain';
 import { 
     ShoppingBag, 
@@ -220,10 +222,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     };
 
     const navItems = getNavItems();
+    const SellerLink = role === 'seller' ? PortalLink : Link;
 
     return (
         <div className="h-screen w-full flex overflow-hidden bg-[#F8FAFC] text-slate-900 font-sans antialiased selection:bg-[#E00D42] selection:text-white">
             
+            {role === 'seller' && <CatalogueNavigationNotice />}
             {/* Backdrop for mobile drawer */}
             {sidebarOpen && (
                 <div 
@@ -358,7 +362,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             </p>
                             {navItems.map((item) => (
                                 <div key={item.name}>
-                                    <Link
+                                    <SellerLink
                                         href={item.href}
                                         aria-expanded={item.children ? item.current : undefined}
                                         aria-current={item.current && !item.children ? 'page' : undefined}
@@ -377,7 +381,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         ) : item.current && (
                                             <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
                                         )}
-                                    </Link>
+                                    </SellerLink>
                                     {item.children && item.current && <div role="group" aria-label={`${item.name} pages`} className="ml-5 mt-1 space-y-0.5 border-l border-slate-300 pl-3">
                                         {item.children.map(child => <Link key={child.name} href={child.href} aria-current={child.current ? 'page' : undefined}
                                             className={`block rounded-lg px-3 py-2 text-xs transition ${child.current ? 'bg-rose-50 font-semibold text-[#C20836]' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>

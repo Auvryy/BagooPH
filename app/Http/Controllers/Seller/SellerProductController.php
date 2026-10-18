@@ -31,29 +31,33 @@ class SellerProductController extends Controller
     {
         $shop = $this->getActiveShop($request);
         $filters = $this->inventory->selection($request, $shop);
-        $query = $this->salesMetrics
-            ->withProductLifecycleTotals(Product::query()->where('shop_id', $shop->id))
-            ->withCount('orderItems')
-            ->with(['category', 'images']);
-        $products = $this->inventory->paginate($this->inventory->filter($query, $filters), $filters);
+        $loadProducts = function () use ($shop, $filters) {
+            $query = $this->salesMetrics
+                ->withProductLifecycleTotals(Product::query()->where('shop_id', $shop->id))
+                ->withCount('orderItems')
+                ->with(['category', 'images', 'moderationDecisions' => fn ($decisions) => $decisions->latest('id')->limit(1)]);
+            $products = $this->inventory->paginate($this->inventory->filter($query, $filters), $filters);
 
-        $categories = Category::whereIn('id', app(ShopEligibilityService::class)->categoryIds($shop))->get();
-        $products->through(function (Product $product) {
-            $decision = $product->moderationDecisions()->orderByDesc('id')->first();
-            $product->setAttribute('compliance_feedback', $decision ? [
-                'action' => $decision->action, 'reason' => $decision->reason,
-                'decided_at' => $decision->decided_at->toISOString(),
-                'next_action' => $product->compliance_restricted
-                    ? 'Correct the listing details and ask Platform Admin to review reinstatement. Editing or publishing alone cannot lift the restriction.'
-                    : 'Normal seller listing and shop eligibility still apply.',
-            ] : null);
+            $products->through(function (Product $product) {
+                $decision = $product->moderationDecisions->first();
+                $product->setAttribute('compliance_feedback', $decision ? [
+                    'action' => $decision->action, 'reason' => $decision->reason,
+                    'decided_at' => $decision->decided_at->toISOString(),
+                    'next_action' => $product->compliance_restricted
+                        ? 'Correct the listing details and ask Platform Admin to review reinstatement. Editing or publishing alone cannot lift the restriction.'
+                        : 'Normal seller listing and shop eligibility still apply.',
+                ] : null);
 
-            return $product;
-        });
+                return $product;
+            });
+            $products->getCollection()->each->unsetRelation('moderationDecisions');
+
+            return $products;
+        };
 
         return Inertia::render('Seller/Products', [
-            'products' => $products,
-            'categories' => $categories,
+            'products' => $loadProducts,
+            'categories' => fn () => Category::whereIn('id', app(ShopEligibilityService::class)->categoryIds($shop))->get(),
             'shop' => $shop,
             'filters' => $filters,
         ]);

@@ -1,6 +1,7 @@
 import React, { useState, useId, useMemo } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import PortalLink from '@/Components/PortalLink';
 import { Order, Product, Shop } from '@/types';
 import { 
     Package, 
@@ -139,21 +140,21 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
             title="Dashboard"
             actions={
                 <div className="flex items-center gap-2">
-                    <Link
-                        href={route('preview')}
+                    <PortalLink
+                        href={route('seller.preview')}
                         target="_blank"
                         className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold font-sans rounded-lg border border-slate-200 transition"
                     >
                         <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
                         <span>Storefront Preview</span>
-                    </Link>
-                    <Link
+                    </PortalLink>
+                    <PortalLink
                         href={route('seller.products.index')}
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-sans rounded-lg shadow-xs transition uppercase tracking-wider"
                     >
                         <Plus className="w-3.5 h-3.5" />
                         <span>New Listing</span>
-                    </Link>
+                    </PortalLink>
                 </div>
             }
         >
@@ -234,8 +235,8 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         <div className="mt-3 pt-3 border-t border-slate-100 space-y-2 text-[11px] font-sans">
                             <span className="text-slate-500">Active listing stock</span>
                             <div className="flex flex-wrap gap-x-4 gap-y-2">
-                                <Link href={route('seller.products.index', { status: 'active', stock: 'low_stock' })} className="font-bold text-amber-700 hover:underline focus-visible:outline-[#E00D42]">{stats.lowStockCount} low stock (1–5)</Link>
-                                <Link href={route('seller.products.index', { status: 'active', stock: 'out_of_stock' })} className="font-bold text-rose-700 hover:underline focus-visible:outline-[#E00D42]">{stats.outOfStockCount ?? 0} out of stock</Link>
+                                <PortalLink href={route('seller.products.index', { status: 'active', stock: 'low_stock' })} className="font-bold text-amber-700 hover:underline focus-visible:outline-[#E00D42]">{stats.lowStockCount} low stock (1–5)</PortalLink>
+                                <PortalLink href={route('seller.products.index', { status: 'active', stock: 'out_of_stock' })} className="font-bold text-rose-700 hover:underline focus-visible:outline-[#E00D42]">{stats.outOfStockCount ?? 0} out of stock</PortalLink>
                             </div>
                         </div>
                     </div>
@@ -464,19 +465,19 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                     Fulfillment Actions
                                 </h3>
                             </div>
-                            <Link 
+                            <PortalLink
                                 href={route('seller.orders.index')} 
                                 className="text-[11px] font-bold font-sans text-[#E00D42] hover:underline uppercase inline-flex items-center gap-1"
                             >
                                 View Orders <ArrowRight className="w-3 h-3" />
-                            </Link>
+                            </PortalLink>
                         </div>
 
                         {/* Action Cards & Pipeline Box - Sleek, thin, and compact */}
                         <div className="space-y-2.5 pt-3 font-sans">
                             
                             {/* 1. TO PACK */}
-                            <Link
+                            <PortalLink
                                 href={route('seller.orders.index', { status: 'to_pack' })}
                                 className={`p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 group ${
                                     stats.pendingPackCount > 0
@@ -508,10 +509,10 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 }`}>
                                     {stats.pendingPackCount}
                                 </span>
-                            </Link>
+                            </PortalLink>
 
                             {/* 2. RETURN CUSTODY */}
-                            <Link
+                            <PortalLink
                                 href={route('seller.orders.index', { status: 'return_custody' })}
                                 className={`p-2.5 sm:p-3 rounded-xl transition flex items-center justify-between gap-3 group ${
                                     (stats.returnCount || 0) > 0
@@ -543,10 +544,10 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 }`}>
                                     {stats.returnCount || 0}
                                 </span>
-                            </Link>
+                            </PortalLink>
 
                             <div className="space-y-2 text-xs">
-                                {[{ status: 'delivery_failed', label: 'Delivery issues', count: stats.deliveryIssueCount }, { status: 'returned', label: 'Returned orders', count: stats.returnedCount }, { status: 'cancelled', label: 'Cancelled orders', count: stats.cancelledCount }].map(stage => <Link key={stage.status} href={route('seller.orders.index', { status: stage.status })} className="flex items-center justify-between rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-slate-700 hover:border-[#E00D42]"><span>{stage.label}</span><strong>{stage.count ?? 0}</strong></Link>)}
+                                {[{ status: 'delivery_failed', label: 'Delivery issues', count: stats.deliveryIssueCount }, { status: 'returned', label: 'Returned orders', count: stats.returnedCount }, { status: 'cancelled', label: 'Cancelled orders', count: stats.cancelledCount }].map(stage => <PortalLink key={stage.status} href={route('seller.orders.index', { status: stage.status })} className="flex items-center justify-between rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-slate-700 hover:border-[#E00D42]"><span>{stage.label}</span><strong>{stage.count ?? 0}</strong></PortalLink>)}
                                 <p className="text-[10px] text-slate-500">Post-delivery disputes remain unavailable.</p>
                             </div>
 
@@ -557,7 +558,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                     <span className="text-slate-500">Live Status</span>
                                 </div>
                                 <div className="grid grid-cols-4 gap-1 divide-x divide-slate-200/80 text-center">
-                                    <Link
+                                    <PortalLink
                                         href={route('seller.orders.index', { status: 'to_pickup' })}
                                         className="px-1 hover:bg-slate-100/80 rounded-lg transition group block"
                                         title="Orders ready for courier pickup"
@@ -571,9 +572,9 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <span className="text-[8px] text-slate-400 block -mt-0.5">
                                             pickup
                                         </span>
-                                    </Link>
+                                    </PortalLink>
 
-                                    <Link
+                                    <PortalLink
                                         href={route('seller.orders.index', { status: 'in_transit' })}
                                         className="px-1 hover:bg-slate-100/80 rounded-lg transition group block"
                                         title="Orders currently in transit with courier"
@@ -587,9 +588,9 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <span className="text-[8px] text-slate-400 block -mt-0.5">
                                             on way
                                         </span>
-                                    </Link>
+                                    </PortalLink>
 
-                                    <Link
+                                    <PortalLink
                                         href={route('seller.orders.index', { status: 'delivered' })}
                                         className="px-1 hover:bg-slate-100/80 rounded-lg transition group block"
                                         title="Delivered orders"
@@ -603,12 +604,12 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                         <span className="text-[8px] text-slate-400 block -mt-0.5">
                                             received
                                         </span>
-                                    </Link>
-                                    <Link href={route('seller.orders.index', { status: 'completed' })} className="block rounded-lg px-1 text-center hover:bg-slate-100/80" title="Buyer-confirmed completed orders">
+                                    </PortalLink>
+                                    <PortalLink href={route('seller.orders.index', { status: 'completed' })} className="block rounded-lg px-1 text-center hover:bg-slate-100/80" title="Buyer-confirmed completed orders">
                                         <span className="block text-[9px] font-bold uppercase text-slate-500">Completed</span>
                                         <span className="mt-0.5 block text-sm font-black text-slate-900">{stats.completedCount ?? 0}</span>
                                         <span className="block text-[8px] text-slate-400">confirmed</span>
-                                    </Link>
+                                    </PortalLink>
                                 </div>
                             </div>
                         </div>
@@ -625,10 +626,10 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 <h3 className="font-bold text-sm text-slate-900">Incoming Customer Orders</h3>
                                 <p className="text-xs text-slate-400 font-sans">Awaiting packaging and courier handover</p>
                             </div>
-                            <Link href={route('seller.orders.index')} className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase">
+                            <PortalLink href={route('seller.orders.index')} className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase">
                                 <span>Manage All</span>
                                 <ChevronRight className="w-3.5 h-3.5" />
-                            </Link>
+                            </PortalLink>
                         </div>
 
                         {recentOrders.length === 0 ? (
@@ -658,13 +659,13 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                                     {item.status || 'Unknown'}
                                                 </span>
                                             </div>
-                                            <Link
+                                            <PortalLink
                                                 href={route('seller.orders.index')}
                                                 className="px-2.5 py-1.5 rounded-lg bg-[#E00D42] hover:bg-[#C20836] text-white text-[11px] font-bold font-sans transition shadow-2xs cursor-pointer"
                                                 title="Open in Orders Fulfillment"
                                             >
                                                 Manage
-                                            </Link>
+                                            </PortalLink>
                                         </div>
                                     </div>
                                 ))}
@@ -679,10 +680,10 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 <h3 className="font-bold text-sm text-slate-900">Top completed products</h3>
                                 <p className="text-xs text-slate-400 font-sans">Ranked by buyer-confirmed units</p>
                             </div>
-                            <Link href={route('seller.products.index')} className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase">
+                            <PortalLink href={route('seller.products.index')} className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase">
                                 <span>Catalog</span>
                                 <ChevronRight className="w-3.5 h-3.5" />
-                            </Link>
+                            </PortalLink>
                         </div>
 
                         {topProducts.length === 0 ? (

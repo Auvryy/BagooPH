@@ -4,6 +4,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import WaybillCamera from '@/Components/WaybillCamera';
 import WaybillCodes from '@/Components/WaybillCodes';
 import { Head, Link, router } from '@inertiajs/react';
+import PortalLink from '@/Components/PortalLink';
+import useResolvedPage from '@/hooks/useResolvedPage';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import OrderTrackingPanel, { OrderTrackingStatus } from '@/Components/OrderTrackingPanel';
 import { currentOrderSelection } from '@/utils/orderTracking';
@@ -51,6 +53,7 @@ interface Props {
 }
 
 export default function SellerOrders({ orders, shop, shopEligible, returnReceiptToken, currentStatus = 'all', counts, cancellationReasons, batchLimit }: Props) {
+    useResolvedPage(orders.current_page);
     const [waybillSelection, setSelectedOrderForWaybill] = useState<any | null>(null);
     const [qrSelection, setSelectedOrderForQr] = useState<any | null>(null);
     const [packSelection, setOrderToAcceptAndPack] = useState<any | null>(null);
@@ -664,9 +667,9 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                 </div>}
 
                 {orders.last_page > 1 && <nav aria-label="Seller order pages" className="flex items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white p-4 text-xs">
-                    <Link href={orders.prev_page_url ?? '#'} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.prev_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.prev_page_url || isSubmitting}>Previous</Link>
+                    <PortalLink href={orders.prev_page_url ?? '#'} only={['orders', 'counts', 'currentStatus', 'shopEligible', 'shop', 'returnReceiptToken', 'auth', 'flash', 'errors']} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.prev_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.prev_page_url || isSubmitting} onClick={event => { if (!orders.prev_page_url || isSubmitting) event.preventDefault(); }}>Previous</PortalLink>
                     <span>Page {orders.current_page} of {orders.last_page} · {orders.total} orders</span>
-                    <Link href={orders.next_page_url ?? '#'} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.next_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.next_page_url || isSubmitting}>Next</Link>
+                    <PortalLink href={orders.next_page_url ?? '#'} only={['orders', 'counts', 'currentStatus', 'shopEligible', 'shop', 'returnReceiptToken', 'auth', 'flash', 'errors']} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.next_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.next_page_url || isSubmitting} onClick={event => { if (!orders.next_page_url || isSubmitting) event.preventDefault(); }}>Next</PortalLink>
                 </nav>}
 
             </div>
