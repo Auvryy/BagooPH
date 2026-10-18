@@ -11,6 +11,7 @@ use App\Services\AccountSettingsService;
 use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
+use App\Services\Commerce\BuyAgainService;
 use App\Services\Commerce\PhilippineAddressCatalog;
 use App\Services\IdentityCorrectionService;
 use App\Services\Orders\CheckoutQuoteService;
@@ -77,6 +78,7 @@ class BuyerProfileController extends Controller
                 foreach ($orders as $order) {
                     $order->setAttribute('can_confirm_receipt', $workspace->canConfirmReceipt($order, $user));
                     $order->setAttribute('can_buy_again', $order->buyer_id === $user->id && $user->canAccessPortal() && $order->status === 'completed');
+                    $order->setAttribute('buy_again_token', $order->can_buy_again ? app(BuyAgainService::class)->requestToken($user, $order) : null);
                     app(OrderTrackingService::class)->attach($order, history: false);
                 }
 

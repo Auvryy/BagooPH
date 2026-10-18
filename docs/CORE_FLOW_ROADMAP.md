@@ -6432,3 +6432,28 @@ ambiguous-city coverage explicitly limited; advertised average-rating control
 notification reading and the remaining polishing gates are still in progress.
 The user has also selected the full COD buyer-return prerequisites for subsequent
 implementation; online payment integration remains separate.
+
+### Direct Buy again to Shopping Bag: October 19, 2026
+
+The requested repurchase action now uses the existing Shopping Bag. From an owned
+completed purchase it adds the original quantities and exact product options at
+current prices, increases matching Bag lines, then opens the Bag with the affected
+available owned lines selected. The buyer edits quantities and reviews shipping,
+vouchers and checkout there. The duplicate product-selection page is removed;
+old GET bookmarks return to the purchase and never add anything.
+
+The shared Bag rules still enforce current stock, approved shop scope, option
+availability, purchase limits and the 99-unit line limit. One failing original
+item rolls back the whole addition. An identical request retains its original
+result instead of adding twice; a changed reuse rejects. Original purchases,
+stock, delivery history and payment records remain unchanged by rebuilding a Bag.
+Selection from the redirect is intersected with the current owned available Bag,
+so a deleted, foreign or unavailable line cannot be selected for checkout.
+
+Verification: **67 focused backend tests / 617 assertions** passed with SQLite
+`:memory:`. **56 frontend checks** passed, including actual button duplicate/retry
+handlers and Bag checkbox/quote selection. The TypeScript/Vite production build
+passed. These checks do not claim a browser walkthrough or Azure deployment.
+Scoped repurchase usability assessment: **6/10 to 8/10**. Original unavailable
+items still produce a clear rejection; the buyer uses their Bag or current
+product page to choose a different quantity or option.

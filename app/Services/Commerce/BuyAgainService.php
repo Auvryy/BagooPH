@@ -69,18 +69,26 @@ class BuyAgainService
                 'unavailable_reason' => $maximum > 0 ? null : $reason,
             ];
         })->all();
+        return ['order' => $order->only(['id', 'order_number']), 'items' => $rows,
+            'requestToken' => $this->requestToken($actor, $order)];
+    }
+
+    public function requestToken(User $actor, Order $order): string
+    {
+        $order = $this->ownedCompleted($actor, $order);
         $nonce = Str::random(64);
 
-        return ['order' => $order->only(['id', 'order_number']), 'items' => $rows,
-            'requestToken' => 'v1.'.$nonce.'.'.$this->signature($actor, $order, $nonce)];
+        return 'v1.'.$nonce.'.'.$this->signature($actor, $order, $nonce);
     }
 
     public function add(User $actor, Order $order, array $input): array
     {
         $order = $this->ownedCompleted($actor, $order);
+        $direct = ($input['mode'] ?? null) === 'purchase';
         $data = Validator::make($input, [
+            'mode' => ['sometimes', 'string', 'in:purchase'],
             'request_token' => ['bail', 'required', 'string', 'size:132', 'regex:/\Av1\.[A-Za-z0-9]{64}\.[a-f0-9]{64}\z/'],
-            'items' => ['required', 'array', 'list', 'min:1'],
+            'items' => [$direct ? 'exclude' : 'required', 'array', 'list', 'min:1'],
             'items.*.order_item_id' => ['bail', 'required', new AsciiPositiveInteger, 'integer', 'distinct'],
             'items.*.quantity' => ['bail', 'required', new AsciiPositiveInteger, 'integer', 'min:1', 'max:99'],
             'items.*.expected_unit_price' => ['bail', 'required', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0.01,99999999.99'],
@@ -89,35 +97,39 @@ class BuyAgainService
         $retained = BuyAgainSubmission::where('token_hash', $tokenHash)->where('buyer_id', $actor->id)->where('order_id', $order->id)->exists();
         [, $nonce, $signature] = explode('.', $data['request_token']);
         if (! $retained && ! hash_equals($this->signature($actor, $order, $nonce), $signature)) {
-            throw ValidationException::withMessages(['request_token' => 'Open Buy again from your completed purchase before adding items.']);
+            throw ValidationException::withMessages(['request_token' => 'Use Buy again from your completed purchase before adding items.']);
         }
-        $selection = collect($data['items'])->map(fn ($row) => [
+        $selection = collect($data['items'] ?? [])->map(fn ($row) => [
             'order_item_id' => (int) $row['order_item_id'], 'quantity' => (int) $row['quantity'],
             'expected_unit_price' => number_format((float) $row['expected_unit_price'], 2, '.', ''),
         ])->sortBy('order_item_id')->values()->all();
-        $requestHash = hash('sha256', json_encode($selection, JSON_THROW_ON_ERROR));
+        $requestHash = hash('sha256', $direct ? 'original-purchase-quantities:v1' : json_encode($selection, JSON_THROW_ON_ERROR));
         $cart = app(CartLineService::class)->ownedCart($actor);
 
-        return DB::transaction(function () use ($actor, $order, $cart, $tokenHash, $requestHash, $selection) {
+        return DB::transaction(function () use ($actor, $order, $cart, $tokenHash, $requestHash, $selection, $direct) {
             $cart = Cart::whereKey($cart->id)->where('user_id', $actor->id)->lockForUpdate()->firstOrFail();
             $order = $this->ownedCompleted($actor, $order, lock: true);
             $previous = BuyAgainSubmission::where('token_hash', $tokenHash)->first();
             if ($previous) {
                 app(BuyerAccessService::class)->requirePortal($actor, lock: true);
                 abort_unless($previous->buyer_id === $actor->id && $previous->order_id === $order->id && $previous->cart_id === $cart->id, 403);
-                abort_unless(hash_equals($previous->request_hash, $requestHash), 409, 'This Buy again request was already used with different items. Open a new preview.');
+                abort_unless(hash_equals($previous->request_hash, $requestHash), 409, 'This Buy again request was already used with different items. Return to the purchase and try Buy again.');
 
                 return ['result' => $previous->result, 'replayed' => true];
             }
-            $originals = $order->items()->whereIn('id', array_column($selection, 'order_item_id'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-            if ($originals->count() !== count($selection)) {
+            $originals = $order->items()->when(! $direct, fn ($query) => $query->whereIn('id', array_column($selection, 'order_item_id')))
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            if ($originals->isEmpty() || (! $direct && $originals->count() !== count($selection))) {
                 throw ValidationException::withMessages(['items' => 'Choose only items from this completed purchase.']);
+            }
+            if ($direct) {
+                $selection = $originals->map(fn ($item) => ['order_item_id' => $item->id, 'quantity' => $item->quantity])->values()->all();
             }
             try {
                 $products = app(ShopEligibilityService::class)->lockSaleProducts($originals->pluck('product_id')->all(), [$actor->id]);
             } catch (RuntimeException $exception) {
                 app(BuyerAccessService::class)->requirePortal($actor);
-                throw ValidationException::withMessages(['items' => 'One or more selected listings are unavailable. Nothing was added. Open the preview to review your selection.']);
+                throw ValidationException::withMessages(['items' => 'One or more purchased items are unavailable. Nothing was added. Check the current products or your Bag.']);
             }
             app(BuyerAccessService::class)->requirePortal($actor);
             $added = [];
@@ -132,8 +144,8 @@ class BuyAgainService
                 } catch (RuntimeException $exception) {
                     throw ValidationException::withMessages(['items' => $exception->getMessage().' Nothing was added.']);
                 }
-                if ($selected['expected_unit_price'] !== $currentPrice) {
-                    throw ValidationException::withMessages(['items' => 'A price changed after your preview. Nothing was added. Open Buy again to review the current prices.']);
+                if (! $direct && $selected['expected_unit_price'] !== $currentPrice) {
+                    throw ValidationException::withMessages(['items' => 'A price changed after this selection. Nothing was added. Try Buy again to use current prices in your Bag.']);
                 }
                 try {
                     $line = app(CartLineService::class)->addLocked($cart, $product, $selected['quantity'], $original->color, $original->size);

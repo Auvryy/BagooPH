@@ -279,6 +279,7 @@ export interface Order {
     completed_at?: string | null;
     can_confirm_receipt?: boolean;
     can_buy_again?: boolean;
+    buy_again_token?: string | null;
     has_mixed_shops?: boolean;
     can_fulfill?: boolean;
     handover_hold?: boolean;

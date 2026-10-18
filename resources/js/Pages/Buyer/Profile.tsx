@@ -5,6 +5,7 @@ import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
 import BuyerOrderFilters from '@/Components/BuyerOrderFilters';
 import BuyerPurchaseNavigation from '@/Components/BuyerPurchaseNavigation';
+import BuyAgainButton from '@/Components/BuyAgainButton';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import VoucherOfferList from '@/Components/VoucherOfferList';
 import BuyerVoucherCollection, { BuyerVoucherCollectionData } from '@/Components/Vouchers/BuyerVoucherCollection';
@@ -726,7 +727,7 @@ export default function BuyerProfile({
                                                             <span>{receiptPending === order.id ? 'Confirming…' : 'Confirm Received'}</span>
                                                         </button>
                                                     )}
-                                                    {order.can_buy_again && <Link href={route('buyer.orders.buy-again', order.id)} className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-[#E00D42] hover:bg-rose-50">Buy again</Link>}
+                                                    {order.can_buy_again && order.buy_again_token && <BuyAgainButton url={route('buyer.orders.buy-again.store', order.id)} token={order.buy_again_token} />}
 
                                                     <Link
                                                         href={route('buyer.orders.show', order.id)}

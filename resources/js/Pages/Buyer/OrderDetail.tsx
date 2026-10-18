@@ -4,6 +4,7 @@ import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
 import BuyerVoucherReceipt from '@/Components/Vouchers/BuyerVoucherReceipt';
 import BuyerCancelOrder from '@/Components/BuyerCancelOrder';
+import BuyAgainButton from '@/Components/BuyAgainButton';
 import BuyerSavedReview from '@/Components/BuyerSavedReview';
 import OrderTrackingPanel, { trackingDate } from '@/Components/OrderTrackingPanel';
 import { claimWindow, nextClaimBoundary } from '@/utils/orderTracking';
@@ -33,6 +34,7 @@ interface Props {
     order: Order;
     canUsePortal: boolean;
     buyAgainUrl?: string | null;
+    buyAgainToken?: string | null;
     cancelOrderUrl?: string | null;
     cancellationReasons?: string[];
     cancellationReason?: string | null;
@@ -44,7 +46,7 @@ interface Props {
     orderNotices: Array<{id: string; data: {title: string; milestone: string}; read_at: string | null; created_at: string}>;
 }
 
-export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, cancelOrderUrl, cancellationReasons = [], cancellationReason, canConfirmReceipt, pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [] }: Props) {
+export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buyAgainToken, cancelOrderUrl, cancellationReasons = [], cancellationReason, canConfirmReceipt, pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [] }: Props) {
     const { auth } = usePage<PageProps>().props;
     const adminOversight = auth.user?.role === 'admin';
     const delivery = order.delivery;
@@ -83,7 +85,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
     const refreshTracking = () => {
         if (refreshPending.current || codePending.current || receiptPending.current) return;
         refreshPending.current = true; setTrackingRefreshing(true); setTrackingError('');
-        router.reload({ only: ['order', 'canUsePortal', 'buyAgainUrl', 'cancelOrderUrl', 'cancellationReasons', 'cancellationReason', 'canConfirmReceipt', 'pickupClaim', 'pickupHub', 'pickupCodeUrl', 'pickupCodeAvailable', 'orderNotices', 'auth', 'flash'],
+        router.reload({ only: ['order', 'canUsePortal', 'buyAgainUrl', 'buyAgainToken', 'cancelOrderUrl', 'cancellationReasons', 'cancellationReason', 'canConfirmReceipt', 'pickupClaim', 'pickupHub', 'pickupCodeUrl', 'pickupCodeAvailable', 'orderNotices', 'auth', 'flash'],
             onError: errors => setTrackingError(Object.values(errors).join(' ') || 'Tracking could not refresh. Try again.'),
             onFinish: () => { refreshPending.current = false; setTrackingRefreshing(false); },
         });
@@ -250,7 +252,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, can
                                 <span>Rate & Upload Photos</span>
                             </button>
                         )}
-                        {canUsePortal && buyAgainUrl && <Link href={buyAgainUrl} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-bold text-[#E00D42] hover:bg-rose-50">Buy again</Link>}
+                        {canUsePortal && buyAgainUrl && buyAgainToken && <BuyAgainButton url={buyAgainUrl} token={buyAgainToken} disabled={trackingRefreshing || receiptBusy || codeBusy} />}
                         {canUsePortal && cancelOrderUrl && <BuyerCancelOrder url={cancelOrderUrl} reasons={cancellationReasons} disabled={trackingRefreshing || receiptBusy || codeBusy} />}
                         {order.status === 'completed' && (
                             <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-xl flex items-center gap-1.5">

@@ -8,7 +8,7 @@ import { build } from 'esbuild';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-core-commerce-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.coreCommerceHarness; delete globalThis.route; });
 const result = await build({
-    stdin: { contents: `export { default as Checkout } from '@/Pages/Checkout/Index'; export { default as Detail } from '@/Pages/Buyer/OrderDetail'; export { default as SellerOrders } from '@/Pages/Seller/Orders';`, loader: 'tsx', resolveDir: resolve(import.meta.dirname, '../..') },
+    stdin: { contents: `export { default as Checkout } from '@/Pages/Checkout/Index'; export { default as Detail } from '@/Pages/Buyer/OrderDetail'; export { default as SellerOrders } from '@/Pages/Seller/Orders'; export { default as BuyAgain } from '@/Components/BuyAgainButton'; export { default as Bag } from '@/Pages/Cart/Index';`, loader: 'tsx', resolveDir: resolve(import.meta.dirname, '../..') },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'controlled-page-hooks', setup(builder) {
         builder.onResolve({ filter: /^react-dom$/ }, () => ({ path: 'portal', namespace: 'page-portal' }));
@@ -20,6 +20,7 @@ const result = await build({
             export const useEffect = () => {};
             export const useLayoutEffect = () => {};
             export const useCallback = value => value;
+            export const useMemo = callback => callback();
             export default {};
         ` }));
         builder.onResolve({ filter: /^@inertiajs\/react$/ }, () => ({ path: 'inertia', namespace: 'page-inertia' }));
@@ -40,7 +41,7 @@ const result = await build({
 });
 const bundlePath = join(temporary, 'checkout.mjs');
 writeFileSync(bundlePath, result.outputFiles[0].text);
-const { Checkout, Detail, SellerOrders } = await import(pathToFileURL(bundlePath).href);
+const { Checkout, Detail, SellerOrders, BuyAgain, Bag } = await import(pathToFileURL(bundlePath).href);
 globalThis.route = name => '/' + name.replaceAll('.', '/');
 const address = { id: 1, recipient_name: 'Ana Santos', phone: '+639171234567', street: '10 Mabini Street', city: 'Santa Cruz', province: 'Laguna', barangay: 'Poblacion', postal_code: '4009', latitude: 14.28, longitude: 121.42, landmark: 'Beside the municipal hall' };
 const props = { user: { name: 'Ana Santos', phone: '+639171234567' }, addresses: [address], cart: { id: 1 }, items: [{ id: 1, quantity: 1, product: { id: 1, name: 'Everyday Bag', price: 10 } }], checkoutToken: 'isolated-checkout', kycStatus: 'approved', pickupHubs: [{ id: 3, name: 'Santa Cruz Bayan Hub', code: 'BAYAN-3', address: '20 Hub Street', city_municipality: 'Santa Cruz', province: 'Laguna' }] };
@@ -54,13 +55,14 @@ function harness(overrides = {}) {
             const index = formCursor++;
             forms[index] ??= { data: initial, errors: {}, processing: false };
             const form = forms[index];
-            return { ...form, setData(key, value) { form.data = typeof key === 'function' ? key(form.data) : { ...form.data, [key]: value }; }, reset() {}, post(url, options) { requests.push({ url, data: structuredClone(form.data), options }); } };
+            return { ...form, setData(key, value) { form.data = typeof key === 'function' ? key(form.data) : { ...form.data, [key]: value }; }, reset() {}, transform(callback) { form.transform = callback; }, post(url, options) { requests.push({ url, data: structuredClone(form.transform ? form.transform(form.data) : form.data), options }); } };
         },
         render() { return this.renderPage(Checkout, { ...props, ...overrides }); },
         renderPage(Component, properties) { cursor = 0; formCursor = 0; return Component(properties); },
         request(method, args) { requests.push({ method, args }); },
         get data() { return forms[1].data; },
         set errors(value) { forms[1].errors = value; },
+        formErrors(index, value) { forms[index].errors = value; },
         requests,
     };
     globalThis.coreCommerceHarness = h;
@@ -72,8 +74,36 @@ function all(node, predicate, found = []) {
     return found;
 }
 const field = (tree, id) => all(tree, node => node.props?.id === id)[0];
-const text = node => Array.isArray(node) ? node.map(text).join(' ') : node && typeof node === 'object' ? text(node.props?.children) : typeof node === 'string' ? node : '';
+const text = node => Array.isArray(node) ? node.map(text).join(' ') : node && typeof node === 'object' ? text(node.props?.children) : typeof node === 'string' || typeof node === 'number' ? String(node) : '';
 const radio = (tree, value) => all(tree, node => node.type === 'input' && node.props.type === 'radio' && node.props.value === value)[0];
+
+test('Buy again sends one direct Bag mutation and retains server feedback for a retry', () => {
+    const h = harness();
+    const properties = { url: '/buyer/orders/20/buy-again', token: 'owned-request' };
+    let tree = h.renderPage(BuyAgain, properties);
+    const button = all(tree, node => node.type === 'button')[0];
+    button.props.onClick(); button.props.onClick();
+    assert.equal(h.requests.length, 1);
+    assert.deepEqual(h.requests[0].data, { mode: 'purchase', request_token: 'owned-request' });
+    assert.equal(h.requests[0].options.preserveScroll, false);
+    h.formErrors(0, { items: 'This selection is out of stock. Nothing was added.' });
+    h.requests[0].options.onFinish(); tree = h.renderPage(BuyAgain, properties);
+    assert.match(text(all(tree, node => node.props?.role === 'alert')), /out of stock/);
+    all(tree, node => node.type === 'button')[0].props.onClick();
+    assert.equal(h.requests.length, 2);
+    assert.deepEqual(h.requests[1].data, h.requests[0].data);
+});
+
+test('the Bag selects the returned repurchase lines instead of an unrelated most recent item', () => {
+    const h = harness();
+    const row = (id, date, available = true) => ({ id, product_id: id, quantity: 1, unit_price: 100, updated_at: date, available_for_purchase: available,
+        product: { id, name: `Bag item ${id}`, stock: 5, price: 100, shop: { id: 1, name: 'Bagoo Crafts' } } });
+    const tree = h.renderPage(Bag, { cart: { id: 1 }, total: 300, items: [row(1, '2026-10-19'), row(2, '2026-10-18'), row(3, '2026-10-17'), row(4, '2026-10-16', false)], selectedBagItemIds: [2, 3, 4, 999] });
+    const checkboxes = all(tree, node => node.type === 'input' && node.props.type === 'checkbox');
+    assert.equal(checkboxes.filter(node => node.props.checked).length, 2);
+    assert.match(text(tree), /Select available.*2.*3\s+items/s);
+    assert.deepEqual(h.quoteInput.item_ids, [2, 3]);
+});
 
 test('self-pickup keeps every required address field editable and never replaces buyer address or coordinates with the hub', () => {
     const h = harness(); let tree = h.render(); const original = structuredClone(h.data);

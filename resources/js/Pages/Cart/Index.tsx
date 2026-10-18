@@ -29,9 +29,10 @@ interface Props {
     items: CartItem[];
     total: number;
     quote?: PurchaseQuote;
+    selectedBagItemIds?: number[] | null;
 }
 
-export default function CartIndex({ cart, items, quote: initialQuote }: Props) {
+export default function CartIndex({ cart, items, quote: initialQuote, selectedBagItemIds }: Props) {
     // Determine the most recently added or updated product in the bag
     const getMostRecentItemId = (itemList: CartItem[]): number | null => {
         if (!itemList || itemList.length === 0) return null;
@@ -49,8 +50,16 @@ export default function CartIndex({ cart, items, quote: initialQuote }: Props) {
 
     // Default to only checking the recent product added when opening the cart
     const [selectedIds, setSelectedIds] = useState<number[]>(() => {
-        return mostRecentId ? [mostRecentId] : [];
+        return selectedBagItemIds !== undefined && selectedBagItemIds !== null
+            ? selectedBagItemIds.filter(id => selectableItems.some(item => item.id === id))
+            : mostRecentId ? [mostRecentId] : [];
     });
+
+    useEffect(() => {
+        if (selectedBagItemIds !== undefined && selectedBagItemIds !== null) {
+            setSelectedIds(selectedBagItemIds.filter(id => items.some(item => item.id === id && item.available_for_purchase === true)));
+        }
+    }, [selectedBagItemIds]);
 
     type SortOption = 'recent' | 'oldest' | 'price_low' | 'price_high' | 'name_asc';
     type FilterOption = 'all' | 'selected' | 'unselected';

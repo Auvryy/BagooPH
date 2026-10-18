@@ -63,11 +63,11 @@ class BuyerBuyAgainTest extends TestCase
         $orderBefore = $order->fresh()->getRawOriginal();
         $lineBefore = $line->fresh()->getRawOriginal();
         $product->update(['price' => '150.00']);
-        $this->actingAs($buyer)->get($this->url($order))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Buyer/BuyAgain')->where('items.0.previous_unit_price', '100.00')->where('items.0.current_unit_price', '150.00')
-            ->where('items.0.original_quantity', 2)->where('items.0.maximum_quantity', 10)->where('items.0.can_select', true)
-            ->where('requestToken', fn ($token) => is_string($token) && strlen($token) === 132)
-            ->where('submitUrl', $this->url($order))->where('bagUrl', '/cart'));
+        $this->actingAs($buyer)->get($this->url($order))->assertRedirect(route('buyer.orders.show', $order));
+        $preview = app(BuyAgainService::class)->preview($buyer, $order);
+        $this->assertSame('100.00', $preview['items'][0]['previous_unit_price']);
+        $this->assertSame('150.00', $preview['items'][0]['current_unit_price']);
+        $this->assertSame(2, $preview['items'][0]['original_quantity']);
         $this->assertDatabaseCount('carts', 0);
         $payload = $this->payload($buyer, $order);
         $payload += ['unit_price' => '1.00', 'buyer_id' => User::factory()->create()->id, 'payment_method' => 'bank_transfer', 'shipping_fee' => 0];
@@ -80,6 +80,74 @@ class BuyerBuyAgainTest extends TestCase
         $this->assertDatabaseCount('buy_again_submissions', 1);
         $this->assertDatabaseCount('orders', 1);
         $this->assertDatabaseCount('deliveries', 0);
+    }
+
+    public function test_direct_buy_again_merges_current_option_lines_and_opens_the_bag_with_only_those_lines_selected(): void
+    {
+        [$buyer, $product, $order, $original] = $this->purchase(['colors' => [['name' => 'Red', 'in_stock' => true], ['name' => 'Blue', 'in_stock' => true]], 'sizes' => [['name' => 'M', 'stock' => 10]]], 'Red', 'M');
+        $before = $order->fresh()->getRawOriginal();
+        $cart = Cart::create(['user_id' => $buyer->id]);
+        $matching = $cart->items()->create(['product_id' => $product->id, 'quantity' => 2, 'unit_price' => '80.00', 'color' => 'Red', 'size' => 'M']);
+        $other = $cart->items()->create(['product_id' => $product->id, 'quantity' => 1, 'unit_price' => '100.00', 'color' => 'Blue', 'size' => 'M']);
+        $product->update(['price' => '150.00']);
+        $token = app(BuyAgainService::class)->requestToken($buyer, $order);
+        $this->actingAs($buyer)->post($this->url($order), ['mode' => 'purchase', 'request_token' => $token, 'quantity' => 99, 'unit_price' => 1])
+            ->assertRedirect('/cart')->assertSessionHas('buy_again_selection', [$matching->id]);
+        $this->assertSame(4, $matching->fresh()->quantity);
+        $this->assertSame('150.00', $matching->fresh()->unit_price);
+        $this->assertSame(1, $other->fresh()->quantity);
+        $this->get('/cart')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Cart/Index')
+            ->where('selectedBagItemIds', [$matching->id])->has('items', 2)->where('quote.subtotal', 600));
+        $this->assertSame(10, $product->fresh()->stock);
+        $this->assertSame($before, $order->fresh()->getRawOriginal());
+        $this->assertSame(2, $original->fresh()->quantity);
+        $this->post($this->url($order), ['mode' => 'purchase', 'request_token' => $token])->assertRedirect('/cart');
+        $this->assertSame(4, $matching->fresh()->quantity);
+        $this->assertDatabaseCount('buy_again_submissions', 1);
+        $this->assertDatabaseCount('orders', 1);
+    }
+
+    public function test_direct_buy_again_selects_all_original_lines_and_never_selects_foreign_or_unavailable_bag_ids(): void
+    {
+        [$buyer, $product, $order] = $this->purchase();
+        $second = Product::factory()->create(['shop_id' => $product->shop_id, 'price' => 75, 'stock' => 5]);
+        $order->items()->create(['product_id' => $second->id, 'shop_id' => $second->shop_id, 'quantity' => 1, 'unit_price' => 70, 'subtotal' => 70]);
+        $this->actingAs($buyer)->post($this->url($order), ['mode' => 'purchase', 'request_token' => app(BuyAgainService::class)->requestToken($buyer, $order)])->assertRedirect('/cart');
+        $cart = Cart::where('user_id', $buyer->id)->firstOrFail();
+        $ids = $cart->items()->orderBy('id')->pluck('id')->all();
+        $this->get('/cart')->assertOk()->assertInertia(fn (Assert $page) => $page->where('selectedBagItemIds', $ids)->where('quote.subtotal', 275));
+        $foreign = Cart::create(['user_id' => User::factory()->create()->id])->items()->create(['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 100]);
+        $second->update(['stock' => 0]);
+        $this->withSession(['buy_again_selection' => [...$ids, $foreign->id, 999999]])->get('/cart')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('selectedBagItemIds', [$ids[0]])->where('quote.subtotal', 200));
+    }
+
+    public function test_direct_buy_again_rejects_an_unavailable_original_line_without_partially_adding_or_changing_other_lines(): void
+    {
+        [$buyer, $product, $order] = $this->purchase();
+        $second = Product::factory()->create(['shop_id' => $product->shop_id, 'stock' => 0]);
+        $order->items()->create(['product_id' => $second->id, 'shop_id' => $second->shop_id, 'quantity' => 1, 'unit_price' => 100, 'subtotal' => 100]);
+        $token = app(BuyAgainService::class)->requestToken($buyer, $order);
+        $this->actingAs($buyer)->postJson($this->url($order), ['mode' => 'purchase', 'request_token' => $token])->assertUnprocessable()->assertJsonValidationErrors('items');
+        $this->assertDatabaseCount('cart_items', 0);
+        $this->assertDatabaseCount('buy_again_submissions', 0);
+        $this->assertSame(10, $product->fresh()->stock);
+    }
+
+    public function test_direct_buy_again_cannot_bypass_a_full_bag_limit_or_reuse_a_different_submission(): void
+    {
+        [$buyer, $product, $order] = $this->purchase();
+        $cart = Cart::create(['user_id' => $buyer->id]);
+        $line = $cart->items()->create(['product_id' => $product->id, 'quantity' => 9, 'unit_price' => 100]);
+        $token = app(BuyAgainService::class)->requestToken($buyer, $order);
+        $this->actingAs($buyer)->postJson($this->url($order), ['mode' => 'purchase', 'request_token' => $token])->assertUnprocessable();
+        $this->assertSame(9, $line->fresh()->quantity);
+        $this->assertDatabaseCount('buy_again_submissions', 0);
+        $payload = $this->payload($buyer, $order);
+        $payload['items'][0]['quantity'] = 1;
+        $this->postJson($this->url($order), $payload)->assertOk();
+        $this->postJson($this->url($order), ['mode' => 'purchase', 'request_token' => $payload['request_token']])->assertStatus(409);
+        $this->assertSame(10, $line->fresh()->quantity);
     }
 
     public function test_foreign_orders_unknown_ids_and_tokens_from_other_orders_are_rejected(): void
@@ -113,6 +181,7 @@ class BuyerBuyAgainTest extends TestCase
         $order->update(['status' => $status]);
         $this->actingAs($buyer)->get($this->url($order))->assertStatus(409);
         $this->postJson($this->url($order), $payload)->assertStatus(409);
+        $this->postJson($this->url($order), ['mode' => 'purchase', 'request_token' => $payload['request_token']])->assertStatus(409);
         $this->assertDatabaseCount('carts', 0);
         $this->assertDatabaseCount('buy_again_submissions', 0);
     }
@@ -135,11 +204,13 @@ class BuyerBuyAgainTest extends TestCase
             'sold_out' => $product->update(['stock' => 0]),
             default => $product->update(['status' => $state]),
         };
-        $this->actingAs($buyer)->get($this->url($order))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('items.0.can_select', false)->where('items.0.maximum_quantity', 0)
-            ->where('items.0.unavailable_reason', fn ($reason) => is_string($reason) && $reason !== '')
-            ->where('items.0.current_unit_price', $state === 'sold_out' ? '100.00' : null)
-            ->where('items.0.name', $state === 'sold_out' ? $product->name : 'ORIGINAL-BAG'));
+        $preview = app(BuyAgainService::class)->preview($buyer, $order)['items'][0];
+        $this->assertFalse($preview['can_select']);
+        $this->assertSame(0, $preview['maximum_quantity']);
+        $this->assertNotEmpty($preview['unavailable_reason']);
+        $this->assertSame($state === 'sold_out' ? '100.00' : null, $preview['current_unit_price']);
+        $this->assertSame($state === 'sold_out' ? $product->name : 'ORIGINAL-BAG', $preview['name']);
+        $this->actingAs($buyer);
         $this->postJson($this->url($order), $payload)->assertUnprocessable()->assertJsonValidationErrors('items');
         $this->assertDatabaseCount('cart_items', 0);
         $this->assertDatabaseCount('buy_again_submissions', 0);
@@ -150,8 +221,11 @@ class BuyerBuyAgainTest extends TestCase
         [$buyer, $product, $order, $line] = $this->purchase(['colors' => [['name' => 'Red', 'in_stock' => true]], 'sizes' => [['name' => 'M', 'stock' => 10]]], 'Red', 'M');
         $payload = $this->payload($buyer, $order);
         $product->update(['variants' => ['colors' => [['name' => 'Blue', 'in_stock' => true]], 'sizes' => [['name' => 'L', 'stock' => 10]]]]);
-        $this->actingAs($buyer)->get($this->url($order))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('items.0.color', 'Red')->where('items.0.size', 'M')->where('items.0.can_select', false));
+        $preview = app(BuyAgainService::class)->preview($buyer, $order)['items'][0];
+        $this->assertSame('Red', $preview['color']);
+        $this->assertSame('M', $preview['size']);
+        $this->assertFalse($preview['can_select']);
+        $this->actingAs($buyer);
         $this->postJson($this->url($order), $payload)->assertUnprocessable();
         $this->assertDatabaseCount('cart_items', 0);
         $this->assertSame('Red', $line->fresh()->color);
@@ -177,7 +251,8 @@ class BuyerBuyAgainTest extends TestCase
         $product->update(['stock' => 150]);
         $cart = Cart::create(['user_id' => $buyer->id]);
         $existing = $cart->items()->create(['product_id' => $product->id, 'quantity' => 98, 'unit_price' => 100]);
-        $this->actingAs($buyer)->get($this->url($order))->assertOk()->assertInertia(fn (Assert $page) => $page->where('items.0.maximum_quantity', 1));
+        $this->assertSame(1, app(BuyAgainService::class)->preview($buyer, $order)['items'][0]['maximum_quantity']);
+        $this->actingAs($buyer);
         $payload = $this->payload($buyer, $order);
         $this->postJson($this->url($order), $payload)->assertUnprocessable();
         $this->assertSame(98, $existing->fresh()->quantity);

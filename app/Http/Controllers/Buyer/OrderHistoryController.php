@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\ReviewService;
+use App\Services\Commerce\BuyAgainService;
 use App\Services\Notifications\NotificationCenterService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderTrackingService;
@@ -80,6 +81,8 @@ class OrderHistoryController extends Controller
             'canUsePortal' => $user->isBuyer() && $user->canAccessPortal(),
             'buyAgainUrl' => $ownedBuyerOrder && $user->canAccessPortal() && $order->status === 'completed'
                 ? route('buyer.orders.buy-again', $order, absolute: false) : null,
+            'buyAgainToken' => $ownedBuyerOrder && $user->canAccessPortal() && $order->status === 'completed'
+                ? app(BuyAgainService::class)->requestToken($user, $order) : null,
             'canConfirmReceipt' => $canConfirmReceipt,
             'cancelOrderUrl' => $ownedBuyerOrder && app(OrderLifecycleService::class)->canBuyerCancel($order, $user)
                 ? route('buyer.orders.cancel', $order, absolute: false) : null,
