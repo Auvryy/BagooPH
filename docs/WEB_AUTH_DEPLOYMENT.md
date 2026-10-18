@@ -97,9 +97,30 @@ server's Docker version, firewall rules or Internet reachability.
 
 ## Notification scheduling
 
-The existing Laravel scheduler needs an actual invocation every minute, or a managed `schedule:work` process. `routes/console.php` registers pickup holding checks, `notifications:deliver-pending` and rider-company offer expiry every minute, plus advertisement raw-event cleanup daily. Immediate notification delivery happens after the business transaction commits. `schedule:list` shows registered schedules but does not prove that a scheduler process is running.
+The `scheduler` Compose service runs `php artisan schedule:work` from the same
+application image, configuration and mounted code as the app. It publishes no
+ports. `routes/console.php` registers pickup holding checks,
+`notifications:deliver-pending`, rider-company offer expiry and
+`sales:send-reminders` every minute, plus advertisement cleanup daily. Immediate
+notification delivery still happens after its business transaction commits.
 
-Compose starts only the app, web and database services. A scheduler or queue worker needs separate operator configuration; the database queue setting alone does not start a worker. Verify the actual environment without copying private credentials into logs or documentation.
+`./bagoo.sh deploy` stops the scheduler before dependency changes and starts it
+after migrations and cache preparation succeed. `./bagoo.sh verify` checks that
+the scheduler container is running and can boot the scheduled command list.
+`schedule:list` by itself proves registration rather than execution. Use one
+managed scheduler for this deployment. A database queue setting alone does not
+start a queue worker; this service runs the existing scheduled commands directly.
+
+Inspect the deployed service without printing environment values:
+
+```bash
+docker compose ps scheduler
+docker compose logs --tail=50 scheduler
+```
+
+The advanced-shopping branch prepares this service and validates its configuration
+and deployment ordering locally. It does not claim that an existing Azure worker
+has been started or that live reminders have arrived there.
 
 ## Products exist but the catalogue is empty
 

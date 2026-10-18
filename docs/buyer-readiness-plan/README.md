@@ -21,7 +21,9 @@ and execution evidence belong in [the roadmap](../CORE_FLOW_ROADMAP.md).
 
 See the dated [delivery results and agreed expectations](04-delivery-results.md)
 for the completed core repairs, verification and remaining feature gaps. The
-roadmap remains the authority for later implementation changes.
+roadmap remains the authority for later implementation changes. The additional
+[advanced shopping delivery](05-advanced-shopping.md) completes the five remaining
+feature areas on `feat/advanced-shopping-controls`, stacked after these branches.
 
 All 92 scenarios have a home. These are allocations for assessment and repair,
 not 92 passing results. Module labels here identify buyer areas; they do not

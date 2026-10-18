@@ -6260,3 +6260,100 @@ The three additive follows/review-history/private-chat migrations were applied
 locally; a read-only probe confirmed the new schema and **17 visible products**.
 No data was reset or reseeded. Azure, Flutter and GitHub publication were untouched.
 All three branch PR descriptions and the combined handoff remain local drafts.
+
+
+## Advanced buyer and seller shopping — October 19, 2026
+
+The five feature gaps left after the three buyer deliveries now have saved
+settings and operational paths on `feat/advanced-shopping-controls`. The branch
+contains those predecessor deliveries. [The advanced shopping plan](buyer-readiness-plan/05-advanced-shopping.md)
+records the rules, review pages and deployment steps. These additions preserve
+10% commission, COD, explicit buyer receipt, shop/category approval and the
+canonical parcel custody route; full post-delivery refunds remain deferred.
+
+| Scoped feature | Before | After | Change and evidence |
+|---|---:|---:|---|
+| Vacation purchasing policy | 0/10 | 8.5/10 | Previously absent. The sole shop's seller saves vacation mode; approved listings stay visible with a label, new purchases stop, and existing orders can still be prepared. |
+| Cumulative buyer purchase limits | 0/10 | 8.5/10 | Previously absent. A configurable product cap counts non-cancelled order units across options and sessions. Bag changes and locked final checkout recheck it; early cancellation releases the allowance once. |
+| Independent option stock | 5.5/10 | 8.6/10 | Shared size stock remains supported; sellers can explicitly configure every combination's stock and surcharge. Combined stock is derived, invalid/missing/duplicate rows fail, and cancellation restores the exact pair. Open-order options cannot be removed or change stock mode. |
+| Timed prices and flash quota | 0/10 | 8.5/10 | Previously absent. Owned schedules reject overlaps, allow adjacent slots and permitted store-price edits, and retain ended schedules. Checkout separates flash and fallback quantities, applies option surcharges, preserves voucher/funding rules and stores each actual price. Cancellation restores only its original flash allocation once. |
+| Owned sale reminders | 0/10 | 8.4/10 | Previously absent. Buyers opt into future flash slots and can opt out. The minute scheduler records one reminder within ten minutes before the start; failed delivery retries remain durable, cancelled/late notices are discarded, and rejoining resumes only an undelivered intent. Actual delivery state controls the interface. |
+
+Zero is scoped to an absent feature, not a rating of the existing marketplace.
+The ratings reflect isolated checks and source review; they do not establish
+simultaneous PostgreSQL behavior, live email delivery or a deployed browser pass.
+
+### Price, stock and recovery boundaries
+
+- The final checkout holds the shared product locks while verifying buyer caps,
+  physical stock, timed prices and quota. Quoted promotional units do not reserve
+  stock. Another buyer's quota change requires a fresh price review. A second
+  comparison binds the final quote to the buyer's displayed prices, including a
+  sale ending between the initial check and quote calculation.
+- Successful checkout retries retain their original result after a sale ends or
+  prices change. A rollback after quota reservation restores the entire order,
+  stock, quota, Bag and funding transaction. Existing order items retain their
+  actual prices and selected options.
+- Store/flash reductions are seller-funded through the charged merchandise price.
+  Voucher minimums use that actual subtotal. Platform voucher funding and shipping
+  remain separate, with no invented platform subsidy for a sale reduction.
+- Future slots can be edited before they run, but recorded reminders freeze their
+  times. Running flash terms stay fixed; a running store sale may change its price
+  for new orders. End now stops new use. A discount never raises an item above
+  its current regular base price.
+- Legacy null size stock still falls back to listing stock; an explicit zero stays
+  sold out. Combination rows require explicit counts rather than guessing how
+  older stock should be split. Product prices reject excess decimals and values
+  outside the supported money range before they reach the sale engine.
+- The broader seller check found an older expectation that a guest's preview query
+  enabled seller controls. The existing owner-only implementation was retained;
+  the expectation now checks guests, buyers, foreign sellers and the actual owner.
+
+### Local rollout and evidence limits
+
+Three additive migrations installed the purchase controls, sale allocations and
+reminders locally. A read-only check confirms all new schema fields, **17 products,
+17 visible products and four orders**, with no reset, reseed or fabricated live
+promotion. Existing products retain their original stock mode and no timed sale
+until the seller configures one. Scheduler inspection confirms the new reminder
+command alongside the existing notification delivery worker.
+
+The seller's product Sales page exposes schedule creation, allowed edits, history
+and End now. Buyer product pages show real prices, remaining quota, countdowns
+and owned reminder controls; catalogue sorting/filtering use the current sale
+base price. Bag and checkout show distinct priced quantities rather than charging
+all units the lowest flash price. Existing portal layouts and typography remain.
+
+Verification: the integrated isolated SQLite gate passed **1,147 tests / 23,822
+assertions**, including buyer, seller, finance, notifications, product moderation,
+stock variants, uploads and tracking. Final pricing/funding follow-ups passed
+**86 tests / 756 assertions** after keeping subtotal arithmetic in integer cents.
+Related rider API and seller order checks passed **47 tests / 1,472 assertions**.
+The final recovery gate passed **77 tests / 742 assertions** for limits, reorder
+behavior, reminders and notification delivery. All **448 frontend/helper tests**,
+the production build, formatting and patch whitespace
+passed. The first expanded run exposed two new null-stock compatibility failures
+and one stale preview expectation; these were corrected before the passing run.
+
+Local commits: `88b09e8` adds vacation mode and buyer caps; `47f5e07` adds independent
+combination stock; `79be6bf` retains the owner-only storefront preview expectation;
+`365d1f8` adds timed pricing, retained quota allocations and durable reminders.
+`42fd462` exposes the seller/buyer controls and priced quantities; `ef3ed0d`
+clarifies a reached cap during reordering; `4c8f054` manages the deployment
+scheduler. The final evidence commit hash is reported in the handoff.
+The local PR draft covers the combined branch scope. No GitHub publication,
+Azure deployment, Flutter edit, browser automation or PostgreSQL test reset was
+performed by this delivery.
+
+The final deployment review found that schedule registration previously lacked a
+managed Compose process. The new scheduler shares the app image, mounted code,
+environment and database dependency and publishes no port. Deployment stops it
+before dependency changes and starts it only after migrations and caches succeed;
+verification rejects a missing worker. The application scheduler was not started
+against the local development records during these checks. Configuration checks,
+registered-command inspection and controlled deployment success/failure tests
+support the prepared rollout; they do not establish a running Azure service.
+
+A final reorder check also gives a reached purchase cap its own accurate message,
+instead of claiming that an empty Bag contains the remaining stock. Existing
+reorder ownership, stock and retry behavior remain covered by the focused gate.

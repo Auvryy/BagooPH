@@ -40,8 +40,8 @@ Bag. Batch 1's earlier handoff limitation no longer applies to the combined work
   use the actual fee within their cap. Cancellation releases only the original
   applicable funding and does not reset retained redemption usage.
 - Bag quantities remain whole numbers from 1 to 99 per line, further bounded by
-  the actual combined product and size stock. There is no configurable cumulative
-  per-buyer purchase cap across orders.
+  the actual combined product and size stock. The advanced delivery adds configurable cumulative
+  per-buyer purchase caps across non-cancelled orders.
 - Storefront categories follow the approved master category and active descendants;
   the buyer work does not create an independent store category-management system.
 - Checkout notes retain 500 characters; review text retains 1,000. Review photos
@@ -53,7 +53,9 @@ Bag. Batch 1's earlier handoff limitation no longer applies to the combined work
 
 ## Remaining feature work
 
-These checks are not reported as passing implemented features:
+At the end of the original three batches, these features were still absent.
+They are now addressed by the separate [advanced delivery](05-advanced-shopping.md);
+its current verification and limits are recorded in the roadmap:
 
 1. Seller shop vacation settings and their purchasing behavior.
 2. Configurable purchase caps counted across a buyer's orders.
@@ -62,8 +64,9 @@ These checks are not reported as passing implemented features:
 4. Timed sale prices, countdowns and reserved promotional quantities.
 5. Sale reminder subscriptions and their scheduled notifications.
 
-Their settings, eligibility, funding and operational rules need a separate
-feature delivery. Keep this follow-up visible when discussing review coverage.
+The advanced delivery defines the saved settings, eligibility, funding and
+operational rules. This does not change the retained payment, completion,
+commission, shipping and full-refund boundaries above.
 
 ## Verification and handoff
 
