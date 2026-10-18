@@ -1,4 +1,5 @@
 import PasswordRequirements from '@/Components/PasswordRequirements';
+import AccountTypeField from '@/Components/AccountTypeField';
 import React, { FormEventHandler, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
@@ -7,7 +8,7 @@ import OtpModal from '@/Components/OtpModal';
 import { validEmailFormat } from '@/utils/authRequests';
 import { ArrowRight, ArrowLeft, Mail, Lock, Eye, EyeOff, ShieldCheck, Check } from 'lucide-react';
 
-export default function ForgotPassword({ status }: { status?: string }) {
+export default function ForgotPassword({ status, role = 'buyer', roles }: { status?: string; role?: string; roles?: string[] }) {
     const [step, setStep] = useState<'email' | 'new_password'>('email');
     const [showOtpModal, setShowOtpModal] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -16,10 +17,12 @@ export default function ForgotPassword({ status }: { status?: string }) {
 
     const emailForm = useForm({
         email: '',
+        role,
     });
 
     const resetForm = useForm({
         email: '',
+        role,
         token: '',
         password: '',
         password_confirmation: '',
@@ -46,6 +49,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
         setShowOtpModal(false);
         resetForm.setData({
             email: emailForm.data.email,
+            role: emailForm.data.role,
             token: token,
             password: '',
             password_confirmation: '',
@@ -84,6 +88,9 @@ export default function ForgotPassword({ status }: { status?: string }) {
             {step === 'email' ? (
                 <div className="space-y-4 font-sans">
                     <form onSubmit={handleSendOtp} className="space-y-4">
+                        <AccountTypeField value={emailForm.data.role} roles={roles} disabled={emailForm.processing || showOtpModal}
+                            onChange={role => { emailForm.setData('role', role); emailForm.clearErrors(); setEmailError(null); }} />
+                        <InputError message={emailForm.errors.role} />
                         <div>
                             <label className="block text-[11px] font-bold text-slate-900 uppercase tracking-wider mb-1">
                                 Registered Email Address
@@ -149,6 +156,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                         isOpen={showOtpModal}
                         email={emailForm.data.email}
                         purpose="password_reset"
+                        role={emailForm.data.role}
                         onSuccess={handleOtpSuccess}
                         onClose={() => setShowOtpModal(false)}
                     />

@@ -12,6 +12,7 @@ class EmailOtp extends Model
 
     protected $fillable = [
         'user_id',
+        'role',
         'email',
         'code_hash',
         'purpose',

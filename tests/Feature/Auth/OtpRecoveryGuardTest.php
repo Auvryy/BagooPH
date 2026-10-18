@@ -24,6 +24,10 @@ class OtpRecoveryGuardTest extends TestCase
         DB::table('users')->insert(['name' => 'Legacy Owner', 'email' => 'Legacy@bagoo.test', 'password' => Hash::make('Password1234')]);
         foreach (['OWNER@BAGOO.TEST', 'CONTACT@BAGOO.TEST', 'LEGACY@BAGOO.TEST'] as $email) {
             $this->postJson('/api/otp/send', ['email' => $email])->assertStatus(422)->assertJsonPath('success', false);
+        }
+        $courier = User::factory()->create(['email' => 'Courier@bagoo.test', 'role' => 'courier']);
+        $courier->accountEmails()->create(['email' => 'courier.contact@bagoo.test', 'verified_at' => now()]);
+        foreach ([$courier->email, 'courier.contact@bagoo.test'] as $email) {
             $this->postJson('/api/v1/rider/registration/email/send', ['email' => $email])->assertStatus(422);
         }
         Mail::assertNothingSent();

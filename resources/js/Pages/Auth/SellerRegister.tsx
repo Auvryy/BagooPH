@@ -118,7 +118,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
         setStepErrors(fieldErrors);
         if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
     }, birthDateLimits);
-    const emailAvailability = useRegistrationEmailAvailability(data.email, currentStep === 1 && !processing && !validating && !showOtpModal);
+    const emailAvailability = useRegistrationEmailAvailability(data.email, currentStep === 1 && !processing && !validating && !showOtpModal, 'seller');
 
     useEffect(() => {
         if (data.otp_token) setData('otp_token', '');
@@ -672,6 +672,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
             </form>
 
             <OtpModal
+                role="seller"
                 isOpen={showOtpModal}
                 email={data.email}
                 purpose="registration"

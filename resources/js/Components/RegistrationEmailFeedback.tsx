@@ -7,7 +7,7 @@ export default function RegistrationEmailFeedback({ state, error, onRetry }: {
 }) {
     const message = error || (state.status === 'checking' ? 'Checking email…'
         : state.status === 'available' ? 'Email is available. Verify it next.'
-        : state.status === 'taken' ? 'This email is already registered. Use another email or sign in.'
+        : state.status === 'taken' ? `This email is already registered for a ${state.role === 'courier' ? 'rider' : state.role ?? 'buyer'} account. Sign in instead.`
         : state.message);
     const invalid = Boolean(error) || state.status === 'taken' || state.status === 'invalid';
     return (

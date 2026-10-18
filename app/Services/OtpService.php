@@ -15,12 +15,12 @@ class OtpService
     /**
      * Generate and dispatch a 6-digit OTP code to the given email.
      */
-    public function sendOtp(string $email, string $purpose = 'registration', ?int $userId = null): array
+    public function sendOtp(string $email, string $purpose = 'registration', ?int $userId = null, string $role = 'buyer'): array
     {
         $normalizedEmail = strtolower(trim($email));
 
         // 1. Rate Limit Cooldown: check if a code was created within 60 seconds
-        $recentOtp = EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)
+        $recentOtp = EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)->where('role', $role)
             ->latest('created_at')
             ->first();
 
@@ -36,7 +36,7 @@ class OtpService
 
         // 2. Throttle Limit: max 5 requests per 15 minutes
         $fifteenMinutesAgo = now()->subMinutes(15);
-        $requestCount = EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)
+        $requestCount = EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)->where('role', $role)
             ->where('created_at', '>=', $fifteenMinutesAgo)
             ->count();
 
@@ -49,7 +49,7 @@ class OtpService
         }
 
         // 3. Invalidate previous active unverified OTPs for this email and purpose
-        EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)
+        EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)->where('role', $role)
             ->update(['verified_at' => now(), 'token' => null, 'expires_at' => now()]);
 
         // 4. Generate 6-digit numeric code
@@ -58,6 +58,7 @@ class OtpService
         // 5. Store OTP record with 10-minute expiry
         $otp = EmailOtp::create([
             'user_id' => $userId,
+            'role' => $role,
             'email' => $normalizedEmail,
             'code_hash' => Hash::make($code),
             'purpose' => $purpose,
@@ -95,14 +96,14 @@ class OtpService
     /**
      * Verify a submitted 6-digit OTP code.
      */
-    public function verifyOtp(string $email, string $code, string $purpose = 'registration', ?int $userId = null): array
+    public function verifyOtp(string $email, string $code, string $purpose = 'registration', ?int $userId = null, string $role = 'buyer'): array
     {
-        return DB::transaction(function () use ($email, $code, $purpose, $userId) {
+        return DB::transaction(function () use ($email, $code, $purpose, $userId, $role) {
             $normalizedEmail = strtolower(trim($email));
             $cleanCode = trim($code);
 
             // Find active unverified OTP
-            $otp = EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)
+            $otp = EmailOtp::forEmail($normalizedEmail, $purpose)->where('user_id', $userId)->where('role', $role)
                 ->whereNull('verified_at')
                 ->latest('id')
                 ->lockForUpdate()->first();
@@ -154,15 +155,16 @@ class OtpService
     /**
      * Validate and burn a verification token to finalize registration or action.
      */
-    public function validateAndBurnToken(string $email, string $token, string $purpose = 'registration', ?int $userId = null): bool
+    public function validateAndBurnToken(string $email, string $token, string $purpose = 'registration', ?int $userId = null, string $role = 'buyer'): bool
     {
-        return DB::transaction(function () use ($email, $token, $purpose, $userId) {
+        return DB::transaction(function () use ($email, $token, $purpose, $userId, $role) {
             $normalizedEmail = strtolower(trim($email));
 
             $otp = EmailOtp::where('email', $normalizedEmail)
                 ->where('token', $token)
                 ->where('purpose', $purpose)
                 ->where('user_id', $userId)
+                ->where('role', $role)
                 ->whereNotNull('verified_at')
                 ->where('expires_at', '>', now())
                 ->where('verified_at', '>=', now()->subHours(2))
@@ -182,7 +184,7 @@ class OtpService
     /**
      * Check if an email has an active valid verification token without burning it yet.
      */
-    public function hasValidToken(string $email, string $token, string $purpose = 'registration', ?int $userId = null): bool
+    public function hasValidToken(string $email, string $token, string $purpose = 'registration', ?int $userId = null, string $role = 'buyer'): bool
     {
         $normalizedEmail = strtolower(trim($email));
 
@@ -190,6 +192,7 @@ class OtpService
             ->where('token', $token)
             ->where('purpose', $purpose)
             ->where('user_id', $userId)
+            ->where('role', $role)
             ->whereNotNull('verified_at')
             ->where('expires_at', '>', now())
             ->where('verified_at', '>=', now()->subHours(2))

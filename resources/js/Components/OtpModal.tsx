@@ -7,6 +7,7 @@ interface OtpModalProps {
     isOpen: boolean;
     email: string;
     purpose?: 'registration' | 'password_reset';
+    role?: string;
     onSuccess: (token: string, code: string) => void;
     onClose: () => void;
     autoSendOnOpen?: boolean;
@@ -16,6 +17,7 @@ export default function OtpModal({
     isOpen,
     email,
     purpose = 'registration',
+    role = 'buyer',
     onSuccess,
     onClose,
     autoSendOnOpen = true,
@@ -29,7 +31,7 @@ export default function OtpModal({
     const [codeSent, setCodeSent] = useState(false);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const scope = useRef(new AuthRequestScope());
-    const context = JSON.stringify([isOpen, email, purpose]);
+    const context = JSON.stringify([isOpen, email, purpose, role]);
     const latestContext = useRef(context);
     latestContext.current = context;
     const canResend = cooldown === 0;
@@ -57,7 +59,7 @@ export default function OtpModal({
             clearTimeout(timer);
             scope.current.cancel();
         };
-    }, [isOpen, email, purpose, autoSendOnOpen]);
+    }, [isOpen, email, purpose, role, autoSendOnOpen]);
 
     async function sendOtpCode() {
         if (!isOpen || !email) return;
@@ -68,7 +70,7 @@ export default function OtpModal({
         setSuccessMsg(null);
         setCodeSent(false);
         try {
-            const reply = await requestOtp('send', { email, purpose }, request.signal);
+            const reply = await requestOtp('send', { email, purpose, role }, request.signal);
             if (!current(request)) return;
             setCodeSent(true);
             setSuccessMsg('A verification code was sent to your email.');
@@ -132,7 +134,7 @@ export default function OtpModal({
         setIsVerifying(true);
         setError(null);
         try {
-            const reply = await requestOtp('verify', { email, code: fullCode, purpose }, request.signal);
+            const reply = await requestOtp('verify', { email, code: fullCode, purpose, role }, request.signal);
             if (current(request)) onSuccess(reply.token as string, fullCode);
         } catch (failure) {
             if (current(request)) setError(failure instanceof Error ? failure.message : 'We could not verify the code. Please try again.');

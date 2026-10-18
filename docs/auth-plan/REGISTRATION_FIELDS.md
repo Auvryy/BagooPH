@@ -75,12 +75,13 @@ Corrections do not approve the account or replace the original sign-in email.
 Buyer, seller, courier and logistics signup check email availability after a
 500 ms typing pause or on blur. Local format feedback, the read-only lookup,
 preflight and final signup must agree on normalized addresses, malformed input,
-controls and length limits. Ownership checks include case/space equivalents,
-other roles and verified additional addresses. An earlier successful check
+controls and length limits. Ownership checks include case/space equivalents
+and verified additional addresses within the selected account role. The same
+email can register another role with separate credentials and approval. An earlier successful check
 never reserves an address or bypasses final validation or database uniqueness.
 
 Blank or incomplete input does not request availability. Editing, changing the
-active step or opening verification cancels pending checks; outdated responses
+active step, account type or opening verification cancels pending checks; outdated responses
 cannot replace current feedback. Requests have a ten-second timeout and respect
 the server retry cooldown. Failed checks must not claim availability. Existing
 field errors take priority, and lookup results reveal no account details.

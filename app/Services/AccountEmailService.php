@@ -6,6 +6,7 @@ use App\Models\AccountEmail;
 use App\Models\EmailOtp;
 use App\Models\User;
 use App\Rules\AccountCurrentPassword;
+use App\Rules\UniqueAccountEmail;
 use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -27,19 +28,17 @@ class AccountEmailService
         ])->all()];
     }
 
-    public function recoveryOwner(string $email, bool $lock = false): ?User
+    public function recoveryOwner(string $email, bool $lock = false, ?string $role = null): ?User
     {
-        $address = AccountEmail::where('email', strtolower(trim($email)))
-            ->where(fn ($query) => $query->where('is_original', true)->orWhereNotNull('verified_at'))->first();
-        if (! $address) {
-            return null;
-        }
-        $user = User::whereKey($address->user_id)->whereNull('closed_at')->when($lock, fn ($query) => $query->lockForUpdate())->first();
-        if (! $user || ! $user->accountEmails()->whereKey($address->id)->where(fn ($query) => $query->where('is_original', true)->orWhereNotNull('verified_at'))->exists()) {
-            return null;
+        $matches = User::whereNull('closed_at')->when($role !== null, fn ($query) => $query->where('role', $role))
+            ->whereHas('accountEmails', fn ($query) => $query->where('email', strtolower(trim($email)))
+                ->where(fn ($query) => $query->where('is_original', true)->orWhereNotNull('verified_at')))
+            ->when($lock, fn ($query) => $query->lockForUpdate())->limit(2)->get();
+        if ($matches->count() > 1) {
+            throw ValidationException::withMessages(['email' => 'Choose the account type whose password you want to reset.']);
         }
 
-        return $user;
+        return $matches->first();
     }
 
     private function actor(Request $request, bool $lock = false): User
@@ -80,8 +79,8 @@ class AccountEmailService
 
     private function available(User $user, string $email): void
     {
-        if (AccountEmail::where('email', $email)->exists()) {
-            throw ValidationException::withMessages(['email' => 'This address already belongs to an account.']);
+        if (UniqueAccountEmail::taken($email, role: $user->role)) {
+            throw ValidationException::withMessages(['email' => 'This address already belongs to a '.AccountIdentityService::label($user->role).' account.']);
         }
         if ($user->accountEmails()->where('is_original', false)->count() >= 5) {
             throw ValidationException::withMessages(['email' => 'You can keep up to five additional addresses. Remove one before adding another.']);
@@ -112,7 +111,7 @@ class AccountEmailService
             }, 3);
         } catch (QueryException $exception) {
             if (in_array($exception->errorInfo[0] ?? null, ['23000', '23505'], true)) {
-                throw ValidationException::withMessages(['email' => 'This address already belongs to an account.']);
+                throw ValidationException::withMessages(['email' => 'This address already belongs to a '.AccountIdentityService::label($user->role).' account.']);
             }
             throw $exception;
         }

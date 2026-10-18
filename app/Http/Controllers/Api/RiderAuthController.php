@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Rules\RegistrationDocument;
 use App\Rules\UniqueAccountEmail;
+use App\Services\AccountIdentityService;
 use App\Services\AccountRegistrationService;
 use App\Services\ApplicationValidationService;
 use App\Services\BirthDateEligibility;
@@ -28,9 +29,9 @@ class RiderAuthController extends Controller
     {
         $this->denyManagedInputs($request);
         $data = $request->validate(['email' => 'required|string|email|max:255', 'password' => 'required|string|max:4096', 'device_name' => 'required|string|max:80']);
-        $user = User::whereRaw('LOWER(email) = LOWER(?)', [trim($data['email'])])->first();
+        $user = User::where('role', 'courier')->whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($data['email']))])->first();
         if (! $user || ! Hash::check($data['password'], $user->getAuthPassword())) {
-            return response()->json(['message' => 'The email or password is incorrect.'], 422);
+            return response()->json(['message' => 'Email or password is incorrect for your rider account.'], 422);
         }
 
         return response()->json(['data' => $accounts->session($user, $data['device_name'])]);
@@ -70,10 +71,10 @@ class RiderAuthController extends Controller
     {
         $request->merge(app(ApplicationValidationService::class)->normalize($request->only('email'), 'buyer'));
         $data = $request->validate(['email' => ApplicationValidationService::emailRules()]);
-        if (UniqueAccountEmail::taken($data['email'])) {
-            return response()->json(['message' => 'An account with this email already exists. Please sign in instead.'], 422);
+        if (UniqueAccountEmail::taken($data['email'], role: 'courier')) {
+            return response()->json(['message' => AccountIdentityService::duplicateMessage('courier')], 422);
         }
-        $result = $otp->sendOtp($data['email'], 'registration');
+        $result = $otp->sendOtp($data['email'], 'registration', role: 'courier');
         $status = $result['success'] ? 200 : ($result['status'] ?? 429);
         unset($result['status']);
 
@@ -84,7 +85,7 @@ class RiderAuthController extends Controller
     {
         $request->merge(app(ApplicationValidationService::class)->normalize($request->only('email'), 'buyer'));
         $data = $request->validate(['email' => ApplicationValidationService::emailRules(), 'code' => 'required|string|regex:/\A[0-9]{6}\z/']);
-        $result = $otp->verifyOtp($data['email'], $data['code'], 'registration');
+        $result = $otp->verifyOtp($data['email'], $data['code'], 'registration', role: 'courier');
 
         return response()->json($result, $result['success'] ? 200 : 422);
     }

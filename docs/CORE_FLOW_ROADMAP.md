@@ -5894,3 +5894,41 @@ retain the unperformed browser/device and deployed network/session checks.
 Flutter and simultaneous PostgreSQL behavior are outside this local acceptance.
 No overall admin security, whole-system readiness, Azure performance or thesis
 readiness rating is raised by this scoped work.
+
+## October 18, 2026: Account identity and registration review
+
+The selected [account registration and review delivery](auth-plan/ACCOUNT_REGISTRATION_AND_REVIEW.md)
+uses one general branch with separate commits. The account identity foundation
+now reserves original and recovery addresses within a role. Buyer, seller,
+courier, logistics and controlled admin accounts can share an email while
+retaining independent passwords, approval, restrictions and owned records.
+Sign-in pages submit their role, portal hosts constrain it, and an ambiguous
+older request must choose an account type. Native login selects only a courier;
+Google linking, personnel placement and demo lookups use the intended role.
+
+Password broker tokens use the account ID; reset links carry the real email and
+role. Registration codes are role-bound, and adding a contact address retains
+password and owner-bound verification requirements. Normal migrations preserve
+existing account IDs, original addresses and guards. Old unconsumed email-only
+broker links or worker registration codes may need to be requested again. The
+identity policy migration deliberately requires roll-forward repair rather
+than automatically collapsing different roles back to globally unique emails.
+
+Company names now have the same normalized uniqueness protection as shop names:
+preflight and final submission reject duplicates, and the database closes the
+validation/persistence gap. Existing company-name conflicts stop migration for
+controlled correction; no company is silently renamed or removed.
+
+Identity checks: **296 focused regression tests / 3,545 assertions**, followed
+by **25 identity/login tests / 148 assertions**, **2 populated-migration checks /
+16 assertions**, and **61 frontend checks**. The production frontend build and
+PHP formatting checks passed for this foundation. Broader final verification
+follows the remaining TIN/service-area, status-notice and request-review work.
+The first complete authentication run exposed older global-identity and error
+message expectations; the focused regression run uses the new explicit policy.
+
+Scoped assessment: multi-role email selection **4/10 to 8/10**. One mailbox can
+now register distinct roles without ambiguous account lookup or cross-role
+password resets. Company/shop duplicate blocking **6/10 to 8/10**. These ratings
+cover the tested identity behavior; Azure delivery, live mail, interactive
+browser checks and PostgreSQL concurrency are not established by SQLite checks.

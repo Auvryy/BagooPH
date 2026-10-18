@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ReportsApplicationIdentityConflicts;
 use App\Models\Concerns\RetainsRestrictionHistory;
+use App\Services\ApplicationIdentityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +14,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class LogisticsCompany extends Model
 {
     use HasFactory;
+    use ReportsApplicationIdentityConflicts;
     use RetainsRestrictionHistory;
+
+    protected $hidden = ['name_key'];
+
+    protected static function booted(): void
+    {
+        static::saving(function (LogisticsCompany $company): void {
+            $company->name_key = ApplicationIdentityService::shopNameKey($company->name);
+        });
+    }
 
     protected $fillable = [
         'user_id',

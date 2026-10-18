@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\AccountRecoveryNotification;
 use App\Services\AccountEmailService;
+use App\Services\AccountIdentityService;
 use App\Services\SecretMailService;
 use Illuminate\Auth\Events\PasswordResetLinkSent;
 use Illuminate\Http\RedirectResponse;
@@ -22,10 +24,12 @@ class PasswordResetLinkController extends Controller
     /**
      * Display the password reset link request view.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
         return Inertia::render('Auth/ForgotPassword', [
             'status' => session('status'),
+            'role' => app(AccountIdentityService::class)->selectedRole($request) ?? 'buyer',
+            'roles' => app(AccountIdentityService::class)->portalRoles($request) ?: array_column(UserRole::cases(), 'value'),
         ]);
     }
 
@@ -43,14 +47,15 @@ class PasswordResetLinkController extends Controller
         // We will send the password reset link to this user. Once we have attempted
         // to send the link, we will examine the response then see the message we
         // need to show to the user. Finally, we'll send out a proper response.
+        $role = app(AccountIdentityService::class)->selectedRole($request);
+        $email = strtolower(trim($request->input('email')));
+        $owner = app(AccountEmailService::class)->recoveryOwner($email, role: $role);
         try {
             app(SecretMailService::class)->assertSafeTransport();
-            $email = strtolower(trim($request->input('email')));
-            $owner = app(AccountEmailService::class)->recoveryOwner($email);
-            $status = $owner ? Password::sendResetLink(['email' => $owner->email], function (User $user, #[\SensitiveParameter] $token) use ($email) {
+            $status = $owner ? Password::sendResetLink(['id' => $owner->id, 'email' => $owner->email, 'role' => $owner->role], function (User $user, #[\SensitiveParameter] $token) use ($email) {
                 try {
                     DB::transaction(function () use ($user, $email, $token) {
-                        $current = app(AccountEmailService::class)->recoveryOwner($email, lock: true);
+                        $current = app(AccountEmailService::class)->recoveryOwner($email, lock: true, role: $user->role);
                         if (! $current || $current->id !== $user->id) {
                             throw new \RuntimeException('The recovery address is no longer available.');
                         }
@@ -77,7 +82,7 @@ class PasswordResetLinkController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'email' => [trans($status)],
+            'email' => [$status === Password::RESET_THROTTLED ? 'Please wait a minute before requesting another password reset email.' : 'We could not send a reset link. Check your email and account type, then try again.'],
         ]);
     }
 }

@@ -11,6 +11,7 @@ use App\Rules\PhilippineLicenseNumber;
 use App\Rules\PhilippinePlateNumber;
 use App\Rules\UniqueAccountEmail;
 use App\Rules\UniqueAccountMobile;
+use App\Rules\UniqueCompanyName;
 use App\Rules\UniqueShopName;
 use App\Rules\WholeNumber;
 use Illuminate\Support\Facades\Validator;
@@ -62,7 +63,7 @@ class ApplicationValidationService
             'first_name' => $text('name', 2, 50), 'middle_name' => $text('name', 1, 50), 'last_name' => $text('name', 2, 50),
             'sex' => ['bail', 'required', 'string', Rule::in(['Female', 'Male', 'Other'])],
             'birthday' => ['required', new BirthDate(app(BirthDateEligibility::class)->requiresAdult($role))],
-            'email' => [...self::emailRules(), new UniqueAccountEmail($user?->id)],
+            'email' => [...self::emailRules(), new UniqueAccountEmail($user?->id, $role)],
             'phone' => ['bail', $worker ? 'required' : 'nullable', 'string', new PhilippineContact, new UniqueAccountMobile($user?->id)],
             'address' => $text('address', 5, 500, $worker),
             'city' => $text('location', 2, 255, $worker),
@@ -75,7 +76,7 @@ class ApplicationValidationService
         } elseif ($role === 'courier') {
             $rules += ['vehicle_type' => ['bail', 'required', 'string', Rule::in(self::VEHICLES)], 'plate_number' => $text('code', 2, 50, true), 'license_number' => $text('code', 2, 50)];
         } elseif ($role === 'logistics') {
-            $rules += ['company_name' => $text('text', 2, 255, true), 'company_code' => [...$text('code', 2, 20, $user?->logisticsCompany !== null), Rule::unique('logistics_companies', 'code')->ignore($user?->logisticsCompany?->id)],
+            $rules += ['company_name' => [...$text('text', 2, 255, true), new UniqueCompanyName($user?->logisticsCompany?->id)], 'company_code' => [...$text('code', 2, 20, $user?->logisticsCompany !== null), Rule::unique('logistics_companies', 'code')->ignore($user?->logisticsCompany?->id)],
                 'company_email' => self::emailRules(),
                 'company_phone' => ['bail', 'required', 'string', new PhilippineContact(true)], 'company_address' => $text('address', 5, 500, true),
                 'operating_province' => $text('location', 2, 255),

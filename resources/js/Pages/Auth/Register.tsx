@@ -108,7 +108,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
         setStepErrors(fieldErrors);
         if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
     }, birthDateLimits);
-    const emailAvailability = useRegistrationEmailAvailability(data.email, currentStep === 1 && !processing && !validating && !showOtpModal);
+    const emailAvailability = useRegistrationEmailAvailability(data.email, currentStep === 1 && !processing && !validating && !showOtpModal, 'buyer');
 
     useEffect(() => {
         if (data.otp_token) setData('otp_token', '');
@@ -619,6 +619,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
             </div>
 
             <OtpModal
+                role="buyer"
                 isOpen={showOtpModal}
                 email={data.email}
                 purpose="registration"

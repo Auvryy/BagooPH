@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
 
         // 1. Platform Admin
         User::updateOrCreate(
-            ['email' => 'admin@bagoo.test'],
+            ['email' => 'admin@bagoo.test', 'role' => 'admin'],
             [
                 'name' => 'Bagoo Admin',
                 'email_verified_at' => now(),
@@ -32,7 +32,7 @@ class DatabaseSeeder extends Seeder
 
         // 2. Buyer
         User::updateOrCreate(
-            ['email' => 'buyer@bagoo.test'],
+            ['email' => 'buyer@bagoo.test', 'role' => 'buyer'],
             [
                 'name' => 'Santa Cruz Buyer',
                 'email_verified_at' => now(),
@@ -50,7 +50,7 @@ class DatabaseSeeder extends Seeder
 
         // 4. Santa Cruz final-mile rider
         $courierUser = User::updateOrCreate(
-            ['email' => 'rider@bagoo.test'],
+            ['email' => 'rider@bagoo.test', 'role' => 'courier'],
             [
                 'name' => 'Santa Cruz Delivery Rider',
                 'email_verified_at' => now(),
@@ -79,7 +79,7 @@ class DatabaseSeeder extends Seeder
 
         // 5. Logistics / Hub Operator
         User::updateOrCreate(
-            ['email' => 'logistics@bagoo.test'],
+            ['email' => 'logistics@bagoo.test', 'role' => 'logistics'],
             [
                 'name' => 'Test Logistics',
                 'email_verified_at' => now(),

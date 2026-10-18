@@ -81,7 +81,7 @@ class SecretMailProtectionTest extends TestCase
         Password::broker()->getRepository()->create($user);
         config(['mail.default' => 'log']);
         $this->post('/forgot-password', ['email' => $user->email])->assertSessionHasErrors('email');
-        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->getEmailForPasswordReset()]);
     }
 
     public function test_failed_delivery_removes_only_the_new_reset_token_and_logs_no_exception_message(): void

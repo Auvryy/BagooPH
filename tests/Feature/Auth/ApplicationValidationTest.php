@@ -175,13 +175,13 @@ class ApplicationValidationTest extends TestCase
     public function test_case_equivalent_email_is_rejected_by_validation_and_database(): void
     {
         Storage::fake('local');
-        $original = User::factory()->create(['email' => 'Juan@Bagoo.test']);
+        $original = User::factory()->create(['email' => 'Juan@Bagoo.test', 'role' => 'seller']);
         $this->post('/register', array_replace($this->payload('seller'), ['email' => 'juan@bagoo.test']))->assertSessionHasErrors('email');
         $this->assertDatabaseCount('users', 1);
         $this->assertDatabaseCount('shops', 0);
         $this->assertSame([], Storage::disk('local')->allFiles());
         try {
-            User::factory()->create(['email' => 'JUAN@bagoo.test']);
+            User::factory()->create(['email' => 'JUAN@bagoo.test', 'role' => 'seller']);
             $this->fail('The database must enforce case-equivalent email identity.');
         } catch (QueryException $exception) {
             $this->assertSame('23000', $exception->errorInfo[0]);
@@ -193,7 +193,7 @@ class ApplicationValidationTest extends TestCase
     {
         Storage::fake('local');
         Event::listen('eloquent.creating: '.User::class, function (User $user) {
-            DB::table('users')->insert(['name' => 'Race Winner', 'email' => strtoupper($user->email), 'password' => 'test-placeholder']);
+            DB::table('users')->insert(['name' => 'Race Winner', 'role' => $user->role, 'email' => strtoupper($user->email), 'password' => 'test-placeholder']);
         });
         $this->post('/register', $this->payload('seller'))->assertSessionHasErrors('email');
         $this->assertDatabaseCount('users', 0);
@@ -339,7 +339,7 @@ class ApplicationValidationTest extends TestCase
     {
         $emails = require database_path('migrations/2026_10_08_000001_create_account_emails_table.php');
         $emails->down();
-        DB::statement('DROP INDEX users_email_case_insensitive_unique');
+        DB::statement('DROP INDEX users_email_role_unique');
         $first = User::factory()->create(['email' => 'duplicate@bagoo.test']);
         $second = User::factory()->create(['email' => 'DUPLICATE@bagoo.test']);
         $before = [$first->fresh()->getRawOriginal(), $second->fresh()->getRawOriginal()];

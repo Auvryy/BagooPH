@@ -15,6 +15,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
     const [showPassword, setShowPassword] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
+        role: 'admin',
         email: '',
         password: '',
         remember: true as boolean,
@@ -86,7 +87,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                         </label>
                         {canResetPassword && (
                             <Link
-                                href={route('password.request')}
+                                href={route('password.request', { role: 'admin' })}
                                 className="text-[10px] text-slate-500 hover:text-amber-700 transition"
                             >
                                 Reset key?

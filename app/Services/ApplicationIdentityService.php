@@ -27,6 +27,9 @@ class ApplicationIdentityService
         if (str_contains($message, 'shops_name_key_unique') || str_contains($message, 'UNIQUE constraint failed: shops.name_key')) {
             return ['shop_name' => 'This shop name is already taken. Choose a different name.'];
         }
+        if (str_contains($message, 'logistics_companies_name_key_unique') || str_contains($message, 'UNIQUE constraint failed: logistics_companies.name_key')) {
+            return ['company_name' => 'This company name is already registered. Choose a different name.'];
+        }
 
         return [];
     }

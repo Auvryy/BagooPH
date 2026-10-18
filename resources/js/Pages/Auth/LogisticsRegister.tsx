@@ -128,7 +128,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
         setStepErrors(fieldErrors);
         if (Object.keys(fieldErrors).length && !fieldErrors.request) setCurrentStep(step);
     }, birthDateLimits);
-    const emailAvailability = useRegistrationEmailAvailability(data.email, currentStep === 1 && !processing && !validating && !showOtpModal);
+    const emailAvailability = useRegistrationEmailAvailability(data.email, currentStep === 1 && !processing && !validating && !showOtpModal, 'logistics');
 
     useEffect(() => {
         if (data.otp_token) setData('otp_token', '');
@@ -883,6 +883,7 @@ export default function LogisticsRegister({ birthDateLimits, policies }: { birth
 
             {/* Email OTP Verification Modal */}
             <OtpModal
+                role="logistics"
                 isOpen={showOtpModal}
                 onClose={() => setShowOtpModal(false)}
                 email={data.email}

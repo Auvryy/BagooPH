@@ -31,8 +31,8 @@ function setup(options = {}) {
     const requests = [];
     const controller = new RegistrationEmailAvailability(state => states.push(state), {
         debounceMs: 5000, timeoutMs: 5000,
-        check(email, signal) {
-            return new Promise((resolve, reject) => requests.push({ email, signal, resolve, reject }));
+        check(email, signal, role) {
+            return new Promise((resolve, reject) => requests.push({ email, signal, role, resolve, reject }));
         }, ...options,
     });
     controllers.push(controller);
@@ -89,7 +89,7 @@ test('out-of-order replies cannot apply availability to a newly edited email eve
     await current;
     requests[0].resolve({ email: 'old@bagoo.test', available: true });
     await old;
-    assert.deepEqual(latest(), { email: 'current@bagoo.test', status: 'taken', message: undefined });
+    assert.deepEqual(latest(), { email: 'current@bagoo.test', role: 'buyer', status: 'taken', message: undefined });
 });
 
 test('clearing or disabling a field cancels requests and removes old feedback', async () => {
@@ -197,7 +197,7 @@ test('rate-limit cooldown applies to retries and to another edited email', async
     assert.equal(latest().status, 'available');
 });
 
-test('the default request sends only normalized email to the web endpoint', async () => {
+test('the default request sends normalized email and its account role to the web endpoint', async () => {
     let request;
     globalThis.fetch = async (path, options) => {
         request = { path, options };
@@ -211,8 +211,33 @@ test('the default request sends only normalized email to the web endpoint', asyn
     assert.equal(request.path, '/register/email/validate');
     assert.equal(request.options.method, 'POST');
     assert.equal(request.options.headers.Accept, 'application/json');
-    assert.deepEqual(JSON.parse(request.options.body), { email: 'person@bagoo.test' });
+    assert.deepEqual(JSON.parse(request.options.body), { email: 'person@bagoo.test', role: 'buyer' });
     assert.equal(states.at(-1).status, 'available');
+});
+
+test('changing the account role cancels stale availability for the same email', async () => {
+    const { controller, requests, latest } = setup();
+    controller.update('shared@bagoo.test', true, 'seller');
+    const previous = controller.checkNow();
+    controller.update('shared@bagoo.test', true, 'logistics');
+    const current = controller.checkNow();
+    assert.equal(requests[0].signal.aborted, true);
+    assert.equal(requests[1].role, 'logistics');
+    requests[1].resolve({ email: 'shared@bagoo.test', role: 'logistics', available: true });
+    await current;
+    requests[0].resolve({ email: 'shared@bagoo.test', role: 'seller', available: false });
+    await previous;
+    assert.equal(latest().role, 'logistics');
+    assert.equal(latest().status, 'available');
+});
+
+test('a reply for the wrong role cannot claim availability', async () => {
+    const { controller, requests, latest } = setup();
+    controller.update('shared@bagoo.test', true, 'seller');
+    const current = controller.checkNow();
+    requests[0].resolve({ email: 'shared@bagoo.test', role: 'buyer', available: true });
+    await current;
+    assert.equal(latest().status, 'error');
 });
 
 test('feedback is announced, preserves field errors and requires verification after availability', () => {

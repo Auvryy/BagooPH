@@ -15,6 +15,7 @@ export default function Login({ status, canResetPassword }: Props) {
     const [showPassword, setShowPassword] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
+        role: 'buyer',
         email: '',
         password: '',
         remember: true as boolean,
@@ -100,7 +101,7 @@ export default function Login({ status, canResetPassword }: Props) {
                         </label>
                         {canResetPassword && (
                             <Link
-                                href={route('password.request')}
+                                href={route('password.request', { role: 'buyer' })}
                                 className="text-xs text-slate-500 hover:text-[#E00D42] transition"
                             >
                                 Forgot password?
@@ -165,7 +166,7 @@ export default function Login({ status, canResetPassword }: Props) {
                 </div>
 
                 <a
-                    href={route('auth.google')}
+                    href={route('auth.google', { role: 'buyer' })}
                     onClick={() => {
                         if (typeof window !== 'undefined') {
                             sessionStorage.removeItem('bagoo_buyer_id_prompt_dismissed');

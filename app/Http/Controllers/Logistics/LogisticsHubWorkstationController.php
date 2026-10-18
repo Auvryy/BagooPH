@@ -441,7 +441,8 @@ class LogisticsHubWorkstationController extends Controller
             'current_hub_id' => 'exclude_unless:kind,courier|nullable|integer|exists:logistics_hubs,id',
         ]);
         [$hub] = $this->eligibility->hubContext($request, strict: true);
-        $account = User::whereRaw('LOWER(email) = ?', [strtolower(trim($validated['email']))])->first();
+        $account = User::where('role', $validated['kind'] === 'courier' ? 'courier' : 'logistics')
+            ->whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($validated['email']))])->first();
         if (! $account) {
             if (! $request->wantsJson()) {
                 throw ValidationException::withMessages(['email' => 'Choose an approved account eligible for this network.']);

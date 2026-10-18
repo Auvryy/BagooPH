@@ -2,12 +2,13 @@ import { authRequest, AuthRequestError, AuthRequestScope, normalizeRegistrationE
 
 export type EmailAvailability = {
     email: string;
+    role?: string;
     status: 'idle' | 'waiting' | 'checking' | 'available' | 'taken' | 'invalid' | 'error' | 'redirecting';
     message?: string;
 };
 
 type Options = {
-    check?: (email: string, signal: AbortSignal) => Promise<Record<string, unknown>>;
+    check?: (email: string, signal: AbortSignal, role: string) => Promise<Record<string, unknown>>;
     debounceMs?: number;
     timeoutMs?: number;
     now?: () => number;
@@ -15,6 +16,7 @@ type Options = {
 
 export class RegistrationEmailAvailability {
     private email = '';
+    private role = 'buyer';
     private enabled = false;
     private revision = 0;
     private scope = new AuthRequestScope();
@@ -26,20 +28,21 @@ export class RegistrationEmailAvailability {
     private now: () => number;
 
     constructor(private publish: (state: EmailAvailability) => void, private options: Options = {}) {
-        this.check = options.check ?? ((email, signal) => authRequest('/register/email/validate', { email }, signal));
+        this.check = options.check ?? ((email, signal, role) => authRequest('/register/email/validate', { email, role }, signal));
         this.now = options.now ?? Date.now;
     }
 
     private emit(status: EmailAvailability['status'], message?: string) {
-        this.state = { email: this.email, status, message };
+        this.state = { email: this.email, role: this.role, status, message };
         this.publish(this.state);
     }
 
-    update(rawEmail: string, enabled = true) {
+    update(rawEmail: string, enabled = true, role = 'buyer') {
         const email = normalizeRegistrationEmail(rawEmail);
-        if (email === this.email && enabled === this.enabled) return;
+        if (email === this.email && enabled === this.enabled && role === this.role) return;
         this.cancel();
         this.email = email;
+        this.role = role;
         this.enabled = enabled;
         if (!enabled || !email || !validEmailFormat(email)) {
             this.emit('idle');
@@ -61,6 +64,7 @@ export class RegistrationEmailAvailability {
         const request = this.scope.begin();
         if (!request) return;
         const email = this.email;
+        const role = this.role;
         const revision = this.revision;
         const current = () => this.revision === revision && this.scope.current(request);
         this.emit('checking');
@@ -71,9 +75,9 @@ export class RegistrationEmailAvailability {
         }, this.options.timeoutMs ?? 10000);
         this.timeout = timeout;
         try {
-            const reply = await this.check(email, request.signal);
+            const reply = await this.check(email, request.signal, role);
             if (!current()) return;
-            if (reply.email !== email || typeof reply.available !== 'boolean') {
+            if (reply.email !== email || (reply.role !== undefined && reply.role !== role) || typeof reply.available !== 'boolean') {
                 throw new AuthRequestError('We could not confirm this email. Please try again.');
             }
             this.emit(reply.available ? 'available' : 'taken');

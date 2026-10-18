@@ -15,7 +15,7 @@ class ApplicationRegistrationService
     public function register(array $account, array $details): User
     {
         return DB::transaction(function () use ($account, $details) {
-            Validator::make($account, ['email' => [new UniqueAccountEmail]])->validate();
+            Validator::make($account, ['email' => [new UniqueAccountEmail(role: $account['role'])]])->validate();
             $franchisePath = $account['_franchise_path'] ?? null;
             unset($account['_franchise_path']);
             if ($account['role'] === 'seller') {

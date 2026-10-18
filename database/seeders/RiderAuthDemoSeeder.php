@@ -14,7 +14,7 @@ class RiderAuthDemoSeeder extends Seeder
             || ! str_ends_with((string) config('database.connections.sqlite.database'), 'rider-demo.sqlite')) {
             throw new \LogicException('The rider demo uses its own isolated local database.');
         }
-        $user = User::firstOrCreate(['email' => 'rider@bagoo.test'], [
+        $user = User::firstOrCreate(['email' => 'rider@bagoo.test', 'role' => 'courier'], [
             'name' => 'Bagoo Demo Rider', 'password' => 'Password1234', 'role' => 'courier',
             'birthday' => '1998-01-01', 'email_verified_at' => now(), 'status' => 'active', 'kyc_status' => 'approved',
         ]);

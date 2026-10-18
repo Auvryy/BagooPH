@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
-use App\Models\User;
+use App\Services\AccountIdentityService;
 use App\Services\Finance\CodCashService;
 use App\Services\Logistics\HandoverRecoveryService;
 use App\Services\Logistics\RestrictedCustodyRecoveryService;
@@ -47,20 +47,21 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         $credentials = $this->only('email', 'password');
-        $identity = User::whereRaw('LOWER(email) = LOWER(?)', [$credentials['email']])->first();
+        $identities = app(AccountIdentityService::class);
+        $identity = $identities->signInAccount($this, $credentials['email']);
         $credentials['email'] = $identity?->email ?? $credentials['email'];
+        $credentials['id'] = $identity?->id ?? 0;
         if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => ($role = $identities->selectedRole($this))
+                    ? 'Email or password is incorrect for your '.AccountIdentityService::label($role).' account.'
+                    : 'Email or password is incorrect. Please try again.',
             ]);
         }
 
         $user = Auth::user();
-        $host = $this->getHost();
-        $appDomain = env('APP_DOMAIN', 'bagooph.shop');
-        $roleMismatch = null;
 
         if ($this->is('custody-recovery/sign-in') && (app(RestrictedCustodyRecoveryService::class)->ownGrants($user)
             || app(HandoverRecoveryService::class)->restrictedOwn($user))) {
@@ -74,41 +75,6 @@ class LoginRequest extends FormRequest
             RateLimiter::clear($this->throttleKey());
 
             return;
-        }
-
-        if (str_starts_with($host, 'seller.')) {
-            if ($user->role !== 'seller') {
-                $roleMismatch = 'Role mismatch: Non-seller accounts cannot access the Seller Merchant Cockpit.';
-            }
-        } elseif (str_starts_with($host, 'courier.')) {
-            if ($user->role !== 'courier') {
-                $roleMismatch = 'Role mismatch: Non-courier accounts cannot access the Courier Fleet Dispatch portal.';
-            }
-        } elseif (str_starts_with($host, 'hub.')) {
-            if (! in_array($user->role, ['logistics', 'admin'], true)) {
-                $roleMismatch = 'Role mismatch: Non-logistics accounts cannot access the Logistics Sorting Center.';
-            }
-        } elseif (str_starts_with($host, 'admin.')) {
-            if ($user->role !== 'admin') {
-                $roleMismatch = 'Role mismatch: Non-admin accounts cannot access the Platform Governance portal.';
-            }
-        } elseif ($host === $appDomain || $host === 'www.'.$appDomain) {
-            if ($user->role !== 'buyer') {
-                $roleMismatch = 'Role mismatch: Non-buyer accounts cannot access the Buyer Marketplace portal.';
-            }
-        }
-
-        if ($roleMismatch !== null) {
-            Auth::logout();
-            if ($this->hasSession()) {
-                $this->session()->invalidate();
-                $this->session()->regenerateToken();
-            }
-            RateLimiter::hit($this->throttleKey());
-
-            throw ValidationException::withMessages([
-                'email' => $roleMismatch,
-            ]);
         }
 
         RateLimiter::clear($this->throttleKey());

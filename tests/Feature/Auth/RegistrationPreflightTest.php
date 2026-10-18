@@ -183,7 +183,7 @@ class RegistrationPreflightTest extends TestCase
     #[DataProvider('roles')]
     public function test_registration_email_case_and_outer_spaces_cannot_bypass_existing_ownership(string $role): void
     {
-        $owner = User::factory()->create(['email' => 'Existing.Owner@BAGOO.TEST']);
+        $owner = User::factory()->create(['email' => 'Existing.Owner@BAGOO.TEST', 'role' => $role]);
         $data = array_replace($this->application($role), ['email' => '  existing.owner@bagoo.test  ']);
         $this->postJson('/register/validate', $data)->assertJsonValidationErrors('email');
         $this->post('/register', $data)->assertSessionHasErrors('email');

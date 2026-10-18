@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\BuyerAccessService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Notifications\GovernanceNoticeService;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -38,6 +39,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        ResetPassword::createUrlUsing(fn (User $user, string $token) => route('password.reset', [
+            'token' => $token, 'email' => $user->email, 'role' => $user->role,
+        ]));
         Password::defaults(fn () => Password::min(8)->max(128)->mixedCase()->numbers()->symbols()->rules(['regex:/[\p{S}\p{P}]/u', 'not_regex:/\p{C}/u']));
 
         RateLimiter::for('web-otp-send', fn (Request $request) => Limit::perMinute(10)->by(hash('sha256', 'otp-send|'.$request->ip())));
