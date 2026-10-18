@@ -53,9 +53,36 @@ For every decision:
 
 An identical retry against the same submission returns the original result, reviewer, time, and reason. It cannot rewrite feedback or create duplicate history. A competing decision based on stale state returns a conflict and the current permitted action. Changing a reason after a completed review is an explicit audited correction.
 
+### Owner review requests and status notices
+
+Owners can use **Account status → Request review** after rejection, suspension
+or deactivation. Each request keeps the owner explanation and the source state.
+One request may wait for each account, shop or company; an unchanged retry returns
+the saved request. A declined case has a 24-hour wait before another request for
+that same state. Changed status invalidates the old review and retains its history.
+
+An eligible admin other than the owner can decline with feedback, return a
+rejected application to the ordinary evidence-review queue, or use the existing
+reactivation checks. Returning to review never approves an application or clears
+an independent suspension. Restoring one company or shop cannot restore its
+restricted owner or other resources. Stale requests can be closed as outdated.
+Original requests and completed decisions are retained and cannot be rewritten.
+
+Committed application approval/rejection and account/shop/company activity
+changes generate owned in-app notices and email delivery intents. Review outcomes
+also notify the owner. Failed email sends retry through the existing notification
+scheduler; logging in does not send another decision email. SMTP acceptance is
+not proof that an inbox received it.
+
+New activity decisions explicitly identify **Feedback for the owner**. Only that
+shared feedback appears in owner notices and emails; historic internal reasons
+remain in admin records. Older restrictions without shared feedback still allow a
+review request and say honestly that feedback is unavailable. Rejection feedback
+and review responses must explain what the owner can correct in ordinary language.
+
 ## 3. Access and Operational Boundaries
 
-Every protected read and write applies the same server-side eligibility and action checks on root and subdomain portals, including direct URLs, bulk actions, and stale sessions. A hidden button or a successful login is insufficient. Unknown account states deny access; suspension invalidates sessions where supported.
+Every protected read and write applies the same server-side eligibility and action checks on root and subdomain portals, including direct URLs, bulk actions, and stale sessions. A hidden button or a successful login is insufficient. Unknown account states deny access. Suspended, deactivated and rejected owners retain a narrow authenticated path to their own Account status, permitted corrections and review requests; protected operational actions remain blocked. Closed accounts cannot use that path to reopen themselves.
 
 | Actor | Permitted work | Boundary |
 |---|---|---|
@@ -107,6 +134,7 @@ The core admin interface should support a small, understandable workflow:
 
 - Overview: real pending review counts and unresolved core exceptions, with links to the affected records.
 - Applications: role/status filters, authorized evidence, current review state, explicit decision, reason, and decision history.
+- Review requests: real pending requests from rejected or restricted owners, their explanation, current source state, a reasoned response and retained outcomes.
 - Accounts: fixed registered role, approval, and activity shown separately, affected-work summary before suspension, and explicit reactivation checks. No role-conversion control.
 - Shops and companies: their own review state, category/parent scope, resource restrictions, and affected work; account approval does not imply approval of every dependent resource.
 - Products: explicit reasoned compliance removal/reinstatement, current source state, eligible seller/shop/category, and decision history. Preserve purchased-item snapshots; seller edits cannot silently clear a platform compliance restriction.
