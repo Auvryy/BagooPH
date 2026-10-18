@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import WaybillCamera from '@/Components/WaybillCamera';
 import WaybillCodes from '@/Components/WaybillCodes';
+import OrderRecipientSummary from '@/Components/OrderRecipientSummary';
 import { Head, Link, router } from '@inertiajs/react';
 import PortalLink from '@/Components/PortalLink';
 import useResolvedPage from '@/hooks/useResolvedPage';
@@ -1072,10 +1073,8 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 </div>
 
                                 <div className="space-y-0.5 border-l border-slate-200 pl-3">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase block font-sans">TO (BUYER):</span>
-                                    <p className="font-bold text-slate-900">{selectedOrderForWaybill.order?.recipient_name || selectedOrderForWaybill.order?.buyer?.name || 'Customer'}</p>
-                                    <p className="text-slate-600 text-[10px]">{selectedOrderForWaybill.order?.shipping_address || 'Customer Address'}, {selectedOrderForWaybill.order?.shipping_city || 'Metro Manila'}</p>
-                                    <p className="text-slate-600 text-[10px]">{selectedOrderForWaybill.order?.recipient_phone || selectedOrderForWaybill.order?.buyer?.phone || '+63 900 000 0000'}</p>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase block font-sans">TO (RECIPIENT):</span>
+                                    <OrderRecipientSummary order={selectedOrderForWaybill.order} />
                                 </div>
                             </div>
 

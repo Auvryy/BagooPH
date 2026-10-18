@@ -56,6 +56,7 @@ interface Props {
     kycFeedback?: string | null;
     addresses?: Address[];
     defaultAddressId?: number | null;
+    addressBookLimit?: number;
     pickupHubs?: PickupHubItem[];
     checkoutToken: string;
 }
@@ -70,6 +71,7 @@ export default function CheckoutIndex({
     kycFeedback = null,
     addresses = [],
     defaultAddressId = null,
+    addressBookLimit = 10,
     pickupHubs = [],
     checkoutToken,
 }: Props) {
@@ -152,7 +154,7 @@ export default function CheckoutIndex({
     const { data, setData, post, processing, errors } = useForm({
         checkout_token: checkoutToken,
         item_ids: items.map(i => i.id),
-        recipient_name: user.name || initialAddress?.recipient_name || '',
+        recipient_name: initialAddress?.recipient_name || user.name || '',
         recipient_phone: initialAddress?.phone || user.phone || '',
         shipping_address: initialAddress?.street || user.address || '',
         shipping_city: initialAddress?.city || user.city || '',
@@ -187,14 +189,14 @@ export default function CheckoutIndex({
                 shipping_latitude: '',
                 shipping_longitude: '',
                 landmark: '',
-                save_address: true,
+                save_address: addresses.length < addressBookLimit,
             }));
         } else {
             const found = addresses.find(a => String(a.id) === addressId);
             if (found) {
                 setData(prev => ({
                     ...prev,
-                    recipient_name: user.name || found.recipient_name || '',
+                    recipient_name: found.recipient_name || user.name || '',
                     recipient_phone: found.phone,
                     shipping_address: found.street,
                     shipping_city: found.city,
@@ -589,21 +591,11 @@ export default function CheckoutIndex({
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
                                     <div>
-                                        <label htmlFor="checkout-recipient-name" className="block font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
-                                            <span>Full Name</span>
-                                            <span className="text-[10px] text-slate-400 font-sans font-normal flex items-center gap-1">
-                                                <Lock className="w-3 h-3 text-slate-400" />
-                                                Verified Real Name
-                                            </span>
-                                        </label>
-                                        <input
-                                            id="checkout-recipient-name"
-                                            type="text"
-                                            value={data.recipient_name}
-                                            readOnly
-                                            disabled
-                                            className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 cursor-not-allowed select-none font-medium transition"
-                                        />
+                                        <label htmlFor="checkout-recipient-name" className="mb-1.5 block font-semibold text-slate-700">Recipient name *</label>
+                                        <input id="checkout-recipient-name" name="recipient_name" type="text" required minLength={2} maxLength={100}
+                                            value={data.recipient_name} onChange={event => setData('recipient_name', event.target.value)}
+                                            aria-invalid={Boolean(errors.recipient_name)}
+                                            className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-900 focus:border-[#E00D42] focus:bg-white focus:ring-[#E00D42]" />
                                         {errors.recipient_name && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_name}</p>}
                                     </div>
 
@@ -802,10 +794,11 @@ export default function CheckoutIndex({
                                             <input
                                                 type="checkbox"
                                                 checked={data.save_address}
+                                                disabled={addresses.length >= addressBookLimit}
                                                 onChange={(e) => setData('save_address', e.target.checked)}
                                                 className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
                                             />
-                                            <span>Save this address to my address book</span>
+                                            <span>{addresses.length >= addressBookLimit ? `Your address book has ${addressBookLimit} addresses. You can use this address for this order without saving it.` : 'Save this address to my address book'}</span>
                                         </label>
                                     )}
                                 </div>
