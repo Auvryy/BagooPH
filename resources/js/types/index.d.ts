@@ -140,6 +140,7 @@ export interface Product {
     stock: number;
     sku?: string | null;
     variants?: {
+        combinations?: import('@/Components/VariantStockMatrix').StockCombination[];
         option1_name?: string | null;
         option2_name?: string | null;
         colors?: { id: string; name: string; hex: string; image_url?: string | null; gallery_index?: number | null; in_stock?: boolean }[];

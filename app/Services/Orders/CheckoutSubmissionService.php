@@ -60,7 +60,8 @@ class CheckoutSubmissionService
                 $item->setRelation('product', $shown->product);
             }
             $size = collect($item->product?->variants['sizes'] ?? [])->firstWhere('name', $item->size);
-            $extra = $size['extra_price'] ?? 0;
+            $matrix = collect($item->product?->variants['combinations'] ?? [])->first(fn ($row) => ($row['color'] ?? null) === $item->color && ($row['size'] ?? null) === $item->size);
+            $extra = $matrix['extra_price'] ?? $size['extra_price'] ?? 0;
 
             return [$item->id, $item->product_id, $item->quantity, $item->color, $item->size,
                 $item->product?->price, is_numeric($extra) ? number_format((float) $extra, 2, '.', '') : null];

@@ -51,6 +51,7 @@ interface VariationSize {
 }
 
 interface Variations {
+    combinations?: import('@/Components/VariantStockMatrix').StockCombination[];
     option1_name?: string | null;
     option2_name?: string | null;
     colors: VariationColor[];
@@ -173,18 +174,21 @@ export default function BuyerProductDetail({
 
     // Dynamic price calculation based on selected size/variation
     const basePrice = Number(product.price);
-    const extraPrice = Number(selectedSize?.extra_price ?? 0);
+    const selectedCombination = variations.combinations?.find(row => row.color === (selectedColor?.name ?? null) && row.size === (selectedSize?.name ?? null));
+    const extraPrice = Number(selectedCombination?.extra_price ?? selectedSize?.extra_price ?? 0);
     const currentPrice = basePrice + extraPrice;
     
     const baseCompare = product.compare_at_price ? Number(product.compare_at_price) : 0;
     const currentComparePrice = baseCompare > basePrice ? baseCompare + extraPrice : 0;
     const discountPct = currentComparePrice > currentPrice ? Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100) : 0;
 
-    const selectionStock = Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
+    const selectionStock = variations.combinations ? Number(selectedCombination?.stock ?? 0) : Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
     const isProductOutOfStock = Number(product.stock) <= 0;
     const isSelectionOutOfStock = selectedColor?.in_stock === false || selectionStock <= 0;
     const totalProductInCart = cartQuantities.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-    const selectedSizeInCart = selectedSize
+    const selectedSizeInCart = variations.combinations
+        ? cartQuantities.filter(item => (item.color ?? null) === (selectedColor?.name ?? null) && (item.size ?? null) === (selectedSize?.name ?? null)).reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+        : selectedSize
         ? cartQuantities
             .filter((item) => item.size === selectedSize.name)
             .reduce((sum, item) => sum + Number(item.quantity || 0), 0)

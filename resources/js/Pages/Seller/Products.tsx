@@ -1,3 +1,4 @@
+import VariantStockMatrix, { type StockCombination } from '@/Components/VariantStockMatrix';
 import UploadHint from '@/Components/UploadHint';
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -67,6 +68,7 @@ interface VariantSize {
 }
 
 interface ProductVariants {
+    combinations?: StockCombination[];
     option1_name?: string | null;
     option2_name?: string | null;
     colors: VariantColor[];
@@ -454,6 +456,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         setEditOption2Name(opt2Name);
 
         const variantsData: ProductVariants = {
+            combinations: product.variants?.combinations,
             option1_name: hasColors ? opt1Name : null,
             option2_name: hasSizes ? opt2Name : null,
             colors: (product.variants?.colors || []).map((c, idx) => {
@@ -540,6 +543,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                 };
             }) : [],
             sizes: createHasOption2 ? createVariants.sizes : [],
+            combinations: createVariants.combinations,
         } : null;
 
         createForm.transform((data) => ({
@@ -614,6 +618,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                 };
             }) : [],
             sizes: editHasOption2 ? editVariants.sizes : [],
+            combinations: editVariants.combinations,
         } : null;
 
         editForm.transform((data) => ({
@@ -2499,7 +2504,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                             </label>
                                             <input
                                                 type="number"
-                                                value={createForm.data.stock}
+                                                disabled={createVariants.combinations !== undefined}
+                                                value={createVariants.combinations ? createVariants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0) : createForm.data.stock}
                                                 onChange={(e) => createForm.setData('stock', e.target.value)}
                                                 required
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
@@ -2510,6 +2516,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(true)}
+                                <VariantStockMatrix colors={createHasOption1 ? createVariants.colors : []} sizes={createHasOption2 ? createVariants.sizes : []} value={createVariants.combinations} onChange={combinations => setCreateVariants(previous => ({ ...previous, combinations }))} error={createForm.errors.variants || Object.entries(createForm.errors).find(([field]) => field.startsWith('combinations.') || field.startsWith('colors.') || field.startsWith('sizes.'))?.[1]} />
                                 <div className="rounded-lg border border-slate-300 p-4">
                                     <label className="block text-sm font-bold text-slate-900" htmlFor="createForm-purchase-limit">Purchase limit per buyer</label>
                                     <input id="createForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={createForm.data.purchase_limit} onChange={event => createForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
@@ -2669,7 +2676,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                             </label>
                                             <input
                                                 type="number"
-                                                value={editForm.data.stock}
+                                                disabled={editVariants.combinations !== undefined}
+                                                value={editVariants.combinations ? editVariants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0) : editForm.data.stock}
                                                 onChange={(e) => editForm.setData('stock', e.target.value)}
                                                 required
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
@@ -2750,6 +2758,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(false)}
+                                <VariantStockMatrix colors={editHasOption1 ? editVariants.colors : []} sizes={editHasOption2 ? editVariants.sizes : []} value={editVariants.combinations} onChange={combinations => setEditVariants(previous => ({ ...previous, combinations }))} error={editForm.errors.variants || Object.entries(editForm.errors).find(([field]) => field.startsWith('combinations.') || field.startsWith('colors.') || field.startsWith('sizes.'))?.[1]} />
                                 <div className="rounded-lg border border-slate-300 p-4">
                                     <label className="block text-sm font-bold text-slate-900" htmlFor="editForm-purchase-limit">Purchase limit per buyer</label>
                                     <input id="editForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={editForm.data.purchase_limit} onChange={event => editForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />

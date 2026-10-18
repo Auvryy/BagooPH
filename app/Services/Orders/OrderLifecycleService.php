@@ -325,7 +325,7 @@ class OrderLifecycleService
         }
         foreach ($order->items as $item) {
             if ($product = $products->get($item->product_id)) {
-                $this->inventory->restore($product, $item->quantity, $item->size);
+                $this->inventory->restore($product, $item->quantity, $item->size, $item->color);
             }
         }
         $parcel = $order->delivery;
