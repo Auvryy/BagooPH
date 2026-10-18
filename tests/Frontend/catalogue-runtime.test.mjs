@@ -191,6 +191,25 @@ test('the runtime bridges cached and fresh visits, cancellation and session boun
         emit('navigate',{page});
     });
 
+    await t.test('admin activation starts a fresh read while its reviewed code import is still pending', async () => {
+        const admin = { ...page, component: 'Admin/Dashboard', props: { ...page.props,
+            auth: { user: { id: 9, role: 'admin', status: 'active' } } } };
+        emit('navigate', { page: admin });
+        let loaded;
+        warmGate = new Promise(resolve => { loaded = resolve; });
+        const requestsBefore = requests.length, visitsBefore = visits.length;
+        const work = ui.preparePortal('/admin/users?search=Maria&page=2', admin); await tick();
+        assert.equal(components.at(-1), 'Admin/Users');
+        assert.equal(requests.length, requestsBefore, 'private intent must not request any records');
+        ui.visitPortal('/admin/users?search=Maria&page=2');
+        assert.equal(visits.length, visitsBefore + 1, 'activation does not wait for the pending import');
+        assert.equal(visits.at(-1).options.fresh, true);
+        assert.equal(visits.at(-1).options.headers['X-Bagoo-Navigation'], '1');
+        assert.equal(visits.at(-1).options.headers.Purpose, undefined);
+        loaded(); warmGate = undefined; await work;
+        visits.at(-1).options.onFinish({}); emit('navigate', { page });
+    });
+
     await t.test('replace and reload responses refresh operational scope without relying on navigate', async () => {
         const hub = {...page, component:'Hub/Dashboard',props:{...page.props,activeHub:{id:9},auth:{user:{id:9,role:'logistics',status:'active',kyc_status:'approved'}}}};
         emit('success',{page:hub});

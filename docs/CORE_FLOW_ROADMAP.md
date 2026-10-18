@@ -5789,3 +5789,108 @@ Local implementation commits:
 
 The documentation commit's generated hash is reported in the final handoff.
 The separate PR title/body remains a local draft and has not been saved on GitHub.
+
+## October 18, 2026: PF04-PF05 admin navigation and measured acceptance
+
+The user selected the remaining [PF04](performance-plan/04-admin-navigation.md)
+and [PF05](performance-plan/05-performance-and-release.md) batches together.
+`perf/admin-navigation-release` starts from merged `main` at `9b1b3c8` and keeps
+separate commits for admin behavior, measurement/asset control and documentation.
+This completes the five batches' selected implementation and local acceptance;
+it does not establish deployed/device acceptance or reopen the numbered admin
+feature plan.
+
+### Reviewed scope and fresh authority
+
+| Surface | Audit and implemented boundary |
+|---|---|
+| Admin dashboard | `AdminDashboardController::index` and `AdminOverviewService::overview` retain fresh counts, queues and financial definitions. Only `Admin/Dashboard` code can prepare in advance. No summary response or current decision state is retained. |
+| Users and products | Existing root and admin-host routes retain `auth`, role and approval/open-account middleware. `AdminDirectoryService` validates relevant query bounds, builds only requested rows and sends displayed fields. Directory page code can prepare; activation/focused updates still request fresh authorization and current account/compliance state. |
+| Governance history | The existing `GovernanceHistoryController` and `GovernanceHistoryService` apply current actor/source scope, read-only union/filter pagination and safe projection. Only the history-list component is prepared. No history response, subject detail or evidence file is fetched on intent. |
+| Decisions and excluded reads | KYC, shops, identity corrections, account/resource restrictions, closures, product moderation, advertisements, private evidence and finance remain outside the admin preparation map. Inspection links and actions retain their current source-token/evidence/conflict contracts. A successful mutation invalidates preparation; a competing review cannot become a cached success. |
+| Shared middleware and feedback | Marked private speculation remains rejected before controller work. Flash/error preservation, private response headers, current account context and foreground priority retain the established policy. Admin links join the reviewed runtime and its visible retry notice; no notification/message acknowledgement or advertisement activity is added. |
+
+### Before and after
+
+| Area | Before | Implemented result |
+|---|---|---|
+| User directory | Fifteen rows were paginated on the server without visible paging controls. Full accounts and unused shops were serialized; filters had no pending/empty feedback or explicit search action. | Stable timestamp/ID ordering, numbered/current/disabled paging, a clear Search button, bounded input, coherent fresh partial updates and duplicate guards. Back/Forward follows returned filter props; an out-of-range page resolves to the last page and corrects its history URL. Validation retains input. |
+| Product directory | Full product/shop/category models and rows were built for every request. | Only rendered fields are sent; unrequested rows/relations are lazy. Paging stays in the current origin and preserves fresh compliance state. Product details/review actions remain separate authorized reads. |
+| Preparation budget | The policy was bounded, but a separate load-triggered Vite waterfall could warm unrelated portal chunks at concurrency three. | The blanket waterfall is removed. Initial module loading remains; only reviewed intent and the existing bounded catalogue idle/search preparation select likely destinations. One candidate can import its static dependencies, so this is not a one-file network limit. |
+| Evidence | Earlier batches had correctness checks but no comparable combined measurement report. | Reproducible isolated endpoint samples, paired controlled cold/prepared/in-flight/expired samples for every selected role, adverse/unused preparation, search scheduling, actual build dependency budgets and explicit manual release steps. |
+
+The admin retains its sidebar/header, white tables, existing local corners,
+slate canvas and Plus Jakarta Sans. New controls use the existing Bagoo accent,
+visible boundaries/focus, current/disabled states and narrow-screen wrapping.
+There is no theme rewrite, new dependency, image gallery preload or new polling.
+
+### Measurements and acceptance evidence
+
+Read [the measurement report](performance-plan/MEASUREMENTS.md) for the exact
+fixture, routes, method, median/p90 tables, byte budgets, reproduction commands
+and interpretation limits.
+
+- Each of eight real Laravel HTTP-kernel cases has ten measured reads per
+  revision after a warm-up, using equivalent isolated SQLite fixtures. Admin
+  user JSON falls from **9,926 to 4,945 bytes**, product JSON from **38,203 to
+  6,843 bytes**; normal user reads use **14 to 13 queries**, and context-only
+  user reads use **14 to 11**. Unchanged role endpoints retain their query and
+  payload costs. Their elapsed-time variation, including a slightly slower
+  rider sample, is not attributed to this change.
+- Six representative destinations have ten paired samples for each of four
+  preparation states. Under deliberately fixed **40ms data / 70ms code**
+  transport, completed private preparation still performs one fresh data read;
+  completed/in-flight catalogue preparation makes no duplicate foreground data
+  request. Cold policy-on/off samples show no meaningful difference under that
+  model. This establishes ordering/reuse, not browser rendering speed.
+- The existing global waterfall's candidate manifest budget spans **203-217
+  additional static files** and about **1.89-1.98 MB raw** after a source page
+  is loaded. Reviewed admin user intent instead needs **three files / 9,261 raw
+  bytes** after its dashboard. These are eligible file budgets, not measured
+  wire transfers or a claim that every previous browser downloaded every file.
+- Forty additional adverse samples cover failed/cancelled catalogue and admin
+  preparation. Fresh fallback remains available and no private data is fetched
+  speculatively. Six abandoned preparations expose their wasted-byte cost;
+  expiry/cancellation does not prove that earlier server/transfer work stopped.
+  Search has ten scheduling/responsiveness samples. Real cache-use rate is
+  unmeasured. Existing product cards remain lazy; large original images still
+  need separate transfer/decoding and visual acceptance before an image rewrite.
+- Governance, admin, finance, shared access and selected cross-role navigation
+  regression: **815 tests / 14,666 assertions passed**, isolated SQLite
+  `:memory:` with task-local storage/config. Final focused admin and asset
+  checks: **14 tests / 290 assertions passed**. The asset contract first
+  demonstrated unrelated portal warming, then passed with both flag values.
+- Full frontend suite: **402 tests passed**, covering the actual policy,
+  runtime, link intent/touch, composition, filters/paging/history, duplicate
+  clicks, retained errors, offline/hidden/slow clients, disabled preparation,
+  cache expiry, cross-tab/context invalidation and late-response rejection.
+  TypeScript/Vite production build and changed PHP style (**six files**) passed.
+- The first broader run failed because the newly isolated storage directory
+  lacked its compiled-view folder. Preparing that test-only folder resolved the
+  setup error; the complete rerun passed. No development/production database,
+  application file ownership or production configuration was changed.
+
+The disable path remains `CATALOGUE_PREFETCH_ENABLED=false` followed by the
+normal deployment/config refresh and an ordinary response in each loaded tab.
+Direct links, forms and fresh actions keep working; ordinary initial module
+preloads/browser caching remain. The removed global waterfall no longer runs
+independently of that policy. No schema migration or reseed is required.
+
+### Assessment and handoff boundary
+
+| Scoped area | Before | After local verification | Basis and remaining limit |
+|---|---|---|---|
+| Admin directory/navigation usability and efficiency | 6/10 | 8/10 | Reachable stable pages, coherent fresh filters, useful pending/error/empty controls, smaller directory payloads and code preparation. Device rendering and real deployed latency remain unverified. |
+| Background asset budget and performance evidence | 5/10 | 8/10 | Removed unconditional cross-portal warming, retained bounded intent and measured requests/costs with reproducible scenarios. Static-byte budgets and controlled timings do not establish real use rate, paint time or production capacity. |
+
+Implementation commits: **`8e5d5d3`** (`perf(admin): prepare navigation and
+streamline fresh directories`) and **`718552a`** (`perf(navigation): bound asset
+warming and add repeatable measurements`). Documentation and the combined PR
+handoff are saved separately. The PR title/body remains a local draft; no push,
+GitHub publication, merge or deployment is performed by this delivery.
+
+[Combined release checks](performance-plan/ACCEPTANCE.md#combined-release-checks)
+retain the unperformed browser/device and deployed network/session checks.
+Flutter and simultaneous PostgreSQL behavior are outside this local acceptance.
+No overall admin security, whole-system readiness, Azure performance or thesis
+readiness rating is raised by this scoped work.
