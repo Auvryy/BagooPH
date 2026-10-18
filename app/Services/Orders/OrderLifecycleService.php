@@ -254,19 +254,38 @@ class OrderLifecycleService
 
     public function canBuyerCancel(Order $order, User $buyer): bool
     {
-        if (! $buyer->isBuyer() || ! $buyer->canAccessPortal() || $order->buyer_id !== $buyer->id
-            || ! in_array($order->status, OrderWorkspaceService::PREPARATION, true) || $order->codAccount) {
-            return false;
+        return $buyer->isBuyer() && $buyer->canAccessPortal() && $order->buyer_id === $buyer->id
+            && $this->buyerCancellationIssue($order) === null;
+    }
+
+    private function buyerCancellationIssue(Order $order): ?string
+    {
+        if (! in_array($order->status, OrderWorkspaceService::PREPARATION, true)) {
+            return 'The seller has marked this order ready for pickup or delivery has started. It can no longer be cancelled here.';
+        }
+        if ($order->payment_method !== 'cod') {
+            return 'Contact support to review the payment before cancelling this order.';
+        }
+        if ($order->payment_status !== 'pending' || $order->codAccount) {
+            return 'A payment is already recorded. Contact support about this order.';
         }
         $parcel = $order->delivery;
         if (! $parcel) {
-            return true;
+            return null;
+        }
+        if (app(HandoverHoldService::class)->held($parcel)) {
+            return 'This parcel has a handover review in progress. Contact support before changing this order.';
+        }
+        if (! $this->isUnclaimed($parcel)) {
+            return 'A rider has already claimed this parcel. Contact the seller or support.';
         }
         $custody = DeliveryCheckpoint::lastCustody($parcel);
-        $recordedCustody = $parcel->checkpoints()->whereNull('source_checkpoint_id')->whereNotNull('custody_after')->exists();
+        $recorded = $parcel->checkpoints()->whereNull('source_checkpoint_id')->whereNotNull('custody_after')->exists();
+        if ($recorded && ($custody['kind'] ?? null) !== 'seller') {
+            return 'A parcel handover is already recorded. Contact the seller or support.';
+        }
 
-        return $this->isUnclaimed($parcel) && ! app(HandoverHoldService::class)->held($parcel)
-            && (! $recordedCustody || ($custody['kind'] ?? null) === 'seller');
+        return null;
     }
 
     public function cancelByBuyer(Order $order, User $buyer, array $input): Order
@@ -285,8 +304,8 @@ class OrderLifecycleService
             if ($locked->status === 'cancelled') {
                 return $locked;
             }
-            if (! $this->canBuyerCancel($locked, $buyer)) {
-                throw ValidationException::withMessages(['reason' => 'This order is already ready for pickup or has entered delivery. It can no longer be cancelled here.']);
+            if ($issue = $this->buyerCancellationIssue($locked)) {
+                throw ValidationException::withMessages(['reason' => $issue]);
             }
             $reason = $data['reason'].(! empty($data['notes']) ? ': '.$data['notes'] : '');
 

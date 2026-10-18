@@ -100,4 +100,13 @@ class BuyerCancellationTest extends TestCase
         $this->assertSame(8, $product->fresh()->variants['sizes'][0]['stock']);
         $this->assertSame(0, DeliveryCheckpoint::where('checkpoint_type', 'cancelled')->count());
     }
+
+    public function test_legacy_online_or_paid_orders_need_payment_review_instead_of_a_fake_refund(): void
+    {
+        [, $order, $product] = $this->purchase();
+        $order->update(['payment_method' => 'card', 'payment_status' => 'paid']);
+        $this->postJson(route('buyer.orders.cancel', $order), ['reason' => 'Ordered by mistake'])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->assertSame('placed', $order->fresh()->status);
+        $this->assertSame(8, $product->fresh()->stock);
+    }
 }
