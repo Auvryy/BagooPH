@@ -6809,3 +6809,41 @@ its missed early cleanup. Online checkout payments remain outside the selected
 scope; newer application publication/deployment, PostgreSQL concurrent execution
 and real bank transfers remain separate release limits. Overall role/readiness
 ratings do not increase from this acceptance record.
+
+### Buyer order detail: five stages and one journey — October 19, 2026
+
+**Scoped order-detail clarity assessment: 6/10 before → 8/10 after.** The buyer
+detail starts with Package items, its original amounts and an expandable delivery
+summary containing the actual courier service, pickup rider when supplied, seller
+pickup, full recipient address and courier notes. It replaces the separate dispatch
+card and removes the repeated buyer next-step panel.
+
+The progress summary has exactly five circles: Order placed, Confirmed / packed,
+Shipped out, Order received, and Rate & review. Completed circles are Bagoo red;
+the current circle is yellow, with a visible current label and distinct icons.
+Assignment alone does not prove shipment. Missing original checkpoints are not
+painted as completed, and cancellation, failed delivery and return travel do not
+manufacture receipt or a sixth successful stage. Physical handover and the buyer's
+receipt confirmation remain distinct. The final circle opens the existing review
+form only for eligible completed purchases, stays pending while any purchased
+item is unreviewed, and becomes Review saved after all items have saved reviews.
+Existing saved-review edit controls remain with their purchased item.
+
+Owned notices now live inside the expandable Journey checkpoints section. Its
+closed summary always shows the server's current parcel stage, latest original
+checkpoint location/time and unread count. Exact owned original-checkpoint links
+combine a notice with its matching scan without hiding separate Mother Hub visits.
+Unambiguous order milestones may share their original row; legacy or ambiguous
+updates remain visible separately. Neither disclosure nor grouping acknowledges a
+notice; deliberate read actions reuse the existing guarded notification behavior.
+Raw source keys, private evidence and foreign/mirrored checkpoint IDs are excluded
+from the added order-specific projection.
+
+Verification: **102 backend tests / 3,735 assertions** pass with isolated SQLite
+`:memory:`, covering the projection, notification privacy/ownership, original
+tracking, review integrity and explicit buyer receipt. **94 frontend checks** pass
+for stage grouping/colors, partial and completed reviews, self-pickup, exceptions,
+notice merging, refresh/claim behavior and package composition. TypeScript and the
+Vite production build pass in Docker. These are source, rendering/helper and local
+HTTP checks; no new browser, real-device or Azure deployment result is claimed.
+The assessment concerns this layout only, not overall system readiness.
