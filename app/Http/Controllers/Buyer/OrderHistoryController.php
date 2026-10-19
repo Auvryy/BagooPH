@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Buyer;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\BuyerAccessService;
-use App\Services\Commerce\ReviewService;
 use App\Services\Commerce\BuyAgainService;
+use App\Services\Commerce\ReviewService;
 use App\Services\Notifications\NotificationCenterService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderTrackingService;
 use App\Services\Orders\OrderWorkspaceService;
+use App\Services\Returns\BuyerReturnService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -85,7 +86,7 @@ class OrderHistoryController extends Controller
                 ? app(BuyAgainService::class)->requestToken($user, $order) : null,
             'canConfirmReceipt' => $canConfirmReceipt,
             'returnAvailability' => $ownedBuyerOrder && $canFulfillOrder
-                ? app(\App\Services\Returns\BuyerReturnService::class)->availability($user, $order) : null,
+                ? app(BuyerReturnService::class)->availability($user, $order) : null,
             'buyerReturns' => $ownedBuyerOrder ? $order->buyerReturns()->latest('id')->get(['id', 'reference', 'status'])->all() : [],
             'cancelOrderUrl' => $ownedBuyerOrder && app(OrderLifecycleService::class)->canBuyerCancel($order, $user)
                 ? route('buyer.orders.cancel', $order, absolute: false) : null,
@@ -96,9 +97,7 @@ class OrderHistoryController extends Controller
             'pickupHub' => $pickupHub,
             'pickupCodeAvailable' => $pickupCodeAvailable,
             'pickupCodeUrl' => $canFulfillOrder ? route('buyer.orders.pickup-code', $order, absolute: false) : null,
-            'orderNotices' => $ownedBuyerOrder ? $user->notifications()->whereIn('type', NotificationCenterService::TYPES)
-                ->where('data->order_id', $order->id)->latest()->get()
-                ->map(fn ($notice) => app(NotificationCenterService::class)->present($notice, $user)) : [],
+            'orderNotices' => $ownedBuyerOrder ? app(NotificationCenterService::class)->forOrder($user, $order) : [],
         ]);
     }
 

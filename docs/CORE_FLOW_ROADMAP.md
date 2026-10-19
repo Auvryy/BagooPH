@@ -6809,3 +6809,50 @@ its missed early cleanup. Online checkout payments remain outside the selected
 scope; newer application publication/deployment, PostgreSQL concurrent execution
 and real bank transfers remain separate release limits. Overall role/readiness
 ratings do not increase from this acceptance record.
+
+### Buyer order detail: five stages and one journey — October 19, 2026
+
+**Scoped order-detail clarity assessment: 6/10 before → 8/10 after the first layout
+→ 8.5/10 after the requested follow-up.** Order progress now precedes Package
+items. Item prices and the payable total use Bagoo red, while Total savings stays
+neutral. Package items retains its original amounts and an expandable delivery
+summary containing the actual courier service, pickup rider when supplied, seller
+pickup, full recipient address and courier notes. It replaces the separate dispatch
+card and removes the repeated buyer next-step panel.
+
+The progress summary has exactly five circles: Order placed, Confirmed,
+Shipped out, Order received, and Rate & review. Completed circles are Bagoo red;
+the current circle is yellow, with a visible current label and distinct icons.
+Assignment alone does not prove shipment. Missing original checkpoints are not
+painted as completed, and cancellation, failed delivery and return travel do not
+manufacture receipt or a sixth successful stage. Physical handover and the buyer's
+receipt confirmation remain distinct. The final circle opens the existing review
+form only for eligible completed purchases, stays pending while any purchased
+item is unreviewed, and becomes Review saved after all items have saved reviews.
+Existing saved-review edit controls remain with their purchased item.
+
+Owned notices live inside Journey checkpoints, which opens by default with the
+latest five updates visible. When there are more than five, See more reveals the
+earlier updates above them in chronological order; See less hides only that older
+history. The summary retains the server's current parcel stage, latest original
+checkpoint location/time and unread count. Past checkpoint and notice dots are
+filled red; the latest original checkpoint stays yellow. Exact owned checkpoint links
+combine a notice with its matching scan without hiding separate Mother Hub visits.
+Unambiguous order milestones may share their original row; legacy or ambiguous
+updates remain visible separately. Neither disclosure nor grouping acknowledges a
+notice; deliberate read actions reuse the existing guarded notification behavior.
+Raw source keys, private evidence and foreign/mirrored checkpoint IDs are excluded
+from the added order-specific projection.
+
+Verification from the preceding backend change: **102 tests / 3,735 assertions**
+passed with isolated SQLite
+`:memory:`, covering the projection, notification privacy/ownership, original
+tracking, review integrity and explicit buyer receipt. The follow-up changes only
+presentation, so those backend checks were not repeated. **115 frontend checks** pass
+for stage grouping/colors, partial and completed reviews, self-pickup, exceptions,
+notice merging, refresh/claim behavior, package composition, zero/five/more-than-five
+history boundaries and receipt price/savings emphasis. The small follow-up improves
+immediate visibility without losing older scans or unread actions. TypeScript and the
+Vite production build pass in Docker. These are source, rendering/helper and local
+HTTP checks; no new browser, real-device or Azure deployment result is claimed.
+The assessment concerns this layout only, not overall system readiness.

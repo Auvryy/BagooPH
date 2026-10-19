@@ -2,33 +2,14 @@ import UploadHint from '@/Components/UploadHint';
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
-import BuyerVoucherReceipt from '@/Components/Vouchers/BuyerVoucherReceipt';
+import BuyerOrderPackage from '@/Components/BuyerOrderPackage';
 import BuyerCancelOrder from '@/Components/BuyerCancelOrder';
 import BuyAgainButton from '@/Components/BuyAgainButton';
-import BuyerSavedReview from '@/Components/BuyerSavedReview';
 import OrderTrackingPanel, { trackingDate } from '@/Components/OrderTrackingPanel';
 import { claimWindow, nextClaimBoundary } from '@/utils/orderTracking';
 import { Order, PageProps } from '@/types';
-import { 
-    Package, 
-    Truck, 
-    ArrowLeft, 
-    CheckCircle2, 
-    Clock, 
-    MapPin, 
-    Phone, 
-    ShieldCheck, 
-    User,
-    Check,
-    Star,
-    MessageSquare,
-    Store,
-    X,
-    Camera,
-    Upload,
-    Sparkles,
-    Image as ImageIcon
-} from 'lucide-react';
+import { type BuyerOrderNotice } from '@/utils/buyerParcelProgress';
+import { ArrowLeft, CheckCircle2, Check, Star, X, Camera } from 'lucide-react';
 
 interface Props {
     order: Order;
@@ -45,13 +26,12 @@ interface Props {
     pickupHub: {name: string; address: string; operating_hours: string | null} | null;
     pickupCodeUrl: string | null;
     pickupCodeAvailable?: boolean;
-    orderNotices: Array<{id: string; data: {title: string; milestone: string}; read_at: string | null; created_at: string}>;
+    orderNotices: BuyerOrderNotice[];
 }
 
 export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buyAgainToken, cancelOrderUrl, cancellationReasons = [], cancellationReason, canConfirmReceipt, returnAvailability, buyerReturns = [], pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [] }: Props) {
     const { auth } = usePage<PageProps>().props;
     const adminOversight = auth.user?.role === 'admin';
-    const delivery = order.delivery;
     const [pickupCode,setPickupCode] = useState<string | null>(null);
     const [codeError,setCodeError] = useState('');
     const [codeBusy,setCodeBusy] = useState(false);
@@ -137,6 +117,12 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
         images: [],
     });
 
+    const openReview = () => {
+        if (!canUsePortal || order.status !== 'completed' || reviewableItems.length === 0 || trackingRefreshing || receiptBusy || codeBusy) return;
+        setData('order_item_id', reviewableItems[0].id);
+        setReviewModalOpen(true);
+    };
+
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const filesArray = Array.from(e.target.files);
@@ -186,36 +172,9 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
         });
     };
 
-    const formatPrice = (amount?: number | string | null) => {
-        const numeric = Number(amount || 0);
-        return new Intl.NumberFormat('en-PH', {
-            style: 'currency',
-            currency: 'PHP',
-            minimumFractionDigits: 2,
-        }).format(numeric);
-    };
-
     return (
         <BuyerOrderAccessLayout canUsePortal={canUsePortal}>
             <Head title={`Order #${order.order_number} Details — BagooPH`} />
-            {(returnAvailability?.can_request || buyerReturns.length > 0) && <section className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-300 bg-white p-4"><div><h2 className="font-bold text-slate-900">Returns and refunds</h2>{returnAvailability?.can_request && <p className="mt-1 text-sm text-slate-600">You can request a return within seven days of delivery, including after confirming receipt.</p>}</div><div className="flex flex-wrap gap-2">{returnAvailability?.can_request && <Link href={`/buyer-returns/orders/${order.id}/create`} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-[#C20836]">Request a return</Link>}{buyerReturns.map(item => <Link key={item.id} href={`/buyer-returns/${item.id}`} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">{item.reference}</Link>)}</div></section>}
-            {pickupClaim && <section aria-label="Your hub pickup" className="mb-5 space-y-3 rounded-xl border border-slate-300 bg-white p-4">
-                <h2 className="font-bold text-slate-900">Your hub pickup</h2>
-                <p className="text-sm text-slate-700">{pickupHub?.name ?? 'Hub details not recorded'} · {pickupHub?.address}</p>
-                <p className="text-sm text-slate-700">{pickupHub?.operating_hours ?? 'Contact the hub for its actual operating hours.'}</p>
-                {(counterWindow === 'ready' || counterWindow === 'locked') && <p className="text-sm text-slate-700">Collect before {trackingDate(pickupClaim.expires_at)} Philippine time. Bring your valid photo ID and exact COD payment.</p>}
-                {counterWindow === 'expired' && <p role="status" className="text-sm font-semibold text-amber-900">The collection deadline has passed. Refresh tracking for the hub's return review.</p>}
-                {counterWindow === 'locked' && <p role="status" className="text-sm font-semibold text-amber-900">Counter verification is locked until {trackingDate(pickupClaim.locked_until)} Philippine time. Refresh after that time.</p>}
-                {counterWindow === 'unavailable' && <p className="text-sm font-semibold text-slate-700">{pickupClaim.status === 'collected' ? (order.status === 'completed' ? 'Collection and your receipt confirmation are recorded.' : 'Collection is recorded. Confirm receipt after checking your items.') : 'The recorded pickup state needs hub review.'}</p>}
-                {counterWindow === 'ready' && pickupCodeAvailable && !pickupCode && !pickupClaim.code_issued_at && <><p className="text-sm text-slate-700">Your private code is shown once. Save it when it appears; it cannot be revealed again.</p><button disabled={codeBusy || trackingRefreshing} onClick={showPickupCode} className="rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{codeBusy ? 'Preparing code…' : 'Show my code once'}</button></>}
-                {counterWindow === 'ready' && pickupCode && <p className="break-all rounded-lg border border-slate-300 p-3 text-lg font-bold" aria-live="polite">{pickupCode}</p>}
-                {counterWindow === 'ready' && pickupClaim.code_issued_at && !pickupCode && <p className="text-sm text-slate-700">Your code was already shown. Use the code you saved; contact the hub if it was lost.</p>}
-                {counterWindow === 'ready' && !pickupCodeAvailable && !pickupCode && !pickupClaim.code_issued_at && <p className="text-sm text-slate-700">Refresh tracking to check whether code access is available. Contact the hub if it remains unavailable.</p>}
-                {codeError && <p role="alert" className="text-sm text-red-700">{codeError}</p>}
-            </section>}
-            {orderNotices.length > 0 && <section className="mb-5 rounded-lg border border-slate-300 bg-white p-4"><h2 className="font-bold">Order notices</h2><ul className="mt-3 space-y-2">{orderNotices.map(notice => <li key={notice.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 py-2 text-sm"><span>{notice.data.title} · {new Date(notice.created_at).toLocaleString('en-PH')}</span>{!notice.read_at && <button className="font-semibold text-[#E00D42]" onClick={() => router.patch(route('buyer.orders.notice-read',notice.id),{},{preserveScroll:true})}>Mark read</button>}</li>)}</ul></section>}
-
-
             <div className="w-full space-y-6">
                 
                 {/* Header & Back Link */}
@@ -245,10 +204,10 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
                                 <span>{receiptBusy ? 'Confirming receipt…' : 'Confirm Order Received'}</span>
                             </button>
                         )}
-                        {canUsePortal && order.status === 'completed' && reviewableItems.length > 0 && (
+                        {!order.tracking && canUsePortal && order.status === 'completed' && reviewableItems.length > 0 && (
                             <button
                                 type="button"
-                                onClick={() => { setData('order_item_id', reviewableItems[0]?.id ?? null); setReviewModalOpen(true); }}
+                                onClick={openReview}
                                 className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
                             >
                                 <Star className="w-4 h-4 fill-white" />
@@ -269,92 +228,29 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
                 {receiptError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800">{receiptError}</p>}
 
                 {order.status === 'cancelled' && cancellationReason && <p role="status" className="rounded-xl border border-slate-300 bg-white p-4 text-sm text-slate-700">Cancellation reason: {cancellationReason}</p>}
-                <OrderTrackingPanel variant="buyer" tracking={order.tracking} onRefresh={refreshTracking} refreshing={trackingRefreshing || codeBusy || receiptBusy} error={trackingError} />
+                <OrderTrackingPanel variant="buyer" tracking={order.tracking} buyerOrder={order} notices={orderNotices}
+                    onReview={canUsePortal && order.status === 'completed' && reviewableItems.length > 0 ? openReview : undefined}
+                    onRefresh={refreshTracking} refreshing={trackingRefreshing || codeBusy || receiptBusy} error={trackingError} />
+                <BuyerOrderPackage order={order} canUsePortal={canUsePortal} />
 
-                {/* 2. DISPATCH & COURIER TELEMETRY */}
-                {delivery && (
-                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-                        <div className="flex items-center gap-2 text-sm font-bold text-slate-900 pb-3 border-b border-slate-100">
-                            <Truck className="w-4 h-4 text-indigo-600" />
-                            <span>Assigned Courier Fleet & Logistics</span>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-sans text-xs">
-                            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                                <span className="text-slate-400 text-[11px] font-semibold block">Courier Service</span>
-                                <p className="font-bold text-slate-900 text-sm">{delivery.logistics_partner}</p>
-                                <p className="text-indigo-600 font-semibold">{order.tracking?.stage_label ?? 'Parcel stage not loaded'}</p>
-                            </div>
-
-                            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                                <span className="text-slate-400 text-[11px] font-semibold block">Seller pickup</span>
-                                <p className="font-bold text-slate-900 text-sm">{delivery.pickup_store_name || 'Seller name not recorded'}</p>
-                                <p className="text-slate-500 text-xs truncate">{delivery.pickup_address}</p>
-                            </div>
-
-                            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                                <span className="text-slate-400 text-[11px] font-semibold block">Recipient Destination</span>
-                                <p className="font-bold text-slate-900 text-sm">{delivery.delivery_recipient_name}</p>
-                                <p className="text-slate-500 text-xs truncate">{delivery.delivery_address}</p>
-                            </div>
-                        </div>
-
-                        {delivery.courier_notes && (
-                            <div className="p-3.5 bg-indigo-50/60 border border-indigo-100 rounded-xl text-xs font-sans text-indigo-950 flex items-start gap-2">
-                                <MessageSquare className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                                <div>
-                                    <span className="font-bold">Courier Dispatch Notes: </span>
-                                    <span>{delivery.courier_notes}</span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* 3. ORDER ITEMS BREAKDOWN */}
-                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-                    <div className="flex items-center gap-2 text-sm font-bold text-slate-900 pb-3 border-b border-slate-100">
-                        <Package className="w-4 h-4 text-[#E00D42]" />
-                        <span>Package Items</span>
-                    </div>
-
-                    <div className="divide-y divide-slate-100 font-sans">
-                        {order.items?.map((item) => (
-                            <div key={item.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                <div className="flex items-center gap-4 min-w-0 w-full sm:w-auto">
-                                    <img
-                                        src={item.product?.featured_image || ''}
-                                        alt={item.product?.name}
-                                        className="w-16 h-16 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
-                                    />
-                                    <div className="space-y-1 min-w-0">
-                                        <Link 
-                                            href={route('buyer.products.show', item.product?.slug || '')}
-                                            className="font-bold text-sm text-slate-900 hover:text-[#E00D42] transition break-words"
-                                        >
-                                            {item.product?.name}
-                                        </Link>
-                                        <p className="text-xs text-slate-500 font-sans">
-                                            Quantity: {item.quantity} × {formatPrice(item.unit_price)}
-                                        </p>
-                                        {item.review && canUsePortal && <BuyerSavedReview review={item.review} />}
-                                    </div>
-                                </div>
-
-                                <div className="text-sm font-bold text-slate-900">
-                                    {formatPrice(Number(item.unit_price) * item.quantity)}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="border-t border-slate-300 pt-4">
-                        {order.voucher_receipt ? <BuyerVoucherReceipt receipt={order.voucher_receipt} /> : <div className="flex justify-between text-sm font-bold"><span>Total Amount</span><span>{formatPrice(order.total_amount)}</span></div>}
-                    </div>
-                </div>
+                {(returnAvailability?.can_request || buyerReturns.length > 0) && <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-300 bg-white p-4"><div><h2 className="font-bold text-slate-900">Returns and refunds</h2>{returnAvailability?.can_request && <p className="mt-1 text-sm text-slate-600">You can request a return within seven days of delivery, including after confirming receipt.</p>}</div><div className="flex flex-wrap gap-2">{returnAvailability?.can_request && <Link href={`/buyer-returns/orders/${order.id}/create`} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-[#C20836]">Request a return</Link>}{buyerReturns.map(item => <Link key={item.id} href={`/buyer-returns/${item.id}`} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">{item.reference}</Link>)}</div></section>}
+                {pickupClaim && <section aria-label="Your hub pickup" className="space-y-3 rounded-xl border border-slate-300 bg-white p-4">
+                    <h2 className="font-bold text-slate-900">Your hub pickup</h2>
+                    <p className="text-sm text-slate-700">{pickupHub?.name ?? 'Hub details not recorded'} · {pickupHub?.address}</p>
+                    <p className="text-sm text-slate-700">{pickupHub?.operating_hours ?? 'Contact the hub for its actual operating hours.'}</p>
+                    {(counterWindow === 'ready' || counterWindow === 'locked') && <p className="text-sm text-slate-700">Collect before {trackingDate(pickupClaim.expires_at)} Philippine time. Bring your valid photo ID and exact COD payment.</p>}
+                    {counterWindow === 'expired' && <p role="status" className="text-sm font-semibold text-amber-900">The collection deadline has passed. Refresh tracking for the hub's return review.</p>}
+                    {counterWindow === 'locked' && <p role="status" className="text-sm font-semibold text-amber-900">Counter verification is locked until {trackingDate(pickupClaim.locked_until)} Philippine time. Refresh after that time.</p>}
+                    {counterWindow === 'unavailable' && <p className="text-sm font-semibold text-slate-700">{pickupClaim.status === 'collected' ? (order.status === 'completed' ? 'Collection and your receipt confirmation are recorded.' : 'Collection is recorded. Confirm receipt after checking your items.') : 'The recorded pickup state needs hub review.'}</p>}
+                    {counterWindow === 'ready' && pickupCodeAvailable && !pickupCode && !pickupClaim.code_issued_at && <><p className="text-sm text-slate-700">Your private code is shown once. Save it when it appears; it cannot be revealed again.</p><button disabled={codeBusy || trackingRefreshing} onClick={showPickupCode} className="rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{codeBusy ? 'Preparing code…' : 'Show my code once'}</button></>}
+                    {counterWindow === 'ready' && pickupCode && <p className="break-all rounded-lg border border-slate-300 p-3 text-lg font-bold" aria-live="polite">{pickupCode}</p>}
+                    {counterWindow === 'ready' && pickupClaim.code_issued_at && !pickupCode && <p className="text-sm text-slate-700">Your code was already shown. Use the code you saved; contact the hub if it was lost.</p>}
+                    {counterWindow === 'ready' && !pickupCodeAvailable && !pickupCode && !pickupClaim.code_issued_at && <p className="text-sm text-slate-700">Refresh tracking to check whether code access is available. Contact the hub if it remains unavailable.</p>}
+                    {codeError && <p role="alert" className="text-sm text-red-700">{codeError}</p>}
+                </section>}
                 {reviewSaved && <p role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700">Your purchase review has been saved.</p>}
 
-                {/* 4. RATE & REVIEW MODAL WITH PHOTO UPLOAD SUPPORT */}
+                {/* Product review */}
                 {canUsePortal && reviewModalOpen && (
                     <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
                         <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 font-sans my-auto max-h-[92vh] overflow-y-auto">

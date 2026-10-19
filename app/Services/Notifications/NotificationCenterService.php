@@ -5,6 +5,7 @@ namespace App\Services\Notifications;
 use App\Enums\UserRole;
 use App\Models\AccountReviewRequest;
 use App\Models\Advertisement;
+use App\Models\BuyerReturnCase;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\RestrictionAffectedWork;
@@ -19,6 +20,7 @@ use App\Services\Finance\SellerSettlementService;
 use App\Services\GovernanceHistoryService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\RestrictedCustodyRecoveryService;
+use App\Services\Orders\OrderTrackingService;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -137,11 +139,34 @@ class NotificationCenterService
             'href' => $this->href($notice, $user)];
     }
 
+    public function forOrder(User $buyer, Order $order): array
+    {
+        abort_unless($buyer->isBuyer() && $order->buyer_id === $buyer->id, 403);
+        $notices = $buyer->notifications()->whereIn('type', self::TYPES)
+            ->where('data->order_id', $order->id)->latest()->orderBy('id')->get();
+        $originalIds = $notices->isEmpty() ? [] : $order->delivery?->checkpoints()
+            ->whereNull('source_checkpoint_id')->whereIn('checkpoint_type', array_keys(OrderTrackingService::EVENTS))
+            ->pluck('id')->all() ?? [];
+
+        return $notices->map(function (DatabaseNotification $notice) use ($buyer, $originalIds) {
+            $milestone = $notice->data['milestone'] ?? null;
+            $checkpointId = $notice->type === 'parcel-event'
+                && preg_match('/\Acheckpoint:([1-9][0-9]{0,17})\z/', (string) $notice->source_key, $match)
+                && in_array((int) $match[1], $originalIds, true) ? (int) $match[1] : null;
+
+            return $this->present($notice, $buyer) + [
+                'checkpoint_id' => $checkpointId,
+                'milestone' => $notice->type === 'order-event' && is_string($milestone)
+                    && isset(OrderTrackingService::EVENTS[$milestone]) ? $milestone : null,
+            ];
+        })->all();
+    }
+
     private function href(DatabaseNotification $notice, User $user): ?string
     {
         $data = $notice->data;
         if ($notice->type === 'buyer-return') {
-            $case = \App\Models\BuyerReturnCase::find((int) ($data['return_id'] ?? 0));
+            $case = BuyerReturnCase::find((int) ($data['return_id'] ?? 0));
             if ($case && (($user->isBuyer() && $case->buyer_id === $user->id && app(BuyerAccessService::class)->canViewOrderHistory($user))
                 || ($user->isSeller() && $user->isKycApproved() && $case->seller_id === $user->id)
                 || ($user->isAdmin() && $user->canAccessPortal() && $user->email_verified_at))) {
