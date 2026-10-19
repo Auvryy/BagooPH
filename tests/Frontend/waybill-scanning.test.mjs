@@ -83,3 +83,20 @@ test('scan failures expose validation and expired-session feedback and never rep
         await assert.rejects(ui.requestWaybill('//foreign.test/scan', {}, new AbortController().signal), /current portal/);
     } finally { globalThis.fetch = fetch; globalThis.document = document; }
 });
+
+test('a separate buyer-return response opens only its scoped case and never confirms delivery custody', async () => {
+    const fetch = globalThis.fetch; const document = globalThis.document;
+    globalThis.document = { cookie: '', querySelector: () => ({ content: 'rendered' }) };
+    const entry = { reference: 'BR-OWNED', barcode: 'BRT-ABCDEFGHIJKLMNOPQRST', href: '/buyer-returns/11', status: 'approved' };
+    try {
+        globalThis.fetch = async () => Response.json({ success: true, confirmed: false, return_case: entry });
+        const result = await ui.requestWaybill('/hub/scan', { barcode: entry.barcode, mode: 'inspect' }, new AbortController().signal);
+        assert.deepEqual(result.return_case, entry); assert.equal(result.confirmed, false); assert.equal(result.delivery, undefined);
+        for (const patch of [{ href: 'https://foreign.test/return' }, { href: 'javascript:run()' }, { href: '//foreign.test' }, { barcode: 'BGO-ORIGINAL' }, { status: null }]) {
+            globalThis.fetch = async () => Response.json({ success: true, confirmed: false, return_case: { ...entry, ...patch } });
+            await assert.rejects(ui.requestWaybill('/hub/scan', {}, new AbortController().signal), /return details were incomplete/);
+        }
+        globalThis.fetch = async () => Response.json({ success: true, confirmed: true, return_case: entry });
+        await assert.rejects(ui.requestWaybill('/hub/scan', {}, new AbortController().signal), /return details were incomplete/);
+    } finally { globalThis.fetch = fetch; globalThis.document = document; }
+});

@@ -11,6 +11,33 @@ class PhilippineAddressCatalog
 
     private array $barangays = [];
 
+    private ?array $cityAreas = null;
+
+    public function catalogueAreas(): array
+    {
+        $areas = [];
+        foreach ($this->index()['provinces'] as $code => $province) {
+            $areas[] = ['value' => (string) $code, 'label' => $province['name']];
+        }
+        usort($areas, fn ($left, $right) => strnatcasecmp($left['label'], $right['label']));
+
+        return $areas;
+    }
+
+    public function provinceForUniqueCity(string $name): ?string
+    {
+        if ($this->cityAreas === null) {
+            $this->cityAreas = ['exact' => [], 'short' => []];
+            foreach ($this->index()['cities'] as $city) {
+                $this->cityAreas['exact'][$this->key($city['name'])][] = $city['province'];
+                $this->cityAreas['short'][$this->key($city['name'], true)][] = $city['province'];
+            }
+        }
+        $matches = $this->cityAreas['exact'][$this->key($name)] ?? $this->cityAreas['short'][$this->key($name, true)] ?? [];
+        // A repeated municipality name is never assigned a province by guesswork.
+        return count($matches) === 1 ? (string) $matches[0] : null;
+    }
+
     private function index(): array
     {
         return self::$index ??= json_decode(file_get_contents(resource_path('data/philippine-addresses/index.json')), true, flags: JSON_THROW_ON_ERROR);

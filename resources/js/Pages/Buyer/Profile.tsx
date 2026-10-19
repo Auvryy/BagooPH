@@ -5,6 +5,7 @@ import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
 import BuyerOrderFilters from '@/Components/BuyerOrderFilters';
 import BuyerPurchaseNavigation from '@/Components/BuyerPurchaseNavigation';
+import BuyAgainButton from '@/Components/BuyAgainButton';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import VoucherOfferList from '@/Components/VoucherOfferList';
 import BuyerVoucherCollection, { BuyerVoucherCollectionData } from '@/Components/Vouchers/BuyerVoucherCollection';
@@ -590,7 +591,7 @@ export default function BuyerProfile({
                             >
                                 <span className="flex items-center gap-2.5">
                                     <Shield className="w-4 h-4 text-slate-400" />
-                                    <span>Returns & Dispute Desk</span>
+                                    <span>Returns &amp; Refunds</span>
                                 </span>
                                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                             </Link>
@@ -726,7 +727,7 @@ export default function BuyerProfile({
                                                             <span>{receiptPending === order.id ? 'Confirming…' : 'Confirm Received'}</span>
                                                         </button>
                                                     )}
-                                                    {order.can_buy_again && <Link href={route('buyer.orders.buy-again', order.id)} className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-[#E00D42] hover:bg-rose-50">Buy again</Link>}
+                                                    {order.can_buy_again && order.buy_again_token && <BuyAgainButton url={route('buyer.orders.buy-again.store', order.id)} token={order.buy_again_token} />}
 
                                                     <Link
                                                         href={route('buyer.orders.show', order.id)}
@@ -736,14 +737,15 @@ export default function BuyerProfile({
                                                         <span>Track Parcel</span>
                                                     </Link>
 
-                                                    {order.status === 'delivered' && (
+                                                    {order.return_availability?.can_request && (
                                                         <Link
-                                                            href={route('buyer.disputes.index')}
+                                                            href={`/buyer-returns/orders/${order.id}/create`}
                                                             className="px-3 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition"
                                                         >
-                                                            Disputes unavailable
+                                                            Request a return
                                                         </Link>
                                                     )}
+                                                    {order.buyer_returns?.map(item => <Link key={item.id} href={`/buyer-returns/${item.id}`} className="rounded-xl border border-slate-300 px-3 py-2 font-semibold text-[#C20836]">Return {item.reference}</Link>)}
                                                 </div>
                                             </div>
                                         </div>

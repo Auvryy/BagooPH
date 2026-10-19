@@ -18,7 +18,7 @@ class SellerSettlementController extends Controller
     public function index(Request $request)
     {
         $actor = $this->settlements->current($request->user());
-        $filters = $request->validate(['status' => ['nullable', Rule::in(['pending', 'eligible', 'authorized', 'settled'])],
+        $filters = $request->validate(['status' => ['nullable', Rule::in(['pending', 'eligible', 'authorized', 'settled', 'closed'])],
             'page' => 'sometimes|integer|min:1|max:100000', 'q' => 'nullable|string|max:100']);
         $query = $this->settlements->scoped($actor)->with(['items.shop.user', 'delivery', 'codAccount', 'commissionLedger', 'sellerSettlement']);
         if (! empty($filters['q'])) {

@@ -47,6 +47,14 @@ The seller controls only `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP`.
 
 For return-to-sender, the seller sees reverse-hub checkpoints and receives the parcel through a final authenticated scan. Only that scan makes the order `RETURNED`.
 
+Post-delivery buyer returns use the separate [return contract](buyer-returns-plan/README.md).
+The current approved seller reviews the original purchased units and private
+evidence within three elapsed days. A rejection retains its exact reason and the
+buyer's permitted admin appeal. Approval does not establish physical receipt or
+repayment and never rewrites the original completed purchase as a failed delivery.
+Unresolved claims hold proceeds; original paid evidence and any later recovery
+liability remain separately traceable.
+
 Product settlement is not released merely because a rider marks the parcel delivered. The order must be `COMPLETED`, and COD must be reconciled at platform level. The product split is 90% seller and 10% platform; shipping and handling remain separate.
 
 ## 5. Required Seller Notifications

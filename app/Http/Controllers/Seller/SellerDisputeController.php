@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Inertia\Response;
 
 class SellerDisputeController extends Controller
@@ -13,11 +12,6 @@ class SellerDisputeController extends Controller
 
     public function index(Request $request): Response
     {
-        $shop = $this->getActiveShop($request);
-
-        return Inertia::render('Seller/Disputes', [
-            'available' => false,
-            'shop' => $shop,
-        ]);
+        return app(\App\Http\Controllers\BuyerReturnController::class)->index($request, app(\App\Services\Returns\BuyerReturnService::class));
     }
 }

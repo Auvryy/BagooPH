@@ -5,8 +5,10 @@ These **11 active cases** remain visible in the
 waived by the four smaller deliveries. Follow the [shared plan](README.md) and
 the [original order follow-up scope](../buyer-readiness-plan/03-orders-and-communication.md).
 
-The user retained COD and deferred complete refunds. Planning these dependencies
-does not reverse that decision or authorize new external/paid services. Keep
+The initial plan retained COD and deferred complete refunds. On October 19 the
+user explicitly selected all buyer-return prerequisites, including reverse
+custody and verified COD repayment; online payments remain deferred. This does
+not authorize new external/paid services. Keep
 their original failures/blocks visible until the feature and expected behavior
 are explicitly selected, implemented and actually checked. Existing planning
 ownership must be reused rather than duplicated.
@@ -49,13 +51,21 @@ References: `BUY-RET-001`, `BUY-RET-003`, `BUY-RET-004`, and `BUY-RET-005`.
 The separate pre-delivery negative control is assigned to BP03 as
 `BUY-RET-002`; it does not close this missing positive feature.
 
-`BuyerDisputeController` currently returns an unavailable page. The existing
+The user selected the [complete return contract](../buyer-returns-plan/README.md):
+seven elapsed days from evidenced physical delivery, including completed orders,
+with separate request/review, reverse-custody and COD-repayment deliveries. That
+plan resolves the implementation decisions below without claiming they are built.
+
+At the planning baseline, `BuyerDisputeController` returned an unavailable page.
+The selected R01–R03 implementation and its actual checks are now recorded in
+the [roadmap](../CORE_FLOW_ROADMAP.md); that evidence does not establish an
+unperformed browser procedure or a real production transfer. The existing
 failed-delivery reverse route concerns parcels that were not successfully
 received by the buyer. Do not substitute it for a post-delivery item complaint,
 seller decision, escalation or repayment.
 
-Reuse the established buyer-return/admin-refund planning work. Before selecting
-implementation, decide the actual eligibility/window, interaction with explicit
+The [selected contract](../buyer-returns-plan/README.md) records the actual
+eligibility/window, interaction with explicit
 buyer completion, item quantities, meaningful reasons/descriptions, private
 evidence allowlist/count/size, seller response and escalation authority/deadlines,
 return transport/receipt, disputed cash and COD repayment destination. Retain the
@@ -74,7 +84,8 @@ retained original payment and once-only outgoing money evidence. Neither opening
 a complaint nor marking a parcel returned establishes that a refund was paid.
 Route/custody, decision authority and financial gates must be tested independently.
 
-Until selected, retain the positive missing-feature failure and the three
-dependent blocks. Keep the unavailable page honest and avoid sample submission
-forms, fabricated case histories or success messages. No automatic new deadline
-or hidden implementation inside BP01-BP04 is created by this plan.
+The selected return delivery must close the positive missing-feature failure and
+the three dependent blocks with actual implementation and verification. Keep the
+recorded evidence honest; avoid sample forms, fabricated histories or success
+messages in place of missing backing. Track this expanded work separately
+from BP01-BP04 and preserve the original evidence until the new gates pass.

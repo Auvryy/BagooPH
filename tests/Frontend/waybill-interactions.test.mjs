@@ -170,3 +170,16 @@ test('facility changes and foreground work reject even an already delivered old 
     assert.deepEqual(next.only,['auth','queues']); next.onBeforeUpdate();
     h.navigator.onLine=false; h.window.dispatchEvent(new Event('offline')); assert.equal(cancelled,3);
 });
+
+test('a buyer-return scan opens its actual case without offering an ordinary delivery confirmation', async t => {
+    const h = harness(t, ui.Scanner, props); h.render();
+    const entry = { reference: 'BR-OWNED', barcode: 'BRT-ABCDEFGHIJKLMNOPQRST', href: '/buyer-returns/11', status: 'approved' };
+    h.response = () => Response.json({ success: true, confirmed: false, message: 'Buyer return identified.', return_case: entry });
+    nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: entry.barcode } }); h.render();
+    nodes(h.tree).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await tick(); h.render();
+    assert.equal(h.calls.length, 1); assert.equal(h.calls[0].body.mode, 'inspect'); assert.equal(h.reloads, 0);
+    const link = nodes(h.tree).find(n => n.type === 'a' && n.props.href === entry.href); assert.ok(link);
+    assert.equal(link.props.children, 'Open buyer return');
+    assert.equal(nodes(h.tree).some(n => n.type === 'button' && nodes(n).some(child => [child.props?.children].flat(Infinity).includes('Confirm custody action'))), false);
+    assert.equal(nodes(h.tree).some(n => n.props?.guidance), false);
+});

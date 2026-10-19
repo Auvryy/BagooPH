@@ -31,6 +31,9 @@ use App\Http\Controllers\Buyer\SavedProductController;
 use App\Http\Controllers\Buyer\ShopFollowController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\BuyerReturnController;
+use App\Http\Controllers\BuyerReturnCustodyController;
+use App\Http\Controllers\BuyerReturnMoneyController;
 use App\Http\Controllers\CodCashController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\Courier\RiderCompanyRequestController;
@@ -163,7 +166,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/{order}', [SellerSettlementController::class, 'show'])->whereNumber('order')->name('show');
         Route::get('/{order}/proof/{event}', [SellerSettlementController::class, 'proof'])->whereNumber(['order', 'event'])->name('proof');
         Route::post('/{order}/{action}', [SellerSettlementController::class, 'command'])->whereNumber('order')
-            ->where('action', 'authorize|record-payment|adjust-reference')->name('command');
+            ->where('action', 'authorize|record-payment|adjust-reference|close-proceeds')->name('command');
     });
     Route::get('/exceptions', [ExceptionOversightController::class, 'index'])->name('exceptions.index');
     Route::get('/exceptions/attempt/{id}/proof', [ExceptionOversightController::class, 'proof'])->whereNumber('id')->name('exceptions.proof');
@@ -491,6 +494,18 @@ Route::get('/about', [MarketplaceController::class, 'index'])->name('about');
 */
 Route::get('/track/{tracking_number?}', [PublicTrackingController::class, 'show'])->middleware('throttle:public-tracking')->name('track.show');
 
+Route::middleware('auth')->prefix('buyer-returns')->name('buyer-returns.')->group(function () {
+    Route::get('/', [BuyerReturnController::class, 'index'])->name('index');
+    Route::get('/orders/{order}/create', [BuyerReturnController::class, 'create'])->where('order', '[1-9][0-9]{0,17}')->name('create');
+    Route::post('/orders/{order}', [BuyerReturnController::class, 'store'])->where('order', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('store');
+    Route::get('/{case}', [BuyerReturnController::class, 'show'])->where('case', '[1-9][0-9]{0,17}')->name('show');
+    Route::post('/{case}/actions', [BuyerReturnController::class, 'action'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('action');
+    Route::post('/{case}/custody', [BuyerReturnCustodyController::class, 'store'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('custody');
+    Route::post('/{case}/money', [BuyerReturnMoneyController::class, 'store'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('money');
+    Route::get('/{case}/money/{event}/proof', [BuyerReturnMoneyController::class, 'proof'])->where(['case' => '[1-9][0-9]{0,17}', 'event' => '[1-9][0-9]{0,17}'])->name('money-proof');
+    Route::get('/{case}/evidence/{evidence}', [BuyerReturnController::class, 'evidence'])->where(['case' => '[1-9][0-9]{0,17}', 'evidence' => '[1-9][0-9]{0,17}'])->name('evidence');
+});
+
 /*
 |--------------------------------------------------------------------------
 | Buyer E-Commerce Ecosystem Routes (/buyer)
@@ -552,6 +567,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/preview', [NotificationController::class, 'preview'])->name('notifications.preview');
     Route::patch('/notifications/read-displayed', [NotificationController::class, 'readDisplayed'])->name('notifications.read-displayed');
+    Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
     Route::get('/governance-history', [GovernanceHistoryController::class, 'index'])->name('governance-history.index');
     Route::get('/governance-history/{source}/{decisionId}', [GovernanceHistoryController::class, 'show'])->whereNumber('decisionId')->name('governance-history.show');

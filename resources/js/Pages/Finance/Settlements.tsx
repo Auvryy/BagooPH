@@ -23,13 +23,13 @@ export default function Settlements({ records, filters, can_release }: {
             </section>
             <form onSubmit={submit} className="grid items-end gap-3 sm:grid-cols-[1fr_240px_auto]">
                 <label className="text-sm font-semibold">Order number<input className={cashInput} value={query} maxLength={100} onChange={event => setQuery(event.target.value)} /></label>
-                <label className="text-sm font-semibold">Settlement state<select className={cashInput} value={status} onChange={event => setStatus(event.target.value)}><option value="">All states</option>{['pending', 'eligible', 'authorized', 'settled'].map(value => <option key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</option>)}</select></label>
+                <label className="text-sm font-semibold">Settlement state<select className={cashInput} value={status} onChange={event => setStatus(event.target.value)}><option value="">All states</option>{['pending', 'eligible', 'authorized', 'settled', 'closed'].map(value => <option key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</option>)}</select></label>
                 <button className={cashButton}>Apply filters</button>
             </form>
             <div className="grid gap-4 lg:grid-cols-2">{records.data.map(record => <article key={record.order_id} className={`${cashSurface} p-5`}>
                 <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{record.order_number}</h2><span className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1 text-sm capitalize">{record.status}</span></div>
                 <p className="mt-2 text-sm text-slate-600">{record.shop_name ?? 'Original shop requires review'}</p>
-                <p className="mt-4 text-xs text-slate-600">Net seller payout</p><p className="mt-1 text-2xl font-bold">{record.net_seller_cents === null ? 'Funding review required' : cashMoney(record.net_seller_cents ?? record.seller_cents)}</p>
+                <p className="mt-4 text-xs text-slate-600">Net seller payout</p><p className="mt-1 text-2xl font-bold">{record.net_seller_cents === null ? 'Funding review required' : cashMoney(record.status === 'settled' ? record.paid_seller_cents : record.payable_seller_cents)}</p>
                 <dl className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-slate-600">Buyer confirmation</dt><dd className="mt-1 font-semibold">{record.buyer_completed ? 'Recorded' : 'Awaiting buyer'}</dd></div><div><dt className="text-slate-600">Platform COD</dt><dd className="mt-1 font-semibold">{record.cash_reconciled ? 'Reconciled' : 'Awaiting reconciliation'}</dd></div></dl>
                 <Link href={`/seller-settlements/${record.order_id}`} className={`${cashButton} mt-5`}>Review proceeds</Link>
             </article>)}</div>

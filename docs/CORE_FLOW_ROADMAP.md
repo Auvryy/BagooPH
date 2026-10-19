@@ -6402,3 +6402,410 @@ publication or deployment. Coverage/allocation, relative links, privacy and patc
 checks verify this planning handoff; no new runtime test or implementation-readiness
 increase is claimed for writing the plan. Future code changes require their own
 focused checks and build, and current results remain in this roadmap.
+
+### Buyer search control polish: October 19, 2026
+
+The first BP01 change adds a public **Ships from** province/area selection and
+accepts the advertised **4.5+** verified average-rating threshold. Area, category,
+price, stock and rating combine consistently; related results and spelling
+suggestions retain those constraints. Search, paging and prepared navigation
+retain the area in their URLs and distinguish different areas in cache identity.
+Individual purchase reviews still require integer stars.
+
+The source is the reviewed shop pickup city, never the seller's account residence
+or a buyer delivery address. The bundled Philippine hierarchy resolves only
+unique city names, including case/accent and City-of aliases. Repeated or unknown
+legacy city names remain visible under All provinces and areas and are excluded
+from a specific area; the control explains that limit. No street address or
+private review evidence is added to the filter payload. A separately reviewed
+structured pickup province is still needed to classify ambiguous legacy cities.
+
+Verification: **60 focused backend tests / 1,260 assertions** passed using SQLite
+`:memory:`, including combined filters, fractional boundaries, ambiguous locations,
+private-listing exclusion, suggestions and stable pagination. **25 frontend/helper
+checks** and the TypeScript/Vite production build passed. No browser walkthrough,
+development/production reseed, publication or Azure deployment was performed.
+
+Scoped engineering assessment: combined area discovery **3/10 to 7/10**, with
+ambiguous-city coverage explicitly limited; advertised average-rating control
+**5/10 to 8/10**. These ratings do not certify unrelated buyer flows. Bulk
+notification reading and the remaining polishing gates are still in progress.
+The user has also selected the full COD buyer-return prerequisites for subsequent
+implementation; online payment integration remains separate.
+
+### Direct Buy again to Shopping Bag: October 19, 2026
+
+The requested repurchase action now uses the existing Shopping Bag. From an owned
+completed purchase it adds the original quantities and exact product options at
+current prices, increases matching Bag lines, then opens the Bag with the affected
+available owned lines selected. The buyer edits quantities and reviews shipping,
+vouchers and checkout there. The duplicate product-selection page is removed;
+old GET bookmarks return to the purchase and never add anything.
+
+The shared Bag rules still enforce current stock, approved shop scope, option
+availability, purchase limits and the 99-unit line limit. One failing original
+item rolls back the whole addition. An identical request retains its original
+result instead of adding twice; a changed reuse rejects. Original purchases,
+stock, delivery history and payment records remain unchanged by rebuilding a Bag.
+Selection from the redirect is intersected with the current owned available Bag,
+so a deleted, foreign or unavailable line cannot be selected for checkout.
+
+Verification: **67 focused backend tests / 617 assertions** passed with SQLite
+`:memory:`. **56 frontend checks** passed, including actual button duplicate/retry
+handlers and Bag checkbox/quote selection. The TypeScript/Vite production build
+passed. These checks do not claim a browser walkthrough or Azure deployment.
+Scoped repurchase usability assessment: **6/10 to 8/10**. Original unavailable
+items still produce a clear rejection; the buyer uses their Bag or current
+product page to choose a different quantity or option.
+
+### Explicit notification bulk read: October 19, 2026
+
+BP01 now includes **Mark all as read** on the full notification page. The server
+captures the exact owned supported unread records, including other pages, in a
+short-lived database snapshot. An explicit authenticated action acknowledges only
+that set. Later arrivals in the same clock tick remain unread; foreign records,
+unsupported types and forged counts cannot expand the selection. Existing read
+timestamps survive retries. Expired lists ask the user to reload.
+
+The list and shared badge refresh from the confirmed response. Pending controls
+prevent repeated clicks; validation, expired-session, storage and network failures
+retain the last confirmed result and offer recovery. Opening the bell still
+acknowledges only displayed preview records. Shared pages retain each portal's
+existing shell and style. The additive snapshot migration is required before use;
+it neither resets records nor alters notification delivery history.
+
+Verification: **99 notification backend tests / 2,706 assertions** passed in
+SQLite `:memory:`, including ownership, same-tick arrivals, beyond-page selection,
+unchanged timestamps, expired snapshots and an injected write failure with rollback
+and retry. **26 notification frontend checks** and the TypeScript/Vite production
+build passed. The local environment was verified before applying the additive
+snapshot migration; no production database, browser walkthrough, publication or
+Azure deployment is part of this result.
+
+Scoped bulk notification usability/correctness assessment: **4/10 to 8/10**.
+The control has actual server-backed acknowledgement and recovery; fresh deployed
+and user browser observations retain their separate gates. This closes the
+selected BP01 code work, without declaring the other buyer polishing or return
+workflows complete.
+
+### Retained buyer rules and precise boundaries: October 19, 2026
+
+BP02 records all 15 affected references in
+[retained expectations](buyer-polishing-plan/RETAINED_EXPECTATIONS.md), preserving
+the original assumptions beside the user-selected Bagoo rules. It does not
+relabel a policy disagreement or an unperformed visible procedure as a manual
+Pass. The planning ledger remains the original baseline.
+
+New tests exercise one cent below/at/above a funded shop-offer minimum without
+using another shop or unselected merchandise; complete percentage eligibility,
+rounding and cap sequences; the exact shipping threshold; and real stored product
+weights under the existing fee rule. Preview, saved order amounts, funding
+commitments, stock and retry usage agree. Additional checks establish full
+499/500-character seller-note persistence and 501 rejection; 999/1,000-character
+reviews and 1,001 rejection; four/five/six photo boundaries; and actual photo bytes
+one below, exactly at and one above 5 MB. Rejected submissions retain no new order,
+review or uploaded photo.
+
+A real custody flow remains Delivered after eight days and history reads until
+the owner explicitly confirms receipt. That confirmation still cannot release
+seller funds without COD reconciliation. Existing selected suites cover approved
+root taxonomy, voucher slot replacement/excess rejection, seller-share caps,
+original cancellation allocations, owned stage counts, review content/ownership
+and independent settlement evidence.
+
+Verification: **350 selected backend tests / 4,549 assertions**, plus the separate
+**receipt-clock test / 104 assertions**, passed with SQLite `:memory:`. This batch
+changes tests and documentation only; BP01 owns the last application build.
+Browser procedures, a deployed reminder and the newly selected full return and
+repayment workflow remain separate work. No application policy, production data,
+published branch or deployment is changed by this verification batch.
+
+Scoped boundary-evidence assessment: **5/10 to 8/10**. The missing exact money and
+field sequences now have direct checks and saved-value evidence; overall buyer
+or project readiness is not raised for unobserved interactions or unbuilt returns.
+
+### Selected complete buyer-return contract: October 19, 2026
+
+The user brought full post-delivery returns and their prerequisites into the
+current goal. The [return delivery plan](buyer-returns-plan/README.md) separates
+requests/review, real reverse custody and verified manual COD repayment. Buyers
+explicitly keep seven elapsed days from evidenced physical delivery, including
+Completed orders. Receipt confirmation and seller settlement remain independent.
+
+The plan retains original item/unit and voucher amounts, shipping treatment,
+original 90/10 records, unpaid-proceeds holds/adjustments and paid-seller recovery.
+Actual custody, cash backing, payment proof and buyer receipt are independent
+acceptance gates. New cases cannot fabricate failed deliveries or money movement.
+Separate future estimates and cross-role rejection/retry/rollback checks are
+recorded before implementation. This documentation establishes scope, not a
+working return feature, browser result, published branch or production repayment.
+No implementation rating changes in this planning delivery.
+
+### Buyer-return requests and review: October 19, 2026
+
+R01 replaces unavailable buyer/seller return areas with real owned queues,
+requests and retained review history. Original purchased units can be requested
+through exactly seven elapsed days from evidenced delivery/counter collection,
+including Completed orders. Actual forward hub receipts remain required; a
+legacy delivered label is insufficient. New claims reserve original unit
+positions without changing order status, original prices, delivery or money.
+
+The form requires meaningful 10–1,000-character details and one to five actual
+private JPG/PNG/WebP images, at most 5 MB each. Protected downloads verify owner
+or current review authority and the stored content hash. Failed case, notice or
+journal writes roll back and remove only new unused uploads. Identical retries
+retain the saved case; changed/stale commands cannot replace it.
+
+The current eligible seller has three elapsed days to approve or reject with an
+exact retained reason. Buyers can escalate a rejection within its three-day appeal
+period or an unanswered overdue request. Current admins record reasoned decisions.
+Approval grants a separate seven-day physical drop-off period; it does not record
+intake or repayment. Unused expiry/withdrawal is an explicit retained action.
+Owned history remains accessible under supported restrictions; closed accounts
+cannot use it. In-app notices link to the actual case without exposing photos.
+
+Purchase history and details expose only server-authorized requests and saved
+cases. The Return/Refund filter counts owned original orders with return history
+while preserving their actual Delivered/Completed status. Buyer, seller and admin
+screens use their existing portal shells, upload hints, readable empty states,
+exact feedback, decision timeline, pending controls and recoverable errors.
+
+An unresolved return blocks seller release and closure of its buyer/seller
+accounts. A seller payment already made remains verified with its original proof,
+amount and ledger; a return within the remaining window does not make it unpaid.
+The complete reverse parcel route and COD repayment remain R02/R03 prerequisites,
+so this result does not establish that a product or money has been returned.
+
+Verification: **219 unique backend tests / 8,054 assertions** passed with SQLite
+`:memory:`, including existing settlement/closure/notification/access regression,
+precise clocks, real file bytes, late replay, failed writes and retained paid
+settlement evidence. **47 frontend checks** and the TypeScript/Vite production
+build passed. The PHP groups were rerun sequentially after parallel temporary-file
+interference; only the passing isolated runs count as evidence. No browser,
+production database, publication or deployment is included.
+
+Scoped request/review assessment: **2/10 to 8/10**. Buyers now have backed requests
+and exact seller/admin feedback; overall return/repayment readiness is not raised
+until actual custody and financial acceptance pass. The additive return-record
+migration is required before these routes are used; no database reset is needed.
+
+### Buyer-return reverse custody: October 19, 2026
+
+R02 gives an approved case its own return label and parcel, separate from the
+original successful delivery. The destination Bayan Hub records actual intake,
+measured weight, condition and private evidence. Return manifests traverse the
+original Mother Hub route in reverse; repeated endpoint hubs retain their actual
+route positions. Assigned handlers and current fleet, driver and capacity checks
+govern each departure and receipt. The origin hub stages the parcel for the
+original seller's evidenced collection and acceptance or condition dispute.
+
+The scan workstation identifies a return label and opens its case without
+inventing a delivery confirmation. Missing arrivals and unexpected codes retain
+their observations and current custody until actual receipt and authorized
+resolution. Versioned retries, failures and private-file cleanup preserve both
+manifest and case history. Original order status, delivery checkpoints, stock,
+COD and paid seller records remain unchanged. The immutable delivery checkpoint
+sets the seven-day request clock even when receipt creation crosses a second.
+
+A separate immutable return-route link leaves the existing manifest table and
+its database guards intact. Migration checks preserve populated old manifests,
+members, events and checkpoints. Existing cash/receipt responsibilities also
+prevent account closure while return custody remains unresolved.
+
+Verification: **172 backend tests / 9,804 assertions**, **32 frontend checks** and
+the TypeScript/Vite production build passed. Backend tests used isolated SQLite
+`:memory:` sequentially, covering complete one/two-Mother-Hub routes, repeated
+endpoints, exact deadlines, authority, capacity, discrepancies, rollback and
+existing manifest/failed-return/closure regression. No browser, production data,
+publication or deployment is included. R03 repayment remains open.
+
+Scoped post-delivery return-custody assessment: **0/10 to 8/10**. The system now
+records actual reverse handovers instead of stopping at approval; this does not
+raise financial repayment readiness. Apply the additive return migrations before
+using these routes; a database reset is unnecessary.
+
+### Buyer-return COD repayment: October 19, 2026
+
+R03 allocates original merchandise, the original gross 10% commission and original
+shop/platform product discounts over exact purchased unit positions. Prefix
+allocation retains every cent regardless of case order; platform contributions
+remain signed when original promotions exceed commission. Separate immutable
+adjustments preserve shipping, voucher usage, commitments/expenses, original
+order status and paid seller records. Current listing prices never set repayment.
+
+Actual seller receipt and reasoned condition review precede amount approval.
+Original reconciled COD, actual seller payments, remaining unpaid seller proceeds,
+shipping obligations, received recovery/funding and previous outgoing repayments
+determine available backing. Offers, debts and campaign budgets are not received
+cash. An original seller may record a partial recovery transfer; the named current
+admin independently acknowledges it. Actual platform funding also requires a
+different named receiving admin and private proof on both sides.
+
+One fixed original-buyer repayment retains its normalized unique reference,
+actual private proof and transfer attestation. Only that buyer's receipt closes
+it as Repaid. Non-receipt retains the original payment under review; linked review
+evidence cannot authorize another payout. A fully discounted entitlement closes
+explicitly with no repayment due, without a fake zero-cash payment. Received
+money and remaining seller debt remain separate after buyer repayment; debt and
+unacknowledged transfer responsibilities still block account closure.
+
+Unpaid seller release derives separate return deductions and requires renewed
+consent after its basis changes. A zero remainder closes with retained evidence,
+not a transfer. A prior positive seller payment remains verified using its
+payment-time deductions. Finance shows actual paid proceeds, remaining unpaid
+amounts, return deductions, entitlements, outgoing repayments, received recovery
+and actual received funding separately from historical COD collection. Private
+funding evidence stays with current admins; operational users receive no money
+proofs or financial notes.
+
+Verification: **185 unique backend tests / 10,467 assertions** passed with SQLite
+`:memory:`. The 180-test financial/return regression run and the final 18-test
+repayment/file run are deduplicated by method using the latest passing result.
+Coverage includes full/partial returns before and after seller payment, refreshed
+authorization, zero closures, two unit cases, actual funding versus offers,
+shipping promotions, signed contributions, partial recovery, non-receipt,
+ownership, stale/replayed requests, private content/hash access, exact real 5 MB
+boundaries, database retention guards and failed outbox/file rollback.
+**24 frontend checks** and the TypeScript/Vite production build passed. Browser,
+deployed scheduler and real banking outcomes are not established by these tests.
+
+Scoped COD return-repayment assessment: **0/10 to 8/10**. The application now has
+an evidenced manual path from original amount to actual backing and buyer receipt.
+It does not initiate bank transfers or implement online checkout payments. Apply
+the additive return migrations before using the feature; retain original data.
+
+### Buyer interaction acceptance preparation: October 19, 2026
+
+BP03 has a prepared isolated HTTP fixture and a
+[method-by-method evidence record](buyer-polishing-plan/INTERACTION_EVIDENCE.md).
+The selected **26 Docker backend tests / 271 assertions** passed with SQLite
+`:memory:`. Separate actual HTTP cookie sessions verified same-buyer Bag
+persistence, foreign isolation/removal denial, owned removal persistence and a
+pre-delivery return-form rejection in a host PHP 8.5.11 in-memory fixture.
+
+No browser, console, loaded-image sequence, disabled-control observation or
+visible failed-removal retry was executed. All six selected browser procedures
+remain Not Run while explicit authorization/user execution is pending; the task
+and acceptance gate remain open. The temporary fixture server was stopped. This
+preparation changes no application behavior or implementation-readiness rating.
+
+### Deployed reminder acceptance preparation: October 19, 2026
+
+BP04's selected reminder suite passed **10 tests / 93 assertions** with Docker
+PHP 8.4 and SQLite `:memory:`. The
+[reminder evidence](buyer-polishing-plan/REMINDER_EVIDENCE.md) separates those
+clock/ownership/retry checks and inspected schedule configuration from actual
+runtime delivery. The scheduler observation is prepared but Not Run: the actual
+published commit, running scheduler and a future eligible sale/subscription must
+be established, followed by a genuine pre-start buyer notification and later
+once-only source counts. No production setup, notification replay, publication
+or deployment was performed. This remaining gate and BP03 stay open; no deployed
+or overall readiness rating increases from their preparation.
+
+### Return receipt format compatibility: October 19, 2026
+
+Final review reproduced a valid PDF 2.0 receipt being rejected by an unnecessary
+`1.x` header restriction. The private receipt inspector now accepts the numeric
+PDF version reported in an otherwise content-classified PDF, retaining its EOF,
+actual-byte, private hash/download and canonical-extension checks. No cash,
+recipient, entitlement or repayment state rule changes.
+
+The targeted receipt suite passed **6 tests / 15 assertions**, covering PDF 1.4,
+1.7 and 2.0 plus real bytes below/at/above 5 MB. Replacing earlier repeated class
+results gives **187 unique R03 backend tests / 10,471 assertions** across the
+passing financial regression and latest receipt reports. This is a backend-only
+compatibility fix; the last frontend build remains the verified R03 build.
+
+Scoped receipt-format assessment: **6/10 to 8/10**. Supported PDF versions no
+longer fail an arbitrary version gate; the overall R03 assessment stays 8/10.
+BP03 browser observations and BP04 deployed delivery remain open.
+
+### Existing Azure reminder runtime: October 19, 2026
+
+Read-only checks established the applicable deployed reminder source at
+`7c1bb59`, the running scheduler worker and the required four source tables. The
+reminder service, console schedule and notification delivery service match the
+current local source. This completes BP04's runtime-identification prerequisite,
+without claiming that the newer return branch is deployed.
+
+No future flash slots or reminder subscriptions exist in that observed runtime.
+Actual scheduled delivery therefore remains Not Run. A controlled demo source
+and its bounded cleanup are prepared for explicit authorization. The separate
+SQLite `:memory:` fixture checks passed **4 tests / 34 assertions**, including
+exact setup retry, unchanged accounts/stock/existing notices, rollback after a
+failed subscription and retained cleanup history. They do not replace the real
+scheduled observation. No production writes, notification replay, scheduler
+restart, publication or deployment were performed; readiness ratings are unchanged.
+
+### Buyer browser acceptance and Bag recovery: October 19, 2026
+
+After explicit authorization, all six selected BP03 procedures passed in headless
+Chromium against the production frontend assets and an isolated SQLite `:memory:`
+HTTP fixture. Actual observations cover literal hostile search with no script or
+unintended write, loaded option images with matching prices/stock, independent
+sold-out pairs, same-buyer session persistence and foreign isolation, selected and
+unselected Bag removal/recovery, and pre-delivery return-control/direct denial.
+The [interaction evidence](buyer-polishing-plan/INTERACTION_EVIDENCE.md) records
+the methods and precise limits; original manual statuses remain unchanged.
+
+The failed-removal procedure first reproduced silent premature deselection and
+an uncaught network exception. Removal now waits for the server result, prevents
+concurrent removal, retains the item and selection on failure, and provides clear
+retry/reload feedback. The observed PHP 625 selected total survives an interrupted
+request; retry removes the real line and the independent session sees that result.
+
+All six final browser procedures, **38 focused frontend checks** and the Docker
+TypeScript/Vite production build pass. The host build encountered root-owned
+asset permissions before the successful Docker build. No screenshots, ordinary
+database reset, production middleware claim or real-device result is included.
+Scoped failed-removal recovery assessment: **3/10 to 8/10**. Wider role scores and
+unrelated flow readiness remain unchanged.
+
+### Retained Azure reminder delivery: October 19, 2026
+
+One explicitly approved demo sale/subscription established a genuine scheduled
+reminder on the existing deployed core. The source was saved more than ten minutes
+before start and first observed with no intent/notice. The actual delivery and
+owned buyer notification share one identity and timestamp at **13:36:01
+Asia/Manila**, before the 13:46 start, with the correct current product target.
+Retained worker logs show the scheduled run and later successful minute cycles;
+later source-wide reads still find one notification and one delivery attempt.
+
+The [reminder evidence](buyer-polishing-plan/REMINDER_EVIDENCE.md) preserves the
+material procedural limit: the notification was verified retrospectively, and
+planned early cleanup was missed. The slot expired unused at 14:16 and was ended
+at 17:03:08; its quota usage is zero and the original product price/stock are
+unchanged. No completed reminder is replayed. A separately proposed live repeat
+with an independent early-cleanup watcher awaits the user's decision; BP04's
+strict live procedure remains open. No newer application code was deployed and
+no overall readiness score increases from this retained-delivery verification.
+
+### Bag recovery on narrow screens: October 19, 2026
+
+The targeted follow-up reproduced about 14 pixels of clipped retry feedback at
+320 pixels after an interrupted Bag removal. The existing quantity/removal row
+now wraps and bounds its error area. Actual Chromium geometry checks keep the
+message and both retry controls visible at **320, 390, 768 and 1,440 pixels**.
+All **38 focused frontend checks** and the Docker production build pass again.
+This completes the responsive follow-up to the same Bag recovery fix; its scoped
+assessment remains 8/10, with no real-device or wider-role certification.
+
+### Live reminder acceptance completed: October 19, 2026
+
+The user separately approved one repeat of the bounded demo source with an
+independent early-cleanup watcher. The genuine scheduler delivered one owned
+notification at **17:22:01 Asia/Manila** for the **17:32** sale. It was observed
+live at **17:22:21** with the exact buyer/source and current product target.
+Successful later worker cycles at **17:23:01** and **17:24:01** retained one
+notification. The watcher ended only that slot at **17:24:33**, seven minutes and
+27 seconds before start, with no promotional units used and original price/stock
+unchanged. No completed source was reset or replayed.
+
+BP03's six browser procedures and responsive recovery follow-up, and BP04's
+strict live scheduler procedure are now verified. Combined with the earlier
+BP01/BP02 and R01–R03 evidence, this completes the selected buyer polishing and
+manual COD return implementation scope. The retained first attempt still records
+its missed early cleanup. Online checkout payments remain outside the selected
+scope; newer application publication/deployment, PostgreSQL concurrent execution
+and real bank transfers remain separate release limits. Overall role/readiness
+ratings do not increase from this acceptance record.

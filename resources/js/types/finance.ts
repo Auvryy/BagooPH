@@ -8,13 +8,14 @@ export interface SettlementHistory {
 export interface SettlementRecord {
     order_id: number; order_number: string; reference: string | null; seller_id: number | null;
     seller_name: string | null; shop_name: string | null; currency: 'PHP';
-    status: 'pending' | 'eligible' | 'authorized' | 'settled'; version: number;
+    status: 'pending' | 'eligible' | 'authorized' | 'settled' | 'closed'; version: number;
     product_cents: number; commission_cents: number; seller_cents: number; shipping_cents: number; discount_cents: number;
     seller_promotion_cents: number | null; platform_promotion_cents: number | null;
     net_seller_cents: number | null; net_commission_cents: number | null;
     promotion_accounting: 'verified' | 'review_required' | 'legacy_recorded';
     promotion_snapshot: { allocation_id: number; code: string; issuer: 'shop' | 'platform'; funding_party: 'shop' | 'platform';
         product_discount_cents: number; shipping_discount_cents: number; seller_expense_cents: number; platform_expense_cents: number }[];
+    payable_seller_cents: number; return_seller_cents: number; paid_seller_cents: number; needs_reauthorization: boolean; return_adjustment_ids: number[];
     blockers: string[]; order_status: string; buyer_completed: boolean; cash_reconciled: boolean;
     legacy_ledger: { id: number; status: string } | null;
     buyer_reference: string | null; cash_id: number | null; cash_reference: string | null;

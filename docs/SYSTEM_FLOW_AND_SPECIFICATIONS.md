@@ -98,7 +98,7 @@ The first rider-company association requires a company request, a current versio
 
 Each account's role is fixed at creation. Admin cannot convert an existing account to another role, even before approval or transaction history. Another public role requires a separate registration with its required evidence and approval; orders, shops, custody, cash, and review history stay with their original account. Role conversion and migration are not project features.
 
-Maritime and air freight, live GPS, AI routing, automated warehouses, advanced analytics, complete dispute/refund/exchange processing, and external notification services are outside the core baseline.
+Maritime and air freight, live GPS, AI routing, automated warehouses, advanced analytics, exchanges, unrelated support disputes and external notification services are outside the core baseline. The separately selected [buyer-return contract](buyer-returns-plan/README.md) governs post-delivery item returns and manual COD repayment. It preserves the original commercial order and forward delivery rather than using the failed-delivery branch.
 
 All inputs, actor permissions, transitions, duplicate requests, concurrent operations, and recovery paths must satisfy `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
 

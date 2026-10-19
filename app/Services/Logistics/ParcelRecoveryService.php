@@ -31,7 +31,7 @@ class ParcelRecoveryService
     public function observations(User $actor): Builder
     {
         $actor = User::findOrFail($actor->id);
-        $manifests = app(LogisticsManifestService::class)->readable($actor);
+        $manifests = app(LogisticsManifestService::class)->readable($actor)->where('direction', '!=', 'buyer_return');
         $handlerHubs = null;
         if (! $actor->isAdmin() && ! $this->eligibility->isCompanyAdministrator($actor)) {
             $handlerHubs = $this->eligibility->accessibleHubs($actor)->pluck('logistics_hubs.id');

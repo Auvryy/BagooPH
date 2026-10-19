@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import ProductCard from '@/Components/ProductCard';
 import CatalogueErrors from '@/Components/CatalogueErrors';
+import CatalogueLocationFilter from '@/Components/CatalogueLocationFilter';
 import SavedProductButton from '@/Components/SavedProductButton';
 import CataloguePagination from '@/Components/CataloguePagination';
 import CatalogueLink from '@/Components/CatalogueLink';
@@ -29,9 +30,11 @@ interface Props {
     categories: (Category & { products_count?: number })[];
     relatedProducts?: Product[];
     suggestions?: string[];
+    locations?: { value: string; label: string }[];
     filters: {
         search?: string;
         category?: string;
+        location?: string;
         sort?: string;
         min_price?: string;
         max_price?: string;
@@ -45,6 +48,7 @@ export default function SearchPage({
     categories,
     relatedProducts = [],
     suggestions = [],
+    locations = [],
     filters,
 }: Props) {
     const [minPrice, setMinPrice] = useState(filters.min_price || '');
@@ -97,6 +101,7 @@ export default function SearchPage({
     };
 
     const activeCategory = categories.find((c) => c.slug === filters.category);
+    const activeLocation = locations.find(location => location.value === filters.location);
 
     return (
         <BuyerLayout categories={categories}>
@@ -256,6 +261,8 @@ export default function SearchPage({
                             </form>
                         </div>
 
+                        <CatalogueLocationFilter id="catalogue-location" locations={locations} value={filters.location} onChange={location => applyFilter({ location })} />
+
                         {/* 3. Availability & Rating */}
                         <div className="space-y-3 pt-4 border-t border-slate-100">
                             <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider">Availability & Rating</h4>
@@ -368,7 +375,7 @@ export default function SearchPage({
                         </div>
 
                         {/* ACTIVE FILTER PILLS (Removable) */}
-                        {(filters.search || filters.category || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
+                        {(filters.search || activeCategory || activeLocation || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
                             <div className="flex items-center gap-2 flex-wrap font-sans text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
                                 <span className="font-bold text-slate-400 text-[10px] uppercase">Active:</span>
 
@@ -389,6 +396,11 @@ export default function SearchPage({
                                         </CatalogueLink>
                                     </span>
                                 )}
+
+                                {activeLocation && <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-0.5 text-slate-800">
+                                    <span>Ships from: {activeLocation.label}</span>
+                                    <CatalogueLink preserveState preserveScroll href={catalogueUrl(route('buyer.search'), filters, { location: undefined })} aria-label="Clear location" className="hover:text-[#E00D42]"><X className="h-3 w-3" /></CatalogueLink>
+                                </span>}
 
                                 {(filters.min_price || filters.max_price) && (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800 shadow-2xs">
@@ -620,6 +632,8 @@ export default function SearchPage({
                                     </form>
                                 </div>
 
+                                <CatalogueLocationFilter id="catalogue-location-mobile" locations={locations} value={filters.location} onChange={location => { applyFilter({ location }); setMobileFilterOpen(false); }} />
+
                                 {/* 3. Availability & Rating */}
                                 <div className="space-y-3 pt-4 border-t border-slate-100">
                                     <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider">Availability & Rating</h4>
@@ -656,6 +670,9 @@ export default function SearchPage({
                                                 <Star className="w-3.5 h-3.5 fill-amber-400" />
                                             </div>
                                             <span className="font-sans text-[11px]">& up</span>
+                                        </button>
+                                        <button type="button" onClick={() => { applyFilter({ rating: '4.5' }); setMobileFilterOpen(false); }} aria-pressed={filters.rating === '4.5'} className={`flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left ${filters.rating === '4.5' ? 'bg-slate-100 font-bold text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}>
+                                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true" /><span>4.5+ Stars</span>
                                         </button>
                                     </div>
                                 </div>

@@ -65,7 +65,11 @@ class LogisticsManifestController extends Controller
                 'canManage' => $actor->isLogistics() && $company?->id === $selected->logistics_company_id,
                 'canLoad' => $actor->isLogistics() && $this->eligibility->canScan($actor, $source),
                 'canReceive' => $actor->isLogistics() && $this->eligibility->canScan($actor, $destination),
-                'parcels' => $selected->parcels()->with('delivery.order')->orderBy('id')->get()->map(function ($parcel) use ($actor) {
+                'parcels' => $selected->direction === 'buyer_return' ? $selected->buyerReturnParcels()->with('parcel')->orderBy('id')->get()->map(fn ($member) => [
+                    'id' => $member->id, 'tracking_number' => $member->barcode_snapshot, 'included' => $member->included,
+                    'status' => $member->parcel->status, 'received_at' => $member->received_at?->toIso8601String(), 'receipt_condition' => $member->receipt_condition,
+                    'corrective_receipt' => null, 'handover_hold' => false, 'handover_issue_url' => null,
+                ]) : $selected->parcels()->with('delivery.order')->orderBy('id')->get()->map(function ($parcel) use ($actor) {
                     $receipt = $this->service->correctiveForMember($parcel);
                     $hold = app(HandoverHoldService::class)->active($parcel->delivery);
 
@@ -81,7 +85,7 @@ class LogisticsManifestController extends Controller
                         'original_expected_count' => $receipt->original_expected_count, 'original_received_count' => $receipt->original_received_count])->values(),
                 'discrepancies' => $discrepancies->map(fn ($event) => [
                     'id' => $event->id, 'reference' => $event->reference, 'kind' => $event->payload['kind'],
-                    'parcel_id' => $event->manifest_parcel_id, 'barcode' => $event->barcode_scanned, 'reason' => $event->reason,
+                    'parcel_id' => $event->manifest_parcel_id ?? $event->payload['return_member_id'] ?? null, 'barcode' => $event->barcode_scanned, 'reason' => $event->reason,
                     'recoveryUrl' => in_array($event->id, $readableRecoveryIds, true)
                         ? ($request->is('hub/*') ? '/hub' : '').'/parcel-recovery/'.$event->id : null,
                 ]),
@@ -96,6 +100,11 @@ class LogisticsManifestController extends Controller
         return Inertia::render('Hub/Manifests', [
             'manifests' => $list, 'selectedManifest' => $detail, 'canCreate' => (bool) $company, 'creationToken' => $token,
             'commandToken' => (string) Str::uuid(),
+            'buyerReturns' => $company ? \App\Models\BuyerReturnParcel::where('logistics_company_id', $company->id)->where('status', 'at_hub')
+                ->whereHas('returnCase', fn ($query) => $query->whereIn('status', ['at_destination_hub', 'in_transit']))->with('returnCase')->orderBy('id')->get()
+                ->filter(fn ($parcel) => isset($parcel->hub_ids[$parcel->route_position + 1]))
+                ->map(fn ($parcel) => ['id' => $parcel->buyer_return_case_id, 'reference' => $parcel->returnCase->reference, 'barcode' => $parcel->barcode,
+                    'source_hub_id' => $parcel->current_hub_id, 'destination_hub_id' => $parcel->hub_ids[$parcel->route_position + 1], 'weight_grams' => $parcel->weight_grams])->values() : [],
             'hubs' => $company ? LogisticsHub::eligible()->where('logistics_company_id', $company->id)->orderBy('name')->get(['id', 'name', 'code', 'tier']) : [],
             'vehicles' => $company ? LogisticsFleet::ready()->whereIn('vehicle_type', ['l300_van', 'wing_truck'])->where('logistics_company_id', $company->id)->whereNotNull('assigned_driver_id')
                 ->with('driver')->orderBy('plate_number')->get()->map(fn ($fleet) => ['id' => $fleet->id, 'hub_id' => $fleet->hub_id,
@@ -107,7 +116,7 @@ class LogisticsManifestController extends Controller
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         try {
-            $manifest = $this->service->create($request->user(), $request->only(['source_hub_id', 'destination_hub_id', 'vehicle_id', 'creation_token', 'direction', 'parcel_recovery_case_id']),
+            $manifest = $this->service->create($request->user(), $request->only(['source_hub_id', 'destination_hub_id', 'vehicle_id', 'creation_token', 'direction', 'parcel_recovery_case_id', 'buyer_return_case_id']),
                 $request->session()->get('manifest_creation_token'));
             $request->session()->forget('manifest_creation_token');
         } catch (DomainException $error) {
@@ -136,7 +145,9 @@ class LogisticsManifestController extends Controller
 
     private function summary(LogisticsManifest $manifest): array
     {
-        return $manifest->state() + ['type' => $manifest->type, 'included_count' => $manifest->included_count,
+        return $manifest->state() + ['type' => $manifest->type, 'included_count' => $manifest->direction === 'buyer_return'
+            ? $manifest->buyerReturnParcels()->where('included', true)->count() : $manifest->included_count,
+            'buyerReturnUrl' => $manifest->buyer_return_case_id ? '/buyer-returns/'.$manifest->buyer_return_case_id : null,
             'receiptCounts' => $this->service->receiptCounts($manifest),
             'source' => $manifest->sourceHub->only(['id', 'name', 'code', 'tier']),
             'destination' => $manifest->destinationHub->only(['id', 'name', 'code', 'tier']),

@@ -26,11 +26,12 @@ use Illuminate\Database\QueryException;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class NotificationCenterService
 {
-    public const TYPES = ['sale-reminder', 'order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event', 'settlement-event'];
+    public const TYPES = ['sale-reminder', 'order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event', 'settlement-event', 'buyer-return'];
 
     public function current(User $actor): User
     {
@@ -89,6 +90,43 @@ class NotificationCenterService
         });
     }
 
+    public function readSnapshot(User $user): ?array
+    {
+        return DB::transaction(function () use ($user) {
+            DB::table('notification_read_snapshots')->where('expires_at', '<=', now())->delete();
+            $id = (string) Str::uuid();
+            $expires = now()->addMinutes(15);
+            DB::table('notification_read_snapshots')->insert(['id' => $id, 'user_id' => $user->id, 'expires_at' => $expires]);
+            // Copy the exact set in SQL. Later UUIDs cannot enter through clock or sort cutoffs.
+            $unread = $user->notifications()->whereIn('type', self::TYPES)->whereNull('read_at')
+                ->selectRaw('? AS snapshot_id, notifications.id AS notification_id', [$id]);
+            DB::table('notification_read_snapshot_items')->insertUsing(['snapshot_id', 'notification_id'], $unread->toBase());
+            $count = DB::table('notification_read_snapshot_items')->where('snapshot_id', $id)->count();
+            if ($count === 0) {
+                DB::table('notification_read_snapshots')->where('id', $id)->delete();
+
+                return null;
+            }
+
+            return ['id' => $id, 'count' => $count, 'expires_at' => $expires->toIso8601String()];
+        });
+    }
+
+    public function acknowledgeSnapshot(User $user, string $id): int
+    {
+        return DB::transaction(function () use ($user, $id) {
+            $user = $this->current(User::whereKey($user->id)->lockForUpdate()->firstOrFail());
+            $snapshot = DB::table('notification_read_snapshots')->where('id', $id)->where('user_id', $user->id)->lockForUpdate()->first();
+            if (! $snapshot || now()->greaterThanOrEqualTo($snapshot->expires_at)) {
+                throw ValidationException::withMessages(['snapshot' => 'This notification list is out of date. Reload the page, then try Mark all as read again.']);
+            }
+            $ids = DB::table('notification_read_snapshot_items')->where('snapshot_id', $id)->select('notification_id');
+
+            return $user->notifications()->whereIn('type', self::TYPES)->whereIn('id', $ids)->whereNull('read_at')
+                ->update(['read_at' => now(), 'updated_at' => now()]);
+        });
+    }
+
     public function present(DatabaseNotification $notice, User $user): array
     {
         // Legacy or future payload fields are never forwarded wholesale to the client.
@@ -102,6 +140,16 @@ class NotificationCenterService
     private function href(DatabaseNotification $notice, User $user): ?string
     {
         $data = $notice->data;
+        if ($notice->type === 'buyer-return') {
+            $case = \App\Models\BuyerReturnCase::find((int) ($data['return_id'] ?? 0));
+            if ($case && (($user->isBuyer() && $case->buyer_id === $user->id && app(BuyerAccessService::class)->canViewOrderHistory($user))
+                || ($user->isSeller() && $user->isKycApproved() && $case->seller_id === $user->id)
+                || ($user->isAdmin() && $user->canAccessPortal() && $user->email_verified_at))) {
+                return '/buyer-returns/'.$case->id;
+            }
+
+            return null;
+        }
         $target = $data['target'] ?? match ($notice->type) {
             'hub-pickup' => 'buyer-order',
             'parcel-return' => $user->isBuyer() ? 'buyer-order' : 'seller-orders',

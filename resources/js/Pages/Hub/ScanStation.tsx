@@ -148,6 +148,7 @@ export default function ScanStation({
     } | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const [scanMessage, setScanMessage] = useState<string | null>(null);
+    const [returnResult, setReturnResult] = useState<{ reference: string; barcode: string; href: string; status: string } | null>(null);
     const [sessionExpired, setSessionExpired] = useState(false);
 
     const barcodeInputRef = useRef<HTMLInputElement | null>(null);
@@ -155,6 +156,7 @@ export default function ScanStation({
     useOperationalRefresh(isSubmitting, ['activeHub', 'hubs', 'basePath', 'recentScans', 'pendingOriginIntake', 'counterPickups', 'counterTotal', 'stats']);
     useEffect(() => {
         setLastResult(null);
+        setReturnResult(null);
         setScanError(null);
         setScanMessage(null);
         setIsSubmitting(false);
@@ -208,14 +210,16 @@ export default function ScanStation({
         setScanError(null);
         setScanMessage(null);
         setSessionExpired(false);
-        if (!confirming) setLastResult(null);
+        if (!confirming) { setLastResult(null); setReturnResult(null); }
         try {
-            const data = await requestWaybill<{ prompt: DynamicPrompt; delivery: ScannedDeliveryResult; confirmed: boolean; message: string }>(
+            const data = await requestWaybill<{ prompt: DynamicPrompt; delivery: ScannedDeliveryResult; confirmed: boolean; message: string;
+                return_case?: { reference: string; barcode: string; href: string; status: string } }>(
                 `${basePath}/scan`, { ...body, hub_id: activeHub.id }, request.signal,
             );
             if (pendingRequest.current !== request || request.signal.aborted) return;
             playSound(data.confirmed ? 'success' : 'beep');
-            setLastResult({ prompt: data.prompt, delivery: data.delivery, confirmed: Boolean(data.confirmed) });
+            if (data.return_case) { setReturnResult(data.return_case); setLastResult(null); }
+            else { setReturnResult(null); setLastResult({ prompt: data.prompt, delivery: data.delivery, confirmed: Boolean(data.confirmed) }); }
             setScanMessage(data.message);
             setBarcodeInput('');
             if (confirming) {
@@ -431,6 +435,7 @@ export default function ScanStation({
                         </div>
                     )}
 
+                    {returnResult && <section className="mb-4 rounded-lg border border-slate-300 bg-white p-5"><h2 className="font-bold text-slate-900">Buyer return {returnResult.reference}</h2><p className="mt-2 break-all text-sm text-slate-600">{returnResult.barcode}</p><p className="mt-2 text-sm text-slate-600">This scan identifies the separate return. Record its real intake or manifest handover from the case.</p><Link href={returnResult.href} className="mt-4 inline-flex rounded-lg bg-[#E00D42] px-4 py-2.5 text-sm font-semibold text-white">Open buyer return</Link></section>}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                         {/* LEFT COLUMN: Physical & Optical Barcode Scanner (col-span-6) */}
                         <div className="lg:col-span-6 space-y-4">

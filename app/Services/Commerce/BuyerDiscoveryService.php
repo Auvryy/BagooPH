@@ -21,10 +21,11 @@ class BuyerDiscoveryService
         $data = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'category' => ['nullable', 'string', Rule::in(['all', ...Category::where('is_active', true)->pluck('slug')->all()])],
+            'location' => ['bail', 'nullable', 'string', Rule::in(['all', ...array_column(app(CatalogueLocationService::class)->areas(), 'value')])],
             'sort' => ['nullable', 'string', Rule::in(['relevance', 'price_asc', 'price_desc', 'top_sales', 'top_rated', 'newest'])],
             'min_price' => $prices,
             'max_price' => $prices,
-            'rating' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'between:1,5'],
+            'rating' => ['bail', 'nullable', 'numeric', 'regex:/\A[1-5](?:\.[0-9])?\z/', 'between:1,5'],
             'in_stock' => ['nullable', 'boolean'],
             'page' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'max:1000000'],
         ]);
@@ -35,11 +36,12 @@ class BuyerDiscoveryService
         return [
             'search' => trim((string) ($data['search'] ?? '')),
             'category' => $data['category'] ?? 'all',
+            'location' => $data['location'] ?? 'all',
             'sort' => $data['sort'] ?? 'relevance',
             'min_price' => isset($data['min_price']) ? (string) $data['min_price'] : '',
             'max_price' => isset($data['max_price']) ? (string) $data['max_price'] : '',
             'in_stock' => (bool) ($data['in_stock'] ?? false),
-            'rating' => isset($data['rating']) ? (string) $data['rating'] : '',
+            'rating' => isset($data['rating']) ? (string) (float) $data['rating'] : '',
         ];
     }
 
@@ -117,6 +119,9 @@ class BuyerDiscoveryService
         }
         if ($filters['category'] !== 'all') {
             $products->whereIn('products.category_id', $this->categoryIds($filters['category']));
+        }
+        if (($filters['location'] ?? 'all') !== 'all' && $filters['location'] !== '') {
+            app(CatalogueLocationService::class)->filter($products, $filters['location']);
         }
         $price = app(SalePriceService::class)->cataloguePriceSql();
         if ($filters['min_price'] !== '') {

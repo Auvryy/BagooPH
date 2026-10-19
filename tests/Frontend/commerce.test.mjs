@@ -12,7 +12,7 @@ const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-commerce-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = buildSync({
     stdin: { contents: `export { default as ProductCard } from '@/Components/ProductCard';
-        export { default as BuyAgain } from '@/Pages/Buyer/BuyAgain';
+        export { default as BuyAgain } from '@/Components/BuyAgainButton';
         export { default as SavedProducts } from '@/Pages/Buyer/SavedProducts';
         export { default as Search } from '@/Pages/Buyer/Search';
         export { default as Product } from '@/Pages/Buyer/ProductDetail';
@@ -176,13 +176,13 @@ test('mixed-shop seller history displays owned products without fulfilment, canc
 test('buyer purchases retain full-history counts and paginate with receipt actions only for eligible records', async () => {
     const html = await render(ui.Purchases, 'Buyer/Profile', {
         user: buyer, addresses: [], wallet: { available: false, balance: null, currency: 'PHP', recent_transactions: [] },
-        orders: { ...paginated([{ ...order, status: 'delivered', can_confirm_receipt: true }, { ...order, id: 41, order_number: 'BGO-UNREADY', status: 'delivered', can_confirm_receipt: false }]), total: 4, last_page: 2, next_page_url: '/buyer/profile?tab=orders&order_status=delivered&page=2' },
+        orders: { ...paginated([{ ...order, status: 'delivered', can_confirm_receipt: true, return_availability: { can_request: true } }, { ...order, id: 41, order_number: 'BGO-UNREADY', status: 'delivered', can_confirm_receipt: false }]), total: 4, last_page: 2, next_page_url: '/buyer/profile?tab=orders&order_status=delivered&page=2' },
         ordersCount: 42, orderCounts: counts, currentOrderStatus: 'delivered', initialTab: 'orders',
     });
     assert.match(html, /My Purchases &amp; Order Tracking/);
     assert.match(html, /Purchase pages/); assert.match(html, /Page 1 of 2/);
     assert.match(html, />42</); assert.equal((html.match(/Confirm Received/g) || []).length, 1);
-    assert.match(html, /Disputes unavailable/); assert.doesNotMatch(html, /Report Defect/);
+    assert.equal((html.match(/Request a return/g) || []).length, 1); assert.doesNotMatch(html, /Disputes unavailable|Report Defect/);
     for (const label of ['Delivered', 'Completed', 'Order issues']) assert.ok(html.includes(label));
 });
 
@@ -202,7 +202,7 @@ test('seller dashboard groups recent orders and links actual return and exceptio
     assert.match(html, /Everyday Bag \+ 1 more/); assert.match(html, /Units: 3/);
     assert.match(html, /status=return_custody/); assert.match(html, /status=delivery_failed/);
     assert.match(html, /status=delivered/); assert.match(html, /status=completed/);
-    assert.match(html, /Post-delivery disputes remain unavailable\./);
+    assert.match(html, /Review buyer returns and refunds/);
     assert.doesNotMatch(html, /Return Claims/);
 });
 
@@ -300,36 +300,19 @@ test('catalogue guests follow sign-in to save and invalid ranges show readable f
 });
 
 
-test('Buy again previews original variants and changed prices while disabling unavailable selections', async () => {
-    const html = await render(ui.BuyAgain, 'Buyer/BuyAgain', {
-        order: { id: 40, order_number: 'BGO-REPEAT' }, requestToken: 'test-token', submitUrl: '/buyer/orders/40/buy-again', bagUrl: '/cart',
-        items: [
-            { order_item_id: 10, original_quantity: 2, previous_unit_price: '100.00', current_unit_price: '150.00', color: 'Red', size: 'M', name: 'Everyday Bag', image: null, product_url: '/product/everyday-bag', maximum_quantity: 1, can_select: true, unavailable_reason: null },
-            { order_item_id: 11, original_quantity: 1, previous_unit_price: '200.00', current_unit_price: null, color: 'Blue', size: 'L', name: 'Purchased item', image: null, product_url: null, maximum_quantity: 0, can_select: false, unavailable_reason: 'This listing is currently unavailable.' },
-        ],
-    });
-    assert.match(html, /Buy again/); assert.match(html, /Price changed/);
-    assert.match(html, /Original quantity: 2 · Red · M/); assert.match(html, /Original quantity: 1 · Blue · L/);
-    assert.match(html, /id="buy-again-item-11"[^>]*disabled=""/);
-    assert.match(html, /id="buy-again-quantity-10"[^>]*max="1"[^>]*value="1"/);
-    assert.match(html, /1 selected/); assert.match(html, /If one selection fails, nothing is added/);
-    assert.match(html, /original purchase stays unchanged/); assert.match(html, /normal checkout/);
-});
-
-test('a Buy again preview with no eligible selections cannot submit', async () => {
-    const html = await render(ui.BuyAgain, 'Buyer/BuyAgain', {
-        order: { id: 40, order_number: 'BGO-REPEAT' }, items: [], requestToken: 'test-token', submitUrl: '/buyer/orders/40/buy-again', bagUrl: '/cart',
-    });
-    assert.match(html, /No items are available/);
-    assert.match(html, /type="submit"[^>]*disabled=""/);
-    assert.match(html, /0 selected/);
+test('Buy again is one mutation button without another product-selection page', async () => {
+    const html = await render(ui.BuyAgain, 'Buyer/OrderDetail', { url: '/buyer/orders/40/buy-again', token: 'owned-token' });
+    assert.match(html, /type="button"[^>]*>Buy again/);
+    assert.doesNotMatch(html, /Quantity to add|Original quantity|type="checkbox"|Add selected to Bag/);
+    const disabled = await render(ui.BuyAgain, 'Buyer/OrderDetail', { url: '/buyer/orders/40/buy-again', token: 'owned-token', disabled: true });
+    assert.match(disabled, /<button[^>]*disabled=""/);
 });
 
 test('completed purchase details show Buy again only with ordinary portal access and an owned action URL', async () => {
     const props = {
         order: { id: 4, order_number: 'BGO-REPEAT', status: 'completed', total_amount: 250, subtotal: 250, shipping_fee: 0, created_at: '2026-10-01', items: [] },
-        canUsePortal: true, buyAgainUrl: '/buyer/orders/4/buy-again', canConfirmReceipt: false, pickupClaim: null, pickupHub: null, pickupCodeUrl: null, orderNotices: [],
+        canUsePortal: true, buyAgainUrl: '/buyer/orders/4/buy-again', buyAgainToken: 'owned-token', canConfirmReceipt: false, pickupClaim: null, pickupHub: null, pickupCodeUrl: null, orderNotices: [],
     };
-    assert.match(await render(ui.Detail, 'Buyer/OrderDetail', props), /href="\/buyer\/orders\/4\/buy-again"[^>]*>Buy again/);
+    assert.match(await render(ui.Detail, 'Buyer/OrderDetail', props), /type="button"[^>]*>Buy again/);
     assert.doesNotMatch(await render(ui.Detail, 'Buyer/OrderDetail', { ...props, canUsePortal: false, buyAgainUrl: null }), />Buy again</);
 });

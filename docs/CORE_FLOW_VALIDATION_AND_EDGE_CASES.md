@@ -154,7 +154,7 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - A review requires a completed order item owned by the buyer, a rating integer from 1 to 5, one review per order item, and validated plain-text/image evidence.
 - Buyers and sellers may read or send messages only within conversations in which they are authorized participants. Messages are length-limited, escaped, rate-limited, and never replaced with fallback sample conversations.
 - Seller review replies require ownership of the reviewed product's shop and preserve the original buyer review.
-- Complete post-delivery disputes, refunds, and return/exchange processing remain deferred. Their routes and pages must be unavailable or clearly read-only; they cannot submit sample cases or return fake success. Failed-delivery return-to-sender remains part of the core recovery flow.
+- The selected [post-delivery return contract](buyer-returns-plan/README.md) has separate owned requests, private evidence, review, reverse custody and manual COD repayment. Seven elapsed days from evidenced delivery include Completed orders. Each step requires its own real source; no sample cases, invented scans or fake payment success. Exchanges and unrelated support disputes remain outside that contract. Failed-delivery return-to-sender remains a separate core recovery flow.
 
 ### Self-Pickup
 
@@ -278,7 +278,7 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - Reviewed identity/category corrections require a current versioned request, meaningful reason, private evidence where required, prior decision or explicit legacy provenance, and immutable before/after history. Generic profile/resubmission edits cannot replace reviewed identity; corrections preserve independent restrictions and active-work obligations. Identical retries preserve the original result; stale competing changes conflict.
 - Product compliance removal/reinstatement requires current source state, reason, actor/time, immutable audit, and positive seller/shop/category eligibility. Seller edits cannot clear a platform restriction. Preserve purchased-item snapshots and referenced products; no price/stock override or destructive history edit accompanies moderation.
 - Governance search/detail is read-only, currently authorized, and subject/company scoped. Historical evidence links re-check private access. Never expose raw paths, passwords, tokens, or plaintext counter claims, or fabricate old decisions for legacy records without provenance.
-- Complete dispute/refund/exchange processing remains deferred. Placeholder pages must show unavailable and cannot return sample cases or fake success.
+- Buyer-return decisions follow the selected return contract and retain exact reasons, original unit claims, source-linked history and authorized escalation. Decisions never establish physical receipt or repayment. Unsupported exchanges, unrelated disputes and unimplemented actions must remain unavailable rather than returning sample cases or fake success.
 
 ### Suspension During Active Work
 
@@ -340,4 +340,4 @@ Tests use isolated SQLite `:memory:` and must never touch development or product
 
 ## 12. Explicitly Deferred
 
-This contract does not introduce maritime or air freight, live GPS, AI routing, automated warehouses, advanced analytics, external order-notification services, complete refunds/exchanges/disputes, or automated fraud scoring.
+This contract does not introduce maritime or air freight, live GPS, AI routing, automated warehouses, advanced analytics, external order-notification services, exchanges, unrelated disputes or automated fraud scoring. The selected buyer-return contract separately defines the bounded COD repayment prerequisites.

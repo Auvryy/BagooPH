@@ -89,6 +89,15 @@ delivered
 
 Self-pickup adds `ready_for_hub_pickup` and `customer_collected`. Reverse logistics uses `return_to_sender` internally; the order becomes `RETURNED` only after the seller receives the returned parcel.
 
+Post-delivery buyer returns follow the separate [buyer-return contract](buyer-returns-plan/README.md).
+They retain the successful original order and delivery and have their own return
+barcode. Actual intake at the original destination Bayan Hub starts the reverse
+original Mother Hub sequence. Every leg requires its actual manifest, eligible
+vehicle/driver, source scan and destination receipt. The origin Bayan Hub stages
+the fully received return for its original seller's collection and condition
+confirmation. A scan that only identifies a return does not record intake, and
+seller receipt never proves monetary repayment.
+
 Legacy values such as `pending`, `processing`, `shipped`, generic `in_transit`, and `failed` are compatibility aliases only. New code and documentation must use the canonical values.
 
 ## 3. Normal Doorstep Delivery

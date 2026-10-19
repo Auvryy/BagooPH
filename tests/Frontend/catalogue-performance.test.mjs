@@ -41,6 +41,15 @@ test('canonical descriptors retain every page/filter and reject operational or f
     }
 });
 
+test('preparation for one pickup area or rating never serves a different filtered catalogue', async () => {
+    const { policy, requests } = fixture();
+    const first = policy.prepare('/buyer/search?location=1380600000&rating=4.5');
+    requests.at(-1).finish(true); await first;
+    assert.equal(await policy.ready('/buyer/search?location=0403400000&rating=4.5'), false);
+    assert.equal(await policy.ready('/buyer/search?location=1380600000&rating=4'), false);
+    assert.equal(await policy.ready('/buyer/search?rating=4.5&location=1380600000'), true);
+});
+
 test('one speculative request serves matching intent and waits for the same in-flight navigation', async () => {
     const { policy, requests } = fixture();
     const first = policy.prepare('/product/bag');

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -60,6 +61,26 @@ class LogisticsManifest extends Model
     public function events(): HasMany
     {
         return $this->hasMany(LogisticsManifestEvent::class, 'manifest_id');
+    }
+
+    public function buyerReturnParcels(): HasMany
+    {
+        return $this->hasMany(BuyerReturnManifestParcel::class, 'manifest_id');
+    }
+
+    public function buyerReturnRoute(): HasOne
+    {
+        return $this->hasOne(BuyerReturnManifestRoute::class, 'manifest_id');
+    }
+
+    public function getBuyerReturnCaseIdAttribute(): ?int
+    {
+        return $this->direction === 'buyer_return' ? $this->buyerReturnRoute?->buyer_return_case_id : null;
+    }
+
+    public function getBuyerReturnLegIndexAttribute(): ?int
+    {
+        return $this->direction === 'buyer_return' ? $this->buyerReturnRoute?->leg_index : null;
     }
 
     public function recoveryCase(): BelongsTo

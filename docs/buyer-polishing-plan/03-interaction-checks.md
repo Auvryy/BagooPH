@@ -4,6 +4,9 @@ Proposed branch: `test/buyer-interaction-acceptance`.
 Active references: `BUY-SRCH-005`, `BUY-PDP-002`, `BUY-PDP-003`, `BUY-CART-008`,
 `BUY-CART-009`, and `BUY-RET-002`. Follow the [shared plan](README.md).
 
+The [interaction evidence](INTERACTION_EVIDENCE.md) separates the current isolated
+route/HTTP checks from the still-unobserved browser steps.
+
 ## Outcome
 
 Resolve the six particular interactions whose evidence was incomplete. The

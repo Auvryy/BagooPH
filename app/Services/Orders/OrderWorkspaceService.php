@@ -34,6 +34,7 @@ class OrderWorkspaceService
             'delivery_failed' => ['delivery_failed', 'failed'],
             'returned' => ['returned'],
             'cancelled' => ['cancelled', 'canceled'],
+            'return_refund' => [],
         ];
     }
 
@@ -62,6 +63,7 @@ class OrderWorkspaceService
         foreach ($this->stages($role) as $stage => $statuses) {
             $counts[$stage] = (int) $totals->only($statuses)->sum();
         }
+        $counts['return_refund'] = $this->filter(clone $orders, $role, 'return_refund')->count();
         if ($role === 'seller') {
             $counts['return_custody'] = $this->filter(clone $orders, 'seller', 'return_custody')->count();
         }
@@ -71,6 +73,9 @@ class OrderWorkspaceService
 
     public function filter(Builder $orders, string $role, string $stage): Builder
     {
+        if ($stage === 'return_refund') {
+            return $orders->whereHas('buyerReturns');
+        }
         if ($stage === 'return_custody' && $role === 'seller') {
             return $orders->whereHas('delivery', fn (Builder $delivery) => $delivery->whereIn('status', self::RETURN_CUSTODY));
         }

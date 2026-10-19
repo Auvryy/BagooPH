@@ -3,6 +3,9 @@
 Proposed branch: `test/buyer-reminder-release-check`.
 Active reference: `BUY-CHAT-004`. Follow the [shared plan](README.md).
 
+The [reminder evidence](REMINDER_EVIDENCE.md) records current isolated support and
+keeps the missing deployed observation explicit.
+
 ## Outcome
 
 Establish that an eligible buyer receives one genuine scheduled sale reminder

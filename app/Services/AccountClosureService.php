@@ -5,6 +5,9 @@ namespace App\Services;
 use App\Enums\OrderStatus;
 use App\Enums\UserRole;
 use App\Models\AccountClosure;
+use App\Models\BuyerReturnCase;
+use App\Models\BuyerReturnMoneyEvent;
+use App\Models\BuyerReturnParcel;
 use App\Models\CommissionLedger;
 use App\Models\CourierProfile;
 use App\Models\HubHandler;
@@ -20,6 +23,7 @@ use App\Services\Finance\CodCashViewService;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Notifications\GovernanceNoticeService;
+use App\Services\Returns\BuyerReturnMoneyService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -146,7 +150,7 @@ class AccountClosureService
             'parcel' => $order->delivery?->only(['id', 'status', 'courier_id', 'assigned_rider_id', 'current_hub_id']),
             'cash_evidence' => $order->payment_method === 'cod' ? app(CodCashViewService::class)->evidence($order->delivery) : null,
             'ledger' => $order->commissionLedger?->only(['id', 'status', 'gross_amount', 'seller_amount', 'platform_commission', 'delivery_fee']),
-            'settlement_payment' => app(SellerSettlementService::class)->verifiedPayment($order->sellerSettlement)?->only(['id', 'reference', 'amount_cents']),
+            'settlement_payment' => (app(SellerSettlementService::class)->verifiedPayment($order->sellerSettlement) ?? app(SellerSettlementService::class)->verifiedClosure($order->sellerSettlement))?->only(['id', 'reference', 'amount_cents']),
         ])->all();
         $resources = $this->resources($subject);
         $blockers = [];
@@ -164,6 +168,34 @@ class AccountClosureService
         }
         if ($subject->closed_at !== null) {
             $add('already_closed', 'This account is already closed and retained.', 'Review the recorded closure; reopening is not available.');
+        }
+        $returns = BuyerReturnCase::where(fn ($query) => $query->where('buyer_id', $subject->id)->orWhere('seller_id', $subject->id))
+            ->whereNotIn('status', BuyerReturnCase::TERMINAL)->pluck('id')->all();
+        if ($returns) {
+            $add('buyer_return', 'This account has an unresolved product return.',
+                'Finish its review, physical return and any repayment responsibilities before closing the account.', $returns);
+        }
+        $returnDebt = BuyerReturnCase::where('seller_id', $subject->id)->get()
+            ->filter(fn ($case) => app(BuyerReturnMoneyService::class)->debt($case)['recovery_remaining_cents'] > 0)->modelKeys();
+        if ($returnDebt) {
+            $add('buyer_return_recovery', 'Actual seller recovery remains outstanding.',
+                'Record the remaining original recovery and its receiving confirmation before closing this account.', $returnDebt);
+        }
+        $pendingTransfers = BuyerReturnMoneyEvent::whereIn('event_type', ['offer-recovery', 'offer-funding'])
+            ->where(fn ($query) => $query->where('actor_id', $subject->id)->orWhere('recipient_id', $subject->id))
+            ->whereNotIn('id', BuyerReturnMoneyEvent::whereNotNull('consumed_source_id')->select('consumed_source_id'))->pluck('id')->all();
+        if ($pendingTransfers) {
+            $add('buyer_return_cash_receipt', 'An actual return transfer is awaiting receipt.',
+                'The named receiving admin must confirm the actual incoming money before either responsible account can close.', $pendingTransfers);
+        }
+        $returnCustody = BuyerReturnParcel::whereHas('returnCase', fn ($query) => $query->whereNotIn('status', BuyerReturnCase::TERMINAL))
+            ->where(function ($query) use ($subject, $resources) {
+                $query->where('custody->driver_id', $subject->id)->orWhere('custody->received_by_id', $subject->id)
+                    ->orWhereIn('logistics_company_id', array_column($resources['companies'], 'id'));
+            })->pluck('id')->all();
+        if ($returnCustody) {
+            $add('buyer_return_custody', 'This account still holds responsibility for a buyer return.',
+                'Record its actual onward receipt and resolve remaining return responsibilities before closing this account.', $returnCustody);
         }
         $terminal = [...OrderStatus::completedCommerceStatuses(), ...OrderStatus::unrealizedCommerceStatuses()];
         foreach ($work as $order) {
