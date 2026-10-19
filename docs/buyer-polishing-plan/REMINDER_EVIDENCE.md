@@ -70,13 +70,28 @@ missed: the slot naturally expired unused at 14:16 and was explicitly ended at
 17:03:08. Its cleanup record correctly reports `ended_before_start = false`.
 The missed observation/cleanup procedure is not relabelled as passed.
 
-A proposed second bounded source would use a dedicated watcher that observes the
-live delivery and two later completed scheduler cycles, then ends the source at
-least five minutes before start. That second setup is **not authorized or run**;
-the first approval was for one source. BP04 retains this precise live-procedure
-gap pending the user's decision. No existing reminder is reset or replayed.
+## Authorized live repeat and early cleanup
+
+The user separately approved one repeat with an independent early-cleanup watcher.
+The same eligible product and buyer received a new source (#2), starting at
+**17:32 Asia/Manila**, with the same bounded price and quantity. It was saved and
+observed without a notification more than ten minutes before start.
+
+The actual scheduler delivered exactly one owned notification at **17:22:01**.
+The watcher observed it live at **17:22:21**, verified the exact source/recipient
+and current product link, and retained one notice through the successful
+**17:23:01** and **17:24:01** scheduled cycles. It ended only that test slot at
+**17:24:33**, seven minutes and 27 seconds before start. The retained cleanup
+record confirms `ended_before_start = true` and no reminder replay. The slot
+used no promotional units; regular price and stock remain unchanged.
+
+This completes BP04's strict live procedure. Both attempts retain their actual
+source and notification history; the first attempt's late cleanup is preserved
+as a procedural limitation rather than rewritten. No third source or manual
+reminder execution was used.
 
 No application publication/deployment, real order, stock change or scheduler
 mutation was performed. The newer return work remains local. The actual reminder
 outcome is established; this record does not raise overall deployed readiness or
-claim that the stricter live procedure completed.
+certify deployment of the newer return implementation. Implementation ratings
+are unchanged by this runtime acceptance evidence.

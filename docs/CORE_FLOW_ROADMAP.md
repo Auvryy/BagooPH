@@ -6789,3 +6789,23 @@ message and both retry controls visible at **320, 390, 768 and 1,440 pixels**.
 All **38 focused frontend checks** and the Docker production build pass again.
 This completes the responsive follow-up to the same Bag recovery fix; its scoped
 assessment remains 8/10, with no real-device or wider-role certification.
+
+### Live reminder acceptance completed: October 19, 2026
+
+The user separately approved one repeat of the bounded demo source with an
+independent early-cleanup watcher. The genuine scheduler delivered one owned
+notification at **17:22:01 Asia/Manila** for the **17:32** sale. It was observed
+live at **17:22:21** with the exact buyer/source and current product target.
+Successful later worker cycles at **17:23:01** and **17:24:01** retained one
+notification. The watcher ended only that slot at **17:24:33**, seven minutes and
+27 seconds before start, with no promotional units used and original price/stock
+unchanged. No completed source was reset or replayed.
+
+BP03's six browser procedures and responsive recovery follow-up, and BP04's
+strict live scheduler procedure are now verified. Combined with the earlier
+BP01/BP02 and R01–R03 evidence, this completes the selected buyer polishing and
+manual COD return implementation scope. The retained first attempt still records
+its missed early cleanup. Online checkout payments remain outside the selected
+scope; newer application publication/deployment, PostgreSQL concurrent execution
+and real bank transfers remain separate release limits. Overall role/readiness
+ratings do not increase from this acceptance record.
