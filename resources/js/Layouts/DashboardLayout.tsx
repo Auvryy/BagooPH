@@ -106,6 +106,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'COD cash', href: route('admin.cod.index'), icon: Banknote, current: component === 'Finance/Cod' || component === 'Finance/CodDetail' },
                 { name: 'Seller proceeds', href: '/seller-settlements', icon: Banknote, current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },
                 { name: 'Wallet credits', href: '/wallet/admin', icon: Banknote, current: component === 'Admin/WalletCredits' },
+                { name: 'Virtual proceeds', href: '/wallet/proceeds', icon: Banknote, current: component === 'Finance/WalletProceeds' },
                 { name: 'Financial oversight', href: '/financial-oversight', icon: Banknote, current: component === 'Finance/Overview' || component === 'Finance/Evidence' },
                 ...(user?.canManageResources && user.resourceGovernanceUrl ? [{ name: 'Resource activity', href: user.resourceGovernanceUrl, icon: ShieldAlert, current: component === 'Governance/Resources' || component === 'Governance/ResourceRestriction' }] : []),
             ];
@@ -165,6 +166,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     children: [
                         { name: 'Overview', href: '/financial-oversight', current: component === 'Finance/Overview' || component === 'Finance/Evidence' },
                         { name: 'Payouts', href: '/seller-settlements', current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },
+                        { name: 'Virtual proceeds', href: '/wallet/proceeds', current: component === 'Finance/WalletProceeds' },
                         { name: 'Sales report', href: route('seller.reports'), current: component === 'Seller/Reports' },
                     ],
                 },

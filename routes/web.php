@@ -76,6 +76,7 @@ use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VerificationDocumentController;
 use App\Http\Controllers\WalletController;
+use App\Http\Controllers\WalletProceedsController;
 use App\Http\Middleware\AdvertisementResponseHeaders;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Http\Request;
@@ -157,6 +158,9 @@ Route::middleware(['auth', 'verified'])->prefix('handover-issues')->name('handov
 
 Route::middleware('auth')->group(function () {
     Route::middleware('verified')->prefix('wallet')->name('wallet.')->group(function () {
+        Route::get('/proceeds', [WalletProceedsController::class, 'index'])->name('proceeds.index');
+        Route::post('/proceeds/{order}', [WalletProceedsController::class, 'settle'])->whereNumber('order')->middleware('throttle:20,1')->name('proceeds.settle');
+        Route::post('/proceeds/{order}/refund-returned', [WalletProceedsController::class, 'refundReturned'])->whereNumber('order')->middleware('throttle:20,1')->name('proceeds.refund-returned');
         Route::post('/credits', [WalletController::class, 'requestCredits'])->middleware('throttle:10,1')->name('credits.store');
         Route::get('/admin', [WalletController::class, 'admin'])->name('admin.index');
         Route::post('/credits/{credit}', [WalletController::class, 'reviewCredits'])->whereNumber('credit')->middleware('throttle:20,1')->name('credits.review');

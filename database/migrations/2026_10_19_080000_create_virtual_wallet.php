@@ -28,7 +28,7 @@ return new class extends Migration
             $table->bigInteger('amount_cents');
             $table->string('request_token_hash', 64)->nullable()->unique();
             $table->string('fingerprint', 64);
-            $table->string('reason', 500);
+            $table->string('reason', 1000);
             $table->json('context');
             $table->timestamp('created_at');
         });

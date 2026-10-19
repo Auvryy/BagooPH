@@ -17,6 +17,17 @@ class WalletReservationService
         $payment = $order->walletPayment;
         abort_unless(DB::transactionLevel() > 0 && $payment && ! $payment->wallet_transaction_id
             && $payment->status === 'pending' && $payment->expires_at->lessThanOrEqualTo(now()), 409);
+        $this->releaseParts($order, $payment, $reason);
+    }
+
+    public function releaseReturned(Order $order, string $reason): void
+    {
+        abort_unless(DB::transactionLevel() > 0 && app(WalletDeliveryRefundService::class)->eligible($order), 409);
+        $this->releaseParts($order, $order->walletPayment, $reason);
+    }
+
+    private function releaseParts(Order $order, WalletPayment $payment, string $reason): void
+    {
         $allocations = VoucherOrderAllocation::where('order_id', $order->id)->with('redemption')->orderBy('id')->get();
         $balances = VoucherRevisionBalance::whereIn('voucher_revision_id', $allocations->pluck('redemption.voucher_revision_id')->unique())
             ->orderBy('voucher_revision_id')->lockForUpdate()->get()->keyBy('voucher_revision_id');
