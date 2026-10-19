@@ -39,6 +39,8 @@ On October 19, the user selected implementation of all four polishing batches
 and explicitly included the full buyer-return prerequisites. The RET allocation
 now includes eligibility/evidence, seller/admin decisions, reverse custody and a
 verified COD repayment path, with separate implementation and acceptance work.
+The [return delivery plan](../buyer-returns-plan/README.md) records the selected
+seven-day window, including completed orders, and the R01–R03 prerequisites.
 Checkout remains COD-only; online payments in PAY were not selected. The later
 repurchase refinement also uses the existing Bag instead of a duplicate preview
 page. Current outcomes and limits remain in the roadmap.
@@ -115,9 +117,9 @@ pickup-location data needs a schema change or a required person is unavailable.
 | October 22 | 09:00 to 11:30; 13:00 to 15:00 | BP03 targeted interactions and any selected, bounded repairs. |
 | October 23 | 09:00 to 11:00 | BP04 user publication/deployment review and observed reminder. |
 
-Payment and buyer returns receive dates only after their missing scope and
-operational decisions are resolved. Reuse their existing planning ownership;
-do not duplicate or silently move those commitments. All proposed work remains
+Online payments remain deferred. The selected buyer-return work has its own
+explicit scope and proposed allocation in the return delivery plan. Reuse its
+existing planning ownership rather than duplicating it. All proposed work remains
 within the project's November 20 delivery target.
 
 ## Completion boundary

@@ -51,6 +51,11 @@ References: `BUY-RET-001`, `BUY-RET-003`, `BUY-RET-004`, and `BUY-RET-005`.
 The separate pre-delivery negative control is assigned to BP03 as
 `BUY-RET-002`; it does not close this missing positive feature.
 
+The user selected the [complete return contract](../buyer-returns-plan/README.md):
+seven elapsed days from evidenced physical delivery, including completed orders,
+with separate request/review, reverse-custody and COD-repayment deliveries. That
+plan resolves the implementation decisions below without claiming they are built.
+
 `BuyerDisputeController` currently returns an unavailable page. The existing
 failed-delivery reverse route concerns parcels that were not successfully
 received by the buyer. Do not substitute it for a post-delivery item complaint,

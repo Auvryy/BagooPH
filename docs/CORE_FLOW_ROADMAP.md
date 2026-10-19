@@ -6523,3 +6523,20 @@ published branch or deployment is changed by this verification batch.
 Scoped boundary-evidence assessment: **5/10 to 8/10**. The missing exact money and
 field sequences now have direct checks and saved-value evidence; overall buyer
 or project readiness is not raised for unobserved interactions or unbuilt returns.
+
+### Selected complete buyer-return contract: October 19, 2026
+
+The user brought full post-delivery returns and their prerequisites into the
+current goal. The [return delivery plan](buyer-returns-plan/README.md) separates
+requests/review, real reverse custody and verified manual COD repayment. Buyers
+explicitly keep seven elapsed days from evidenced physical delivery, including
+Completed orders. Receipt confirmation and seller settlement remain independent.
+
+The plan retains original item/unit and voucher amounts, shipping treatment,
+original 90/10 records, unpaid-proceeds holds/adjustments and paid-seller recovery.
+Actual custody, cash backing, payment proof and buyer receipt are independent
+acceptance gates. New cases cannot fabricate failed deliveries or money movement.
+Separate future estimates and cross-role rejection/retry/rollback checks are
+recorded before implementation. This documentation establishes scope, not a
+working return feature, browser result, published branch or production repayment.
+No implementation rating changes in this planning delivery.
