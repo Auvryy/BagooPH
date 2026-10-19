@@ -70,7 +70,8 @@ for (const [kind, portal, shell] of roles) {
         const user = actor(['company', 'handler'].includes(kind) ? 'logistics' : kind);
         const html = await render(ui.Notifications, { portal, accountUrl: '/dashboard', available: true, filter: 'unread', isOnline: true,
             scope: { company: 'Bagoo Fleet', hub: 'Assigned Bayan Hub', hubCode: 'BGO-HUB' },
-            notices: { ...page([notice('owned'), notice('read', '2026-10-16T00:01:00Z')]), last_page: 2, next_page_url: '/notifications?filter=unread&page=2' } }, user);
+            notices: { ...page([notice('owned'), notice('read', '2026-10-16T00:01:00Z')]), last_page: 2, next_page_url: '/notifications?filter=unread&page=2' },
+            readSnapshot: { id: 'owned-snapshot', count: 3, expires_at: '2026-10-19T00:15:00Z' } }, user);
         assert.match(html, new RegExp(shell));
         assert.match(html, /aria-label="Notifications, 3 unread"/);
         assert.match(html, /aria-label="Unread"/);
@@ -79,6 +80,7 @@ for (const [kind, portal, shell] of roles) {
         assert.match(html, /href="\/notifications\?filter=unread&amp;page=2"/);
         assert.match(html, /Update owned/);
         assert.match(html, /View update/);
+        assert.match(html, /Mark all as read/);
         if (kind === 'courier') {
             assert.match(html, /aria-label="Rider duty" aria-checked="true"/);
             assert.match(html, /Assigned Bayan Hub/);
@@ -163,7 +165,15 @@ async function withHarness(run) {
     axios.patch = async (...args) => { acks.push(args); return { data: { summary: { available: true, unread: 2 } } }; };
     router.patch = (...args) => { visits.push(args); };
     router.reload = options => { reloads.push(options); };
-    router.on = (name, callback) => { listeners.set(name, callback); return () => listeners.delete(name); };
+    router.on = (name, callback) => {
+        if (!listeners.has(name)) {
+            const callbacks = new Set();
+            const dispatch = event => { for (const listener of callbacks) listener(event); };
+            dispatch.callbacks = callbacks; listeners.set(name, dispatch);
+        }
+        const dispatch = listeners.get(name); dispatch.callbacks.add(callback);
+        return () => dispatch.callbacks.delete(callback);
+    };
     try { await run({ h, gets, acks, visits, reloads, listeners }); }
     finally { h.dispose(); Object.assign(axios, { get: original.get, patch: original.patch }); Object.assign(router, { patch: original.visit, on: original.on, reload: original.reload }); delete globalThis.notificationHarness; }
 }
@@ -333,4 +343,49 @@ test('full-page mark-read and open controls use different owned actions and keep
     await h.render(ui.Notifications, props);
     h.click('View update');
     assert.deepEqual(visits[1][1], { open: true });
+}));
+
+test('bulk acknowledgement prevents duplicate clicks and waits for confirmed list and badge props', async () => withHarness(async ({ h, visits }) => {
+    const props = { portal: 'account', accountUrl: '/pending-approval', available: true, filter: 'unread', notices: page([notice('owned')]),
+        readSnapshot: { id: 'owned-snapshot', count: 27, expires_at: '2026-10-19T00:15:00Z' } };
+    let html = await h.render(ui.Notifications, props);
+    assert.match(html, /Includes unread updates on other pages/);
+    h.click('Mark all as read'); h.click('Mark all as read');
+    assert.equal(visits.length, 1);
+    assert.equal(visits[0][0], '/notifications/read-all');
+    assert.deepEqual(visits[0][1], { snapshot: 'owned-snapshot', filter: 'unread' });
+    assert.equal(visits[0][2].preserveScroll, true);
+    html = await h.render(ui.Notifications, props);
+    assert.match(html, /Saving…/); assert.match(html, /3 unread updates/);
+    assert.doesNotMatch(html, /have been marked as read/);
+    visits[0][2].onSuccess(); visits[0][2].onFinish();
+    html = await h.render(ui.Notifications, { ...props, readSnapshot: null, notices: page(), notificationSummary: { available: true, unread: 0 } });
+    assert.match(html, /0 unread updates/); assert.match(html, /have been marked as read/);
+    assert.match(html, /You have no unread updates/); assert.doesNotMatch(html, />Mark all as read</);
+}));
+
+test('a rejected snapshot preserves unread feedback and offers reload and a safe retry', async () => withHarness(async ({ h, visits }) => {
+    const props = { portal: 'account', accountUrl: '/pending-approval', available: true, filter: 'all', notices: page([notice('owned')]),
+        readSnapshot: { id: 'owned-snapshot', count: 1, expires_at: '2026-10-19T00:15:00Z' } };
+    await h.render(ui.Notifications, props); h.click('Mark all as read');
+    visits[0][2].onError({ snapshot: 'This notification list is out of date. Reload the page.' }); visits[0][2].onFinish();
+    const html = await h.render(ui.Notifications, props);
+    assert.match(html, /notification list is out of date/); assert.match(html, /Reload notifications/);
+    assert.match(html, /3 unread updates/); assert.match(html, /Update owned/);
+    assert.doesNotMatch(html, /have been marked as read/);
+    h.click('Mark all as read'); assert.equal(visits.length, 2);
+    assert.deepEqual(visits[1][1], visits[0][1]);
+}));
+
+for (const status of [419, 503, 'network']) test(`bulk read ${status} failure keeps the confirmed unread count and permits retry`, async () => withHarness(async ({ h, visits, listeners }) => {
+    const props = { portal: 'account', accountUrl: '/pending-approval', available: true, filter: 'all', notices: page([notice('owned')]),
+        readSnapshot: { id: 'owned-snapshot', count: 1, expires_at: '2026-10-19T00:15:00Z' } };
+    await h.render(ui.Notifications, props); h.click('Mark all as read');
+    let prevented = false;
+    listeners.get(status === 'network' ? 'exception' : 'invalid')({ detail: { response: { status } }, preventDefault() { prevented = true; } });
+    const html = await h.render(ui.Notifications, props);
+    assert.equal(prevented, true); assert.match(html, /3 unread updates/); assert.match(html, /Update owned/);
+    assert.doesNotMatch(html, /have been marked as read/);
+    assert.match(html, status === 419 ? /session expired/ : status === 'network' ? /connection/ : /could not be opened/);
+    h.click('Mark all as read'); assert.equal(visits.length, 2);
 }));

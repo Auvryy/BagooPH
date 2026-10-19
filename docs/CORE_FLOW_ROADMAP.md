@@ -6457,3 +6457,33 @@ passed. These checks do not claim a browser walkthrough or Azure deployment.
 Scoped repurchase usability assessment: **6/10 to 8/10**. Original unavailable
 items still produce a clear rejection; the buyer uses their Bag or current
 product page to choose a different quantity or option.
+
+### Explicit notification bulk read: October 19, 2026
+
+BP01 now includes **Mark all as read** on the full notification page. The server
+captures the exact owned supported unread records, including other pages, in a
+short-lived database snapshot. An explicit authenticated action acknowledges only
+that set. Later arrivals in the same clock tick remain unread; foreign records,
+unsupported types and forged counts cannot expand the selection. Existing read
+timestamps survive retries. Expired lists ask the user to reload.
+
+The list and shared badge refresh from the confirmed response. Pending controls
+prevent repeated clicks; validation, expired-session, storage and network failures
+retain the last confirmed result and offer recovery. Opening the bell still
+acknowledges only displayed preview records. Shared pages retain each portal's
+existing shell and style. The additive snapshot migration is required before use;
+it neither resets records nor alters notification delivery history.
+
+Verification: **99 notification backend tests / 2,706 assertions** passed in
+SQLite `:memory:`, including ownership, same-tick arrivals, beyond-page selection,
+unchanged timestamps, expired snapshots and an injected write failure with rollback
+and retry. **26 notification frontend checks** and the TypeScript/Vite production
+build passed. The local environment was verified before applying the additive
+snapshot migration; no production database, browser walkthrough, publication or
+Azure deployment is part of this result.
+
+Scoped bulk notification usability/correctness assessment: **4/10 to 8/10**.
+The control has actual server-backed acknowledgement and recovery; fresh deployed
+and user browser observations retain their separate gates. This closes the
+selected BP01 code work, without declaring the other buyer polishing or return
+workflows complete.

@@ -58,11 +58,27 @@ class NotificationController extends Controller
                 return redirect()->to(route('notifications.index', ['filter' => $filter, 'page' => $notices->lastPage()], absolute: false));
             }
 
-            return Inertia::render('Notifications/Index', [...$context, 'notices' => $notices, 'available' => true, 'filter' => $filter]);
+            return Inertia::render('Notifications/Index', [...$context, 'notices' => $notices, 'available' => true, 'filter' => $filter,
+                'readSnapshot' => $service->readSnapshot($user)]);
         } catch (QueryException) {
             return Inertia::render('Notifications/Index', [...$context, 'notices' => null, 'available' => false, 'filter' => $filter])
                 ->toResponse($request)->setStatusCode(503);
         }
+    }
+
+    public function readAll(Request $request, NotificationCenterService $service): JsonResponse|RedirectResponse
+    {
+        $user = $service->current($request->user());
+        $data = $request->validate(['snapshot' => ['required', 'uuid'], 'filter' => ['sometimes', 'in:all,unread']]);
+        try {
+            $updated = $service->acknowledgeSnapshot($user, $data['snapshot']);
+        } catch (QueryException) {
+            abort(503, 'Notifications could not be marked as read. Please try again shortly.');
+        }
+
+        return $request->expectsJson()
+            ? response()->json(['updated' => $updated, 'summary' => $service->summary($user)])->header('Cache-Control', 'no-store, private')
+            : redirect()->route('notifications.index', ['filter' => $data['filter'] ?? 'all']);
     }
 
     private function portalContext(User $user): array

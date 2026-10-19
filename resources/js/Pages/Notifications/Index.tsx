@@ -9,13 +9,14 @@ interface Props extends NotificationPortal {
     available: boolean;
     filter: 'all' | 'unread';
     notices: { data: Notice[]; current_page: number; last_page: number; prev_page_url: string | null; next_page_url: string | null } | null;
+    readSnapshot?: { id: string; count: number; expires_at: string } | null;
 }
 
-export default function Notifications({ available, filter, notices, ...portal }: Props) {
+export default function Notifications({ available, filter, notices, readSnapshot, ...portal }: Props) {
     const { notificationSummary } = usePage<PageProps>().props;
     const buyer = portal.portal === 'buyer';
     const Heading = portal.portal === 'dashboard' ? 'h2' : 'h1';
-    const { reading, error, open, markRead } = useNotificationAction();
+    const { reading, error, success, open, markRead, markAll } = useNotificationAction();
     const button = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-[8px] border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]';
     return (
         <NotificationLayout {...portal}><div className="font-sans text-slate-900">
@@ -27,7 +28,12 @@ export default function Notifications({ available, filter, notices, ...portal }:
                         {(['all', 'unread'] as const).map(value => <Link key={value} href={`/notifications?filter=${value}`} preserveScroll aria-current={filter === value ? 'page' : undefined} className={`${button} ${filter === value ? 'border-[#E00D42] bg-rose-50 text-[#E00D42]' : 'bg-white'}`}>{value === 'all' ? 'All' : 'Unread'}</Link>)}
                     </nav>
                 </div>
-                {error && <p role="alert" className="mb-4 rounded-[8px] border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800">{error}</p>}
+                {available && readSnapshot && <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <p className="max-w-md text-xs text-slate-600">Includes unread updates on other pages. Updates received after this list opened will stay unread.</p>
+                    <button type="button" disabled={reading !== null} aria-busy={reading === 'all' || undefined} onClick={() => markAll(readSnapshot.id, filter)} className={`${button} bg-white text-[#E00D42] disabled:opacity-50`}><Check className="h-4 w-4" aria-hidden="true" />{reading === 'all' ? 'Saving…' : 'Mark all as read'}</button>
+                </div>}
+                {error && <div role="alert" className="mb-4 rounded-[8px] border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800"><p>{error}</p><Link href={`/notifications?filter=${filter}`} preserveScroll className="mt-2 inline-block font-semibold underline">Reload notifications</Link></div>}
+                {success && !error && <p role="status" className="mb-4 rounded-[8px] border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800">{success}</p>}
                 {!available ? (
                     <div role="status" className="flex min-h-60 flex-col items-center justify-center rounded-[8px] border border-slate-300 bg-white p-6 text-center"><h2 className="font-semibold">Notifications are temporarily unavailable</h2><p className="mt-2 text-sm text-slate-600">Please try again shortly. Your saved order and account decisions are kept separately.</p><Link href={`/notifications?filter=${filter}`} className={`${button} mt-4`}>Try again</Link></div>
                 ) : notices?.data.length === 0 ? (
