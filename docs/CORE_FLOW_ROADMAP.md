@@ -6736,3 +6736,27 @@ exact setup retry, unchanged accounts/stock/existing notices, rollback after a
 failed subscription and retained cleanup history. They do not replace the real
 scheduled observation. No production writes, notification replay, scheduler
 restart, publication or deployment were performed; readiness ratings are unchanged.
+
+### Buyer browser acceptance and Bag recovery: October 19, 2026
+
+After explicit authorization, all six selected BP03 procedures passed in headless
+Chromium against the production frontend assets and an isolated SQLite `:memory:`
+HTTP fixture. Actual observations cover literal hostile search with no script or
+unintended write, loaded option images with matching prices/stock, independent
+sold-out pairs, same-buyer session persistence and foreign isolation, selected and
+unselected Bag removal/recovery, and pre-delivery return-control/direct denial.
+The [interaction evidence](buyer-polishing-plan/INTERACTION_EVIDENCE.md) records
+the methods and precise limits; original manual statuses remain unchanged.
+
+The failed-removal procedure first reproduced silent premature deselection and
+an uncaught network exception. Removal now waits for the server result, prevents
+concurrent removal, retains the item and selection on failure, and provides clear
+retry/reload feedback. The observed PHP 625 selected total survives an interrupted
+request; retry removes the real line and the independent session sees that result.
+
+All six final browser procedures, **38 focused frontend checks** and the Docker
+TypeScript/Vite production build pass. The host build encountered root-owned
+asset permissions before the successful Docker build. No screenshots, ordinary
+database reset, production middleware claim or real-device result is included.
+Scoped failed-removal recovery assessment: **3/10 to 8/10**. Wider role scores and
+unrelated flow readiness remain unchanged.

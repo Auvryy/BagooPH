@@ -1,5 +1,6 @@
 import PriceSegments from '@/Components/PriceSegments';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isAxiosError } from 'axios';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import VoucherOfferList from '@/Components/VoucherOfferList';
@@ -73,7 +74,35 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
     );
     const [quantityErrors, setQuantityErrors] = useState<Record<number, string>>({});
     const [quantityUpdates, setQuantityUpdates] = useState(0);
+    const removalPending = useRef<number | null>(null);
+    const [removingId, setRemovingId] = useState<number | null>(null);
+    const [removalErrors, setRemovalErrors] = useState<Record<number, string>>({});
     const { auth } = usePage<PageProps>().props;
+
+    const removalFailed = useCallback((message: string) => {
+        const id = removalPending.current;
+        if (id !== null) setRemovalErrors(current => ({ ...current, [id]: message }));
+    }, []);
+
+    useEffect(() => {
+        const isRemovalRequest = (config?: { method?: string; url?: string }) => removalPending.current !== null
+            && config?.method?.toLowerCase() === 'delete'
+            && new URL(config.url || '', window.location.href).pathname === new URL(route('cart.destroy', removalPending.current), window.location.href).pathname;
+        const stopException = router.on('exception', event => {
+            const error = event.detail.exception;
+            if (!isAxiosError(error) || !isRemovalRequest(error.config)) return;
+            removalFailed('Could not confirm removal. Check your connection, then try again or reload your Bag.');
+            event.preventDefault();
+        });
+        const stopInvalid = router.on('invalid', event => {
+            if (!isRemovalRequest(event.detail.response.config)) return;
+            removalFailed(event.detail.response.status === 419
+                ? 'Your session expired. Reload your Bag and sign in again before trying to remove this item.'
+                : 'Could not confirm removal. Reload your Bag to check the item before trying again.');
+            event.preventDefault();
+        });
+        return () => { stopException(); stopInvalid(); };
+    }, [removalFailed]);
 
     useEffect(() => {
         setSelectedIds(current => current.filter(id => items.some(item => item.id === id && item.available_for_purchase === true)));
@@ -231,8 +260,17 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
     };
 
     const removeItem = (item: CartItem) => {
-        setSelectedIds(prev => prev.filter(id => id !== item.id));
-        router.delete(route('cart.destroy', item.id), { preserveScroll: true });
+        if (removalPending.current !== null) return;
+        removalPending.current = item.id;
+        setRemovingId(item.id);
+        setRemovalErrors(current => ({ ...current, [item.id]: '' }));
+        router.delete(route('cart.destroy', item.id), {
+            preserveScroll: true,
+            onSuccess: () => setSelectedIds(prev => prev.filter(id => id !== item.id)),
+            onError: errors => removalFailed(String(errors.item || errors.message || 'This item was not removed. Try again or reload your Bag.')),
+            onCancel: () => removalFailed('Removal was interrupted. Reload your Bag to check the item, or try again.'),
+            onFinish: () => { removalPending.current = null; setRemovingId(null); },
+        });
     };
 
     const selectedItems = selectableItems.filter(item => selectedIds.includes(item.id));
@@ -523,13 +561,25 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
                                                         {selectedIds.includes(item.id) && (quotedItems.get(item.id)?.price_segments?.length ?? 0) > 1 && <div className="mt-2 text-xs font-normal text-slate-600"><PriceSegments segments={quotedItems.get(item.id)?.price_segments} quantity={item.quantity} unitPrice={Number(item.unit_price)} /></div>}
                                                     </div>
 
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeItem(item)}
-                                                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    <div className="flex flex-col items-end gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeItem(item)}
+                                                            disabled={removingId !== null}
+                                                            aria-busy={removingId === item.id}
+                                                            aria-label={`Remove ${item.product?.name || 'product'} from your Bag`}
+                                                            className="p-1.5 text-slate-500 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition disabled:cursor-wait disabled:opacity-50"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                        {removalErrors[item.id] && <div role="alert" className="max-w-56 space-y-2 text-xs text-rose-700">
+                                                            <p>{removalErrors[item.id]}</p>
+                                                            <div className="flex flex-wrap gap-3">
+                                                                <button type="button" disabled={removingId !== null} onClick={() => removeItem(item)} className="font-semibold underline disabled:opacity-50">Try again</button>
+                                                                <button type="button" disabled={removingId !== null} onClick={() => router.reload()} className="font-semibold underline disabled:opacity-50">Reload Bag</button>
+                                                            </div>
+                                                        </div>}
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
