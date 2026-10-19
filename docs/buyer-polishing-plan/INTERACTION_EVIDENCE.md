@@ -44,3 +44,10 @@ root-owned asset permissions; it is not counted as a passing build. No screensho
 or development database reset was used. Original manual results are unchanged.
 Scoped failed-removal recovery assessment: **3/10 to 8/10**. This closes the six
 selected interaction gates; it does not certify other browser/device flows.
+
+A narrow-width follow-up found the new retry area extending about 14 pixels past
+a 320-pixel viewport. The Bag quantity/removal controls now wrap and keep the
+feedback within their available width. Actual Chromium geometry checks pass at
+**320, 390, 768 and 1,440 pixels**, with both retry controls inside each viewport.
+The same 38 focused frontend checks and the Docker production build pass again.
+This refines the same recovery fix and retains its 8/10 scoped assessment.

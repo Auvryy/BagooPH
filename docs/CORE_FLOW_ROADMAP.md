@@ -6779,3 +6779,13 @@ unchanged. No completed reminder is replayed. A separately proposed live repeat
 with an independent early-cleanup watcher awaits the user's decision; BP04's
 strict live procedure remains open. No newer application code was deployed and
 no overall readiness score increases from this retained-delivery verification.
+
+### Bag recovery on narrow screens: October 19, 2026
+
+The targeted follow-up reproduced about 14 pixels of clipped retry feedback at
+320 pixels after an interrupted Bag removal. The existing quantity/removal row
+now wraps and bounds its error area. Actual Chromium geometry checks keep the
+message and both retry controls visible at **320, 390, 768 and 1,440 pixels**.
+All **38 focused frontend checks** and the Docker production build pass again.
+This completes the responsive follow-up to the same Bag recovery fix; its scoped
+assessment remains 8/10, with no real-device or wider-role certification.

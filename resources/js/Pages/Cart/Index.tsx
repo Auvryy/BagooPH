@@ -511,7 +511,7 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
                                                 </div>
 
                                                 {/* Quantity & Delete Controls */}
-                                                <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 font-sans text-xs">
+                                                <div className="flex flex-wrap items-center justify-between sm:justify-end w-full sm:w-auto gap-4 font-sans text-xs">
                                                     <div className="space-y-1">
                                                         <div className="flex items-center border border-slate-300 rounded-sm overflow-hidden">
                                                             <button
@@ -561,7 +561,7 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
                                                         {selectedIds.includes(item.id) && (quotedItems.get(item.id)?.price_segments?.length ?? 0) > 1 && <div className="mt-2 text-xs font-normal text-slate-600"><PriceSegments segments={quotedItems.get(item.id)?.price_segments} quantity={item.quantity} unitPrice={Number(item.unit_price)} /></div>}
                                                     </div>
 
-                                                    <div className="flex flex-col items-end gap-2">
+                                                    <div className="ml-auto flex max-w-full flex-col items-end gap-2">
                                                         <button
                                                             type="button"
                                                             onClick={() => removeItem(item)}
