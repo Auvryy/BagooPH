@@ -144,7 +144,8 @@ const sellerProps = rows => ({ orders: { data: rows, current_page: 1, last_page:
 
 test('buyer detail groups actual custody and Mother Hub history under the compact five-step progress', async () => {
     const html = await render(ui.Detail, detailProps);
-    assert.match(html, /Confirmed \/ packed/);
+    assert.match(html, />Confirmed</);
+    assert.doesNotMatch(html, /Confirmed \/ packed/);
     assert.match(html, /Pickup not assigned/);
     assert.equal((html.match(/data-milestone=/g) ?? []).length, 5);
     assert.match(html, /Recorded parcel holder/);
@@ -381,20 +382,58 @@ test('order notices with a unique original milestone share one row while ambiguo
     assert.equal(ui.buyerJourneyEntries({ ...tracking, history: [ready] }, [{ ...notice, milestone: 'constructor' }]).length, 2);
 });
 
-test('notification-only rows never invent parcel movement and render inside a closed journey with its current stage visible', () => {
+test('journey opens by default and completed notice-only updates are red without inventing parcel movement', () => {
     const data = { ...tracking, commercial_status: 'ready_for_pickup', parcel_status: 'assigned_pickup',
         stage_label: 'Pickup rider assigned', history: [point(1, 'ready_for_pickup')] };
     const notice = { ...parcelNotice('confirmed', null), type: 'order-event', milestone: 'confirmed',
         data: { title: 'Your order was confirmed' } };
     const html = renderToStaticMarkup(createElement(ui.Panel, { tracking: data, variant: 'buyer', notices: [notice] }));
-    assert.match(html, /<details class=/);
-    assert.doesNotMatch(html, /<details[^>]*\bopen(?:=|>)/);
+    assert.match(html, /<details open="" class="group\/journey/);
+    assert.doesNotMatch(html, /See more/);
     const summary = html.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)[1];
     assert.match(summary, /Pickup rider assigned/);
     assert.match(summary, /1 unread/);
     assert.ok(html.indexOf('Your order was confirmed') > html.indexOf('</summary>'));
     assert.match(html, /Mark read/);
+    const past = html.match(/<li[^>]*data-journey-entry="notice-confirmed"[\s\S]*?<\/li>/)[0];
+    assert.match(past, /border-\[#E00D42\] bg-\[#E00D42\]/);
+    assert.doesNotMatch(past, /border-slate-300 bg-white/);
+    const current = html.match(/<li[^>]*data-journey-entry="checkpoint-1"[\s\S]*?<\/li>/)[0];
+    assert.match(current, /border-amber-500 bg-amber-300/);
     assert.equal(ui.buyerMilestones(data)[2].recorded, false);
+});
+
+test('zero to five journey entries stay visible without an unnecessary See more control', () => {
+    for (const count of [0, 1, 5]) {
+        const history = Array.from({ length: count }, (_, index) => point(index + 1, 'arrived_at_mother_hub', `Hub visit ${index + 1}`));
+        const html = renderToStaticMarkup(createElement(ui.Panel, { tracking: { ...tracking, history }, variant: 'buyer' }));
+        assert.match(html, /<details open="" class="group\/journey/);
+        assert.doesNotMatch(html, /See more|Earlier parcel journey/);
+        assert.equal((html.match(/data-journey-entry=/g) ?? []).length, count);
+        if (count === 0) assert.match(html, /No journey checkpoints or order updates are recorded yet/);
+    }
+});
+
+test('See more retains older visits and unread actions while the latest five updates and current scan stay open', () => {
+    for (const count of [6, 8]) {
+        const history = Array.from({ length: count }, (_, index) => point(index + 1, 'arrived_at_mother_hub', `Hub visit ${index + 1}`));
+        const notices = [parcelNotice('first-visit', 1), parcelNotice('last-visit', count)];
+        const html = renderToStaticMarkup(createElement(ui.Panel, { tracking: { ...tracking, history }, notices, variant: 'buyer' }));
+        const earlier = html.match(/<details class="group\/earlier"[\s\S]*?<\/details>/)[0];
+        assert.doesNotMatch(earlier, /<details[^>]*\bopen(?:=|>)/);
+        assert.match(earlier, /See more/);
+        assert.match(earlier, /Mark read/);
+        assert.equal((earlier.match(/data-journey-entry=/g) ?? []).length, count - 5);
+        const recent = html.match(/<ol aria-label="Original parcel journey and order updates"[^>]*>[\s\S]*?<\/ol>/)[0];
+        assert.equal((recent.match(/data-journey-entry=/g) ?? []).length, 5);
+        assert.match(recent, new RegExp(`start="${count - 4}"`));
+        assert.match(recent, new RegExp(`data-journey-entry="checkpoint-${count}"`));
+        assert.match(recent, /border-amber-500 bg-amber-300/);
+        assert.match(recent, /Mark read/);
+        for (let id = 1; id <= count; id++) assert.equal((html.match(new RegExp(`data-journey-entry="checkpoint-${id}"`, 'g')) ?? []).length, 1);
+        assert.ok(html.indexOf(earlier) < html.indexOf(recent));
+        assert.equal(notices.every(notice => notice.read_at === null), true);
+    }
 });
 
 test('completed circles are red, the current circle is yellow and a pending product review has one accessible action', () => {
@@ -411,7 +450,7 @@ test('completed circles are red, the current circle is yellow and a pending prod
     assert.match(renderToStaticMarkup(createElement(ui.Panel, { tracking: data, buyerOrder: pending, variant: 'buyer', onReview() {}, refreshing: true })), /<button[^>]*disabled=""/);
 });
 
-test('package items precede tracking and contain courier, full addresses and notes without separate dispatch cards', async () => {
+test('tracking precedes package items with red prices and grouped courier, full addresses and notes', async () => {
     const html = await render(ui.Detail, { ...detailProps, order: { ...order,
         items: [{ id: 10, quantity: 2, unit_price: 300, color: 'Blue', size: 'Large', product: { name: 'Everyday Bag', slug: 'everyday-bag' } }],
         delivery: { ...order.delivery, logistics_partner: 'Bagoo Dispatch', pickup_store_name: 'Bagoo Crafts', pickup_address: '12 Mabini Street, Manila',
@@ -419,9 +458,12 @@ test('package items precede tracking and contain courier, full addresses and not
     const start = html.indexOf('<section aria-label="Package items"');
     const end = html.indexOf('</section>', start);
     const packageItems = html.slice(start, end);
-    assert.ok(start > -1 && end < html.indexOf('<section aria-label="Order progress"'));
+    const progress = html.indexOf('<section aria-label="Order progress"');
+    assert.ok(progress > -1 && start > progress && end > start);
     for (const text of ['Everyday Bag', 'Bagoo Dispatch', 'Marco Cruz', '12 Mabini Street, Manila', '45 Sampaguita Street, Pasig', 'Please call on arrival.', 'BGO-PARCEL', 'Blue / Large']) assert.ok(packageItems.includes(text), text);
     assert.match(packageItems, /<summary[^>]*>[\s\S]*Delivery details[\s\S]*Bagoo Dispatch[\s\S]*<\/summary>/);
+    assert.match(packageItems, /<p class="[^"]*text-\[#E00D42\][^"]*">₱600\.00<\/p>/);
+    assert.match(packageItems, /Total amount<\/span><span class="[^"]*text-\[#E00D42\][^"]*">₱650\.00/);
     assert.doesNotMatch(packageItems, /truncate|src=""/);
     assert.doesNotMatch(html, /Assigned Courier Fleet|Next step/);
 });

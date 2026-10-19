@@ -23,7 +23,7 @@ export default function BuyerOrderPackage({ order, canUsePortal }: { order: Orde
                     <div className="flex flex-col justify-between gap-1 sm:flex-row sm:gap-4">
                         {item.product?.slug ? <Link href={route('buyer.products.show', item.product.slug)} className="min-w-0 break-words text-sm font-bold text-slate-900 hover:text-[#C20836]">{item.product.name}</Link>
                             : <p className="break-words text-sm font-bold text-slate-900">{item.product?.name || 'Purchased item'}</p>}
-                        <p className="shrink-0 text-sm font-bold tabular-nums text-slate-900">{money(Number(item.unit_price) * item.quantity)}</p>
+                        <p className="shrink-0 text-sm font-bold tabular-nums text-[#E00D42]">{money(Number(item.unit_price) * item.quantity)}</p>
                     </div>
                     <p className="mt-1 text-xs leading-relaxed text-slate-600">Quantity: {item.quantity} × {money(item.unit_price)}{[item.color, item.size].filter(Boolean).length > 0 && <span className="ml-2">{[item.color, item.size].filter(Boolean).join(' / ')}</span>}</p>
                     {item.review && canUsePortal && <div className="mt-2"><BuyerSavedReview review={item.review} /></div>}
@@ -43,7 +43,7 @@ export default function BuyerOrderPackage({ order, canUsePortal }: { order: Orde
             </dl>
         </details>}
         <div className="border-t border-slate-300 pt-4">
-            {order.voucher_receipt ? <BuyerVoucherReceipt receipt={order.voucher_receipt} /> : <p className="flex flex-wrap justify-between gap-2 text-sm font-bold text-slate-900"><span>Total amount</span><span className="tabular-nums">{money(order.total_amount)}</span></p>}
+            {order.voucher_receipt ? <BuyerVoucherReceipt receipt={order.voucher_receipt} /> : <p className="flex flex-wrap justify-between gap-2 text-sm font-bold text-slate-900"><span>Total amount</span><span className="tabular-nums text-[#E00D42]">{money(order.total_amount)}</span></p>}
         </div>
     </section>;
 }

@@ -10,7 +10,7 @@ export default function BuyerVoucherReceipt({ receipt }: { receipt: VoucherRecei
         {receipt.legacy_discount && <div className="flex justify-between gap-3"><dt>Recorded voucher discount</dt><dd>−{money(receipt.total_savings)}</dd></div>}
         <div className="flex justify-between gap-3"><dt>Shipping before discounts</dt><dd>{money(receipt.shipping_before)}</dd></div>
         <div className="flex justify-between gap-3"><dt>{receipt.shipping_after === 0 ? 'Free shipping' : 'Shipping payable'}</dt><dd>{money(receipt.shipping_after)}</dd></div>
-        <div className="flex justify-between gap-3 font-semibold text-[#C20836]"><dt>Total savings</dt><dd>{money(receipt.total_savings)}</dd></div>
-        <div className="flex justify-between gap-3 border-t border-slate-300 pt-3 text-sm font-bold text-slate-900"><dt>Total COD</dt><dd>{money(receipt.total)}</dd></div>
+        <div className="flex justify-between gap-3 font-semibold text-slate-600"><dt>Total savings</dt><dd>{money(receipt.total_savings)}</dd></div>
+        <div className="flex justify-between gap-3 border-t border-slate-300 pt-3 text-sm font-bold text-slate-900"><dt>Total COD</dt><dd className="text-[#E00D42]">{money(receipt.total)}</dd></div>
     </dl>;
 }

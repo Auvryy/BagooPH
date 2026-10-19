@@ -82,7 +82,7 @@ export function buyerMilestones(tracking: OrderTracking, order?: BuyerProgressOr
         current = recorded[3] ? 3 : recorded[2] ? 2 : recorded[1] ? 1 : recorded[0] ? 0 : -1;
     }
     const phases = [
-        { key: 'placed', label: 'Order placed' }, { key: 'packing', label: 'Confirmed / packed' },
+        { key: 'placed', label: 'Order placed' }, { key: 'packing', label: 'Confirmed' },
         { key: 'shipped', label: 'Shipped out' }, { key: 'received', label: 'Order received' },
         { key: 'review', label: reviewed ? 'Review saved' : 'Rate & review' },
     ] as const;

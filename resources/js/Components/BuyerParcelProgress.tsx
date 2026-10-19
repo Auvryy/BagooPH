@@ -1,7 +1,7 @@
 import { Check, ChevronDown, ClipboardCheck, Package, PackageCheck, Star, Truck } from 'lucide-react';
 import { OrderTracking } from '@/types';
 import { buyerJourneyEntries, buyerJourneyException, buyerMilestones, originalBuyerJourney,
-    type BuyerOrderNotice, type BuyerProgressOrder } from '@/utils/buyerParcelProgress';
+    type BuyerJourneyEntry, type BuyerOrderNotice, type BuyerProgressOrder } from '@/utils/buyerParcelProgress';
 import { trackingDate } from '@/utils/orderTracking';
 import useNotificationAction from '@/hooks/useNotificationAction';
 
@@ -21,6 +21,19 @@ export default function BuyerParcelProgress({ tracking, order, notices = [], onR
     const unread = new Set(notices.filter(notice => !notice.read_at).map(notice => notice.id)).size;
     const exception = buyerJourneyException(tracking);
     const { reading, error, markRead } = useNotificationAction();
+    const earlierCount = Math.max(0, entries.length - 5);
+    const renderEntry = (event: BuyerJourneyEntry, index: number) => <li key={event.key} data-journey-entry={event.key} className="relative flex gap-3 pb-5 last:pb-0">
+        {index < entries.length - 1 && <span aria-hidden="true" className="absolute bottom-0 left-[5px] top-3 w-px bg-slate-300" />}
+        <span aria-hidden="true" className={`relative mt-1.5 h-3 w-3 shrink-0 rounded-full border-2 ${event.checkpoint && event.checkpoint.id === last?.id
+            ? 'border-amber-500 bg-amber-300' : 'border-[#E00D42] bg-[#E00D42]'}`} />
+        <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1"><p className="break-words text-sm font-semibold text-slate-800">{event.label}</p><time dateTime={event.created_at ?? undefined} className="text-xs text-slate-500">{trackingDate(event.created_at)}</time></div>
+            {event.location && <p className="mt-1 break-words text-xs text-slate-600">{event.location}</p>}
+            {!event.checkpoint && event.notices[0]?.data.body && <p className="mt-1 break-words text-xs leading-relaxed text-slate-600">{event.notices[0].data.body}</p>}
+            {event.notices.filter(notice => !notice.read_at).map(notice => <button key={notice.id} type="button" disabled={reading !== null} onClick={() => markRead(notice.id)}
+                aria-label={`Mark "${notice.data.title}" as read`} className="mt-1 min-h-10 rounded-lg px-1 text-xs font-semibold text-[#C20836] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] disabled:opacity-50">{reading === notice.id ? 'Saving…' : 'Mark read'}</button>)}
+        </div>
+    </li>;
 
     return <div className="space-y-5">
         {tracking.notice && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{tracking.notice}</p>}
@@ -49,14 +62,14 @@ export default function BuyerParcelProgress({ tracking, order, notices = [], onR
                 </li>;
             })}
         </ol>
-        <details className="group border-t border-slate-300 pt-1">
+        <details open className="group/journey border-t border-slate-300 pt-1">
             <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 rounded-lg py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] [&::-webkit-details-marker]:hidden">
                 <div className="min-w-0">
                     <p className="text-xs font-semibold text-slate-500">Journey checkpoints ({entries.length}){unread > 0 && <span className="ml-2 text-[#C20836]">{unread} unread</span>}</p>
                     <p className="mt-1 break-words text-sm font-bold text-slate-900">{tracking.stage_label || last?.label || tracking.status_label}</p>
                     {last && <p className="mt-1 break-words text-xs leading-relaxed text-slate-600">{last.location || 'Location not recorded'} · {trackingDate(last.created_at)}</p>}
                 </div>
-                <ChevronDown aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+                <ChevronDown aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500 transition-transform group-open/journey:rotate-180 motion-reduce:transition-none" />
             </summary>
             <div className="space-y-5 pb-2 pt-3">
                 <dl className="grid gap-3 text-xs text-slate-600 sm:grid-cols-2">
@@ -65,19 +78,16 @@ export default function BuyerParcelProgress({ tracking, order, notices = [], onR
                 </dl>
                 {tracking.failure && <div className="space-y-1 text-sm text-amber-900"><p>Recorded attempt {tracking.failure.attempt_number}: {tracking.failure.reason}</p><p className="text-xs">Attempt: {trackingDate(tracking.failure.attempted_at)}</p>{tracking.failure.retry_at && <p className="font-semibold">Approved retry: {trackingDate(tracking.failure.retry_at)} · Philippine time</p>}</div>}
                 {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-                {entries.length === 0 ? <p className="py-5 text-center text-sm text-slate-500">No journey checkpoints or order updates are recorded yet.</p> : <ol aria-label="Original parcel journey and order updates">
-                    {entries.map((event, index) => <li key={event.key} className="relative flex gap-3 pb-5 last:pb-0">
-                        {index < entries.length - 1 && <span aria-hidden="true" className="absolute bottom-0 left-[5px] top-3 w-px bg-slate-300" />}
-                        <span aria-hidden="true" className={`relative mt-1.5 h-3 w-3 shrink-0 rounded-full border-2 ${event.checkpoint && event.checkpoint.id === last?.id
-                            ? 'border-amber-500 bg-amber-300' : event.checkpoint ? 'border-[#E00D42] bg-[#E00D42]' : 'border-slate-300 bg-white'}`} />
-                        <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1"><p className="break-words text-sm font-semibold text-slate-800">{event.label}</p><time dateTime={event.created_at ?? undefined} className="text-xs text-slate-500">{trackingDate(event.created_at)}</time></div>
-                            {event.location && <p className="mt-1 break-words text-xs text-slate-600">{event.location}</p>}
-                            {!event.checkpoint && event.notices[0]?.data.body && <p className="mt-1 break-words text-xs leading-relaxed text-slate-600">{event.notices[0].data.body}</p>}
-                            {event.notices.filter(notice => !notice.read_at).map(notice => <button key={notice.id} type="button" disabled={reading !== null} onClick={() => markRead(notice.id)}
-                                aria-label={`Mark "${notice.data.title}" as read`} className="mt-1 min-h-10 rounded-lg px-1 text-xs font-semibold text-[#C20836] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] disabled:opacity-50">{reading === notice.id ? 'Saving…' : 'Mark read'}</button>)}
-                        </div>
-                    </li>)}
+                {earlierCount > 0 && <details className="group/earlier">
+                    <summary className="mb-4 flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg text-xs font-semibold text-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] [&::-webkit-details-marker]:hidden">
+                        <ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open/earlier:rotate-180 motion-reduce:transition-none" />
+                        <span className="group-open/earlier:hidden">See more</span><span className="hidden group-open/earlier:inline">See less</span>
+                        <span className="font-normal text-slate-500">({earlierCount} earlier {earlierCount === 1 ? 'update' : 'updates'})</span>
+                    </summary>
+                    <ol aria-label="Earlier parcel journey and order updates" className="pb-5">{entries.slice(0, earlierCount).map(renderEntry)}</ol>
+                </details>}
+                {entries.length === 0 ? <p className="py-5 text-center text-sm text-slate-500">No journey checkpoints or order updates are recorded yet.</p> : <ol aria-label="Original parcel journey and order updates" start={earlierCount + 1}>
+                    {entries.slice(earlierCount).map((event, index) => renderEntry(event, earlierCount + index))}
                 </ol>}
             </div>
         </details>

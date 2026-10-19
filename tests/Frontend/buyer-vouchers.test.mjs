@@ -382,5 +382,7 @@ test('receipt displays recorded product and partial shipping amounts with one fi
     assert.match(html, /ORIGINAL_SHOP[\s\S]*?−₱100\.00/);
     assert.match(html, /Shipping payable[\s\S]*?₱20\.00/);
     assert.match(html, /Total COD[\s\S]*?₱920\.00/);
+    assert.match(html, /<div class="[^"]*text-slate-600"><dt>Total savings<\/dt><dd>₱130\.00<\/dd><\/div>/);
+    assert.match(html, /Total COD<\/dt><dd class="text-\[#E00D42\]">₱920\.00<\/dd>/);
     assert.doesNotMatch(html, /Free shipping/);
 });
