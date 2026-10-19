@@ -6487,3 +6487,39 @@ The control has actual server-backed acknowledgement and recovery; fresh deploye
 and user browser observations retain their separate gates. This closes the
 selected BP01 code work, without declaring the other buyer polishing or return
 workflows complete.
+
+### Retained buyer rules and precise boundaries: October 19, 2026
+
+BP02 records all 15 affected references in
+[retained expectations](buyer-polishing-plan/RETAINED_EXPECTATIONS.md), preserving
+the original assumptions beside the user-selected Bagoo rules. It does not
+relabel a policy disagreement or an unperformed visible procedure as a manual
+Pass. The planning ledger remains the original baseline.
+
+New tests exercise one cent below/at/above a funded shop-offer minimum without
+using another shop or unselected merchandise; complete percentage eligibility,
+rounding and cap sequences; the exact shipping threshold; and real stored product
+weights under the existing fee rule. Preview, saved order amounts, funding
+commitments, stock and retry usage agree. Additional checks establish full
+499/500-character seller-note persistence and 501 rejection; 999/1,000-character
+reviews and 1,001 rejection; four/five/six photo boundaries; and actual photo bytes
+one below, exactly at and one above 5 MB. Rejected submissions retain no new order,
+review or uploaded photo.
+
+A real custody flow remains Delivered after eight days and history reads until
+the owner explicitly confirms receipt. That confirmation still cannot release
+seller funds without COD reconciliation. Existing selected suites cover approved
+root taxonomy, voucher slot replacement/excess rejection, seller-share caps,
+original cancellation allocations, owned stage counts, review content/ownership
+and independent settlement evidence.
+
+Verification: **350 selected backend tests / 4,549 assertions**, plus the separate
+**receipt-clock test / 104 assertions**, passed with SQLite `:memory:`. This batch
+changes tests and documentation only; BP01 owns the last application build.
+Browser procedures, a deployed reminder and the newly selected full return and
+repayment workflow remain separate work. No application policy, production data,
+published branch or deployment is changed by this verification batch.
+
+Scoped boundary-evidence assessment: **5/10 to 8/10**. The missing exact money and
+field sequences now have direct checks and saved-value evidence; overall buyer
+or project readiness is not raised for unobserved interactions or unbuilt returns.

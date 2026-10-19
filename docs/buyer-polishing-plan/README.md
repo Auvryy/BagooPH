@@ -29,9 +29,19 @@ baseline; exclusion does not turn them into completed manual results.
 | **Total active review coverage** | **35** | **1** | Every item has an owner batch and a closure condition. |
 
 The [case ledger](CASE_COVERAGE.md) is the complete active allocation. The
+[retained expectations](RETAINED_EXPECTATIONS.md) record BP02's explicit rule
+decisions and local boundary evidence. The
 [payment and return gates](05-payment-and-return-prerequisites.md) retain all
 11 prerequisite cases. Those cases are included in this plan even though their
 larger features remain outside the four polishing deliveries.
+
+On October 19, the user selected implementation of all four polishing batches
+and explicitly included the full buyer-return prerequisites. The RET allocation
+now includes eligibility/evidence, seller/admin decisions, reverse custody and a
+verified COD repayment path, with separate implementation and acceptance work.
+Checkout remains COD-only; online payments in PAY were not selected. The later
+repurchase refinement also uses the existing Bag instead of a duplicate preview
+page. Current outcomes and limits remain in the roadmap.
 
 ## Proposed deliveries
 
@@ -71,7 +81,9 @@ Preserve COD, 10% merchandise commission, the seller's 90% share, separate
 shipping/funding accounting, one approved-root shop, immutable role/sign-in
 identity, explicit buyer receipt and the canonical hub route. Follow the user's
 decision to retain Bagoo's rules; a blocked expectation cannot silently authorize
-online payments, automatic completion, extra voucher slots or full refunds.
+online payments, automatic completion or extra voucher slots. Full buyer returns
+are now explicitly selected as separate work, including their financial and
+custody prerequisites.
 
 For each active case, record the starting fixture/state, complete observed
 result, side effects, verification method and remaining limit. Keep original

@@ -5,8 +5,10 @@ These **11 active cases** remain visible in the
 waived by the four smaller deliveries. Follow the [shared plan](README.md) and
 the [original order follow-up scope](../buyer-readiness-plan/03-orders-and-communication.md).
 
-The user retained COD and deferred complete refunds. Planning these dependencies
-does not reverse that decision or authorize new external/paid services. Keep
+The initial plan retained COD and deferred complete refunds. On October 19 the
+user explicitly selected all buyer-return prerequisites, including reverse
+custody and verified COD repayment; online payments remain deferred. This does
+not authorize new external/paid services. Keep
 their original failures/blocks visible until the feature and expected behavior
 are explicitly selected, implemented and actually checked. Existing planning
 ownership must be reused rather than duplicated.
@@ -74,7 +76,8 @@ retained original payment and once-only outgoing money evidence. Neither opening
 a complaint nor marking a parcel returned establishes that a refund was paid.
 Route/custody, decision authority and financial gates must be tested independently.
 
-Until selected, retain the positive missing-feature failure and the three
-dependent blocks. Keep the unavailable page honest and avoid sample submission
-forms, fabricated case histories or success messages. No automatic new deadline
-or hidden implementation inside BP01-BP04 is created by this plan.
+The selected return delivery must close the positive missing-feature failure and
+the three dependent blocks with actual implementation and verification. Keep the
+unavailable page honest until its backed workflow exists; avoid sample forms,
+fabricated histories or success messages. Track this expanded work separately
+from BP01-BP04 and preserve the original evidence until the new gates pass.
