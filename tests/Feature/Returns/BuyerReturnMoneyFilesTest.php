@@ -31,9 +31,15 @@ class BuyerReturnMoneyFilesTest extends TestCase
         $this->assertSame(hash_file('sha256', $file->getRealPath()), $info['proof_hash']);
     }
 
-    public function test_pdf_receipts_use_actual_pdf_content_and_a_downloaded_canonical_extension(): void
+    public static function pdfVersions(): array
     {
-        $body = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n";
+        return [['1.4'], ['1.7'], ['2.0']];
+    }
+
+    #[DataProvider('pdfVersions')]
+    public function test_pdf_receipts_use_actual_pdf_content_and_a_downloaded_canonical_extension(string $version): void
+    {
+        $body = "%PDF-{$version}\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n";
         $file = UploadedFile::fake()->createWithContent('renamed.mp4', $body);
         $info = app(BuyerReturnMoneyFiles::class)->inspect($file);
         $this->assertSame('pdf', $info['extension']);

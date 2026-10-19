@@ -20,7 +20,7 @@ class BuyerReturnMoneyFiles
         };
         if (! $extension && $bytes > 0 && $bytes <= 5242880) {
             $contents = file_get_contents($file->getRealPath());
-            if ((new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath()) === 'application/pdf' && preg_match('/\A%PDF-1\.[0-9]/', $contents)
+            if ((new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath()) === 'application/pdf' && preg_match('/\A%PDF-[0-9]\.[0-9]/', $contents)
                 && preg_match('/%%EOF\s*\z/', $contents)) {
                 $extension = 'pdf';
                 $mime = 'application/pdf';

@@ -6701,3 +6701,21 @@ be established, followed by a genuine pre-start buyer notification and later
 once-only source counts. No production setup, notification replay, publication
 or deployment was performed. This remaining gate and BP03 stay open; no deployed
 or overall readiness rating increases from their preparation.
+
+### Return receipt format compatibility: October 19, 2026
+
+Final review reproduced a valid PDF 2.0 receipt being rejected by an unnecessary
+`1.x` header restriction. The private receipt inspector now accepts the numeric
+PDF version reported in an otherwise content-classified PDF, retaining its EOF,
+actual-byte, private hash/download and canonical-extension checks. No cash,
+recipient, entitlement or repayment state rule changes.
+
+The targeted receipt suite passed **6 tests / 15 assertions**, covering PDF 1.4,
+1.7 and 2.0 plus real bytes below/at/above 5 MB. Replacing earlier repeated class
+results gives **187 unique R03 backend tests / 10,471 assertions** across the
+passing financial regression and latest receipt reports. This is a backend-only
+compatibility fix; the last frontend build remains the verified R03 build.
+
+Scoped receipt-format assessment: **6/10 to 8/10**. Supported PDF versions no
+longer fail an arbitrary version gate; the overall R03 assessment stays 8/10.
+BP03 browser observations and BP04 deployed delivery remain open.
