@@ -6877,3 +6877,26 @@ credit approval/rejection, role restrictions, retry protection, amount format an
 boundaries, transaction rollback, immutable database history and rejection of a
 fabricated cached balance. These are service/database checks, not a completed
 payment workbook or browser acceptance run.
+
+### Wallet checkout and reservation recovery — October 19, 2026
+
+Wallet checkout now creates a distinct unpaid payment for each shop order with
+the original amount, purchased-item fingerprint and one-hour server deadline.
+Successful payment debits the buyer and credits virtual escrow atomically.
+Insufficient credits, cancelled confirmation, lost-response retries and deadline
+boundaries preserve one authoritative outcome. Sellers cannot advance an unpaid
+wallet order. Pre-dispatch cancellation refunds its original paid credits once.
+COD retains its collection flow and has no wallet payment deadline.
+
+Expired unpaid reservations restore stock and release original promotional
+funding once. A shared voucher use becomes available again only after every
+allocation belongs to a cancelled unpaid wallet payment; paid and sibling orders
+retain their original usage. Original voucher evidence is never edited.
+
+The scoped wallet payment-domain assessment advances **3/10 → 6/10**.
+**105 isolated SQLite checks / 935 assertions** passed for wallet and checkout
+recovery plus existing confirmation and purchase workspace behavior. A separate
+cross-check passed **144 tests / 8,994 assertions** across wallet HTTP, cash
+finance, secure pickup and native parcel regressions. These runs do not yet
+certify the new complete wallet delivery, return and virtual-settlement flows;
+those and final portal verification remain part of this active feature.

@@ -159,6 +159,11 @@ class Order extends Model
         return $this->hasMany(BuyerReturnCase::class);
     }
 
+    public function walletPayment(): HasOne
+    {
+        return $this->hasOne(WalletPayment::class);
+    }
+
     public function codAccount(): HasOne
     {
         return $this->hasOne(CodAccount::class);

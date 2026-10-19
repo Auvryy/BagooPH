@@ -188,7 +188,7 @@ class CheckoutQuoteService
             $query->where(fn (Builder $q) => $q->where('issuer_type', 'platform')->orWhereIn('shop_id', $items->pluck('product.shop_id')->unique()));
         }
         if ($buyer) {
-            $query->whereRaw('(select count(*) from voucher_redemptions where voucher_revision_id = voucher_revisions.id and buyer_id = ?) < voucher_revisions.per_buyer_limit', [$buyer->id]);
+            $query->whereRaw('(select count(*) from voucher_redemptions where voucher_revision_id = voucher_revisions.id and buyer_id = ? and not exists (select 1 from wallet_voucher_restorations where voucher_redemption_id = voucher_redemptions.id)) < voucher_revisions.per_buyer_limit', [$buyer->id]);
         }
 
         return $query;
@@ -229,7 +229,8 @@ class CheckoutQuoteService
         }
         $uses = $revision->getAttribute('quote_buyer_id') === $buyer?->id && $revision->getAttribute('buyer_uses_count') !== null
             ? $revision->getAttribute('buyer_uses_count')
-            : ($buyer ? VoucherRedemption::where('voucher_revision_id', $revision->id)->where('buyer_id', $buyer->id)->count() : 0);
+            : ($buyer ? VoucherRedemption::where('voucher_revision_id', $revision->id)->where('buyer_id', $buyer->id)
+                ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('wallet_voucher_restorations')->whereColumn('voucher_redemption_id', 'voucher_redemptions.id'))->count() : 0);
         if ($buyer && $uses >= $revision->per_buyer_limit) {
             return 'You have reached your usage limit for this voucher.';
         }

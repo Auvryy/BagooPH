@@ -22,6 +22,7 @@ use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
 use App\Services\Vouchers\VoucherFundingService;
+use App\Services\Wallet\WalletPaymentService;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -153,7 +154,7 @@ class CheckoutOrderService
                     'voucher_discount' => $discount,
                     'shipping_fee' => $amounts['shipping'],
                     'total_amount' => $amounts['total'],
-                    'payment_method' => 'cod',
+                    'payment_method' => $data['payment_method'],
                     'payment_status' => 'pending',
                     'status' => 'placed',
                     'delivery_type' => $deliveryType,
@@ -256,6 +257,11 @@ class CheckoutOrderService
             ]);
             $submission->orders()->attach($orders->pluck('id')->all());
             app(VoucherFundingService::class)->commit($buyer, $submission, $orders, $revisions, $quote['redemptions']);
+            if ($data['payment_method'] === 'wallet') {
+                foreach ($orders as $order) {
+                    app(WalletPaymentService::class)->issue($order);
+                }
+            }
 
             return $orders;
         });

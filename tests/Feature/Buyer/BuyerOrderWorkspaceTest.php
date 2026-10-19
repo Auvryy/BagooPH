@@ -33,6 +33,7 @@ class BuyerOrderWorkspaceTest extends TestCase
             }
         }
         $expected['return_refund'] = 0;
+        $expected['to_pay'] = 0;
         $this->actingAs($buyer);
         foreach ($stages as $stage => $statuses) {
             $this->get('/buyer/orders?order_status='.$stage)->assertOk()->assertInertia(fn (Assert $page) => $page

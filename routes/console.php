@@ -3,6 +3,7 @@
 use App\Services\Advertisements\AdvertisementMeasurementService;
 use App\Services\Commerce\SaleReminderService;
 use App\Services\Logistics\RiderCompanyOfferService;
+use App\Services\Wallet\WalletPaymentService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -46,3 +47,16 @@ Artisan::command('sales:send-reminders {--limit=100}', function () {
 })->purpose('Send owned reminders shortly before upcoming flash slots');
 
 Schedule::command('sales:send-reminders')->everyMinute()->withoutOverlapping();
+
+Artisan::command('wallet:expire-payments {--limit=100}', function () {
+    $limit = filter_var($this->option('limit'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 1000]]);
+    if ($limit === false) {
+        $this->error('Use a limit from 1 to 1000.');
+
+        return 2;
+    }
+    $count = app(WalletPaymentService::class)->expireDue($limit);
+    $this->info("Expired {$count} unpaid wallet orders and released their original reservations.");
+})->purpose('Release unpaid virtual wallet orders after their one-hour payment deadline');
+
+Schedule::command('wallet:expire-payments')->everyMinute()->withoutOverlapping();
