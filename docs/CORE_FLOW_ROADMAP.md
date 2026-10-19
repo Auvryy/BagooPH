@@ -6688,3 +6688,16 @@ visible failed-removal retry was executed. All six selected browser procedures
 remain Not Run while explicit authorization/user execution is pending; the task
 and acceptance gate remain open. The temporary fixture server was stopped. This
 preparation changes no application behavior or implementation-readiness rating.
+
+### Deployed reminder acceptance preparation: October 19, 2026
+
+BP04's selected reminder suite passed **10 tests / 93 assertions** with Docker
+PHP 8.4 and SQLite `:memory:`. The
+[reminder evidence](buyer-polishing-plan/REMINDER_EVIDENCE.md) separates those
+clock/ownership/retry checks and inspected schedule configuration from actual
+runtime delivery. The scheduler observation is prepared but Not Run: the actual
+published commit, running scheduler and a future eligible sale/subscription must
+be established, followed by a genuine pre-start buyer notification and later
+once-only source counts. No production setup, notification replay, publication
+or deployment was performed. This remaining gate and BP03 stay open; no deployed
+or overall readiness rating increases from their preparation.

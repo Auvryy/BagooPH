@@ -56,13 +56,16 @@ seven elapsed days from evidenced physical delivery, including completed orders,
 with separate request/review, reverse-custody and COD-repayment deliveries. That
 plan resolves the implementation decisions below without claiming they are built.
 
-`BuyerDisputeController` currently returns an unavailable page. The existing
+At the planning baseline, `BuyerDisputeController` returned an unavailable page.
+The selected R01–R03 implementation and its actual checks are now recorded in
+the [roadmap](../CORE_FLOW_ROADMAP.md); that evidence does not establish an
+unperformed browser procedure or a real production transfer. The existing
 failed-delivery reverse route concerns parcels that were not successfully
 received by the buyer. Do not substitute it for a post-delivery item complaint,
 seller decision, escalation or repayment.
 
-Reuse the established buyer-return/admin-refund planning work. Before selecting
-implementation, decide the actual eligibility/window, interaction with explicit
+The [selected contract](../buyer-returns-plan/README.md) records the actual
+eligibility/window, interaction with explicit
 buyer completion, item quantities, meaningful reasons/descriptions, private
 evidence allowlist/count/size, seller response and escalation authority/deadlines,
 return transport/receipt, disputed cash and COD repayment destination. Retain the
@@ -83,6 +86,6 @@ Route/custody, decision authority and financial gates must be tested independent
 
 The selected return delivery must close the positive missing-feature failure and
 the three dependent blocks with actual implementation and verification. Keep the
-unavailable page honest until its backed workflow exists; avoid sample forms,
-fabricated histories or success messages. Track this expanded work separately
+recorded evidence honest; avoid sample forms, fabricated histories or success
+messages in place of missing backing. Track this expanded work separately
 from BP01-BP04 and preserve the original evidence until the new gates pass.
