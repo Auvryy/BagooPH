@@ -291,6 +291,25 @@ class DeliveryReturnService
         return $delivery->only(['order_id', 'logistics_company_id', 'origin_bayan_hub_id', 'origin_mother_hub_id', 'destination_mother_hub_id', 'destination_bayan_hub_id']);
     }
 
+    public function evidencedForwardRoute(Delivery $parcel, int $beforeCheckpointId): array
+    {
+        $route = $this->forwardRoute($parcel);
+        $hubs = [$route['origin_bayan_hub_id'], $route['origin_mother_hub_id']];
+        if ($route['destination_mother_hub_id'] !== $route['origin_mother_hub_id']) {
+            $hubs[] = $route['destination_mother_hub_id'];
+        }
+        $hubs[] = $route['destination_bayan_hub_id'];
+        foreach ($hubs as $index => $id) {
+            $tier = $index === 0 || $index === count($hubs) - 1 ? 'local_bayan_hub' : 'regional_mother_hub';
+            if (! $id || ! LogisticsHub::whereKey($id)->where('logistics_company_id', $parcel->logistics_company_id)->where('tier', $tier)->exists()) {
+                throw new DomainException('The original delivery route needs review before return transport.');
+            }
+        }
+        $this->assertOutboundEvidence($parcel, $hubs, $route, $beforeCheckpointId);
+
+        return ['forward_route' => $route, 'hub_ids' => array_reverse($hubs)];
+    }
+
     private function assertOutboundEvidence(Delivery $parcel, array $hubs, array $route, int $beforeId): void
     {
         $lastId = 0;

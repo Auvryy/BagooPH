@@ -31,7 +31,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class NotificationCenterService
 {
-    public const TYPES = ['sale-reminder', 'order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event', 'settlement-event'];
+    public const TYPES = ['sale-reminder', 'order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event', 'settlement-event', 'buyer-return'];
 
     public function current(User $actor): User
     {
@@ -140,6 +140,16 @@ class NotificationCenterService
     private function href(DatabaseNotification $notice, User $user): ?string
     {
         $data = $notice->data;
+        if ($notice->type === 'buyer-return') {
+            $case = \App\Models\BuyerReturnCase::find((int) ($data['return_id'] ?? 0));
+            if ($case && (($user->isBuyer() && $case->buyer_id === $user->id && app(BuyerAccessService::class)->canViewOrderHistory($user))
+                || ($user->isSeller() && $user->isKycApproved() && $case->seller_id === $user->id)
+                || ($user->isAdmin() && $user->canAccessPortal() && $user->email_verified_at))) {
+                return '/buyer-returns/'.$case->id;
+            }
+
+            return null;
+        }
         $target = $data['target'] ?? match ($notice->type) {
             'hub-pickup' => 'buyer-order',
             'parcel-return' => $user->isBuyer() ? 'buyer-order' : 'seller-orders',

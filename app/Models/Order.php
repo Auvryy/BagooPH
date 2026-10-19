@@ -154,6 +154,11 @@ class Order extends Model
         return $this->hasOne(SellerSettlement::class);
     }
 
+    public function buyerReturns(): HasMany
+    {
+        return $this->hasMany(BuyerReturnCase::class);
+    }
+
     public function codAccount(): HasOne
     {
         return $this->hasOne(CodAccount::class);

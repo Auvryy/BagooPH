@@ -79,6 +79,9 @@ class SellerSettlementService
         $basis['net_seller_cents'] = $promotions['promotion_blockers'] ? null : $basis['seller_cents'] - $promotions['seller_promotion_cents'];
         $basis['net_commission_cents'] = $promotions['promotion_blockers'] ? null : $basis['commission_cents'] - $promotions['platform_promotion_cents'];
         $blockers = [];
+        if ($order->buyerReturns()->whereNotIn('status', \App\Models\BuyerReturnCase::TERMINAL)->exists()) {
+            $blockers[] = 'A buyer return is unresolved. Review its decision, custody and repayment before releasing seller proceeds.';
+        }
         array_push($blockers, ...$promotions['promotion_blockers']);
         if ($basis['net_seller_cents'] !== null && $basis['net_seller_cents'] < 0) {
             $blockers[] = 'Promotional costs cannot produce a negative seller payout.';

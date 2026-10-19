@@ -31,6 +31,7 @@ use App\Http\Controllers\Buyer\SavedProductController;
 use App\Http\Controllers\Buyer\ShopFollowController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\BuyerReturnController;
 use App\Http\Controllers\CodCashController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\Courier\RiderCompanyRequestController;
@@ -490,6 +491,15 @@ Route::get('/about', [MarketplaceController::class, 'index'])->name('about');
 |--------------------------------------------------------------------------
 */
 Route::get('/track/{tracking_number?}', [PublicTrackingController::class, 'show'])->middleware('throttle:public-tracking')->name('track.show');
+
+Route::middleware('auth')->prefix('buyer-returns')->name('buyer-returns.')->group(function () {
+    Route::get('/', [BuyerReturnController::class, 'index'])->name('index');
+    Route::get('/orders/{order}/create', [BuyerReturnController::class, 'create'])->where('order', '[1-9][0-9]{0,17}')->name('create');
+    Route::post('/orders/{order}', [BuyerReturnController::class, 'store'])->where('order', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('store');
+    Route::get('/{case}', [BuyerReturnController::class, 'show'])->where('case', '[1-9][0-9]{0,17}')->name('show');
+    Route::post('/{case}/actions', [BuyerReturnController::class, 'action'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('action');
+    Route::get('/{case}/evidence/{evidence}', [BuyerReturnController::class, 'evidence'])->where(['case' => '[1-9][0-9]{0,17}', 'evidence' => '[1-9][0-9]{0,17}'])->name('evidence');
+});
 
 /*
 |--------------------------------------------------------------------------

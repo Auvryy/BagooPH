@@ -165,6 +165,12 @@ class AccountClosureService
         if ($subject->closed_at !== null) {
             $add('already_closed', 'This account is already closed and retained.', 'Review the recorded closure; reopening is not available.');
         }
+        $returns = \App\Models\BuyerReturnCase::where(fn ($query) => $query->where('buyer_id', $subject->id)->orWhere('seller_id', $subject->id))
+            ->whereNotIn('status', \App\Models\BuyerReturnCase::TERMINAL)->pluck('id')->all();
+        if ($returns) {
+            $add('buyer_return', 'This account has an unresolved product return.',
+                'Finish its review, physical return and any repayment responsibilities before closing the account.', $returns);
+        }
         $terminal = [...OrderStatus::completedCommerceStatuses(), ...OrderStatus::unrealizedCommerceStatuses()];
         foreach ($work as $order) {
             if (! in_array($order['status'], $terminal, true)) {
