@@ -145,12 +145,21 @@ A stored tracking number is not substituted for submitted scan evidence.
 
 Delivery adds `proof_image_file`, `recipient_name` (2–255 characters),
 `recipient_relationship` (`buyer`, `household`, `authorized_recipient`),
-`cash_received`, `change_given` and `cash_confirmed`. Use multipart/form-data and
+and, for COD, `cash_received`, `change_given` and `cash_confirmed`. Use multipart/form-data and
 let the HTTP library create its boundary. Peso inputs are strings, at most nine
 whole digits and two decimal places; the shared COD service validates the exact
 received-minus-change amount. Multipart confirmation may use `1`; JSON uses true.
-New delivery is currently COD-only; other payment methods have a false deliver
-hint and `UNSUPPORTED_PAYMENT_OUTCOME`. Do not fabricate a non-COD success.
+Evidenced paid Bagoo Wallet orders also permit delivery through the same custody
+and private proof checks. For `payment.method: wallet`, `cod_due_cents` is null;
+omit the cash fields, or send zero strings and false. A positive cash amount or
+cash acknowledgement is rejected. An edited paid label or unpaid wallet order
+does not unlock delivery. Other unsupported payment sources retain the false
+deliver hint and `UNSUPPORTED_PAYMENT_OUTCOME`.
+
+This is an additive backend contract. The Flutter client must read the current
+method and action flags, hide COD controls for a verified wallet task and retain
+the recipient, waybill, proof and original idempotency key. This backend change
+does not update or verify the Flutter interface.
 
 Failure adds `reason`, required `notes`, `location_name` (up to 255 characters),
 and `proof_image_file`. Allowed reasons are `customer_unreachable`,

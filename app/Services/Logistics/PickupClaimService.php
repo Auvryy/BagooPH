@@ -16,6 +16,7 @@ use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Finance\CodCashService;
 use App\Services\Notifications\LifecycleNoticeService;
+use App\Services\Wallet\WalletPaymentService;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -149,11 +150,15 @@ class PickupClaimService
 
                 return ['success' => false, 'delivery' => $parcel, 'message' => 'The claim code could not be verified.'];
             }
-            $due = $this->cents((string) $parcel->order->total_amount);
+            $walletPaid = $parcel->order->payment_method === 'wallet';
+            if ($walletPaid) {
+                app(WalletPaymentService::class)->assertPrepaidHandover($parcel->order, $input);
+            }
+            $due = $walletPaid ? 0 : $this->cents((string) $parcel->order->total_amount);
             $tender = $this->cents($input['cash_received'] ?? '0');
             $change = $this->cents($input['change_given'] ?? '0');
-            if ($parcel->order->payment_method !== 'cod' || $parcel->order->payment_status !== 'pending'
-                || ! ($input['cash_confirmed'] ?? false) || $due <= 0 || $tender - $change !== $due) {
+            if (! $walletPaid && ($parcel->order->payment_method !== 'cod' || $parcel->order->payment_status !== 'pending'
+                || ! ($input['cash_confirmed'] ?? false) || $due <= 0 || $tender - $change !== $due)) {
                 throw new DomainException('Record the actual COD tender and correct change, then confirm cash was received before release.');
             }
             $source = DeliveryCheckpoint::state($parcel);
@@ -168,17 +173,19 @@ class PickupClaimService
             $event = $this->record($claim, $actor, 'collected', $source, DeliveryCheckpoint::state($parcel),
                 ['barcode_scanned' => $barcode, 'recipient_name' => $buyer->name, 'notes' => $input['notes'] ?? null,
                     'request_token' => $input['request_token'], 'request_fingerprint' => $fingerprint]);
-            $cash = CodCustodyEntry::create(['order_id' => $parcel->order_id, 'delivery_id' => $parcel->id, 'logistics_company_id' => $parcel->logistics_company_id,
+            $cash = $walletPaid ? null : CodCustodyEntry::create(['order_id' => $parcel->order_id, 'delivery_id' => $parcel->id, 'logistics_company_id' => $parcel->logistics_company_id,
                 'hub_id' => $hub->id, 'actor_id' => $actor->id, 'holder_user_id' => $actor->id, 'pickup_claim_event_id' => $event->id,
                 'entry_type' => 'counter_collection', 'amount_cents' => $due, 'tender_cents' => $tender, 'change_cents' => $change]);
             DeliveryCheckpoint::record($parcel, 'customer_collected', actor: $actor, hub: $hub, barcodeScanned: $barcode,
-                notes: 'Matching buyer photo ID, one-time claim and exact COD collection confirmed. Evidence: '.$event->reference,
+                notes: ($walletPaid ? 'Matching buyer photo ID, one-time claim and original wallet payment confirmed. Evidence: ' : 'Matching buyer photo ID, one-time claim and exact COD collection confirmed. Evidence: ').$event->reference,
                 evidence: ['source_state' => $source, 'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custody,
                     'custody_after' => ['kind' => 'buyer', 'user_id' => $buyer->id, 'pickup_collection_reference' => $event->reference]]);
-            app(CodCashService::class)->collectCounter($parcel, $actor, $cash, $input['request_token']);
+            if ($cash) {
+                app(CodCashService::class)->collectCounter($parcel, $actor, $cash, $input['request_token']);
+            }
             $this->notices->pickup($claim, 'collected');
 
-            return ['success' => true, 'delivery' => $parcel, 'message' => 'Buyer collection and COD custody recorded.'];
+            return ['success' => true, 'delivery' => $parcel, 'message' => $walletPaid ? 'Buyer collection recorded. The parcel was prepaid with virtual wallet credits.' : 'Buyer collection and COD custody recorded.'];
         });
     }
 
@@ -270,10 +277,12 @@ class PickupClaimService
             && $parcel->checkpoints()->where('checkpoint_type', 'customer_collected')->where('scanned_by_id', $event->actor_id)
                 ->where('hub_id', $claim->hub_id)->where('barcode_scanned', $parcel->tracking_number)
                 ->where('custody_after->pickup_collection_reference', $event->reference)->exists()
-            && CodCustodyEntry::where('pickup_claim_event_id', $event->id)->where('entry_type', 'counter_collection')
-                ->where('delivery_id', $parcel->id)->where('order_id', $parcel->order_id)->where('hub_id', $claim->hub_id)
-                ->where('actor_id', $event->actor_id)->where('holder_user_id', $event->actor_id)
-                ->where('amount_cents', $this->cents((string) $parcel->order->total_amount))->exists();
+            && ($parcel->order->payment_method === 'wallet' ? app(WalletPaymentService::class)->paid($parcel->order)
+                && ! CodCustodyEntry::where('delivery_id', $parcel->id)->exists()
+                : CodCustodyEntry::where('pickup_claim_event_id', $event->id)->where('entry_type', 'counter_collection')
+                    ->where('delivery_id', $parcel->id)->where('order_id', $parcel->order_id)->where('hub_id', $claim->hub_id)
+                    ->where('actor_id', $event->actor_id)->where('holder_user_id', $event->actor_id)
+                    ->where('amount_cents', $this->cents((string) $parcel->order->total_amount))->exists());
     }
 
     private function lock(Delivery $delivery, User $actor): array

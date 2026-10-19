@@ -274,13 +274,19 @@ Every cash movement records amount, order, delivery, collector, remitter, receiv
 
 Financial rules:
 
-- The order total is the exact COD amount presented to the buyer.
+- For COD orders, the order total is the exact cash amount presented to the buyer.
 - The platform commission is 10% of the order product subtotal.
 - The seller share is 90% of the order product subtotal.
 - Shipping and handling are tracked separately and are not included in the 10%/90% product split.
 - Seller payout requires order `COMPLETED` and COD reconciled at platform level.
 - Rider earnings and logistics shipping revenue are separate from seller proceeds.
 - Admin may audit and approve reconciliation but cannot silently rewrite cash history.
+
+The separately selected [Bagoo Wallet](BAGOO_WALLET.md) uses verified original
+prepayment instead of cash collection at either handover. Every parcel, scan,
+recipient, proof and private counter-code requirement still applies. Wallet
+orders create no COD custody or remittance record; their buyer refunds and
+seller virtual proceeds retain separate immutable references.
 
 ## 8. Authorization and Scan Validation
 

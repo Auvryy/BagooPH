@@ -177,6 +177,7 @@ class CourierDeliveryController extends Controller
         $inputs = app(WaybillScanInputService::class);
         $scanInput = $inputs->normalize(['barcode' => $request->input('barcode'), 'notes' => $request->input('courier_notes')]);
         $request->merge(['barcode' => $scanInput['barcode'], 'courier_notes' => $scanInput['notes']]);
+        $cashRequired = $request->input('status') === 'delivered' && $delivery->order?->payment_method === 'cod';
         $validated = $request->validate([
             'status' => ['required', Rule::in([
                 OrderStateMachineService::STATUS_PICKED_UP,
@@ -187,9 +188,9 @@ class CourierDeliveryController extends Controller
             'courier_notes' => $inputs->notesRules(500),
             'recipient_name' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', 'string', new ApplicationText('name', 2, 255)],
             'recipient_relationship' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', Rule::in(['buyer', 'household', 'authorized_recipient'])],
-            'cash_received' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', 'string', 'regex:'.CodMoney::RULE],
-            'change_given' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', 'string', 'regex:'.CodMoney::RULE],
-            'cash_confirmed' => ['accepted_if:status,delivered'],
+            'cash_received' => [Rule::requiredIf($cashRequired), 'nullable', 'string', 'regex:'.CodMoney::RULE],
+            'change_given' => [Rule::requiredIf($cashRequired), 'nullable', 'string', 'regex:'.CodMoney::RULE],
+            'cash_confirmed' => $cashRequired ? ['accepted'] : ['nullable', 'boolean'],
             'request_token' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', 'uuid'],
             ...app(CodCashService::class)->protectedFields(),
             'proof_image_file' => [

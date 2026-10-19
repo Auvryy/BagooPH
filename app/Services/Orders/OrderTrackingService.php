@@ -9,6 +9,7 @@ use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Vouchers\VoucherReceiptService;
+use App\Services\Wallet\WalletPaymentService;
 
 class OrderTrackingService
 {
@@ -282,6 +283,10 @@ class OrderTrackingService
 
             return ['The destination hub must review the failed attempt and record the permitted retry or return.', 'Destination hub'];
         }
+        if (in_array($status, ['placed', 'pending'], true) && $order->payment_method === 'wallet'
+            && ! app(WalletPaymentService::class)->paid($order)) {
+            return ['Open the original Bagoo Wallet payment to review its one-hour deadline. The seller can prepare this order after payment.', 'Buyer'];
+        }
 
         return match ($status) {
             'placed' => ['The seller will review and confirm the order.', 'Seller'],
@@ -294,7 +299,9 @@ class OrderTrackingService
             'sorted' => $parcel?->isSelfPickup() ? $this->counterNext($parcel)
                 : ['The destination hub will assign an eligible delivery rider.', 'Destination hub'],
             'assigned_to_rider' => ['The assigned delivery rider must scan the parcel out of the destination hub.', 'Delivery rider'],
-            'out_for_delivery' => ['Await the assigned rider. Prepare the exact COD amount when payment is due.', 'Delivery rider and buyer'],
+            'out_for_delivery' => [$order->payment_method === 'wallet'
+                ? 'Await the assigned rider. This parcel was paid with Bagoo Wallet; no cash is due.'
+                : 'Await the assigned rider. Prepare the exact COD amount when payment is due.', 'Delivery rider and buyer'],
             default => ['Refresh tracking or contact support for a review of the recorded state.', 'Bagoo support'],
         };
     }
@@ -318,7 +325,9 @@ class OrderTrackingService
             return ['The recorded staging and collection readiness need hub review before collection.', 'Destination hub'];
         }
 
-        return ['Collect at the destination hub before the deadline with the private claim code, photo ID and exact COD payment.', 'Buyer and counter handler'];
+        return [$parcel->order->payment_method === 'wallet'
+            ? 'Collect at the destination hub before the deadline with the private claim code and photo ID. This wallet parcel requires no cash.'
+            : 'Collect at the destination hub before the deadline with the private claim code, photo ID and exact COD payment.', 'Buyer and counter handler'];
     }
 
     private function failure(?Delivery $parcel): ?array

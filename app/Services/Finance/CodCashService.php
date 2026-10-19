@@ -20,6 +20,7 @@ use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Logistics\WaybillScanInputService;
 use App\Services\Notifications\CodNoticeService;
+use App\Services\Wallet\WalletPaymentService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -75,26 +76,30 @@ class CodCashService
 
     public function riderInput(Delivery $parcel, User $actor, array $metadata): array
     {
+        $cod = $parcel->order->payment_method === 'cod';
         $input = app(WaybillScanInputService::class)->normalize($metadata);
         $input = Validator::make($input, [
             'barcode' => app(WaybillScanInputService::class)->barcodeRules(),
             'recipient_name' => ['required', 'string', new ApplicationText('name', 2, 255)],
             'recipient_relationship' => ['required', Rule::in(['buyer', 'household', 'authorized_recipient'])],
-            'cash_received' => ['required', 'string', 'regex:'.CodMoney::RULE],
-            'change_given' => ['required', 'string', 'regex:'.CodMoney::RULE],
-            'cash_confirmed' => ['required', 'accepted'], 'request_token' => ['required', 'uuid'],
+            'cash_received' => [$cod ? 'required' : 'nullable', 'string', 'regex:'.CodMoney::RULE],
+            'change_given' => [$cod ? 'required' : 'nullable', 'string', 'regex:'.CodMoney::RULE],
+            'cash_confirmed' => $cod ? ['required', 'accepted'] : ['nullable', 'boolean'], 'request_token' => ['required', 'uuid'],
             'notes' => app(WaybillScanInputService::class)->notesRules(500),
             ...$this->protectedFields(),
         ])->validate();
         $input['barcode'] = app(WaybillScanInputService::class)->matchedBarcode($input['barcode'], $parcel);
         $input['recipient_name'] = trim($input['recipient_name']);
         $input['notes'] ??= null;
-        $input['cash_confirmed'] = true;
-        $input['cash_received'] = CodMoney::cents($input['cash_received']);
-        $input['change_given'] = CodMoney::cents($input['change_given']);
+        if (! $cod) {
+            app(WalletPaymentService::class)->assertPrepaidHandover($parcel->order, $input);
+        }
+        $input['cash_confirmed'] = $cod;
+        $input['cash_received'] = CodMoney::cents($input['cash_received'] ?? '0');
+        $input['change_given'] = CodMoney::cents($input['change_given'] ?? '0');
         if (! $actor->isCourier() || $actor->id !== $parcel->assigned_rider_id || ! $actor->canAccessPortal()
-            || $parcel->delivery_type !== 'doorstep' || $parcel->order->payment_method !== 'cod'
-            || CodMoney::cents($parcel->order->total_amount) !== $input['cash_received'] - $input['change_given']) {
+            || $parcel->delivery_type !== 'doorstep'
+            || ($cod && CodMoney::cents($parcel->order->total_amount) !== $input['cash_received'] - $input['change_given'])) {
             throw new DomainException('The assigned delivery rider must collect the exact saved COD amount and return correct change.');
         }
 

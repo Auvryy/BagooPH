@@ -383,7 +383,7 @@ trait InteractsWithOrderActions
         $this->assertSame('delivered', $delivery->status);
         $this->assertTrue(Storage::disk('local')->exists($delivery->proof_image));
         $this->assertSame('delivered', $order->fresh()->status);
-        $this->assertSame('pending', $order->fresh()->payment_status);
+        $this->assertSame($order->payment_method === 'wallet' ? 'paid' : 'pending', $order->fresh()->payment_status);
 
         return $delivery;
     }

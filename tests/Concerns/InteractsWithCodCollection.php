@@ -13,8 +13,8 @@ trait InteractsWithCodCollection
     {
         $this->codCollectionRequests[$delivery->id] ??= [
             'barcode' => $delivery->tracking_number, 'recipient_name' => $delivery->order->recipient_name ?? $delivery->order->buyer->name,
-            'recipient_relationship' => 'buyer', 'cash_received' => (string) $delivery->order->total_amount,
-            'change_given' => '0.00', 'cash_confirmed' => true, 'request_token' => (string) Str::uuid(),
+            'recipient_relationship' => 'buyer', 'cash_received' => $delivery->order->payment_method === 'wallet' ? '0.00' : (string) $delivery->order->total_amount,
+            'change_given' => '0.00', 'cash_confirmed' => $delivery->order->payment_method !== 'wallet', 'request_token' => (string) Str::uuid(),
         ];
 
         return array_replace($this->codCollectionRequests[$delivery->id], $overrides);
