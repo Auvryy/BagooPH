@@ -6673,3 +6673,18 @@ Scoped COD return-repayment assessment: **0/10 to 8/10**. The application now ha
 an evidenced manual path from original amount to actual backing and buyer receipt.
 It does not initiate bank transfers or implement online checkout payments. Apply
 the additive return migrations before using the feature; retain original data.
+
+### Buyer interaction acceptance preparation: October 19, 2026
+
+BP03 has a prepared isolated HTTP fixture and a
+[method-by-method evidence record](buyer-polishing-plan/INTERACTION_EVIDENCE.md).
+The selected **26 Docker backend tests / 271 assertions** passed with SQLite
+`:memory:`. Separate actual HTTP cookie sessions verified same-buyer Bag
+persistence, foreign isolation/removal denial, owned removal persistence and a
+pre-delivery return-form rejection in a host PHP 8.5.11 in-memory fixture.
+
+No browser, console, loaded-image sequence, disabled-control observation or
+visible failed-removal retry was executed. All six selected browser procedures
+remain Not Run while explicit authorization/user execution is pending; the task
+and acceptance gate remain open. The temporary fixture server was stopped. This
+preparation changes no application behavior or implementation-readiness rating.
