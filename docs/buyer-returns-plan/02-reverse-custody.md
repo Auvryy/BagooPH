@@ -33,6 +33,13 @@ rider account role, employment flow or Flutter change is unnecessary for it.
 Drivers remain the existing eligible fleet couriers, with their ordinary busy
 and assignment checks.
 
+Each buyer-return parcel keeps one retained manifest per exact route leg. It
+uses the shared transport header, fleet and driver authority with a separate
+immutable return-route link and return membership; it does not masquerade as a
+new outbound `Delivery`. The measured intake weight must fit the actual vehicle.
+The ordinary scan workstation can identify its barcode and link to the case,
+but that lookup does not substitute for intake or manifest receipt.
+
 ## Source and capacity integrity
 
 Keep a separate return barcode and item/unit list. An original forward waybill

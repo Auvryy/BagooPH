@@ -4,14 +4,16 @@ import { ArrowLeft, FileImage, RefreshCw } from 'lucide-react';
 import ReturnLayout from '@/Components/Returns/ReturnLayout';
 import ReturnStatus, { returnDate, returnLabels } from '@/Components/Returns/ReturnStatus';
 import useRequestError from '@/hooks/useCourierRequestError';
+import ReturnCustodyPanel, { ReturnCustody } from '@/Components/Returns/ReturnCustodyPanel';
 
 interface ReturnCase {
     id: number; reference: string; status: string; version: number; reason: string; description: string;
     order: { id: number; order_number: string }; actions: string[]; request_until: string;
     response_until: string; appeal_until: string | null; dropoff_until: string | null;
     items: Array<{ id: number; quantity: number; purchase: { name: string; color: string | null; size: string | null; unit_price: string } }>;
-    evidence: Array<{ id: number; url: string; mime: string; bytes: number }>;
+    evidence: Array<{ id: number; url: string; mime: string; bytes: number; purpose?: string }>;
     history: Array<{ reference: string; event_type: string; actor_role: string; reason: string; target_status: string; created_at: string }>;
+    custody?: ReturnCustody | null;
 }
 const actionNames: Record<string, string> = { approve: 'Approve return', reject: 'Reject return', escalate: 'Ask admin to review', withdraw: 'Withdraw request', 'close-period': 'Close expired period' };
 const reasons: Record<string, string> = { damaged: 'Item damaged', wrong_item: 'Wrong item', missing_parts: 'Missing parts', not_as_described: 'Not as described' };
@@ -42,8 +44,9 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
             {failure && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800">{failure}</p>}
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
                 <div className="space-y-6">
+                    {item.custody && <ReturnCustodyPanel custody={item.custody} caseId={item.id} version={item.version} />}
                     <section className="rounded-2xl border border-slate-300 bg-white p-5 sm:p-6"><h2 className="text-lg font-bold text-slate-900">Purchased items</h2><ul className="mt-4 divide-y divide-slate-200">{item.items.map(line => <li key={line.id} className="py-3 first:pt-0"><p className="break-words text-sm font-bold text-slate-900">{line.purchase.name}</p><p className="mt-1 text-xs text-slate-600">{[line.purchase.color, line.purchase.size].filter(Boolean).join(' · ')} · Returning {line.quantity}</p></li>)}</ul><div className="mt-5 border-t border-slate-300 pt-4"><h3 className="font-semibold text-slate-900">{reasons[item.reason] ?? 'Item problem'}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">{item.description}</p></div></section>
-                    <section className="rounded-2xl border border-slate-300 bg-white p-5 sm:p-6"><h2 className="text-lg font-bold text-slate-900">Private photos</h2><p className="mt-2 text-xs leading-5 text-slate-500">Available to the involved owners and authorized reviewers.</p><ul className="mt-4 flex flex-wrap gap-3">{item.evidence.map((photo, index) => <li key={photo.id}><a href={photo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-semibold text-[#C20836] hover:bg-rose-50"><FileImage className="h-4 w-4" />Photo {index + 1}<span className="text-xs font-normal text-slate-500">{(photo.bytes / 1048576).toFixed(2)} MB</span></a></li>)}</ul></section>
+                    <section className="rounded-2xl border border-slate-300 bg-white p-5 sm:p-6"><h2 className="text-lg font-bold text-slate-900">Private photos</h2><p className="mt-2 text-xs leading-5 text-slate-500">Available to the involved owners and authorized reviewers.</p><ul className="mt-4 flex flex-wrap gap-3">{item.evidence.map((photo, index) => <li key={photo.id}><a href={photo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-semibold text-[#C20836] hover:bg-rose-50"><FileImage className="h-4 w-4" />{photo.purpose === 'intake' ? 'Hub intake' : photo.purpose === 'seller-receive' ? 'Seller receipt' : 'Request photo'} {index + 1}<span className="text-xs font-normal text-slate-500">{(photo.bytes / 1048576).toFixed(2)} MB</span></a></li>)}</ul></section>
                     <section className="rounded-2xl border border-slate-300 bg-white p-5 sm:p-6"><h2 className="text-lg font-bold text-slate-900">Decisions and updates</h2><ol className="mt-5 ml-2 border-l border-slate-300 pl-6">{item.history.map(event => <li key={event.reference} className="relative pb-6 last:pb-0"><span className="absolute -left-[29px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#E00D42] ring-1 ring-slate-300" aria-hidden="true" /><div className="flex flex-wrap justify-between gap-2"><h3 className="text-sm font-bold text-slate-900">{returnLabels[event.target_status] ?? 'Return update'}</h3><p className="text-xs text-slate-500">{returnDate(event.created_at)}</p></div><p className="mt-1 text-xs capitalize text-slate-500">{event.actor_role}</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">{event.reason}</p></li>)}</ol></section>
                 </div>
                 <aside className="space-y-5">

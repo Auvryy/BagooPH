@@ -1,7 +1,7 @@
 export const returnLabels: Record<string, string> = {
     requested: 'Seller review', rejected: 'Seller rejected', escalated: 'Admin review', approved: 'Ready to return',
     withdrawn: 'Withdrawn', expired: 'Drop-off expired', denied: 'Return declined',
-    at_destination_hub: 'Return accepted', in_transit: 'Travelling to seller', at_origin_hub: 'At seller’s hub',
+    at_destination_hub: 'Return accepted', in_transit: 'Returning to seller', at_origin_hub: 'At seller’s hub',
     ready_for_seller: 'Ready for seller', seller_received: 'Seller received', condition_review: 'Condition review',
     repayment_ready: 'Repayment review', payment_recorded: 'Awaiting your receipt', repayment_disputed: 'Payment under review', repaid: 'Repaid',
 };

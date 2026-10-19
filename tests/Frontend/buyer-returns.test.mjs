@@ -11,13 +11,13 @@ import { createInertiaApp } from '@inertiajs/react';
 const root = resolve(import.meta.dirname, '../..');
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-buyer-returns-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.returnHarness; delete globalThis.route; });
-const result = await build({ stdin: { contents: `export { default as Create } from '@/Pages/Returns/Create'; export { default as Show } from '@/Pages/Returns/Show'; export { default as Index } from '@/Pages/Returns/Index';`, resolveDir: root, loader: 'tsx' },
+const result = await build({ stdin: { contents: `export { default as Create } from '@/Pages/Returns/Create'; export { default as Show } from '@/Pages/Returns/Show'; export { default as Index } from '@/Pages/Returns/Index'; export { default as Custody } from '@/Components/Returns/ReturnCustodyPanel'; export { default as Manifests } from '@/Pages/Hub/Manifests';`, resolveDir: root, loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false, loader: { '.css': 'empty' }, plugins: [{ name: 'return-controls', setup(builder) {
-        builder.onResolve({ filter: /^@inertiajs\/react$/ }, args => /Pages\/Returns\/(Create|Show)\.tsx$/.test(args.importer) ? { path: 'inertia', namespace: 'return-probe' } : undefined);
+        builder.onResolve({ filter: /^@inertiajs\/react$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/ReturnCustodyPanel|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'inertia', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^inertia$/, namespace: 'return-probe' }, () => ({ contents: `export * from '@inertiajs/react'; import { useForm as real } from '@inertiajs/react'; export const useForm = initial => globalThis.returnHarness ? globalThis.returnHarness.useForm(initial) : real(initial);`, resolveDir: root }));
-        builder.onResolve({ filter: /^react$/ }, args => /Pages\/Returns\/(Create|Show)\.tsx$/.test(args.importer) ? { path: 'react', namespace: 'return-probe' } : undefined);
+        builder.onResolve({ filter: /^react$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/ReturnCustodyPanel|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'react', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^react$/, namespace: 'return-probe' }, () => ({ contents: `export * from 'react'; import React from 'react'; export const useRef = initial => globalThis.returnHarness ? globalThis.returnHarness.ref(initial) : React.useRef(initial);`, resolveDir: root }));
-        builder.onResolve({ filter: /^react\/jsx-runtime$/ }, args => /Pages\/Returns\/(Create|Show)\.tsx$/.test(args.importer) ? { path: 'jsx', namespace: 'return-probe' } : undefined);
+        builder.onResolve({ filter: /^react\/jsx-runtime$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/ReturnCustodyPanel|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'jsx', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^jsx$/, namespace: 'return-probe' }, () => ({ contents: `import { jsx as real, jsxs as many, Fragment } from 'react/jsx-runtime'; export { Fragment }; const track = (fn,type,props,key) => { if(globalThis.returnHarness && (props.onSubmit || props.onChange || props.onClick)) globalThis.returnHarness.handlers.push({type,props}); return fn(type,props,key); }; export const jsx=(...args)=>track(real,...args);export const jsxs=(...args)=>track(many,...args);`, resolveDir: root }));
     } }] });
 const path = join(temporary, 'returns.mjs'); writeFileSync(path, result.outputFiles[0].text); const ui = await import(pathToFileURL(path).href);
@@ -99,4 +99,63 @@ test('empty return queues center their explanation and never fabricate a claim o
     const html = await render(ui.Index, { cases: { data: [], current_page: 1, last_page: 1 } });
     assert.match(html, /min-h-72 flex-col items-center justify-center/); assert.match(html, /No return requests/);
     assert.doesNotMatch(html, /BR-OWNED|Repaid|Sample return/);
+});
+
+const custody = { barcode: 'BRT-ABCDEFGHIJKLMNOPQRST', status: 'awaiting_dropoff', position: 0, weight_grams: null,
+    custody: { kind: 'buyer' }, can_dropoff: true, current_hub_name: null, manifest_reference: null, manifest_url: null,
+    hubs: [{ id: 3, name: 'Destination Bayan Hub', code: 'BH-DEST', address: '100 Destination Road', operating_hours: '09:00–17:00' },
+        { id: 2, name: 'Mother Hub', code: 'MH', address: '100 Mother Road' }, { id: 1, name: 'Origin Bayan Hub', code: 'BH-ORIGIN', address: '100 Origin Road' }],
+    actions: [{ action: 'intake', hub_id: 3, label: 'Accept physical return' }] };
+
+test('return custody shows its own code, actual ordered hubs, intake weight and protected handover photo limits', async () => {
+    const html = await render(ui.Custody, { custody, caseId: 11, version: 2 });
+    assert.match(html, /BRT-ABCDEFGHIJKLMNOPQRST/); assert.match(html, /original delivery waybill cannot record this return/);
+    assert.ok(html.indexOf('Destination Bayan Hub') < html.indexOf('Mother Hub')); assert.ok(html.indexOf('Mother Hub') < html.indexOf('Origin Bayan Hub'));
+    assert.match(html, /Actual return custody/); assert.match(html, /Bring the approved items/);
+    assert.doesNotMatch(html, /Current holder|Refund paid|payment received/);
+    const expired = await render(ui.Custody, { custody: { ...custody, can_dropoff: false, actions: [] }, caseId: 11, version: 3 });
+    assert.match(expired, /No current drop-off authority/); assert.doesNotMatch(expired, /Bring the approved items|<form/);
+});
+
+test('actual handover validates its separate code and photo, submits the scoped hub and keeps a retry token', async () => {
+    const h = globalThis.returnHarness = new Harness();
+    try {
+        await render(ui.Custody, { custody, caseId: 11, version: 2 });
+        h.control(node => node.type === 'select').onChange({ target: { value: 'intake' } });
+        await render(ui.Custody, { custody, caseId: 11, version: 2 });
+        h.form.data.barcode = 'BGO-ORIGINAL'; h.submit(); assert.equal(h.posts.length, 0); assert.match(h.form.errors.barcode, /separate return barcode/);
+        h.form.data.barcode = custody.barcode; h.form.data.weight_kg = '2.500'; h.form.data.condition = 'intact'; h.form.data.reason = 'The actual parcel and its selected units were checked at intake.';
+        h.submit(); assert.match(h.form.errors.photo, /up to 5 MB/); assert.equal(h.posts.length, 0);
+        h.form.data.photo = { type: 'image/png', size: 500, name: 'intake.png' };
+        let transform;
+        h.form.transform = fn => { transform = fn; };
+        const originalPost = h.form.post;
+        h.form.post = (url, options) => { const actual = transform(h.form.data); originalPost(url, options); h.posts.at(-1).data = structuredClone(actual); };
+        h.submit(); h.submit(); assert.equal(h.posts.length, 1); assert.equal(h.posts[0].url, '/buyer-returns/11/custody');
+        assert.equal(h.posts[0].data.hub_id, 3); assert.equal(h.posts[0].data.expected_version, 2); assert.equal(h.posts[0].data.weight_kg, '2.500');
+        assert.equal(h.posts[0].options.forceFormData, true);
+        h.form.processing = false; h.posts[0].options.onFinish(); h.form.errors = { custody: 'The handover could not be confirmed. Reload its history.' };
+        const html = await render(ui.Custody, { custody, caseId: 11, version: 2 }); assert.match(html, /hand-over|handover could not be confirmed/);
+        h.submit(); assert.equal(h.posts[1].data.request_token, h.posts[0].data.request_token);
+    } finally { delete globalThis.returnHarness; }
+});
+
+test('manifest preparation selects an actual accepted buyer return and retains only its prescribed next leg', async () => {
+    const h = globalThis.returnHarness = new Harness();
+    const data = { manifests: { data: [], links: [] }, selectedManifest: null, canCreate: true, creationToken: 'creation-token', commandToken: 'command-token', basePath: '/hub/manifests',
+        hubs: [{ id: 3, name: 'Destination Bayan Hub', code: 'BH-DEST', tier: 'local_bayan_hub' }, { id: 2, name: 'Mother Hub', code: 'MH', tier: 'regional_mother_hub' }],
+        vehicles: [{ id: 5, hub_id: 3, plate_number: 'RET-TEST', vehicle_type: 'l300_van', driver_name: 'Assigned Driver' }],
+        buyerReturns: [{ id: 11, reference: 'BR-OWNED', barcode: custody.barcode, source_hub_id: 3, destination_hub_id: 2, weight_grams: 2500 }] };
+    try {
+        await render(ui.Manifests, data, 'logistics');
+        h.control(node => node.type === 'select' && node.props.value === 'outbound').onChange({ target: { value: 'buyer_return' } });
+        let html = await render(ui.Manifests, data, 'logistics'); assert.match(html, /Accepted buyer return/); assert.match(html, /BR-OWNED/);
+        h.control(node => node.type === 'select' && String(node.props.children?.[0]?.props?.children).includes('Choose an actual received return')).onChange({ target: { value: '11' } });
+        html = await render(ui.Manifests, data, 'logistics');
+        assert.equal(h.form.data.source_hub_id, '3'); assert.equal(h.form.data.destination_hub_id, '2'); assert.equal(h.form.data.buyer_return_case_id, '11');
+        assert.equal(h.handlers.filter(node => node.type === 'select' && node.props.disabled === true).length, 2);
+        h.form.data.vehicle_id = '5'; h.submit();
+        assert.equal(h.posts[0].url, '/hub/manifests'); assert.equal(h.posts[0].data.direction, 'buyer_return');
+        assert.equal(h.posts[0].data.buyer_return_case_id, '11'); assert.equal(h.posts[0].data.creation_token, 'creation-token');
+    } finally { delete globalThis.returnHarness; }
 });

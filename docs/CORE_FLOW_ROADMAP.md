@@ -6588,3 +6588,38 @@ Scoped request/review assessment: **2/10 to 8/10**. Buyers now have backed reque
 and exact seller/admin feedback; overall return/repayment readiness is not raised
 until actual custody and financial acceptance pass. The additive return-record
 migration is required before these routes are used; no database reset is needed.
+
+### Buyer-return reverse custody: October 19, 2026
+
+R02 gives an approved case its own return label and parcel, separate from the
+original successful delivery. The destination Bayan Hub records actual intake,
+measured weight, condition and private evidence. Return manifests traverse the
+original Mother Hub route in reverse; repeated endpoint hubs retain their actual
+route positions. Assigned handlers and current fleet, driver and capacity checks
+govern each departure and receipt. The origin hub stages the parcel for the
+original seller's evidenced collection and acceptance or condition dispute.
+
+The scan workstation identifies a return label and opens its case without
+inventing a delivery confirmation. Missing arrivals and unexpected codes retain
+their observations and current custody until actual receipt and authorized
+resolution. Versioned retries, failures and private-file cleanup preserve both
+manifest and case history. Original order status, delivery checkpoints, stock,
+COD and paid seller records remain unchanged. The immutable delivery checkpoint
+sets the seven-day request clock even when receipt creation crosses a second.
+
+A separate immutable return-route link leaves the existing manifest table and
+its database guards intact. Migration checks preserve populated old manifests,
+members, events and checkpoints. Existing cash/receipt responsibilities also
+prevent account closure while return custody remains unresolved.
+
+Verification: **172 backend tests / 9,804 assertions**, **32 frontend checks** and
+the TypeScript/Vite production build passed. Backend tests used isolated SQLite
+`:memory:` sequentially, covering complete one/two-Mother-Hub routes, repeated
+endpoints, exact deadlines, authority, capacity, discrepancies, rollback and
+existing manifest/failed-return/closure regression. No browser, production data,
+publication or deployment is included. R03 repayment remains open.
+
+Scoped post-delivery return-custody assessment: **0/10 to 8/10**. The system now
+records actual reverse handovers instead of stopping at approval; this does not
+raise financial repayment readiness. Apply the additive return migrations before
+using these routes; a database reset is unnecessary.

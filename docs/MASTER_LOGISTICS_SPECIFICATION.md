@@ -145,6 +145,7 @@ Every physical movement must correspond to an authenticated digital scan. Custod
 ### Exception & Delivery Failure Protocols
 - **Delivery Failure:** If a customer is unreachable, the rider logs the failure reason (e.g., `Customer Unreachable - Attempt 1`). The parcel returns to the Bayan Hub in `DELIVERY_FAILED` status.
 - **Re-attempt & Return-to-Sender (RTS):** The system permits up to two re-delivery attempts (3 total). If the third attempt fails, the delivery transitions internally to `return_to_sender` and routes backward through the Mother-Hub network. The customer-facing order becomes `RETURNED` only after seller receipt.
+- **Post-delivery buyer return:** The selected [return contract](buyer-returns-plan/README.md) uses a separate return parcel and barcode. Record destination Bayan Hub intake, actual reverse Mother Hub manifests and origin staging/seller receipt while retaining the successful original delivery. Approval, custody and manual COD repayment require separate evidence.
 
 ---
 

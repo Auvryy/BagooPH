@@ -197,6 +197,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     current: component === 'Hub/Network' || route().current('hub.network') || url.startsWith('/hub/network') 
                 },
                 { name: 'Manifests', href: route('hub.manifests.index'), icon: Truck, current: component === 'Hub/Manifests' },
+                { name: 'Buyer returns', href: '/buyer-returns', icon: Package, current: component.startsWith('Returns/') },
                 { name: 'Parcel recovery', href: route('hub.parcel-recovery.index'), icon: AlertTriangle, current: component === 'Hub/ParcelRecovery' },
                 { name: 'Handover issues', href: '/handover-issues', icon: AlertTriangle, current: component.startsWith('Handover/') },
                 { 

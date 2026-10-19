@@ -58,6 +58,16 @@ export async function requestWaybill<T>(path: string, body: Record<string, unkno
             : fieldError ?? data?.error ?? data?.message ?? 'The waybill could not be checked. Try again.';
         throw new WaybillRequestError(String(message), response.status);
     }
+    if (data.return_case) {
+        const item = data.return_case;
+        if (data.confirmed !== false || typeof item.reference !== 'string' || item.reference.length > 40
+            || typeof item.barcode !== 'string' || !/^BRT-[A-Z0-9]{20}$/.test(item.barcode)
+            || typeof item.href !== 'string' || !/^\/buyer-returns\/[1-9][0-9]{0,17}$/.test(item.href)
+            || typeof item.status !== 'string' || item.status.length > 40) {
+            throw new WaybillRequestError('The return details were incomplete. Reload the return queue before continuing.');
+        }
+        return data as T;
+    }
     if (!data.delivery?.guidance || !data.prompt || typeof data.delivery.tracking_number !== 'string') {
         throw new WaybillRequestError('The parcel details were incomplete. Scan the waybill again.');
     }
