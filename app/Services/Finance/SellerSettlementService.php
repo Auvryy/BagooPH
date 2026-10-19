@@ -2,6 +2,8 @@
 
 namespace App\Services\Finance;
 
+use App\Models\BuyerReturnAdjustment;
+use App\Models\BuyerReturnCase;
 use App\Models\CodAccount;
 use App\Models\CommissionLedger;
 use App\Models\Delivery;
@@ -14,6 +16,7 @@ use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Services\AccountRestrictionService;
 use App\Services\Notifications\NotificationDeliveryService;
+use App\Services\Returns\BuyerReturnAmounts;
 use App\Services\ShopEligibilityService;
 use App\Services\Vouchers\VoucherFundingService;
 use DomainException;
@@ -78,8 +81,9 @@ class SellerSettlementService
         $basis += array_diff_key($promotions, ['promotion_blockers' => true]);
         $basis['net_seller_cents'] = $promotions['promotion_blockers'] ? null : $basis['seller_cents'] - $promotions['seller_promotion_cents'];
         $basis['net_commission_cents'] = $promotions['promotion_blockers'] ? null : $basis['commission_cents'] - $promotions['platform_promotion_cents'];
+        $basis += app(BuyerReturnAmounts::class)->sellerBasis($order, $basis['net_seller_cents'] ?? 0);
         $blockers = [];
-        if ($order->buyerReturns()->whereNotIn('status', \App\Models\BuyerReturnCase::TERMINAL)->exists()) {
+        if ($order->buyerReturns()->whereNotIn('status', BuyerReturnCase::TERMINAL)->exists()) {
             $blockers[] = 'A buyer return is unresolved. Review its decision, custody and repayment before releasing seller proceeds.';
         }
         array_push($blockers, ...$promotions['promotion_blockers']);
@@ -133,20 +137,46 @@ class SellerSettlementService
     public function verifiedPayment(?SellerSettlement $record): ?SellerSettlementEvent
     {
         return $record?->events()->where('event_type', 'payment_recorded')->where('actor_role', 'admin')
-            ->where('amount_cents', $record->net_seller_cents ?? $record->seller_cents)->whereNotNull('payment_reference')
-            ->whereNotNull('proof_path')->whereNotNull('proof_hash')->first();
+            ->whereNotNull('payment_reference')->whereNotNull('proof_path')->whereNotNull('proof_hash')->get()
+            ->first(fn ($event) => $event->amount_cents > 0 && $event->amount_cents === $this->paymentBasis($record, $event));
+    }
+
+    private function paymentBasis(SellerSettlement $record, SellerSettlementEvent $event): int
+    {
+        $ids = $event->context['return_adjustment_ids'] ?? [];
+        $adjustments = BuyerReturnAdjustment::where('order_id', $record->order_id)->whereIn('id', $ids)->get();
+        if ($adjustments->count() !== count($ids)) {
+            return -1;
+        }
+
+        return ($record->net_seller_cents ?? $record->seller_cents) - $adjustments->sum('seller_cents');
+    }
+
+    public function verifiedClosure(?SellerSettlement $record): ?SellerSettlementEvent
+    {
+        return $record?->events()->where('event_type', 'proceeds_closed')->where('actor_role', 'admin')->where('amount_cents', 0)->get()
+            ->first(fn ($event) => $this->paymentBasis($record, $event) === 0);
+    }
+
+    private function authorizationMatches(?SellerSettlement $record, array $basis): bool
+    {
+        $last = $record?->events()->whereIn('event_type', ['release_authorized', 'release_reauthorized'])->latest('sequence')->first();
+
+        return $last && $last->amount_cents === $basis['payable_seller_cents']
+            && ($last->context['return_adjustment_ids'] ?? []) === $basis['return_adjustment_ids'];
     }
 
     public function present(Order $order, bool $history = false): array
     {
         $record = $order->sellerSettlement;
         $payment = $this->verifiedPayment($record);
-        $eligibility = $payment ? ['blockers' => [], 'buyer_checkpoint_id' => $record->buyer_checkpoint_id]
+        $closure = $this->verifiedClosure($record);
+        $eligibility = $payment || $closure ? ['blockers' => [], 'buyer_checkpoint_id' => $record->buyer_checkpoint_id]
             : $this->eligibility($order);
         $moneyFields = ['product_cents', 'commission_cents', 'seller_cents', 'shipping_cents', 'discount_cents',
             'seller_promotion_cents', 'platform_promotion_cents', 'net_seller_cents', 'net_commission_cents', 'promotion_snapshot'];
         $basis = $record ? $record->only($moneyFields) : $eligibility;
-        $status = $payment ? 'settled' : ($record ? 'authorized' : ($eligibility['eligible'] ? 'eligible' : 'pending'));
+        $status = $payment ? 'settled' : ($closure ? 'closed' : ($record ? 'authorized' : ($eligibility['eligible'] ? 'eligible' : 'pending')));
         $payload = array_intersect_key($basis, array_flip($moneyFields))
             + ['order_id' => $order->id, 'order_number' => $record?->snapshot['order_number'] ?? $order->order_number,
                 'reference' => $record?->reference, 'seller_id' => $record?->seller_id ?? $eligibility['seller_id'],
@@ -172,6 +202,9 @@ class SellerSettlementService
         }
         $payload['promotion_accounting'] = $record && $record->net_seller_cents === null ? 'legacy_recorded'
             : ($payload['net_seller_cents'] === null ? 'review_required' : 'verified');
+        $payload += app(BuyerReturnAmounts::class)->sellerBasis($order, $payload['net_seller_cents'] ?? 0);
+        $payload['paid_seller_cents'] = $payment?->amount_cents ?? 0;
+        $payload['needs_reauthorization'] = $record && ! $payment && ! $closure && ! $this->authorizationMatches($record, $payload);
         if ($history) {
             $payload['history'] = $record?->events()->orderBy('sequence')->get()->map(fn ($event) => $event->only([
                 'id', 'reference', 'sequence', 'event_type', 'amount_cents', 'actor_id', 'actor_role', 'payment_reference', 'reason', 'context', 'created_at'])
@@ -186,13 +219,14 @@ class SellerSettlementService
     public function command(User $actor, int $orderId, string $action, array $input, mixed $proof = null): SellerSettlementEvent
     {
         $actor = $this->current($actor, write: true);
-        abort_unless(in_array($action, ['authorize', 'record-payment', 'adjust-reference'], true), 404);
+        abort_unless(in_array($action, ['authorize', 'record-payment', 'adjust-reference', 'close-proceeds'], true), 404);
+        $cashAction = in_array($action, ['record-payment', 'adjust-reference'], true);
         $rules = ['request_token' => 'required|uuid', 'expected_version' => 'required|integer|min:0',
             'reason' => ['required', 'string', new ApplicationText('notes', 5, 1000)],
-            'payment_reference' => $action === 'authorize' ? 'prohibited' : 'required|string|max:120|regex:/\A[A-Za-z0-9][A-Za-z0-9 ._:\/\-]*\z/',
-            'payment_confirmed' => $action === 'authorize' ? 'prohibited' : 'required|accepted',
+            'payment_reference' => ! $cashAction ? 'prohibited' : 'required|string|max:120|regex:/\A[A-Za-z0-9][A-Za-z0-9 ._:\/\-]*\z/',
+            'payment_confirmed' => ! $cashAction ? 'prohibited' : 'required|accepted',
             'source_event_id' => $action === 'adjust-reference' ? 'required|integer|min:1' : 'prohibited',
-            'proof' => $action === 'authorize' ? 'prohibited' : 'required|file|mimes:jpg,jpeg,png,pdf|max:5120'];
+            'proof' => ! $cashAction ? 'prohibited' : 'required|file|mimes:jpg,jpeg,png,pdf|max:5120'];
         foreach (['amount', 'seller_amount', 'seller_id', 'recipient_id', 'commission', 'commission_rate', 'rate', 'status',
             'paid_at', 'created_at', 'subtotal', 'shipping_fee', 'payment_status', 'order_id', 'snapshot', 'shop_id',
             'product_cents', 'seller_cents', 'commission_cents', 'shipping_cents', 'discount_cents', 'total_amount',
@@ -237,13 +271,13 @@ class SellerSettlementService
                 if ($version !== (int) $data['expected_version']) {
                     throw new DomainException('The settlement record changed. Reload its current evidence.');
                 }
-                if ($action === 'authorize' && $record) {
-                    throw new DomainException('Release is already authorized for this order.');
-                }
                 if ($action !== 'authorize' && ! $record) {
                     throw new DomainException('Authorize the eligible release before recording payment.');
                 }
                 $payment = $this->verifiedPayment($record);
+                if ($action !== 'adjust-reference' && ($payment || $this->verifiedClosure($record))) {
+                    throw new DomainException('This original proceeds obligation is already paid or closed.');
+                }
                 if ($action === 'record-payment' && $record->events()->where('event_type', 'payment_recorded')->exists()) {
                     throw new DomainException('Payment is already recorded for this order.');
                 }
@@ -251,6 +285,16 @@ class SellerSettlementService
                     $eligibility = $this->eligibility($order->fresh());
                     if (! $eligibility['eligible']) {
                         throw new DomainException(implode(' ', $eligibility['blockers']));
+                    }
+                    if ($action === 'authorize' && $record && $this->authorizationMatches($record, $eligibility)) {
+                        throw new DomainException('Release is already authorized for these actual return deductions.');
+                    }
+                    if (in_array($action, ['record-payment', 'close-proceeds'], true) && ! $this->authorizationMatches($record, $eligibility)) {
+                        throw new DomainException('Return deductions changed. Review and authorize the remaining actual seller amount again.');
+                    }
+                    if (($action === 'record-payment' && $eligibility['payable_seller_cents'] <= 0)
+                        || ($action === 'close-proceeds' && $eligibility['payable_seller_cents'] !== 0)) {
+                        throw new DomainException('Use evidenced closure for zero proceeds, or record the actual positive remaining payment.');
                     }
                     $sourceFields = ['seller_id', 'shop_id', 'buyer_checkpoint_id', 'cod_account_id', 'reconciliation_event_id',
                         'product_cents', 'seller_cents', 'commission_cents', 'shipping_cents', 'discount_cents'];
@@ -294,21 +338,23 @@ class SellerSettlementService
                     }
                 }
                 $type = match ($action) {
-                    'authorize' => 'release_authorized', 'record-payment' => 'payment_recorded', 'adjust-reference' => 'payment_reference_corrected',
+                    'authorize' => $version ? 'release_reauthorized' : 'release_authorized', 'record-payment' => 'payment_recorded',
+                    'adjust-reference' => 'payment_reference_corrected', 'close-proceeds' => 'proceeds_closed',
                 };
                 $event = $record->events()->create(['reference' => 'PAY-'.strtoupper((string) Str::uuid()), 'sequence' => $version + 1,
                     'event_type' => $type, 'actor_id' => $actor->id, 'actor_role' => $actor->role,
-                    'amount_cents' => $action === 'adjust-reference' ? 0 : ($record->net_seller_cents ?? $record->seller_cents),
+                    'amount_cents' => $action === 'adjust-reference' ? 0 : $eligibility['payable_seller_cents'],
                     'payment_reference' => $data['payment_reference'] ?? null, 'reason' => $data['reason'],
                     'proof_path' => $storedPath, 'proof_hash' => $proofHash, 'source_event_id' => $source?->id,
                     'context' => ['from' => $payment ? 'settled' : ($version ? 'authorized' : 'eligible'),
-                        'to' => $type === 'release_authorized' ? 'authorized' : 'settled',
+                        'to' => in_array($type, ['release_authorized', 'release_reauthorized'], true) ? 'authorized' : ($type === 'proceeds_closed' ? 'closed' : 'settled'),
+                        'return_adjustment_ids' => $action === 'adjust-reference' ? ($source?->context['return_adjustment_ids'] ?? []) : $eligibility['return_adjustment_ids'],
                         'previous_reference' => $source?->payment_reference, 'recipient_id' => $record->seller_id, 'actor_name' => $actor->name],
                     'request_token' => $data['request_token'], 'request_fingerprint' => $fingerprint]);
-                if ($action === 'record-payment') {
+                if (in_array($action, ['record-payment', 'close-proceeds'], true)) {
                     app(VoucherFundingService::class)->recordExpense($order, $actor, $event);
                 }
-                if ($action === 'record-payment' && ! $order->commissionLedger) {
+                if (in_array($action, ['record-payment', 'close-proceeds'], true) && ! $order->commissionLedger) {
                     CommissionLedger::create(['order_id' => $orderId, 'seller_id' => $record->seller_id,
                         'gross_amount' => self::pesos($record->product_cents), 'seller_amount' => self::pesos($record->seller_cents),
                         'platform_commission' => self::pesos($record->commission_cents), 'delivery_fee' => self::pesos($record->shipping_cents),
@@ -318,6 +364,7 @@ class SellerSettlementService
                     app(NotificationDeliveryService::class)->record($recipient, 'settlement-event', 'settlement:'.$event->reference,
                         ['title' => match ($type) {
                             'release_authorized' => 'Seller release was authorized', 'payment_recorded' => 'Seller payment was recorded',
+                            'release_reauthorized' => 'Remaining seller release was authorized', 'proceeds_closed' => 'Zero remaining proceeds were closed',
                             default => 'Seller payment evidence was corrected',
                         }, 'body' => $type === 'release_authorized' ? 'Payment is still awaiting a recorded receipt.' : 'Open the original payment record to review its evidence.',
                             'target' => 'seller-settlement', 'order_id' => $orderId]);

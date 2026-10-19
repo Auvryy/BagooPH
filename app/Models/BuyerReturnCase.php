@@ -10,7 +10,7 @@ use LogicException;
 
 class BuyerReturnCase extends Model
 {
-    public const TERMINAL = ['withdrawn', 'expired', 'denied', 'repaid'];
+    public const TERMINAL = ['withdrawn', 'expired', 'denied', 'repaid', 'closed_no_repayment'];
 
     protected $guarded = ['id'];
 

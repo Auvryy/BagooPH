@@ -325,10 +325,16 @@ class BuyerReturnService
             'response_until', 'appeal_until', 'dropoff_until', 'created_at']) + [
                 'order' => $case->order->only(['id', 'order_number']), 'actions' => $this->actions($actor, $case),
                 'custody' => app(BuyerReturnCustodyService::class)->presentation($actor, $case),
+                'money' => app(BuyerReturnMoneyService::class)->presentation($actor, $case),
                 'items' => $case->items->map(fn ($item) => ['id' => $item->id, 'quantity' => $item->quantity, 'purchase' => $item->purchase_snapshot])->all(),
                 'evidence' => $case->evidence->map(fn ($photo) => ['id' => $photo->id,
                     'url' => '/buyer-returns/'.$case->id.'/evidence/'.$photo->id, 'mime' => $photo->mime, 'bytes' => $photo->bytes, 'purpose' => $photo->purpose])->all(),
-                'history' => $case->events->map(fn ($event) => $event->only(['reference', 'event_type', 'actor_role', 'reason', 'source_status', 'target_status', 'created_at']))->all(),
+                'history' => $case->events->filter(fn ($event) => $actor->isAdmin() || ($actor->isLogistics()
+                    ? ! str_starts_with($event->event_type, 'money-')
+                    : ! in_array($event->event_type, $actor->isBuyer()
+                        ? ['money-offer-funding', 'money-receive-funding', 'money-offer-recovery', 'money-receive-recovery']
+                        : ['money-offer-funding', 'money-receive-funding'], true)))
+                    ->map(fn ($event) => $event->only(['reference', 'event_type', 'actor_role', 'reason', 'source_status', 'target_status', 'created_at']))->values()->all(),
             ];
     }
 }

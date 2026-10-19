@@ -104,7 +104,7 @@ class VoucherFundingService
     {
         $admin = User::findOrFail($admin->id);
         abort_unless($admin->isAdmin() && $admin->canAccessPortal() && $event->actor_id === $admin->id
-            && $event->event_type === 'payment_recorded' && $event->settlement?->order_id === $order->id, 403);
+            && in_array($event->event_type, ['payment_recorded', 'proceeds_closed'], true) && $event->settlement?->order_id === $order->id, 403);
         $this->finishCommitments($order, $admin, 'expense', 'Promotional expense recorded with the evidenced seller payment.', $event);
     }
 

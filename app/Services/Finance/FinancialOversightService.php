@@ -2,6 +2,8 @@
 
 namespace App\Services\Finance;
 
+use App\Models\BuyerReturnAdjustment;
+use App\Models\BuyerReturnMoneyEvent;
 use App\Models\CodAccount;
 use App\Models\LogisticsCompany;
 use App\Models\Order;
@@ -20,7 +22,7 @@ use UnexpectedValueException;
 class FinancialOversightService
 {
     public const STATES = ['not_collected', 'unverified', 'difference', 'awaiting_receipt', 'cash_held', 'at_platform',
-        'reconciled', 'pending', 'eligible', 'authorized', 'settled', 'void'];
+        'reconciled', 'pending', 'eligible', 'authorized', 'settled', 'closed', 'void'];
 
     private const CASH_METRICS = ['collected', 'held', 'remitted', 'reconciled', 'excess', 'shipping_charges'];
 
@@ -102,6 +104,12 @@ class FinancialOversightService
                 'settled' => ['Seller proceeds paid', 'Actual recorded seller payment with private receipt evidence.'],
                 'commission' => ['Recorded platform commission', 'The 10% product share associated with evidenced seller payments; excludes shipping.'],
                 'discounts' => ['Order discounts', 'Discounts remain separate from the original 10%/90% product split.'],
+                'return_deductions' => ['Return seller deductions', 'Separately retained seller contributions for approved original returned units.'],
+                'return_entitlements' => ['Approved buyer repayments', 'Original merchandise after its product discounts; approval does not prove payment.'],
+                'return_paid' => ['Buyer repayments recorded', 'Actual once-only outgoing repayments, including those awaiting buyer receipt.'],
+                'recovery_due' => ['Seller recovery outstanding', 'Original paid seller contribution less actual confirmed recovery; an offer is not received money.'],
+                'recovery_received' => ['Seller recovery received', 'Transfers independently acknowledged by the designated receiving admin.'],
+                'return_funding_received' => ['Return funding received', 'Actual separately evidenced funding receipts, excluding pending offers and campaign budgets.'],
             ];
         }
         $definitions += ['shipping_income' => ['Logistics shipping income', 'A shipping charge does not establish earned logistics income.'],
@@ -217,13 +225,22 @@ class FinancialOversightService
         }
         $metrics = $cash['amounts'] ?? array_fill_keys(self::CASH_METRICS, $legacyCash ? null : '0');
         if ($proceeds) {
-            $share = $proceeds['net_seller_cents'] === null ? null : (string) $proceeds['net_seller_cents'];
+            $share = $proceeds['net_seller_cents'] === null ? null : (string) ($proceeds['status'] === 'settled'
+                ? $proceeds['paid_seller_cents'] : $proceeds['payable_seller_cents']);
             $metrics += ['pending' => in_array($proceeds['status'], ['pending', 'eligible', 'authorized'], true) ? $share : '0',
                 'eligible' => $proceeds['status'] === 'eligible' ? $share : '0',
                 'authorized' => $proceeds['status'] === 'authorized' ? $share : '0',
                 'settled' => $proceeds['status'] === 'settled' ? $share : '0',
                 'commission' => $proceeds['status'] === 'settled' ? (string) $proceeds['commission_cents'] : '0',
                 'discounts' => (string) $proceeds['discount_cents']];
+            $adjustments = BuyerReturnAdjustment::where('order_id', $order->id)->get();
+            $returnMoney = BuyerReturnMoneyEvent::where('order_id', $order->id)->get();
+            $recovered = $returnMoney->where('event_type', 'receive-recovery')->sum('amount_cents');
+            $metrics += ['return_deductions' => (string) $adjustments->sum('seller_cents'),
+                'return_entitlements' => (string) $adjustments->sum('buyer_cents'),
+                'return_paid' => (string) $returnMoney->where('event_type', 'record-repayment')->sum('amount_cents'),
+                'recovery_due' => (string) ($adjustments->sum('recovery_due_cents') - $recovered), 'recovery_received' => (string) $recovered,
+                'return_funding_received' => (string) $returnMoney->where('event_type', 'receive-funding')->sum('amount_cents')];
             if ($unknownProceeds || $share === null) {
                 $metrics = array_replace($metrics, array_fill_keys(self::PROCEEDS_METRICS, null));
             }

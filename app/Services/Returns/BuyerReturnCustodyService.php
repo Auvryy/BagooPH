@@ -193,11 +193,13 @@ class BuyerReturnCustodyService
             && $parcel->logistics_company_id === $parcel->route_snapshot['logistics_company_id'], 409, 'The original return authority or route needs review.');
     }
 
-    public function assertFinishedRoute(BuyerReturnCase $case, BuyerReturnParcel $parcel): void
+    public function assertFinishedRoute(BuyerReturnCase $case, BuyerReturnParcel $parcel, bool $afterSellerReceipt = false): void
     {
         $this->assertSource($case, $parcel);
-        abort_unless($parcel->route_position === count($parcel->hub_ids) - 1 && $parcel->current_hub_id === $parcel->hub_ids[count($parcel->hub_ids) - 1]
-            && ($parcel->custody['kind'] ?? null) === 'hub' && ($parcel->custody['hub_id'] ?? null) === $parcel->current_hub_id, 409,
+        $held = $afterSellerReceipt ? ($parcel->status === 'seller_received' && $parcel->custody === ['kind' => 'seller', 'user_id' => $case->seller_id])
+            : ($parcel->current_hub_id === $parcel->hub_ids[count($parcel->hub_ids) - 1]
+                && ($parcel->custody['kind'] ?? null) === 'hub' && ($parcel->custody['hub_id'] ?? null) === $parcel->current_hub_id);
+        abort_unless($parcel->route_position === count($parcel->hub_ids) - 1 && $held, 409,
             'Record every original reverse hub receipt before staging or seller collection.');
         foreach (range(0, count($parcel->hub_ids) - 2) as $index) {
             $member = $parcel->members()->with('manifest')->where('leg_index', $index)->where('included', true)->whereNotNull('received_at')->first();
