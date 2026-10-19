@@ -32,6 +32,7 @@ use App\Http\Controllers\Buyer\ShopFollowController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\BuyerReturnController;
+use App\Http\Controllers\BuyerReturnCustodyController;
 use App\Http\Controllers\CodCashController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\Courier\RiderCompanyRequestController;
@@ -498,6 +499,7 @@ Route::middleware('auth')->prefix('buyer-returns')->name('buyer-returns.')->grou
     Route::post('/orders/{order}', [BuyerReturnController::class, 'store'])->where('order', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('store');
     Route::get('/{case}', [BuyerReturnController::class, 'show'])->where('case', '[1-9][0-9]{0,17}')->name('show');
     Route::post('/{case}/actions', [BuyerReturnController::class, 'action'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('action');
+    Route::post('/{case}/custody', [BuyerReturnCustodyController::class, 'store'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('custody');
     Route::get('/{case}/evidence/{evidence}', [BuyerReturnController::class, 'evidence'])->where(['case' => '[1-9][0-9]{0,17}', 'evidence' => '[1-9][0-9]{0,17}'])->name('evidence');
 });
 

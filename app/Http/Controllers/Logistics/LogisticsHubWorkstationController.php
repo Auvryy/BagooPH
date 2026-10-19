@@ -856,6 +856,17 @@ class LogisticsHubWorkstationController extends Controller
         $barcode = trim($validated['barcode']);
         [$hub] = $this->getActiveHub($request, $request->user());
         abort_unless($hub && $this->eligibility->canScan($request->user(), $hub), 403, 'An active handler assignment is required for floor scans.');
+        if (str_starts_with($barcode, 'BRT-')) {
+            $return = \App\Models\BuyerReturnParcel::where('barcode', $barcode)->first();
+            abort_unless($return && $return->logistics_company_id === $hub->logistics_company_id
+                && in_array($hub->id, $return->hub_ids, true), 404, 'This return barcode is not expected in your facility scope.');
+            abort_unless(($validated['mode'] ?? 'inspect') === 'inspect', 409,
+                'Open the buyer return to record its required intake or actual manifest receipt. This scan only identifies it.');
+            return $this->scanResponse(['success' => true, 'confirmed' => false,
+                'message' => 'Buyer return identified. Open its case for the actual intake, manifest or seller-collection step.',
+                'return_case' => ['reference' => $return->returnCase->reference, 'barcode' => $return->barcode,
+                    'href' => '/buyer-returns/'.$return->buyer_return_case_id, 'status' => $return->returnCase->status]]);
+        }
         $matches = Delivery::with([
             'order.items.product',
             'order.buyer',

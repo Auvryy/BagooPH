@@ -47,6 +47,9 @@ class BuyerReturnService
         if ($actor->isSeller() && $actor->isKycApproved()) {
             return BuyerReturnCase::where('seller_id', $actor->id);
         }
+        if ($actor->isLogistics()) {
+            return app(BuyerReturnCustodyService::class)->scoped($actor);
+        }
         abort_unless($actor->isAdmin() && $actor->canAccessPortal() && $actor->email_verified_at, 403);
 
         return BuyerReturnCase::query();
@@ -277,17 +280,23 @@ class BuyerReturnService
                 DB::table('buyer_return_unit_claims')->where('buyer_return_case_id', $case->id)->delete();
             }
 
-            return $this->append($case, $this->current($actor), $action, $source, $data['reason'], $token, $fingerprint);
+            $event = $this->append($case, $this->current($actor), $action, $source, $data['reason'], $token, $fingerprint);
+            if ($action === 'approve') {
+                app(BuyerReturnCustodyService::class)->prepare($case, $event);
+            }
+
+            return $event;
         }, 3);
     }
 
-    private function append(BuyerReturnCase $case, User $actor, string $type, ?string $source, string $reason, string $token, string $fingerprint): BuyerReturnEvent
+    public function append(BuyerReturnCase $case, User $actor, string $type, ?string $source, string $reason, string $token, string $fingerprint, array $context = []): BuyerReturnEvent
     {
+        abort_unless(DB::transactionLevel() > 0, 403);
         $event = BuyerReturnEvent::create(['buyer_return_case_id' => $case->id, 'actor_id' => $actor->id, 'sequence' => $case->version,
             'event_type' => $type, 'source_status' => $source, 'target_status' => $case->status, 'reason' => $reason,
             'request_token_hash' => $token, 'request_fingerprint' => $fingerprint,
-            'context' => ['response_until' => $case->response_until?->toIso8601String(), 'appeal_until' => $case->appeal_until?->toIso8601String(),
-                'dropoff_until' => $case->dropoff_until?->toIso8601String()]]);
+            'context' => array_replace(['response_until' => $case->response_until?->toIso8601String(), 'appeal_until' => $case->appeal_until?->toIso8601String(),
+                'dropoff_until' => $case->dropoff_until?->toIso8601String()], $context)]);
         foreach (array_unique([$case->buyer_id, $case->seller_id]) as $recipient) {
             if ($recipient === $actor->id) {
                 continue;
@@ -315,9 +324,10 @@ class BuyerReturnService
         return $case->only(['id', 'reference', 'status', 'version', 'reason', 'description', 'delivered_at', 'request_until',
             'response_until', 'appeal_until', 'dropoff_until', 'created_at']) + [
                 'order' => $case->order->only(['id', 'order_number']), 'actions' => $this->actions($actor, $case),
+                'custody' => app(BuyerReturnCustodyService::class)->presentation($actor, $case),
                 'items' => $case->items->map(fn ($item) => ['id' => $item->id, 'quantity' => $item->quantity, 'purchase' => $item->purchase_snapshot])->all(),
                 'evidence' => $case->evidence->map(fn ($photo) => ['id' => $photo->id,
-                    'url' => '/buyer-returns/'.$case->id.'/evidence/'.$photo->id, 'mime' => $photo->mime, 'bytes' => $photo->bytes])->all(),
+                    'url' => '/buyer-returns/'.$case->id.'/evidence/'.$photo->id, 'mime' => $photo->mime, 'bytes' => $photo->bytes, 'purpose' => $photo->purpose])->all(),
                 'history' => $case->events->map(fn ($event) => $event->only(['reference', 'event_type', 'actor_role', 'reason', 'source_status', 'target_status', 'created_at']))->all(),
             ];
     }

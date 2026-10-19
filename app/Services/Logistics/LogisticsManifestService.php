@@ -64,9 +64,13 @@ class LogisticsManifestService
             'destination_hub_id' => [...$this->idRules(), 'exists:logistics_hubs,id'],
             'vehicle_id' => [...$this->idRules(), 'exists:logistics_fleet,id'],
             'creation_token' => ['required', 'string', 'uuid'],
-            'direction' => ['required', Rule::in(['outbound', 'return', 'recovery'])],
+            'direction' => ['required', Rule::in(['outbound', 'return', 'recovery', 'buyer_return'])],
             'parcel_recovery_case_id' => ['exclude_unless:direction,recovery', ...$this->idRules()],
+            'buyer_return_case_id' => ['exclude_unless:direction,buyer_return', ...$this->idRules()],
         ])->validate();
+        if ($input['direction'] === 'buyer_return') {
+            return app(\App\Services\Returns\BuyerReturnManifestService::class)->create($actor, $input, $issuedToken);
+        }
         if ($input['direction'] === 'recovery') {
             $case = ParcelRecoveryCase::findOrFail($input['parcel_recovery_case_id']);
             $parcel = Delivery::findOrFail($case->delivery_id);
@@ -145,6 +149,9 @@ class LogisticsManifestService
         }
         if (! $this->readable($actor)->whereKey($snapshot->id)->exists()) {
             throw new AuthorizationException('This manifest is outside your company or assigned facilities.');
+        }
+        if ($snapshot->direction === 'buyer_return') {
+            return app(\App\Services\Returns\BuyerReturnManifestService::class)->command($snapshot, $actor, $action, $input);
         }
         $input = $this->inputs->normalize($input);
         $rules = ['version' => [...$this->idRules(), 'max:2147483647'], 'request_token' => ['required', 'string', 'uuid'],
@@ -518,6 +525,11 @@ class LogisticsManifestService
 
     public function receiptCounts(LogisticsManifest $manifest): array
     {
+        if ($manifest->direction === 'buyer_return') {
+            $members = $manifest->buyerReturnParcels()->where('included', true)->get();
+            return ['expected' => $members->count(), 'normal_received' => $members->whereNotNull('received_at')->count(),
+                'corrective_expected_received' => 0, 'unlisted_received' => 0, 'outstanding' => $members->whereNull('received_at')->count()];
+        }
         $members = $manifest->parcels()->where('included', true)->get();
         $corrective = $manifest->correctiveReceipts()->get()->filter(fn ($receipt) => $receipt->supports());
         $normalIds = $members->whereNotNull('received_at')->pluck('id');
@@ -665,7 +677,7 @@ class LogisticsManifestService
         }
     }
 
-    private function vehicle(int $companyId, int $hubId, int $vehicleId, ?int $driverId, bool $newWork, string $legType): LogisticsFleet
+    public function vehicle(int $companyId, int $hubId, int $vehicleId, ?int $driverId, bool $newWork, string $legType): LogisticsFleet
     {
         $profile = $driverId ? CourierProfile::where('user_id', $driverId)->lockForUpdate()->first() : null;
         $vehicle = LogisticsFleet::whereKey($vehicleId)->lockForUpdate()->first();
@@ -682,7 +694,7 @@ class LogisticsManifestService
         return $vehicle;
     }
 
-    private function legType(LogisticsHub $source, LogisticsHub $destination): string
+    public function legType(LogisticsHub $source, LogisticsHub $destination): string
     {
         if ($source->id === $destination->id || $source->logistics_company_id !== $destination->logistics_company_id
             || (! $source->isMotherHub() && ! $destination->isMotherHub())) {

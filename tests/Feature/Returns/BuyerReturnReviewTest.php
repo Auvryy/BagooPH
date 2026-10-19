@@ -98,7 +98,7 @@ class BuyerReturnReviewTest extends TestCase
         $this->actingAs($order->shop->user)->get('/buyer-returns/'.$case->id.'/evidence/'.$evidence->id)->assertOk();
         $this->actingAs($this->createApprovedUser('buyer'))->get('/buyer-returns/'.$case->id.'/evidence/'.$evidence->id)->assertNotFound();
         $this->actingAs($this->createApprovedUser('admin'))->get('/buyer-returns/'.$case->id.'/evidence/'.$evidence->id)->assertOk();
-        $this->actingAs($this->createApprovedUser('logistics'))->get('/buyer-returns/'.$case->id)->assertForbidden();
+        $this->actingAs($this->createApprovedUser('logistics'))->get('/buyer-returns/'.$case->id)->assertNotFound();
         Storage::disk('local')->put($evidence->path, 'changed contents');
         $this->actingAs($order->buyer)->get('/buyer-returns/'.$case->id.'/evidence/'.$evidence->id)->assertNotFound();
     }

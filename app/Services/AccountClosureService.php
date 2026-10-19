@@ -171,6 +171,15 @@ class AccountClosureService
             $add('buyer_return', 'This account has an unresolved product return.',
                 'Finish its review, physical return and any repayment responsibilities before closing the account.', $returns);
         }
+        $returnCustody = \App\Models\BuyerReturnParcel::whereHas('returnCase', fn ($query) => $query->whereNotIn('status', \App\Models\BuyerReturnCase::TERMINAL))
+            ->where(function ($query) use ($subject, $resources) {
+                $query->where('custody->driver_id', $subject->id)->orWhere('custody->received_by_id', $subject->id)
+                    ->orWhereIn('logistics_company_id', array_column($resources['companies'], 'id'));
+            })->pluck('id')->all();
+        if ($returnCustody) {
+            $add('buyer_return_custody', 'This account still holds responsibility for a buyer return.',
+                'Record its actual onward receipt and resolve remaining return responsibilities before closing this account.', $returnCustody);
+        }
         $terminal = [...OrderStatus::completedCommerceStatuses(), ...OrderStatus::unrealizedCommerceStatuses()];
         foreach ($work as $order) {
             if (! in_array($order['status'], $terminal, true)) {

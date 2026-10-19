@@ -28,10 +28,11 @@ class BuyerReturnEligibility
         if (! $physical || ! $check || $check->barcode_scanned !== $parcel->tracking_number
             || ($check->target_state['order_status'] ?? null) !== 'delivered'
             || ($custody['kind'] ?? null) !== 'buyer' || ($custody['user_id'] ?? null) !== $order->buyer_id
-            || ! $check->created_at->equalTo($parcel->delivered_at)) {
+            || $check->created_at->isFuture()) {
             $this->reject('The original delivery receipt needs review before a return can be requested.');
         }
-        $until = $parcel->delivered_at->copy()->addDays(7);
+        $deliveredAt = $check->created_at;
+        $until = $deliveredAt->copy()->addDays(7);
         if (now()->greaterThan($until)) {
             $this->reject('The seven-day return period for this delivery has ended.');
         }
@@ -41,7 +42,7 @@ class BuyerReturnEligibility
             $this->reject('The original hub receipts need review before return transport.');
         }
 
-        return ['checkpoint' => $check, 'delivered_at' => $parcel->delivered_at, 'request_until' => $until, 'route' => $route];
+        return ['checkpoint' => $check, 'delivered_at' => $deliveredAt, 'request_until' => $until, 'route' => $route];
     }
 
     private function reject(string $message): never
