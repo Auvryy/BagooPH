@@ -98,7 +98,7 @@ test('funded settlement distinguishes gross shares, issuer costs and the net pay
     const record = {
         order_id: 7, order_number: 'BGO-FUNDED', seller_name: 'Maria Santos', shop_name: 'Bagoo Crafts', status: 'authorized',
         version: 1, product_cents: 100000, seller_cents: 90000, commission_cents: 10000, shipping_cents: 5000, discount_cents: 15000,
-        seller_promotion_cents: 10000, platform_promotion_cents: 5000, net_seller_cents: 80000, net_commission_cents: 5000,
+        seller_promotion_cents: 10000, platform_promotion_cents: 5000, net_seller_cents: 80000, net_commission_cents: 5000, payable_seller_cents: 80000, return_seller_cents: 0, paid_seller_cents: 0, needs_reauthorization: false, return_adjustment_ids: [],
         promotion_accounting: 'verified', promotion_snapshot: [], blockers: [], history: [],
     };
     const html = await render(SettlementDetail, 'Finance/SettlementDetail', { can_release: true, requestToken: 'test-token', record });
@@ -130,4 +130,22 @@ test('seller campaign page separates older recorded uses from verified redemptio
     assert.match(html, /7 older recorded uses/);
     assert.match(html, /Successful uses/);
     assert.doesNotMatch(html, /Claims|FREESHIP|Network standard active/);
+});
+
+test('return deductions require fresh consent and zero proceeds use closure without a pretend payment', async () => {
+    const record = { order_id: 8, order_number: 'BGO-RETURN', seller_name: 'Maria Santos', shop_name: 'Bagoo Crafts', status: 'authorized', version: 1,
+        product_cents: 90000, seller_cents: 81000, commission_cents: 9000, shipping_cents: 5000, discount_cents: 0,
+        seller_promotion_cents: 0, platform_promotion_cents: 0, net_seller_cents: 81000, net_commission_cents: 9000,
+        return_seller_cents: 40500, payable_seller_cents: 40500, paid_seller_cents: 0, needs_reauthorization: true, return_adjustment_ids: [1],
+        promotion_accounting: 'verified', promotion_snapshot: [], blockers: [], history: [] };
+    const changed = await render(SettlementDetail, 'Finance/SettlementDetail', { record, can_release: true, requestToken: 'reauthorize' });
+    assert.match(changed, /Return deductions changed after consent/); assert.match(changed, /Authorize seller release/);
+    assert.doesNotMatch(changed, /Confirm the existing|type="file"/);
+    const zero = await render(SettlementDetail, 'Finance/SettlementDetail', { record: { ...record, return_seller_cents: 81000,
+        payable_seller_cents: 0, needs_reauthorization: false }, can_release: true, requestToken: 'zero' });
+    assert.match(zero, /Close zero remaining proceeds/); assert.match(zero, /without recording a cash transfer/);
+    assert.doesNotMatch(zero, /type="file"|Save payment record/);
+    const closed = await render(SettlementDetail, 'Finance/SettlementDetail', { record: { ...record, status: 'closed', payable_seller_cents: 0,
+        return_seller_cents: 81000, needs_reauthorization: false }, can_release: true, requestToken: 'retained-closure' });
+    assert.doesNotMatch(closed, /<form/);
 });

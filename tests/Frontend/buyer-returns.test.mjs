@@ -11,13 +11,13 @@ import { createInertiaApp } from '@inertiajs/react';
 const root = resolve(import.meta.dirname, '../..');
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-buyer-returns-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.returnHarness; delete globalThis.route; });
-const result = await build({ stdin: { contents: `export { default as Create } from '@/Pages/Returns/Create'; export { default as Show } from '@/Pages/Returns/Show'; export { default as Index } from '@/Pages/Returns/Index'; export { default as Custody } from '@/Components/Returns/ReturnCustodyPanel'; export { default as Manifests } from '@/Pages/Hub/Manifests';`, resolveDir: root, loader: 'tsx' },
+const result = await build({ stdin: { contents: `export { default as Create } from '@/Pages/Returns/Create'; export { default as Show } from '@/Pages/Returns/Show'; export { default as Index } from '@/Pages/Returns/Index'; export { default as Custody } from '@/Components/Returns/ReturnCustodyPanel'; export { default as Money } from '@/Components/Returns/ReturnMoneyPanel'; export { default as Manifests } from '@/Pages/Hub/Manifests';`, resolveDir: root, loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false, loader: { '.css': 'empty' }, plugins: [{ name: 'return-controls', setup(builder) {
-        builder.onResolve({ filter: /^@inertiajs\/react$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/ReturnCustodyPanel|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'inertia', namespace: 'return-probe' } : undefined);
+        builder.onResolve({ filter: /^@inertiajs\/react$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel)|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'inertia', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^inertia$/, namespace: 'return-probe' }, () => ({ contents: `export * from '@inertiajs/react'; import { useForm as real } from '@inertiajs/react'; export const useForm = initial => globalThis.returnHarness ? globalThis.returnHarness.useForm(initial) : real(initial);`, resolveDir: root }));
-        builder.onResolve({ filter: /^react$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/ReturnCustodyPanel|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'react', namespace: 'return-probe' } : undefined);
+        builder.onResolve({ filter: /^react$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel)|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'react', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^react$/, namespace: 'return-probe' }, () => ({ contents: `export * from 'react'; import React from 'react'; export const useRef = initial => globalThis.returnHarness ? globalThis.returnHarness.ref(initial) : React.useRef(initial);`, resolveDir: root }));
-        builder.onResolve({ filter: /^react\/jsx-runtime$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/ReturnCustodyPanel|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'jsx', namespace: 'return-probe' } : undefined);
+        builder.onResolve({ filter: /^react\/jsx-runtime$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel)|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'jsx', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^jsx$/, namespace: 'return-probe' }, () => ({ contents: `import { jsx as real, jsxs as many, Fragment } from 'react/jsx-runtime'; export { Fragment }; const track = (fn,type,props,key) => { if(globalThis.returnHarness && (props.onSubmit || props.onChange || props.onClick)) globalThis.returnHarness.handlers.push({type,props}); return fn(type,props,key); }; export const jsx=(...args)=>track(real,...args);export const jsxs=(...args)=>track(many,...args);`, resolveDir: root }));
     } }] });
 const path = join(temporary, 'returns.mjs'); writeFileSync(path, result.outputFiles[0].text); const ui = await import(pathToFileURL(path).href);
@@ -158,4 +158,52 @@ test('manifest preparation selects an actual accepted buyer return and retains o
         assert.equal(h.posts[0].url, '/hub/manifests'); assert.equal(h.posts[0].data.direction, 'buyer_return');
         assert.equal(h.posts[0].data.buyer_return_case_id, '11'); assert.equal(h.posts[0].data.creation_token, 'creation-token');
     } finally { delete globalThis.returnHarness; }
+});
+
+const returnMoney = { adjustment: { gross_cents: 45000, commission_cents: 4500, shop_discount_cents: 0, platform_discount_cents: 0,
+    buyer_cents: 45000, seller_cents: 40500, platform_cents: 4500 }, actions: ['record-repayment'], history: [],
+    backing: { verified: true, available_cents: 9000, reconciled_cents: 95000, received_cents: 0, outgoing_cents: 0,
+        seller_paid_cents: 81000, protected_seller_cents: 0, protected_shipping_cents: 5000 } };
+
+test('repayment separates original entitlement, actual backing and transfer offers from received money', async () => {
+    const html = await render(ui.Money, { value: returnMoney, caseId: 11, version: 8 }, 'admin');
+    assert.match(html, /Buyer repayment due/); assert.match(html, /450\.00/); assert.match(html, /Seller already paid/);
+    assert.match(html, /Awaiting confirmed backing/); assert.match(html, /Shipping protected/);
+    assert.match(html, /Approval and transfer offers do not confirm money received/);
+    assert.doesNotMatch(html, /Refund paid|<input[^>]+name="buyer_id"/);
+});
+
+test('repayment requires a bounded receipt, posts no client entitlement and preserves failed-request identity', async () => {
+    const h = globalThis.returnHarness = new Harness();
+    try {
+        await render(ui.Money, { value: returnMoney, caseId: 11, version: 8 }, 'admin');
+        h.control(node => node.type === 'select').onChange({ target: { value: 'record-repayment' } });
+        await render(ui.Money, { value: returnMoney, caseId: 11, version: 8 }, 'admin');
+        h.form.data.proof = { type: 'video/mp4', size: 20 }; h.submit(); assert.equal(h.posts.length, 0);
+        h.form.data.proof = { type: 'image/png', size: 5242881 }; h.submit(); assert.equal(h.posts.length, 0);
+        h.form.data.proof = { type: 'image/png', size: 5242880 }; h.form.data.reason = 'The actual transfer and original buyer were checked.';
+        h.form.data.cash_reference = 'PAYMENT-ORIGINAL'; h.form.data.payment_confirmed = true;
+        let transform; h.form.transform = fn => { transform = fn; };
+        const post = h.form.post; h.form.post = (url, options) => { const actual = transform(h.form.data); post(url, options); h.posts.at(-1).data = structuredClone(actual); };
+        h.submit(); h.submit(); assert.equal(h.posts.length, 1); assert.equal(h.posts[0].url, '/buyer-returns/11/money');
+        const saved = h.posts[0].data; assert.equal(saved.expected_version, 8); assert.equal(saved.cash_reference, 'PAYMENT-ORIGINAL');
+        for (const field of ['amount', 'recipient_id', 'buyer_id', 'seller_cents']) assert.equal(field in saved, false);
+        h.form.processing = false; h.posts[0].options.onFinish(); h.submit();
+        assert.equal(h.posts[1].data.request_token, saved.request_token);
+    } finally { delete globalThis.returnHarness; }
+});
+
+test('incoming receipt selects the actual named offer while buyer confirmation uses only original recorded payment', async () => {
+    const h = globalThis.returnHarness = new Harness();
+    try {
+        const value = { ...returnMoney, actions: ['receive-recovery'], pending_offers: [{ id: 19, event_type: 'offer-recovery', amount_cents: 40500, cash_reference: 'RECOVERY-019' }] };
+        await render(ui.Money, { value, caseId: 11, version: 9 }, 'admin');
+        h.control(node => node.type === 'select').onChange({ target: { value: 'receive-recovery' } });
+        const html = await render(ui.Money, { value, caseId: 11, version: 9 }, 'admin');
+        assert.match(html, /RECOVERY-019/); assert.match(html, /405\.00/); assert.doesNotMatch(html, /Actual transfer amount \(PHP\)/);
+    } finally { delete globalThis.returnHarness; }
+    const buyer = { ...returnMoney, actions: ['confirm-receipt', 'report-nonreceipt'], history: [{ id: 20, reference: 'BRM-20', event_type: 'record-repayment', amount_cents: 45000,
+        cash_reference: 'PAY-20', reason: 'The transfer was made to the original buyer.', source_event_id: null, proof_url: '/buyer-returns/11/money/20/proof', created_at: '2026-10-19T00:00:00Z' }] };
+    const html = await render(ui.Money, { value: buyer, caseId: 11, version: 10 });
+    assert.match(html, /I received the repayment/); assert.match(html, /Report missing repayment/); assert.match(html, /Download private receipt/);
 });

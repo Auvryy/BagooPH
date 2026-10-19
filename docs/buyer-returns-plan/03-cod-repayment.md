@@ -59,7 +59,18 @@ seller payment and confirmed recovery, while keeping shipping obligations and
 other return allocations separate. If repayment needs recovery first, report
 that state honestly. Do not invent an unfunded platform advance or pretend a
 seller-debt label replenishes cash. Independently record each received recovery
-and prevent overcollection or reuse against a different case.
+and prevent overcollection or reuse against a different case. The transfer offer
+names the current receiving platform admin; that distinct named account records
+its own receipt and private evidence. A restricted original seller may satisfy
+this existing recovery duty without gaining selling access.
+
+If original promotion costs leave insufficient backing, a current admin may
+record an actual platform funding transfer to a different current admin. The
+named recipient must independently confirm receipt. Require an exact positive
+amount, unique normalized reference, actual private proof and explicit transfer
+attestation on both sides. Pending offers and original campaign budgets never
+increase available cash. This is manual evidence of an actual transfer; no bank
+integration or automatic advance is introduced.
 
 ## Outgoing repayment and buyer receipt
 
@@ -73,6 +84,9 @@ Retain a payment-recorded state while awaiting the buyer's own receipt
 confirmation. The authenticated original buyer confirms the referenced payment;
 only then is the case repaid/closed. A buyer reporting non-receipt leaves an
 actual review/discrepancy and never authorizes a second payout automatically.
+A fully product-discounted returned item may have zero buyer entitlement. Close
+that case with an explicit no-repayment-due decision rather than inventing a
+zero-money transfer or buyer payment receipt.
 No bank API, online gateway, wallet balance or external provider is introduced.
 
 Idempotency, unique payment/reference/source constraints, order/case locks and
@@ -90,7 +104,10 @@ shows original collection/remittance and separate returns/outgoing money; histor
 cash metrics are not relabelled as available balances. Use exact cents and clear
 human explanations rather than a guessed order count or gross amount.
 
-Recheck every role's current authority and source ownership. Restricted owners
+Recheck every role's current authority and source ownership. Buyer proof access is limited to their actual repayment and payment-review
+evidence; internal platform funding is visible only to current admins. Logistics
+operators see operational return history without financial notes or proofs.
+Restricted owners
 may satisfy their narrowly scoped existing cash/receipt responsibilities and read
 owned history, without new shopping, selling or administrative authority. Closure
 is blocked while cases, custody, repayment or seller recovery remain outstanding.

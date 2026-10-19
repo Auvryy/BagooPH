@@ -4,6 +4,7 @@ export const returnLabels: Record<string, string> = {
     at_destination_hub: 'Return accepted', in_transit: 'Returning to seller', at_origin_hub: 'At seller’s hub',
     ready_for_seller: 'Ready for seller', seller_received: 'Seller received', condition_review: 'Condition review',
     repayment_ready: 'Repayment review', payment_recorded: 'Awaiting your receipt', repayment_disputed: 'Payment under review', repaid: 'Repaid',
+    closed_no_repayment: 'No repayment due',
 };
 
 export default function ReturnStatus({ status }: { status: string }) {

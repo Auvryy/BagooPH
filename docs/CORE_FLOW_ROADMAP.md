@@ -6623,3 +6623,53 @@ Scoped post-delivery return-custody assessment: **0/10 to 8/10**. The system now
 records actual reverse handovers instead of stopping at approval; this does not
 raise financial repayment readiness. Apply the additive return migrations before
 using these routes; a database reset is unnecessary.
+
+### Buyer-return COD repayment: October 19, 2026
+
+R03 allocates original merchandise, the original gross 10% commission and original
+shop/platform product discounts over exact purchased unit positions. Prefix
+allocation retains every cent regardless of case order; platform contributions
+remain signed when original promotions exceed commission. Separate immutable
+adjustments preserve shipping, voucher usage, commitments/expenses, original
+order status and paid seller records. Current listing prices never set repayment.
+
+Actual seller receipt and reasoned condition review precede amount approval.
+Original reconciled COD, actual seller payments, remaining unpaid seller proceeds,
+shipping obligations, received recovery/funding and previous outgoing repayments
+determine available backing. Offers, debts and campaign budgets are not received
+cash. An original seller may record a partial recovery transfer; the named current
+admin independently acknowledges it. Actual platform funding also requires a
+different named receiving admin and private proof on both sides.
+
+One fixed original-buyer repayment retains its normalized unique reference,
+actual private proof and transfer attestation. Only that buyer's receipt closes
+it as Repaid. Non-receipt retains the original payment under review; linked review
+evidence cannot authorize another payout. A fully discounted entitlement closes
+explicitly with no repayment due, without a fake zero-cash payment. Received
+money and remaining seller debt remain separate after buyer repayment; debt and
+unacknowledged transfer responsibilities still block account closure.
+
+Unpaid seller release derives separate return deductions and requires renewed
+consent after its basis changes. A zero remainder closes with retained evidence,
+not a transfer. A prior positive seller payment remains verified using its
+payment-time deductions. Finance shows actual paid proceeds, remaining unpaid
+amounts, return deductions, entitlements, outgoing repayments, received recovery
+and actual received funding separately from historical COD collection. Private
+funding evidence stays with current admins; operational users receive no money
+proofs or financial notes.
+
+Verification: **185 unique backend tests / 10,467 assertions** passed with SQLite
+`:memory:`. The 180-test financial/return regression run and the final 18-test
+repayment/file run are deduplicated by method using the latest passing result.
+Coverage includes full/partial returns before and after seller payment, refreshed
+authorization, zero closures, two unit cases, actual funding versus offers,
+shipping promotions, signed contributions, partial recovery, non-receipt,
+ownership, stale/replayed requests, private content/hash access, exact real 5 MB
+boundaries, database retention guards and failed outbox/file rollback.
+**24 frontend checks** and the TypeScript/Vite production build passed. Browser,
+deployed scheduler and real banking outcomes are not established by these tests.
+
+Scoped COD return-repayment assessment: **0/10 to 8/10**. The application now has
+an evidenced manual path from original amount to actual backing and buyer receipt.
+It does not initiate bank transfers or implement online checkout payments. Apply
+the additive return migrations before using the feature; retain original data.
