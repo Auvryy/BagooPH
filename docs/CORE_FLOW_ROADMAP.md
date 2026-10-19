@@ -6856,3 +6856,24 @@ immediate visibility without losing older scans or unread actions. TypeScript an
 Vite production build pass in Docker. These are source, rendering/helper and local
 HTTP checks; no new browser, real-device or Azure deployment result is claimed.
 The assessment concerns this layout only, not overall system readiness.
+
+### Bagoo virtual wallet foundation — October 19, 2026
+
+The user selected admin-approved virtual credits alongside COD, with wallet
+equivalents for payment success, failure, cancellation, browser-close recovery,
+unpaid expiry and refunds. [The wallet contract](BAGOO_WALLET.md) records this
+addition and its separation from cash collections and cash seller payouts.
+
+**State: in progress.** Additive wallet tables, immutable balanced journal
+entries, non-negative user balances and owned demo-credit requests are in place.
+An active verified admin approves the original requested amount once; rejection
+creates no funds, and a failed journal write rolls back the entire approval.
+The scoped wallet implementation assessment is **0/10 before → 3/10 for the
+foundation**. Checkout, portal controls, expiry and financial integration remain
+required before wallet readiness can be claimed. COD behavior has not changed.
+
+Foundation evidence: **27 isolated SQLite tests / 47 assertions** passed for
+credit approval/rejection, role restrictions, retry protection, amount format and
+boundaries, transaction rollback, immutable database history and rejection of a
+fabricated cached balance. These are service/database checks, not a completed
+payment workbook or browser acceptance run.
