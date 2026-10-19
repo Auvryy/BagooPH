@@ -548,7 +548,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
 
                             <div className="space-y-2 text-xs">
                                 {[{ status: 'delivery_failed', label: 'Delivery issues', count: stats.deliveryIssueCount }, { status: 'returned', label: 'Returned orders', count: stats.returnedCount }, { status: 'cancelled', label: 'Cancelled orders', count: stats.cancelledCount }].map(stage => <PortalLink key={stage.status} href={route('seller.orders.index', { status: stage.status })} className="flex items-center justify-between rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-slate-700 hover:border-[#E00D42]"><span>{stage.label}</span><strong>{stage.count ?? 0}</strong></PortalLink>)}
-                                <p className="text-[10px] text-slate-500">Post-delivery disputes remain unavailable.</p>
+                                <PortalLink href="/buyer-returns" className="text-xs font-semibold text-[#C20836] hover:underline">Review buyer returns and refunds</PortalLink>
                             </div>
 
                             {/* 3. LOGISTICS PIPELINE SUMMARY BOX */}

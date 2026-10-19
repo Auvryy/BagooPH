@@ -84,6 +84,9 @@ class OrderHistoryController extends Controller
             'buyAgainToken' => $ownedBuyerOrder && $user->canAccessPortal() && $order->status === 'completed'
                 ? app(BuyAgainService::class)->requestToken($user, $order) : null,
             'canConfirmReceipt' => $canConfirmReceipt,
+            'returnAvailability' => $ownedBuyerOrder && $canFulfillOrder
+                ? app(\App\Services\Returns\BuyerReturnService::class)->availability($user, $order) : null,
+            'buyerReturns' => $ownedBuyerOrder ? $order->buyerReturns()->latest('id')->get(['id', 'reference', 'status'])->all() : [],
             'cancelOrderUrl' => $ownedBuyerOrder && app(OrderLifecycleService::class)->canBuyerCancel($order, $user)
                 ? route('buyer.orders.cancel', $order, absolute: false) : null,
             'cancellationReasons' => OrderLifecycleService::BUYER_CANCELLATION_REASONS,

@@ -101,6 +101,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: component.startsWith('Admin/Logistics') || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
                 { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component === 'Governance/History' || component === 'Governance/HistoryDetail' },
                 { name: 'Delivery exceptions', href: '/exceptions', icon: ShieldAlert, current: component === 'Governance/Exceptions' || component === 'Governance/ExceptionDetail' },
+                { name: 'Buyer returns', href: '/buyer-returns', icon: ShieldAlert, current: component.startsWith('Returns/') },
                 { name: 'Handover issues', href: '/handover-issues', icon: AlertTriangle, current: component.startsWith('Handover/') },
                 { name: 'COD cash', href: route('admin.cod.index'), icon: Banknote, current: component === 'Finance/Cod' || component === 'Finance/CodDetail' },
                 { name: 'Seller proceeds', href: '/seller-settlements', icon: Banknote, current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },
@@ -153,7 +154,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     name: 'Disputes & Returns', 
                     href: route('seller.disputes.index'), 
                     icon: ShieldAlert, 
-                    current: component.startsWith('Seller/Dispute') || route().current('seller.disputes.*') || url.startsWith('/seller/disputes') 
+                    current: component.startsWith('Returns/') || component.startsWith('Seller/Dispute') || route().current('seller.disputes.*') || url.startsWith('/seller/disputes')
                 },
                 { 
                     name: 'Finances', 

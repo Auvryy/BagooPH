@@ -6540,3 +6540,51 @@ Separate future estimates and cross-role rejection/retry/rollback checks are
 recorded before implementation. This documentation establishes scope, not a
 working return feature, browser result, published branch or production repayment.
 No implementation rating changes in this planning delivery.
+
+### Buyer-return requests and review: October 19, 2026
+
+R01 replaces unavailable buyer/seller return areas with real owned queues,
+requests and retained review history. Original purchased units can be requested
+through exactly seven elapsed days from evidenced delivery/counter collection,
+including Completed orders. Actual forward hub receipts remain required; a
+legacy delivered label is insufficient. New claims reserve original unit
+positions without changing order status, original prices, delivery or money.
+
+The form requires meaningful 10–1,000-character details and one to five actual
+private JPG/PNG/WebP images, at most 5 MB each. Protected downloads verify owner
+or current review authority and the stored content hash. Failed case, notice or
+journal writes roll back and remove only new unused uploads. Identical retries
+retain the saved case; changed/stale commands cannot replace it.
+
+The current eligible seller has three elapsed days to approve or reject with an
+exact retained reason. Buyers can escalate a rejection within its three-day appeal
+period or an unanswered overdue request. Current admins record reasoned decisions.
+Approval grants a separate seven-day physical drop-off period; it does not record
+intake or repayment. Unused expiry/withdrawal is an explicit retained action.
+Owned history remains accessible under supported restrictions; closed accounts
+cannot use it. In-app notices link to the actual case without exposing photos.
+
+Purchase history and details expose only server-authorized requests and saved
+cases. The Return/Refund filter counts owned original orders with return history
+while preserving their actual Delivered/Completed status. Buyer, seller and admin
+screens use their existing portal shells, upload hints, readable empty states,
+exact feedback, decision timeline, pending controls and recoverable errors.
+
+An unresolved return blocks seller release and closure of its buyer/seller
+accounts. A seller payment already made remains verified with its original proof,
+amount and ledger; a return within the remaining window does not make it unpaid.
+The complete reverse parcel route and COD repayment remain R02/R03 prerequisites,
+so this result does not establish that a product or money has been returned.
+
+Verification: **219 unique backend tests / 8,054 assertions** passed with SQLite
+`:memory:`, including existing settlement/closure/notification/access regression,
+precise clocks, real file bytes, late replay, failed writes and retained paid
+settlement evidence. **47 frontend checks** and the TypeScript/Vite production
+build passed. The PHP groups were rerun sequentially after parallel temporary-file
+interference; only the passing isolated runs count as evidence. No browser,
+production database, publication or deployment is included.
+
+Scoped request/review assessment: **2/10 to 8/10**. Buyers now have backed requests
+and exact seller/admin feedback; overall return/repayment readiness is not raised
+until actual custody and financial acceptance pass. The additive return-record
+migration is required before these routes are used; no database reset is needed.

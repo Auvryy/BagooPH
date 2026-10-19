@@ -118,12 +118,12 @@ test('purchase progress stays in five buttons and Order issues sits directly bel
 });
 
 test('direct exception links activate Order issues and the matching exception button', async () => {
-    for (const currentOrderStatus of ['delivery_failed', 'returned', 'cancelled']) {
+    for (const currentOrderStatus of ['delivery_failed', 'returned', 'cancelled', 'return_refund']) {
         const html = await render({ currentOrderStatus });
         const nav = html.match(/<nav aria-label="Order issue status"[\s\S]*?<\/nav>/)[0];
-        assert.equal((nav.match(/<button\b/g) || []).length, 3);
+        assert.equal((nav.match(/<button\b/g) || []).length, 4);
         assert.equal((nav.match(/aria-pressed="true"/g) || []).length, 1);
-        for (const label of ['Delivery issue', 'Returned', 'Cancelled']) assert.ok(nav.includes(label));
+        for (const label of ['Delivery issue', 'Returned', 'Cancelled', 'Return/Refund']) assert.ok(nav.includes(label));
         const selections = [];
         const tree = ui.Filters({ ...globalThis.buyerProfileFilters, onChange: status => selections.push(status) });
         nodes(tree, node => node.type === 'button' && node.props['aria-pressed'])[0].props.onClick();

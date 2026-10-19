@@ -74,11 +74,13 @@ class BuyerProfileController extends Controller
             'wallet' => $wallet,
             'orders' => function () use ($workspace, $owned, $status, $user) {
                 $orders = $workspace->paginate($workspace->stable($workspace->filter(clone $owned, 'buyer', $status))
-                    ->with(['items.product.shop', 'delivery.courier:id,name', ...OrderTrackingService::relations(history: false)]), 12);
+                    ->with(['items.product.shop', 'buyerReturns:id,order_id,reference,status', 'delivery.courier:id,name', ...OrderTrackingService::relations(history: false)]), 12);
                 foreach ($orders as $order) {
                     $order->setAttribute('can_confirm_receipt', $workspace->canConfirmReceipt($order, $user));
                     $order->setAttribute('can_buy_again', $order->buyer_id === $user->id && $user->canAccessPortal() && $order->status === 'completed');
                     $order->setAttribute('buy_again_token', $order->can_buy_again ? app(BuyAgainService::class)->requestToken($user, $order) : null);
+                    $order->setAttribute('return_availability', app(BuyerAccessService::class)->canAccessExistingOrders($user) && in_array($order->status, ['delivered', 'completed'], true)
+                        ? app(\App\Services\Returns\BuyerReturnService::class)->availability($user, $order) : null);
                     app(OrderTrackingService::class)->attach($order, history: false);
                 }
 

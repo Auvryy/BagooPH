@@ -25,7 +25,7 @@ export default function BuyerOrderFilters({ selected, counts, disabled, onChange
                     {refreshing ? 'Refreshing…' : 'Refresh tracking'}
                 </button>
             </div>
-            <nav aria-label={showIssues ? 'Order issue status' : 'Purchase status'} className={`grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-300 bg-white p-1.5 shadow-xs ${showIssues ? 'sm:grid-cols-3' : 'sm:grid-cols-5'}`}>
+            <nav aria-label={showIssues ? 'Order issue status' : 'Purchase status'} className={`grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-300 bg-white p-1.5 shadow-xs ${showIssues ? 'sm:grid-cols-4' : 'sm:grid-cols-5'}`}>
                 {stages.map(stage => (
                     <button
                         key={stage.id}

@@ -591,7 +591,7 @@ export default function BuyerProfile({
                             >
                                 <span className="flex items-center gap-2.5">
                                     <Shield className="w-4 h-4 text-slate-400" />
-                                    <span>Returns & Dispute Desk</span>
+                                    <span>Returns &amp; Refunds</span>
                                 </span>
                                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                             </Link>
@@ -737,14 +737,15 @@ export default function BuyerProfile({
                                                         <span>Track Parcel</span>
                                                     </Link>
 
-                                                    {order.status === 'delivered' && (
+                                                    {order.return_availability?.can_request && (
                                                         <Link
-                                                            href={route('buyer.disputes.index')}
+                                                            href={`/buyer-returns/orders/${order.id}/create`}
                                                             className="px-3 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition"
                                                         >
-                                                            Disputes unavailable
+                                                            Request a return
                                                         </Link>
                                                     )}
+                                                    {order.buyer_returns?.map(item => <Link key={item.id} href={`/buyer-returns/${item.id}`} className="rounded-xl border border-slate-300 px-3 py-2 font-semibold text-[#C20836]">Return {item.reference}</Link>)}
                                                 </div>
                                             </div>
                                         </div>

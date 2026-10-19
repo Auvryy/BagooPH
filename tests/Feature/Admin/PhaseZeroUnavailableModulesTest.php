@@ -21,24 +21,24 @@ class PhaseZeroUnavailableModulesTest extends TestCase
         $this->withoutVite();
     }
 
-    public function test_buyer_disputes_are_unavailable_without_sample_claims_or_eligible_orders(): void
+    public function test_buyer_return_queue_does_not_invent_claims_from_a_delivered_status_label(): void
     {
         $buyer = User::factory()->create(['address' => null, 'city' => null]);
         Order::factory()->create(['buyer_id' => $buyer->id, 'status' => 'delivered']);
         foreach (['http://localhost', 'http://buyer.localhost'] as $host) {
             $this->actingAs($buyer)->get($host.'/buyer/disputes')->assertInertia(fn (Assert $page) => $page
-                ->component('Buyer/Disputes')->where('available', false)->missing('disputes')->missing('eligibleOrders'));
+                ->component('Returns/Index')->where('cases.total', 0)->where('cases.data', [])->missing('eligibleOrders'));
         }
         $this->assertDatabaseCount('orders', 1);
     }
 
-    public function test_seller_disputes_are_unavailable_on_both_portals(): void
+    public function test_seller_return_queue_is_empty_on_both_portals_without_sample_claims(): void
     {
         $seller = User::factory()->seller()->create();
         $shop = Shop::factory()->approved()->create(['user_id' => $seller->id]);
         foreach (['http://localhost/seller/disputes', 'http://seller.localhost/disputes'] as $url) {
             $this->actingAs($seller)->get($url)->assertInertia(fn (Assert $page) => $page
-                ->component('Seller/Disputes')->where('available', false)->where('shop.id', $shop->id)->missing('disputes'));
+                ->component('Returns/Index')->where('cases.total', 0)->where('cases.data', []));
         }
     }
 

@@ -176,13 +176,13 @@ test('mixed-shop seller history displays owned products without fulfilment, canc
 test('buyer purchases retain full-history counts and paginate with receipt actions only for eligible records', async () => {
     const html = await render(ui.Purchases, 'Buyer/Profile', {
         user: buyer, addresses: [], wallet: { available: false, balance: null, currency: 'PHP', recent_transactions: [] },
-        orders: { ...paginated([{ ...order, status: 'delivered', can_confirm_receipt: true }, { ...order, id: 41, order_number: 'BGO-UNREADY', status: 'delivered', can_confirm_receipt: false }]), total: 4, last_page: 2, next_page_url: '/buyer/profile?tab=orders&order_status=delivered&page=2' },
+        orders: { ...paginated([{ ...order, status: 'delivered', can_confirm_receipt: true, return_availability: { can_request: true } }, { ...order, id: 41, order_number: 'BGO-UNREADY', status: 'delivered', can_confirm_receipt: false }]), total: 4, last_page: 2, next_page_url: '/buyer/profile?tab=orders&order_status=delivered&page=2' },
         ordersCount: 42, orderCounts: counts, currentOrderStatus: 'delivered', initialTab: 'orders',
     });
     assert.match(html, /My Purchases &amp; Order Tracking/);
     assert.match(html, /Purchase pages/); assert.match(html, /Page 1 of 2/);
     assert.match(html, />42</); assert.equal((html.match(/Confirm Received/g) || []).length, 1);
-    assert.match(html, /Disputes unavailable/); assert.doesNotMatch(html, /Report Defect/);
+    assert.equal((html.match(/Request a return/g) || []).length, 1); assert.doesNotMatch(html, /Disputes unavailable|Report Defect/);
     for (const label of ['Delivered', 'Completed', 'Order issues']) assert.ok(html.includes(label));
 });
 
@@ -202,7 +202,7 @@ test('seller dashboard groups recent orders and links actual return and exceptio
     assert.match(html, /Everyday Bag \+ 1 more/); assert.match(html, /Units: 3/);
     assert.match(html, /status=return_custody/); assert.match(html, /status=delivery_failed/);
     assert.match(html, /status=delivered/); assert.match(html, /status=completed/);
-    assert.match(html, /Post-delivery disputes remain unavailable\./);
+    assert.match(html, /Review buyer returns and refunds/);
     assert.doesNotMatch(html, /Return Claims/);
 });
 

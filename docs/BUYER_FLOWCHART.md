@@ -88,6 +88,14 @@ unchanged. Original delivery notes are retained; the cancellation has its own
 recorded reason and time. Online-paid legacy orders require payment support;
 cancellation does not imply a refund.
 
+An original buyer may request a return for purchased units through exactly seven
+elapsed days after evidenced physical delivery or counter collection, including
+after confirming receipt. Follow the [selected return contract](buyer-returns-plan/README.md)
+for bounded private photos, meaningful reasons, seller response and admin appeal.
+A case retains the original purchase, delivery and completion. Approval, physical
+return, recorded repayment and the buyer's confirmation of money are distinct
+steps; no case or parcel label proves that a refund was paid.
+
 After buyer-confirmed completion, each purchased item may receive one verified
 review with integer stars from one to five, text up to 1,000 characters and up to
 five JPG, PNG or WEBP photos of 5 MB each. The buyer may edit rating and text once

@@ -7,10 +7,11 @@ export const buyerOrderStages = [
     { id: 'delivery_failed', label: 'Delivery issue' },
     { id: 'returned', label: 'Returned' },
     { id: 'cancelled', label: 'Cancelled' },
+    { id: 'return_refund', label: 'Return/Refund' },
 ];
 
 export const buyerOrderIssueStages = buyerOrderStages.filter(stage =>
-    ['delivery_failed', 'returned', 'cancelled'].includes(stage.id),
+    ['delivery_failed', 'returned', 'cancelled', 'return_refund'].includes(stage.id),
 );
 
 export const isBuyerOrderIssue = (status: string) => buyerOrderIssueStages.some(stage => stage.id === status);

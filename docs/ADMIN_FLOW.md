@@ -154,7 +154,7 @@ Audit search is read-only and applies current privileged eligibility and company
 
 Admin review may include account documents, order items, waybill and hub checkpoints, manifest history, rider assignment, delivery proof, failure reasons, COD custody records, buyer confirmation, and role messages.
 
-The core baseline preserves evidence and may show dispute handling as unavailable until the separate post-delivery dispute milestone is approved. Complete refund, exchange, and automated dispute processing must not be implied by placeholder screens or fake success responses. Any future resolution cannot erase the original audit trail.
+The selected [buyer-return contract](buyer-returns-plan/README.md) authorizes admin review of escalated original item requests. A reasoned review decision cannot manufacture return intake, seller receipt or repayment. Any repayment retains the original cash and seller-payment evidence and its own financial prerequisites. Exchanges, unrelated disputes and automated resolution are outside this contract; unsupported actions cannot return fake success. Resolution never erases the original audit trail.
 
 ## 7. Acceptance Checks and Delivery Order
 
@@ -183,7 +183,7 @@ The core baseline preserves evidence and may show dispute handling as unavailabl
 
 Use isolated SQLite `:memory:` tests for implemented behavior and the full adversarial acceptance gate in the validation contract. Simultaneous PostgreSQL locking needs a design review beyond SQLite tests.
 
-Deliver approval/access/audit foundations in Phase 0. Manifests, delivery recovery/self-pickup, notifications, and COD reconciliation retain Phases 2, 3, 4, and 5 respectively. Preserve active work during restrictions; do not enable direct admin overrides while waiting for later recovery or correction modules. Complete post-delivery disputes, refunds, exchanges, advanced rates, and analytics remain deferred.
+Deliver approval/access/audit foundations in Phase 0. Manifests, delivery recovery/self-pickup, notifications, and COD reconciliation retain Phases 2, 3, 4, and 5 respectively. Preserve active work during restrictions; do not enable direct admin overrides while waiting for later recovery or correction modules. The separately selected buyer-return contract retains those prerequisites. Exchanges, unrelated disputes, advanced rates and analytics remain deferred.
 
 ## 8. Implementation Status
 
