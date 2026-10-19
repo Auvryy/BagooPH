@@ -15,6 +15,7 @@ use App\Services\Orders\CheckoutOrderService;
 use App\Services\Orders\CheckoutQuoteService;
 use App\Services\Orders\CheckoutSubmissionService;
 use App\Services\Orders\OrderLifecycleService;
+use App\Services\Vouchers\VoucherChoiceService;
 use App\Services\Wallet\WalletCreditService;
 use App\Services\Wallet\WalletPaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,7 +32,7 @@ class WalletPaymentTest extends TestCase
     use InteractsWithCheckoutNetwork;
     use RefreshDatabase;
 
-    private function purchase(string $method = 'wallet', bool $voucher = false): array
+    private function purchase(string $method = 'wallet', bool $voucher = false, bool $multipleShops = false): array
     {
         $this->travelTo(now()->setMicrosecond(0));
         $buyer = User::factory()->create(['name' => 'Maria Santos']);
@@ -39,20 +40,25 @@ class WalletPaymentTest extends TestCase
         $product = Product::factory()->create(['shop_id' => $shop->id, 'price' => '100.00', 'stock' => 20]);
         $cart = Cart::create(['user_id' => $buyer->id]);
         $line = $cart->items()->create(['product_id' => $product->id, 'quantity' => 1, 'unit_price' => '100.00']);
+        $ids = [$line->id];
+        if ($multipleShops) {
+            $other = Product::factory()->create(['shop_id' => Shop::factory()->approved()->create(['city' => 'Manila'])->id, 'price' => '200.00', 'stock' => 20]);
+            $ids[] = $cart->items()->create(['product_id' => $other->id, 'quantity' => 1, 'unit_price' => '200.00'])->id;
+        }
         $this->createCheckoutNetwork($shop, ['Pasig' => 'Metro Manila']);
         $payload = ['recipient_name' => 'Maria Santos', 'recipient_phone' => '09171234567',
             'shipping_address' => '123 Mabini Street', 'shipping_city' => 'Pasig', 'shipping_province' => 'Metro Manila',
             'shipping_postal_code' => '1600', 'destination_barangay' => 'San Antonio', 'delivery_type' => 'doorstep',
-            'payment_method' => $method, 'item_ids' => [$line->id], 'checkout_token' => app(CheckoutSubmissionService::class)->issue($buyer, $cart)];
+            'payment_method' => $method, 'item_ids' => $ids, 'checkout_token' => app(CheckoutSubmissionService::class)->issue($buyer, $cart)];
         $offer = null;
         if ($voucher) {
             $offer = Voucher::factory()->funded(['per_buyer_limit' => 1])->create(['min_spend' => 0, 'discount_type' => 'fixed', 'discount_value' => 10,
                 'usage_limit' => 1]);
             $payload['platform_voucher_revision_id'] = $offer->current_revision_id;
         }
-        $order = app(CheckoutOrderService::class)->place($buyer, $cart, [$line->id], $payload)->sole();
+        $order = app(CheckoutOrderService::class)->place($buyer, $cart, $ids, $payload)->first();
 
-        return [$buyer, $order, $product, $shop, $offer];
+        return [$buyer, $order, $product, $shop, $offer, $payload];
     }
 
     private function fund(User $buyer, string $amount = '1000.00'): void
@@ -153,6 +159,11 @@ class WalletPaymentTest extends TestCase
         $this->assertTrue(app(CheckoutQuoteService::class)->availableQuery(buyer: $buyer)->whereKey($offer->current_revision_id)->exists());
         $this->assertDatabaseCount('wallet_voucher_restorations', 1);
         $this->assertDatabaseCount('wallet_transactions', 0);
+        $cart = Cart::where('user_id', $buyer->id)->sole();
+        $line = $cart->items()->create(['product_id' => $product->id, 'quantity' => 1, 'unit_price' => '100.00']);
+        $best = app(VoucherChoiceService::class)->best($buyer, $cart->items()->with('product.shop')->get(), 'doorstep');
+        $this->assertSame($offer->current_revision_id, $best['selection']['platform_voucher_revision_id']);
+        $this->assertEquals(10, $best['quote']['discount']);
     }
 
     #[DataProvider('expiryBoundaries')]
@@ -224,6 +235,65 @@ class WalletPaymentTest extends TestCase
         [, $order] = $this->purchase();
         $this->expectException(HttpException::class);
         $this->command(User::factory()->create(), $order);
+    }
+
+    public function test_two_unpaid_purchases_using_one_stale_balance_cannot_both_spend_the_same_credits(): void
+    {
+        [$buyer, $first, $product, , , $payload] = $this->purchase();
+        $cart = Cart::where('user_id', $buyer->id)->sole();
+        $line = $cart->items()->create(['product_id' => $product->id, 'quantity' => 1, 'unit_price' => '100.00']);
+        $payload['item_ids'] = [$line->id];
+        $payload['checkout_token'] = app(CheckoutSubmissionService::class)->issue($buyer, $cart);
+        $second = app(CheckoutOrderService::class)->place($buyer, $cart, [$line->id], $payload)->sole();
+        $this->fund($buyer, '150.00');
+        $this->assertSame('paid', $this->command($buyer, $first)->outcome);
+        $this->assertSame('failed', $this->command($buyer, $second)->outcome);
+        $this->assertSame(0, WalletAccount::where('user_id', $buyer->id)->sole()->balance_cents);
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_payment')->count());
+        $this->assertSame('pending', $second->fresh()->payment_status);
+    }
+
+    #[DataProvider('sharedVoucherOutcomes')]
+    public function test_expiry_of_shared_voucher_orders_restores_a_use_only_when_every_sibling_was_unpaid(bool $payFirst): void
+    {
+        [$buyer, $first, $product, , $offer] = $this->purchase(voucher: true, multipleShops: true);
+        $second = Order::where('buyer_id', $buyer->id)->where('id', '!=', $first->id)->sole();
+        $source = $first->walletPayment->getAttributes();
+        if ($payFirst) {
+            $this->fund($buyer);
+            $this->command($buyer, $first);
+            $source = $first->walletPayment->fresh()->getAttributes();
+        }
+        $this->travel(60)->minutes();
+        $this->assertSame(1, app(WalletPaymentService::class)->expireDue(1));
+        if (! $payFirst) {
+            $this->assertSame(1, $offer->fresh()->used_count);
+            $this->assertSame(1, app(WalletPaymentService::class)->expireDue(1));
+        }
+        $this->assertSame(0, app(WalletPaymentService::class)->expireDue());
+        $this->assertSame('expired', $second->walletPayment->fresh()->status);
+        $this->assertSame($payFirst ? 19 : 20, $product->fresh()->stock);
+        $this->assertSame($payFirst ? 1 : 0, $offer->fresh()->used_count);
+        $this->assertDatabaseCount('wallet_voucher_restorations', $payFirst ? 0 : 1);
+        if ($payFirst) {
+            $this->assertSame($source, $first->walletPayment->fresh()->getAttributes());
+            $this->assertSame('paid', $first->fresh()->payment_status);
+            $this->assertFalse(app(CheckoutQuoteService::class)->availableQuery(buyer: $buyer)->whereKey($offer->current_revision_id)->exists());
+        }
+    }
+
+    public static function sharedVoucherOutcomes(): array
+    {
+        return [[false], [true]];
+    }
+
+    public function test_reassigning_the_original_shop_owner_invalidates_the_saved_payment_source(): void
+    {
+        [$buyer, $order, , $shop] = $this->purchase();
+        $this->fund($buyer);
+        $shop->update(['user_id' => User::factory()->seller()->create()->id]);
+        $this->expectException(HttpException::class);
+        $this->command($buyer, $order->fresh());
     }
 
     public function test_journal_failure_rolls_back_debit_paid_state_and_attempt_together(): void

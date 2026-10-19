@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\WalletAccount;
 use App\Models\WalletTopUpRequest;
 use App\Rules\ApplicationText;
+use App\Services\AccountRestrictionService;
 use App\Services\BuyerAccessService;
 use App\Services\Finance\CodMoney;
 use App\Services\Notifications\NotificationDeliveryService;
@@ -78,6 +79,8 @@ class WalletCreditService
         $hash = hash('sha256', json_encode([$request->id, $data['decision'], $reason], JSON_THROW_ON_ERROR));
 
         return DB::transaction(function () use ($actor, $request, $data, $reason, $token, $hash) {
+            app(AccountRestrictionService::class)->lockGuard();
+            User::whereIn('id', [$actor->id, $request->buyer_id])->orderBy('id')->lockForUpdate()->get();
             $admin = $this->admin($actor);
             $buyer = User::whereKey($request->buyer_id)->lockForUpdate()->firstOrFail();
             $locked = WalletTopUpRequest::whereKey($request->id)->lockForUpdate()->firstOrFail();
@@ -88,6 +91,8 @@ class WalletCreditService
                 return $prior;
             }
             abort_unless($locked->status === 'pending', 409, 'This credit request has already been reviewed.');
+            abort_unless(hash_equals($locked->fingerprint, hash('sha256', json_encode([$locked->amount_cents, $locked->reason], JSON_THROW_ON_ERROR))), 409,
+                'The original requested amount or reason changed and needs review.');
             $transaction = null;
             if ($data['decision'] === 'approved') {
                 app(BuyerAccessService::class)->requirePortal($buyer);

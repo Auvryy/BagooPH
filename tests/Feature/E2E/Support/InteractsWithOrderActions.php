@@ -115,9 +115,11 @@ trait InteractsWithOrderActions
             $stocks[$product->id][1] -= $item['quantity'] ?? 1;
         }
         $before = Order::pluck('id');
-        $this->actingAs($buyer)->post(route('checkout.store'), $payload)
-            ->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
+        $response = $this->actingAs($buyer)->post(route('checkout.store'), $payload)->assertSessionHasNoErrors();
         $orders = Order::whereNotIn('id', $before)->with('items.product', 'delivery', 'buyer')->get();
+        $response->assertRedirect(($payload['payment_method'] ?? 'cod') === 'wallet'
+            ? ($orders->count() === 1 ? route('wallet.payments.show', $orders->first()->walletPayment)
+                : route('buyer.profile', ['tab' => 'orders', 'order_status' => 'to_pay'])) : route('buyer.orders.index'));
         $this->assertCount(collect($items)->pluck('product.shop_id')->unique()->count(), $orders);
         foreach ($orders as $order) {
             $this->assertSame('placed', $order->status);

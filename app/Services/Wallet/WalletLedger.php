@@ -11,16 +11,34 @@ use Illuminate\Support\Str;
 
 class WalletLedger
 {
+    public function balance(User $user): ?int
+    {
+        // One statement reads the cache and journal from the same database snapshot.
+        $account = WalletAccount::where('user_id', $user->id)->withSum('entries as recorded_cents', 'delta_cents')->first();
+        if (! $account) {
+            return 0;
+        }
+
+        return $account->account_key === 'user:'.$user->id && $account->kind === 'user'
+            && $account->balance_cents === (int) $account->recorded_cents ? $account->balance_cents : null;
+    }
+
     public function user(User $user): WalletAccount
     {
-        return WalletAccount::firstOrCreate(['account_key' => 'user:'.$user->id], ['user_id' => $user->id, 'kind' => 'user', 'balance_cents' => 0]);
+        $account = WalletAccount::firstOrCreate(['account_key' => 'user:'.$user->id], ['user_id' => $user->id, 'kind' => 'user', 'balance_cents' => 0]);
+        abort_unless($account->user_id === $user->id && $account->kind === 'user', 409, 'This wallet ownership needs review.');
+
+        return $account;
     }
 
     public function platform(string $kind): WalletAccount
     {
         abort_unless(in_array($kind, ['demo_issuance', 'escrow', 'commission', 'shipping', 'promotion'], true), 409);
 
-        return WalletAccount::firstOrCreate(['account_key' => 'platform:'.$kind], ['kind' => $kind, 'balance_cents' => 0]);
+        $account = WalletAccount::firstOrCreate(['account_key' => 'platform:'.$kind], ['kind' => $kind, 'balance_cents' => 0]);
+        abort_unless($account->user_id === null && $account->kind === $kind, 409, 'This virtual platform account needs review.');
+
+        return $account;
     }
 
     /** @param array<int, int> $deltas Account IDs mapped to signed integer centavos. */

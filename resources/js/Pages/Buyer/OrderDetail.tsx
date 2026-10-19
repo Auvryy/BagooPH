@@ -227,6 +227,8 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
 
                 {receiptError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800">{receiptError}</p>}
 
+                {order.payment_method === 'wallet' && order.wallet_payment && <section aria-label="Wallet payment" className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-300 bg-white p-4"><div><h2 className="text-sm font-bold text-slate-900">Bagoo Wallet · virtual credits</h2><p className="mt-1 text-xs leading-6 text-slate-600">{order.payment_status === 'paid' ? 'This order was paid with virtual credits. No cash is due at delivery.' : order.payment_status === 'refunded' ? 'The original payment was returned to your wallet.' : order.payment_status === 'cancelled' ? 'This unpaid wallet order is closed.' : 'Complete payment within one hour of placing the order. The seller can prepare it after payment.'}</p></div><Link href={`/wallet/payments/${order.wallet_payment.id}`} className="rounded-lg border border-slate-300 px-4 py-2.5 text-xs font-semibold text-[#C20836]">{order.payment_status === 'pending' ? 'Pay with wallet' : 'View payment'}</Link></section>}
+
                 {order.status === 'cancelled' && cancellationReason && <p role="status" className="rounded-xl border border-slate-300 bg-white p-4 text-sm text-slate-700">Cancellation reason: {cancellationReason}</p>}
                 <OrderTrackingPanel variant="buyer" tracking={order.tracking} buyerOrder={order} notices={orderNotices}
                     onReview={canUsePortal && order.status === 'completed' && reviewableItems.length > 0 ? openReview : undefined}
@@ -238,7 +240,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
                     <h2 className="font-bold text-slate-900">Your hub pickup</h2>
                     <p className="text-sm text-slate-700">{pickupHub?.name ?? 'Hub details not recorded'} · {pickupHub?.address}</p>
                     <p className="text-sm text-slate-700">{pickupHub?.operating_hours ?? 'Contact the hub for its actual operating hours.'}</p>
-                    {(counterWindow === 'ready' || counterWindow === 'locked') && <p className="text-sm text-slate-700">Collect before {trackingDate(pickupClaim.expires_at)} Philippine time. Bring your valid photo ID and exact COD payment.</p>}
+                    {(counterWindow === 'ready' || counterWindow === 'locked') && <p className="text-sm text-slate-700">Collect before {trackingDate(pickupClaim.expires_at)} Philippine time. Bring your valid photo ID{order.payment_method === 'cod' ? ' and exact COD payment.' : '. This wallet parcel requires no cash.'}</p>}
                     {counterWindow === 'expired' && <p role="status" className="text-sm font-semibold text-amber-900">The collection deadline has passed. Refresh tracking for the hub's return review.</p>}
                     {counterWindow === 'locked' && <p role="status" className="text-sm font-semibold text-amber-900">Counter verification is locked until {trackingDate(pickupClaim.locked_until)} Philippine time. Refresh after that time.</p>}
                     {counterWindow === 'unavailable' && <p className="text-sm font-semibold text-slate-700">{pickupClaim.status === 'collected' ? (order.status === 'completed' ? 'Collection and your receipt confirmation are recorded.' : 'Collection is recorded. Confirm receipt after checking your items.') : 'The recorded pickup state needs hub review.'}</p>}

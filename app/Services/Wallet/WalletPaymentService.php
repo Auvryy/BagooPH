@@ -20,9 +20,9 @@ class WalletPaymentService
 {
     public function sourceHash(Order $order): string
     {
-        $items = $order->items()->orderBy('id')->get()->map(fn ($item) => $item->only([
+        $items = $order->items()->with('shop:id,user_id')->orderBy('id')->get()->map(fn ($item) => [...$item->only([
             'id', 'product_id', 'shop_id', 'product_sale_id', 'quantity', 'unit_price', 'subtotal', 'color', 'size', 'sku_snapshot',
-        ]))->all();
+        ]), 'seller_id' => $item->shop?->user_id])->all();
 
         return hash('sha256', json_encode([$order->only(['id', 'buyer_id', 'subtotal', 'shipping_fee', 'voucher_discount',
             'voucher_accounting_version', 'total_amount', 'payment_method']), $items], JSON_THROW_ON_ERROR));

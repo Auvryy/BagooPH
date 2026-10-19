@@ -161,4 +161,19 @@ class WalletCreditTest extends TestCase
         $this->expectException(HttpException::class);
         DB::transaction(fn () => $ledger->post('test-payment', 'payment', 100, [$account->id => -100, $platform->id => 100], $buyer, 'Demo purchase test.'));
     }
+
+    public function test_the_original_request_cannot_be_changed_into_a_larger_admin_grant(): void
+    {
+        $service = app(WalletCreditService::class);
+        $request = $service->request(User::factory()->create(), $this->input('1.00'));
+        DB::table('wallet_top_up_requests')->where('id', $request->id)->update(['amount_cents' => 100000]);
+        try {
+            $service->review(User::factory()->admin()->create(), $request, $this->review());
+            $this->fail('Changed original credit requests must not be granted.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $this->assertDatabaseCount('wallet_transactions', 0);
+        $this->assertSame('pending', $request->fresh()->status);
+    }
 }

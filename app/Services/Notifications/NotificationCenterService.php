@@ -205,6 +205,9 @@ class NotificationCenterService
 
             return null;
         }
+        if ($target === 'buyer-wallet' && $user->isBuyer() && app(BuyerAccessService::class)->canViewOrderHistory($user)) {
+            return route('buyer.profile', ['tab' => 'wallet'], absolute: false);
+        }
         if ($target === 'buyer-order' && $user->isBuyer() && app(BuyerAccessService::class)->canViewOrderHistory($user)
             && Order::whereKey($data['order_id'] ?? 0)->where('buyer_id', $user->id)->exists()) {
             return '/buyer/orders/'.(int) $data['order_id'];

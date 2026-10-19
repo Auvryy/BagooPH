@@ -30,10 +30,10 @@ use App\Http\Controllers\Buyer\SaleReminderController;
 use App\Http\Controllers\Buyer\SavedProductController;
 use App\Http\Controllers\Buyer\ShopFollowController;
 use App\Http\Controllers\Buyer\VoucherController;
-use App\Http\Controllers\ChatController;
 use App\Http\Controllers\BuyerReturnController;
 use App\Http\Controllers\BuyerReturnCustodyController;
 use App\Http\Controllers\BuyerReturnMoneyController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CodCashController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\Courier\RiderCompanyRequestController;
@@ -75,6 +75,7 @@ use App\Http\Controllers\SellerSettlementController;
 use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VerificationDocumentController;
+use App\Http\Controllers\WalletController;
 use App\Http\Middleware\AdvertisementResponseHeaders;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Http\Request;
@@ -155,6 +156,13 @@ Route::middleware(['auth', 'verified'])->prefix('handover-issues')->name('handov
 });
 
 Route::middleware('auth')->group(function () {
+    Route::middleware('verified')->prefix('wallet')->name('wallet.')->group(function () {
+        Route::post('/credits', [WalletController::class, 'requestCredits'])->middleware('throttle:10,1')->name('credits.store');
+        Route::get('/admin', [WalletController::class, 'admin'])->name('admin.index');
+        Route::post('/credits/{credit}', [WalletController::class, 'reviewCredits'])->whereNumber('credit')->middleware('throttle:20,1')->name('credits.review');
+        Route::get('/payments/{payment}', [WalletController::class, 'payment'])->whereNumber('payment')->name('payments.show');
+        Route::post('/payments/{payment}/{action}', [WalletController::class, 'pay'])->whereNumber('payment')->where('action', 'pay|cancel')->middleware('throttle:30,1')->name('payments.command');
+    });
     Route::get('/account/status', [AccountReviewController::class, 'status'])->name('account.status');
     Route::post('/account/review-requests', [AccountReviewController::class, 'store'])->middleware('throttle:10,1')->name('account.reviews.store');
     Route::middleware('verified')->prefix('financial-oversight')->name('financial-oversight.')->group(function () {

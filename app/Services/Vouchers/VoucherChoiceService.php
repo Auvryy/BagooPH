@@ -48,7 +48,8 @@ class VoucherChoiceService
         if ((clone $query)->count() > self::MAX_CAMPAIGNS) {
             throw new CheckoutException('There are too many offers to compare together. Choose your vouchers separately.');
         }
-        $offers = $query->withCount(['redemptions as buyer_uses_count' => fn ($q) => $q->where('buyer_id', $buyer->id)])->orderBy('id')->get();
+        $offers = $query->withCount(['redemptions as buyer_uses_count' => fn ($q) => $q->where('buyer_id', $buyer->id)
+            ->whereNotExists(fn ($restored) => $restored->selectRaw('1')->from('wallet_voucher_restorations')->whereColumn('voucher_redemption_id', 'voucher_redemptions.id'))])->orderBy('id')->get();
         $slots = [];
         foreach ($items->pluck('product.shop_id')->unique()->sort() as $shopId) {
             $shopOffers = $offers->where('issuer_type', 'shop')->where('shop_id', $shopId);

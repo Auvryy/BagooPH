@@ -61,7 +61,7 @@ class OrderHistoryController extends Controller
         $adminOversight = $user->isAdmin() && $user->canAccessPortal();
         abort_unless($ownedBuyerOrder || $adminOversight, 403);
 
-        $order->load(['items.product.shop', 'items.review', 'delivery.courier', ...OrderTrackingService::relations()]);
+        $order->load(['items.product.shop', 'items.review', 'walletPayment', 'delivery.courier', ...OrderTrackingService::relations()]);
         if ($ownedBuyerOrder && $user->canAccessPortal()) {
             foreach ($order->items as $item) {
                 if ($item->review) {
