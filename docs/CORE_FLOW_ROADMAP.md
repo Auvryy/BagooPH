@@ -6760,3 +6760,22 @@ asset permissions before the successful Docker build. No screenshots, ordinary
 database reset, production middleware claim or real-device result is included.
 Scoped failed-removal recovery assessment: **3/10 to 8/10**. Wider role scores and
 unrelated flow readiness remain unchanged.
+
+### Retained Azure reminder delivery: October 19, 2026
+
+One explicitly approved demo sale/subscription established a genuine scheduled
+reminder on the existing deployed core. The source was saved more than ten minutes
+before start and first observed with no intent/notice. The actual delivery and
+owned buyer notification share one identity and timestamp at **13:36:01
+Asia/Manila**, before the 13:46 start, with the correct current product target.
+Retained worker logs show the scheduled run and later successful minute cycles;
+later source-wide reads still find one notification and one delivery attempt.
+
+The [reminder evidence](buyer-polishing-plan/REMINDER_EVIDENCE.md) preserves the
+material procedural limit: the notification was verified retrospectively, and
+planned early cleanup was missed. The slot expired unused at 14:16 and was ended
+at 17:03:08; its quota usage is zero and the original product price/stock are
+unchanged. No completed reminder is replayed. A separately proposed live repeat
+with an independent early-cleanup watcher awaits the user's decision; BP04's
+strict live procedure remains open. No newer application code was deployed and
+no overall readiness score increases from this retained-delivery verification.

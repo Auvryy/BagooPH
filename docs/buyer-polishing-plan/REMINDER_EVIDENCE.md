@@ -41,8 +41,42 @@ exact retry, unchanged ordinary data and existing notices, complete rollback on
 a failed subscription, and ending only the prepared slot with its history kept.
 These are fixture checks, not a deployed notification result.
 
-No production setup, scheduler start, notification insertion/replay, publication
-or deployment was performed. The runtime prerequisite is verified; the actual
-deployed reminder remains **Not Run**, pending approved creation of a future
-demo source or user-led setup. Local checks do not complete that observation or
-increase deployed-readiness ratings.
+That preparation did not create a production source or establish actual delivery.
+
+## Authorized deployed result: October 19, 2026
+
+The user subsequently approved one bounded demo setup. The existing seller's
+eligible product #1 retained its PHP 2,850 regular price and stock 6. One flash
+slot at PHP 2,565, quantity 1, was created at 13:25 Asia/Manila for 13:46, and
+seeded buyer #2 subscribed. A 13:27 source read retained the subscription with
+no notified timestamp, delivery intent or notification. No reminder command was
+run manually and no worker was restarted.
+
+The real scheduler's retained records establish:
+
+- One source delivery and one actual buyer database notification at **13:36:01
+  Asia/Manila**, before the 13:46 sale start, with one delivery attempt.
+- The exact owned subscription and sale/product identity, and the current
+  `/buyer/product/vanguard-commuter-backpack-26l` notification target.
+- Successful `sales:send-reminders` worker runs at 13:36 and every later minute
+  through 13:45. Later source-filtered reads, including all recipients, still
+  find exactly one notification.
+- Zero promotional units used; the original regular price and physical stock
+  remain unchanged. Source and notification history are retained.
+
+This is **verified retained production-delivery evidence**, observed after the
+window. It is not a live pre-start observation. The planned early cleanup was
+missed: the slot naturally expired unused at 14:16 and was explicitly ended at
+17:03:08. Its cleanup record correctly reports `ended_before_start = false`.
+The missed observation/cleanup procedure is not relabelled as passed.
+
+A proposed second bounded source would use a dedicated watcher that observes the
+live delivery and two later completed scheduler cycles, then ends the source at
+least five minutes before start. That second setup is **not authorized or run**;
+the first approval was for one source. BP04 retains this precise live-procedure
+gap pending the user's decision. No existing reminder is reset or replayed.
+
+No application publication/deployment, real order, stock change or scheduler
+mutation was performed. The newer return work remains local. The actual reminder
+outcome is established; this record does not raise overall deployed readiness or
+claim that the stricter live procedure completed.
