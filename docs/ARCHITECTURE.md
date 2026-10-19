@@ -137,6 +137,7 @@ tracking JSON route is a separate masked, rate-limited read boundary.
 | Logistics and courier | `app/Services/Logistics`, `app/Services/Courier` | Routing, placement, manifests, physical scans, counter collection, failed attempts and recovery |
 | Governance | Account/review/restriction/correction services in `app/Services` | Independent recorded decisions and protected identity/account changes |
 | Cash and settlement | `app/Services/Finance` | Collection, handovers, differences, reconciliation and evidenced seller payment |
+| Internal virtual wallet | `app/Services/Wallet` | Admin-approved demo credits, balanced immutable journals, original exact payments, expiry, refunds and separate virtual seller proceeds |
 | Campaigns | `app/Services/Vouchers`, `app/Services/Advertisements` | Saved terms, funding/limits, reviewed publication and bounded reporting |
 | Notices | `app/Services/Notifications` | Durable recipient intent, owned presentation and retryable delivery |
 | Persistence | `app/Models`, `database/migrations` | Relationships, casts, constraints, transactions and retained records |
@@ -196,6 +197,11 @@ Commercial state, physical custody and cash are separate. Only the buyer moves
 can arrive in either order; seller payment waits for both and its own evidence.
 The product split is 90% seller and 10% platform; shipping and promotional
 funding remain separate. Recording payment is not an automatic bank transfer.
+
+The selected [Bagoo Wallet](BAGOO_WALLET.md) adds internal virtual credits without
+changing the parcel route or buyer-only completion. Its exact original prepayment,
+refunds and virtual seller proceeds use a separate balanced journal. They do not
+create a COD collection, cash remittance or bank-payment record.
 
 These rules are implemented with application services and constraints. SQLite
 checks and code review do not establish PostgreSQL contention or every deployed

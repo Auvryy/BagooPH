@@ -197,8 +197,8 @@ future riders' outcomes and private evidence do not become the original rider's
 history. Ambiguous legacy records without retained assignment evidence are absent.
 
 `q` is a plain-text tracking/order search (1–100 characters), `phase` is pickup or
-final_mile, `payment` is all/cod/prepaid. `prepaid` means recorded non-COD payment,
-not confirmed earnings or a new prepaid delivery writer. `from_date`/`to_date` are
+final_mile, `payment` is all/cod/prepaid. `prepaid` selects recorded non-COD history;
+this filter does not prove an original wallet payment or authorize delivery. `from_date`/`to_date` are
 optional inclusive Asia/Manila assignment dates, translated to UTC with an exclusive
 next-day upper boundary. Either may be supplied alone; reversed pairs reject.
 The response names `date_basis: assignment_recorded_at`.

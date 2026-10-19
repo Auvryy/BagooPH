@@ -28,6 +28,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 | Question | Authoritative document |
 |---|---|
 | Canonical order statuses, actor ownership, commercial gates | `SYSTEM_FLOW_AND_SPECIFICATIONS.md` |
+| Selected internal virtual credits, wallet payment, expiry, refunds and virtual proceeds alongside COD | `BAGOO_WALLET.md` |
 | Input validation, authorization, concurrency, idempotency, failure recovery | `CORE_FLOW_VALIDATION_AND_EDGE_CASES.md` |
 | Parcel custody, hubs, manifests, retries, self-pickup, COD movement | `SORTING_CENTER_LOGISTICS_FLOW.md` |
 | Buyer-only actions and screens | `BUYER_FLOWCHART.md` |

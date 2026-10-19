@@ -122,11 +122,19 @@ Account deletion is blocked while orders, custody, COD, or settlement remain act
 - Commission base is the order product subtotal.
 - Platform commission is 10%; seller share is 90%.
 - Shipping and handling are tracked separately.
-- Payout eligibility requires order `COMPLETED` and platform-level COD reconciliation.
+- Cash payout eligibility requires order `COMPLETED` and platform-level COD reconciliation.
 - Rider earnings and logistics revenue do not reduce or merge into the seller/product split.
 - Refunds, reversals, shortages, and corrections use traceable adjustment records.
 
 Admin displays distinguish cash collected, cash held, cash remitted, reconciled COD, pending seller proceeds, and settled proceeds. Use recorded amounts in PHP/₱; an order count multiplied by a guessed fee is not a financial ledger. No fixed shipping revenue split is introduced by this document.
+
+The separately selected [Bagoo Wallet](BAGOO_WALLET.md) permits an active verified
+platform admin to review owned buyer requests for virtual demo credits, approve
+original virtual seller proceeds after buyer receipt, and refund original wallet
+payments after the documented cancellation or return prerequisites. Each decision
+retains the original amount, actor, reason, consent and immutable reference.
+Virtual credits and proceeds are displayed separately from cash, reconciliation
+and bank-payment evidence; an approval never claims a real deposit or withdrawal.
 
 ## 6. Admin Review Screens and Dispute Evidence
 
@@ -154,7 +162,7 @@ Audit search is read-only and applies current privileged eligibility and company
 
 Admin review may include account documents, order items, waybill and hub checkpoints, manifest history, rider assignment, delivery proof, failure reasons, COD custody records, buyer confirmation, and role messages.
 
-The selected [buyer-return contract](buyer-returns-plan/README.md) authorizes admin review of escalated original item requests. A reasoned review decision cannot manufacture return intake, seller receipt or repayment. Any repayment retains the original cash and seller-payment evidence and its own financial prerequisites. Exchanges, unrelated disputes and automated resolution are outside this contract; unsupported actions cannot return fake success. Resolution never erases the original audit trail.
+The selected [buyer-return contract](buyer-returns-plan/README.md) authorizes admin review of escalated original item requests. A reasoned review decision cannot manufacture return intake, seller receipt or repayment. COD repayment retains the original cash and seller-payment evidence and its own financial prerequisites; wallet refunds use the original verified virtual journal under the wallet contract. Exchanges, unrelated disputes and automated resolution are outside this contract; unsupported actions cannot return fake success. Resolution never erases the original audit trail.
 
 ## 7. Acceptance Checks and Delivery Order
 

@@ -57,6 +57,13 @@ liability remain separately traceable.
 
 Product settlement is not released merely because a rider marks the parcel delivered. The order must be `COMPLETED`, and COD must be reconciled at platform level. The product split is 90% seller and 10% platform; shipping and handling remain separate.
 
+For [Bagoo Wallet](BAGOO_WALLET.md), the seller cannot confirm or prepare an unpaid
+order. Verified paid orders follow the same custody route without cash collection.
+After buyer confirmation, a platform admin can record the original 90% seller
+share in **Virtual proceeds**, with original discounts, accepted returns and
+shipping kept separate. Sellers can read their own credits and history; these
+virtual proceeds cannot be spent, withdrawn or represented as a cash payout.
+
 ## 5. Required Seller Notifications
 
 - New order requiring review.

@@ -171,16 +171,19 @@ an in-memory result cannot prove those runtime details.
 
 ### Is the payment system connected to a bank?
 
-The implemented checkout is cash on delivery. The backend records collection,
+COD checkout records collection,
 handovers, reconciliation and evidence of seller payment. Recording a payment
 reference is not an automatic banking transfer. The product split is 90% seller
 and 10% platform, with shipping and promotion funding accounted for separately.
+The selected Bagoo Wallet uses admin-approved virtual demo credits inside Bagoo;
+its payments, refunds and virtual seller proceeds do not connect to a bank or
+represent cash deposited or withdrawn.
 
 ### Is every feature fully released?
 
 Use [the dated roadmap](CORE_FLOW_ROADMAP.md) for the actual implementation and
 verification boundary. Explain completed behaviour using its evidence, and name
-deferred features such as wallets or post-delivery refunds honestly. A local
+remaining limits such as external payment gateways and exchanges honestly. A local
 test or build is not proof of a successful Azure/device demonstration.
 
 ## Prepare the demonstration

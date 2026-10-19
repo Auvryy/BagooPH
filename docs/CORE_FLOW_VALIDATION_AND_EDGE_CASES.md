@@ -133,7 +133,9 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - Unknown, duplicate, foreign-cart, inactive-product, or zero selected item IDs are rejected.
 - Shop vouchers affect only their matching shop order. Platform voucher allocation is deterministic, proportional, rounded to cents, and never exceeds the original calculated discount.
 - Voucher usage is consumed once per successful checkout request. Cancellation never silently reallocates a discount to sibling shop orders.
-- COD is the baseline payment method. Submitting another payment value cannot change the server-selected method.
+- COD remains the default. Only `cod` and the selected internal `wallet` are accepted; unsupported payment values fail validation. Wallet orders stay To pay and cannot be prepared until the original exact amount is evidenced in the immutable virtual journal. [BAGOO_WALLET.md](BAGOO_WALLET.md) defines the owned requests, admin consent, deadline, refunds and separate virtual proceeds.
+- Payment, expiry and cancellation serialize the original order and wallet source. A saved command replays its original outcome; changed intent is rejected. Insufficient credits preserve the unpaid order, and a new attempt may succeed after admin approval. At the one-hour boundary no late payment is accepted. Stock and eligible unpaid voucher uses are released once without changing paid sibling allocations or reviving expired campaigns.
+- Virtual balances use integer centavos and balanced immutable entries. Debit, original reference and paid state commit together. Reject edited totals, buyers, original seller ownership, fabricated balances, foreign references and client-selected refunds. Refunds and proceeds use original merchandise shares and preserve shipping separately; they never create COD collection or cash payment proof.
 - An incomplete logistics route blocks checkout with a clear error. The system must not create an unroutable order and rely on manual repair.
 - Double-clicks, browser retries, and network timeouts cannot create duplicate orders or duplicate stock deductions.
 
@@ -145,9 +147,9 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - Internal Mother-Hub checkpoints are read-only to the buyer and map to the canonical commercial status.
 - A buyer cannot select a rider, change custody, approve a retry, or mark an order delivered.
 - Receipt confirmation is accepted only for the buyer's `DELIVERED` order. It is idempotent and creates one completion checkpoint.
-- Buyer confirmation may occur before COD reconciliation, but seller settlement remains blocked until both conditions are satisfied.
+- Buyer confirmation may occur before COD reconciliation, but cash seller settlement remains blocked until both conditions are satisfied. Wallet proceeds require evidenced prepayment and buyer confirmation in their separate virtual journal.
 - Orders never auto-complete because only the buyer may advance `DELIVERED -> COMPLETED`.
-- Buyer self-service cancellation is not part of the current core baseline and must not be represented by a fake success action. Seller cancellation remains limited to the pre-custody boundary.
+- Buyer cancellation is limited to the original buyer's eligible order before readiness or custody, with the documented reason and hold checks. COD must remain unpaid; an evidenced paid wallet cancellation refunds only its original credits atomically. Restore the cancelled inventory/funding once without changing sibling allocations. Seller cancellation remains limited to its documented pre-custody boundary.
 
 ### Reviews, Messages, and Deferred Disputes
 
@@ -162,7 +164,7 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - Counter verification requires the expected destination hub, `ready_for_hub_pickup`, matching buyer identity, and unexpired code.
 - Five failed code attempts lock verification for 15 minutes and create an audit event; a supervisor cannot reveal the original code.
 - The holding period is exactly seven calendar days with reminders on days three and six. Expiry moves the parcel to the RTS exception queue; no silent extension is allowed in the baseline.
-- COD must be recorded before counter release. A reused, expired, locked, wrong-hub, or wrong-state claim cannot advance delivery.
+- COD must be recorded before a COD counter release. A wallet release instead requires its original verified prepayment and cannot collect cash. Both methods retain the one-time code, identity and custody gates. A reused, expired, locked, wrong-hub, or wrong-state claim cannot advance delivery.
 
 ## 5. Seller Flow Debug Contract
 

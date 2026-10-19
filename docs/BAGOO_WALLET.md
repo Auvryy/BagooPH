@@ -42,12 +42,51 @@ balance non-negative and serialize changes to that balance. Every command has an
 owned retry key and an original business reference. Corrections append evidence;
 they do not edit or delete transactions.
 
+A buyer requests credits in **My Account → Bagoo Wallet**. The amount is
+₱1.00–₱100,000.00 with at most two decimal places and a 5–500 character reason.
+Only one request may await review at a time. An active, verified platform admin
+opens **Wallet credits**, checks the original buyer and amount, records feedback
+and explicitly acknowledges demo credits. Approval cannot raise the available
+balance above ₱1,000,000.00. Rejection creates no money. Approval creates an
+owned notification and a saved transaction reference. Sellers, riders and
+logistics staff cannot grant credits; buyers cannot approve their own requests.
+A saved balance that disagrees with its journal is unavailable for spending or
+display as money until its history is reviewed.
+
 Virtual seller proceeds preserve the 90% seller / 10% commission merchandise
 split, original promotion funding and separate shipping. Seller credits are
 visible recorded proceeds, with no cash withdrawal or spending feature. Returns
 reverse the evidenced virtual shares, including after virtual settlement. COD
 collection, reconciliation, bank-payment proof and cash proceeds retain their
 existing separate ledgers and permissions.
+
+The admin's **Virtual proceeds** page reviews completed wallet orders separately
+from cash seller payments. The seller can read only their own virtual proceeds.
+An undelivered wallet parcel that completes its real reverse route and original
+seller receipt can receive an admin-reviewed full original payment refund,
+including its undelivered shipping charge. Its unused promotion funding is
+released once. This does not restore a paid voucher use, fabricate a buyer return,
+reshelve stock or settle seller proceeds. The retained parcel remains Returned.
+
+## Deployment and operation
+
+Apply the additive wallet migrations using the normal `./bagoo.sh deploy`, then
+`./bagoo.sh verify`. Existing accounts and COD data are retained; no fresh database
+or reseed is needed. The deployed scheduler must run the every-minute
+`wallet:expire-payments` command. Each run processes a bounded batch of expired
+unpaid orders; paying at or after the deadline also checks expiry independently.
+
+Buyers start with zero credits. No demo accounts receive a fabricated starting
+balance. An approved request is the source of each new credit grant. Payment,
+expiry, cancellation, refunds and virtual settlement retain original references;
+retries cannot create another charge or credit. In a multiple-shop checkout each
+shop order has its own payment and deadline, so a buyer may pay one while another
+expires without changing the paid order's discounts.
+
+The rider web portal and native backend API both verify prepaid handovers through
+the shared domain services. The Flutter application is outside this change and
+needs the additive [native handover contract](api/RIDER_OPERATIONS_API.md) before
+its wallet delivery controls are claimed ready.
 
 ## Payment acceptance mapping
 
