@@ -6719,3 +6719,20 @@ compatibility fix; the last frontend build remains the verified R03 build.
 Scoped receipt-format assessment: **6/10 to 8/10**. Supported PDF versions no
 longer fail an arbitrary version gate; the overall R03 assessment stays 8/10.
 BP03 browser observations and BP04 deployed delivery remain open.
+
+### Existing Azure reminder runtime: October 19, 2026
+
+Read-only checks established the applicable deployed reminder source at
+`7c1bb59`, the running scheduler worker and the required four source tables. The
+reminder service, console schedule and notification delivery service match the
+current local source. This completes BP04's runtime-identification prerequisite,
+without claiming that the newer return branch is deployed.
+
+No future flash slots or reminder subscriptions exist in that observed runtime.
+Actual scheduled delivery therefore remains Not Run. A controlled demo source
+and its bounded cleanup are prepared for explicit authorization. The separate
+SQLite `:memory:` fixture checks passed **4 tests / 34 assertions**, including
+exact setup retry, unchanged accounts/stock/existing notices, rollback after a
+failed subscription and retained cleanup history. They do not replace the real
+scheduled observation. No production writes, notification replay, scheduler
+restart, publication or deployment were performed; readiness ratings are unchanged.
