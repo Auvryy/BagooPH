@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use LogicException;
 
 class BuyerReturnCase extends Model
@@ -51,5 +52,10 @@ class BuyerReturnCase extends Model
     public function events(): HasMany
     {
         return $this->hasMany(BuyerReturnEvent::class)->orderBy('sequence');
+    }
+
+    public function parcel(): HasOne
+    {
+        return $this->hasOne(BuyerReturnParcel::class);
     }
 }
