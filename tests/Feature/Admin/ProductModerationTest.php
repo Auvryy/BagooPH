@@ -192,7 +192,7 @@ class ProductModerationTest extends TestCase
     {
         [$admin, $seller, $shop, $product] = $this->listing();
         app(ProductModerationService::class)->decide($admin, $product, $this->input($product));
-        $data = $product->only(['name', 'category_id', 'price', 'stock', 'sku', 'status']) + ['description' => 'Corrected product details for the current listing.'];
+        $data = $product->only(['name', 'category_id', 'weight_kg', 'price', 'stock', 'sku', 'status']) + ['description' => 'Corrected product details for the current listing.'];
         $this->actingAs($seller)->withSession(['active_seller_shop_id' => $shop->id])->post('/seller/products/'.$product->id, $data)->assertSessionHasNoErrors();
         $this->assertTrue($product->fresh()->compliance_restricted);
         $this->assertSame('active', $product->fresh()->status);

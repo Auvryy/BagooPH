@@ -145,7 +145,7 @@ class SellerProductCatalogTest extends TestCase
         $this->assertSame(10, $foreignProduct->fresh()->stock);
     }
 
-    public function test_product_removal_deletes_unused_listings_but_archives_order_history(): void
+    public function test_product_removal_deletes_unused_listings_but_archives_completed_order_history(): void
     {
         $seller = User::factory()->seller()->create();
         $shop = Shop::factory()->approved()->create(['user_id' => $seller->id, 'is_default' => true]);
@@ -154,7 +154,7 @@ class SellerProductCatalogTest extends TestCase
             'shop_id' => $shop->id,
             'status' => 'active',
         ]);
-        $order = Order::factory()->create();
+        $order = Order::factory()->create(['status' => 'completed']);
         $orderItem = OrderItem::factory()->create([
             'order_id' => $order->id,
             'product_id' => $orderedProduct->id,

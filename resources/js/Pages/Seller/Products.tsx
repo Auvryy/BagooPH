@@ -1,5 +1,6 @@
 import VariantStockMatrix, { type StockCombination } from '@/Components/VariantStockMatrix';
 import UploadHint from '@/Components/UploadHint';
+import SellerListingDetails, { emptyListingDetails, type ListingDetails } from '@/Components/SellerListingDetails';
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Head, Link, useForm, router } from '@inertiajs/react';
@@ -8,7 +9,7 @@ import PortalLink from '@/Components/PortalLink';
 import { visitPortal } from '@/utils/catalogueRuntime';
 import useResolvedPage from '@/hooks/useResolvedPage';
 import ListingAssistantPanel from '@/Components/ListingAssistantPanel';
-import { Category, PaginatedData, Product, Shop } from '@/types';
+import { Category, PaginatedData, Product, Shop, StoreCategory } from '@/types';
 import { newListingStatus, sellerInventoryQuery, sellerVariantStock, SellerInventoryFilters } from '@/utils/sellerInventory';
 import { listingHints, sellerListingError, type ListingField } from '@/utils/sellerListingValidation';
 import { 
@@ -30,7 +31,7 @@ import {
     AlertCircle, 
     GripVertical, 
     Sliders,
-    Camera
+    Camera, Copy
 } from 'lucide-react';
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -79,11 +80,13 @@ interface ProductVariants {
 interface Props {
     products: PaginatedData<Product>;
     categories: Category[];
+    storeCategories?: StoreCategory[];
     shop: Shop;
     filters?: SellerInventoryFilters;
+    bulkResults?: { id: number; name: string; result: string; reason: string }[];
 }
 
-export default function SellerProducts({ products, categories, shop, filters = {} }: Props) {
+export default function SellerProducts({ products, categories, shop, filters = {}, bulkResults = [], storeCategories = [] }: Props) {
     useResolvedPage(products.current_page);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -97,8 +100,41 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const [filtering, setFiltering] = useState(false);
     const filteringGuard = useRef(false);
     const [filterError, setFilterError] = useState('');
-    const listProps = ['products', 'filters', 'shop', 'categories', 'auth', 'flash', 'errors'];
+    const listProps = ['copiedProduct', 'storeCategories', 'bulkResults', 'products', 'filters', 'shop', 'categories', 'auth', 'flash', 'errors'];
     const createSubmitting = useRef(false);
+    const [selectedListings, setSelectedListings] = useState<number[]>([]);
+    const [bulkAction, setBulkAction] = useState<'deactivate' | 'delete' | null>(null);
+    const [actionPending, setActionPending] = useState(false);
+    const listingActionGuard = useRef(false);
+    const copyTokens = useRef(new Map<number, string>());
+    useEffect(() => { setSelectedListings([]); setBulkAction(null); }, [products.current_page, products.data]);
+    const toggleListing = (id: number) => setSelectedListings(ids => ids.includes(id) ? ids.filter(value => value !== id) : [...ids, id]);
+    const newToken = () => {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
+        const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+        return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    };
+    const duplicateListing = (product: Product) => {
+        if (listingActionGuard.current) return;
+        listingActionGuard.current = true; setActionPending(true); setFilterError('');
+        const token = copyTokens.current.get(product.id) || newToken();
+        copyTokens.current.set(product.id, token);
+        router.post(route('seller.products.duplicate', product.id), { request_token: token }, { preserveScroll: true,
+            onSuccess: page => { copyTokens.current.delete(product.id); const copy = page.props.copiedProduct as Product | null; if (copy) openEdit(copy); },
+            onError: errors => setFilterError(Object.values(errors).join(' ')),
+            onFinish: () => { listingActionGuard.current = false; setActionPending(false); },
+        });
+    };
+    const runBulk = () => {
+        if (!bulkAction || !selectedListings.length || listingActionGuard.current) return;
+        listingActionGuard.current = true; setActionPending(true); setFilterError('');
+        router.post(route('seller.products.bulk'), { action: bulkAction, product_ids: selectedListings }, { preserveScroll: true,
+            onSuccess: () => { setSelectedListings([]); setBulkAction(null); },
+            onError: errors => setFilterError(Object.values(errors).join(' ')),
+            onFinish: () => { listingActionGuard.current = false; setActionPending(false); },
+        });
+    };
     const createDescriptionRef = useRef<HTMLTextAreaElement>(null);
     const editDescriptionRef = useRef<HTMLTextAreaElement>(null);
 
@@ -194,9 +230,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
         gallery_manifest: string;
         description: string;
         status: 'active' | 'draft';
-    }>({
+        request_token: string;
+    } & ListingDetails>({
+        ...emptyListingDetails,
         name: '',
-        category_id: categories[0]?.id || '',
+        category_id: '',
         price: '',
         compare_at_price: '',
         stock: '25',
@@ -208,6 +246,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         gallery_manifest: '',
         description: '',
         status: 'active',
+        request_token: '',
     });
 
     const editForm = useForm<{
@@ -225,7 +264,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
         description: string;
         status: 'active' | 'draft' | 'archived';
         _method: string;
-    }>({
+    } & ListingDetails>({
+        ...emptyListingDetails,
         name: '',
         category_id: '',
         price: '',
@@ -427,6 +467,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
             createFileInputRef.current.value = '';
         }
         createForm.reset();
+        createForm.setData('request_token', newToken());
         setCreateHasOption1(false);
         setCreateOption1Name('Color / Edition');
         setCreateHasOption2(false);
@@ -512,9 +553,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
         setActivePhotoPicker(null);
 
         editForm.setData({
+            brand: product.brand ?? '', condition: product.condition ?? '', weight_kg: String(product.weight_kg ?? ''),
+            length_cm: String(product.length_cm ?? ''), width_cm: String(product.width_cm ?? ''), height_cm: String(product.height_cm ?? ''),
+            store_category_ids: (product.store_categories ?? []).map(category => category.id),
             name: product.name,
             category_id: String(product.category_id || ''),
-            price: String(product.price),
+            price: product.status === 'draft' && Number(product.price) === 0 ? '' : String(product.price),
             compare_at_price: String(product.compare_at_price || ''),
             stock: String(product.stock),
             purchase_limit: String(product.purchase_limit ?? ''),
@@ -575,8 +619,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
             combinations: createVariants.combinations,
         } : null;
 
+        const submissionToken = createForm.data.request_token || newToken();
+        if (!createForm.data.request_token) createForm.setData('request_token', submissionToken);
         createForm.transform((data) => ({
             ...data,
+            store_category_ids: JSON.stringify(data.store_category_ids),
+            request_token: submissionToken,
             status,
             gallery_manifest: JSON.stringify(manifest),
             image_files: filesToUpload,
@@ -591,6 +639,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
             onSuccess: () => {
                 setIsCreateOpen(false);
                 createForm.reset();
+                createForm.setData('request_token', newToken());
                 setCreateGallery([]);
                 setCreateHasOption1(false);
                 setCreateOption1Name('Color / Edition');
@@ -656,6 +705,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
         editForm.transform((data) => ({
             ...data,
+            store_category_ids: JSON.stringify(data.store_category_ids),
             gallery_manifest: JSON.stringify(manifest),
             image_files: filesToUpload,
             featured_image: editGallery[0]?.url || '',
@@ -1938,17 +1988,20 @@ export default function SellerProducts({ products, categories, shop, filters = {
     };
 
     const handleDelete = (product: Product) => {
+        setFilterError('');
         setProductPendingRemoval(product);
     };
 
     const confirmProductRemoval = () => {
-        if (!productPendingRemoval) return;
+        if (!productPendingRemoval || listingActionGuard.current) return;
+        listingActionGuard.current = true;
 
         router.delete(route('seller.products.destroy', productPendingRemoval.id), {
             preserveScroll: true,
             onStart: () => setIsRemovingProduct(true),
             onSuccess: () => setProductPendingRemoval(null),
-            onFinish: () => setIsRemovingProduct(false),
+            onError: errors => setFilterError(Object.values(errors).join(' ')),
+            onFinish: () => { listingActionGuard.current = false; setIsRemovingProduct(false); },
         });
     };
 
@@ -2078,12 +2131,20 @@ export default function SellerProducts({ products, categories, shop, filters = {
                     </form>
                 </div>
 
+                {bulkResults.length > 0 && <section aria-label="Product action results" className="rounded-xl border border-slate-300 bg-white p-4 text-xs"><h2 className="mb-2 font-bold text-slate-900">Selection results</h2><ul className="space-y-2">{bulkResults.map(result => <li key={result.id}><strong>{result.name}</strong>: {result.reason}</li>)}</ul></section>}
+                {selectedListings.length > 0 && <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-300 bg-white p-4 text-xs">
+                    <strong>{selectedListings.length} selected</strong>
+                    <button type="button" disabled={actionPending} onClick={() => setBulkAction('deactivate')} className="rounded-lg border border-slate-300 px-3 py-2 font-semibold disabled:opacity-50">Deactivate</button>
+                    <button type="button" disabled={actionPending} onClick={() => setBulkAction('delete')} className="rounded-lg border border-rose-300 px-3 py-2 font-semibold text-rose-700 disabled:opacity-50">Delete</button>
+                    {bulkAction && <div className="w-full border-t border-slate-300 pt-3" role="group" aria-label="Confirm product selection action"><p className="mb-3 text-slate-600">{bulkAction === 'delete' ? 'Products with unfinished orders will be skipped. Other saved references are archived to preserve their history. Unreferenced products can be deleted.' : 'Selected listings will stop accepting new purchases. Existing orders and history stay available.'}</p><button type="button" disabled={actionPending} onClick={runBulk} className="mr-2 rounded-lg bg-[#E00D42] px-3 py-2 font-bold text-white disabled:opacity-50">{actionPending ? 'Saving…' : 'Confirm selection'}</button><button type="button" disabled={actionPending} onClick={() => setBulkAction(null)} className="rounded-lg border border-slate-300 px-3 py-2">Cancel</button></div>}
+                </div>}
                 {/* Products Table Box */}
                 <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs font-sans">
                             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                                 <tr>
+                                    <th className="w-10 py-4 pl-4"><input type="checkbox" aria-label="Select this page" disabled={!products.data.length || actionPending} checked={products.data.length > 0 && products.data.every(product => selectedListings.includes(product.id))} onChange={e => setSelectedListings(e.target.checked ? products.data.map(product => product.id) : [])} className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /></th>
                                     <th className="py-4 px-6">Product Details</th>
                                     <th className="py-4 px-4">Master Department</th>
                                     <th className="py-4 px-4">Listing Price</th>
@@ -2096,7 +2157,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                             <tbody className="divide-y divide-slate-100">
                                 {products.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="py-12 text-center text-slate-400">
+                                        <td colSpan={8} className="py-12 text-center text-slate-400">
                                             {hasFilters
                                                 ? 'No listings match these filters. Clear or change the filters to see other products.'
                                                 : 'No products have been listed yet.'}
@@ -2105,6 +2166,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                 ) : (
                                     products.data.map((product) => (
                                         <tr key={product.id} className="hover:bg-slate-50 transition">
+                                            <td className="pl-4"><input type="checkbox" aria-label={`Select ${product.name}`} disabled={actionPending} checked={selectedListings.includes(product.id)} onChange={() => toggleListing(product.id)} className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /></td>
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3 min-w-0">
                                                     <img
@@ -2178,6 +2240,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 {Number(product.completed_units || 0)} completed
                                             </td>
                                             <td className="py-4 px-6 text-right space-x-1">
+                                                <button type="button" disabled={actionPending} onClick={() => duplicateListing(product)} title="Duplicate as draft" aria-label={`Duplicate ${product.name} as draft`} className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-50"><Copy className="h-4 w-4" /></button>
                                                 <Link href={route('seller.products.sales.index', product.id)} className="inline-flex rounded-lg px-2 py-2 text-xs font-bold text-[#E00D42] hover:bg-rose-50">Sales</Link>
                                                 <button
                                                     onClick={() => openEdit(product)}
@@ -2359,7 +2422,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                             </div>
                             <div className="min-w-0 flex-1">
                                 <h2 id="remove-product-title" className="text-base font-bold text-slate-950">
-                                    {Number(productPendingRemoval.order_items_count || 0) > 0 ? 'Archive product?' : 'Delete product?'}
+                                    Delete product?
                                 </h2>
                                 <p className="mt-1 truncate text-xs text-slate-500">{productPendingRemoval.name}</p>
                             </div>
@@ -2375,13 +2438,14 @@ export default function SellerProducts({ products, categories, shop, filters = {
                         </div>
 
                         <div className="space-y-4 px-5 py-4">
+                            {filterError && <p role="alert" className="text-sm text-rose-700">{filterError}</p>}
                             {Number(productPendingRemoval.order_items_count || 0) > 0 ? (
                                 <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
-                                    This listing has order history. It will be archived and hidden from buyers while existing order records remain intact.
+                                    Unfinished orders block deletion and leave the listing unchanged. Completed order history is archived and kept. Use Edit to archive the listing if you want to pause new purchases.
                                 </div>
                             ) : (
                                 <div className="rounded-md border border-rose-300 bg-rose-50 px-4 py-3 text-xs leading-relaxed text-rose-900">
-                                    This listing has no order history and will be permanently deleted. This action cannot be undone.
+                                    Unreferenced listings are permanently deleted. Saved references are archived to preserve their history. Unfinished orders always block deletion.
                                 </div>
                             )}
 
@@ -2400,11 +2464,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     disabled={isRemovingProduct}
                                     className="rounded-sm bg-rose-700 px-4 py-2 text-xs font-bold text-white hover:bg-rose-800 disabled:opacity-50"
                                 >
-                                    {isRemovingProduct
-                                        ? 'Working...'
-                                        : Number(productPendingRemoval.order_items_count || 0) > 0
-                                            ? 'Archive product'
-                                            : 'Delete product'}
+                                    {isRemovingProduct ? 'Working…' : 'Confirm removal'}
                                 </button>
                             </div>
                         </div>
@@ -2609,6 +2669,9 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         onUseDescription={description => createForm.setData('description', description)}
                                     />
                                 </div>
+                                {createForm.errors.request_token && <p role="alert" className="text-sm text-rose-700">{createForm.errors.request_token}</p>}
+                                <SellerListingDetails data={createForm.data} errors={createForm.errors} categories={storeCategories} onChange={(key, value) => createForm.setData(current => ({ ...current, [key]: value }))} />
+
                             </div>
 
                             {/* Sticky Action Footer */}
@@ -2634,6 +2697,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         type="submit"
                                         name="status"
                                         value="draft"
+                                        formNoValidate
                                         disabled={createForm.processing || createSlashedPriceError}
                                         className="px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-sans font-bold rounded-xl transition disabled:opacity-50 text-xs"
                                     >
@@ -2863,6 +2927,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         onUseDescription={description => editForm.setData('description', description)}
                                     />
                                 </div>
+                                <SellerListingDetails data={editForm.data} errors={editForm.errors} categories={storeCategories} onChange={(key, value) => editForm.setData(current => ({ ...current, [key]: value }))} />
+
                             </div>
 
                             {/* Sticky Action Footer */}
@@ -2880,6 +2946,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     </button>
                                     <button
                                         type="submit"
+                                        formNoValidate={editForm.data.status !== 'active'}
                                         disabled={editForm.processing || editSlashedPriceError}
                                         className="px-6 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold rounded-xl uppercase shadow-sm transition disabled:opacity-50 text-xs flex items-center gap-1.5"
                                     >

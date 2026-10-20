@@ -44,7 +44,7 @@ class CombinationInventoryTest extends TestCase
 
     private function payload(Product $product, array $variants): array
     {
-        return ['name' => $product->name, 'price' => 100, 'stock' => 999, 'description' => 'Durable everyday item.', 'status' => 'active', 'variants' => json_encode($variants)];
+        return ['weight_kg' => $product->weight_kg, 'category_id' => $product->category_id, 'name' => $product->name, 'price' => 100, 'stock' => 999, 'description' => 'Durable everyday item.', 'status' => 'active', 'variants' => json_encode($variants)];
     }
 
     public function test_only_the_selected_combination_is_sold_and_cancellation_restores_it_once(): void

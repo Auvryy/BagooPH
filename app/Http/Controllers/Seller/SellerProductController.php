@@ -9,7 +9,11 @@ use App\Models\ProductImage;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Commerce\ProductGalleryInput;
 use App\Services\Commerce\SellerInventoryService;
+use App\Services\Commerce\SellerListingActions;
+use App\Services\Commerce\SellerListingInput;
+use App\Services\Commerce\SellerListingSubmission;
 use App\Services\Commerce\SellerSalesMetricsService;
+use App\Services\Commerce\StoreCategoryService;
 use App\Services\Commerce\VariantMatrixService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
@@ -39,7 +43,7 @@ class SellerProductController extends Controller
             $query = $this->salesMetrics
                 ->withProductLifecycleTotals(Product::query()->where('shop_id', $shop->id))
                 ->withCount('orderItems')
-                ->with(['category', 'images', 'sales', 'moderationDecisions' => fn ($decisions) => $decisions->latest('id')->limit(1)]);
+                ->with(['category', 'images', 'sales', 'storeCategories', 'moderationDecisions' => fn ($decisions) => $decisions->latest('id')->limit(1)]);
             $products = $this->inventory->paginate($this->inventory->filter($query, $filters), $filters);
 
             $products->through(function (Product $product) {
@@ -64,44 +68,30 @@ class SellerProductController extends Controller
             'categories' => fn () => Category::whereIn('id', app(ShopEligibilityService::class)->categoryIds($shop))->get(),
             'shop' => $shop,
             'filters' => $filters,
+            'storeCategories' => fn () => app(StoreCategoryService::class)->rows($shop),
+            'copiedProduct' => fn () => Product::where('shop_id', $shop->id)->where('status', 'draft')
+                ->with(['images', 'storeCategories'])->find($request->session()->get('listing_copy_id')),
+            'bulkResults' => fn () => $request->session()->get('listing_bulk_results', []),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        return app(ShopEligibilityService::class)->mutate($request, fn () => $this->storeInShop($request));
+        return app(ShopEligibilityService::class)->mutate($request, function () use ($request) {
+            $shop = $this->getActiveShop($request);
+            $product = app(SellerListingSubmission::class)->run($request, $shop, 'create', fn () => $this->createListing($request));
+
+            return back()->with('success', $product->status === 'draft' ? 'Product draft saved.' : 'Product published successfully.');
+        });
     }
 
-    private function storeInShop(Request $request): RedirectResponse
+    private function createListing(Request $request): Product
     {
         $shop = $this->getActiveShop($request);
 
-        $validated = $request->validate([
-            'name' => 'required|string|min:5|max:120',
-            'category_id' => 'nullable|exists:categories,id',
-            'price' => ['required', 'numeric', 'between:1,1000000', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
-            'compare_at_price' => ['nullable', 'numeric', 'gt:price', 'max:99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
-            'stock' => 'required|integer|min:0|max:99999',
-            'purchase_limit' => ['nullable', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
-            'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')],
-            'description' => 'required|string|min:20|max:3000',
-            'featured_image' => 'nullable|string',
-            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
-            'image_files' => 'nullable|array|list|max:9',
-            'image_files.*' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
-            'gallery_manifest' => 'nullable|string',
-            'variants' => 'nullable',
-            'status' => 'sometimes|required|in:active,draft',
-            'compliance_restricted' => 'prohibited',
-            'moderation_version' => 'prohibited',
-        ], [
-            'compare_at_price.gt' => 'The slashed price must be higher than the regular selling price.',
-            'image_files.*.max' => 'Each product image must not exceed 5MB.',
-            'image_files.*.mimes' => 'Images must be in PNG, JPG, JPEG, WEBP, or GIF format.',
-        ]);
+        $validated = app(SellerListingInput::class)->validate($request, $shop);
 
-        app(ProductGalleryInput::class)->validate($request, $validated['status'] ?? 'active');
-        $validated['category_id'] = app(ShopEligibilityService::class)->categoryFor($shop, $validated['category_id'] ?? null);
+        $storeCategoryIds = app(StoreCategoryService::class)->membershipIds($shop, $request->input('store_category_ids', []));
 
         $defaultFallback = '/storage/products/placeholder.webp';
         $slug = Product::generateUniqueSlug($validated['name']);
@@ -127,9 +117,10 @@ class SellerProductController extends Controller
             'status' => $validated['status'] ?? 'active',
         ]);
 
+        $product->storeCategories()->sync($storeCategoryIds);
         $this->syncProductImages($product, $request, $defaultFallback);
 
-        return back()->with('success', $product->status === 'draft' ? 'Product draft saved.' : 'Product published successfully.');
+        return $product;
     }
 
     public function update(Request $request, Product $product): RedirectResponse
@@ -145,32 +136,7 @@ class SellerProductController extends Controller
             abort(403, 'Unauthorized product modification.');
         }
 
-        $validated = $request->validate([
-            'name' => 'required|string|min:5|max:120',
-            'category_id' => 'nullable|exists:categories,id',
-            'price' => ['required', 'numeric', 'between:1,1000000', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
-            'compare_at_price' => ['nullable', 'numeric', 'gt:price', 'max:99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
-            'stock' => 'required|integer|min:0|max:99999',
-            'purchase_limit' => ['nullable', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
-            'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')->ignore($product)],
-            'description' => 'required|string|min:20|max:3000',
-            'featured_image' => 'nullable|string',
-            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
-            'image_files' => 'nullable|array|list|max:9',
-            'image_files.*' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
-            'gallery_manifest' => 'nullable|string',
-            'variants' => 'nullable',
-            'status' => 'required|in:active,draft,archived',
-            'compliance_restricted' => 'prohibited',
-            'moderation_version' => 'prohibited',
-        ], [
-            'compare_at_price.gt' => 'The slashed price must be higher than the regular selling price.',
-            'image_files.*.max' => 'Each product image must not exceed 5MB.',
-            'image_files.*.mimes' => 'Images must be in PNG, JPG, JPEG, WEBP, or GIF format.',
-        ]);
-
-        app(ProductGalleryInput::class)->validate($request, $validated['status'], $product);
-        $validated['category_id'] = app(ShopEligibilityService::class)->categoryFor($shop, $validated['category_id'] ?? null);
+        $validated = app(SellerListingInput::class)->validate($request, $shop, $product);
 
         // Auto-generate SKU if left blank or reset
         $cleanPrefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $validated['name']), 0, 4) ?: 'PROD');
@@ -189,7 +155,9 @@ class SellerProductController extends Controller
 
         unset($validated['image_file'], $validated['image_files'], $validated['gallery_manifest']);
 
+        $storeCategoryIds = app(StoreCategoryService::class)->membershipIds($shop, $request->input('store_category_ids', $product->storeCategories()->pluck('store_categories.id')->all()));
         $product->update($validated);
+        $product->storeCategories()->sync($storeCategoryIds);
 
         $this->syncProductImages($product, $request);
 
@@ -362,7 +330,7 @@ class SellerProductController extends Controller
 
                     if ($type === 'file' && isset($item['file_index']) && isset($uploadedFiles[$item['file_index']])) {
                         $file = $uploadedFiles[$item['file_index']];
-                        $path = $file->store('products', 'public');
+                        $path = app(ProductGalleryInput::class)->store($file);
                         $orderedUrls[] = '/storage/'.$path;
                     } elseif (($type === 'existing' || $type === 'url') && ! empty($item['url'])) {
                         $orderedUrls[] = $item['url'];
@@ -374,7 +342,7 @@ class SellerProductController extends Controller
         // Fallback to legacy single file or single url if manifest was empty
         if (empty($orderedUrls)) {
             if ($request->hasFile('image_file')) {
-                $path = $request->file('image_file')->store('products', 'public');
+                $path = app(ProductGalleryInput::class)->store($request->file('image_file'));
                 $orderedUrls[] = '/storage/'.$path;
             } elseif ($request->filled('featured_image')) {
                 $orderedUrls[] = $request->input('featured_image');
@@ -441,19 +409,37 @@ class SellerProductController extends Controller
     private function destroyInShop(Request $request, Product $product): RedirectResponse
     {
         $shop = $this->getActiveShop($request);
-        $product = Product::whereKey($product->id)->lockForUpdate()->firstOrFail();
-        if ($product->shop_id !== $shop->id) {
-            abort(403, 'Unauthorized product deletion.');
-        }
+        $actions = app(SellerListingActions::class);
+        $result = $actions->remove($actions->owned($shop, $product->id));
 
-        if ($product->hasRetainedReferences()) {
-            $product->update(['status' => 'archived']);
+        return back()->with('success', $result === 'archived' ? 'Product archived to preserve its references and history.' : 'Product deleted.');
+    }
 
-            return back()->with('success', 'Product archived to preserve its references and history.');
-        }
+    public function duplicate(Request $request, Product $product): RedirectResponse
+    {
+        return app(ShopEligibilityService::class)->mutate($request, function () use ($request, $product) {
+            $shop = $this->getActiveShop($request);
+            $actions = app(SellerListingActions::class);
+            $owned = $actions->owned($shop, $product->id);
+            $copy = app(SellerListingSubmission::class)->run($request, $shop, 'duplicate:'.$owned->id,
+                fn () => $actions->duplicate($shop, $owned));
 
-        $product->delete();
+            return back()->with('success', 'Product copied as a private draft.')->with('listing_copy_id', $copy->id);
+        });
+    }
 
-        return back()->with('success', 'Product deleted.');
+    public function bulk(Request $request): RedirectResponse
+    {
+        return app(ShopEligibilityService::class)->mutate($request, function () use ($request) {
+            $shop = $this->getActiveShop($request);
+            $data = $request->validate([
+                'action' => ['required', Rule::in(['deactivate', 'delete'])],
+                'product_ids' => ['required', 'array', 'list', 'min:1', 'max:100'],
+                'product_ids.*' => ['bail', new AsciiPositiveInteger, 'integer', 'distinct'],
+            ]);
+            $results = app(SellerListingActions::class)->bulk($shop, $data['product_ids'], $data['action']);
+
+            return back()->with('success', 'Product selection processed. Review each result below.')->with('listing_bulk_results', $results);
+        });
     }
 }

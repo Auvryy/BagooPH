@@ -62,7 +62,7 @@ class SellerProductVariantsTest extends TestCase
         $response = $this->actingAs($this->seller)
             ->post(route('seller.products.store'), [
                 'name' => 'Field Expedition Duffle Bag',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => 1899.00,
                 'compare_at_price' => 2499.00,
                 'stock' => 45,
@@ -98,7 +98,7 @@ class SellerProductVariantsTest extends TestCase
         $response = $this->actingAs($this->seller)
             ->post(route('seller.products.store'), [
                 'name' => 'Handstitched Cardholder Wallet',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => 499.00,
                 'compare_at_price' => 699.00,
                 'stock' => 50,
@@ -123,7 +123,7 @@ class SellerProductVariantsTest extends TestCase
     {
         $product = Product::create([
             'shop_id' => $this->shop->id,
-            'category_id' => $this->category->id,
+            'weight_kg' => '0.50', 'category_id' => $this->category->id,
             'name' => 'Vintage Canvas Messenger Bag',
             'slug' => 'vintage-canvas-messenger-bag',
             'description' => 'Waxed canvas messenger with leather strap.',
@@ -154,7 +154,7 @@ class SellerProductVariantsTest extends TestCase
         $response = $this->actingAs($this->seller)
             ->put(route('seller.products.update', $product->id), [
                 'name' => 'Vintage Canvas Messenger Bag Pro',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => 1399.00,
                 'stock' => 20,
                 'status' => 'active',
@@ -186,7 +186,7 @@ class SellerProductVariantsTest extends TestCase
 
         $product = Product::create([
             'shop_id' => $this->shop->id,
-            'category_id' => $this->category->id,
+            'weight_kg' => '0.50', 'category_id' => $this->category->id,
             'name' => 'Heavyweight Workwear Overshirt',
             'slug' => 'heavyweight-workwear-overshirt',
             'description' => '100% Cotton canvas overshirt.',
@@ -218,7 +218,7 @@ class SellerProductVariantsTest extends TestCase
 
         $product = Product::create([
             'shop_id' => $this->shop->id,
-            'category_id' => $this->category->id,
+            'weight_kg' => '0.50', 'category_id' => $this->category->id,
             'name' => 'Minimalist Everyday Backpack',
             'slug' => 'minimalist-everyday-backpack',
             'description' => 'Waterproof urban pack.',
@@ -275,7 +275,7 @@ class SellerProductVariantsTest extends TestCase
         $response = $this->actingAs($this->seller)
             ->post(route('seller.products.store'), [
                 'name' => 'Rugged Weekender Duffle',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => 2499.00,
                 'stock' => 20,
                 'description' => 'Heavy duty canvas duffle.',
@@ -319,7 +319,7 @@ class SellerProductVariantsTest extends TestCase
         $response = $this->actingAs($this->seller)
             ->post(route('seller.products.store'), [
                 'name' => 'Anodized EDC Pen',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => 599.00,
                 'stock' => 100,
                 'description' => 'Aircraft aluminum pen.',
@@ -355,7 +355,7 @@ class SellerProductVariantsTest extends TestCase
         $response = $this->actingAs($this->seller)
             ->post(route('seller.products.store'), [
                 'name' => 'Quantum Pro Smartphone Ultra',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => 45999.00,
                 'stock' => 55,
                 'description' => 'Flagship flagship smartphone.',
@@ -379,7 +379,7 @@ class SellerProductVariantsTest extends TestCase
         $response = $this->actingAs($this->seller)
             ->post(route('seller.products.store'), [
                 'name' => 'Minimalist Titanium Key Carabiner',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => 399.00,
                 'stock' => 100,
                 'description' => 'Solid grade 5 titanium carabiner.',

@@ -186,6 +186,7 @@ export default function BuyerProductDetail({
     const discountPct = currentComparePrice > currentPrice ? Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100) : 0;
 
     const completeSelection = (!colorsList.length || selectedColor !== null) && (!sizesList.length || selectedSize !== null);
+    const showPriceRange = !completeSelection && product.price_range && Number(product.price_range.max) > Number(product.price_range.min);
     const selectionStock = variations.combinations ? Number(selectedCombination?.stock ?? (completeSelection ? 0 : product.stock)) : Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
     const sizeAvailable = (size: VariationSize) => !variations.combinations || variations.combinations.some(row => row.size === size.name && (!selectedColor || row.color === selectedColor.name) && row.stock > 0);
     const isProductOutOfStock = Number(product.stock) <= 0;
@@ -375,7 +376,7 @@ export default function BuyerProductDetail({
                                 alt={product.name}
                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                             />
-                            {discountPct > 0 && (
+                            {!showPriceRange && discountPct > 0 && (
                                 <span className="absolute top-3 right-3 px-2 py-1 rounded bg-[#E00D42] text-white font-sans text-xs font-black shadow-xs">
                                     -{discountPct}% OFF
                                 </span>
@@ -467,9 +468,11 @@ export default function BuyerProductDetail({
                         {/* High-Contrast Pricing Strip */}
                         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-wrap items-baseline gap-3">
                             <span className="text-2xl sm:text-3xl font-black text-[#E00D42] font-sans">
-                                {formatPrice(currentPrice)}
+                                {showPriceRange && product.price_range
+                                    ? `${formatPrice(product.price_range.min)} – ${formatPrice(product.price_range.max)}`
+                                    : formatPrice(currentPrice)}
                             </span>
-                            {discountPct > 0 && (
+                            {!showPriceRange && discountPct > 0 && (
                                 <span className="text-sm font-sans text-slate-400 line-through">
                                     {formatPrice(currentComparePrice)}
                                 </span>
@@ -754,6 +757,12 @@ export default function BuyerProductDetail({
                             Product Specifications
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-sans text-xs">
+                            {[
+                                ['Brand', product.brand || 'Not provided'],
+                                ['Condition', product.condition === 'new' ? 'New' : product.condition === 'used' ? 'Used' : 'Not provided'],
+                                ['Declared weight', product.weight_kg == null ? 'Not recorded' : `${Number(product.weight_kg).toFixed(2)} kg`],
+                                ['Dimensions', [product.length_cm, product.width_cm, product.height_cm].every(value => value != null) ? `${product.length_cm} × ${product.width_cm} × ${product.height_cm} cm` : 'Not recorded'],
+                            ].map(([label, value]) => <div key={label} className="flex gap-4 rounded-xl bg-slate-50 p-3"><span className="w-32 shrink-0 font-bold text-slate-500">{label}:</span><span className="break-words font-bold text-slate-800">{value}</span></div>)}
                             <div className="flex gap-4 p-3 rounded-xl bg-slate-50">
                                 <span className="text-slate-400 w-32 font-bold">Category:</span>
                                 <span className="text-slate-800 font-bold">{product.category?.name || 'General'}</span>

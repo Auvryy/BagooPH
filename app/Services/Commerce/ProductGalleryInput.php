@@ -4,11 +4,22 @@ namespace App\Services\Commerce;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use JsonException;
 
 class ProductGalleryInput
 {
+    public function store(UploadedFile $file): string
+    {
+        $path = $file->store('products', 'public');
+        DB::afterRollBack(fn () => Storage::disk('public')->delete($path));
+
+        return $path;
+    }
+
     public function validate(Request $request, string $status, ?Product $product = null): void
     {
         $files = $request->file('image_files') ?? [];

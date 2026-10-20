@@ -183,6 +183,7 @@ class CheckoutOrderService
                             'product_sale_id' => $segment['product_sale_id'], 'quantity' => $segment['quantity'],
                             'unit_price' => $segment['unit_price'], 'subtotal' => $segment['subtotal'],
                             'color' => $item->color, 'size' => $item->size, 'sku_snapshot' => $item->sku_snapshot,
+                            'declared_weight_kg' => $product->weight_kg,
                         ]);
                     }
 

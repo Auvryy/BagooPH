@@ -27,9 +27,10 @@ export default function ProductCard({
     saveControl,
     showDeliveryBadge = true,
 }: ProductCardProps) {
-    const priceNum = Number(product.sale_offer?.effective_price ?? product.price);
+    const priceNum = Number(product.price_range?.min ?? product.sale_offer?.effective_price ?? product.price);
+    const maxPrice = Number(product.price_range?.max ?? priceNum);
     const compareNum = product.sale_offer?.active && priceNum < Number(product.price) ? Number(product.price) : product.compare_at_price ? Number(product.compare_at_price) : null;
-    const discountPct = compareNum && compareNum > priceNum
+    const discountPct = maxPrice === priceNum && compareNum && compareNum > priceNum
         ? Math.round(((compareNum - priceNum) / compareNum) * 100)
         : null;
 
@@ -124,9 +125,9 @@ export default function ProductCard({
                     {/* Price Block */}
                     <div className="flex items-baseline gap-1.5 pt-0.5 font-sans">
                         <span className="text-sm sm:text-base font-black text-[#E00D42]">
-                            {formatPrice(priceNum)}
+                            {formatPrice(priceNum)}{maxPrice > priceNum ? ` – ${formatPrice(maxPrice)}` : ''}
                         </span>
-                        {compareNum && compareNum > priceNum && (
+                        {maxPrice === priceNum && compareNum && compareNum > priceNum && (
                             <span className="text-[10px] text-slate-400 line-through">
                                 {formatPrice(compareNum)}
                             </span>

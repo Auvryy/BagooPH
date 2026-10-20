@@ -30,7 +30,7 @@ class SellerListingBoundaryTest extends TestCase
     private function payload(array $changes = []): array
     {
         return array_replace(['name' => 'Woven Market Tote', 'description' => 'A handwoven bag with strong handles and a lined interior.',
-            'price' => '450.00', 'stock' => 20, 'status' => 'active', 'category_id' => $this->shop->root_category_id,
+            'price' => '450.00', 'stock' => 20, 'status' => 'active', 'weight_kg' => '0.50', 'category_id' => $this->shop->root_category_id,
             'featured_image' => '/storage/products/tote.jpg'], $changes);
     }
 

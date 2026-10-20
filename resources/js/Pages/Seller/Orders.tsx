@@ -9,6 +9,7 @@ import PortalLink from '@/Components/PortalLink';
 import useResolvedPage from '@/hooks/useResolvedPage';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import OrderTrackingPanel, { OrderTrackingStatus } from '@/Components/OrderTrackingPanel';
+import { declaredParcelWeight } from '@/utils/declaredParcelWeight';
 import { currentOrderSelection } from '@/utils/orderTracking';
 import { sellerOrderStages } from '@/utils/orderWorkspace';
 import { Order, OrderItem, PaginatedData, Shop, User } from '@/types';
@@ -1086,8 +1087,8 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 <div className="space-y-0.5">
                                     <span className="text-[9px] font-bold text-slate-400 uppercase block font-sans">FROM (MERCHANT):</span>
                                     <p className="font-bold text-slate-900">{shop.name}</p>
-                                    <p className="text-slate-600 text-[10px]">{shop.address || 'Artisan Hub'}, {shop.city || 'Metro Manila'}</p>
-                                    <p className="text-slate-600 text-[10px]">{shop.phone || '+63 912 345 6789'}</p>
+                                    <p className="text-slate-600 text-[10px]">{shop.address || 'Address not recorded'}, {shop.city || 'City not recorded'}</p>
+                                    <p className="text-slate-600 text-[10px]">{shop.phone || 'Phone not recorded'}</p>
                                 </div>
 
                                 <div className="space-y-0.5 border-l border-slate-200 pl-3">
@@ -1096,6 +1097,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 </div>
                             </div>
 
+                            <p className="text-xs text-slate-700"><strong>Declared product weight:</strong> {declaredParcelWeight(selectedOrderForWaybill.order.items ?? []) ? `${declaredParcelWeight(selectedOrderForWaybill.order.items ?? [])} kg` : 'Not recorded'}</p>
                             {/* Package Breakdown */}
                             <div className="space-y-1 text-[11px]">
                                 <span className="text-[9px] font-bold text-slate-400 uppercase block font-sans">PACKAGE CONTENTS:</span>

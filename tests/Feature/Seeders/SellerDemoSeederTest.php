@@ -177,20 +177,17 @@ class SellerDemoSeederTest extends TestCase
         $this->assertFalse(app(ShopEligibilityService::class)->productIsEligible($product->fresh()));
     }
 
-    public function test_a_reserved_demo_email_in_another_role_is_never_converted_into_a_seller(): void
+    public function test_seeded_seller_is_a_separate_account_when_an_existing_buyer_uses_the_same_email(): void
     {
-        $user = User::factory()->buyer()->create(['email' => 'seller@bagoo.test']);
-        $before = $user->fresh()->getAttributes();
-        try {
-            $this->seed(SellerDemoSeeder::class);
-            $this->fail('The reserved email cannot convert an existing account role.');
-        } catch (RuntimeException $exception) {
-            $this->assertStringContainsString('conflicting role', $exception->getMessage());
-        }
-        $this->assertSame($before, $user->fresh()->getAttributes());
-        $this->assertDatabaseCount('shops', 0);
-        $this->assertDatabaseCount('products', 0);
-        $this->assertSame([], Storage::disk('local')->allFiles());
+        $buyer = User::factory()->buyer()->create(['email' => 'seller@bagoo.test']);
+        $before = $buyer->fresh()->getAttributes();
+        $this->seed(SellerDemoSeeder::class);
+        $seller = User::where('email', 'seller@bagoo.test')->where('role', 'seller')->sole();
+        $this->assertNotSame($buyer->id, $seller->id);
+        $this->assertSame($before, $buyer->fresh()->getAttributes());
+        $this->assertTrue($seller->canAccessPortal());
+        $this->assertSame(1, Shop::where('user_id', $seller->id)->count());
+        $this->assertSame(17, $seller->shop->products()->count());
     }
 
     public static function blockedFixtures(): array

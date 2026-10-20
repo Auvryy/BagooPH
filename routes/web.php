@@ -233,6 +233,8 @@ $registerSellerRoutes = function () {
         Route::get('/dashboard', [SellerDashboardController::class, 'index']);
         Route::get('/products', [SellerProductController::class, 'index']);
         Route::post('/products', [SellerProductController::class, 'store']);
+        Route::post('/products/bulk', [SellerProductController::class, 'bulk']);
+        Route::post('/products/{product}/duplicate', [SellerProductController::class, 'duplicate']);
         Route::patch('/products/{product}/stock', [SellerProductController::class, 'updateStock']);
         Route::match(['put', 'post'], '/products/{product}', [SellerProductController::class, 'update']);
         Route::delete('/products/{product}', [SellerProductController::class, 'destroy']);
@@ -657,6 +659,8 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::put('/products/{product}/sales/{sale}', [ProductSaleController::class, 'update'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.update');
     Route::post('/products/{product}/sales/{sale}/end', [ProductSaleController::class, 'end'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.end');
     Route::post('/products', [SellerProductController::class, 'store'])->name('products.store');
+    Route::post('/products/bulk', [SellerProductController::class, 'bulk'])->name('products.bulk');
+    Route::post('/products/{product}/duplicate', [SellerProductController::class, 'duplicate'])->name('products.duplicate');
     Route::post('/products/assist-description', [SellerAiAssistantController::class, 'generateDescription'])
         ->middleware('throttle:20,1')
         ->name('products.assist-description');
