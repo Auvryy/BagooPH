@@ -7,9 +7,11 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\ShopFollow;
+use App\Models\StoreCategory;
 use App\Models\User;
 use App\Services\Commerce\BuyerDiscoveryService;
 use App\Services\Commerce\ReviewService;
+use App\Services\Commerce\StoreCategoryService;
 use App\Services\ShopEligibilityService;
 use App\Services\Vouchers\VoucherCollectionService;
 use Illuminate\Http\RedirectResponse;
@@ -199,7 +201,7 @@ class MarketplaceController extends Controller
         ]);
     }
 
-    public function shop(Request $request, string $slug): Response
+    public function shop(Request $request, string $slug, ?StoreCategory $storeCategory = null): Response
     {
         $shop = Shop::with('user')->eligible()
             ->withCount(['products' => function ($q) {
@@ -210,9 +212,14 @@ class MarketplaceController extends Controller
 
         $discovery = app(BuyerDiscoveryService::class);
         $filters = $discovery->selection($request);
-        $products = $discovery->paginate($discovery->filter(
+        $storeCategories = app(StoreCategoryService::class);
+        $selection = $storeCategories->publicSelection($request, $shop, $storeCategory);
+        if ($selection !== 'all') {
+            $filters['store_category'] = $selection;
+        }
+        $products = $discovery->paginate($storeCategories->filterPublic($discovery->filter(
             $discovery->catalogue()->where('products.shop_id', $shop->id), $filters
-        ), $filters, 18);
+        ), $shop, $selection), $filters, 18);
 
         $currentUser = auth()->user();
         $isOwner = $currentUser && $currentUser->isSeller() && $currentUser->canAccessPortal()
@@ -225,6 +232,7 @@ class MarketplaceController extends Controller
             'products' => $products,
             'filters' => $filters,
             'categories' => $discovery->categories()->filter(fn ($category) => in_array($category->id, app(ShopEligibilityService::class)->categoryTreeIds($shop->rootCategory)))->values(),
+            'storeCategories' => $storeCategories->publicRows($shop),
             'isFollowing' => $currentUser?->isBuyer() && ShopFollow::where('buyer_id', $currentUser->id)->where('shop_id', $shop->id)->exists(),
             'followerCount' => ShopFollow::where('shop_id', $shop->id)->count(),
             'isOwner' => (bool) $isOwner,

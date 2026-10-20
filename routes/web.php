@@ -71,6 +71,7 @@ use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerShopController;
+use App\Http\Controllers\Seller\SellerStoreCategoryController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\SellerSettlementController;
 use App\Http\Controllers\ShopVerificationDocumentController;
@@ -231,6 +232,12 @@ $registerSellerRoutes = function () {
 
     Route::middleware(['auth', 'subdomain.role:seller'])->group(function () {
         Route::get('/dashboard', [SellerDashboardController::class, 'index']);
+        Route::get('/store-categories', [SellerStoreCategoryController::class, 'index']);
+        Route::post('/store-categories', [SellerStoreCategoryController::class, 'store']);
+        Route::post('/store-categories/reorder', [SellerStoreCategoryController::class, 'reorder']);
+        Route::get('/store-categories/{storeCategory}/preview', [SellerStoreCategoryController::class, 'preview']);
+        Route::put('/store-categories/{storeCategory}', [SellerStoreCategoryController::class, 'update']);
+        Route::delete('/store-categories/{storeCategory}', [SellerStoreCategoryController::class, 'destroy']);
         Route::get('/products', [SellerProductController::class, 'index']);
         Route::post('/products', [SellerProductController::class, 'store']);
         Route::post('/products/bulk', [SellerProductController::class, 'bulk']);
@@ -594,6 +601,7 @@ Route::middleware('auth')->group(function () {
 Route::get('/products', [BuyerProductController::class, 'search'])->name('products.index');
 Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog.index');
 Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
+Route::get('/shop/{slug}/categories/{storeCategory}', [MarketplaceController::class, 'shop'])->whereNumber('storeCategory')->name('shop.categories.show');
 Route::get('/shop/{slug}', [MarketplaceController::class, 'shop'])->name('shop.show');
 Route::post('/shop/{slug}/update-branding', [MarketplaceController::class, 'updateBranding'])->middleware(['auth', 'role:seller'])->name('shop.updateBranding');
 
@@ -653,6 +661,12 @@ Route::middleware('auth')->group(function () {
 */
 Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->group(function () {
     Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/store-categories', [SellerStoreCategoryController::class, 'index'])->name('store-categories.index');
+    Route::post('/store-categories', [SellerStoreCategoryController::class, 'store'])->name('store-categories.store');
+    Route::post('/store-categories/reorder', [SellerStoreCategoryController::class, 'reorder'])->name('store-categories.reorder');
+    Route::get('/store-categories/{storeCategory}/preview', [SellerStoreCategoryController::class, 'preview'])->name('store-categories.preview');
+    Route::put('/store-categories/{storeCategory}', [SellerStoreCategoryController::class, 'update'])->name('store-categories.update');
+    Route::delete('/store-categories/{storeCategory}', [SellerStoreCategoryController::class, 'destroy'])->name('store-categories.destroy');
     Route::get('/products', [SellerProductController::class, 'index'])->name('products.index');
     Route::get('/products/{product}/sales', [ProductSaleController::class, 'index'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.index');
     Route::post('/products/{product}/sales', [ProductSaleController::class, 'store'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.store');

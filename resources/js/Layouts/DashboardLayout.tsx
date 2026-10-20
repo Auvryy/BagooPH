@@ -10,7 +10,7 @@ import NavigationAttentionDot from '@/Components/NavigationAttentionDot';
 import { getDomainUrl } from '@/utils/domain';
 import { 
     ShoppingBag, 
-    LayoutDashboard, 
+    LayoutDashboard, Layers,
     Package, 
     ShoppingCart, 
     Truck, 
@@ -130,6 +130,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     icon: Package, 
                     current: component.startsWith('Seller/Product') || route().current('seller.products.*') || url.startsWith('/seller/products') 
                 },
+                { name: 'Store categories', href: route('seller.store-categories.index'), icon: Layers, current: component === 'Seller/StoreCategories' || route().current('seller.store-categories.*') || url.startsWith('/seller/store-categories') },
                 { 
                     name: 'Orders', 
                     href: route('seller.orders.index'), 
