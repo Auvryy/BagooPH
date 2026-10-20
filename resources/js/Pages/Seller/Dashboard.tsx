@@ -1,5 +1,5 @@
 import React, { useState, useId, useMemo } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import PortalLink from '@/Components/PortalLink';
 import { Order, Product, Shop } from '@/types';
@@ -48,14 +48,21 @@ interface Props {
         revenue: number;
         units: number;
     }>;
+    dailyDeliveries?: Props['dailySales'];
+    salesPeriod?: number;
     recentOrders: Order[];
     topProducts: Product[];
 }
 
-export default function SellerDashboard({ shop, stats, dailySales, recentOrders, topProducts }: Props) {
+export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveries = [], salesPeriod = 30, recentOrders, topProducts }: Props) {
     const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
     const [isHoveringChart, setIsHoveringChart] = useState(false);
     const chartClipId = useId();
+    const [chartMode, setChartMode] = useState<'completed' | 'delivered'>(() => dailySales.some(day => day.units > 0 || day.revenue > 0)
+        || !dailyDeliveries.some(day => day.units > 0) ? 'completed' : 'delivered');
+    const [chartLoading, setChartLoading] = useState(false);
+    const [chartError, setChartError] = useState('');
+    const chartTitle = chartMode === 'completed' ? 'Completed sales' : 'Delivered order value';
 
     const formatPrice = (val: string | number | undefined | null) => {
         const num = Number(val || 0);
@@ -65,7 +72,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
     // Total pending action items requiring merchant intervention
     const pendingActions = stats.pendingPackCount + stats.readyPickupCount;
 
-    const chartSeries = dailySales;
+    const chartSeries = chartMode === 'completed' ? dailySales : dailyDeliveries;
     const hasCompletedSales = chartSeries.some((day) => day.revenue > 0 || day.units > 0);
 
     // SVG Line Graph Geometry Constants
@@ -254,21 +261,42 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 <div className="flex items-center gap-2">
                                     <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42]"></span>
                                     <h3 className="text-sm font-bold text-slate-900 font-sans">
-                                        Completed sales
+                                        {chartTitle}
                                     </h3>
                                 </div>
-                                <p className="mt-1 text-xs text-slate-500">Buyer-confirmed product sales for the last seven days</p>
+                                <p className="mt-1 text-xs text-slate-500">{chartMode === 'completed' ? 'Product sales confirmed by the buyer' : 'Delivered orders awaiting buyer confirmation'} · Philippine dates</p>
                             </div>
-                            <span className="text-xs font-semibold text-slate-500">Last 7 days</span>
+                            <label className="text-xs font-semibold text-slate-600">Period
+                                <select value={salesPeriod} disabled={chartLoading} aria-label="Sales chart period" className="ml-2 rounded-lg border border-slate-300 bg-white py-1.5 pl-2 pr-7 text-xs focus:border-[#E00D42] focus:ring-[#E00D42] disabled:opacity-50"
+                                    onChange={event => {
+                                        if (chartLoading) return;
+                                        setChartLoading(true); setChartError(''); setHoveredIdx(null); setIsHoveringChart(false);
+                                        router.get(route('seller.dashboard'), { sales_days: Number(event.target.value) }, { only: ['dailySales', 'dailyDeliveries', 'salesPeriod'], preserveScroll: true, preserveState: true,
+                                            onError: () => setChartError('The chart could not refresh. Choose the period again to retry.'),
+                                            onFinish: () => setChartLoading(false) });
+                                    }}>
+                                    {[7, 30, 90].map(days => <option key={days} value={days}>Last {days} days</option>)}
+                                </select>
+                            </label>
                         </div>
+
+                        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Sales chart activity">
+                            {(['completed', 'delivered'] as const).map(mode => <button key={mode} type="button" aria-pressed={chartMode === mode} onClick={() => { setChartMode(mode); setHoveredIdx(null); setIsHoveringChart(false); }}
+                                className={`rounded-lg border px-3 py-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-[#E00D42] ${chartMode === mode ? 'border-[#E00D42] bg-rose-50 text-[#C20836]' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+                                {mode === 'completed' ? 'Completed sales' : 'Awaiting confirmation'}
+                            </button>)}
+                        </div>
+                        {chartLoading && <p role="status" className="mt-2 text-xs text-slate-600">Updating chart...</p>}
+                        {chartError && <p role="alert" className="mt-2 text-xs text-rose-700">{chartError}</p>}
+                        {chartMode === 'delivered' && <p className="mt-2 text-xs text-amber-800">These orders have arrived. They count as completed sales after the buyer confirms receipt.</p>}
 
                         {/* Interactive Line Chart Canvas - Sleek, Lower Height */}
                         <div className="relative pt-3 pb-1">
                             {!hasCompletedSales ? (
                                 <div className="flex h-32 flex-col items-center justify-center px-6 text-center">
                                     <CheckCircle2 className="mb-2 h-5 w-5 text-slate-400" />
-                                    <p className="text-sm font-semibold text-slate-700">No completed sales in this period</p>
-                                    <p className="mt-1 text-xs text-slate-500">Open orders remain in the fulfillment queue until the buyer confirms receipt.</p>
+                                    <p className="text-sm font-semibold text-slate-700">{chartMode === 'completed' ? 'No completed sales in this period' : 'No delivered orders awaiting confirmation in this period'}</p>
+                                    <p className="mt-1 text-xs text-slate-500">{chartMode === 'completed' && stats.completedOrderCount > 0 ? 'Your completed sales may be outside this period. Choose a longer period or open Sales report.' : 'Completed sales use the date the buyer confirms receipt.'}</p>
                                 </div>
                             ) : (
                                 <>
@@ -285,15 +313,15 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                 >
                                     <div className="flex items-center justify-between gap-4 pb-1.5 border-b border-slate-800 text-[10px] text-slate-400">
                                         <span>{activePoint.date}</span>
-                                        <span className="text-slate-300 font-bold">{activePoint.units} completed</span>
+                                        <span className="text-slate-300 font-bold">{activePoint.units} {chartMode === 'completed' ? 'completed' : 'delivered'}</span>
                                     </div>
                                     <div className="mt-1.5 space-y-0.5">
                                         <p className="text-base font-black text-white font-sans">
                                             {formatPrice(activePoint.revenue)}
                                         </p>
-                                        <p className="text-[10px] text-slate-300">
+                                        {chartMode === 'completed' && <p className="text-[10px] text-slate-300">
                                             Estimated seller share: {formatPrice(activePoint.revenue * 0.9)}
-                                        </p>
+                                        </p>}
                                     </div>
                                     <div className="w-2 h-2 bg-slate-950 rotate-45 border-r border-b border-slate-800 absolute -bottom-1 left-1/2 -translate-x-1/2"></div>
                                 </div>
@@ -302,9 +330,16 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                             {/* SVG Spline Container */}
                             <svg
                                 viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                                role="img" tabIndex={0} aria-label={`${chartTitle} for the last ${salesPeriod} days. Use the left and right arrow keys to explore dates.`}
                                 className="w-full h-32 select-none cursor-crosshair overflow-visible"
                                 onMouseMove={handleChartMouseMove}
                                 onMouseLeave={handleChartMouseLeave}
+                                onFocus={() => setIsHoveringChart(true)} onBlur={() => setIsHoveringChart(false)}
+                                onKeyDown={event => {
+                                    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                                    event.preventDefault(); setIsHoveringChart(true);
+                                    setHoveredIdx(index => Math.max(0, Math.min(points.length - 1, (index ?? points.length - 1) + (event.key === 'ArrowLeft' ? -1 : 1))));
+                                }}
                             >
                                 <defs>
                                     {/* Gradient fill under spline curve */}
@@ -418,7 +453,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                                 strokeWidth="2"
                                             />
                                             {/* X-axis date text */}
-                                            <text
+                                            {(idx % Math.ceil(points.length / 7) === 0 || idx === points.length - 1) && <text
                                                 x={pt.x}
                                                 y={svgHeight - padding.bottom + 16}
                                                 fill={isActive ? "#E00D42" : "#64748b"}
@@ -429,7 +464,7 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                                                 className="uppercase tracking-wider"
                                             >
                                                 {pt.date}
-                                            </text>
+                                            </text>}
                                         </g>
                                     );
                                 })}
@@ -441,17 +476,17 @@ export default function SellerDashboard({ shop, stats, dailySales, recentOrders,
                         {/* Bottom Telemetry Strip: Clean Single-Row Bar (Minimalist, Zero Bulk) */}
                         {hasCompletedSales && <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 mt-1.5 border-t border-slate-100 font-sans text-xs">
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-500">Selected date completed sales</span>
+                                <span className="text-[10px] text-slate-500">Selected date {chartMode === 'completed' ? 'completed sales' : 'delivered order value'}</span>
                                 <span className="text-sm font-black text-slate-900 font-sans">
                                     {formatPrice(activePoint?.revenue || 0)}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            {chartMode === 'completed' && <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-slate-500">Estimated seller share</span>
                                 <span className="text-sm font-black text-slate-900 font-sans">
                                     {formatPrice((activePoint?.revenue || 0) * 0.9)}
                                 </span>
-                            </div>
+                            </div>}
                         </div>}
                     </div>
 
