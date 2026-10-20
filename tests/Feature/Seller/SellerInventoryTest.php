@@ -38,6 +38,7 @@ class SellerInventoryTest extends TestCase
             'stock' => 12,
             'sku' => 'BGO-INVENTORY',
             'description' => 'A lightweight carrier for everyday travel.',
+            'featured_image' => '/storage/products/carrier.jpg',
             'status' => 'draft',
         ], $changes);
     }

@@ -31,10 +31,11 @@ export default function VariantStockMatrix({ colors, sizes, value, onChange, err
             <thead><tr className="border-b border-slate-300 text-slate-600"><th className="pb-2 font-semibold">Options</th><th className="pb-2 font-semibold">Stock</th><th className="pb-2 font-semibold">Extra price (₱)</th></tr></thead>
             <tbody>{rows.map((row, index) => <tr key={JSON.stringify([row.color, row.size])} className="border-b border-slate-200 last:border-0">
                 <td className="py-2 pr-3">{[row.color, row.size].filter(Boolean).join(' / ')}</td>
-                <td className="p-2"><input type="number" min="0" max="1000000" step="1" value={row.stock} onChange={event => update(index, 'stock', event.target.value)} aria-label={`Stock for ${[row.color, row.size].filter(Boolean).join(' / ')}`} className="w-24 rounded-lg border border-slate-300 px-2 py-2" /></td>
+                <td className="p-2"><input type="number" min="0" max="99999" step="1" value={row.stock} onChange={event => update(index, 'stock', event.target.value)} aria-label={`Stock for ${[row.color, row.size].filter(Boolean).join(' / ')}`} className="w-24 rounded-lg border border-slate-300 px-2 py-2" /></td>
                 <td className="py-2 pl-2"><input type="number" min="0" max="99999999.99" step="0.01" value={row.extra_price} onChange={event => update(index, 'extra_price', event.target.value)} aria-label={`Extra price for ${[row.color, row.size].filter(Boolean).join(' / ')}`} className="w-28 rounded-lg border border-slate-300 px-2 py-2" /></td>
             </tr>)}</tbody>
         </table><p className="mt-3 font-semibold text-slate-900">Combined stock: {rows.reduce((total, row) => total + Number(row.stock || 0), 0)}</p></div>}
         {error && <p role="alert" className="mt-2 text-sm text-rose-700">{error}</p>}
+        <p className="mt-2 text-xs text-slate-500">Up to 20 values per group. Combined stock must be 0–99,999 units.</p>
     </section>;
 }

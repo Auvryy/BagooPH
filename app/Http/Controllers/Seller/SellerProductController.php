@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Commerce\ProductGalleryInput;
 use App\Services\Commerce\SellerInventoryService;
 use App\Services\Commerce\SellerSalesMetricsService;
 use App\Services\Commerce\VariantMatrixService;
@@ -76,17 +77,17 @@ class SellerProductController extends Controller
         $shop = $this->getActiveShop($request);
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|min:5|max:120',
             'category_id' => 'nullable|exists:categories,id',
-            'price' => ['required', 'numeric', 'between:0.01,99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
+            'price' => ['required', 'numeric', 'between:1,1000000', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
             'compare_at_price' => ['nullable', 'numeric', 'gt:price', 'max:99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
-            'stock' => 'required|integer|min:0|max:1000000',
+            'stock' => 'required|integer|min:0|max:99999',
             'purchase_limit' => ['nullable', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
             'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')],
-            'description' => 'required|string',
+            'description' => 'required|string|min:20|max:3000',
             'featured_image' => 'nullable|string',
             'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
-            'image_files' => 'nullable|array',
+            'image_files' => 'nullable|array|list|max:9',
             'image_files.*' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
             'gallery_manifest' => 'nullable|string',
             'variants' => 'nullable',
@@ -99,6 +100,7 @@ class SellerProductController extends Controller
             'image_files.*.mimes' => 'Images must be in PNG, JPG, JPEG, WEBP, or GIF format.',
         ]);
 
+        app(ProductGalleryInput::class)->validate($request, $validated['status'] ?? 'active');
         $validated['category_id'] = app(ShopEligibilityService::class)->categoryFor($shop, $validated['category_id'] ?? null);
 
         $defaultFallback = '/storage/products/placeholder.webp';
@@ -144,17 +146,17 @@ class SellerProductController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|min:5|max:120',
             'category_id' => 'nullable|exists:categories,id',
-            'price' => ['required', 'numeric', 'between:0.01,99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
+            'price' => ['required', 'numeric', 'between:1,1000000', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
             'compare_at_price' => ['nullable', 'numeric', 'gt:price', 'max:99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
-            'stock' => 'required|integer|min:0|max:1000000',
+            'stock' => 'required|integer|min:0|max:99999',
             'purchase_limit' => ['nullable', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
             'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')->ignore($product)],
-            'description' => 'required|string',
+            'description' => 'required|string|min:20|max:3000',
             'featured_image' => 'nullable|string',
             'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
-            'image_files' => 'nullable|array',
+            'image_files' => 'nullable|array|list|max:9',
             'image_files.*' => 'nullable|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
             'gallery_manifest' => 'nullable|string',
             'variants' => 'nullable',
@@ -167,6 +169,7 @@ class SellerProductController extends Controller
             'image_files.*.mimes' => 'Images must be in PNG, JPG, JPEG, WEBP, or GIF format.',
         ]);
 
+        app(ProductGalleryInput::class)->validate($request, $validated['status'], $product);
         $validated['category_id'] = app(ShopEligibilityService::class)->categoryFor($shop, $validated['category_id'] ?? null);
 
         // Auto-generate SKU if left blank or reset
@@ -203,7 +206,7 @@ class SellerProductController extends Controller
         $shop = $this->getActiveShop($request);
         $validated = $request->validate([
             'mode' => 'required|in:set,add',
-            'quantity' => 'required|integer|min:0|max:1000000',
+            'quantity' => 'required|integer|min:0|max:99999',
         ]);
 
         if ($validated['mode'] === 'add' && (int) $validated['quantity'] < 1) {
@@ -230,9 +233,9 @@ class SellerProductController extends Controller
                 ? $lockedProduct->stock + (int) $validated['quantity']
                 : (int) $validated['quantity'];
 
-            if ($newStock > 1000000) {
+            if ($newStock > 99999) {
                 throw ValidationException::withMessages([
-                    'quantity' => 'Available stock cannot exceed 1,000,000 units.',
+                    'quantity' => 'Available stock cannot exceed 99,999 units.',
                 ]);
             }
 
@@ -276,11 +279,11 @@ class SellerProductController extends Controller
             }
         }
         Validator::make($variantsRaw, [
-            'colors' => ['sometimes', 'array', 'list', 'max:40'],
+            'colors' => ['sometimes', 'array', 'list', 'max:20'],
             'colors.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
-            'sizes' => ['sometimes', 'array', 'list', 'max:40'],
+            'sizes' => ['sometimes', 'array', 'list', 'max:20'],
             'sizes.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
-            'sizes.*.stock' => ['sometimes', 'nullable', 'regex:/\A[0-9]+\z/', 'integer', 'between:0,1000000'],
+            'sizes.*.stock' => ['sometimes', 'nullable', 'regex:/\A[0-9]+\z/', 'integer', 'between:0,99999'],
             'sizes.*.extra_price' => ['sometimes', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0,99999999.99'],
             'option1_name' => ['nullable', 'string', 'max:100'],
             'option2_name' => ['nullable', 'string', 'max:100'],

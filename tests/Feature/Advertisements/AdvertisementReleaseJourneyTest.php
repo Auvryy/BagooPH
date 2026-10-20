@@ -67,7 +67,7 @@ class AdvertisementReleaseJourneyTest extends TestCase
         $collection = $this->platform(['title' => 'Everyday essentials collection', 'destination_type' => 'collection', 'destination_id' => null, 'product_ids' => [$this->product->id]]);
         $shop = $this->platform(['title' => 'Explore our approved shop', 'slot' => 'side_1', 'destination_type' => 'shop', 'destination_id' => $this->shop->id]);
         $service = app(VoucherCampaignService::class);
-        $voucher = $service->saveDraft($this->admin, ['code' => 'BGO_ESSENTIALS', 'name' => 'Everyday savings', 'description' => 'Save PHP 100 on eligible purchases of PHP 500 or more.',
+        $voucher = $service->saveDraft($this->admin, ['code' => 'BGOESSENTIAL', 'name' => 'Everyday savings', 'description' => 'Save PHP 100 on eligible purchases of PHP 500 or more.',
             'discount_type' => 'fixed', 'discount_value' => '100.00', 'min_spend' => '500.00', 'max_discount' => '100.00', 'budget' => '5000.00',
             'usage_limit' => 50, 'per_buyer_limit' => 2, 'starts_at' => now()->subDay()->toIso8601String(), 'ends_at' => now()->addDay()->toIso8601String(),
             'source_version' => 0, 'request_key' => (string) Str::uuid()]);

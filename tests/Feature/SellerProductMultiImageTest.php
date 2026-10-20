@@ -200,6 +200,7 @@ class SellerProductMultiImageTest extends TestCase
                 'compare_at_price' => '1999.00',
                 'stock' => 10,
                 'description' => 'Testing higher slashed price validation.',
+                'featured_image' => '/storage/products/price-check.jpg',
             ]);
 
         $responseHigher->assertSessionHasNoErrors();

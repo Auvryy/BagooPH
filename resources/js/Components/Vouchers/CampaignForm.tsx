@@ -29,7 +29,7 @@ export default function CampaignForm({ campaign, platform, onClose }: { campaign
     const control = (name: keyof typeof form.data, label: string, type = 'text', extra: Record<string, unknown> = {}) => (
         <label key={name} className="block text-xs font-semibold text-slate-700">
             {label}
-            <input type={type} value={form.data[name]} onChange={event => form.setData(name, event.target.value as never)}
+            <input type={type} value={form.data[name]} onChange={event => form.setData(name, (name === 'code' ? event.target.value.toUpperCase() : event.target.value) as never)}
                 required={name !== 'code'} {...extra} aria-invalid={!!form.errors[name]}
                 className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-[#E00D42] focus:ring-[#E00D42] disabled:bg-slate-100" />
             {form.errors[name] && <span role="alert" className="mt-1 block text-rose-700">{form.errors[name]}</span>}
@@ -46,7 +46,7 @@ export default function CampaignForm({ campaign, platform, onClose }: { campaign
                 {campaign?.current_revision_id && <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Saving keeps the published offer unchanged. Publishing this draft starts a new revision with its own dated budget and use limits. Existing orders keep their savings.</p>}
                 <div className="grid gap-4 sm:grid-cols-2">
                     {control('name', 'Offer title', 'text', { maxLength: 100 })}
-                    {control('code', 'Code (leave blank to generate)', 'text', { maxLength: 30, readOnly: !!campaign })}
+                    <div>{control('code', 'Code (leave blank to generate)', 'text', { minLength: campaign ? undefined : 4, maxLength: campaign ? undefined : 12, pattern: campaign ? undefined : '[A-Za-z0-9]{4,12}', readOnly: !!campaign })}<p className="mt-1 text-xs text-slate-500">4–12 letters and numbers, without spaces or symbols. Existing codes stay the same.</p></div>
                     <label className="block text-xs font-semibold text-slate-700">Discount type
                         <select value={form.data.discount_type} onChange={e => form.setData('discount_type', e.target.value as typeof form.data.discount_type)} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]">
                             <option value="fixed">Fixed product discount</option><option value="percent">Percentage product discount</option>

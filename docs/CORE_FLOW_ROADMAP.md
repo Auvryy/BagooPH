@@ -7087,3 +7087,65 @@ assets, so the supported Docker build was used.
 No database reset, migration, seed change, Flutter change, browser automation or
 Azure deployment was performed. After user publication/merge, deploy normally
 with `./bagoo.sh deploy` and verify with `./bagoo.sh verify`.
+
+### Seller input limits and repeated hub intake — October 20, 2026
+
+The `fix/catalogue-validation-feedback` branch addresses twelve bounded
+acceptance cases through the existing seller and hub actions. The product editor
+shows the limits beside its controls and gives field feedback while typing;
+the server independently rejects invalid writes. Rejected updates retain the
+saved listing, gallery, stock or pending return instead of reporting a save.
+
+| Selected case | Current behavior |
+|---|---|
+| SEL-PROF-006 | Shop description accepts up to 500 characters; 501 is rejected. |
+| SEL-PROF-008 | Logo and banner accept images up to 5 MB, with readable format/size feedback and retention of previous branding after rejection. |
+| SEL-PROD-003 | Product title is 5–120 characters and description is 20–3,000, on both creation and update. |
+| SEL-PROD-004 | Base selling price is ₱1.00–₱1,000,000.00 with at most two decimal places; excess precision is rejected. |
+| SEL-PROD-005 | Listing stock is a whole number from 0 to 99,999; zero keeps the existing sold-out behavior. |
+| SEL-PROD-006 | Publishing requires 1–9 images. Retained images, URLs and new uploads share the limit; malformed or excessive galleries fail before permanent writes. Drafts may omit images. |
+| SEL-VAR-003 | Each option group accepts at most 20 values and exposes group errors. Combination stock also respects the 99,999 total. |
+| SEL-INV-009 | Set/add stock actions reject invalid quantities and addition overflow without replacing the previous stock. |
+| SEL-DISC-006 | A fixed sale price must be at least ₱1.00 and below the regular price. |
+| SEL-VOU-004 | Newly authored codes use 4–12 letters/numbers and uppercase normalization; generated codes use the same format. |
+| SEL-RET-003 | Seller rejection reasons are 10–300 characters. Other return decisions retain their existing limits; saved decision retries return their original result. |
+| LOG-HUB-004 | Repeated origin intake inspection/confirmation says “Already received,” keeps the original intake time and produces one origin-hub event. |
+
+Existing voucher codes retain their identity and original published revisions,
+including older long or separated codes. Fresh demo campaigns use `DEMOSHOP100`,
+`DEMOBAGOO10` and `DEMOSHIP30`; reseeding recognizes the previous codes too and
+does not duplicate, rename or revive existing offers. Seeded account identities
+and passwords retain their established contract.
+
+The wider checks also found that admin attention queried optional advertisement
+reviews even when their installation was incomplete. It now uses the existing
+seller-promotion installation check before querying that queue. Ordinary
+browsing and platform advertisement management remain available in that state;
+other attention indicators keep their existing meaning.
+
+| Scoped engineering assessment | Before | After | Evidence and limit |
+|---|---|---|---|
+| Seller field limits and feedback | 5/10 | 8.5/10 | Accepted/rejected boundaries, persistence, real image contents, mixed galleries, legacy codes and return retries have automated checks. Browser/device appearance remains unverified. |
+| Repeated intake clarity | 6.5/10 | 8.5/10 | Inspection and confirmation report the retained intake and preserve one checkpoint. This does not establish simultaneous PostgreSQL scan behavior. |
+
+Verification: **591 isolated SQLite `:memory:` checks / 13,587 assertions** and
+**512 frontend checks passed**. The TypeScript/Vite production build passed via
+`./bagoo.sh npm run build`; focused PHP formatting and Git whitespace checks pass.
+The updated local case review separately records exact result evidence and
+preserves workbook formatting and original files. This is bounded acceptance
+work, not a new overall project rating or manual browser sign-off.
+
+All checks cited by its **88 Pass results** were rerun against the current code:
+**249 selected checks / 6,665 assertions passed**, including the unchanged rider
+and finance outcomes. The twelve selected cases move from Fail to Pass; the
+209-case assessment becomes **88 Pass, 106 Fail and 15 Blocked**, compared with
+76/118/15 before this branch. That is 10.2% of the previous failures addressed
+and a workbook match rate of 42.1%, up from 36.4%. Remaining failures include
+missing larger features and documented policy differences; blocked interactions
+and native concurrency are not credited as passed.
+
+There are no schema changes in this branch. No development/production database
+was reset, no real seed was run and no Azure deployment or Flutter change was
+performed. After user publication/merge, use the normal additive deployment and
+verification commands. Larger catalogue, dispatch and payment workflows remain
+separate scope.

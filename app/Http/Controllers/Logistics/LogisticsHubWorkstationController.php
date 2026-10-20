@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Logistics;
 
 use App\Http\Controllers\Controller;
+use App\Models\BuyerReturnParcel;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsFleet;
@@ -857,11 +858,12 @@ class LogisticsHubWorkstationController extends Controller
         [$hub] = $this->getActiveHub($request, $request->user());
         abort_unless($hub && $this->eligibility->canScan($request->user(), $hub), 403, 'An active handler assignment is required for floor scans.');
         if (str_starts_with($barcode, 'BRT-')) {
-            $return = \App\Models\BuyerReturnParcel::where('barcode', $barcode)->first();
+            $return = BuyerReturnParcel::where('barcode', $barcode)->first();
             abort_unless($return && $return->logistics_company_id === $hub->logistics_company_id
                 && in_array($hub->id, $return->hub_ids, true), 404, 'This return barcode is not expected in your facility scope.');
             abort_unless(($validated['mode'] ?? 'inspect') === 'inspect', 409,
                 'Open the buyer return to record its required intake or actual manifest receipt. This scan only identifies it.');
+
             return $this->scanResponse(['success' => true, 'confirmed' => false,
                 'message' => 'Buyer return identified. Open its case for the actual intake, manifest or seller-collection step.',
                 'return_case' => ['reference' => $return->returnCase->reference, 'barcode' => $return->barcode,
@@ -903,6 +905,9 @@ class LogisticsHubWorkstationController extends Controller
 
         $routingEngine = app(LogisticsRoutingEngine::class);
         $prompt = $routingEngine->getDynamicScanPrompt($delivery, $hub);
+        $alreadyReceived = $delivery->status === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB
+            && DeliveryCheckpoint::where('delivery_id', $delivery->id)->where('hub_id', $hub->id)
+                ->where('checkpoint_type', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)->exists();
 
         if ($prompt['action'] === 'INSPECT_WAYBILL' && (($validated['mode'] ?? 'inspect') === 'confirm'
             || ! app(HubParcelWorkstationService::class)->registry($hub)->whereKey($delivery->id)->exists())) {
@@ -923,7 +928,8 @@ class LogisticsHubWorkstationController extends Controller
                 message: $requiresConfirmation
                     ? 'Waybill verified. Confirm the displayed custody action to continue.'
                     : 'Waybill verified. Use the destination sorting action to continue.',
-                requiresConfirmation: $requiresConfirmation
+                requiresConfirmation: $requiresConfirmation,
+                alreadyReceived: $alreadyReceived
             ));
         }
 
@@ -996,7 +1002,8 @@ class LogisticsHubWorkstationController extends Controller
                 ? "Custody action recorded for parcel #{$delivery->tracking_number}. The next facility action is ready."
                 : "Custody action recorded for parcel #{$delivery->tracking_number}.",
             requiresConfirmation: $requiresNextConfirmation,
-            confirmed: true
+            confirmed: true,
+            alreadyReceived: $alreadyReceived && $requestedAction === 'RECEIVE_FROM_PICKUP_RIDER'
         );
 
         if ($request->wantsJson()) {
@@ -1012,7 +1019,8 @@ class LogisticsHubWorkstationController extends Controller
         array $prompt,
         string $message,
         bool $requiresConfirmation,
-        bool $confirmed = false
+        bool $confirmed = false,
+        bool $alreadyReceived = false
     ): array {
         $delivery->loadMissing(['order.items.product', 'order.buyer', 'currentHub', 'courier', 'assignedRider', 'latestCustodyCheckpoint', 'latestOriginalCheckpoint', 'pickupClaim']);
         $base = request()->is('hub/*') ? '/hub' : '';
@@ -1034,7 +1042,9 @@ class LogisticsHubWorkstationController extends Controller
 
         return [
             'success' => true,
-            'message' => ! $confirmed && ! $canConfirm ? 'Waybill verified. '.$guidance['next_step'].'.' : $message,
+            'message' => $alreadyReceived ? 'Already received at this hub. The original intake time is unchanged. '.$guidance['next_step'].'.'
+                : (! $confirmed && ! $canConfirm ? 'Waybill verified. '.$guidance['next_step'].'.' : $message),
+            'already_received' => $alreadyReceived,
             'confirmed' => $confirmed,
             'prompt' => [
                 ...$prompt,

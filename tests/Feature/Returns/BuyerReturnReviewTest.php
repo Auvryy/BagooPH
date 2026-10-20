@@ -5,10 +5,14 @@ namespace Tests\Feature\Returns;
 use App\Models\BuyerReturnCase;
 use App\Models\BuyerReturnEvent;
 use App\Models\BuyerReturnEvidence;
+use App\Models\NotificationDelivery;
 use App\Models\Order;
 use App\Models\SellerSettlement;
+use App\Models\User;
 use App\Services\AccountClosureService;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Notifications\NotificationCenterService;
+use App\Services\Notifications\NotificationDeliveryService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Returns\BuyerReturnService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -171,6 +175,30 @@ class BuyerReturnReviewTest extends TestCase
         $this->assertTrue($case->fresh()->dropoff_until->equalTo(now()->startOfSecond()->addDays(7)));
         $this->assertSame('completed', $order->fresh()->status);
         $this->assertSame(0, SellerSettlement::count());
+    }
+
+    public function test_seller_rejection_reason_boundaries_retain_pending_cases_and_accept_the_limits(): void
+    {
+        $case = $this->createReturn($this->delivered());
+        $seller = $case->order->shop->user;
+        $before = $case->fresh()->getRawOriginal();
+        foreach (['', 'Item used', str_repeat('x', 301)] as $reason) {
+            $this->actingAs($seller)->post('/buyer-returns/'.$case->id.'/actions',
+                array_replace($this->command($case, 'reject'), ['reason' => $reason]))->assertSessionHasErrors('reason');
+            $this->assertSame($before, $case->fresh()->getRawOriginal());
+            $this->assertSame(1, $case->events()->count());
+        }
+        foreach ([10, 300] as $length) {
+            if ($case->fresh()->status !== 'requested') {
+                $case = $this->createReturn($this->delivered());
+            }
+            $payload = array_replace($this->command($case, 'reject'), ['reason' => str_repeat('x', $length)]);
+            $this->actingAs($case->order->shop->user)->post('/buyer-returns/'.$case->id.'/actions', $payload)->assertSessionHasNoErrors();
+            $this->post('/buyer-returns/'.$case->id.'/actions', $payload)->assertSessionHasNoErrors();
+            $this->assertSame('rejected', $case->fresh()->status);
+            $this->assertSame($payload['reason'], $case->events()->where('event_type', 'reject')->sole()->reason);
+            $this->assertSame(2, $case->events()->count());
+        }
     }
 
     public function test_foreign_units_and_changed_or_stale_retries_do_not_change_the_saved_request(): void
@@ -388,29 +416,29 @@ class BuyerReturnReviewTest extends TestCase
         $inactive = $this->createApprovedUser('admin', ['status' => 'inactive']);
         $case = $this->createReturn($order);
         $event = $case->events()->sole();
-        $intent = \App\Models\NotificationDelivery::where('type', 'buyer-return')->where('source_key', 'buyer-return:'.$event->id)->sole();
+        $intent = NotificationDelivery::where('type', 'buyer-return')->where('source_key', 'buyer-return:'.$event->id)->sole();
         $this->assertSame($case->seller_id, $intent->recipient_id);
-        $this->assertTrue(app(\App\Services\Notifications\NotificationDeliveryService::class)->deliver($intent->id));
+        $this->assertTrue(app(NotificationDeliveryService::class)->deliver($intent->id));
         $seller = $order->shop->user;
         $notice = $seller->notifications()->where('type', 'buyer-return')->sole();
-        $view = app(\App\Services\Notifications\NotificationCenterService::class)->present($notice, $seller);
+        $view = app(NotificationCenterService::class)->present($notice, $seller);
         $this->assertSame('/buyer-returns/'.$case->id, $view['href']);
         $this->assertStringNotContainsString('buyer-return-evidence/', json_encode($view));
         $this->travelTo($case->response_until->copy()->addSecond());
         $this->actingAs($order->buyer)->post('/buyer-returns/'.$case->id.'/actions', $this->command($case, 'escalate'))->assertSessionHasNoErrors();
         $event = $case->events()->where('event_type', 'escalate')->sole();
-        $intents = \App\Models\NotificationDelivery::where('type', 'buyer-return')->where('source_key', 'buyer-return:'.$event->id)->get();
+        $intents = NotificationDelivery::where('type', 'buyer-return')->where('source_key', 'buyer-return:'.$event->id)->get();
         $this->assertTrue($intents->contains('recipient_id', $seller->id));
         $this->assertTrue($intents->contains('recipient_id', $admin->id));
         foreach ($intents->where('recipient_id', '!=', $seller->id) as $review) {
-            $reviewer = \App\Models\User::findOrFail($review->recipient_id);
+            $reviewer = User::findOrFail($review->recipient_id);
             $this->assertTrue($reviewer->isAdmin() && $reviewer->canAccessPortal() && $reviewer->email_verified_at !== null);
         }
         $this->assertFalse($intents->contains('recipient_id', $inactive->id));
         $intent = $intents->firstWhere('recipient_id', $admin->id);
-        $this->assertTrue(app(\App\Services\Notifications\NotificationDeliveryService::class)->deliver($intent->id));
+        $this->assertTrue(app(NotificationDeliveryService::class)->deliver($intent->id));
         $notice = $admin->notifications()->where('type', 'buyer-return')->sole();
-        $this->assertSame('/buyer-returns/'.$case->id, app(\App\Services\Notifications\NotificationCenterService::class)->present($notice, $admin)['href']);
+        $this->assertSame('/buyer-returns/'.$case->id, app(NotificationCenterService::class)->present($notice, $admin)['href']);
     }
 
     public function test_malformed_or_oversized_route_identifiers_never_reach_a_database_binding(): void
