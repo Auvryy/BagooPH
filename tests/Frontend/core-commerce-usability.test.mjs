@@ -117,7 +117,8 @@ test('self-pickup keeps every required address field editable and never replaces
     assert.equal(h.quoteInput.shipping_city, 'Santa Cruz');
     assert.equal(h.quoteInput.pickup_hub_id, '3');
     assert.match(text(tree), /hub serves your area/);
-    assert.match(text(tree), /Pay the amount due in cash at the destination hub/);
+    assert.equal(h.data.payment_method, 'cod');
+    assert.match(text(tree), /Payment mode:.*Cash on Delivery \(COD\)/);
     assert.doesNotMatch(text(tree), /SMS|100% Escrow|guaranteed delivery|Mon–Sat 8:00/);
     radio(tree, 'doorstep').props.onChange(); tree = h.render();
     assert.equal(h.quoteInput.pickup_hub_id, ''); assert.equal(h.data.shipping_address, address.street);

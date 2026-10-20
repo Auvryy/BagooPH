@@ -43,7 +43,7 @@ export default function BuyerOrderPackage({ order, canUsePortal }: { order: Orde
             </dl>
         </details>}
         <div className="border-t border-slate-300 pt-4">
-            {order.voucher_receipt ? <BuyerVoucherReceipt receipt={order.voucher_receipt} /> : <p className="flex flex-wrap justify-between gap-2 text-sm font-bold text-slate-900"><span>Total amount</span><span className="tabular-nums text-[#E00D42]">{money(order.total_amount)}</span></p>}
+            {order.voucher_receipt ? <BuyerVoucherReceipt receipt={order.voucher_receipt} paymentMethod={order.payment_method} /> : <p className="flex flex-wrap justify-between gap-2 text-sm font-bold text-slate-900"><span>Total amount</span><span className="tabular-nums text-[#E00D42]">{money(order.total_amount)}</span></p>}
         </div>
     </section>;
 }

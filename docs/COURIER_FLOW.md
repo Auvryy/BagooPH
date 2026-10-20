@@ -47,6 +47,12 @@ Destination Bayan Hub sorts parcel
 
 Only the assigned final-mile rider can scan out or submit the result. Successful delivery records COD as held by that rider until remittance; it does not mean the money has reached the platform.
 
+A [Bagoo Wallet](BAGOO_WALLET.md) parcel instead requires its verified original
+prepayment. Retain the recipient, waybill, private proof and actual custody
+checks, but collect no cash and record no COD receipt. An edited paid label is
+insufficient. The native backend shares this rule; Flutter UI adoption is a
+separate client change.
+
 ## 4. Failed Attempt
 
 Rider selects a valid failure reason, adds notes, and returns the parcel to the destination Bayan Hub. Hub inbound scan ends rider custody. The hub decides retry scheduling and reassignment. A rider cannot repeatedly reschedule a parcel independently.

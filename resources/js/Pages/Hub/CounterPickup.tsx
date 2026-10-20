@@ -138,7 +138,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                 barcode,
                 claim_code: claimCode,
                 buyer_id: selectedParcel.buyer_id, identity_confirmed: identityConfirmed, request_token: requestToken,
-                cash_received: cashReceived, change_given: changeGiven, cash_confirmed: cashConfirmed,
+                cash_received: selectedParcel.payment_method === 'cod' ? cashReceived : '0', change_given: selectedParcel.payment_method === 'cod' ? changeGiven : '0', cash_confirmed: selectedParcel.payment_method === 'cod' ? cashConfirmed : false,
                 recipient_name: recipientName.trim() || selectedParcel.buyer_name,
                 hub_id: activeHub?.id,
                 notes: notes.trim() || undefined,
@@ -274,7 +274,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                     <div className="text-xs font-sans text-slate-500 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        <span>Verify photo ID, the one-time claim code and exact COD before release</span>
+                        <span>Verify photo ID, the one-time claim code and payment before release. Collect cash only for COD.</span>
                     </div>
                 </div>
 

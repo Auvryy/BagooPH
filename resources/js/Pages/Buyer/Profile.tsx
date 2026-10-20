@@ -7,6 +7,7 @@ import BuyerOrderFilters from '@/Components/BuyerOrderFilters';
 import BuyerPurchaseNavigation from '@/Components/BuyerPurchaseNavigation';
 import BuyAgainButton from '@/Components/BuyAgainButton';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import BuyerWalletPanel, { WalletData } from '@/Components/BuyerWalletPanel';
 import VoucherOfferList from '@/Components/VoucherOfferList';
 import BuyerVoucherCollection, { BuyerVoucherCollectionData } from '@/Components/Vouchers/BuyerVoucherCollection';
 import { VoucherOffer } from '@/hooks/usePurchaseQuote';
@@ -53,20 +54,6 @@ import {
     FileText,
     X
 } from 'lucide-react';
-
-interface WalletData {
-    available: false;
-    balance: null;
-    currency: string;
-    account_number: null;
-    recent_transactions: {
-        id: string;
-        title: string;
-        amount: number;
-        type: 'credit' | 'debit';
-        date: string;
-    }[];
-}
 
 interface Props {
     user: User;
@@ -663,6 +650,7 @@ export default function BuyerProfile({
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
+                                                    {order.payment_method === 'wallet' && order.wallet_payment && <Link href={`/wallet/payments/${order.wallet_payment.id}`} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-[#C20836]">{order.payment_status === 'pending' ? 'Pay with wallet' : 'Wallet payment'}</Link>}
                                                     {<OrderTrackingStatus tracking={order.tracking} />}
                                                 </div>
                                             </div>
@@ -1322,14 +1310,7 @@ export default function BuyerProfile({
                         {/* TAB 4: BAGOO WALLET */}
                         {activeTab === 'wallet' && (
                             <section data-buyer-profile-scroll scroll-region="" role="region" aria-label="Bagoo Wallet" tabIndex={0} className="buyer-profile-scroll buyer-profile-card-scroll flex min-h-[20rem] flex-col rounded-2xl border border-slate-300 bg-white p-6 sm:p-8 shadow-xs lg:min-h-0">
-                                <div className="m-auto w-full max-w-md space-y-3 text-center">
-                                    <Wallet className="mx-auto h-8 w-8 text-[#E00D42]" aria-hidden="true" />
-                                    <h3 className="text-lg font-bold text-slate-900">Bagoo Wallet</h3>
-                                    <p className="font-semibold text-slate-800">Currently unavailable</p>
-                                    <p className="text-sm leading-6 text-slate-600">
-                                        Wallet balances, top-ups and wallet payments are not available yet. Checkout uses cash on delivery.
-                                    </p>
-                                </div>
+                                <BuyerWalletPanel wallet={wallet} />
                             </section>
                         )}
 

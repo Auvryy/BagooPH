@@ -24,7 +24,7 @@ class OrderWorkspaceService
     {
         $preparation = $role === 'seller'
             ? ['to_pack' => self::PREPARATION, 'to_pickup' => ['ready_for_pickup']]
-            : ['to_ship' => [...self::PREPARATION, 'ready_for_pickup']];
+            : ['to_pay' => [], 'to_ship' => [...self::PREPARATION, 'ready_for_pickup']];
 
         return [
             ...$preparation,
@@ -64,6 +64,10 @@ class OrderWorkspaceService
             $counts[$stage] = (int) $totals->only($statuses)->sum();
         }
         $counts['return_refund'] = $this->filter(clone $orders, $role, 'return_refund')->count();
+        if ($role === 'buyer') {
+            $counts['to_pay'] = $this->filter(clone $orders, $role, 'to_pay')->count();
+            $counts['to_ship'] = $this->filter(clone $orders, $role, 'to_ship')->count();
+        }
         if ($role === 'seller') {
             $counts['return_custody'] = $this->filter(clone $orders, 'seller', 'return_custody')->count();
         }
@@ -73,6 +77,12 @@ class OrderWorkspaceService
 
     public function filter(Builder $orders, string $role, string $stage): Builder
     {
+        if ($stage === 'to_pay' && $role === 'buyer') {
+            return $orders->where('payment_method', 'wallet')->where('payment_status', 'pending')->whereIn('status', ['placed', 'pending']);
+        }
+        if ($stage === 'to_ship' && $role === 'buyer') {
+            $orders->where(fn ($query) => $query->where('payment_method', '!=', 'wallet')->orWhere('payment_status', 'paid'));
+        }
         if ($stage === 'return_refund') {
             return $orders->whereHas('buyerReturns');
         }

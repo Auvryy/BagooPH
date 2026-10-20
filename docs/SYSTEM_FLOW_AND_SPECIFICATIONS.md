@@ -50,7 +50,7 @@ The following rules apply across every portal:
 - Every parcel passes through at least one Regional Mother Hub. Direct seller-to-buyer and Bayan-Hub-to-Bayan-Hub transport are prohibited.
 - Only the buyer may advance `DELIVERED` to `COMPLETED`.
 - Parcel status and COD custody are separate. Delivery does not prove platform remittance.
-- Seller settlement requires both `COMPLETED` and platform-level COD reconciliation.
+- COD seller settlement requires both `COMPLETED` and platform-level cash reconciliation. The separately selected [Bagoo Wallet](BAGOO_WALLET.md) uses evidenced prepaid virtual credits, buyer-confirmed completion and its own virtual proceeds journal, with no cash collection or remittance.
 - The 90% seller and 10% platform split applies only to product subtotal. Shipping, handling, logistics revenue, and rider earnings remain separate.
 
 ### Status Ownership
@@ -58,7 +58,7 @@ The following rules apply across every portal:
 | Transition | Authorized actor | Required evidence or condition |
 |---|---|---|
 | Checkout -> `PLACED` | Buyer through validated checkout | Stock, price, voucher, address, delivery type, and route validated atomically |
-| `PLACED -> CONFIRMED` | Seller | Seller owns the complete shop order |
+| `PLACED -> CONFIRMED` | Seller | Seller owns the complete shop order; wallet orders also require the original verified exact payment |
 | `CONFIRMED -> PREPARING` | Seller | Accepted order |
 | `PREPARING -> READY_FOR_PICKUP` | Seller | Packed parcel and attached waybill |
 | `READY_FOR_PICKUP -> PICKED_UP` | Assigned pickup rider | Authenticated seller handoff scan |
@@ -67,7 +67,7 @@ The following rules apply across every portal:
 | `SORTED -> ASSIGNED_TO_RIDER` | Destination Bayan Hub Handler or scoped Logistics Company Admin | One eligible final-mile rider assigned |
 | `ASSIGNED_TO_RIDER -> OUT_FOR_DELIVERY` | Assigned delivery rider | Destination-hub outbound scan |
 | `OUT_FOR_DELIVERY -> DELIVERED` | Assigned delivery rider | Handover proof and COD collection when applicable |
-| Self-pickup ready -> `DELIVERED` | Destination Bayan Hub Counter Handler | Valid one-time code, identity, destination hub, ready state, and COD collection |
+| Self-pickup ready -> `DELIVERED` | Destination Bayan Hub Counter Handler | Valid one-time code, identity, destination hub, ready state, and COD collection or original prepaid wallet evidence |
 | `OUT_FOR_DELIVERY -> DELIVERY_FAILED` | Assigned delivery rider | Reason, notes, attempt number, and proof |
 | `DELIVERY_FAILED -> SORTED` | Destination Bayan Hub Handler | Failed parcel returned to hub and retry approved |
 | RTS in progress -> `RETURNED` | Seller through authenticated receipt | Reverse route complete and parcel handed back |
@@ -99,6 +99,12 @@ The first rider-company association requires a company request, a current versio
 Each account's role is fixed at creation. Admin cannot convert an existing account to another role, even before approval or transaction history. Another public role requires a separate registration with its required evidence and approval; orders, shops, custody, cash, and review history stay with their original account. Role conversion and migration are not project features.
 
 Maritime and air freight, live GPS, AI routing, automated warehouses, advanced analytics, exchanges, unrelated support disputes and external notification services are outside the core baseline. The separately selected [buyer-return contract](buyer-returns-plan/README.md) governs post-delivery item returns and manual COD repayment. It preserves the original commercial order and forward delivery rather than using the failed-delivery branch.
+
+The selected [virtual wallet contract](BAGOO_WALLET.md) adds admin-approved demo
+credits alongside COD. Checkout reserves an unpaid wallet order for one hour;
+original payment, expiry, refunds and virtual seller proceeds are separate from
+parcel states and COD cash. External deposits, bank withdrawals and payment
+gateways remain outside this addition.
 
 All inputs, actor permissions, transitions, duplicate requests, concurrent operations, and recovery paths must satisfy `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
 

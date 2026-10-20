@@ -6856,3 +6856,109 @@ immediate visibility without losing older scans or unread actions. TypeScript an
 Vite production build pass in Docker. These are source, rendering/helper and local
 HTTP checks; no new browser, real-device or Azure deployment result is claimed.
 The assessment concerns this layout only, not overall system readiness.
+
+### Bagoo virtual wallet foundation — October 19, 2026
+
+The user selected admin-approved virtual credits alongside COD, with wallet
+equivalents for payment success, failure, cancellation, browser-close recovery,
+unpaid expiry and refunds. [The wallet contract](BAGOO_WALLET.md) records this
+addition and its separation from cash collections and cash seller payouts.
+
+**Foundation milestone; superseded by the final wallet evidence below.** Additive wallet tables, immutable balanced journal
+entries, non-negative user balances and owned demo-credit requests are in place.
+An active verified admin approves the original requested amount once; rejection
+creates no funds, and a failed journal write rolls back the entire approval.
+The scoped wallet implementation assessment is **0/10 before → 3/10 for the
+foundation**. Checkout, portal controls, expiry and financial integration remain
+required before wallet readiness can be claimed. COD behavior has not changed.
+
+Foundation evidence: **27 isolated SQLite tests / 47 assertions** passed for
+credit approval/rejection, role restrictions, retry protection, amount format and
+boundaries, transaction rollback, immutable database history and rejection of a
+fabricated cached balance. These are service/database checks, not a completed
+payment workbook or browser acceptance run.
+
+### Wallet checkout and reservation recovery — October 19, 2026
+
+Wallet checkout now creates a distinct unpaid payment for each shop order with
+the original amount, purchased-item fingerprint and one-hour server deadline.
+Successful payment debits the buyer and credits virtual escrow atomically.
+Insufficient credits, cancelled confirmation, lost-response retries and deadline
+boundaries preserve one authoritative outcome. Sellers cannot advance an unpaid
+wallet order. Pre-dispatch cancellation refunds its original paid credits once.
+COD retains its collection flow and has no wallet payment deadline.
+
+Expired unpaid reservations restore stock and release original promotional
+funding once. A shared voucher use becomes available again only after every
+allocation belongs to a cancelled unpaid wallet payment; paid and sibling orders
+retain their original usage. Original voucher evidence is never edited.
+
+The scoped wallet payment-domain assessment advances **3/10 → 6/10**.
+**105 isolated SQLite checks / 935 assertions** passed for wallet and checkout
+recovery plus existing confirmation and purchase workspace behavior. A separate
+cross-check passed **144 tests / 8,994 assertions** across wallet HTTP, cash
+finance, secure pickup and native parcel regressions. These runs do not yet
+certify the new complete wallet delivery, return and virtual-settlement flows;
+those and final portal verification remain part of this active feature.
+
+### Bagoo Wallet: payment, delivery and refunds — October 19, 2026
+
+**Selected web/backend scope implemented and locally verified. Scoped virtual
+wallet assessment: 0/10 when unavailable → 8/10 after this addition.** The earlier
+foundation and checkout milestones above are historical intermediate states.
+This assessment does not raise unrelated role ratings or certify real money,
+browser/device acceptance or an Azure release.
+
+Buyers retain COD as the default and can request virtual demo credits in their
+existing Wallet tab. Only an active verified platform admin can approve the
+original requested amount, with a reason and explicit demo acknowledgement.
+Requests are limited to ₱1–₱100,000, one pending request per buyer, and an approval
+cannot raise the available balance above ₱1,000,000. Rejection creates no money.
+An empty wallet has a genuine zero balance; an inconsistent balance is unavailable.
+Owned requests, feedback, notifications and immutable journal history are retained.
+
+Wallet checkout reserves one exact payment per shop order for one hour. The buyer
+explicitly confirms it, and debit, escrow credit and saved outcome commit together.
+Insufficient funds, cancelled confirmation, stale balances, changed original
+amounts/ownership and lost-response retries cannot create another charge. To pay
+is separate from To ship. Expiry releases stock and eligible unpaid voucher uses
+once; a paid sibling retains its original payment and shared discount allocation.
+
+Paid parcels retain the complete seller/Bayan/Mother-Hub route, recipient, proof,
+counter identity/code and buyer-only completion requirements. Rider web, counter
+and native backend handovers collect no cash and create no COD journal. Tracking
+and waybill copy distinguish prepaid wallet orders from COD. Flutter files were
+not changed; its client needs the additive native handover contract separately.
+
+Virtual proceeds retain the original 90% seller share, 10% merchandise commission,
+discounts and separate shipping/promotion cost. Admin approval requires evidenced
+buyer receipt and resolved returns. Sellers can read their own credits, with no
+spending or withdrawal. Post-delivery returns use the seven-day window and actual
+reverse custody; original merchandise refunds work before or after virtual
+settlement, including centavo rounding and original funding allocations. A failed
+delivery completing its real reverse route and seller receipt can receive one
+admin-reviewed full original wallet refund. Unused funding is released atomically;
+a paid voucher use is retained. The original order and custody history stay intact.
+Return reasons up to 1,000 characters fit the wallet journal schema.
+
+| Verification | Observed result and boundary |
+|---|---|
+| Broad buyer, returns, finance, courier, journey and secure-counter regression | 1,338 passed / one new test assertion failed because it requested a nonexistent quote field. Corrected to the actual `discount` field; its complete wallet suite passed in the following run. This was not a clean full-suite result. |
+| Wallet, native contract, tracking and notification checks after the corrections | 203 passed / 7,571 assertions in isolated SQLite `:memory:`. Includes original-source payments, shared voucher expiry, handovers, returns, proceeds, authorization, retries and rollback. |
+| Final refund reason/schema boundary | 10 passed / 1,230 assertions, including exact 1,000-character reasons, refunds before/after settlement and failed full-refund rollback. Overlaps the previous run. |
+| Complete frontend suite | 496 passed. Final refund acknowledgement wording/guard also passed its 12 wallet rendering/handler checks; these are not browser tests. |
+| Required frontend and style checks | TypeScript/Vite production build, PHP formatting and Git whitespace checks pass. |
+
+The seven payment scenarios in [BAGOO_WALLET.md](BAGOO_WALLET.md) have executed COD
+or internal-wallet equivalents. Original workbook requirements for external card
+or gateway authorization remain distinct; they have not been relabelled as passing
+gateway tests or overwritten in the original workbook. Real cash deposits,
+withdrawals, external transfers, bank automation and external payment providers
+remain outside this selected feature.
+
+Deployment uses the normal additive `./bagoo.sh deploy` and `./bagoo.sh verify`;
+no database reset or reseed is required. Expiry requires the existing deployed
+scheduler. This work did not deploy, migrate/reset development or production data,
+open a browser or modify Flutter. PostgreSQL trigger execution and simultaneous
+contention still need their permitted runtime acceptance; SQLite and source
+inspection do not establish those results.

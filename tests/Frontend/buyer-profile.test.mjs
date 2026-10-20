@@ -100,11 +100,11 @@ test('the profile displays genuine available offers and an honest cap without cl
     assert.doesNotMatch(html, /Claimed|100% OFF SHIPPING|Automatically|WELCOME100|FREESHIP60/);
 });
 
-test('purchase progress stays in five buttons and Order issues sits directly below purchases in the sidebar', async () => {
+test('purchase progress includes To pay and Order issues sits directly below purchases in the sidebar', async () => {
     const html = await render();
     const nav = html.match(/<nav aria-label="Purchase status"[\s\S]*?<\/nav>/)[0];
-    assert.equal((nav.match(/<button\b/g) || []).length, 5);
-    for (const label of ['All', 'To ship', 'In transit', 'Delivered', 'Completed']) assert.ok(nav.includes(label));
+    assert.equal((nav.match(/<button\b/g) || []).length, 6);
+    for (const label of ['All', 'To pay', 'To ship', 'In transit', 'Delivered', 'Completed']) assert.ok(nav.includes(label));
     assert.doesNotMatch(nav, /Delivery issue|Returned|Cancelled|overflow-x-auto/);
     const sidebar = html.match(/<nav aria-label="Buyer profile"[\s\S]*?<\/nav>/)[0];
     assert.ok(sidebar.indexOf('My Purchases &amp; Orders') < sidebar.indexOf('Order issues'));

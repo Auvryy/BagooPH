@@ -52,8 +52,8 @@ class RiderParcelController extends Controller
         if ($action === 'deliver') {
             $rules += ['recipient_name' => ['required', 'string', new ApplicationText('name', 2, 255)],
                 'recipient_relationship' => ['required', Rule::in(['buyer', 'household', 'authorized_recipient'])],
-                'cash_received' => ['required', 'string', 'regex:'.CodMoney::RULE],
-                'change_given' => ['required', 'string', 'regex:'.CodMoney::RULE], 'cash_confirmed' => ['required', 'accepted']];
+                'cash_received' => ['nullable', 'string', 'regex:'.CodMoney::RULE],
+                'change_given' => ['nullable', 'string', 'regex:'.CodMoney::RULE], 'cash_confirmed' => ['nullable', 'boolean']];
         }
         if ($action === 'fail') {
             $rules['notes'] = ['required', ...$scan->notesRules(500)];

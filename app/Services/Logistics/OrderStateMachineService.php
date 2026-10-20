@@ -13,6 +13,8 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\Courier\CourierProofService;
 use App\Services\Finance\CodCashService;
+use App\Services\Wallet\WalletHandoverService;
+use App\Services\Wallet\WalletPaymentService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -99,6 +101,7 @@ class OrderStateMachineService
             $lockedOrder = Order::whereKey($orderId)->lockForUpdate()->firstOrFail();
             $lockedDelivery = Delivery::whereKey($delivery->id)->where('order_id', $lockedOrder->id)->lockForUpdate()->firstOrFail();
             $lockedDelivery->setRelation('order', $lockedOrder);
+            app(WalletPaymentService::class)->assertFulfillable($lockedOrder);
             $targetStatus = strtolower(trim($targetStatus));
             if ($targetStatus !== self::STATUS_COMPLETED) {
                 $hubIds = [$scanMetadata['hub_id'] ?? null];
@@ -150,7 +153,11 @@ class OrderStateMachineService
                         throw new DomainException('This custody action was already recorded by another actor. Refresh the parcel before continuing.');
                     }
                     if ($targetStatus === self::STATUS_DELIVERED) {
-                        app(CodCashService::class)->retryRider($lockedDelivery, $actor, $scanMetadata);
+                        if ($lockedOrder->payment_method === 'wallet') {
+                            app(WalletHandoverService::class)->retry($lockedDelivery, $actor, $scanMetadata);
+                        } else {
+                            app(CodCashService::class)->retryRider($lockedDelivery, $actor, $scanMetadata);
+                        }
                     }
 
                     return $lockedDelivery;
@@ -236,8 +243,10 @@ class OrderStateMachineService
                     'custody_before' => $custodyBefore, 'custody_after' => $this->custodyAfter($lockedDelivery, $targetStatus, $actor, $hub, $barcode, $custodyBefore, $transport)],
                 scanProvenance: $transport?->event_type === 'parcel_dispatched' ? 'manifest_load_event' : null,
             );
-            if ($targetStatus === self::STATUS_DELIVERED) {
+            if ($targetStatus === self::STATUS_DELIVERED && $lockedOrder->payment_method === 'cod') {
                 app(CodCashService::class)->collectRider($lockedDelivery, $actor, $checkpoint, $scanMetadata);
+            } elseif ($targetStatus === self::STATUS_DELIVERED) {
+                app(WalletHandoverService::class)->record($lockedDelivery, $actor, $checkpoint, $scanMetadata);
             }
 
             return $lockedDelivery;

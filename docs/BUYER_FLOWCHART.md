@@ -22,7 +22,12 @@ Birth date is required for password and first Google signup, including direct su
 
 Suspension blocks new orders and Bag changes. Personal pages and owned history remain readable, and required receipt confirmation for previously approved buyers remains available through the narrow authorized exception unless an explicit security review restricts it. Reading history as an unapproved applicant does not grant receipt confirmation or private pickup-code access. This never permits foreign-order access, premature completion, or new checkout. Approval or document resubmission cannot silently clear a suspension.
 
-Checkout requires the recipient, phone, serviceable road-based address, barangay, delivery type, and COD confirmation. Adding to the Shopping Bag does not reserve stock; checkout validates and decrements it atomically.
+Checkout requires the recipient, phone, serviceable road-based address, barangay,
+delivery type and the selected payment method. COD remains the default.
+[Bagoo Wallet](BAGOO_WALLET.md) uses admin-approved virtual credits and a separate
+explicit exact-payment confirmation after checkout. An unpaid wallet order stays
+To pay for at most one hour; it cannot enter seller preparation. Adding to the
+Shopping Bag does not reserve stock; checkout validates and decrements it atomically.
 
 If selected items belong to multiple shops, checkout creates a separate order, parcel, tracking number, shipping fee, and seller pickup route per shop. The buyer may see them under one checkout result, but their fulfillment and delivery timelines remain independent. A shop voucher reduces only its matching shop order; a platform voucher is divided proportionally without exceeding its calculated checkout discount.
 
@@ -77,24 +82,34 @@ PLACED
 
 The buyer tracking page shows Mother-Hub and Bayan-Hub checkpoints beneath `AT_SORTING_CENTER`. The buyer cannot choose or assign riders.
 
-At `OUT_FOR_DELIVERY`, the buyer sees the COD amount and delivery reminder. After physical handover, the order is `DELIVERED`. Only the buyer's confirmation makes it `COMPLETED`; final settlement also requires platform-level COD reconciliation.
+At `OUT_FOR_DELIVERY`, the buyer sees the delivery reminder and either the COD
+amount or the original paid wallet status with no cash due. After physical
+handover, the order is `DELIVERED`. Only the buyer's confirmation makes it
+`COMPLETED`; cash settlement also requires platform-level COD reconciliation.
+Wallet proceeds and refunds use their separate original virtual payment evidence.
 
-An active approved buyer may cancel their own unpaid COD order before
+An active approved buyer may cancel their own unpaid COD or eligible pending/paid wallet order before
 `READY_FOR_PICKUP`, with a reason and details when selecting Other reason. A rider
-claim, recorded handover, handover hold or recorded payment blocks this action.
+claim, recorded handover or handover hold blocks this action. A recorded COD
+payment also blocks it; a paid wallet cancellation instead refunds the original
+credits atomically under the wallet contract.
 The order transaction restores the selected inventory and releases only its
-original voucher funding once. Other orders and retained redemption usage remain
-unchanged. Original delivery notes are retained; the cancellation has its own
-recorded reason and time. Online-paid legacy orders require payment support;
-cancellation does not imply a refund.
+original voucher funding once. Other orders retain their original allocations.
+An unpaid wallet voucher use returns only after all orders sharing its original
+redemption are cancelled unpaid; paid voucher usage is retained. Original
+delivery notes are retained; cancellation has its own recorded reason and time.
+Unsupported legacy online methods require their original provider support;
+a legacy paid label cannot establish a refund.
 
 An original buyer may request a return for purchased units through exactly seven
 elapsed days after evidenced physical delivery or counter collection, including
 after confirming receipt. Follow the [selected return contract](buyer-returns-plan/README.md)
 for bounded private photos, meaningful reasons, seller response and admin appeal.
-A case retains the original purchase, delivery and completion. Approval, physical
-return, recorded repayment and the buyer's confirmation of money are distinct
-steps; no case or parcel label proves that a refund was paid.
+A case retains the original purchase, delivery and completion. For COD, approval,
+physical return, recorded repayment and the buyer's confirmation of money are
+distinct steps; no case or parcel label proves that money was received. A wallet
+refund follows the same actual return/review prerequisites and is confirmed by
+the original wallet's immutable credit reference, without an external transfer.
 
 After buyer-confirmed completion, each purchased item may receive one verified
 review with integer stars from one to five, text up to 1,000 characters and up to

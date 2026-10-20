@@ -14,6 +14,7 @@ use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\RiderAccountService;
+use App\Services\Wallet\WalletPaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -144,10 +145,12 @@ class RiderTaskService
             'actions' => ['claim' => ! $held && $preview && $this->eligibility->canReceivePickups($actor->courierProfile),
                 'pickup' => Route::has('rider.api.pickup') && ! $preview && $pickup && $operational && in_array($parcel->status, ['assigned', 'assigned_pickup'], true),
                 'depart' => Route::has('rider.api.depart') && ! $pickup && $operational && $parcel->status === 'assigned_to_rider',
-                'deliver' => Route::has('rider.api.deliver') && ! $pickup && $operational && $parcel->status === 'out_for_delivery' && $parcel->order->payment_method === 'cod',
+                'deliver' => Route::has('rider.api.deliver') && ! $pickup && $operational && $parcel->status === 'out_for_delivery'
+                    && ($parcel->order->payment_method === 'cod' || app(WalletPaymentService::class)->paid($parcel->order)),
                 'fail' => Route::has('rider.api.fail') && ! $pickup && $operational && $parcel->status === 'out_for_delivery', 'release' => false],
             'action_denials' => ['handover' => $held ? 'HANDOVER_HOLD' : null, 'release' => 'SHARED_RELEASE_POLICY_UNAVAILABLE',
-                'deliver' => ! $pickup && $parcel->order->payment_method !== 'cod' ? 'UNSUPPORTED_PAYMENT_OUTCOME' : null],
+                'deliver' => ! $pickup && $parcel->order->payment_method !== 'cod'
+                    && ! app(WalletPaymentService::class)->paid($parcel->order) ? 'UNSUPPORTED_PAYMENT_OUTCOME' : null],
             'failure_policy' => ! $preview && ! $pickup ? ['attempt_limit' => 3,
                 'recorded_attempts' => DeliveryAttempt::where('delivery_id', $parcel->id)->count(),
                 'reasons' => collect(DeliveryRecoveryService::REASONS)->map(fn ($label, $code) => ['code' => $code, 'label' => $label])->values()->all(),

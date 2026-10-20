@@ -6974,32 +6974,45 @@
             ]
           },
           "cash_received": {
-            "$ref": "#/components/schemas/PesoAmount"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PesoAmount"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required for COD; omit or send zero for a verified paid wallet task."
           },
           "change_given": {
-            "$ref": "#/components/schemas/PesoAmount"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PesoAmount"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required for COD; omit or send zero for a verified paid wallet task."
           },
           "cash_confirmed": {
-            "oneOf": [
+            "anyOf": [
               {
-                "const": true
+                "type": "boolean"
               },
               {
-                "const": "1"
+                "enum": [
+                  "0",
+                  "1",
+                  0,
+                  1
+                ]
               },
               {
-                "const": "true"
-              },
-              {
-                "const": "yes"
-              },
-              {
-                "const": "on"
-              },
-              {
-                "const": 1
+                "type": "null"
               }
-            ]
+            ],
+            "description": "Accepted confirmation is required for COD. Wallet tasks omit this field or send false/0."
           }
         },
         "required": [
@@ -7007,12 +7020,10 @@
           "barcode",
           "proof_image_file",
           "recipient_name",
-          "recipient_relationship",
-          "cash_received",
-          "change_given",
-          "cash_confirmed"
+          "recipient_relationship"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Recipient, waybill and genuine private proof are required for all deliveries. COD requires cash_received, change_given and accepted cash_confirmed. An evidenced paid wallet task requires no cash: omit those fields or use zero amounts and false. The server rechecks the original payment source."
       },
       "FailBody": {
         "type": "object",

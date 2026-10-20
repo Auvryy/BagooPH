@@ -39,13 +39,13 @@ class CommerceInputService
             'notes' => $this->text('notes', 1, 500),
             'delivery_type' => ['nullable', Rule::in(['doorstep', 'hub_self_pickup'])],
             'pickup_hub_id' => ['bail', 'required_if:delivery_type,hub_self_pickup', 'nullable', $this->identifier(), 'integer'],
-            'payment_method' => ['required', Rule::in(['cod'])],
+            'payment_method' => ['required', Rule::in(['cod', 'wallet'])],
             'voucher_code' => ['bail', 'nullable', 'string', 'max:50', 'regex:/\A[A-Z0-9_-]+\z/'],
             'save_address' => ['nullable', 'boolean'],
             'item_ids' => ['required', 'array', 'list', 'min:1'],
             'item_ids.*' => ['bail', 'required', $this->identifier(), 'integer', 'distinct'],
-        ], ['payment_method.in' => 'Choose cash on delivery. Online payments are not available.',
-            'payment_method.required' => 'Choose cash on delivery before placing your order.'])->validate();
+        ], ['payment_method.in' => 'Choose cash on delivery or Bagoo Wallet. External online payments are not available.',
+            'payment_method.required' => 'Choose cash on delivery or Bagoo Wallet before placing your order.'])->validate();
 
         $quantities = $this->quantities($input['item_quantities'] ?? [], $itemIds);
         if ($quantities !== []) {
@@ -62,7 +62,6 @@ class CommerceInputService
         }
         $data['delivery_type'] ??= 'doorstep';
         $data['pickup_hub_id'] = $data['delivery_type'] === 'hub_self_pickup' ? (int) $data['pickup_hub_id'] : null;
-        $data['payment_method'] = 'cod';
         $data['save_address'] = (bool) ($data['save_address'] ?? false);
         $data['item_ids'] = array_map('intval', $data['item_ids']);
         sort($data['item_ids'], SORT_NUMERIC);

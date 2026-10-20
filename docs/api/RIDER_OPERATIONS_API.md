@@ -145,12 +145,21 @@ A stored tracking number is not substituted for submitted scan evidence.
 
 Delivery adds `proof_image_file`, `recipient_name` (2–255 characters),
 `recipient_relationship` (`buyer`, `household`, `authorized_recipient`),
-`cash_received`, `change_given` and `cash_confirmed`. Use multipart/form-data and
+and, for COD, `cash_received`, `change_given` and `cash_confirmed`. Use multipart/form-data and
 let the HTTP library create its boundary. Peso inputs are strings, at most nine
 whole digits and two decimal places; the shared COD service validates the exact
 received-minus-change amount. Multipart confirmation may use `1`; JSON uses true.
-New delivery is currently COD-only; other payment methods have a false deliver
-hint and `UNSUPPORTED_PAYMENT_OUTCOME`. Do not fabricate a non-COD success.
+Evidenced paid Bagoo Wallet orders also permit delivery through the same custody
+and private proof checks. For `payment.method: wallet`, `cod_due_cents` is null;
+omit the cash fields, or send zero strings and false. A positive cash amount or
+cash acknowledgement is rejected. An edited paid label or unpaid wallet order
+does not unlock delivery. Other unsupported payment sources retain the false
+deliver hint and `UNSUPPORTED_PAYMENT_OUTCOME`.
+
+This is an additive backend contract. The Flutter client must read the current
+method and action flags, hide COD controls for a verified wallet task and retain
+the recipient, waybill, proof and original idempotency key. This backend change
+does not update or verify the Flutter interface.
 
 Failure adds `reason`, required `notes`, `location_name` (up to 255 characters),
 and `proof_image_file`. Allowed reasons are `customer_unreachable`,
@@ -188,8 +197,8 @@ future riders' outcomes and private evidence do not become the original rider's
 history. Ambiguous legacy records without retained assignment evidence are absent.
 
 `q` is a plain-text tracking/order search (1–100 characters), `phase` is pickup or
-final_mile, `payment` is all/cod/prepaid. `prepaid` means recorded non-COD payment,
-not confirmed earnings or a new prepaid delivery writer. `from_date`/`to_date` are
+final_mile, `payment` is all/cod/prepaid. `prepaid` selects recorded non-COD history;
+this filter does not prove an original wallet payment or authorize delivery. `from_date`/`to_date` are
 optional inclusive Asia/Manila assignment dates, translated to UTC with an exclusive
 next-day upper boundary. Either may be supplied alone; reversed pairs reject.
 The response names `date_basis: assignment_recorded_at`.

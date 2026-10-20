@@ -122,6 +122,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         : !isOnline ? 'Go on duty to claim new pickups.'
         : limit !== undefined && activeCount >= limit ? `Your pickup limit of ${limit} has been reached. Bring collected parcels to the origin hub before claiming more.` : '';
     const actionDue = target?.status === 'delivered' ? deliveries.find((task) => task.id === target.id)?.payment.codAmountCents ?? null : null;
+    const walletHandover = target?.status === 'delivered' && deliveries.find(task => task.id === target.id)?.payment.method.toLowerCase() === 'wallet';
     const tenderCents = cashInputCents(cashReceived);
     const changeCents = cashInputCents(changeGiven);
     const netCash = tenderCents !== null && changeCents !== null ? tenderCents - changeCents : null;
@@ -186,7 +187,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             setErrors({ proof_image_file: 'Add a proof of delivery photo before recording the handoff.' });
             return;
         }
-        if (target.status === 'delivered' && (actionDue === null || netCash !== actionDue || !cashConfirmed)) {
+        if (target.status === 'delivered' && !walletHandover && (actionDue === null || netCash !== actionDue || !cashConfirmed)) {
             setErrors({ cash_received: 'Count the saved COD amount, give the correct change, and confirm collection before recording delivery.' });
             return;
         }
@@ -201,9 +202,9 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             request_token: target.status === 'delivery_failed' || target.status === 'delivered' ? requestToken : undefined,
             recipient_name: target.status === 'delivered' ? recipientName.trim() : undefined,
             recipient_relationship: target.status === 'delivered' ? recipientRelationship : undefined,
-            cash_received: target.status === 'delivered' ? cashReceived : undefined,
-            change_given: target.status === 'delivered' ? changeGiven : undefined,
-            cash_confirmed: target.status === 'delivered' ? cashConfirmed : undefined,
+            cash_received: target.status === 'delivered' && !walletHandover ? cashReceived : undefined,
+            change_given: target.status === 'delivered' && !walletHandover ? changeGiven : undefined,
+            cash_confirmed: target.status === 'delivered' && !walletHandover ? cashConfirmed : undefined,
             proof_image_file: (target.status === 'delivered' || target.status === 'delivery_failed') ? proof ?? undefined : undefined,
         }, {
             forceFormData: true, preserveScroll: true,
@@ -278,12 +279,13 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                         <CourierFieldError id="waybill-error" message={errors.barcode} />
                     </div>
                     {target.status === 'delivered' && <section className="space-y-4 rounded-[8px] border border-slate-300 bg-[#FFFAFB] p-4" aria-label="Recipient and COD collection">
-                        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Banknote className="h-5 w-5 text-[#C20836]" aria-hidden="true" />Count cash at handoff</h3><span className="font-semibold tabular-nums text-[#C20836]">Due: {actionDue === null ? 'Unavailable' : courierMoney(actionDue / 100)}</span></div>
+                        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Banknote className="h-5 w-5 text-[#C20836]" aria-hidden="true" />{walletHandover ? 'Prepaid wallet delivery' : 'Count cash at handoff'}</h3><span className="font-semibold tabular-nums text-[#C20836]">{walletHandover ? 'No cash due' : `Due: ${actionDue === null ? 'Unavailable' : courierMoney(actionDue / 100)}`}</span></div>
                         <label className="block text-sm font-semibold" htmlFor="cash-recipient">Person receiving the parcel<input id="cash-recipient" required maxLength={255} value={recipientName} disabled={loadingId !== null} onChange={(event) => setRecipientName(event.target.value)} className={courierInput} /><CourierFieldError message={errors.recipient_name} /></label>
                         <label className="block text-sm font-semibold" htmlFor="cash-relationship">Relationship to buyer<select id="cash-relationship" required value={recipientRelationship} disabled={loadingId !== null} onChange={(event) => setRecipientRelationship(event.target.value)} className={courierInput}><option value="">Choose the actual recipient</option><option value="buyer">Buyer</option><option value="household">Household member</option><option value="authorized_recipient">Authorized recipient</option></select><CourierFieldError message={errors.recipient_relationship} /></label>
-                        <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold" htmlFor="cash-tender">Cash received (PHP)<input id="cash-tender" type="text" inputMode="decimal" required value={cashReceived} disabled={loadingId !== null} onChange={(event) => setCashReceived(event.target.value)} placeholder="0.00" className={courierInput} /><CourierFieldError message={errors.cash_received} /></label><label className="block text-sm font-semibold" htmlFor="cash-change">Change given (PHP)<input id="cash-change" type="text" inputMode="decimal" required value={changeGiven} disabled={loadingId !== null} onChange={(event) => setChangeGiven(event.target.value)} className={courierInput} /><CourierFieldError message={errors.change_given} /></label></div>
+                        {!walletHandover && <><div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold" htmlFor="cash-tender">Cash received (PHP)<input id="cash-tender" type="text" inputMode="decimal" required value={cashReceived} disabled={loadingId !== null} onChange={(event) => setCashReceived(event.target.value)} placeholder="0.00" className={courierInput} /><CourierFieldError message={errors.cash_received} /></label><label className="block text-sm font-semibold" htmlFor="cash-change">Change given (PHP)<input id="cash-change" type="text" inputMode="decimal" required value={changeGiven} disabled={loadingId !== null} onChange={(event) => setChangeGiven(event.target.value)} className={courierInput} /><CourierFieldError message={errors.change_given} /></label></div>
                         <p role="status" className="text-sm text-slate-600">{netCash === null || netCash < 0 ? 'Enter the cash counted and any change actually given.' : `Cash kept for this order: ${courierMoney(netCash / 100)}.${netCash === actionDue ? ' This matches the amount due.' : ' This must match the saved amount due.'}`}</p>
-                        <label className="flex items-start gap-3 text-sm leading-relaxed"><input type="checkbox" checked={cashConfirmed} disabled={loadingId !== null} onChange={(event) => setCashConfirmed(event.target.checked)} className="mt-1 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /><span>I counted the cash and gave the stated change. I will hand over the recorded amount separately.</span></label><CourierFieldError message={errors.cash_confirmed || errors.request_token} />
+                        <label className="flex items-start gap-3 text-sm leading-relaxed"><input type="checkbox" checked={cashConfirmed} disabled={loadingId !== null} onChange={(event) => setCashConfirmed(event.target.checked)} className="mt-1 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /><span>I counted the cash and gave the stated change. I will hand over the recorded amount separately.</span></label></>}
+                        {walletHandover && <p className="text-sm leading-relaxed text-slate-600">The buyer paid with virtual wallet credits. Record the actual recipient and delivery proof; do not collect cash.</p>}<CourierFieldError message={errors.cash_confirmed || errors.request_token} />
                     </section>}
                     {(target.status === 'delivered' || target.status === 'delivery_failed') && <div>
                         <label htmlFor="delivery-proof" className="block text-sm font-semibold text-slate-800">{target.status === 'delivery_failed' ? 'Attempt proof photo' : 'Proof of delivery photo'}</label>

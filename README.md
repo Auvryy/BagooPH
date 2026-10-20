@@ -79,11 +79,16 @@ Seller -> Pickup Rider -> Origin Bayan Hub -> at least one Mother Hub
 - One seller account owns one reviewed shop within one of the 14 master categories.
 - Only the buyer's receipt confirmation advances an order from `DELIVERED` to
   `COMPLETED`.
-- Seller settlement requires buyer completion and platform COD reconciliation.
+- Cash seller settlement requires buyer completion and platform COD reconciliation.
   Product sales split into 90% seller share and 10% platform commission;
   shipping and promotion funding are accounted for separately.
-- Tracking shows recorded milestones. Live GPS, wallet payments, automatic bank
-  transfers and complete post-delivery refunds/exchanges are separate scope.
+- [Bagoo Wallet](docs/BAGOO_WALLET.md) adds admin-approved virtual demo credits
+  alongside COD, exact confirmed payments, unpaid expiry and refunds. Virtual
+  seller proceeds remain separate from cash settlement. No external deposit,
+  withdrawal or payment gateway is provided.
+- Tracking shows recorded milestones. Live GPS, automatic bank transfers and
+  exchanges are separate scope. Selected buyer returns preserve actual reverse
+  custody and original repayment evidence.
 
 Read [the architecture](docs/ARCHITECTURE.md) and
 [canonical system flow](docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md) for the contracts.

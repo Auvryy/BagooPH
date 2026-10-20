@@ -5,6 +5,7 @@ namespace App\Services\Returns;
 use App\Models\Order;
 use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Logistics\PickupClaimService;
+use App\Services\Wallet\WalletPaymentService;
 use DomainException;
 use Illuminate\Validation\ValidationException;
 
@@ -13,9 +14,12 @@ class BuyerReturnEligibility
     public function source(Order $order): array
     {
         $parcel = $order->delivery;
-        if (! in_array($order->status, ['delivered', 'completed'], true) || $order->payment_method !== 'cod'
+        if (! in_array($order->status, ['delivered', 'completed'], true) || ! in_array($order->payment_method, ['cod', 'wallet'], true)
             || ! $parcel || ! $parcel->delivered_at || $parcel->delivered_at->isFuture()) {
             $this->reject('Returns are available for seven days after recorded delivery or hub collection.');
+        }
+        if ($order->payment_method === 'wallet' && ! app(WalletPaymentService::class)->paid($order)) {
+            $this->reject('The original wallet payment needs review before requesting a return.');
         }
         $type = $parcel->status === 'customer_collected' ? 'customer_collected' : 'delivered';
         $check = $parcel->checkpoints()->whereNull('source_checkpoint_id')->where('checkpoint_type', $type)->first();

@@ -14,6 +14,7 @@ use App\Services\KycSubmissionService;
 use App\Services\Orders\CheckoutOrderService;
 use App\Services\Orders\CheckoutQuoteService;
 use App\Services\Orders\CheckoutSubmissionService;
+use App\Services\Wallet\WalletLedger;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -108,6 +109,7 @@ class CheckoutController extends Controller
             'addressBookLimit' => BuyerAddressService::LIMIT,
             'pickupHubs' => $pickupHubs,
             'checkoutToken' => app(CheckoutSubmissionService::class)->issue($user, $cart, $checkoutItems),
+            'walletBalanceCents' => app(WalletLedger::class)->balance($user),
         ]);
     }
 
@@ -147,6 +149,12 @@ class CheckoutController extends Controller
             $message = $orders->count() === 1
                 ? "Order #{$orders->first()->order_number} successfully placed."
                 : "{$orders->count()} shop orders successfully placed.";
+
+            if ($orders->first()->payment_method === 'wallet') {
+                return $orders->count() === 1
+                    ? redirect()->route('wallet.payments.show', $orders->first()->walletPayment)->with('success', 'Order placed. Review and confirm its wallet payment within one hour.')
+                    : redirect()->route('buyer.profile', ['tab' => 'orders', 'order_status' => 'to_pay'])->with('success', 'Shop orders placed. Complete each wallet payment within one hour.');
+            }
 
             return redirect()->route('buyer.orders.index')->with('success', $message);
         } catch (ValidationException|AuthorizationException $e) {

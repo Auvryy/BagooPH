@@ -18,6 +18,8 @@ use App\Services\Logistics\PickupClaimService;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
 use App\Services\Vouchers\VoucherFundingService;
+use App\Services\Wallet\WalletPaymentService;
+use App\Services\Wallet\WalletReservationService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -138,6 +140,7 @@ class OrderLifecycleService
 
     private function assertSellerTransition(Order $order, string $targetStatus): void
     {
+        app(WalletPaymentService::class)->assertFulfillable($order);
         if ($order->delivery) {
             app(HandoverHoldService::class)->assertMovable($order->delivery);
         }
@@ -199,11 +202,12 @@ class OrderLifecycleService
         $held = $order->delivery && app(HandoverHoldService::class)->held($order->delivery);
         $work = $eligible && $fullyOwned && ! $held;
         $unclaimed = ! $order->delivery || $this->isUnclaimed($order->delivery);
-        $canAdvance = $work && $unclaimed && $order->delivery;
+        $paid = $order->payment_method !== 'wallet' || app(WalletPaymentService::class)->paid($order);
+        $canAdvance = $work && $unclaimed && $order->delivery && $paid;
 
         return [
             'handover_hold' => (bool) $held,
-            'can_fulfill' => $work,
+            'can_fulfill' => $work && $paid,
             'can_accept_and_pack' => $canAdvance && in_array($order->status, ['placed', 'pending'], true),
             'can_pack' => $canAdvance && $order->status === 'confirmed',
             'can_mark_ready' => $canAdvance && in_array($order->status, ['preparing', 'processing', 'packaging'], true)
@@ -264,10 +268,16 @@ class OrderLifecycleService
         if (! in_array($order->status, OrderWorkspaceService::PREPARATION, true)) {
             return 'The seller has marked this order ready for pickup or delivery has started. It can no longer be cancelled here.';
         }
-        if ($order->payment_method !== 'cod') {
+        if ($order->payment_method === 'wallet') {
+            $payment = $order->walletPayment;
+            if (! $payment || ! in_array($payment->status, ['pending', 'paid'], true)
+                || ($payment->status === 'paid' && ! app(WalletPaymentService::class)->paid($order))) {
+                return 'This wallet payment needs review before cancellation.';
+            }
+        } elseif ($order->payment_method !== 'cod') {
             return 'Contact support to review the payment before cancelling this order.';
         }
-        if ($order->payment_status !== 'pending' || $order->codAccount) {
+        if (($order->payment_method === 'cod' && $order->payment_status !== 'pending') || $order->codAccount) {
             return 'A payment is already recorded. Contact support about this order.';
         }
         $parcel = $order->delivery;
@@ -314,12 +324,26 @@ class OrderLifecycleService
         });
     }
 
-    private function cancelLocked(Order $order, User $actor, string $reason, bool $byBuyer = false): Order
+    public function expireUnpaidWallet(Order $order): Order
+    {
+        $payment = $order->walletPayment()->lockForUpdate()->first();
+        abort_unless(DB::transactionLevel() > 0 && $order->payment_method === 'wallet' && $order->payment_status === 'pending'
+            && in_array($order->status, ['placed', 'pending'], true) && $payment?->status === 'pending'
+            && ! $payment->wallet_transaction_id && $payment->expires_at->lessThanOrEqualTo(now())
+            && (! $order->delivery || ($this->isUnclaimed($order->delivery) && ! app(HandoverHoldService::class)->held($order->delivery))), 409,
+            'Only an expired unpaid wallet reservation can be released automatically.');
+
+        return $this->cancelLocked($order, User::findOrFail($order->buyer_id), 'Unpaid wallet order expired after one hour.', automaticExpiry: true);
+    }
+
+    private function cancelLocked(Order $order, User $actor, string $reason, bool $byBuyer = false, bool $automaticExpiry = false): Order
     {
         // Keep product locks before funding locks, matching checkout, and restore each size once.
         $products = Product::whereIn('id', $order->items->pluck('product_id'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
         $funding = app(VoucherFundingService::class);
-        if ($byBuyer) {
+        if ($automaticExpiry) {
+            app(WalletReservationService::class)->release($order, $reason);
+        } elseif ($byBuyer) {
             $funding->releaseBuyerCancellation($order, $actor, $reason);
         } else {
             $funding->releaseCancellation($order, $actor, $reason);
@@ -335,9 +359,10 @@ class OrderLifecycleService
         $custody = $parcel ? DeliveryCheckpoint::lastCustody($parcel) : null;
         $order->update($byBuyer ? ['status' => 'cancelled'] : ['status' => 'cancelled', 'notes' => $reason]);
         $parcel?->update(['status' => 'cancelled']);
-        if ($byBuyer && $parcel) {
+        app(WalletPaymentService::class)->closeCancellation($order, $automaticExpiry ? null : $actor, $reason, $automaticExpiry);
+        if (($byBuyer || $automaticExpiry) && $parcel) {
             DeliveryCheckpoint::firstOrCreate(['delivery_id' => $parcel->id, 'checkpoint_type' => 'cancelled'], [
-                'location_name' => 'Buyer cancellation', 'notes' => $reason, 'scanned_by_id' => $actor->id,
+                'location_name' => $automaticExpiry ? 'Unpaid wallet expiry' : 'Buyer cancellation', 'notes' => $reason, 'scanned_by_id' => $automaticExpiry ? null : $actor->id,
                 'scan_provenance' => 'not_scanned', 'source_state' => $source,
                 'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custody, 'custody_after' => $custody,
             ]);

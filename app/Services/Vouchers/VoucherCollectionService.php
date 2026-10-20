@@ -18,7 +18,8 @@ class VoucherCollectionService
         $queries = [
             'available' => app(CheckoutQuoteService::class)->availableQuery(buyer: $buyer),
             'saved' => VoucherRevision::whereHas('savedVouchers', fn (Builder $q) => $q->where('buyer_id', $buyer->id)),
-            'used' => VoucherRevision::whereHas('redemptions', fn (Builder $q) => $q->where('buyer_id', $buyer->id)),
+            'used' => VoucherRevision::whereHas('redemptions', fn (Builder $q) => $q->where('buyer_id', $buyer->id)
+                ->whereNotExists(fn ($restored) => $restored->selectRaw('1')->from('wallet_voucher_restorations')->whereColumn('voucher_redemption_id', 'voucher_redemptions.id'))),
             'expired' => VoucherRevision::where('ends_at', '<=', now())->where(fn (Builder $q) => $q
                 ->whereHas('savedVouchers', fn (Builder $s) => $s->where('buyer_id', $buyer->id))
                 ->orWhereHas('redemptions', fn (Builder $u) => $u->where('buyer_id', $buyer->id))),

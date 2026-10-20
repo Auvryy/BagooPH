@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
+import BuyerPaymentChoice from '@/Components/BuyerPaymentChoice';
 import PhoneInput from '@/Components/PhoneInput';
 import BuyerVoucherPicker from '@/Components/Vouchers/BuyerVoucherPicker';
 import CheckoutVoucherBreakdown from '@/Components/Vouchers/CheckoutVoucherBreakdown';
@@ -61,6 +62,7 @@ interface Props {
     pickupHubs?: PickupHubItem[];
     checkoutToken: string;
     itemQuantities?: Record<number, number>;
+    walletBalanceCents?: number | null;
 }
 
 export default function CheckoutIndex({ 
@@ -77,6 +79,7 @@ export default function CheckoutIndex({
     pickupHubs = [],
     checkoutToken,
     itemQuantities = {},
+    walletBalanceCents = 0,
 }: Props) {
     const { flash } = usePage<PageProps>().props;
 
@@ -922,33 +925,11 @@ export default function CheckoutIndex({
                                     <h2 className="font-bold text-sm text-slate-900">
                                         Payment Method
                                     </h2>
-                                    <span className="text-[10px] font-sans font-bold px-2 py-0.5 rounded-xs bg-slate-200 text-slate-700">
-                                        EXCLUSIVE PAYMENT MODE
-                                    </span>
                                 </div>
                             </div>
 
-                            <div className="p-4 rounded-xl border border-slate-300 bg-slate-50 text-xs font-sans space-y-3">
-                                <div className="flex items-start gap-3.5">
-                                    <div className="w-9 h-9 rounded-lg bg-[#E00D42] text-white flex items-center justify-center shrink-0">
-                                        <Wallet className="w-5 h-5" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
-                                            <span>Cash on Delivery (COD)</span>
-                                            <span className="px-2 py-0.5 rounded-xs bg-slate-900 text-white text-[10px] font-sans">CASH PAYMENT</span>
-                                        </div>
-                                        <p className="text-slate-600 text-[11px] leading-relaxed">
-                                            {isHubPickup ? 'Pay the amount due in cash at the destination hub when you collect your parcel. Follow the collection instructions in order tracking.' : 'Pay the amount due in cash to the assigned delivery rider when your parcel is handed over. No advance online payment is required.'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 pt-2 border-t border-slate-200 text-[11px] text-slate-700 font-medium">
-                                    <ShieldCheck className="w-4 h-4 text-[#E00D42] shrink-0" />
-                                    <span>Review the final COD amount before confirming your order.</span>
-                                </div>
-                            </div>
+                            <BuyerPaymentChoice value={data.payment_method} onChange={method => setData('payment_method', method)} balanceCents={walletBalanceCents} disabled={processing} />
+                            {errors.payment_method && <p role="alert" className="text-xs text-rose-700">{errors.payment_method}</p>}
                         </div>
 
                     </div>
@@ -974,7 +955,7 @@ export default function CheckoutIndex({
                             </h3>
 
                             <CheckoutVoucherBreakdown quote={quote} price={quotePrice} />
-                            <p className="text-xs text-slate-600">Payment mode: Cash on Delivery (COD)</p>
+                            <p className="text-xs text-slate-600">Payment mode: {data.payment_method === 'wallet' ? 'Bagoo Wallet · virtual credits' : 'Cash on Delivery (COD)'}</p>
 
                             <div className="pt-3 border-t border-slate-100 flex justify-between items-baseline text-sm">
                                 <span className="font-bold text-slate-900">Total Payment:</span>
@@ -1144,7 +1125,7 @@ export default function CheckoutIndex({
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                                         <span className="text-[11px] text-slate-400 font-semibold block">Payment Mode</span>
-                                        <span className="font-bold text-slate-700 font-sans">CASH ON DELIVERY (COD)</span>
+                                        <span className="font-bold text-slate-700 font-sans">{data.payment_method === 'wallet' ? 'BAGOO WALLET · VIRTUAL CREDITS' : 'CASH ON DELIVERY (COD)'}</span>
                                     </div>
                                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                                         <span className="text-[11px] text-slate-400 font-semibold block">Applied Vouchers</span>

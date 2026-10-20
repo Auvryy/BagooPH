@@ -20,6 +20,7 @@ use App\Services\Finance\CodCashService;
 use App\Services\Finance\CodMoney;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\Notifications\NotificationDeliveryService;
+use App\Services\Wallet\WalletReturnMoneyService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -29,7 +30,7 @@ use Throwable;
 class BuyerReturnMoneyService
 {
     public const ACTIONS = ['approve-repayment', 'offer-recovery', 'receive-recovery', 'offer-funding', 'receive-funding',
-        'record-repayment', 'confirm-receipt', 'report-nonreceipt', 'resolve-nonreceipt', 'close-zero-return'];
+        'record-repayment', 'confirm-receipt', 'report-nonreceipt', 'resolve-nonreceipt', 'close-zero-return', 'refund-wallet'];
 
     public function __construct(private readonly BuyerReturnAmounts $amounts) {}
 
@@ -82,6 +83,9 @@ class BuyerReturnMoneyService
 
     public function actions(User $actor, BuyerReturnCase $case): array
     {
+        if ($case->order->payment_method === 'wallet') {
+            return app(WalletReturnMoneyService::class)->actions($actor, $case);
+        }
         $actions = [];
         $adjustment = BuyerReturnAdjustment::where('buyer_return_case_id', $case->id)->first();
         if ($actor->isAdmin() && $actor->canAccessPortal() && $actor->email_verified_at) {
@@ -116,6 +120,11 @@ class BuyerReturnMoneyService
 
     public function command(User $actor, BuyerReturnCase $case, string $action, array $input, ?UploadedFile $proof = null): BuyerReturnMoneyEvent
     {
+        if ($case->order->payment_method === 'wallet') {
+            abort_if($proof !== null, 422, 'A virtual wallet refund uses its saved ledger reference, not a cash receipt.');
+
+            return app(WalletReturnMoneyService::class)->command($actor, $case, $action, $input);
+        }
         abort_unless(in_array($action, self::ACTIONS, true), 404);
         $needsProof = in_array($action, ['offer-recovery', 'receive-recovery', 'offer-funding', 'receive-funding', 'record-repayment', 'resolve-nonreceipt'], true);
         $offer = in_array($action, ['offer-recovery', 'offer-funding'], true);
@@ -283,6 +292,9 @@ class BuyerReturnMoneyService
     {
         if (! $actor->isBuyer() && ! $actor->isSeller() && ! $actor->isAdmin()) {
             return null;
+        }
+        if ($case->order->payment_method === 'wallet') {
+            return app(WalletReturnMoneyService::class)->presentation($actor, $case);
         }
         $adjustment = BuyerReturnAdjustment::where('buyer_return_case_id', $case->id)->first();
         $events = BuyerReturnMoneyEvent::where('buyer_return_case_id', $case->id)->orderBy('sequence')->get();

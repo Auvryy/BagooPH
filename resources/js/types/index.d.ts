@@ -258,7 +258,8 @@ export interface Order {
     shipping_fee: string | number;
     total_amount: string | number;
     payment_method: 'cod' | string;
-    payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
+    payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'cancelled';
+    wallet_payment?: { id: number; reference: string; status: string; amount_cents: number; expires_at: string; paid_at: string | null } | null;
     status: 'placed' | 'confirmed' | 'preparing' | 'ready_for_pickup' | 'picked_up' | 'at_sorting_center' | 'sorted' | 'assigned_to_rider' | 'out_for_delivery' | 'delivered' | 'completed' | 'delivery_failed' | 'returned' | 'pending' | 'processing' | 'packaging' | 'shipped' | 'in_transit' | 'failed' | 'cancelled' | 'canceled';
     recipient_name: string;
     recipient_phone: string;

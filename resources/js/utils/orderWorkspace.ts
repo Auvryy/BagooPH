@@ -1,5 +1,6 @@
 export const buyerOrderStages = [
     { id: 'all', label: 'All' },
+    { id: 'to_pay', label: 'To pay' },
     { id: 'to_ship', label: 'To ship' },
     { id: 'in_transit', label: 'In transit' },
     { id: 'delivered', label: 'Delivered' },
@@ -20,6 +21,6 @@ export const sellerOrderStages = [
     { id: 'all', label: 'All orders' },
     { id: 'to_pack', label: 'To pack' },
     { id: 'to_pickup', label: 'Ready for pickup' },
-    ...buyerOrderStages.slice(2),
+    ...buyerOrderStages.filter(stage => !['all', 'to_pay', 'to_ship'].includes(stage.id)),
     { id: 'return_custody', label: 'Return parcels' },
 ];

@@ -46,8 +46,8 @@ class PhaseZeroUnavailableModulesTest extends TestCase
     {
         $buyer = User::factory()->create(['address' => null, 'city' => null]);
         $this->actingAs($buyer)->get('/buyer/profile?tab=wallet')->assertInertia(fn (Assert $page) => $page
-            ->component('Buyer/Profile')->where('wallet.available', false)->where('wallet.balance', null)
-            ->where('wallet.account_number', null)->where('wallet.recent_transactions', [])->where('wallet.currency', 'PHP'));
+            ->component('Buyer/Profile')->where('wallet.available', true)->where('wallet.balance_cents', 0)
+            ->missing('wallet.account_number')->where('wallet.transactions.total', 0)->where('wallet.currency', 'PHP'));
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('commission_ledgers', 0);
     }

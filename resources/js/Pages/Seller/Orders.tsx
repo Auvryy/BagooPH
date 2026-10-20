@@ -938,7 +938,9 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 <span className="text-emerald-600">{formatPrice(Number(selectedOrderForDetails.subtotal || (Number(selectedOrderForDetails.unit_price) * selectedOrderForDetails.quantity)) * 0.90)}</span>
                             </div>
                             <p className="border-t border-slate-200 pt-2 text-[10px] text-slate-500">
-                                {selectedOrderForDetails.order?.payment_status === 'paid' && selectedOrderForDetails.order?.commission_ledger?.status === 'settled'
+                                {selectedOrderForDetails.order?.payment_method === 'wallet'
+                                    ? 'This is an estimate. Review Virtual proceeds after buyer receipt for the original wallet credits, discounts and returns.'
+                                    : selectedOrderForDetails.order?.payment_status === 'paid' && selectedOrderForDetails.order?.commission_ledger?.status === 'settled'
                                     ? 'Platform COD reconciliation is recorded as settled.'
                                     : 'This is an estimate. Payout requires buyer completion and recorded COD reconciliation.'}
                             </p>
@@ -1053,7 +1055,9 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 </div>
                                 <div className="text-right">
                                     <span className="px-2 py-0.5 rounded bg-black text-white font-black text-xs uppercase font-sans">
-                                        {selectedOrderForWaybill.order?.payment_method?.toUpperCase() || 'COD'}
+                                        {selectedOrderForWaybill.order?.payment_method === 'wallet'
+                                            ? selectedOrderForWaybill.order?.payment_status === 'paid' ? 'WALLET PAID · NO CASH DUE' : 'WALLET PAYMENT PENDING'
+                                            : selectedOrderForWaybill.order?.payment_method?.toUpperCase() || 'COD'}
                                     </span>
                                     <p className="text-[10px] text-slate-700 font-sans font-bold mt-0.5">
                                         AMOUNT: {formatPrice(selectedOrderForWaybill.order?.total_amount || selectedOrderForWaybill.subtotal)}
