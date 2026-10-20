@@ -68,6 +68,7 @@ class SellerProductVariantsTest extends TestCase
                 'stock' => 45,
                 'sku' => '', // Left blank to test auto-generation
                 'description' => 'Military-spec 1000D Cordura duffle with brass hardware.',
+                'featured_image' => '/storage/products/duffle.jpg',
                 'variants' => json_encode($variants),
             ]);
 
@@ -103,6 +104,7 @@ class SellerProductVariantsTest extends TestCase
                 'stock' => 50,
                 'sku' => 'APX-WLT-STITCH-01',
                 'description' => 'Full-grain veg-tan leather card wallet.',
+                'featured_image' => '/storage/products/wallet.jpg',
                 'variants' => json_encode([
                     'colors' => [
                         ['id' => 'c1', 'name' => 'Tan', 'hex' => '#D2B48C', 'in_stock' => true],
@@ -125,6 +127,7 @@ class SellerProductVariantsTest extends TestCase
             'name' => 'Vintage Canvas Messenger Bag',
             'slug' => 'vintage-canvas-messenger-bag',
             'description' => 'Waxed canvas messenger with leather strap.',
+            'featured_image' => '/storage/products/messenger.jpg',
             'price' => 1299.00,
             'stock' => 20,
             'sku' => 'BGO-VINT-101',
@@ -320,6 +323,7 @@ class SellerProductVariantsTest extends TestCase
                 'price' => 599.00,
                 'stock' => 100,
                 'description' => 'Aircraft aluminum pen.',
+                'featured_image' => '/storage/products/pen.jpg',
                 'variants' => json_encode($variants),
             ]);
 
@@ -355,6 +359,7 @@ class SellerProductVariantsTest extends TestCase
                 'price' => 45999.00,
                 'stock' => 55,
                 'description' => 'Flagship flagship smartphone.',
+                'featured_image' => '/storage/products/phone.jpg',
                 'variants' => json_encode($variants),
             ]);
 
@@ -378,6 +383,7 @@ class SellerProductVariantsTest extends TestCase
                 'price' => 399.00,
                 'stock' => 100,
                 'description' => 'Solid grade 5 titanium carabiner.',
+                'featured_image' => '/storage/products/carabiner.jpg',
                 'variants' => '', // Empty string sent when merchant has 0 variations configured
             ]);
 

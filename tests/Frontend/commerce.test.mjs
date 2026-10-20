@@ -27,7 +27,8 @@ const bundle = buildSync({
         export { default as Dashboard } from '@/Pages/Seller/Dashboard';
         export { default as Inventory } from '@/Pages/Seller/Products';
         export { default as SellerSettings } from '@/Pages/Seller/Settings';
-        export { newListingStatus, sellerInventoryQuery, sellerVariantStock } from '@/utils/sellerInventory';`,
+        export { newListingStatus, sellerInventoryQuery, sellerVariantStock } from '@/utils/sellerInventory';
+        export { sellerListingError } from '@/utils/sellerListingValidation';`,
         resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
     loader: { '.css': 'empty' },
@@ -45,6 +46,15 @@ const shop = { id: 5, name: 'Bagoo Crafts', slug: 'bagoo-crafts', user_id: 7, re
 const product = { id: 3, name: 'Everyday Bag', slug: 'everyday-bag', price: '250.00', stock: 10, rating: null, verified_review_count: 0, sales_count: 0, shop, variants: {}, images: [] };
 const summary = { rating: null, review_count: 0, response_rate: null, products_count: 1, joined: '2026-10-01' };
 const paginated = data => ({ data, current_page: 1, last_page: 1, per_page: 12, total: data.length });
+
+test('seller field feedback accepts valid limits and identifies invalid input without trimming or rounding it', () => {
+    const accepted = { name: ['Totes', 'N'.repeat(120)], description: ['d'.repeat(20), 'd'.repeat(3000)],
+        price: ['1.00', '1.01', '999999.99', '1000000.00'], stock: ['0', '1', '99999'] };
+    const rejected = { name: ['Tote', 'N'.repeat(121), '     '], description: ['d'.repeat(19), 'd'.repeat(3001)],
+        price: ['0', '-50', '0.99', '199.999', '1000000.01', 'abc', '1e3'], stock: ['-1', '100000', '2.5', 'abc'] };
+    for (const [field, values] of Object.entries(accepted)) for (const value of values) assert.equal(ui.sellerListingError(field, value), undefined, `${field}: ${value}`);
+    for (const [field, values] of Object.entries(rejected)) for (const value of values) assert.equal(typeof ui.sellerListingError(field, value), 'string', `${field}: ${value}`);
+});
 async function render(Component, component, props, role = 'buyer') {
     let view;
     const result = await createInertiaApp({

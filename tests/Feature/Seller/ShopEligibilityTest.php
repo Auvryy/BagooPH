@@ -129,7 +129,8 @@ class ShopEligibilityTest extends TestCase
         $grandchild = Category::factory()->create(['parent_id' => $child->id]);
         $foreign = Category::factory()->create();
         $this->actingAs($seller)->withSession(['active_seller_shop_id' => $shop->id]);
-        $data = ['name' => 'Pet Blanket', 'price' => 150, 'stock' => 10, 'description' => 'A soft pet blanket.'];
+        $data = ['name' => 'Pet Blanket', 'price' => 150, 'stock' => 10, 'description' => 'A soft pet blanket for everyday comfort.',
+            'featured_image' => '/storage/products/blanket.jpg'];
         foreach ([$shop->root_category_id, $child->id, $grandchild->id, null] as $categoryId) {
             $this->post('/seller/products', $data + ['category_id' => $categoryId])->assertRedirect()->assertSessionHasNoErrors();
         }
@@ -253,7 +254,8 @@ class ShopEligibilityTest extends TestCase
         Event::listen('eloquent.created: '.Product::class, fn () => throw new RuntimeException('Listing write failed'));
         try {
             $this->actingAs($seller)->withSession(['active_seller_shop_id' => $shop->id])->post('/seller/products', [
-                'name' => 'Pet Blanket', 'price' => 100, 'stock' => 10, 'description' => 'A soft pet blanket.',
+                'name' => 'Pet Blanket', 'price' => 100, 'stock' => 10, 'description' => 'A soft pet blanket for everyday comfort.',
+                'featured_image' => '/storage/products/blanket.jpg',
             ])->assertServerError();
         } finally {
             Event::forget('eloquent.created: '.Product::class);

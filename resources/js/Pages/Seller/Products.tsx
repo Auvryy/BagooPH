@@ -10,6 +10,7 @@ import useResolvedPage from '@/hooks/useResolvedPage';
 import ListingAssistantPanel from '@/Components/ListingAssistantPanel';
 import { Category, PaginatedData, Product, Shop } from '@/types';
 import { newListingStatus, sellerInventoryQuery, sellerVariantStock, SellerInventoryFilters } from '@/utils/sellerInventory';
+import { listingHints, sellerListingError, type ListingField } from '@/utils/sellerListingValidation';
 import { 
     Package, 
     Plus, 
@@ -269,6 +270,18 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const createSlashedPriceError = isSlashedPriceInvalid(createForm.data.price, createForm.data.compare_at_price);
     const editSlashedPriceError = isSlashedPriceInvalid(editForm.data.price, editForm.data.compare_at_price);
 
+    const listingFeedback = (isCreate: boolean, field: ListingField) => {
+        const form = isCreate ? createForm : editForm;
+        const variants = isCreate ? createVariants : editVariants;
+        const value = field === 'stock' && variants.combinations
+            ? String(variants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0)) : form.data[field];
+        const message = form.errors[field] || sellerListingError(field, value);
+        return <p role={message ? 'alert' : undefined} className={`mt-1.5 text-[11px] ${message ? 'text-rose-700' : 'text-slate-500'}`}>{message || listingHints[field]}</p>;
+    };
+
+    const variantFeedback = (isCreate: boolean) => Object.entries((isCreate ? createForm : editForm).errors)
+        .find(([field]) => field === 'variants' || ['colors', 'sizes', 'combinations'].some(group => field === group || field.startsWith(`${group}.`)))?.[1];
+
     const reorderList = (list: GalleryItem[], start: number, end: number): GalleryItem[] => {
         const result = Array.from(list);
         const [removed] = result.splice(start, 1);
@@ -277,6 +290,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
     };
 
     const handleFilesSelected = (files: FileList | null, isCreate: boolean) => {
+        if (files && (isCreate ? createGallery : editGallery).length + files.length > 9) {
+            (isCreate ? setCreateFileError : setEditFileError)('Use no more than 9 product images. Remove an image before adding another.');
+            return;
+        }
+        if (isCreate) createForm.clearErrors('gallery_manifest');
+        else editForm.clearErrors('gallery_manifest');
         if (!files || files.length === 0) return;
         const newItems: GalleryItem[] = [];
         let errorMsg: string | null = null;
@@ -321,6 +340,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const handleAddUrl = (url: string, isCreate: boolean) => {
         const trimmed = url.trim();
         if (!trimmed) return;
+        if ((isCreate ? createGallery : editGallery).length >= 9) {
+            (isCreate ? setCreateFileError : setEditFileError)('Use no more than 9 product images.');
+            return;
+        }
+        if (isCreate) createForm.clearErrors('gallery_manifest');
+        else editForm.clearErrors('gallery_manifest');
         const item: GalleryItem = {
             id: `url_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             type: 'url',
@@ -511,6 +536,10 @@ export default function SellerProducts({ products, categories, shop, filters = {
         }
         const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
         const status = newListingStatus(submitter?.value);
+        if (createGallery.length > 9 || (status === 'active' && createGallery.length === 0)) {
+            createForm.setError('gallery_manifest', 'Use 1–9 product images before publishing.');
+            return;
+        }
 
         const filesToUpload: File[] = [];
         const manifest = createGallery.map((item) => {
@@ -583,6 +612,10 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingProduct) return;
+        if (editGallery.length > 9 || (editForm.data.status === 'active' && editGallery.length === 0)) {
+            editForm.setError('gallery_manifest', 'Use 1–9 product images before publishing.');
+            return;
+        }
         if (editSlashedPriceError) {
             return;
         }
@@ -901,6 +934,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
     };
 
     const addColor = (isCreate: boolean) => {
+        if ((isCreate ? createVariants : editVariants).colors.length >= 20) {
+            if (isCreate) createForm.setError('variants', 'Use no more than 20 values per option group.');
+            else editForm.setError('variants', 'Use no more than 20 values per option group.');
+            return;
+        }
         const name = isCreate ? newCreateColorName.trim() : newEditColorName.trim();
         const hex = isCreate ? newCreateColorHex.trim() : newEditColorHex.trim();
         if (!name) return;
@@ -937,6 +975,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
     };
 
     const addSize = (isCreate: boolean) => {
+        if ((isCreate ? createVariants : editVariants).sizes.length >= 20) {
+            if (isCreate) createForm.setError('variants', 'Use no more than 20 values per option group.');
+            else editForm.setError('variants', 'Use no more than 20 values per option group.');
+            return;
+        }
         const name = isCreate ? newCreateSizeName.trim() : newEditSizeName.trim();
         const extraPrice = Number(isCreate ? newCreateSizePrice : newEditSizePrice) || 0;
         if (!name) return;
@@ -1414,13 +1457,16 @@ export default function SellerProducts({ products, categories, shop, filters = {
         const setUrlInput = isCreate ? setCreateUrlInput : setEditUrlInput;
         const dragIndex = isCreate ? createDragIndex : editDragIndex;
         const dragOverIndex = isCreate ? createDragOverIndex : editDragOverIndex;
+        const galleryErrors = (isCreate ? createForm : editForm).errors;
+        const galleryError = galleryErrors.gallery_manifest || galleryErrors.image_files
+            || Object.entries(galleryErrors).find(([field]) => field.startsWith('image_files.'))?.[1];
 
         return (
             <div className="space-y-3 font-sans">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <label className="block font-bold text-slate-700 uppercase text-xs font-sans">
-                            Product Images ({gallery.length})
+                            Product Images ({gallery.length}/9)
                         </label>
                         {gallery.length > 0 && (
                             <span className="text-[10px] text-slate-500 font-sans bg-slate-100 px-2 py-0.5 rounded-full">
@@ -1445,7 +1491,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                     <div className="space-y-2">
                         <UploadHint formats="JPG, PNG, WEBP or GIF" />
                         <div
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() => { if (gallery.length < 9) fileInputRef.current?.click(); }}
                             className={`border-2 border-dashed ${
                                 fileError 
                                     ? 'border-rose-400 bg-rose-50/40' 
@@ -1456,6 +1502,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                 ref={fileInputRef}
                                 type="file"
                                 multiple
+                                disabled={gallery.length >= 9}
                                 accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
                                 onChange={(e) => {
                                     handleFilesSelected(e.target.files, isCreate);
@@ -1469,7 +1516,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                 </div>
                                 <div>
                                     <p className="font-bold text-slate-800 text-xs">
-                                        Click to upload image files (Multiple allowed)
+                                        {gallery.length >= 9 ? '9 images added. Remove one to add another.' : 'Click to upload image files (up to 9)'}
                                     </p>
                                     <p className="text-[11px] text-slate-400 mt-0.5">
                                         Accepted formats: PNG, JPG, JPEG, WEBP, GIF (Max 5MB each)
@@ -1510,6 +1557,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                             <button
                                 type="button"
                                 onClick={() => handleAddUrl(urlInput, isCreate)}
+                                disabled={gallery.length >= 9}
                                 className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-sans font-bold uppercase transition"
                             >
                                 Add Image
@@ -1519,6 +1567,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
                     </div>
                 )}
 
+                <p className="text-[11px] text-slate-500">1–9 images to publish. Drafts may have no images.</p>
+                {galleryError && <p role="alert" className="text-xs text-rose-700">{galleryError}</p>}
                 {/* Gallery Items Grid with Drag & Drop */}
                 {gallery.length === 0 ? (
                     <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center text-slate-400 text-xs font-sans">
@@ -2250,7 +2300,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     id="stock-quantity"
                                     type="number"
                                     min={stockForm.data.mode === 'add' ? 1 : 0}
-                                    max={1000000}
+                                    max={99999}
                                     step={1}
                                     required
                                     autoFocus
@@ -2421,11 +2471,14 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         <input
                                             type="text"
                                             value={createForm.data.name}
+                                            minLength={5}
+                                            maxLength={120}
                                             onChange={(e) => createForm.setData('name', e.target.value)}
                                             placeholder="e.g. Bagoo Urban Nomad Tactical Duffel 45L"
                                             required
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] text-sm font-sans placeholder:font-sans placeholder:text-xs placeholder:text-slate-400 transition"
                                         />
+                                        {listingFeedback(true, 'name')}
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
@@ -2467,11 +2520,14 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 type="number"
                                                 step="0.01"
                                                 value={createForm.data.price}
+                                                min={1}
+                                                max={1000000}
                                                 onChange={(e) => createForm.setData('price', e.target.value)}
                                                 required
                                                 placeholder="1299.00"
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                             />
+                                            {listingFeedback(true, 'price')}
                                         </div>
                                         <div>
                                             <label className={`block font-bold uppercase mb-2 ${createSlashedPriceError ? 'text-rose-600' : 'text-slate-700'}`}>
@@ -2506,18 +2562,22 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                             <input
                                                 type="number"
                                                 disabled={createVariants.combinations !== undefined}
+                                                min={0}
+                                                max={99999}
+                                                step={1}
                                                 value={createVariants.combinations ? createVariants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0) : createForm.data.stock}
                                                 onChange={(e) => createForm.setData('stock', e.target.value)}
                                                 required
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                             />
+                                            {listingFeedback(true, 'stock')}
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(true)}
-                                <VariantStockMatrix colors={createHasOption1 ? createVariants.colors : []} sizes={createHasOption2 ? createVariants.sizes : []} value={createVariants.combinations} onChange={combinations => setCreateVariants(previous => ({ ...previous, combinations }))} error={createForm.errors.variants || Object.entries(createForm.errors).find(([field]) => field.startsWith('combinations.') || field.startsWith('colors.') || field.startsWith('sizes.'))?.[1]} />
+                                <VariantStockMatrix colors={createHasOption1 ? createVariants.colors : []} sizes={createHasOption2 ? createVariants.sizes : []} value={createVariants.combinations} onChange={combinations => setCreateVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(true)} />
                                 <div className="rounded-lg border border-slate-300 p-4">
                                     <label className="block text-sm font-bold text-slate-900" htmlFor="createForm-purchase-limit">Purchase limit per buyer</label>
                                     <input id="createForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={createForm.data.purchase_limit} onChange={event => createForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
@@ -2532,6 +2592,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     <textarea
                                         ref={createDescriptionRef}
                                         value={createForm.data.description}
+                                        minLength={20}
+                                        maxLength={3000}
                                         onChange={(e) => createForm.setData('description', e.target.value)}
                                         onInput={(e) => resizeDescription(e.currentTarget)}
                                         rows={3}
@@ -2539,6 +2601,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         placeholder="Provide detailed material specifications, size measurements, and warranty details..."
                                         className="w-full min-h-[88px] max-h-[240px] resize-none overflow-y-hidden px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                     />
+                                    {listingFeedback(true, 'description')}
                                     <ListingAssistantPanel
                                         productName={createForm.data.name}
                                         category={categories.find(category => String(category.id) === String(createForm.data.category_id))?.name}
@@ -2652,10 +2715,13 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         <input
                                             type="text"
                                             value={editForm.data.name}
+                                            minLength={5}
+                                            maxLength={120}
                                             onChange={(e) => editForm.setData('name', e.target.value)}
                                             required
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] text-sm font-sans transition"
                                         />
+                                        {listingFeedback(false, 'name')}
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
@@ -2678,11 +2744,15 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                             <input
                                                 type="number"
                                                 disabled={editVariants.combinations !== undefined}
+                                                min={0}
+                                                max={99999}
+                                                step={1}
                                                 value={editVariants.combinations ? editVariants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0) : editForm.data.stock}
                                                 onChange={(e) => editForm.setData('stock', e.target.value)}
                                                 required
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                             />
+                                            {listingFeedback(false, 'stock')}
                                         </div>
                                     </div>
 
@@ -2695,10 +2765,13 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 type="number"
                                                 step="0.01"
                                                 value={editForm.data.price}
+                                                min={1}
+                                                max={1000000}
                                                 onChange={(e) => editForm.setData('price', e.target.value)}
                                                 required
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                             />
+                                            {listingFeedback(false, 'price')}
                                         </div>
                                         <div>
                                             <label className={`block font-bold uppercase mb-2 ${editSlashedPriceError ? 'text-rose-600' : 'text-slate-700'}`}>
@@ -2759,7 +2832,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(false)}
-                                <VariantStockMatrix colors={editHasOption1 ? editVariants.colors : []} sizes={editHasOption2 ? editVariants.sizes : []} value={editVariants.combinations} onChange={combinations => setEditVariants(previous => ({ ...previous, combinations }))} error={editForm.errors.variants || Object.entries(editForm.errors).find(([field]) => field.startsWith('combinations.') || field.startsWith('colors.') || field.startsWith('sizes.'))?.[1]} />
+                                <VariantStockMatrix colors={editHasOption1 ? editVariants.colors : []} sizes={editHasOption2 ? editVariants.sizes : []} value={editVariants.combinations} onChange={combinations => setEditVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(false)} />
                                 <div className="rounded-lg border border-slate-300 p-4">
                                     <label className="block text-sm font-bold text-slate-900" htmlFor="editForm-purchase-limit">Purchase limit per buyer</label>
                                     <input id="editForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={editForm.data.purchase_limit} onChange={event => editForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
@@ -2774,12 +2847,15 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     <textarea
                                         ref={editDescriptionRef}
                                         value={editForm.data.description}
+                                        minLength={20}
+                                        maxLength={3000}
                                         onChange={(e) => editForm.setData('description', e.target.value)}
                                         onInput={(e) => resizeDescription(e.currentTarget)}
                                         rows={3}
                                         required
                                         className="w-full min-h-[88px] max-h-[240px] resize-none overflow-y-hidden px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                     />
+                                    {listingFeedback(false, 'description')}
                                     <ListingAssistantPanel
                                         productName={editForm.data.name}
                                         category={categories.find(category => String(category.id) === String(editForm.data.category_id))?.name}

@@ -158,7 +158,7 @@ class SellerDashboardController extends Controller
         $shop = $this->getActiveShop($request);
 
         $rules = [
-            'description' => 'nullable|string|max:5000',
+            'description' => 'nullable|string|max:500',
             'vacation_mode' => ['sometimes', 'required', 'boolean'],
             'phone' => ['sometimes', 'required', 'string', new PhilippineContact(true)],
         ];
@@ -168,9 +168,9 @@ class SellerDashboardController extends Controller
         }
 
         if ($request->hasFile('logo')) {
-            $rules['logo'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
+            $rules['logo'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:5120';
         } elseif ($request->hasFile('logo_file')) {
-            $rules['logo_file'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:3072';
+            $rules['logo_file'] = 'required|image|mimes:jpeg,png,jpg,webp,gif|max:5120';
         } else {
             $rules['logo'] = 'nullable|string|max:1000';
         }
@@ -183,7 +183,20 @@ class SellerDashboardController extends Controller
             $rules['banner'] = 'nullable|string|max:1000';
         }
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [
+            'logo.max' => 'The shop logo must not exceed 5 MB. Use JPG, PNG, WEBP or GIF.',
+            'logo_file.max' => 'The shop logo must not exceed 5 MB. Use JPG, PNG, WEBP or GIF.',
+            'banner.max' => 'The shop banner must not exceed 5 MB. Use JPG, PNG, WEBP or GIF.',
+            'banner_file.max' => 'The shop banner must not exceed 5 MB. Use JPG, PNG, WEBP or GIF.',
+            'logo.image' => 'Use a JPG, PNG, WEBP or GIF image up to 5 MB.',
+            'logo.mimes' => 'Use a JPG, PNG, WEBP or GIF image up to 5 MB.',
+            'logo_file.image' => 'Use a JPG, PNG, WEBP or GIF image up to 5 MB.',
+            'logo_file.mimes' => 'Use a JPG, PNG, WEBP or GIF image up to 5 MB.',
+            'banner.image' => 'Use a JPG, PNG, WEBP or GIF image up to 5 MB.',
+            'banner.mimes' => 'Use a JPG, PNG, WEBP or GIF image up to 5 MB.',
+            'banner_file.image' => 'Use a JPG, PNG, WEBP or GIF image up to 5 MB.',
+            'banner_file.mimes' => 'Use a JPG, PNG, WEBP or GIF image up to 5 MB.',
+        ]);
         app(ShopEligibilityService::class)->protectReviewedDetails($shop, $request->all());
 
         if ($request->hasFile('logo') || $request->hasFile('logo_file')) {

@@ -17,7 +17,7 @@ class VariantMatrixService
             'combinations' => ['required', 'array', 'list', 'min:1', 'max:400'],
             'combinations.*.color' => ['nullable', 'string', 'max:100'],
             'combinations.*.size' => ['nullable', 'string', 'max:100'],
-            'combinations.*.stock' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'between:0,1000000'],
+            'combinations.*.stock' => ['required', 'regex:/\A[0-9]+\z/', 'integer', 'between:0,99999'],
             'combinations.*.extra_price' => ['required', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0,99999999.99'],
         ])->validate();
         $expected = [];
@@ -40,8 +40,8 @@ class VariantMatrixService
             unset($expected[$key]);
             $rows[] = ['color' => $color, 'size' => $size, 'stock' => (int) $row['stock'], 'extra_price' => number_format((float) $row['extra_price'], 2, '.', '')];
         }
-        if ($expected !== [] || array_sum(array_column($rows, 'stock')) > 1000000) {
-            throw ValidationException::withMessages(['variants' => 'Provide stock for every combination. The combined stock cannot exceed 1,000,000 units.']);
+        if ($expected !== [] || array_sum(array_column($rows, 'stock')) > 99999) {
+            throw ValidationException::withMessages(['variants' => 'Provide stock for every combination. The combined stock cannot exceed 99,999 units.']);
         }
 
         return $rows;

@@ -29,7 +29,7 @@ class ProductSaleService
         $data = Validator::make([...$defaults, ...$input], [
             'kind' => ['required', Rule::in(['store', 'flash'])],
             'name' => ['required', 'string', 'max:100'],
-            'price' => ['required', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0.01,99999999.99'],
+            'price' => ['required', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:1,99999999.99'],
             'starts_at' => ['required', 'date_format:Y-m-d\TH:i'],
             'ends_at' => ['required', 'date_format:Y-m-d\TH:i', 'after:starts_at'],
             'quantity' => ['nullable', 'required_if:kind,flash', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
