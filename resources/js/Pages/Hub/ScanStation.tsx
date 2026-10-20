@@ -145,6 +145,7 @@ export default function ScanStation({
         prompt: DynamicPrompt;
         delivery: ScannedDeliveryResult;
         confirmed: boolean;
+        alreadyReceived?: boolean;
     } | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const [scanMessage, setScanMessage] = useState<string | null>(null);
@@ -212,14 +213,14 @@ export default function ScanStation({
         setSessionExpired(false);
         if (!confirming) { setLastResult(null); setReturnResult(null); }
         try {
-            const data = await requestWaybill<{ prompt: DynamicPrompt; delivery: ScannedDeliveryResult; confirmed: boolean; message: string;
+            const data = await requestWaybill<{ prompt: DynamicPrompt; delivery: ScannedDeliveryResult; confirmed: boolean; message: string; already_received?: boolean;
                 return_case?: { reference: string; barcode: string; href: string; status: string } }>(
                 `${basePath}/scan`, { ...body, hub_id: activeHub.id }, request.signal,
             );
             if (pendingRequest.current !== request || request.signal.aborted) return;
             playSound(data.confirmed ? 'success' : 'beep');
             if (data.return_case) { setReturnResult(data.return_case); setLastResult(null); }
-            else { setReturnResult(null); setLastResult({ prompt: data.prompt, delivery: data.delivery, confirmed: Boolean(data.confirmed) }); }
+            else { setReturnResult(null); setLastResult({ prompt: data.prompt, delivery: data.delivery, confirmed: Boolean(data.confirmed), alreadyReceived: data.already_received }); }
             setScanMessage(data.message);
             setBarcodeInput('');
             if (confirming) {
@@ -429,8 +430,8 @@ export default function ScanStation({
                     )}
 
                     {scanMessage && (
-                        <div role="status" className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xs p-3.5 flex items-start gap-3 shadow-xs">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                        <div role="status" className={`${lastResult?.alreadyReceived ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-emerald-50 border-emerald-300 text-emerald-900'} border rounded-xs p-3.5 flex items-start gap-3 shadow-xs`}>
+                            <CheckCircle2 className={`w-4 h-4 ${lastResult?.alreadyReceived ? 'text-amber-700' : 'text-emerald-600'} flex-shrink-0 mt-0.5`} />
                             <div className="text-xs font-sans">{scanMessage}</div>
                         </div>
                     )}

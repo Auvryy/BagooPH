@@ -43,8 +43,15 @@ class WaybillScanWorkflowTest extends TestCase
             ->assertJsonPath('delivery.status', 'arrived_at_origin_hub')->assertJsonPath('delivery.guidance.action', 'manifest')
             ->assertJsonPath('delivery.guidance.href', $path.'/manifests?hub_id='.$hub->id);
         $recorded = $this->snapshot($parcel);
-        $this->postJson($base.'/scan', $confirm)->assertOk();
+        $this->postJson($base.'/scan', $confirm)->assertOk()->assertJsonPath('already_received', true)
+            ->assertJsonPath('message', fn ($message) => str_contains($message, 'Already received'));
         $this->assertSame($recorded, $this->snapshot($parcel), 'A repeated confirmation must retain the original handover.');
+        $this->postJson($base.'/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id, 'mode' => 'inspect'])
+            ->assertOk()->assertJsonPath('already_received', true)
+            ->assertJsonPath('message', fn ($message) => str_contains($message, 'Already received'));
+        $this->assertSame($recorded, $this->snapshot($parcel));
+        $this->assertSame(1, DB::table('delivery_checkpoints')->where('delivery_id', $parcel->id)
+            ->where('checkpoint_type', 'arrived_at_origin_hub')->count());
     }
 
     public static function nextSteps(): array
