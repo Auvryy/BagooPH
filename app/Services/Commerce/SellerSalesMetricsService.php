@@ -38,7 +38,7 @@ class SellerSalesMetricsService
     {
         return $this->completedItems($shopId)
             ->whereHas('order', fn (Builder $query) => $query
-                ->whereBetween('completed_at', [$from, $to]));
+                ->whereBetween('completed_at', [$from->setTimezone(config('app.timezone')), $to->setTimezone(config('app.timezone'))]));
     }
 
     /**
@@ -82,17 +82,43 @@ class SellerSalesMetricsService
      */
     public function sevenDayCompletedSales(int $shopId): array
     {
-        $days = [];
-        $today = CarbonImmutable::today();
+        return $this->completedSales($shopId, 7);
+    }
 
-        for ($daysAgo = 6; $daysAgo >= 0; $daysAgo--) {
+    /** @return list<array{date: string, revenue: float, units: int}> */
+    public function completedSales(int $shopId, int $period = 30): array
+    {
+        return $this->dailyActivity($shopId, $period);
+    }
+
+    public function deliveredAwaitingReceipt(int $shopId, int $period = 30): array
+    {
+        return $this->dailyActivity($shopId, $period, awaitingReceipt: true);
+    }
+
+    private function dailyActivity(int $shopId, int $period, bool $awaitingReceipt = false): array
+    {
+        $days = [];
+        $today = CarbonImmutable::today('Asia/Manila');
+        $period = in_array($period, [7, 30, 90], true) ? $period : 30;
+        $from = $today->subDays($period - 1);
+        $to = $today->endOfDay();
+        $query = $awaitingReceipt
+            ? OrderItem::where('shop_id', $shopId)->whereHas('order', fn ($order) => $order->where('status', OrderStatus::DELIVERED->value)
+                ->whereHas('delivery', fn ($delivery) => $delivery->whereBetween('delivered_at', [$from->setTimezone(config('app.timezone')), $to->setTimezone(config('app.timezone'))])))
+            : $this->completedItemsBetween($shopId, $from, $to);
+        $rows = $query->with(['order:id,completed_at', 'order.delivery:id,order_id,delivered_at'])->get(['id', 'order_id', 'quantity', 'subtotal'])
+            ->groupBy(fn ($item) => CarbonImmutable::instance($awaitingReceipt ? $item->order->delivery->delivered_at : $item->order->completed_at)
+                ->setTimezone('Asia/Manila')->format('Y-m-d'));
+
+        for ($daysAgo = $period - 1; $daysAgo >= 0; $daysAgo--) {
             $day = $today->subDays($daysAgo);
-            $items = $this->completedItemsBetween($shopId, $day->startOfDay(), $day->endOfDay());
+            $items = $rows->get($day->format('Y-m-d'), collect());
 
             $days[] = [
                 'date' => $day->format('M j'),
-                'revenue' => round((float) (clone $items)->sum('subtotal'), 2),
-                'units' => (int) (clone $items)->sum('quantity'),
+                'revenue' => round((float) $items->sum('subtotal'), 2),
+                'units' => (int) $items->sum('quantity'),
             ];
         }
 

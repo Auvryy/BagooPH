@@ -34,6 +34,7 @@ class SellerDashboardController extends Controller
 
     public function index(Request $request): Response
     {
+        $period = (int) ($request->validate(['sales_days' => ['nullable', 'integer', 'in:7,30,90']])['sales_days'] ?? 30);
         $shop = $this->getActiveShop($request);
 
         $totalProducts = Product::where('shop_id', $shop->id)->count();
@@ -74,7 +75,9 @@ class SellerDashboardController extends Controller
                 'returnedCount' => $counts['returned'],
                 'returnCount' => $counts['return_custody'],
             ],
-            'dailySales' => $this->salesMetrics->sevenDayCompletedSales($shop->id),
+            'dailySales' => $this->salesMetrics->completedSales($shop->id, $period),
+            'dailyDeliveries' => $this->salesMetrics->deliveredAwaitingReceipt($shop->id, $period),
+            'salesPeriod' => $period,
             'recentOrders' => $recentOrders,
             'topProducts' => $topProducts,
             'categories' => Category::where('is_active', true)->select('id', 'name', 'slug')->get(),
@@ -89,8 +92,9 @@ class SellerDashboardController extends Controller
             'from_date' => ['nullable', 'date'],
             'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
         ]);
-        $fromDate = CarbonImmutable::parse($validated['from_date'] ?? now()->subDays(30)->format('Y-m-d'));
-        $toDate = CarbonImmutable::parse($validated['to_date'] ?? now()->format('Y-m-d'));
+        $today = CarbonImmutable::today('Asia/Manila');
+        $fromDate = CarbonImmutable::parse($validated['from_date'] ?? $today->subDays(30)->format('Y-m-d'), 'Asia/Manila');
+        $toDate = CarbonImmutable::parse($validated['to_date'] ?? $today->format('Y-m-d'), 'Asia/Manila');
 
         $query = $this->salesMetrics
             ->completedItemsBetween($shop->id, $fromDate->startOfDay(), $toDate->endOfDay())

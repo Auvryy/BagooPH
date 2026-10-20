@@ -34,14 +34,15 @@ class GoogleRegistrationService
         }
         $applications = app(ApplicationValidationService::class);
         $request->validate(['phone' => ['bail', 'nullable', 'string', 'max:24']]);
-        $values = $applications->registrationValues($request->only(['first_name', 'middle_initial', 'last_name', 'sex', 'birthday', 'phone', 'address', 'city', 'province', 'municipality', 'barangay', 'postal_code']) + ['email' => $pending['identity']['email']], 'buyer');
+        $values = $applications->registrationValues($request->only(['first_name', 'middle_initial', 'last_name', 'sex', 'birthday', 'phone', 'region', 'address', 'city', 'province', 'municipality', 'barangay', 'postal_code']) + ['email' => $pending['identity']['email']], 'buyer');
         $rules = $applications->rules('buyer');
         foreach (['first_name', 'last_name'] as $field) {
             $rules[$field] = array_map(fn ($rule) => $rule === 'nullable' ? 'required' : $rule, $rules[$field]);
         }
         $rules['middle_initial'] = ['bail', 'nullable', 'string', new MiddleInitial];
+        $rules += app(RegistrationAddressService::class)->rules();
         unset($rules['name']);
-        $validated = Validator::make($values, $rules)->validate();
+        $validated = app(RegistrationAddressService::class)->resolve(Validator::make($values, $rules)->validate());
         $parts = ['first_name' => $validated['first_name'], 'middle_name' => $validated['middle_initial'] ?? null, 'last_name' => $validated['last_name']];
         $name = implode(' ', array_filter($parts, fn ($value) => $value !== null && $value !== ''));
         Validator::make(['name' => $name], ['name' => $applications->rules('buyer')['name']])->validate();

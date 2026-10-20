@@ -44,6 +44,7 @@ import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
 export default function LogisticsRegister({ birthDateLimits, policies, serviceRegions }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies; serviceRegions: Record<string, string> }) {
     const [currentStep, setCurrentStep] = useState(1);
+    const [addressLoading, setAddressLoading] = useState(false);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -71,6 +72,7 @@ export default function LogisticsRegister({ birthDateLimits, policies, serviceRe
         phone: string;
         address: string;
         city: string;
+        region: string;
         province: string;
         municipality: string;
         barangay: string;
@@ -101,7 +103,8 @@ export default function LogisticsRegister({ birthDateLimits, policies, serviceRe
         phone: '',
         address: '',
         city: '',
-        province: 'Laguna',
+        region: '',
+        province: '',
         municipality: '',
         barangay: '',
         postal_code: '',
@@ -209,6 +212,10 @@ export default function LogisticsRegister({ birthDateLimits, policies, serviceRe
     };
 
     const validateForm = async (step?: number) => {
+        if ((step === undefined || step === 3) && addressLoading) {
+            setStepErrors(previous => ({ ...previous, request: 'Wait for the location lists to load, or use Try again in the address section.' }));
+            return false;
+        }
         if ((step === 2 || step === undefined) && data.vehicle_types.length === 0) {
             applyErrors({ vehicle_types: 'Choose at least one vehicle category.' });
             return false;
@@ -713,8 +720,10 @@ export default function LogisticsRegister({ birthDateLimits, policies, serviceRe
 
                         {/* Philippine Address Hierarchy & Street */}
                         <PhilippineAddressSelector
+                            onLoadingChange={setAddressLoading}
                             postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData('postal_code', value)} error={stepErrors.postal_code || errors.postal_code} />}
                             values={{
+                                region: data.region,
                                 province: data.province,
                                 city: data.city,
                                 municipality: data.municipality,
@@ -724,6 +733,7 @@ export default function LogisticsRegister({ birthDateLimits, policies, serviceRe
                             onChange={(addr) => {
                                 setData(prev => ({
                                     ...prev,
+                                    region: addr.region,
                                     province: addr.province,
                                     city: addr.city || addr.municipality,
                                     municipality: addr.municipality,
@@ -732,6 +742,7 @@ export default function LogisticsRegister({ birthDateLimits, policies, serviceRe
                                 }));
                             }}
                             errors={{
+                                region: stepErrors.region || errors.region,
                                 province: stepErrors.province || errors.province,
                                 municipality: stepErrors.municipality || errors.municipality,
                                 barangay: stepErrors.barangay || errors.barangay,

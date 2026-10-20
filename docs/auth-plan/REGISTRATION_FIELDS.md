@@ -32,10 +32,20 @@ without a permanent paragraph of instructions underneath the names.
 
 ## Field contracts
 
+The buyer address book and every public registration form, including first
+Google signup, load region, province/area, city/municipality and barangay from
+Bagoo's `/address-locations` endpoint and the same bundled Philippine catalogue.
+Changing an ancestor clears its dependent selections. Forms retain street and
+postal input while location loading fails, offer a retry, and wait for valid
+choices before advancing. Region-aware submissions are checked against the same
+parent relationships on the server before uploads or account creation. Older
+clients without a region field retain their existing label-based submission
+contract; an explicitly supplied empty region cannot bypass the new selector.
+
 | Field | Limits and handling |
 |---|---|
 | First/last names | 2–50 characters each; Latin letters/accents, spaces, apostrophes, hyphens and periods. No digits, markup, hidden characters or punctuation-only values. Derive the display name on the server; combined limit 100, including spaces. |
-| Middle initial | Optional one Latin letter, optionally followed by a period; maximum 2 characters. Keep its control narrower than the other names. Existing full middle names remain supported at 1–50 characters in legacy requests/corrections. |
+| Middle initial | Optional one or two Latin letters, followed by one automatically added period; maximum 3 displayed characters. Format on field blur and final submission; reject digits, extra letters and malformed punctuation. Keep its control narrower than the other names. Existing full middle names remain supported at 1–50 characters in legacy requests/corrections. |
 | Email | Maximum 255; trim outer ASCII spaces and lowercase new signup addresses. Reject internal whitespace/controls and malformed syntax. Ownership comparison is case-insensitive; existing sign-in identity stays fixed. |
 | Account mobile | Accept `09XXXXXXXXX` or `+639XXXXXXXXX`, including supported formatting; store the 13-character `+639XXXXXXXXX`. Ten ASCII national digits start with 9 after `+63`. Unique across buyer, seller, courier, logistics and admin accounts, including inactive/closed records. Optional blank buyer/contact edits remain null. Reject landlines, extra digits, letters, unsupported prefixes and extensions. |
 | Shop/company public contact | Philippine mobile or supported area-coded landline. These separate business contacts and delivery-recipient numbers may be shared. Raw application phone input is limited to 24 characters before canonicalization. |

@@ -389,3 +389,34 @@ for (const status of [419, 503, 'network']) test(`bulk read ${status} failure ke
     assert.match(html, status === 419 ? /session expired/ : status === 'network' ? /connection/ : /could not be opened/);
     h.click('Mark all as read'); assert.equal(visits.length, 2);
 }));
+
+for (const role of ['buyer', 'seller', 'courier', 'logistics', 'admin']) test(`${role} can mark earlier notification pages as read from the bell without leaving the current page`, async () => withHarness(async ({h, acks, visits, reloads}) => {
+    const originalGet = axios.get;
+    axios.get = async (...args) => {
+        const result = await originalGet(...args);
+        result.data.readSnapshot = { id: 'captured-owned-snapshot', count: 27, expires_at: '2026-10-20T12:15:00Z' };
+        return result;
+    };
+    h.open = true;
+    const html = await h.render(ui.Menu, {}, actor(role));
+    assert.match(html, /Mark all as read/);
+    h.click('Mark all as read'); h.click('Mark all as read');
+    await tick(); await h.render(ui.Menu, {}, actor(role));
+    const calls = acks.filter(([url]) => url === '/notifications/read-all');
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0][1], {snapshot: 'captured-owned-snapshot'});
+    assert.equal(visits.length, 0);
+    assert.ok(reloads.some(options => options.only.includes('sidebarAttention')));
+    assert.equal(h.closed, 0);
+}));
+
+test('a failed bell bulk update keeps the preview open and offers a retry without claiming success', async () => withHarness(async ({h}) => {
+    axios.get = async () => ({data:{notices:[notice('owned')], summary:{available:true,unread:27}, readSnapshot:{id:'captured-snapshot',count:27}}});
+    axios.patch = async url => { if (url.endsWith('/read-all')) throw Error('Offline'); return {data:{summary:{available:true,unread:26}}}; };
+    h.open = true; await h.render(); h.click('Mark all as read'); await tick();
+    const html = await h.render();
+    assert.match(html, /We could not confirm the read update/);
+    assert.match(html, /Try again/);
+    assert.doesNotMatch(html, /Your earlier updates are marked as read/);
+    assert.equal(h.closed, 0);
+}));

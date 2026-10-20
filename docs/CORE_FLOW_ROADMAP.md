@@ -6962,3 +6962,80 @@ scheduler. This work did not deploy, migrate/reset development or production dat
 open a browser or modify Flutter. PostgreSQL trigger execution and simultaneous
 contention still need their permitted runtime acceptance; SQLite and source
 inspection do not establish those results.
+
+### Registration and portal consistency — October 20, 2026
+
+The `fix/portal-consistency` branch uses the existing Philippine address catalogue
+for the buyer address book and every public web registration form: buyer, seller,
+courier, logistics and first Google signup. All use `/address-locations`, with
+linked region, province/area, city/municipality and barangay choices. Ancestor
+changes clear descendants, slow responses cannot restore old selections, and
+failed reads preserve the remaining input and expose retry controls. The server
+validates region-aware submissions before storing documents or creating accounts;
+older clients without a region field retain their existing submission contract.
+Google signup may still omit its optional address entirely.
+
+The shared middle-initial control accepts one or two Latin letters, with one
+trailing period added on blur and saved submission. Re-entering the field allows
+editing the letters. Digits, extra letters, malformed punctuation and hidden
+characters retain clear feedback and fail validation. First/last-name limits,
+the narrower middle control, and legacy full middle names remain supported.
+
+Every signed-in web role can mark the captured unread notification set as read
+from the bell as well as the complete list. Earlier pages are included; the
+operation cannot include another account or a later unseen arrival. Double taps,
+stale/expired snapshots and failed writes keep the existing recovery behavior.
+The menu stays on the current page and refreshes saved read state and attention
+markers. Automatic acknowledgement still applies only to rendered preview rows.
+
+Admin navigation now groups all existing destinations under Accounts & reviews,
+Marketplace, Deliveries & returns, Finance and Governance. Sections have keyboard
+controls, expose expansion state, and reveal the active destination. Red sidebar
+dots reflect actual admin review/credit queues and restricted listings, and owned
+seller unread messages, drafts/restricted/low-stock products, eligible preparation
+work and relevant unread updates. Collapsed groups retain an attention marker.
+There are no numeric sidebar badges or new product-approval rules. Work dots clear
+when their source is handled; simply opening a queue does not resolve its work.
+Unavailable notification storage leaves other work markers usable and preserves
+the notification page's explicit unavailable state.
+
+The seller chart defaults to 30 days and offers 7 and 90 days. Completed sales use
+recorded buyer-confirmation dates grouped in Asia/Manila; delivered orders awaiting
+confirmation use their actual delivery dates in a separate view. This preserves
+buyer-only completion and the existing sales/commission/payout definitions.
+Completed orders outside seven days are discoverable, zero periods are explained,
+and date labels remain bounded. Chart queries do not grow with the number of days.
+Keyboard arrows can inspect dates without relying on hover. The local diagnostic
+found no delivered/completed orders, so its empty sales total was accurate; the
+dated-activity behavior was verified with isolated fixtures, without manufacturing
+history or changing stored local orders.
+
+| Scoped engineering assessment | Before | After | Evidence and practical limit |
+|---|---|---|---|
+| Registration location and initial consistency | 6/10 | 8/10 | All public roles and Google share choices, formatting and saved-value checks. Legacy requests without a region retain their prior contract. |
+| Notification bulk-read access | 7/10 | 8.5/10 | Bell and full-page actions cover all five roles, ownership, later arrivals, duplicate taps, expiry and retry. |
+| Admin/seller navigation clarity | 5/10 | 8/10 | Every existing admin destination remains available; active sections, real work dots and message refresh have rendering/handler and HTTP checks. |
+| Seller dated activity | 6/10 | 8/10 | Stored dates, Philippine midnight, period boundaries, foreign shops, delivery versus completion and bounded queries are checked. Missing historical event dates are not invented. |
+
+Verification: **1,465 isolated SQLite `:memory:` tests / 68,253 assertions passed**
+across authentication/registration, notifications, seller flows, sidebar attention,
+buyer addresses/navigation, admin/rider/hub navigation, wallet HTTP and the bundled
+location catalogue. **508 frontend tests passed**, including actual component
+rendering and controlled handlers for navigation and notification actions.
+After the broad run, the final unread-destination integration passed another
+**131 isolated tests / 3,280 assertions** across sidebar attention, notifications,
+admin/seller navigation, chart behavior and navigation asset budgets. Final public
+host/Google checks passed **10 tests / 192 assertions**; the final registration,
+session and portal rendering/handler check passed **48 frontend tests**. These
+focused runs overlap the broader counts and are not additional unique totals.
+TypeScript/Vite production build, focused PHP formatting and Git whitespace checks
+pass. An older registration migration assertion now compares every strict
+attribute value independently of SQLite column order; production migrations and
+stored review evidence were not changed. The initial broader run exposed that
+assertion and two notification-outage regressions; the clean rerun above follows
+their corrections.
+
+This is repository/local verification, without browser/device acceptance or an
+Azure deployment. Flutter project files, database resets and seed data are outside
+this branch. No new database migration is required; deployment uses the normal
+`./bagoo.sh deploy` and `./bagoo.sh verify` after user publication and merge.

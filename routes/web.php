@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountEmailController;
 use App\Http\Controllers\AccountReviewController;
+use App\Http\Controllers\AddressLocationController;
 use App\Http\Controllers\Admin\AccountClosureController;
 use App\Http\Controllers\Admin\AccountRestrictionController;
 use App\Http\Controllers\Admin\AdminDashboardController;
@@ -88,6 +89,8 @@ $baseDomains = array_unique(array_filter([
     'bagooph.shop',
     'localhost',
 ]));
+
+Route::get('/address-locations', AddressLocationController::class)->middleware('throttle:120,1')->name('address-locations');
 
 $registerResourceRestrictionRoutes = function () {
     Route::get('/resources', [ResourceRestrictionController::class, 'index'])->name('resources.index');

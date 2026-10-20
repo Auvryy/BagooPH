@@ -98,6 +98,23 @@ class NotificationBulkReadTest extends TestCase
     }
 
     #[DataProvider('roles')]
+    public function test_bell_preview_exposes_an_owned_bulk_action_for_all_pages_without_marking_later_arrivals(string $role): void
+    {
+        $this->freezeTime();
+        $owner = User::factory()->create(['role' => $role]);
+        foreach (range(1, 27) as $index) {
+            $this->notice($owner);
+        }
+        $preview = $this->actingAs($owner)->getJson('/notifications/preview')->assertOk()
+            ->assertJsonCount(6, 'notices')->assertJsonPath('readSnapshot.count', 27);
+        $snapshot = $preview->json('readSnapshot.id');
+        $later = $this->notice($owner);
+        $this->patchJson('/notifications/read-all', ['snapshot' => $snapshot])->assertOk()
+            ->assertJsonPath('updated', 27)->assertJsonPath('summary.unread', 1);
+        $this->assertDatabaseHas('notifications', ['id' => $later, 'read_at' => null]);
+    }
+
+    #[DataProvider('roles')]
     public function test_the_explicit_action_preserves_each_roles_owned_history_and_current_filter(string $role): void
     {
         $owner = User::factory()->create(['role' => $role]);

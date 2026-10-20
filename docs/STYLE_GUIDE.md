@@ -20,6 +20,18 @@ restricted workers keep the account gateway with access to their own updates;
 notifications do not grant operational access. Preserve each portal's typography,
 surfaces and corner treatment, plus visible unread, empty, loading and retry states.
 
+The bell preview and complete list offer an explicit “Mark all as read” action
+for every web role. It acknowledges the exact owned unread set captured when
+the list loaded, including earlier pages; later unseen updates remain unread.
+Keep the current page and show saving, confirmed-result and retry feedback.
+
+Admin navigation groups account reviews, marketplace work, deliveries/returns,
+finance and governance into expandable sections. Reveal the active section on
+navigation and preserve keyboard controls and visible focus. Admin and seller
+links use small red dots for real unread messages or work requiring attention,
+without numeric sidebar badges. Collapsed sections retain an attention dot when
+a child needs action. Visiting a queue does not resolve its outstanding work.
+
 ## 1. Experience Principles
 
 These are BagooPH applications of established design principles, rather than claims that one visual treatment works for everyone.

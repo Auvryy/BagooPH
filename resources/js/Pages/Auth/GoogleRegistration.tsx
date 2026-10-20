@@ -14,16 +14,20 @@ import { registrationInputErrors } from '@/utils/registrationValidation';
 export default function GoogleRegistration({ identity, registrationNonce, policies, birthDateLimits }: {
     identity: { name: string; email: string }; registrationNonce: string; policies: RegistrationPolicies; birthDateLimits: BirthDateLimits;
 }) {
+    const [addressLoading, setAddressLoading] = useState(false);
     const [feedback, setFeedback] = useState<Record<string, string>>({});
     const { data, setData, post, errors, processing, clearErrors } = useForm({
         registration_nonce: registrationNonce, policy_accepted: false,
         terms_version: policies.terms_version, privacy_version: policies.privacy_version,
         first_name: '', middle_initial: '', last_name: '', birthday: '', phone: '', sex: '', postal_code: '',
-        province: '', city: '', municipality: '', barangay: '', address: '',
+        region: '', province: '', city: '', municipality: '', barangay: '', address: '',
     });
     const messages: Record<string, string | undefined> = { ...errors, ...feedback };
     const submit: FormEventHandler = event => {
         event.preventDefault();
+        if (addressLoading && [data.region, data.province, data.city, data.barangay, data.address].some(value => value.trim())) {
+            setFeedback(previous => ({ ...previous, address: 'Wait for the location lists to load, or use Try again below.' })); return;
+        }
         const invalid = registrationInputErrors({ ...data, role: 'buyer' }, birthDateLimits, undefined, true);
         setFeedback(invalid);
         if (Object.keys(invalid).length) return;
@@ -52,7 +56,7 @@ export default function GoogleRegistration({ identity, registrationNonce, polici
                 <div className="space-y-1"><label htmlFor="google-phone" className="text-xs font-semibold text-slate-800">Mobile number (optional)</label>
                     <PhoneInput id="google-phone" value={data.phone} onChange={value => setData('phone', value)} error={messages.phone} />
                 </div>
-                <PhilippineAddressSelector postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData('postal_code', value)} error={messages.postal_code} />} values={data} onChange={address => setData(previous => ({ ...previous, ...address }))} errors={messages} required={false} />
+                <PhilippineAddressSelector onLoadingChange={setAddressLoading} postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData('postal_code', value)} error={messages.postal_code} />} values={data} onChange={address => setData(previous => ({ ...previous, ...address }))} errors={messages} required={false} />
                 <RegistrationPolicyAcknowledgement policies={policies} accepted={data.policy_accepted} onChange={accepted => { setData('policy_accepted', accepted); clearErrors('policy_accepted'); }} error={messages.policy_accepted} />
                 <InputError message={errors.terms_version || errors.privacy_version || errors.registration_nonce || (errors as Record<string, string>).email} role="alert" />
                 <button className="w-full rounded-lg bg-[#E00D42] px-4 py-3 text-sm font-bold text-white disabled:opacity-50" type="submit">{processing ? 'Creating account…' : 'Create buyer account'}</button>

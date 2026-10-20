@@ -39,6 +39,7 @@ import MasterCategorySelect, { MasterCategoryChoice } from '@/Components/MasterC
 
 export default function SellerRegister({ birthDateLimits, masterCategories, policies }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies; masterCategories: MasterCategoryChoice[] }) {
     const [currentStep, setCurrentStep] = useState(1);
+    const [addressLoading, setAddressLoading] = useState(false);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -65,6 +66,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
         address: string;
         postal_code: string;
         city: string;
+        region: string;
         province: string;
         municipality: string;
         barangay: string;
@@ -90,7 +92,8 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
         address: '',
         postal_code: '',
         city: '',
-        province: 'Metro Manila',
+        region: '',
+        province: '',
         municipality: '',
         barangay: '',
         role: 'seller',
@@ -184,6 +187,10 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
     };
 
     const validateForm = async (step?: number) => {
+        if ((step === undefined || step === 2) && addressLoading) {
+            setStepErrors(previous => ({ ...previous, request: 'Wait for the location lists to load, or use Try again in the address section.' }));
+            return false;
+        }
         return validate(step);
     };
 
@@ -421,8 +428,10 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                         </div>
 
                         <PhilippineAddressSelector
+                            onLoadingChange={setAddressLoading}
                             postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData('postal_code', value)} error={stepErrors.postal_code || errors.postal_code} />}
                             values={{
+                                region: data.region,
                                 province: data.province,
                                 city: data.city,
                                 municipality: data.municipality,
@@ -432,6 +441,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                             onChange={(addr) => {
                                 setData(prev => ({
                                     ...prev,
+                                    region: addr.region,
                                     province: addr.province,
                                     city: addr.city,
                                     municipality: addr.municipality,
@@ -446,6 +456,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                             streetLabel="Warehouse / Store Street Address"
                             streetPlaceholder="Unit No., Building, Street Name"
                             errors={{
+                                region: stepErrors.region || errors.region,
                                 province: stepErrors.province || errors.province,
                                 municipality: stepErrors.municipality || errors.municipality,
                                 barangay: stepErrors.barangay || errors.barangay,

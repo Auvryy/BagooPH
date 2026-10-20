@@ -11,6 +11,7 @@ use App\Models\Shop;
 use App\Services\BuyerAccessService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Notifications\NotificationCenterService;
+use App\Services\SidebarAttentionService;
 use App\Services\VerificationDocumentService;
 use Closure;
 use Illuminate\Http\Request;
@@ -139,6 +140,7 @@ class HandleInertiaRequests extends Middleware
             'savedProductIds' => fn () => $user && $user->isBuyer() && $user->canAccessPortal()
                 ? SavedProduct::where('buyer_id', $user->id)->pluck('product_id') : [],
             'unreadMessagesCount' => $unreadMessagesCount,
+            'sidebarAttention' => fn () => app(SidebarAttentionService::class)->for($user, $unreadMessagesCount),
             'notificationSummary' => app(NotificationCenterService::class)->summary($user),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

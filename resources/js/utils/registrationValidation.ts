@@ -28,7 +28,14 @@ export function middleInitialError(value: string): string | undefined {
     if (/\p{C}/u.test(value)) return 'Remove hidden characters from your middle initial.';
     const initial = value.normalize('NFKC').replace(/^ +| +$/g, '');
     if (!initial) return undefined;
-    return /^\p{Script=Latin}\.?$/u.test(initial) ? undefined : 'Enter one letter, with an optional period, such as M or M.';
+    return /^\p{Script=Latin}{1,2}\.?$/u.test(initial) ? undefined : 'Enter one or two letters, such as M. or MD.';
+}
+
+export function formatMiddleInitial(value: string): string {
+    if (middleInitialError(value)) return value;
+    const letters = value.normalize('NFKC').trim().replace(/\.$/, '');
+    const uppercase = letters.toUpperCase();
+    return letters ? (Array.from(uppercase).length <= 2 ? uppercase : letters) + '.' : '';
 }
 
 function birthDateError(value: string, limits: BirthDateLimits, adult: boolean): string | undefined {
@@ -73,6 +80,11 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
     }
     const locationStep = role === 'courier' ? 1 : role === 'logistics' ? 3 : 2;
     if (checking(locationStep)) {
+        if (worker || !google || ['region', 'province', 'city', 'barangay', 'address'].some(field => value(field).trim())) {
+            for (const [field, label] of [['region', 'Region'], ['province', 'Province or area'], ['city', 'City or municipality'], ['barangay', 'Barangay']] as const) {
+                if (!value(field).trim()) errors[field] = 'Choose a ' + label.toLowerCase() + ' from the list.';
+            }
+        }
         for (const [field, label] of [['city', 'City or municipality'], ['address', 'Street address']] as const) {
             const required = worker || (role === 'buyer' && !google);
             add(field, !value(field).trim() && required ? label + ' is required.' : registrationTextError(value(field), field === 'address' ? 5 : 2, field === 'address' ? 500 : 255, required));
