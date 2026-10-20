@@ -33,6 +33,9 @@ test('admin sections retain all destinations and open the active group with keyb
  assert.match(html,/aria-current="page"[^>]*[\s\S]*?Users/);
  assert.match(html,/<div[^>]*hidden=""[^>]*role="group" aria-label="Marketplace"/);
  assert.match(html,/h-2 w-2 rounded-full bg-\[#E00D42\]/);
+ for(const [label,iconName] of [['Accounts &amp; reviews','users'],['Marketplace','store'],['Deliveries &amp; returns','truck'],['Finance','banknote'],['Governance','shield-check']]){
+  assert.match(html,new RegExp(`<button[^>]*>[\\s\\S]*?lucide-${iconName}[\\s\\S]*?<span>${label}</span>`));
+ }
 });
 
 test('admin sections really collapse and reopen through their controls',()=>{
@@ -69,16 +72,36 @@ test('seller chart renders actual sales and usable period choices instead of hid
  assert.match(html,/Philippine dates/);
  assert.ok((html.match(/class="uppercase tracking-wider"/g)??[]).length<=8);
  assert.doesNotMatch(html,/NaN/);
+ assert.doesNotMatch(html,/Sales chart activity|aria-pressed=|>Awaiting confirmation<|>Completed sales<\/button>/);
 });
 test('delivered orders display their own dated activity and cannot be presented as completed income',async()=>{
  const html=await render(ui.Sales,{...props,stats:{...stats,completedGrossSales:0,completedOrderCount:0},dailySales:sales.map(x=>({...x,revenue:0,units:0})),dailyDeliveries:sales});
  assert.match(html,/Delivered order value/);assert.match(html,/They count as completed sales after the buyer confirms receipt/);
  assert.doesNotMatch(html,/No delivered orders awaiting confirmation/);
  assert.doesNotMatch(html,/Selected date completed sales/);
+ assert.doesNotMatch(html,/Sales chart activity|aria-pressed=/);
+});
+test('seller chart returns to completed sales when a selected period contains both types of activity',async()=>{
+ const html=await render(ui.Sales,{...props,dailyDeliveries:sales});
+ assert.match(html,/<h3[^>]*>Completed sales<\/h3>/);
+ assert.doesNotMatch(html,/Delivered order value|Awaiting confirmation/);
+});
+test('empty seller chart has no mode controls and centers its message beneath the header',async()=>{
+ const html=await render(ui.Sales,{...props,stats:{...stats,completedGrossSales:0,completedOrderCount:0},dailySales:sales.map(x=>({...x,revenue:0,units:0}))});
+ assert.match(html,/No completed sales in this period/);
+ assert.match(html,/relative flex flex-1 flex-col justify-center/);
+ assert.doesNotMatch(html,/Sales chart activity|>Awaiting confirmation<|>Completed sales<\/button>/);
 });
 test('seller navigation uses red attention dots without numeric badges',async()=>{
- const html=await render(ui.Dashboard,{title:'Seller',children:null,sidebarAttention:{messages:true,products:true,vouchers:true},unreadMessagesCount:12});
- assert.match(html,/Unread messages/);assert.match(html,/Drafts, restricted listings or low stock/);
- assert.equal((html.match(/ring-2 ring-white/g)??[]).length,3);
+ const html=await render(ui.Dashboard,{title:'Seller',children:null,sidebarAttention:{messages:true,orders:true,products:true,vouchers:true},unreadMessagesCount:12});
+ assert.match(html,/Unread messages/);assert.match(html,/Orders ready for your next step/);
+ assert.equal((html.match(/ring-2 ring-white/g)??[]).length,2);
  assert.doesNotMatch(html,/>12<|>12 unread<|animate-pulse/);
+});
+test('informational updates and Products never add sidebar dots even in retained props',async()=>{
+ const sidebarAttention={products:true,vouchers:true,finances:true,promotions:true,orders:false,messages:false};
+ for(const role of ['seller','admin']){
+  const html=await render(ui.Dashboard,{title:role,children:null,sidebarAttention,unreadMessagesCount:0},{...seller,role});
+  assert.doesNotMatch(html,/ring-2 ring-white|Drafts, restricted listings or low stock|Restricted product listings/);
+ }
 });

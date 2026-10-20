@@ -124,7 +124,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
     const refreshTracking = () => {
         if (refreshPending.current || writePending.current || returnPending.current) return;
         refreshPending.current = true; setTrackingRefreshing(true); setActionError('');
-        router.reload({ only: ['orders', 'counts', 'currentStatus', 'shopEligible', 'returnReceiptToken', 'flash'],
+        router.reload({ only: ['orders', 'counts', 'currentStatus', 'shopEligible', 'returnReceiptToken', 'sidebarAttention', 'flash'],
             onError: errors => setActionError(Object.values(errors).join(' ') || 'Tracking could not refresh. Try again.'),
             onFinish: () => { refreshPending.current = false; setTrackingRefreshing(false); },
         });
@@ -195,7 +195,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
         router.get(url.pathname + url.search, {}, {
             preserveState: true,
             preserveScroll: true,
-            only: ['orders', 'counts', 'currentStatus', 'shopEligible', 'returnReceiptToken', 'flash'],
+            only: ['orders', 'counts', 'currentStatus', 'shopEligible', 'returnReceiptToken', 'sidebarAttention', 'flash'],
             onError: errors => { setActionError(Object.values(errors).join(' ')); setActiveTab(currentStatus); },
             onStart: () => setIsTabLoading(true),
             onFinish: () => setIsTabLoading(false),
@@ -668,9 +668,9 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                 </div>}
 
                 {orders.last_page > 1 && <nav aria-label="Seller order pages" className="flex items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white p-4 text-xs">
-                    <PortalLink href={orders.prev_page_url ?? '#'} only={['orders', 'counts', 'currentStatus', 'shopEligible', 'shop', 'returnReceiptToken', 'auth', 'flash', 'errors']} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.prev_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.prev_page_url || isSubmitting} onClick={event => { if (!orders.prev_page_url || isSubmitting) event.preventDefault(); }}>Previous</PortalLink>
+                    <PortalLink href={orders.prev_page_url ?? '#'} only={['orders', 'counts', 'currentStatus', 'shopEligible', 'shop', 'returnReceiptToken', 'sidebarAttention', 'auth', 'flash', 'errors']} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.prev_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.prev_page_url || isSubmitting} onClick={event => { if (!orders.prev_page_url || isSubmitting) event.preventDefault(); }}>Previous</PortalLink>
                     <span>Page {orders.current_page} of {orders.last_page} · {orders.total} orders</span>
-                    <PortalLink href={orders.next_page_url ?? '#'} only={['orders', 'counts', 'currentStatus', 'shopEligible', 'shop', 'returnReceiptToken', 'auth', 'flash', 'errors']} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.next_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.next_page_url || isSubmitting} onClick={event => { if (!orders.next_page_url || isSubmitting) event.preventDefault(); }}>Next</PortalLink>
+                    <PortalLink href={orders.next_page_url ?? '#'} only={['orders', 'counts', 'currentStatus', 'shopEligible', 'shop', 'returnReceiptToken', 'sidebarAttention', 'auth', 'flash', 'errors']} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.next_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.next_page_url || isSubmitting} onClick={event => { if (!orders.next_page_url || isSubmitting) event.preventDefault(); }}>Next</PortalLink>
                 </nav>}
 
             </div>

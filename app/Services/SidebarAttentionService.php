@@ -2,16 +2,14 @@
 
 namespace App\Services;
 
-use App\Enums\OrderStatus;
 use App\Models\AccountReviewRequest;
 use App\Models\AdvertisementSubmission;
 use App\Models\Order;
-use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use App\Models\WalletTopUpRequest;
-use App\Services\Notifications\NotificationCenterService;
-use Illuminate\Database\QueryException;
+use App\Services\Orders\OrderLifecycleService;
+use App\Services\Orders\OrderWorkspaceService;
 
 class SidebarAttentionService
 {
@@ -21,44 +19,40 @@ class SidebarAttentionService
             return [];
         }
         if ($user->isAdmin()) {
-            return $this->withUnreadTargets($user, [
+            return [
                 'shop_reviews' => Shop::where('review_status', 'pending_approval')->exists(),
                 'kyc' => User::whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])->where('kyc_status', 'pending_approval')->exists(),
                 'review_requests' => AccountReviewRequest::doesntHave('decision')->exists(),
-                'products' => Product::where('compliance_restricted', true)->exists(),
                 'advertisements' => AdvertisementSubmission::doesntHave('reviews')->exists(),
                 'wallet_credits' => WalletTopUpRequest::where('status', 'pending')->exists(),
-            ]);
+            ];
         }
-        $shops = Shop::where('user_id', $user->id)->select('id');
 
-        return $this->withUnreadTargets($user, [
+        return [
             'messages' => $unreadMessages > 0,
-            'products' => Product::whereIn('shop_id', $shops)->where(fn ($products) => $products
-                ->where('status', 'draft')->orWhere('compliance_restricted', true)
-                ->orWhere(fn ($stock) => $stock->where('status', 'active')->where('stock', '<=', 5)))->exists(),
-            'orders' => Order::whereIn('status', [OrderStatus::PLACED->value, OrderStatus::PENDING->value,
-                OrderStatus::CONFIRMED->value, OrderStatus::PREPARING->value, OrderStatus::PROCESSING->value, 'packaging'])
-                ->where(fn ($orders) => $orders->where('payment_method', 'cod')->orWhere('payment_status', 'paid'))
-                ->whereHas('items', fn ($items) => $items->whereIn('shop_id', $shops))->exists(),
-        ]);
+            'orders' => $this->sellerOrdersNeedAction($user),
+        ];
     }
 
-    private function withUnreadTargets(User $user, array $work): array
+    private function sellerOrdersNeedAction(User $seller): bool
     {
-        try {
-            $notices = $user->notifications()->whereIn('type', NotificationCenterService::TYPES)->whereNull('read_at');
-            $targets = $user->isAdmin()
-                ? ['review_requests' => 'account-review-admin', 'advertisements' => 'promotion-admin']
-                : ['products' => 'seller-products', 'orders' => 'seller-orders', 'vouchers' => 'seller-vouchers',
-                    'finances' => 'seller-settlement', 'promotions' => 'promotion-seller'];
-            foreach ($targets as $key => $target) {
-                $work[$key] = ($work[$key] ?? false) || (clone $notices)->where('data->target', $target)->exists();
-            }
-        } catch (QueryException) {
-            // A notification outage must not hide independently recorded work.
+        $shops = Shop::where('user_id', $seller->id)->limit(2)->get();
+        if ($shops->count() !== 1 || ! app(ShopEligibilityService::class)->isEligible($shops->first())) {
+            return false;
         }
+        $shop = $shops->first();
+        $lifecycle = app(OrderLifecycleService::class);
 
-        return $work;
+        return Order::whereIn('status', OrderWorkspaceService::PREPARATION)
+            ->where(fn ($orders) => $orders->where('payment_method', 'cod')->orWhere('payment_status', 'paid'))
+            ->whereHas('items', fn ($items) => $items->where('shop_id', $shop->id))
+            ->whereHas('delivery', fn ($delivery) => $delivery->where('status', 'unassigned')
+                ->whereNull('courier_id')->whereNull('assigned_rider_id'))
+            ->with(['items', 'delivery.checkpoints'])->lazyById(50)
+            ->contains(function (Order $order) use ($shop, $lifecycle): bool {
+                $flags = $lifecycle->sellerActionFlags($order, true, $order->items->every(fn ($item) => $item->shop_id === $shop->id));
+
+                return $flags['can_accept_and_pack'] || $flags['can_pack'] || $flags['can_mark_ready'];
+            });
     }
 }

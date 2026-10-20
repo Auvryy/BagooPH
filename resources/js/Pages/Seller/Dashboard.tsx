@@ -58,8 +58,8 @@ export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveri
     const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
     const [isHoveringChart, setIsHoveringChart] = useState(false);
     const chartClipId = useId();
-    const [chartMode, setChartMode] = useState<'completed' | 'delivered'>(() => dailySales.some(day => day.units > 0 || day.revenue > 0)
-        || !dailyDeliveries.some(day => day.units > 0) ? 'completed' : 'delivered');
+    const chartMode = dailySales.some(day => day.units > 0 || day.revenue > 0)
+        || !dailyDeliveries.some(day => day.units > 0) ? 'completed' : 'delivered';
     const [chartLoading, setChartLoading] = useState(false);
     const [chartError, setChartError] = useState('');
     const chartTitle = chartMode === 'completed' ? 'Completed sales' : 'Delivered order value';
@@ -73,7 +73,7 @@ export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveri
     const pendingActions = stats.pendingPackCount + stats.readyPickupCount;
 
     const chartSeries = chartMode === 'completed' ? dailySales : dailyDeliveries;
-    const hasCompletedSales = chartSeries.some((day) => day.revenue > 0 || day.units > 0);
+    const hasChartActivity = chartSeries.some((day) => day.revenue > 0 || day.units > 0);
 
     // SVG Line Graph Geometry Constants
     const svgWidth = 680;
@@ -253,7 +253,7 @@ export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveri
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     
                     {/* LEFT (8 COLS): INTERACTIVE SPLINE LINE GRAPH */}
-                    <div className="lg:col-span-8 bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+                    <div className="lg:col-span-8 bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs flex flex-col">
                         
                         {/* Chart Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-100">
@@ -280,19 +280,13 @@ export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveri
                             </label>
                         </div>
 
-                        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Sales chart activity">
-                            {(['completed', 'delivered'] as const).map(mode => <button key={mode} type="button" aria-pressed={chartMode === mode} onClick={() => { setChartMode(mode); setHoveredIdx(null); setIsHoveringChart(false); }}
-                                className={`rounded-lg border px-3 py-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-[#E00D42] ${chartMode === mode ? 'border-[#E00D42] bg-rose-50 text-[#C20836]' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
-                                {mode === 'completed' ? 'Completed sales' : 'Awaiting confirmation'}
-                            </button>)}
-                        </div>
                         {chartLoading && <p role="status" className="mt-2 text-xs text-slate-600">Updating chart...</p>}
                         {chartError && <p role="alert" className="mt-2 text-xs text-rose-700">{chartError}</p>}
                         {chartMode === 'delivered' && <p className="mt-2 text-xs text-amber-800">These orders have arrived. They count as completed sales after the buyer confirms receipt.</p>}
 
                         {/* Interactive Line Chart Canvas - Sleek, Lower Height */}
-                        <div className="relative pt-3 pb-1">
-                            {!hasCompletedSales ? (
+                        <div className="relative flex flex-1 flex-col justify-center pt-3 pb-1">
+                            {!hasChartActivity ? (
                                 <div className="flex h-32 flex-col items-center justify-center px-6 text-center">
                                     <CheckCircle2 className="mb-2 h-5 w-5 text-slate-400" />
                                     <p className="text-sm font-semibold text-slate-700">{chartMode === 'completed' ? 'No completed sales in this period' : 'No delivered orders awaiting confirmation in this period'}</p>
@@ -474,7 +468,7 @@ export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveri
                         </div>
 
                         {/* Bottom Telemetry Strip: Clean Single-Row Bar (Minimalist, Zero Bulk) */}
-                        {hasCompletedSales && <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 mt-1.5 border-t border-slate-100 font-sans text-xs">
+                        {hasChartActivity && <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 mt-1.5 border-t border-slate-100 font-sans text-xs">
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-slate-500">Selected date {chartMode === 'completed' ? 'completed sales' : 'delivered order value'}</span>
                                 <span className="text-sm font-black text-slate-900 font-sans">
