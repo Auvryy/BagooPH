@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import RatingStars, { ratingLabel } from '@/Components/RatingStars';
 import { PaginatedData, Review, Shop } from '@/types';
 import { MessageSquare, CornerDownRight, CheckCircle2 } from 'lucide-react';
 
 interface Props {
-    reviews: PaginatedData<Review & { product?: { id: number; name: string } }>;
+    reviews: PaginatedData<Review & { product?: { id: number; name: string }; purchased_variant?: { color: string | null; size: string | null; sku_snapshot: string | null } | null }>;
     stats: {
         average_rating: number | null;
         total_reviews: number;
@@ -14,10 +14,19 @@ interface Props {
         rating_breakdown: Record<'5_star' | '4_star' | '3_star' | '2_star' | '1_star', number>;
     };
     shop: Shop;
+    filters?: { rating: number | null };
 }
 
-export default function SellerReviews({ reviews, stats, shop }: Props) {
+export default function SellerReviews({ reviews, stats, shop, filters = { rating: null } }: Props) {
     const [replyingReviewId, setReplyingReviewId] = useState<number | null>(null);
+    const [filtering, setFiltering] = useState(false);
+    const [filterError, setFilterError] = useState('');
+    const filterRating = (value: string) => {
+        if (filtering) return;
+        setFiltering(true); setFilterError('');
+        router.get(route('seller.reviews.index'), value ? { rating: value } : {}, { preserveScroll: true, preserveState: true,
+            onError: errors => setFilterError(Object.values(errors).join(' ')), onFinish: () => setFiltering(false) });
+    };
     const reply = useForm({ reply_text: '' });
 
     const beginReply = (review: Review) => {
@@ -65,7 +74,15 @@ export default function SellerReviews({ reviews, stats, shop }: Props) {
             </div>
             <div className="space-y-6 rounded-2xl border border-slate-300 bg-white p-6 shadow-xs">
                 <div className="space-y-2 border-b border-slate-300 pb-4">
-                    <h2 className="text-sm font-bold text-slate-900">Customer feedback ({reviews.total})</h2>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h2 className="text-sm font-bold text-slate-900">Customer feedback ({reviews.total})</h2>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">Rating
+                            <select value={filters.rating ?? ''} disabled={filtering} onChange={e => filterRating(e.target.value)} className="rounded-lg border border-slate-300 py-2 pl-3 pr-8 text-xs focus:border-[#E00D42] focus:ring-[#E00D42]">
+                                <option value="">All ratings</option>{[5, 4, 3, 2, 1].map(star => <option key={star} value={star}>{star} {star === 1 ? 'star' : 'stars'}</option>)}
+                            </select>
+                        </label>
+                    </div>
+                    {filterError && <p role="alert" className="text-xs text-rose-700">{filterError}</p>}
                     <p className="text-xs text-slate-500">Legacy reviews remain visible. Only verified purchases contribute to your rating.</p>
                     <div className="flex flex-wrap gap-3 text-xs text-slate-600">
                         {[5, 4, 3, 2, 1].map(star => <span key={star}>{star} stars: {stats.rating_breakdown[`${star}_star` as keyof typeof stats.rating_breakdown]}</span>)}
@@ -73,7 +90,7 @@ export default function SellerReviews({ reviews, stats, shop }: Props) {
                 </div>
                 {reviews.data.length === 0 && <div className="space-y-2 py-12 text-center">
                     <MessageSquare className="mx-auto h-6 w-6 text-slate-400" />
-                    <h3 className="font-bold text-slate-800">No customer reviews yet</h3>
+                    <h3 className="font-bold text-slate-800">{filters.rating ? 'No reviews with this rating' : 'No customer reviews yet'}</h3>
                     <p className="text-xs text-slate-500">Completed purchases can be reviewed after the buyer confirms receipt.</p>
                 </div>}
                 <div className="divide-y divide-slate-300">
@@ -93,6 +110,7 @@ export default function SellerReviews({ reviews, stats, shop }: Props) {
                                 {review.verified_purchase ? 'Verified purchase' : 'Unverified legacy review'}
                             </span>
                         </div>
+                        {review.purchased_variant && <p className="text-xs text-slate-600">Purchased option: {[review.purchased_variant.color, review.purchased_variant.size].filter(Boolean).join(' / ') || 'Standard'}{review.purchased_variant.sku_snapshot ? ` · ${review.purchased_variant.sku_snapshot}` : ''}</p>}
                         {review.product && <p className="text-xs text-slate-600">Product: <strong>{review.product.name}</strong></p>}
                         <p className="whitespace-pre-line text-xs leading-relaxed text-slate-700">{review.comment}</p>
                         {review.images?.length ? <div className="flex flex-wrap gap-2">{review.images.map((url, i) => <img key={i} src={url} alt="Buyer review photo" className="h-16 w-16 rounded-lg border border-slate-300 object-cover" />)}</div> : null}

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Review;
+use App\Rules\AsciiPositiveInteger;
 use App\Services\Commerce\ReviewService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
@@ -19,14 +20,34 @@ class SellerReviewController extends Controller
     public function index(Request $request): Response
     {
         $shop = $this->getActiveShop($request);
+        $selection = $request->validate([
+            'rating' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'between:1,5'],
+            'page' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'max:1000000'],
+        ]);
+        $rating = isset($selection['rating']) ? (int) $selection['rating'] : null;
 
         $productIds = Product::where('shop_id', $shop?->id ?? 0)->pluck('id');
 
-        $reviews = Review::withPurchaseVerification()->with(['product', 'buyer:id,name,avatar', 'reply'])
+        $query = Review::withPurchaseVerification()->with(['product', 'buyer:id,name,avatar', 'reply',
+            'orderItem' => fn ($item) => $item->where('shop_id', $shop->id)->whereIn('product_id', $productIds)
+                ->select(['id', 'order_id', 'product_id', 'shop_id', 'color', 'size', 'sku_snapshot']),
+        ])
             ->whereIn('product_id', $productIds)
+            ->when($rating !== null, fn ($query) => $query->where('rating', $rating))
             ->latest()
-            ->orderByDesc('id')
-            ->paginate(15);
+            ->orderByDesc('id');
+        $reviews = (clone $query)->paginate(15);
+        if ($reviews->currentPage() > $reviews->lastPage()) {
+            $reviews = (clone $query)->paginate(15, ['*'], 'page', $reviews->lastPage());
+        }
+        $reviews->withPath($request->getPathInfo())->appends($rating === null ? [] : ['rating' => $rating]);
+        $reviews->through(function (Review $review) {
+            $review->setAttribute('purchased_variant', $review->verified_purchase && $review->orderItem
+                ? $review->orderItem->only(['color', 'size', 'sku_snapshot']) : null);
+            $review->unsetRelation('orderItem');
+
+            return $review;
+        });
 
         $summary = app(ReviewService::class)->shopSummary($shop);
         $totalReviews = $summary['review_count'];
@@ -49,6 +70,7 @@ class SellerReviewController extends Controller
             'reviews' => $reviews,
             'stats' => $stats,
             'shop' => $shop,
+            'filters' => ['rating' => $rating],
         ]);
     }
 

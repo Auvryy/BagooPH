@@ -51,9 +51,10 @@ interface Props {
     counts: Record<string, number>;
     cancellationReasons: string[];
     batchLimit: number;
+    filters?: { search: string; from: string; to: string };
 }
 
-export default function SellerOrders({ orders, shop, shopEligible, returnReceiptToken, currentStatus = 'all', counts, cancellationReasons, batchLimit }: Props) {
+export default function SellerOrders({ orders, shop, shopEligible, returnReceiptToken, currentStatus = 'all', counts, cancellationReasons, batchLimit, filters = { search: '', from: '', to: '' } }: Props) {
     useResolvedPage(orders.current_page);
     const [waybillSelection, setSelectedOrderForWaybill] = useState<any | null>(null);
     const [qrSelection, setSelectedOrderForQr] = useState<any | null>(null);
@@ -65,7 +66,10 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
     const [chatOrder, setChatOrder] = useState<any | null>(null);
     const [chatMessage, setChatMessage] = useState('');
     const [chatSent, setChatSent] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(filters.search);
+    const [dateFrom, setDateFrom] = useState(filters.from);
+    const [dateTo, setDateTo] = useState(filters.to);
+    useEffect(() => { setSearchQuery(filters.search); setDateFrom(filters.from); setDateTo(filters.to); }, [filters.search, filters.from, filters.to]);
     const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
     const [copiedTracking, setCopiedTracking] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,7 +128,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
     const refreshTracking = () => {
         if (refreshPending.current || writePending.current || returnPending.current) return;
         refreshPending.current = true; setTrackingRefreshing(true); setActionError('');
-        router.reload({ only: ['orders', 'counts', 'currentStatus', 'shopEligible', 'returnReceiptToken', 'sidebarAttention', 'flash'],
+        router.reload({ only: ['orders', 'counts', 'filters', 'currentStatus', 'shopEligible', 'returnReceiptToken', 'sidebarAttention', 'flash'],
             onError: errors => setActionError(Object.values(errors).join(' ') || 'Tracking could not refresh. Try again.'),
             onFinish: () => { refreshPending.current = false; setTrackingRefreshing(false); },
         });
@@ -195,7 +199,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
         router.get(url.pathname + url.search, {}, {
             preserveState: true,
             preserveScroll: true,
-            only: ['orders', 'counts', 'currentStatus', 'shopEligible', 'returnReceiptToken', 'sidebarAttention', 'flash'],
+            only: ['orders', 'counts', 'filters', 'currentStatus', 'shopEligible', 'returnReceiptToken', 'sidebarAttention', 'flash'],
             onError: errors => { setActionError(Object.values(errors).join(' ')); setActiveTab(currentStatus); },
             onStart: () => setIsTabLoading(true),
             onFinish: () => setIsTabLoading(false),
@@ -334,16 +338,23 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
         );
     };
 
-    const filteredItems = items.filter(item => {
-        if (!searchQuery.trim()) return true;
-        const q = searchQuery.toLowerCase();
-        return (
-            item.order?.order_number?.toLowerCase().includes(q) ||
-            item.order.items?.some(line => line.product?.name?.toLowerCase().includes(q)) ||
-            (item.order?.recipient_name && item.order.recipient_name.toLowerCase().includes(q)) ||
-            (item.order?.delivery?.tracking_number && item.order.delivery.tracking_number.toLowerCase().includes(q))
-        );
-    });
+    const filteredItems = items;
+    const filterOrders = (event?: React.FormEvent, clear = false) => {
+        event?.preventDefault();
+        if (isSubmitting || isTabLoading) return;
+        const url = new URL(window.location.href);
+        for (const [key, value] of Object.entries(clear ? { search: '', from: '', to: '' } : { search: searchQuery.trim(), from: dateFrom, to: dateTo })) {
+            if (value) url.searchParams.set(key, value); else url.searchParams.delete(key);
+        }
+        url.searchParams.delete('page');
+        setActionError(''); setSelectedOrderIds([]); setIsTabLoading(true);
+        router.get(url.pathname + url.search, {}, {
+            preserveState: true, preserveScroll: true,
+            only: ['orders', 'counts', 'filters', 'currentStatus', 'shopEligible', 'returnReceiptToken', 'sidebarAttention', 'flash'],
+            onError: errors => setActionError(Object.values(errors).join(' ')),
+            onFinish: () => setIsTabLoading(false),
+        });
+    };
 
     return (
         <DashboardLayout
@@ -420,16 +431,19 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                         )}
                     </div>
 
-                    <div className="w-full sm:w-80 relative text-xs">
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search this page: order, item, tracking…"
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition placeholder:text-slate-400"
-                        />
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                    </div>
+                    <form onSubmit={filterOrders} className="flex w-full flex-wrap items-end gap-2 text-xs sm:w-auto">
+                        <label className="min-w-48 flex-1 space-y-1 font-semibold text-slate-600">
+                            <span>Search orders</span>
+                            <span className="relative block">
+                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                                <input type="search" maxLength={100} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Order, item, buyer or tracking" className="w-full rounded-xl border border-slate-300 bg-slate-50 py-2 pl-9 pr-3 text-xs focus:border-[#E00D42] focus:ring-[#E00D42]" />
+                            </span>
+                        </label>
+                        <label className="space-y-1 font-semibold text-slate-600">From<input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="block rounded-xl border border-slate-300 bg-slate-50 px-2 py-2 text-xs focus:border-[#E00D42] focus:ring-[#E00D42]" /></label>
+                        <label className="space-y-1 font-semibold text-slate-600">To<input type="date" min={dateFrom || undefined} value={dateTo} onChange={e => setDateTo(e.target.value)} className="block rounded-xl border border-slate-300 bg-slate-50 px-2 py-2 text-xs focus:border-[#E00D42] focus:ring-[#E00D42]" /></label>
+                        <button disabled={isSubmitting || isTabLoading} className="rounded-xl bg-[#E00D42] px-3 py-2 font-bold text-white disabled:opacity-50">Apply</button>
+                        {(filters.search || filters.from || filters.to) && <button type="button" disabled={isSubmitting || isTabLoading} onClick={() => filterOrders(undefined, true)} className="rounded-xl border border-slate-300 px-3 py-2 text-slate-700 disabled:opacity-50">Clear</button>}
+                    </form>
                 </div>
 
                 {actionError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{actionError}</p>}
@@ -668,9 +682,9 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                 </div>}
 
                 {orders.last_page > 1 && <nav aria-label="Seller order pages" className="flex items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white p-4 text-xs">
-                    <PortalLink href={orders.prev_page_url ?? '#'} only={['orders', 'counts', 'currentStatus', 'shopEligible', 'shop', 'returnReceiptToken', 'sidebarAttention', 'auth', 'flash', 'errors']} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.prev_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.prev_page_url || isSubmitting} onClick={event => { if (!orders.prev_page_url || isSubmitting) event.preventDefault(); }}>Previous</PortalLink>
+                    <PortalLink href={orders.prev_page_url ?? '#'} only={['orders', 'counts', 'filters', 'currentStatus', 'shopEligible', 'shop', 'returnReceiptToken', 'sidebarAttention', 'auth', 'flash', 'errors']} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.prev_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.prev_page_url || isSubmitting} onClick={event => { if (!orders.prev_page_url || isSubmitting) event.preventDefault(); }}>Previous</PortalLink>
                     <span>Page {orders.current_page} of {orders.last_page} · {orders.total} orders</span>
-                    <PortalLink href={orders.next_page_url ?? '#'} only={['orders', 'counts', 'currentStatus', 'shopEligible', 'shop', 'returnReceiptToken', 'sidebarAttention', 'auth', 'flash', 'errors']} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.next_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.next_page_url || isSubmitting} onClick={event => { if (!orders.next_page_url || isSubmitting) event.preventDefault(); }}>Next</PortalLink>
+                    <PortalLink href={orders.next_page_url ?? '#'} only={['orders', 'counts', 'filters', 'currentStatus', 'shopEligible', 'shop', 'returnReceiptToken', 'sidebarAttention', 'auth', 'flash', 'errors']} preserveState preserveScroll className={`rounded-xl border border-slate-300 px-4 py-2 font-semibold ${orders.next_page_url && !isSubmitting ? '' : 'pointer-events-none opacity-40'}`} aria-disabled={!orders.next_page_url || isSubmitting} onClick={event => { if (!orders.next_page_url || isSubmitting) event.preventDefault(); }}>Next</PortalLink>
                 </nav>}
 
             </div>
