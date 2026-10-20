@@ -7,6 +7,7 @@ use App\Rules\ApplicationText;
 use App\Rules\BirthDate;
 use App\Rules\CompanyTin;
 use App\Rules\MasterCategory;
+use App\Rules\MiddleInitial;
 use App\Rules\PhilippineContact;
 use App\Rules\PhilippineLicenseNumber;
 use App\Rules\PhilippinePlateNumber;
@@ -123,7 +124,7 @@ class ApplicationValidationService
         $identifiers = array_intersect_key($data, array_flip(['plate_number', 'license_number', 'company_code', 'franchise_number']));
         $data = $this->normalize($data, $role);
         if (isset($data['middle_initial']) && is_string($data['middle_initial']) && ! preg_match('/\p{C}/u', $data['middle_initial'])) {
-            $data['middle_initial'] = trim(Normalizer::normalize($data['middle_initial'], Normalizer::FORM_KC), ' ') ?: null;
+            $data['middle_initial'] = MiddleInitial::canonical($data['middle_initial']) ?: null;
         }
         // Reject malformed separators and non-ASCII look-alikes instead of repairing identifiers.
         foreach ($identifiers as $field => $value) {

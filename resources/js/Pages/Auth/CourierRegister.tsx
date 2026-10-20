@@ -40,6 +40,7 @@ import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
 export default function CourierRegister({ birthDateLimits, policies }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies }) {
     const [currentStep, setCurrentStep] = useState(1);
+    const [addressLoading, setAddressLoading] = useState(false);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -69,6 +70,7 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
         address: string;
         postal_code: string;
         city: string;
+        region: string;
         province: string;
         municipality: string;
         barangay: string;
@@ -96,7 +98,8 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
         address: '',
         postal_code: '',
         city: '',
-        province: 'Metro Manila',
+        region: '',
+        province: '',
         municipality: '',
         barangay: '',
         vehicle_type: 'Motorcycle',
@@ -223,6 +226,10 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
     };
 
     const validateForm = async (step?: number) => {
+        if ((step === undefined || step === 1) && addressLoading) {
+            setStepErrors(previous => ({ ...previous, request: 'Wait for the location lists to load, or use Try again in the address section.' }));
+            return false;
+        }
         if ((step === 2 || step === undefined) && !data.license_number.trim()) {
             applyErrors({ license_number: 'Driver licence number is required.' });
             return false;
@@ -424,8 +431,10 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
                         </div>
 
                         <PhilippineAddressSelector
+                            onLoadingChange={setAddressLoading}
                             postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData('postal_code', value)} error={stepErrors.postal_code || errors.postal_code} courier />}
                             values={{
+                                region: data.region,
                                 province: data.province,
                                 city: data.city,
                                 municipality: data.municipality,
@@ -435,6 +444,7 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
                             onChange={(addr) => {
                                 setData(prev => ({
                                     ...prev,
+                                    region: addr.region,
                                     province: addr.province,
                                     city: addr.city,
                                     municipality: addr.municipality,
@@ -448,6 +458,7 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
                             streetLabel="Garage / Terminal Street Address"
                             streetPlaceholder="Unit / Street / Building"
                             errors={{
+                                region: stepErrors.region || errors.region,
                                 province: stepErrors.province || errors.province,
                                 municipality: stepErrors.municipality || errors.municipality,
                                 barangay: stepErrors.barangay || errors.barangay,

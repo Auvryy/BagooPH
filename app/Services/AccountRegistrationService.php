@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
-use Normalizer;
 
 class AccountRegistrationService
 {
@@ -45,7 +44,7 @@ class AccountRegistrationService
             }
             $rules = array_filter($rules, fn ($field) => in_array(explode('.', $field)[0], [...$fields, ...self::MANAGED_FIELDS], true), ARRAY_FILTER_USE_KEY);
         }
-        $request->validate($rules, $this->messages());
+        app(RegistrationAddressService::class)->resolve($request->validate($rules, $this->messages()));
     }
 
     private function prepare(Request $request, string $role, ?int $step = null): bool
@@ -70,10 +69,7 @@ class AccountRegistrationService
         }
 
         if ($hasInitial) {
-            $initial = $request->input('middle_initial');
-            if (is_string($initial) && ! preg_match('/\p{C}/u', $initial)) {
-                $initial = trim(Normalizer::normalize($initial, Normalizer::FORM_KC), ' ');
-            }
+            $initial = MiddleInitial::canonical($request->input('middle_initial'));
             $request->merge(['middle_initial' => $initial, 'middle_name' => $initial]);
         }
 
@@ -96,6 +92,7 @@ class AccountRegistrationService
             'id_document' => ['bail', 'nullable', 'file', new RegistrationDocument],
             'middle_initial' => ['bail', 'nullable', 'string', new MiddleInitial],
         ];
+        $rules += app(RegistrationAddressService::class)->rules();
         if ($separatedName) {
             foreach (['first_name', 'last_name'] as $field) {
                 $rules[$field] = array_map(fn ($rule) => $rule === 'nullable' ? 'required' : $rule, $rules[$field]);
@@ -127,7 +124,7 @@ class AccountRegistrationService
 
     private function stepFields(string $role): array
     {
-        $location = ['address', 'city', 'province', 'municipality', 'barangay', 'postal_code'];
+        $location = ['region', 'address', 'city', 'province', 'municipality', 'barangay', 'postal_code'];
         $password = ['password', 'password_confirmation'];
         $name = ['name', 'first_name', 'middle_name', 'middle_initial', 'last_name', 'sex'];
         $policies = ['policy_accepted', 'terms_version', 'privacy_version'];
@@ -163,7 +160,8 @@ class AccountRegistrationService
         }
         $birthDates = app(BirthDateEligibility::class);
         $separatedName = $this->prepare($request, $role);
-        $validated = $request->validate($this->rules($role, $separatedName, $request->input('vehicle_type')), $this->messages());
+        $validated = app(RegistrationAddressService::class)->resolve($request->validate($this->rules($role, $separatedName, $request->input('vehicle_type')), $this->messages()));
+        $validated = app(ApplicationValidationService::class)->registrationValues($validated, $role);
 
         if ($requireVerifiedEmail && ! app(OtpService::class)->hasValidToken($validated['email'], (string) $request->input('otp_token'), 'registration', role: $role)) {
             throw ValidationException::withMessages(['otp_token' => 'Verify your email before submitting your rider application.']);

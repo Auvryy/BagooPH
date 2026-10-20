@@ -20,7 +20,7 @@ export async function loadAddressLocations(values: AddressLocation, signal?: Abo
     const key = JSON.stringify(params);
     const existing = cachedOptions.get(key);
     if (existing) return existing;
-    const { data } = await axios.get<AddressLocationOptions>(route('buyer.addresses.locations'), { params, signal, timeout: 10000 });
+    const { data } = await axios.get<AddressLocationOptions>('/address-locations', { params, signal, timeout: 10000 });
     for (const field of ['regions', 'provinces', 'cities', 'barangays'] as const) {
         if (!Array.isArray(data[field]) || !data[field].every(item => typeof item.value === 'string' && typeof item.label === 'string')) throw new Error('Location options are unavailable.');
     }

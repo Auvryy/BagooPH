@@ -39,7 +39,10 @@ class RegistrationIdentityMigrationTest extends TestCase
         $migration->up();
         $this->assertSame('+639171234567', $user->fresh()->phone);
         $this->assertNull($empty->fresh()->phone);
-        $this->assertSame($shopBefore, $shop->fresh()->getAttributes());
+        $shopAfter = $shop->fresh()->getAttributes();
+        ksort($shopBefore);
+        ksort($shopAfter);
+        $this->assertSame($shopBefore, $shopAfter);
         $this->assertSame($reviewsBefore, DB::table('shop_review_decisions')->get()->toJson());
         $this->assertSame($counts, [User::count(), Shop::count()]);
         $this->assertSame([], DB::select('PRAGMA foreign_key_check'));

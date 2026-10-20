@@ -16,6 +16,22 @@ class GoogleRegistrationPolicyTest extends TestCase
 {
     use RefreshDatabase, WithRegistrationPolicies;
 
+    public function test_google_signup_uses_the_shared_catalogue_and_saves_two_letter_initials_with_one_period(): void
+    {
+        $this->provider();
+        $this->get(route('auth.google.callback'));
+        $values = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'),
+            'birthday' => '1995-05-15', 'first_name' => 'Ana', 'middle_initial' => 'md', 'last_name' => 'Santos', 'sex' => 'Female',
+            'region' => '1300000000', 'province' => 'Metro Manila', 'city' => 'Makati', 'barangay' => 'Poblacion', 'address' => '12 Bagoo Street'];
+        $this->postJson(route('auth.google.registration.store'), array_replace($values, ['city' => 'City of Cebu']))->assertUnprocessable()->assertJsonValidationErrors('city');
+        $this->postJson(route('auth.google.registration.store'), array_replace($values, ['region' => '']))->assertUnprocessable()->assertJsonValidationErrors('region');
+        $this->assertDatabaseCount('users', 0);
+        $this->post(route('auth.google.registration.store'), $values)->assertSessionHasNoErrors();
+        $this->assertSame('MD.', User::sole()->middle_name);
+        $this->assertSame('City of Makati', User::sole()->city);
+        $this->assertSame('City of Makati', User::sole()->municipality);
+    }
+
     private function provider(mixed $verified = true, string $id = 'google-bagoo-applicant'): void
     {
         $identity = (new SocialiteUser)->setRaw(['email_verified' => $verified])->map([
@@ -137,7 +153,7 @@ class GoogleRegistrationPolicyTest extends TestCase
         $this->provider();
         $this->get(route('auth.google.callback'));
         $data = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'), 'birthday' => '1995-05-15', 'first_name' => 'María', 'middle_initial' => 'J.', 'last_name' => 'O’Connor'];
-        foreach ([['first_name' => 'A'], ['first_name' => 'Ana123'], ['last_name' => str_repeat('A', 51)], ['middle_initial' => 'MM'], ['sex' => 'Unknown'], ['postal_code' => '12345'], ['phone' => '0917ABC4567'], ['address' => '<script>'], ['birthday' => '2000-02-30']] as $invalid) {
+        foreach ([['first_name' => 'A'], ['first_name' => 'Ana123'], ['last_name' => str_repeat('A', 51)], ['middle_initial' => 'MMM'], ['sex' => 'Unknown'], ['postal_code' => '12345'], ['phone' => '0917ABC4567'], ['address' => '<script>'], ['birthday' => '2000-02-30']] as $invalid) {
             $this->postJson(route('auth.google.registration.store'), array_replace($data, $invalid))->assertJsonValidationErrors(array_keys($invalid));
             $this->assertDatabaseCount('users', 0);
             $this->assertDatabaseCount('account_policy_acceptances', 0);

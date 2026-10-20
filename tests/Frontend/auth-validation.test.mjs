@@ -212,7 +212,7 @@ test('derived and nested server errors return to their visible registration fiel
 
 const limits = { today: '2026-10-12', past_maximum: '2026-10-11', adult_maximum: '2008-10-12' };
 const policies = { terms_version: '2026-10-12', privacy_version: '2026-10-12', terms_url: '/terms/2026-10-12', privacy_url: '/privacy/2026-10-12', required: true };
-const identity = role => ({ role, first_name: 'Ana-María', middle_initial: 'J.', last_name: 'O’Connor', email: 'applicant@bagoo.test', birthday: '1999-04-15', phone: '+639171234567', city: 'Makati', address: '12 Bagoo Street', sex: 'Female', postal_code: '0123',
+const identity = role => ({ role, first_name: 'Ana-María', middle_initial: 'J.', last_name: 'O’Connor', email: 'applicant@bagoo.test', birthday: '1999-04-15', phone: '+639171234567', region: '1300000000', province: 'Metro Manila', barangay: 'Poblacion', city: 'Makati', address: '12 Bagoo Street', sex: 'Female', postal_code: '0123',
     password: 'BagooPassword2026!', password_confirmation: 'BagooPassword2026!', shop_name: 'Bagoo Shop', root_category_id: '1', company_name: 'Bagoo Logistics', company_code: 'BGL', tin: '900000001000', service_areas: ['NCR', 'Region III', 'Region IV-A'], fleet_size: '1', vehicle_types: ['motorcycle'], vehicle_type: 'Motorcycle', plate_number: 'AB-12345', license_number: 'N01-12-345678', policy_accepted: true,
     id_document: new File(['%PDF-1.4'], 'id.pdf', { type: 'application/pdf' }), business_permit: new File(['%PDF-1.4'], 'permit.pdf', { type: 'application/pdf' }), driver_license: new File(['%PDF-1.4'], 'license.pdf', { type: 'application/pdf' }), or_cr_document: new File(['%PDF-1.4'], 'registration.pdf', { type: 'application/pdf' }) });
 
@@ -234,16 +234,21 @@ test('each personal name immediately rejects digits and hidden or unsupported ch
     assert.equal(ui.personalNameError('M', 'Middle name', false), undefined);
 });
 
-test('optional middle initial accepts one letter and an optional period with a maximum of two characters', () => {
-    for (const value of ['', '  ', 'M', 'm.', 'Ñ', 'É.', '  M.  ', 'E\u0301.']) assert.equal(ui.middleInitialError(value), undefined, value);
-    for (const value of ['MM', 'M.M', 'M..', 'Middle', '1', 'M1', '.', 'M-', 'M\n', 'M\u200b', 'M\u034f']) assert.ok(ui.middleInitialError(value), value);
+test('optional middle initial accepts one or two letters and formats a single trailing period', () => {
+    for (const value of ['', '  ', 'M', 'm.', 'Ñ', 'É.', '  M.  ', 'E\u0301.', 'MM', 'md.']) assert.equal(ui.middleInitialError(value), undefined, value);
+    for (const value of ['MMM', 'M.M', 'M..', 'Middle', '1', 'M1', '.', 'M-', 'M\n', 'M\u200b', 'M\u034f']) assert.ok(ui.middleInitialError(value), value);
+    assert.equal(ui.formatMiddleInitial('m'), 'M.');
+    assert.equal(ui.formatMiddleInitial('md'), 'MD.');
+    assert.equal(ui.formatMiddleInitial(' MD. '), 'MD.');
+    assert.equal(ui.formatMiddleInitial('M..'), 'M..');
+    assert.equal(ui.formatMiddleInitial('ßß'), 'ßß.');
     const html = renderToStaticMarkup(createElement(ui.PersonalNames, { values: identity('buyer'), onChange() {} }));
     const input = html.match(/<input[^>]*id="middle_initial"[^>]*>/)[0];
-    assert.match(input, /maxlength="2"/i);
+    assert.match(input, /maxlength="3"/i);
     assert.match(input, /minlength="1"/i);
     assert.doesNotMatch(input, /required=/);
     for (const role of ['buyer', 'seller', 'courier', 'logistics']) {
-        assert.match(ui.registrationInputErrors({ ...identity(role), middle_initial: 'MM' }, limits, 1).middle_initial, /one letter/);
+        assert.match(ui.registrationInputErrors({ ...identity(role), middle_initial: 'MMM' }, limits, 1).middle_initial, /one or two letters/);
         assert.equal(ui.registrationInputErrors({ ...identity(role), middle_initial: 'M' }, limits, 1).middle_initial, undefined);
     }
 });
@@ -257,9 +262,9 @@ test('invalid typed and pasted names display accessible inline feedback and pres
         assert.match(input, /value="Ana123"/);
         assert.match(input, /aria-invalid="true"/);
         assert.match(input, new RegExp('aria-describedby="' + field + '-error"'));
-        assert.match(html, field === 'middle_initial' ? /Enter one letter/ : /Numbers and other symbols are not allowed/);
+        assert.match(html, field === 'middle_initial' ? /Enter one or two letters/ : /Numbers and other symbols are not allowed/);
         assert.match(html, /aria-live="polite"/);
-        assert.match(input, field === 'middle_initial' ? /maxlength="2"/i : /maxlength="50"/i);
+        assert.match(input, field === 'middle_initial' ? /maxlength="3"/i : /maxlength="50"/i);
     }
     const valid = renderToStaticMarkup(createElement(ui.PersonalNames, { values: { ...identity('courier'), last_name: 'Peña-O’Connor' }, onChange() {} }));
     assert.doesNotMatch(valid, /aria-invalid="true"/);
@@ -458,12 +463,12 @@ test('sex is required while postal code preserves leading zeroes and remains opt
     assert.doesNotMatch(sex, /Sex \(optional\)/);
     assert.match(sex, /<select[^>]*name="sex"[^>]*required=""[^>]*aria-required="true"/);
     const html = renderToStaticMarkup(createElement(ui.AddressSelector, {
-        values: { province: '', city: '', municipality: '', barangay: '', address: '' }, onChange() {},
+        values: { region: '', province: '', city: '', municipality: '', barangay: '', address: '' }, onChange() {},
         postalCodeField: createElement(ui.RegistrationPostalCodeField, { value: '0123', onChange() {} }),
     }));
     assert.match(html, /Postal code \(optional\)/);
     assert.doesNotMatch(html, /name="sex"/);
-    assert.match(html, /sm:col-span-7[\s\S]*name="barangay"[\s\S]*sm:col-span-5[\s\S]*name="postal_code"[\s\S]*sm:col-span-12[\s\S]*name="address"/);
+    for (const field of ['region', 'province', 'city', 'barangay', 'postal_code', 'address']) assert.ok(html.includes('name="' + field + '"'));
     const postal = html.match(/<input[^>]*name="postal_code"[^>]*>/)[0];
     assert.match(postal, /value="0123"/);
     assert.match(postal, /maxlength="4"/i);
@@ -512,7 +517,7 @@ test('first Google signup collects the same buyer details while relying on the v
     assert.doesNotMatch(result.body, /personal-name-help|First and last names:|Total limit:/);
     assert.match(result.body, /verified@bagoo.test/);
     assert.doesNotMatch(result.body, /<input[^>]*name="email"|<input[^>]*name="password"/);
-    const values = { ...identity('buyer'), email: '', password: '', password_confirmation: '', birthday: '2008-10-12', phone: '', city: '', address: '' };
+    const values = { ...identity('buyer'), email: '', password: '', password_confirmation: '', birthday: '2008-10-12', phone: '', region: '', province: '', city: '', barangay: '', address: '' };
     assert.deepEqual(ui.registrationInputErrors(values, limits, undefined, true), {});
     assert.ok(ui.registrationInputErrors({ ...values, birthday: '' }, limits, undefined, true).birthday);
     assert.ok(ui.registrationInputErrors({ ...values, postal_code: '12345' }, limits, undefined, true).postal_code);

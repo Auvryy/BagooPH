@@ -44,6 +44,33 @@ class RegistrationPreflightTest extends TestCase
     }
 
     #[DataProvider('roles')]
+    public function test_catalogue_locations_and_formatted_initials_are_validated_and_saved_for_every_public_role(string $role): void
+    {
+        Storage::fake('local');
+        Mail::fake();
+        $data = array_replace($this->application($role), [
+            'region' => '1300000000', 'province' => 'Metro Manila', 'city' => 'Makati',
+            'barangay' => 'Poblacion', 'municipality' => 'Wrong municipality', 'middle_initial' => 'md',
+        ]);
+        $this->postJson('/register/validate', $data)->assertOk();
+        foreach ([['city' => 'City of Cebu'], ['barangay' => 'Unlisted Barangay'], ['region' => '0700000000'], ['region' => '']] as $invalid) {
+            $this->postJson('/register/validate', array_replace($data, $invalid))->assertUnprocessable();
+            $this->post('/register', array_replace($data, $invalid))->assertSessionHasErrors();
+        }
+        $this->assertDatabaseCount('users', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+        $this->post('/register', $data)->assertSessionHasNoErrors();
+        $user = User::sole();
+        $this->assertSame('MD.', $user->middle_name);
+        $this->assertSame('José MD. Dela Cruz', $user->name);
+        $this->assertSame('City of Makati', $user->city);
+        $this->assertSame($user->city, $user->municipality);
+        if ($role === 'seller') {
+            $this->assertSame($user->city, $user->shop->city);
+        }
+    }
+
+    #[DataProvider('roles')]
     public function test_valid_preflight_is_repeatable_without_accounts_files_or_verification_mail(string $role): void
     {
         Storage::fake('local');
@@ -192,15 +219,15 @@ class RegistrationPreflightTest extends TestCase
     }
 
     #[DataProvider('roles')]
-    public function test_middle_initial_accepts_one_letter_with_optional_period_and_rejects_invalid_direct_submissions(string $role): void
+    public function test_middle_initial_accepts_one_or_two_letters_with_optional_period_and_rejects_invalid_direct_submissions(string $role): void
     {
         Storage::fake('local');
         Mail::fake();
         $data = array_replace($this->application($role), ['step' => 1, 'middle_name' => 'Conflicting Middle Name']);
-        foreach (['', null, 'M', 'M.', 'ñ', '  M.  ', "E\u{0301}."] as $initial) {
+        foreach (['', null, 'M', 'M.', 'ñ', '  M.  ', 'MD', 'md.', 'ßß', "E\u{0301}."] as $initial) {
             $this->postJson('/register/validate', array_replace($data, ['middle_initial' => $initial]))->assertExactJson(['valid' => true]);
         }
-        foreach (['MM', 'M.M', 'M..', 'Middle', '1', 'M1', '.', 'M-', "M\n", "M\u{200b}", "M\u{034f}", ['M']] as $initial) {
+        foreach (['MMM', 'M.M', 'M..', 'Middle', '1', 'M1', '.', 'M-', "M\n", "M\u{200b}", "M\u{034f}", ['M']] as $initial) {
             $invalid = array_replace($data, ['middle_initial' => $initial]);
             $this->postJson('/register/validate', $invalid)->assertJsonValidationErrors('middle_initial');
             unset($invalid['step']);
@@ -217,8 +244,8 @@ class RegistrationPreflightTest extends TestCase
         unset($data['step']);
         $this->post('/register', array_replace($data, ['middle_initial' => '  ñ.  ']))->assertSessionHasNoErrors()->assertRedirect();
         $user = User::sole();
-        $this->assertSame('ñ.', $user->middle_name);
-        $this->assertSame('José ñ. Dela Cruz', $user->name);
+        $this->assertSame('Ñ.', $user->middle_name);
+        $this->assertSame('José Ñ. Dela Cruz', $user->name);
         $this->assertSame([], app(ApplicationValidationService::class)->errors($user));
     }
 

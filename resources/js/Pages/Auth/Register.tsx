@@ -37,6 +37,7 @@ import { BirthDateLimits } from '@/Components/BirthDateInput';
 
 export default function Register({ birthDateLimits, policies }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies }) {
     const [currentStep, setCurrentStep] = useState(1);
+    const [addressLoading, setAddressLoading] = useState(false);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -57,6 +58,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
         age: string | number;
         sex: string;
         phone: string;
+        region: string;
         province: string;
         city: string;
         municipality: string;
@@ -80,7 +82,8 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
         age: '',
         sex: '',
         phone: '',
-        province: 'Metro Manila',
+        region: '',
+        province: '',
         city: '',
         municipality: '',
         barangay: '',
@@ -167,7 +170,13 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const validateForm = (step?: number) => validate(step);
+    const validateForm = async (step?: number) => {
+        if ((step === undefined || step === 2) && addressLoading) {
+            setStepErrors(previous => ({ ...previous, request: 'Wait for the location lists to load, or use Try again in the address section.' }));
+            return false;
+        }
+        return validate(step);
+    };
 
     const handleNext = async () => {
         if (processing || validating) return;
@@ -505,8 +514,10 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
 
                         {/* Province, City, Barangay & Street Address */}
                         <PhilippineAddressSelector
+                            onLoadingChange={setAddressLoading}
                             postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData('postal_code', value)} error={stepErrors.postal_code || errors.postal_code} />}
                             values={{
+                                region: data.region,
                                 province: data.province,
                                 city: data.city,
                                 municipality: data.municipality,
@@ -516,6 +527,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                             onChange={(addr) => {
                                 setData(prev => ({
                                     ...prev,
+                                    region: addr.region,
                                     province: addr.province,
                                     city: addr.city,
                                     municipality: addr.municipality,
@@ -530,6 +542,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                             streetLabel="Delivery Street Address / House No."
                             streetPlaceholder="Unit / Street / Building"
                             errors={{
+                                region: stepErrors.region || errors.region,
                                 province: stepErrors.province || errors.province,
                                 municipality: stepErrors.municipality || errors.municipality,
                                 barangay: stepErrors.barangay || errors.barangay,
