@@ -235,14 +235,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
     const attentionKeys: Record<string, keyof typeof sidebarAttention> = {
         'Shop reviews': 'shop_reviews', 'KYC Queue': 'kyc', 'Review requests': 'review_requests',
-        Products: 'products', Advertisements: 'advertisements', 'Wallet credits': 'wallet_credits',
-        Messages: 'messages', Orders: 'orders', Vouchers: 'vouchers', Finances: 'finances', Promotions: 'promotions',
+        Advertisements: 'advertisements', 'Wallet credits': 'wallet_credits',
+        Messages: 'messages', Orders: 'orders',
     };
     const navItems = getNavItems().map(item => ({ ...item,
         attention: Boolean(sidebarAttention[attentionKeys[item.name]] || (item.name === 'Messages' && unreadMessagesCount > 0)),
-        attentionLabel: item.name === 'Messages' ? 'Unread messages' : item.name === 'Products'
-            ? role === 'admin' ? 'Restricted product listings' : 'Drafts, restricted listings or low stock'
-            : 'Needs attention',
+        attentionLabel: item.name === 'Messages' ? 'Unread messages' : item.name === 'Orders'
+            ? 'Orders ready for your next step' : 'Awaiting your review',
     }));
     const WorkspaceLink = ['seller', 'logistics', 'admin'].includes(role) ? PortalLink : Link;
 

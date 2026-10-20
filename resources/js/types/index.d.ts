@@ -1,6 +1,6 @@
 export type Role = 'admin' | 'seller' | 'buyer' | 'courier' | 'logistics';
 
-export type SidebarAttention = Partial<Record<'shop_reviews' | 'kyc' | 'review_requests' | 'products' | 'advertisements' | 'wallet_credits' | 'messages' | 'orders' | 'vouchers' | 'finances' | 'promotions', boolean>>;
+export type SidebarAttention = Partial<Record<'shop_reviews' | 'kyc' | 'review_requests' | 'advertisements' | 'wallet_credits' | 'messages' | 'orders', boolean>>;
 
 export type KycStatus = 'pending_approval' | 'approved' | 'rejected' | 'none' | 'verified';
 

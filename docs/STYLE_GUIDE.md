@@ -26,11 +26,16 @@ the list loaded, including earlier pages; later unseen updates remain unread.
 Keep the current page and show saving, confirmed-result and retry feedback.
 
 Admin navigation groups account reviews, marketplace work, deliveries/returns,
-finance and governance into expandable sections. Reveal the active section on
-navigation and preserve keyboard controls and visible focus. Admin and seller
-links use small red dots for real unread messages or work requiring attention,
-without numeric sidebar badges. Collapsed sections retain an attention dot when
-a child needs action. Visiting a queue does not resolve its outstanding work.
+finance and governance into expandable sections, each with a matching icon beside
+its label. Reveal the active section on navigation and preserve keyboard controls
+and visible focus. Admin and seller links use small red dots for unread messages
+or an available action, without numeric sidebar badges. Seller order dots follow
+the same approval, payment, custody and preparation rules as their action buttons;
+waiting for pickup and transit do not need seller action. Products, low stock,
+drafts and informational notifications do not add sidebar dots. Keep stock alerts
+in the dashboard and Products page, and informational updates in the bell.
+Collapsed sections retain a dot only when a child needs action. Visiting a queue
+does not resolve its outstanding work.
 
 ## 1. Experience Principles
 

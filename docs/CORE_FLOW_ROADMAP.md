@@ -7039,3 +7039,51 @@ This is repository/local verification, without browser/device acceptance or an
 Azure deployment. Flutter project files, database resets and seed data are outside
 this branch. No new database migration is required; deployment uses the normal
 `./bagoo.sh deploy` and `./bagoo.sh verify` after user publication and merge.
+
+### Actionable sidebar cues and seller chart — October 20, 2026
+
+The `fix/actionable-sidebar-cues` follow-up supersedes the earlier chart mode
+buttons and broad sidebar markers. The seller chart has no Completed sales /
+Awaiting confirmation buttons. It prefers completed sales in the chosen period,
+or automatically shows clearly labelled delivered value when only deliveries
+exist. Changing the period recalculates that choice from the current figures.
+The period selector, recorded Philippine dates, keyboard chart controls and
+buyer-only completion rules remain intact. An empty message is centered beneath
+the header instead of being separated by redundant controls.
+
+Products never receives a sidebar dot for either admin or seller. Drafts, low
+stock, existing restrictions and informational notifications remain visible in
+their existing destinations without adding sidebar attention. Seller dots now
+represent owned unread messages or an available preparation action, using the
+same `OrderLifecycleService` flags as Review & Confirm, Pack Order and Ready for
+Pickup. Shop eligibility, full order ownership, recorded wallet payment, parcel
+claims, packing/route evidence and recovery holds govern whether an action
+exists. Waiting for a rider, transit, delivered/completed orders and unread
+status notifications do not create an Orders dot. Notification history is not
+acknowledged or deleted by this calculation. Order refreshes, stage changes and
+pagination include the current attention state; successful fulfillment writes
+also return the saved state.
+
+Admin dots retain real pending account/shop/correction/advertisement reviews
+and wallet credit requests. Each of the five section headers has a matching
+icon. Expansion, active-section visibility, grouped child links and keyboard
+access remain in place; collapsed sections only mark an actionable child.
+
+| Scoped engineering assessment | Before | After | Evidence and practical limit |
+|---|---|---|---|
+| Seller chart clarity | 6/10 | 8.5/10 | Redundant buttons removed, current-period activity chosen automatically, and empty content centered. Actual browser/device appearance remains unverified. |
+| Sidebar attention accuracy | 5/10 | 8.5/10 | Action flags, ownership, payment, route, holds, pending reviews and cleared work are checked. Does not add new operational workflows or dots to unrelated portals. |
+| Admin section recognition | 7/10 | 8.5/10 | All five headers have existing-family icons; destinations, expansion and accessible active navigation pass rendering/handler checks. |
+
+Verification: **358 isolated SQLite `:memory:` tests / 5,919 assertions passed**
+across sidebar attention, seller workflows, admin navigation, notifications,
+wallet HTTP and navigation asset budgets. **511 frontend tests passed**, including
+chart rendering, absent mode buttons, header icons, section controls and stale
+informational props without dots. PHP formatting and Git whitespace checks pass.
+The TypeScript/Vite production build passed through `./bagoo.sh npm run build`;
+the host build first reached Vite but could not replace Docker-owned generated
+assets, so the supported Docker build was used.
+
+No database reset, migration, seed change, Flutter change, browser automation or
+Azure deployment was performed. After user publication/merge, deploy normally
+with `./bagoo.sh deploy` and verify with `./bagoo.sh verify`.
