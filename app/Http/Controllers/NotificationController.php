@@ -23,7 +23,7 @@ class NotificationController extends Controller
                 ->orderByDesc('created_at')->orderByDesc('id')->limit(6)->get()
                 ->map(fn ($notice) => $service->present($notice, $user));
 
-            return response()->json(['notices' => $notices, 'summary' => $service->summary($user)])
+            return response()->json(['notices' => $notices, 'summary' => $service->summary($user), 'readSnapshot' => $service->readSnapshot($user)])
                 ->header('Cache-Control', 'no-store, private');
         } catch (QueryException) {
             abort(503, 'Notifications are temporarily unavailable.');
