@@ -36,6 +36,15 @@ class SidebarAttentionTest extends TestCase
         return $order;
     }
 
+    public function test_uninstalled_seller_reviews_do_not_break_admin_attention(): void
+    {
+        Schema::drop('advertisement_reviews');
+        $attention = app(SidebarAttentionService::class)->for(User::factory()->admin()->create());
+        $this->assertFalse($attention['advertisements']);
+        $this->assertArrayHasKey('kyc', $attention);
+        $this->assertArrayHasKey('wallet_credits', $attention);
+    }
+
     public function test_unread_informational_updates_do_not_add_work_dots_or_get_acknowledged(): void
     {
         $seller = User::factory()->seller()->create();

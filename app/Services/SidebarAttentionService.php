@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Shop;
 use App\Models\User;
 use App\Models\WalletTopUpRequest;
+use App\Services\Advertisements\SellerPromotionService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderWorkspaceService;
 
@@ -23,7 +24,7 @@ class SidebarAttentionService
                 'shop_reviews' => Shop::where('review_status', 'pending_approval')->exists(),
                 'kyc' => User::whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])->where('kyc_status', 'pending_approval')->exists(),
                 'review_requests' => AccountReviewRequest::doesntHave('decision')->exists(),
-                'advertisements' => AdvertisementSubmission::doesntHave('reviews')->exists(),
+                'advertisements' => app(SellerPromotionService::class)->installed() && AdvertisementSubmission::doesntHave('reviews')->exists(),
                 'wallet_credits' => WalletTopUpRequest::where('status', 'pending')->exists(),
             ];
         }
