@@ -7161,7 +7161,9 @@ rewrite original workbook verdicts or claim unperformed live procedures.
 
 Approved sellers can save name-only private drafts, complete them before
 publishing, and duplicate a listing into a distinct draft opened for editing.
-Copied galleries/options and the original product remain intact. A retained
+Minimal draft edits retain the existing eligible subcategory and optional
+details when those fields are omitted. Copied galleries/options and the original
+product remain intact. A retained
 request key returns one original create/copy result, rejects changed payloads,
 and cannot recreate a removed result. New gallery files are removed on rollback
 without removing old files or replacing the original saved listing.
@@ -7200,7 +7202,7 @@ none of these controls grants another shop or a new approved master category.
 | Storefront product organization | 2/10 | 8.5/10 | Independent categories now have ownership, naming, depth, visibility, ordering, membership and safe deletion checks. The approved platform taxonomy remains the selling boundary. |
 | Listing facts and declared waybill weight | 5/10 | 8.5/10 | Required/invalid/boundary values, saved details, checkout retry and original weight retention are checked. Actual printer output and the full live cross-portal procedure remain unobserved. |
 
-Verification: **563 isolated SQLite `:memory:` checks / 8,394 assertions passed**.
+Verification: **565 isolated SQLite `:memory:` checks / 8,402 assertions passed**.
 An additional navigation/asset-budget selection passed **33 checks / 855
 assertions**; it overlaps the main selection and is not added as a unique-test
 total. **523 frontend checks** and the TypeScript/Vite production build passed.

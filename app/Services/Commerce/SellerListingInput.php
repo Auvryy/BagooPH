@@ -47,7 +47,7 @@ class SellerListingInput
             'weight_kg.required' => 'Enter the declared product weight in kilograms before publishing.',
         ]);
         app(ProductGalleryInput::class)->validate($request, $values['status'] ?? 'active', $product);
-        $values['category_id'] = app(ShopEligibilityService::class)->categoryFor($shop, $values['category_id'] ?? null);
+        $values['category_id'] = app(ShopEligibilityService::class)->categoryFor($shop, $values['category_id'] ?? $product?->category_id);
         $values['price'] ??= $product?->price ?? '0.00';
         $values['stock'] ??= $product?->stock ?? 0;
         $values['description'] ??= $product?->description ?? '';
