@@ -5,6 +5,8 @@ import BagooLogo from '@/Components/BagooLogo';
 import NotificationLink from '@/Components/NotificationLink';
 import PortalLink from '@/Components/PortalLink';
 import CatalogueNavigationNotice from '@/Components/CatalogueNavigationNotice';
+import AdminSidebarNavigation from '@/Components/AdminSidebarNavigation';
+import NavigationAttentionDot from '@/Components/NavigationAttentionDot';
 import { getDomainUrl } from '@/utils/domain';
 import { 
     ShoppingBag, 
@@ -49,11 +51,13 @@ interface NavigationItem {
     href: string;
     icon: LucideIcon;
     current: boolean;
+    attention?: boolean;
+    attentionLabel?: string;
     children?: { name: string; href: string; current: boolean }[];
 }
 
 export default function DashboardLayout({ children, title, subtitle, actions }: Props) {
-    const { auth, flash } = usePage<PageProps>().props;
+    const { auth, flash, sidebarAttention = {}, unreadMessagesCount = 0 } = usePage<PageProps>().props;
     const { url, component } = usePage();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -229,7 +233,17 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
         return [];
     };
 
-    const navItems = getNavItems();
+    const attentionKeys: Record<string, keyof typeof sidebarAttention> = {
+        'Shop reviews': 'shop_reviews', 'KYC Queue': 'kyc', 'Review requests': 'review_requests',
+        Products: 'products', Advertisements: 'advertisements', 'Wallet credits': 'wallet_credits',
+        Messages: 'messages', Orders: 'orders', Vouchers: 'vouchers', Finances: 'finances', Promotions: 'promotions',
+    };
+    const navItems = getNavItems().map(item => ({ ...item,
+        attention: Boolean(sidebarAttention[attentionKeys[item.name]] || (item.name === 'Messages' && unreadMessagesCount > 0)),
+        attentionLabel: item.name === 'Messages' ? 'Unread messages' : item.name === 'Products'
+            ? role === 'admin' ? 'Restricted product listings' : 'Drafts, restricted listings or low stock'
+            : 'Needs attention',
+    }));
     const WorkspaceLink = ['seller', 'logistics', 'admin'].includes(role) ? PortalLink : Link;
 
     return (
@@ -365,7 +379,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto font-sans scrollbar-thin">
                     
                     {/* Non-Logistics Main Navigation (Admin / Seller / Courier) */}
-                    {role !== 'logistics' && (
+                    {role === 'admin' && <AdminSidebarNavigation items={navItems} />}
+                    {role !== 'logistics' && role !== 'admin' && (
                         <div className="space-y-0.5">
                             <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-sans">
                                 Menu
@@ -388,9 +403,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         </div>
                                         {item.children ? (
                                             <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 transition-transform ${item.current ? '' : '-rotate-90'}`} />
-                                        ) : item.current && (
+                                        ) : item.current && !item.attention && (
                                             <span className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0" />
                                         )}
+                                        {item.attention && <NavigationAttentionDot label={item.attentionLabel} />}
                                     </WorkspaceLink>
                                     {item.children && item.current && <div role="group" aria-label={`${item.name} pages`} className="ml-5 mt-1 space-y-0.5 border-l border-slate-300 pl-3">
                                         {item.children.map(child => <Link key={child.name} href={child.href} aria-current={child.current ? 'page' : undefined}

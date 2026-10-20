@@ -2,7 +2,7 @@ import useMarketplaceComposer from '@/hooks/useMarketplaceComposer';
 import ChatImageField from '@/Components/ChatImageField';
 import ChatAttachment from '@/Components/ChatAttachment';
 import React, { useState, useEffect, useRef } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PageProps, Shop, User } from '@/types';
 import { 
@@ -69,7 +69,11 @@ export default function SellerMessages({ conversations, shop }: Props) {
         const controller = new AbortController();
         fetch(`/chat/messages/${activeUser.id}`, { signal: controller.signal, headers: { Accept: 'application/json' } })
             .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
-            .then(data => { if (!controller.signal.aborted && Array.isArray(data.messages)) setMessages(data.messages); })
+            .then(data => {
+                if (controller.signal.aborted || !Array.isArray(data.messages)) return;
+                setMessages(data.messages);
+                router.reload({ only: ['unreadMessagesCount', 'sidebarAttention'] });
+            })
             .catch(() => { if (!controller.signal.aborted) setHistoryError('Could not update this conversation. Try again.'); });
         return () => controller.abort();
     }, [activeUser?.id, activeConversation?.messages, historyRetry]);

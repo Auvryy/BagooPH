@@ -1,5 +1,7 @@
 export type Role = 'admin' | 'seller' | 'buyer' | 'courier' | 'logistics';
 
+export type SidebarAttention = Partial<Record<'shop_reviews' | 'kyc' | 'review_requests' | 'products' | 'advertisements' | 'wallet_credits' | 'messages' | 'orders' | 'vouchers' | 'finances' | 'promotions', boolean>>;
+
 export type KycStatus = 'pending_approval' | 'approved' | 'rejected' | 'none' | 'verified';
 
 export interface CourierProfile {
@@ -339,6 +341,7 @@ export type PageProps<
     savedProductIds?: number[];
     unreadMessagesCount?: number;
     notificationSummary?: { available: boolean; unread: number | null };
+    sidebarAttention?: SidebarAttention;
     buyerApplication?: import('@/Components/BuyerApplicationModal').BuyerApplicationData | null;
     flash: {
         success?: string | null;
