@@ -262,6 +262,9 @@ class BuyerReturnService
             }
             abort_unless($case->version === $data['expected_version'], 409, 'This return changed. Reload its latest result before acting.');
             abort_unless(in_array($action, $this->actions($actor, $case), true), 403, 'This action is not available for this return in its current state.');
+            if ($action === 'reject' && $actor->isSeller()) {
+                Validator::make($data, ['reason' => [new ApplicationText('notes', 10, 300)]])->validate();
+            }
             $source = $case->status;
             $case->status = match ($action) {
                 'withdraw' => 'withdrawn', 'escalate' => 'escalated', 'approve' => 'approved',

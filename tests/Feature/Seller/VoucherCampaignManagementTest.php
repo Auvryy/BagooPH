@@ -30,7 +30,7 @@ class VoucherCampaignManagementTest extends TestCase
 
     private function draft(array $changes = []): array
     {
-        return array_replace(['code' => 'SHOP_'.strtoupper(Str::random(8)), 'name' => 'Bagoo shop savings',
+        return array_replace(['code' => 'SHOP'.strtoupper(Str::random(8)), 'name' => 'Bagoo shop savings',
             'description' => 'A real offer from this shop.', 'discount_type' => 'fixed', 'discount_value' => '100.00',
             'min_spend' => '500.00', 'max_discount' => '100.00', 'budget' => '5000.00',
             'usage_limit' => 50, 'per_buyer_limit' => 2, 'starts_at' => now()->subMinute()->toIso8601String(),
@@ -74,11 +74,44 @@ class VoucherCampaignManagementTest extends TestCase
     public function test_code_normalization_precedes_uniqueness_and_generated_codes_are_valid(): void
     {
         $shop = Shop::factory()->approved()->create();
-        $this->actingAs($shop->user)->post('/seller/vouchers', $this->draft(['code' => '  shop_save  ']))->assertSessionHas('success');
-        $this->assertSame('SHOP_SAVE', Voucher::sole()->code);
-        $this->postJson('/seller/vouchers', $this->draft(['code' => 'shop_save']))->assertUnprocessable()->assertJsonValidationErrors('code');
+        $this->actingAs($shop->user)->post('/seller/vouchers', $this->draft(['code' => '  shopsave  ']))->assertSessionHas('success');
+        $this->assertSame('SHOPSAVE', Voucher::sole()->code);
+        $this->postJson('/seller/vouchers', $this->draft(['code' => 'shopsave']))->assertUnprocessable()->assertJsonValidationErrors('code');
         $this->post('/seller/vouchers', $this->draft(['code' => '']))->assertSessionHas('success');
-        $this->assertMatchesRegularExpression('/\ABGO_[A-Z0-9]+\z/', Voucher::latest('id')->first()->code);
+        $this->assertMatchesRegularExpression('/\ABGO[A-F0-9]{9}\z/', Voucher::latest('id')->first()->code);
+    }
+
+    public static function codeBoundaries(): array
+    {
+        return [['ABC', false], ['ABCD', true], ['ABCDEFGHIJKL', true], ['ABCDEFGHIJKLM', false],
+            ['MCH 50', false], ['MCH-50', false], ['MCH_50', false], ['mch75', true]];
+    }
+
+    #[DataProvider('codeBoundaries')]
+    public function test_new_codes_accept_only_four_to_twelve_letters_and_numbers(string $code, bool $accepted): void
+    {
+        $shop = Shop::factory()->approved()->create();
+        $response = $this->actingAs($shop->user)->post('/seller/vouchers', $this->draft(['code' => $code]));
+        if ($accepted) {
+            $response->assertSessionHasNoErrors()->assertSessionHas('success');
+            $this->assertSame(strtoupper($code), Voucher::sole()->code);
+        } else {
+            $response->assertSessionHasErrors('code');
+            $this->assertDatabaseCount('vouchers', 0);
+            $this->assertDatabaseCount('voucher_campaign_actions', 0);
+        }
+    }
+
+    public function test_existing_long_symbol_code_keeps_its_original_terms_and_can_save_a_new_draft(): void
+    {
+        $shop = Shop::factory()->approved()->create();
+        $voucher = Voucher::factory()->funded()->create(['shop_id' => $shop->id, 'code' => 'OLDER_CODE-LONG12345']);
+        $original = $voucher->currentRevision->getRawOriginal();
+        $this->actingAs($shop->user)->patch('/seller/vouchers/'.$voucher->id,
+            $this->draft(['code' => $voucher->code, 'source_version' => $voucher->fresh()->campaign_version]))
+            ->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertSame('OLDER_CODE-LONG12345', $voucher->fresh()->code);
+        $this->assertSame($original, $voucher->currentRevision->fresh()->getRawOriginal());
     }
 
     public function test_saved_draft_and_publication_requests_are_idempotent_and_changed_retries_conflict(): void
@@ -209,8 +242,8 @@ class VoucherCampaignManagementTest extends TestCase
     {
         [$shop, $voucher, $payload] = $this->published();
         $admin = User::factory()->admin()->create();
-        $this->actingAs($admin)->post('/admin/vouchers', $this->draft(['code' => 'BAGOO_SHIPPING', 'discount_type' => 'free_shipping', 'discount_value' => '0', 'max_discount' => '40.00']))->assertSessionHas('success');
-        $platform = Voucher::where('code', 'BAGOO_SHIPPING')->sole();
+        $this->actingAs($admin)->post('/admin/vouchers', $this->draft(['code' => 'BGOSHIPPING', 'discount_type' => 'free_shipping', 'discount_value' => '0', 'max_discount' => '40.00']))->assertSessionHas('success');
+        $platform = Voucher::where('code', 'BGOSHIPPING')->sole();
         $this->post('/admin/vouchers/'.$platform->id.'/actions', $this->action('publish', $platform))->assertSessionHas('success');
         $this->assertNull($platform->shop_id);
         $this->assertSame('platform', $platform->fresh()->currentRevision->funding_party);

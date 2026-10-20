@@ -229,7 +229,7 @@ class BuyerVoucherSelectionTest extends TestCase
         [$buyer, $items, $payload] = $this->bag(['1000.00']);
         $shop = $items[0]->product->shop;
         $service = app(VoucherCampaignService::class);
-        $voucher = $service->saveDraft($shop->user, ['code' => 'SHOP_RECORDED', 'name' => 'Recorded offer', 'discount_type' => 'fixed',
+        $voucher = $service->saveDraft($shop->user, ['code' => 'SHOPRECORDED', 'name' => 'Recorded offer', 'discount_type' => 'fixed',
             'discount_value' => '100.00', 'min_spend' => '500.00', 'max_discount' => '100.00', 'budget' => '1000.00',
             'usage_limit' => 10, 'per_buyer_limit' => 1, 'starts_at' => now()->subMinute()->toIso8601String(),
             'ends_at' => now()->addDay()->toIso8601String(), 'request_key' => (string) Str::uuid(), 'source_version' => 0], shop: $shop);
@@ -239,7 +239,7 @@ class BuyerVoucherSelectionTest extends TestCase
         $this->post('/checkout', $payload)->assertSessionHas('success');
         $order = Order::sole();
         $service->act($shop->user, $voucher, ['action' => 'pause', 'request_key' => (string) Str::uuid(), 'source_version' => $voucher->fresh()->campaign_version], $shop);
-        $voucher = $service->saveDraft($shop->user, ['code' => 'SHOP_RECORDED', 'name' => 'New campaign terms', 'discount_type' => 'fixed',
+        $voucher = $service->saveDraft($shop->user, ['code' => 'SHOPRECORDED', 'name' => 'New campaign terms', 'discount_type' => 'fixed',
             'discount_value' => '50.00', 'min_spend' => '500.00', 'max_discount' => '50.00', 'budget' => '1000.00',
             'usage_limit' => 10, 'per_buyer_limit' => 1, 'starts_at' => now()->subMinute()->toIso8601String(),
             'ends_at' => now()->addDay()->toIso8601String(), 'request_key' => (string) Str::uuid(),
@@ -248,13 +248,13 @@ class BuyerVoucherSelectionTest extends TestCase
         $this->post('/checkout', $payload)->assertSessionHas('success');
         $this->assertDatabaseCount('orders', 1);
         $this->get(route('buyer.orders.show', $order))->assertInertia(fn (Assert $p) => $p
-            ->where('order.voucher_receipt.discounts.0.code', 'SHOP_RECORDED')
+            ->where('order.voucher_receipt.discounts.0.code', 'SHOPRECORDED')
             ->where('order.voucher_receipt.discounts.0.name', 'Recorded offer')
             ->where('order.voucher_receipt.discounts.0.product_discount', 100)
             ->where('order.voucher_receipt.total_savings', 100)->where('order.voucher_receipt.total', 950));
         $this->get(route('buyer.profile', ['tab' => 'vouchers', 'voucher_tab' => 'used']))->assertInertia(fn (Assert $p) => $p
             ->where('voucherCollection.counts.used', 1)->where('voucherCollection.offers.data.0.uses.0.saving', 100)
-            ->where('voucherCollection.offers.data.0.uses.0.code', 'SHOP_RECORDED'));
+            ->where('voucherCollection.offers.data.0.uses.0.code', 'SHOPRECORDED'));
         $this->actingAs(User::factory()->create())->get(route('buyer.orders.show', $order))->assertForbidden();
     }
 }

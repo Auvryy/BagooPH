@@ -279,9 +279,11 @@ class VoucherCampaignService
     private function terms(array $input, string $issuer, ?Voucher $voucher, string $key): array
     {
         $input['code'] = is_string($input['code'] ?? null) && trim($input['code'], ' ') !== ''
-            ? strtoupper(trim($input['code'], ' ')) : ($voucher?->code ?? 'BGO_'.strtoupper(str_replace('-', '', substr($key, 0, 18))));
+            ? strtoupper(trim($input['code'], ' ')) : ($voucher?->code ?? 'BGO'.strtoupper(substr(hash('sha256', $key), 0, 9)));
         $data = Validator::make($input, [
-            'code' => ['required', 'string', 'max:30', 'regex:/\A[A-Z0-9_-]+\z/', Rule::unique('vouchers', 'code')->ignore($voucher?->id)],
+            'code' => $voucher
+                ? ['required', 'string', Rule::in([$voucher->code])]
+                : ['required', 'string', 'min:4', 'max:12', 'regex:/\A[A-Z0-9]+\z/', Rule::unique('vouchers', 'code')],
             'name' => 'required|string|max:100', 'description' => 'nullable|string|max:1000',
             'discount_type' => ['required', Rule::in($issuer === 'shop' ? ['fixed', 'percent'] : ['fixed', 'percent', 'free_shipping'])],
             'discount_value' => ['required', 'regex:'.CodMoney::RULE], 'min_spend' => ['required', 'regex:'.CodMoney::RULE],
@@ -290,7 +292,7 @@ class VoucherCampaignService
             'starts_at' => 'required|date', 'ends_at' => 'required|date|after:starts_at',
             'shop_id' => 'prohibited', 'issuer_type' => 'prohibited', 'funding_party' => 'prohibited', 'actor_id' => 'prohibited',
             'is_active' => 'prohibited', 'current_revision_id' => 'prohibited', 'used_count' => 'prohibited',
-        ])->validate();
+        ], ['code.regex' => 'Use 4–12 letters and numbers without spaces or symbols.'])->validate();
         if ($voucher && $data['code'] !== $voucher->code) {
             throw ValidationException::withMessages(['code' => 'Keep the original campaign code. Create a separate campaign for another code.']);
         }

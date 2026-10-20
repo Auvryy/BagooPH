@@ -205,7 +205,7 @@ class SellerPromotionPortalTest extends TestCase
     {
         $service = app(VoucherCampaignService::class);
         $actor = $shop?->user ?? $this->admin;
-        $voucher = $service->saveDraft($actor, ['code' => ($shop ? 'SHOP_' : 'BGO_').strtoupper(Str::random(8)), 'name' => 'Published Bagoo savings', 'description' => 'Savings from the published issuer.',
+        $voucher = $service->saveDraft($actor, ['code' => ($shop ? 'SHOP' : 'BGO').strtoupper(Str::random(8)), 'name' => 'Published Bagoo savings', 'description' => 'Savings from the published issuer.',
             'discount_type' => 'fixed', 'discount_value' => '100.00', 'min_spend' => '500.00', 'max_discount' => '100.00', 'budget' => '5000.00',
             'usage_limit' => 50, 'per_buyer_limit' => 2, 'starts_at' => now()->subDay()->toIso8601String(), 'ends_at' => now()->addDays(3)->toIso8601String(),
             'source_version' => 0, 'request_key' => (string) Str::uuid()], shop: $shop);

@@ -17,7 +17,7 @@ class SellerVoucherDraftTest extends TestCase
     {
         $seller = User::factory()->seller()->create();
         $shop = Shop::factory()->approved()->create(['user_id' => $seller->id]);
-        $this->actingAs($seller)->post('/seller/vouchers', ['code' => 'SHOP_DRAFT', 'name' => 'Shop draft',
+        $this->actingAs($seller)->post('/seller/vouchers', ['code' => 'SHOPDRAFT', 'name' => 'Shop draft',
             'discount_type' => 'fixed', 'discount_value' => 100, 'min_spend' => 500, 'max_discount' => 100,
             'budget' => 1000, 'usage_limit' => 10, 'per_buyer_limit' => 1, 'starts_at' => now()->toIso8601String(),
             'ends_at' => now()->addWeek()->toIso8601String(), 'source_version' => 0, 'request_key' => (string) Str::uuid()])->assertSessionHas('success');
