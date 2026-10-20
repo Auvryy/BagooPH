@@ -10,6 +10,7 @@ use App\Services\Logistics\HandoverHoldService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderTrackingService;
 use App\Services\Orders\OrderWorkspaceService;
+use App\Services\Orders\SellerOrderFilters;
 use App\Services\ShopEligibilityService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,8 @@ class SellerOrderController extends Controller
         $workspace = app(OrderWorkspaceService::class);
         $status = $workspace->selection($request, 'seller');
         $owned = Order::whereHas('items', fn ($items) => $items->where('shop_id', $shop->id));
+        $filters = app(SellerOrderFilters::class)->selection($request);
+        app(SellerOrderFilters::class)->apply($owned, $filters, $shop->id);
         $counts = $workspace->counts($owned, 'seller');
         $eligible = app(ShopEligibilityService::class)->isEligible($shop);
         $query = $workspace->stable($workspace->filter(clone $owned, 'seller', $status))
@@ -72,6 +75,7 @@ class SellerOrderController extends Controller
         return Inertia::render('Seller/Orders', [
             'orders' => $orders, 'shopEligible' => $eligible, 'shop' => $shop,
             'currentStatus' => $status, 'counts' => $counts,
+            'filters' => $filters,
             'returnReceiptToken' => (string) Str::uuid(),
             'cancellationReasons' => OrderLifecycleService::SELLER_CANCELLATION_REASONS,
             'batchLimit' => OrderLifecycleService::BATCH_LIMIT,

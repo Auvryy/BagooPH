@@ -129,16 +129,17 @@ class ShopEligibilityTest extends TestCase
         $grandchild = Category::factory()->create(['parent_id' => $child->id]);
         $foreign = Category::factory()->create();
         $this->actingAs($seller)->withSession(['active_seller_shop_id' => $shop->id]);
-        $data = ['name' => 'Pet Blanket', 'price' => 150, 'stock' => 10, 'description' => 'A soft pet blanket for everyday comfort.',
+        $data = ['weight_kg' => '0.50', 'name' => 'Pet Blanket', 'price' => 150, 'stock' => 10, 'description' => 'A soft pet blanket for everyday comfort.',
             'featured_image' => '/storage/products/blanket.jpg'];
-        foreach ([$shop->root_category_id, $child->id, $grandchild->id, null] as $categoryId) {
+        foreach ([$shop->root_category_id, $child->id, $grandchild->id] as $categoryId) {
             $this->post('/seller/products', $data + ['category_id' => $categoryId])->assertRedirect()->assertSessionHasNoErrors();
         }
-        $this->assertSame($shop->root_category_id, Product::latest('id')->first()->category_id);
+        $this->assertSame($grandchild->id, Product::latest('id')->first()->category_id);
+        $this->post('/seller/products', $data + ['category_id' => null])->assertSessionHasErrors('category_id');
         $this->post('/seller/products', $data + ['category_id' => $foreign->id])->assertSessionHasErrors('category_id');
         $child->update(['is_active' => false]);
         $this->post('/seller/products', $data + ['category_id' => $grandchild->id])->assertSessionHasErrors('category_id');
-        $this->assertDatabaseCount('products', 4);
+        $this->assertDatabaseCount('products', 3);
     }
 
     public function test_foreign_products_cannot_be_claimed_through_direct_updates(): void
@@ -254,7 +255,7 @@ class ShopEligibilityTest extends TestCase
         Event::listen('eloquent.created: '.Product::class, fn () => throw new RuntimeException('Listing write failed'));
         try {
             $this->actingAs($seller)->withSession(['active_seller_shop_id' => $shop->id])->post('/seller/products', [
-                'name' => 'Pet Blanket', 'price' => 100, 'stock' => 10, 'description' => 'A soft pet blanket for everyday comfort.',
+                'category_id' => $shop->root_category_id, 'weight_kg' => '0.50', 'name' => 'Pet Blanket', 'price' => 100, 'stock' => 10, 'description' => 'A soft pet blanket for everyday comfort.',
                 'featured_image' => '/storage/products/blanket.jpg',
             ])->assertServerError();
         } finally {

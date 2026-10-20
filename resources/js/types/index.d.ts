@@ -123,7 +123,17 @@ export interface ProductImage {
 
 export interface SaleSummary { id: number; kind: 'store' | 'flash'; name: string; price: string | number; starts_at: string; ends_at: string; remaining_quantity: number | null }
 
+export interface StoreCategory {
+    id: number;
+    parent_id: number | null;
+    name: string;
+    position: number;
+    is_visible: boolean;
+    products_count?: number;
+}
+
 export interface Product {
+    price_range?: { min: string; max: string };
     sale_offer?: { server_now?: string; effective_price: number; active: SaleSummary | null; upcoming: SaleSummary | null };
     purchase_limit?: number | null;
     compliance_restricted?: boolean;
@@ -152,7 +162,13 @@ export interface Product {
         sizes?: { id: string; name: string; extra_price: number; stock?: number }[];
     } | null;
     featured_image?: string | null;
-    weight_kg?: string | number;
+    weight_kg?: string | number | null;
+    brand?: string | null;
+    condition?: string | null;
+    length_cm?: string | number | null;
+    width_cm?: string | number | null;
+    height_cm?: string | number | null;
+    store_categories?: StoreCategory[];
     status: 'active' | 'draft' | 'archived';
     rating: string | number | null;
     verified_review_count?: number;
@@ -192,6 +208,7 @@ export interface Cart {
 }
 
 export interface OrderItem {
+    declared_weight_kg?: string | number | null;
     id: number;
     order_id: number;
     product_id: number;

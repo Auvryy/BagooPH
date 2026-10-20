@@ -179,6 +179,30 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - Voucher dates, limits, percentage range, fixed discount, maximum discount, and minimum spend must be internally consistent.
 - Products referenced by carts, orders, reviews, or ledgers are archived/deactivated rather than hard-deleted. Historical order-item snapshots survive later product, shop, category, or account changes.
 
+### Seller listing and store grouping inputs
+
+Private drafts may omit publication details; every supplied value still needs
+its normal validation. Publication requires an explicit eligible platform
+category and declared weight in addition to the existing required listing
+fields. Declared weight is 0.01–50,000 kg with at most two decimals. Optional
+length/width/height are supplied together, each 0.01–10,000 cm with at most two
+decimals. Brand is optional plain text up to 100 characters; condition uses the
+supported New/Used choices.
+
+Store category names are trimmed, collapse ordinary spacing, use 1–50
+characters, and reserve a case-normalized name within one store. Reject
+foreign parents, self/cyclic parenting and a third level. Validate at most
+three distinct owned memberships before changing any product. Empty selections
+must clear memberships even through multipart forms.
+
+Hold the existing seller/shop locks for catalogue writes. A supplied listing
+request key retains its original result; a changed payload or removed original
+result cannot create another product under the same key. Rollback removes only
+newly uploaded gallery files and retains original records/assets. Delete with
+unfinished orders rejects without archiving; explicit archive remains separate.
+Category deletion uses a current affected-record preview and removes only the
+category tree and its memberships.
+
 ### Order Fulfillment
 
 - A seller order contains items from exactly one shop. A legacy mixed-shop order is read-only and enters an admin repair queue.

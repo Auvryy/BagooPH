@@ -21,13 +21,13 @@ class OrderItem extends Model
         'subtotal',
         'color',
         'size',
-        'sku_snapshot',
+        'sku_snapshot', 'declared_weight_kg',
     ];
 
     protected $casts = [
         'unit_price' => 'decimal:2',
         'subtotal' => 'decimal:2',
-        'quantity' => 'integer',
+        'quantity' => 'integer', 'declared_weight_kg' => 'decimal:2',
     ];
 
     public function order(): BelongsTo

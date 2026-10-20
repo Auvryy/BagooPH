@@ -7149,3 +7149,85 @@ was reset, no real seed was run and no Azure deployment or Flutter change was
 performed. After user publication/merge, use the normal additive deployment and
 verification commands. Larger catalogue, dispatch and payment workflows remain
 separate scope.
+
+### Seller catalogue and worklists — October 20–21, 2026
+
+The user selected SE01 and SE02 together on
+`feat/seller-catalogue-workspaces`. The
+[selected plan](seller-readiness-plan/README.md) covers seven listing/worklist
+cases and fifteen store-category/publication cases. SE03 and SE04 remain
+separate selections. This delivery implements those outcomes; it does not
+rewrite original workbook verdicts or claim unperformed live procedures.
+
+Approved sellers can save name-only private drafts, complete them before
+publishing, and duplicate a listing into a distinct draft opened for editing.
+Minimal draft edits retain the existing eligible subcategory and optional
+details when those fields are omitted. Copied galleries/options and the original
+product remain intact. A retained
+request key returns one original create/copy result, rejects changed payloads,
+and cannot recreate a removed result. New gallery files are removed on rollback
+without removing old files or replacing the original saved listing.
+
+Delete now rejects unfinished-order products without changing their listing
+state. Explicit archive/deactivate remains available. Bulk actions validate the
+whole owned selection before writes, skip unfinished deletions, preserve other
+retained references through archival, and show individual results. Rejections
+appear inside the removal dialog. Seller order search and Philippine date
+filters run across the owned history before pagination, retain selections and
+matching counts, and treat wildcard characters literally. Review star filters
+also run on the server and show verified original purchased options.
+
+Products expose their current variant minimum/maximum before selection and the
+chosen price afterwards. Publication requires the existing title, description,
+price, stock and gallery rules plus an explicit eligible department and declared
+weight. Brand/condition and complete positive dimensions persist through editing
+and the buyer detail view. New order items retain original declared unit weight;
+the waybill sums those retained values, shows unknown legacy weight honestly,
+and keeps declared product weight separate from actual hub weighing. Shipping
+continues to use the existing subtotal-based policy.
+
+Store categories are independent shop-owned merchandising groups with 1–50
+character normalized unique names, two levels, saved ordering and visibility.
+A product may belong to up to three groups. Hidden parents also hide their
+children's public destinations, without hiding eligible products elsewhere.
+Deleting a category previews its children and distinct affected products,
+requires the current preview, and removes only categories/memberships. Products
+with no remaining membership appear under Uncategorized. Storefront group,
+department, search, sort and pagination remain separate and scoped to that shop;
+none of these controls grants another shop or a new approved master category.
+
+| Scoped engineering assessment | Before | After | Evidence and practical limit |
+|---|---|---|---|
+| Seller listing and worklist usability | 5.5/10 | 8.5/10 | Private incomplete drafts, copy editing, safe mixed selections, full-history filters, exact option prices and actionable rejection feedback have backend and controlled frontend checks. Live browser layout remains unobserved. |
+| Storefront product organization | 2/10 | 8.5/10 | Independent categories now have ownership, naming, depth, visibility, ordering, membership and safe deletion checks. The approved platform taxonomy remains the selling boundary. |
+| Listing facts and declared waybill weight | 5/10 | 8.5/10 | Required/invalid/boundary values, saved details, checkout retry and original weight retention are checked. Actual printer output and the full live cross-portal procedure remain unobserved. |
+
+Verification: **565 isolated SQLite `:memory:` checks / 8,402 assertions passed**.
+An additional navigation/asset-budget selection passed **33 checks / 855
+assertions**; it overlaps the main selection and is not added as a unique-test
+total. **523 frontend checks** and the TypeScript/Vite production build passed.
+Focused PHP formatting and Git whitespace checks pass. Migration tests preserve
+existing data and retention guards through an isolated schema round trip and
+reject unsafe populated nested SQLite changes. Existing successful listing
+fixtures now supply the newly required declaration/category. An outdated seed
+expectation now verifies the documented separate-account behavior for an email
+shared across roles; it still proves that the original buyer is never converted
+or changed. Application identity rules and demo seed data were not changed.
+
+Three additive migrations were applied to the **local Docker database only**.
+Before/after counts remained 9 users, one shop, 17 products, four orders and four
+order items; the hash of every original product column/value stayed unchanged.
+Read-only HTTP checks returned 200 for the local home, catalogue, storefront,
+Uncategorized filter and a product detail. The catalogue and storefront still
+show all 17 eligible products. No development/production reset or reseed, Flutter edit or Azure deployment
+was performed. These public HTTP reads are not browser or
+printer observations.
+
+Implementation commits: `bde98f4` (complete order/review filters), `ceb8c57`
+(catalogue grouping/details foundation), `65a851d` (private drafts and safe
+listing actions), and `2ac4224` (store category management and buyer filtering).
+The final handoff records the documentation commit and combined local PR draft.
+After user publication/merge, Azure needs the normal additive
+`./bagoo.sh deploy` and `./bagoo.sh verify`; it does not need a database reset.
+The original blocked timing, printing and native-concurrency procedures remain
+separate evidence work, and unchanged policy differences retain their status.

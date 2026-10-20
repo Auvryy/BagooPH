@@ -36,6 +36,17 @@ class SalePriceService
         return number_format((($context['flash_cents'] ?? $context['fallback_cents']) + $extra) / 100, 2, '.', '');
     }
 
+    public function range(Product $product): array
+    {
+        $context = $this->context($product);
+        $base = $context['flash_cents'] ?? $context['fallback_cents'];
+        $options = $product->variants['combinations'] ?? $product->variants['sizes'] ?? [];
+        $extras = array_map(fn ($row) => max(0, CodMoney::cents(number_format((float) ($row['extra_price'] ?? 0), 2, '.', ''))), $options) ?: [0];
+
+        return ['min' => number_format(($base + min($extras)) / 100, 2, '.', ''),
+            'max' => number_format(($base + max($extras)) / 100, 2, '.', '')];
+    }
+
     /** @return array<int, array<string, mixed>> */
     public function plan(Collection $items): array
     {

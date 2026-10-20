@@ -33,6 +33,7 @@ class SellerInventoryTest extends TestCase
     {
         return array_replace([
             'name' => 'Everyday Pet Carrier',
+            'weight_kg' => '0.50',
             'category_id' => $this->shop->root_category_id,
             'price' => '250.00',
             'stock' => 12,
@@ -117,7 +118,7 @@ class SellerInventoryTest extends TestCase
     #[DataProvider('portals')]
     public function test_drafts_still_require_valid_listing_fields_and_approved_category_scope(string $portal): void
     {
-        $this->actingAs($this->seller)->postJson($portal.'/products', $this->listing(['price' => 0, 'stock' => -1, 'description' => '', 'name' => '']))
+        $this->actingAs($this->seller)->postJson($portal.'/products', $this->listing(['price' => 0, 'stock' => -1, 'description' => 'short', 'name' => '']))
             ->assertUnprocessable()->assertJsonValidationErrors(['price', 'stock', 'description', 'name']);
         $foreign = Category::factory()->create();
         $this->postJson($portal.'/products', $this->listing(['category_id' => $foreign->id]))

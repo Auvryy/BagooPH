@@ -61,7 +61,7 @@ class SellerProductMultiImageTest extends TestCase
 
         $payload = [
             'name' => 'Tactical Expedition Duffel 60L',
-            'category_id' => $this->category->id,
+            'weight_kg' => '0.50', 'category_id' => $this->category->id,
             'price' => '2499.00',
             'compare_at_price' => '3299.00',
             'stock' => 50,
@@ -131,7 +131,7 @@ class SellerProductMultiImageTest extends TestCase
 
         $payload = [
             'name' => 'Urban Canvas Rucksack Updated',
-            'category_id' => $this->category->id,
+            'weight_kg' => '0.50', 'category_id' => $this->category->id,
             'price' => '1899.00',
             'compare_at_price' => '2499.00',
             'stock' => 25,
@@ -169,7 +169,7 @@ class SellerProductMultiImageTest extends TestCase
         $responseEqual = $this->actingAs($this->seller)
             ->post('/seller/products', [
                 'name' => 'Test Slashed Equal',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => '1500.00',
                 'compare_at_price' => '1500.00',
                 'stock' => 10,
@@ -182,7 +182,7 @@ class SellerProductMultiImageTest extends TestCase
         $responseLower = $this->actingAs($this->seller)
             ->post('/seller/products', [
                 'name' => 'Test Slashed Lower',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => '1500.00',
                 'compare_at_price' => '1200.00',
                 'stock' => 10,
@@ -195,7 +195,7 @@ class SellerProductMultiImageTest extends TestCase
         $responseHigher = $this->actingAs($this->seller)
             ->post('/seller/products', [
                 'name' => 'Test Slashed Higher',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => '1500.00',
                 'compare_at_price' => '1999.00',
                 'stock' => 10,
@@ -216,7 +216,7 @@ class SellerProductMultiImageTest extends TestCase
         $response = $this->actingAs($this->seller)
             ->post('/seller/products', [
                 'name' => 'Test Large Image',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => '1000.00',
                 'stock' => 5,
                 'description' => 'Testing oversized upload validation.',
@@ -235,7 +235,7 @@ class SellerProductMultiImageTest extends TestCase
         $response = $this->actingAs($this->seller)
             ->post('/seller/products', [
                 'name' => 'Test Invalid File Type',
-                'category_id' => $this->category->id,
+                'weight_kg' => '0.50', 'category_id' => $this->category->id,
                 'price' => '1000.00',
                 'stock' => 5,
                 'description' => 'Testing invalid file type validation.',

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use LogicException;
@@ -96,7 +97,7 @@ class Product extends Model
         'sku',
         'variants',
         'featured_image',
-        'weight_kg',
+        'weight_kg', 'brand', 'condition', 'length_cm', 'width_cm', 'height_cm',
         'status',
         'rating',
         'sales_count',
@@ -107,7 +108,7 @@ class Product extends Model
         'moderation_version' => 'integer',
         'price' => 'decimal:2',
         'compare_at_price' => 'decimal:2',
-        'weight_kg' => 'decimal:2',
+        'weight_kg' => 'decimal:2', 'length_cm' => 'decimal:2', 'width_cm' => 'decimal:2', 'height_cm' => 'decimal:2',
         'rating' => 'decimal:2',
         'stock' => 'integer',
         'purchase_limit' => 'integer',
@@ -117,7 +118,12 @@ class Product extends Model
 
     protected $attributes = ['compliance_restricted' => false, 'moderation_version' => 0];
 
-    protected $appends = ['sale_offer'];
+    protected $appends = ['sale_offer', 'price_range'];
+
+    public function storeCategories(): BelongsToMany
+    {
+        return $this->belongsToMany(StoreCategory::class);
+    }
 
     public function sales(): HasMany
     {
@@ -127,6 +133,11 @@ class Product extends Model
     public function getSaleOfferAttribute(): array
     {
         return app(SalePriceService::class)->present($this);
+    }
+
+    public function getPriceRangeAttribute(): array
+    {
+        return app(SalePriceService::class)->range($this);
     }
 
     protected $hidden = ['verified_rating', 'sales'];

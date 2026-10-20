@@ -9,7 +9,7 @@ import CatalogueErrors from '@/Components/CatalogueErrors';
 import { CatalogueFilters, catalogueFilters } from '@/utils/catalogueNavigation';
 import { Category } from '@/types';
 import RatingStars, { ratingLabel, recordedRating } from '@/Components/RatingStars';
-import { PaginatedData, Product, Shop } from '@/types';
+import { PaginatedData, Product, Shop, StoreCategory } from '@/types';
 import { getDomainUrl } from '@/utils/domain';
 import { 
     Store, 
@@ -52,11 +52,12 @@ interface Props {
     isPreview?: boolean;
     filters: CatalogueFilters;
     categories: Category[];
+    storeCategories?: StoreCategory[];
     isFollowing: boolean;
     followerCount: number;
 }
 
-export default function ShopDetail({ shop, products, shopStats, isOwner = false, isPreview = false, shopOffers = [], filters = {}, categories = [], isFollowing = false, followerCount = 0 }: Props) {
+export default function ShopDetail({ shop, products, shopStats, isOwner = false, isPreview = false, shopOffers = [], filters = {}, categories = [], isFollowing = false, followerCount = 0, storeCategories = [] }: Props) {
     const isPreviewMode = Boolean(isOwner && isPreview);
     const canManageStore = isOwner;
     const [chatOpen, setChatOpen] = useState(false);
@@ -363,7 +364,8 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                     </div>
 
                     <div className="flex flex-wrap gap-3">
-                        <label className="text-xs text-slate-600">Category<select value={filters.category || 'all'} onChange={event => applyFilters({ category: event.target.value })} className="ml-2 rounded-lg border-slate-300 text-xs"><option value="all">All shop categories</option>{categories.map(category => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></label>
+                        <label className="text-xs text-slate-600">Store category<select value={filters.store_category || 'all'} onChange={event => applyFilters({ store_category: event.target.value })} className="ml-2 rounded-lg border-slate-300 text-xs"><option value="all">All products</option><option value="uncategorized">Uncategorized</option>{storeCategories.filter(row => !row.parent_id).flatMap(root => [root, ...storeCategories.filter(row => row.parent_id === root.id)]).map(category => <option key={category.id} value={category.id}>{category.parent_id ? '— ' : ''}{category.name}</option>)}</select></label>
+                        <label className="text-xs text-slate-600">Department<select value={filters.category || 'all'} onChange={event => applyFilters({ category: event.target.value })} className="ml-2 rounded-lg border-slate-300 text-xs"><option value="all">All shop categories</option>{categories.map(category => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></label>
                         <label className="text-xs text-slate-600">Sort<select value={filters.sort || 'relevance'} onChange={event => applyFilters({ sort: event.target.value })} className="ml-2 rounded-lg border-slate-300 text-xs"><option value="relevance">Recommended</option><option value="newest">Newest</option><option value="price_asc">Price: low to high</option><option value="price_desc">Price: high to low</option><option value="top_sales">Best selling</option><option value="top_rated">Highest rated</option></select></label>
                         <PortalLink href={route('shop.show', shop.slug)} className="self-center text-xs font-semibold text-[#E00D42]">Reset filters</PortalLink>
                     </div>
