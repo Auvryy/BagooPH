@@ -8,6 +8,28 @@ One seller account owns one shop. Registration creates that shop together with t
 
 The seller opens their sole shop automatically after approval. There is no extra-shop creation or shop switcher. Products, stock, variants, prices, images and vouchers stay within the approved root category and its active descendants. A reviewed category change requires the existing identity/scope correction process. Legacy shops without recorded approval use the existing shop review path; approval is never inferred from an active flag.
 
+Sellers may organize their own products into optional store categories, separate
+from the platform taxonomy. Names contain 1–50 characters and are unique within
+the store after case/spacing normalization. Categories support two levels,
+manual ordering and visibility; each product may belong to at most three.
+Hiding a group hides its public category destination and children, while the
+products retain their independent eligibility. Deleting a group previews its
+children and distinct affected products, requires the current preview, and
+removes memberships without deleting products. Products without any remaining
+store category are Uncategorized. These controls never change the shop's
+approved master root or a product's platform category.
+
+An approved seller may save a private draft with only a valid title. Supplied
+values still need valid formats and limits. Publishing requires complete title,
+description, gallery, explicit approved department, price, stock and declared
+weight. Optional dimensions must be complete and positive when supplied.
+Duplicate opens a separate private draft for editing with a distinct identity;
+it does not change the original or reserve stock. Delete rejects a product
+with unfinished orders and leaves its listing state unchanged. An explicit
+archive/deactivate action can pause new purchases; retained history is never
+hard-deleted. Bulk actions validate the owned selection before writing and
+report each changed, archived or skipped item.
+
 Sellers edit personal/shop contact numbers, profile photos, shop description, logo and banner directly in settings. These changes preserve the registered shop's approval and catalogue eligibility. Legal identity, birth date, shop name, category, pickup address and private business/identity evidence require the correction request and history beside identity information in merchant account settings. A restricted shop's contact/branding edit cannot reactivate it or open new work. The original sign-in email stays fixed; additional verified contact/recovery addresses use current-password confirmation and emailed OTP verification.
 
 Approval, rejection, suspension, and reactivation follow [ADMIN_FLOW.md](ADMIN_FLOW.md). Suspending the seller or their shop blocks new listings/orders in that scope and sends unfulfilled orders to an admin exception queue. It cannot silently cancel orders, restore stock, erase history, or bypass custody. Reactivation re-checks account and shop eligibility; document approval alone cannot clear an independent suspension.
@@ -42,6 +64,7 @@ The seller controls only `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP`.
 - Recipient name, phone, destination, and barangay.
 - Delivery type and facility route codes.
 - Exact COD amount and handling notes.
+- Original declared product weight, summed from retained order-item quantities and unit weights when known. Unknown legacy values stay unrecorded; this is separate from actual hub weighing.
 
 ## 4. Returns and Settlement
 

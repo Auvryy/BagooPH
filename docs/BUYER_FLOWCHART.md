@@ -18,6 +18,15 @@ Register with a required birth date proving age 18 or older
 
 Public catalogue browsing does not grant checkout access. Pending or rejected buyers enter the marketplace with their own dismissible application modal, styled like the buyer pages. They may view their profile, owned order history and Shopping Bag, and add or change Bag items while the account is active or awaiting approval. An empty history explains that no orders have been placed. Checkout and other protected purchasing actions require an active approved account. Email verification and uploading an ID do not replace the review in [ADMIN_FLOW.md](ADMIN_FLOW.md).
 
+A storefront may offer its own product groups, separate from the platform's
+approved categories. Buyers can view all products, a visible group and its
+children, or Uncategorized. Category, search and sort selections remain stable
+through pagination. Hidden groups have no public destination; a group's
+visibility does not independently hide otherwise eligible products. Variant
+listings show their price range before a complete option selection and the
+chosen option's price afterwards. Bag and checkout still recheck actual prices
+and stock.
+
 Birth date is required for password and first Google signup, including direct submissions and registration preflight. The buyer must have reached their eighteenth birthday on the server's Philippine calendar. Missing, impossible, future and underage dates are rejected before account creation. The server derives age; a supplied age cannot override it. Existing reviewed identity remains subject to the recorded correction process rather than an invented replacement date.
 
 Suspension blocks new orders and Bag changes. Personal pages and owned history remain readable, and required receipt confirmation for previously approved buyers remains available through the narrow authorized exception unless an explicit security review restricts it. Reading history as an unapproved applicant does not grant receipt confirmation or private pickup-code access. This never permits foreign-order access, premature completion, or new checkout. Approval or document resubmission cannot silently clear a suspension.
