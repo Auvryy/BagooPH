@@ -42,6 +42,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 ## Planning and Current Gaps
 
 - `CORE_FLOW_ROADMAP.md` is the only current implementation audit, phase order, rating comparison, and deferred-scope list.
+- [Cross-role readiness gap plan](READINESS_GAP_PLAN.md) traces remaining buyer, seller, rider, logistics and admin gaps to current source, separates proposed functions from verification and policy decisions, and defines six reviewable deliveries with independent implementation and defense acceptance targets.
 - [Authentication and registration improvements](auth-plan/README.md) separates access/verification recovery, shared field validation, terms acknowledgement, and combined acceptance into bounded deliveries while preserving existing account policies.
 - [Registration field review](auth-plan/REGISTRATION_FIELDS.md) maps signup and correction controls across roles, including demographics, identifier limits, passwords, private evidence and policy acknowledgement.
 - [Account registration and review](auth-plan/ACCOUNT_REGISTRATION_AND_REVIEW.md) defines role-scoped email identity, company uniqueness and registration details, status notices, and owner requests for review while preserving approval and activity gates.

@@ -7384,3 +7384,41 @@ workflow; a fresh database is unnecessary. Pause selected-product campaigns
 before reverting to backend code that does not understand their scope, and retain
 original schema and monetary history. Automated/source checks do not award new
 observed manual workbook passes.
+
+### Cross-role readiness gap planning — October 21, 2026
+
+Reviewed merged main `f8b2176` to prepare the
+[cross-role readiness gap plan](READINESS_GAP_PLAN.md). The review traces routes,
+controllers, shared services, models, seed fixtures and existing checks across
+buyer, seller, courier web/native backend, logistics company/handler and platform
+admin. Its six proposed deliveries separate actual read-model defects, useful
+operational additions, policy decisions and unperformed acceptance work. Planning
+does not select or implement the later application branches.
+
+The first proposed fixes address concrete inconsistencies: the buyer homepage
+still selects older order statuses and presents an unsupported arrival fallback;
+seller reports can describe wallet proceeds as pending COD settlement and stop
+their visible history at 25 rows. Deployment interruption recovery and readiness
+checks also need strengthening. Existing financial date filters, recorded cash
+and virtual journals, parcel guidance, returns and company joining remain the
+foundations to extend, not missing modules to rebuild.
+
+Fresh execution of `node --test tests/Deployment/bagoo.test.mjs` returned **five
+passes and one failure**. The verification-success test's Docker mock does not
+return the running scheduler ID now required by `bagoo.sh verify`. This is an
+observed test-harness gap; it does not establish an Azure outage. Repairing the
+mock and covering missing/stale scheduler behavior are proposed implementation
+work, not changes made by this documentation branch. The 25 source hashes from
+the prior voucher regression record still match; its backend/frontend/build
+results are retained historical evidence, not a newly rerun complete gate.
+An ignored diagnostic copy passed all six checks after restoring only that
+mocked scheduler response, confirming the cause without editing the tracked test.
+
+Implementation and defense ratings do not increase from writing the plan. The
+earlier approximate web/backend assessments of 85/100 maturity and 80/100 defense
+readiness were engineering estimates, not measured completion or worksheet-pass
+rates. A 95-point target now has separate weighted rubrics and critical gates;
+it remains unachieved until the selected scope has actual evidence. Whole-device
+Flutter readiness and current Azure acceptance remain separate, unverified
+boundaries for this review. Workbook results, application behavior, database
+records and deployed environments are unchanged.
