@@ -83,10 +83,12 @@ class AccountSettingsUpdatesTest extends TestCase
         $address = Address::create(['user_id' => $buyer->id, 'recipient_name' => $buyer->name, 'phone' => '+639171234567', 'city' => 'Makati', 'street' => 'Old delivery street', 'is_default' => true]);
         $order = Order::factory()->create(['buyer_id' => $buyer->id, 'shipping_address' => 'Old delivery street', 'status' => 'placed']);
         $this->actingAs($buyer)->from('/buyer/profile?tab=addresses')->patch('/buyer/addresses/'.$address->id,
-            ['recipient_name' => 'Unreviewed rename', 'phone' => '09171234567', 'city' => 'Makati', 'street' => 'New delivery street'])
+            ['recipient_name' => 'Andrea Cruz', 'phone' => '09171234567', 'region' => '1300000000',
+                'province' => 'Metro Manila', 'city' => 'Makati', 'barangay' => 'Poblacion', 'street' => 'New delivery street'])
             ->assertSessionHasNoErrors()->assertRedirect('/buyer/profile?tab=addresses');
         $this->assertSame('Old delivery street', $order->fresh()->shipping_address);
-        $this->assertSame($buyer->name, $address->fresh()->recipient_name);
+        $this->assertSame('Andrea Cruz', $address->fresh()->recipient_name);
+        $this->assertSame($buyer->name, $buyer->fresh()->name);
         $this->assertTrue($address->fresh()->is_default);
         $this->get('/buyer/profile?tab=addresses')->assertInertia(fn (Assert $page) => $page->where('addresses.0.street', 'New delivery street')->where('initialTab', 'addresses'));
         $this->actingAs(User::factory()->buyer()->create())->patchJson('/buyer/addresses/'.$address->id,

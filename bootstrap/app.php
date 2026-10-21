@@ -10,6 +10,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SubdomainRoleMiddleware;
+use App\Http\Middleware\TrackAccountSession;
 use App\Services\Courier\RiderApiResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // These validators must see controls before generic input trimming removes them.
         $middleware->trimStrings(except: [fn (Request $request) => $request->is('track', 'track/*', 'api/track/*', 'checkout', 'buyer/checkout')
+            || $request->is('account/security', 'account/security/*')
             || $request->is('api/v1/rider/settings/*') || RiderApiResponse::applies($request)
             || $request->is('handover-issues', 'handover-issues/*')
             || ($request->isMethod('POST') && $request->is('account/review-requests', 'account-reviews/*/decision', 'admin/account-reviews/*/decision'))
@@ -43,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             EnsureAccountOpen::class,
+            TrackAccountSession::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

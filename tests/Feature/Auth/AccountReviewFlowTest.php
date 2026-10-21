@@ -227,6 +227,7 @@ class AccountReviewFlowTest extends TestCase
 
     public function test_a_declined_request_keeps_restrictions_and_requires_a_wait_before_resending_the_same_case(): void
     {
+        config(['session.lifetime' => 60 * 48]);
         $owner = $this->owner();
         $admin = User::factory()->admin()->create();
         $item = $this->submit($owner);

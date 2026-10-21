@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Rules\AccountCurrentPassword;
+use App\Services\AccountSessions\AccountSessionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules\Password;
@@ -38,7 +39,7 @@ class AccountSettingsService
                 'password' => ['required', 'string', Password::defaults(), 'confirmed'],
             ]);
             $user->update(['password' => $values['password']]);
-            $user->tokens()->delete();
+            app(AccountSessionService::class)->passwordChanged($user, $request);
         }, 3);
     }
 

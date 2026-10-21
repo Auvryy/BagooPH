@@ -219,6 +219,7 @@ class AdvertisementManagementTest extends TestCase
 
     public function test_ending_a_future_placement_never_exposes_its_private_image(): void
     {
+        config(['session.lifetime' => 60 * 72]);
         $ad = $this->draft(['starts_at' => '2026-10-16T10:00', 'ends_at' => '2026-10-17T10:00']);
         $publication = $this->publish($ad, ['publish_now' => false]);
         $this->post('/admin/advertisements/'.$ad->id.'/actions', $this->action($ad, 'end', ['publication_id' => $publication->id]))->assertSessionHas('success');

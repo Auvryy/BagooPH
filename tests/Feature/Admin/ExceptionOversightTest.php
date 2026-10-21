@@ -238,6 +238,7 @@ class ExceptionOversightTest extends TestCase
 
     public function test_expired_holding_and_stale_clock_require_actual_return_and_seller_receipt(): void
     {
+        config(['session.lifetime' => 60 * 24 * 8]);
         $parcel = $this->pickup();
         $claim = PickupClaim::sole();
         $manager = $this->manager($parcel);

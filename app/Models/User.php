@@ -65,6 +65,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     ];
 
     protected $hidden = [
+        'session_version',
         'contact_settings_version',
         'identity_version',
         'closed_at',
@@ -136,6 +137,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'restriction_version' => 'integer',
             'identity_version' => 'integer',
             'contact_settings_version' => 'integer',
+            'session_version' => 'integer',
             'closed_at' => 'datetime',
         ];
     }

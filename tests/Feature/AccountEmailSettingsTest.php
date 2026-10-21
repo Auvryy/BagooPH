@@ -161,6 +161,9 @@ class AccountEmailSettingsTest extends TestCase
         $this->actingAs($buyer)->deleteJson('/account/emails/'.$address->id, ['current_password' => 'Password1234'])->assertOk();
         $next = $this->buyer();
         $this->added($next);
+        $this->actingAsGuest();
+        $this->app['session']->driver()->invalidate();
+        $this->defaultCookies = [];
         $this->app['auth']->forgetGuards();
         $this->postJson('/api/password/reset-otp', ['email' => 'contact@bagoo.test', 'token' => 'old-owner-token', 'password' => 'AttackerPassword1234', 'password_confirmation' => 'AttackerPassword1234'])->assertUnprocessable();
         $this->assertTrue(Hash::check('Password1234', $next->fresh()->password));
