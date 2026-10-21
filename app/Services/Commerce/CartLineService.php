@@ -61,7 +61,7 @@ class CartLineService
                 : "Your Shopping Bag already contains the maximum available quantity of {$maximum}."]);
         }
         if ($item) {
-            $item->update(['quantity' => $newQuantity, 'unit_price' => $unitPrice]);
+            $item->update(['quantity' => $newQuantity, 'unit_price' => $unitPrice, 'sku_snapshot' => app(ProductSkuService::class)->selected($product, $color, $size)]);
 
             return $item;
         }
@@ -69,7 +69,7 @@ class CartLineService
         return $cart->items()->create([
             'product_id' => $product->id, 'quantity' => $quantity, 'unit_price' => $unitPrice,
             'color' => $color, 'size' => $size,
-            'sku_snapshot' => $product->sku.($color ? "-{$color}" : '').($size ? "-{$size}" : ''),
+            'sku_snapshot' => app(ProductSkuService::class)->selected($product, $color, $size),
         ]);
     }
 }

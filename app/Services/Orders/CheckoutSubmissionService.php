@@ -66,6 +66,7 @@ class CheckoutSubmissionService
 
             return [$item->id, $item->product_id, $item->quantity, $item->color, $item->size,
                 $item->product?->price, is_numeric($extra) ? number_format((float) $extra, 2, '.', '') : null,
+                $matrix['price'] ?? null, $matrix['sku'] ?? null,
                 $shown?->getAttribute('checkout_price_context') ?? ($item->product ? app(SalePriceService::class)->context($item->product) : null)];
         })->all();
 

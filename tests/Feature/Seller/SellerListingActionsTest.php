@@ -156,12 +156,12 @@ class SellerListingActionsTest extends TestCase
         $product = Product::factory()->create(['shop_id' => $this->shop->id, 'price' => '199.00', 'variants' => ['sizes' => [
             ['name' => 'Small', 'extra_price' => 0, 'stock' => 5], ['name' => 'Medium', 'extra_price' => 50, 'stock' => 5], ['name' => 'Large', 'extra_price' => 100, 'stock' => 5],
         ]]]);
-        $this->assertSame(['min' => '199.00', 'max' => '299.00'], $product->price_range);
+        $this->assertSame(['min' => '199.00', 'max' => '299.00', 'regular_min' => '199.00', 'regular_max' => '299.00'], $product->price_range);
         $product->sales()->create(['kind' => 'store', 'name' => 'Store sale', 'price' => '179.00', 'starts_at' => now()->subMinute(), 'ends_at' => now()->addHour()]);
         $product->unsetRelation('sales');
-        $this->assertSame(['min' => '179.00', 'max' => '279.00'], $product->price_range);
+        $this->assertSame(['min' => '179.00', 'max' => '279.00', 'regular_min' => '199.00', 'regular_max' => '299.00'], $product->price_range);
         $product->update(['variants' => ['combinations' => [['extra_price' => '20.00'], ['extra_price' => '80.00']]]]);
-        $this->assertSame(['min' => '199.00', 'max' => '259.00'], $product->price_range);
+        $this->assertSame(['min' => '199.00', 'max' => '259.00', 'regular_min' => '219.00', 'regular_max' => '279.00'], $product->price_range);
         $this->assertSame('199.00', $product->price);
     }
 

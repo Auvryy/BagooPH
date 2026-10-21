@@ -8,6 +8,8 @@ use App\Models\Product;
 use App\Models\ProductSale;
 use App\Services\Finance\CodMoney;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SalePriceService
 {
@@ -21,30 +23,75 @@ class SalePriceService
         $regular = CodMoney::cents($product->price);
 
         return ['regular_cents' => $regular,
-            'fallback_cents' => $store ? min($regular, CodMoney::cents($store->price)) : $regular,
+            'fallback_cents' => $store ? $this->saleCents($store, $regular, $regular) : $regular,
             'store_id' => $store?->id,
-            'flash_cents' => $flash ? min($regular, CodMoney::cents($flash->price)) : null,
+            'store_type' => $store?->discount_type ?? 'fixed', 'store_percentage' => $store?->percentage,
+            'store_price' => $store ? CodMoney::cents($store->price) : null,
+            'flash_cents' => $flash ? $this->saleCents($flash, $regular, $regular) : null,
             'flash_id' => $flash?->id,
+            'flash_type' => $flash?->discount_type ?? 'fixed', 'flash_percentage' => $flash?->percentage,
+            'flash_price' => $flash ? CodMoney::cents($flash->price) : null,
             'flash_remaining' => $flash ? max(0, $flash->quantity - $flash->used_quantity) : 0];
     }
 
     public function unitPrice(Product $product, string $regularUnitPrice): string
     {
         $context = $this->context($product);
-        $extra = CodMoney::cents($regularUnitPrice) - $context['regular_cents'];
 
-        return number_format((($context['flash_cents'] ?? $context['fallback_cents']) + $extra) / 100, 2, '.', '');
+        return number_format($this->contextCents($context, CodMoney::cents($regularUnitPrice), $context['flash_id'] !== null) / 100, 2, '.', '');
     }
 
     public function range(Product $product): array
     {
         $context = $this->context($product);
-        $base = $context['flash_cents'] ?? $context['fallback_cents'];
-        $options = $product->variants['combinations'] ?? $product->variants['sizes'] ?? [];
-        $extras = array_map(fn ($row) => max(0, CodMoney::cents(number_format((float) ($row['extra_price'] ?? 0), 2, '.', ''))), $options) ?: [0];
+        $regular = $this->regularPrices($product);
+        $prices = array_map(fn ($cents) => $this->contextCents($context, $cents, $context['flash_id'] !== null), $regular);
 
-        return ['min' => number_format(($base + min($extras)) / 100, 2, '.', ''),
-            'max' => number_format(($base + max($extras)) / 100, 2, '.', '')];
+        return ['min' => number_format(min($prices) / 100, 2, '.', ''), 'max' => number_format(max($prices) / 100, 2, '.', ''),
+            'regular_min' => number_format(min($regular) / 100, 2, '.', ''), 'regular_max' => number_format(max($regular) / 100, 2, '.', '')];
+    }
+
+    /** @return list<int> */
+    public function regularPrices(Product $product): array
+    {
+        $options = $product->variants['combinations'] ?? $product->variants['sizes'] ?? [];
+        if (($product->variants['pricing_mode'] ?? null) === 'independent' && $options !== []) {
+            return array_map(fn ($row) => CodMoney::cents($row['price']), $options);
+        }
+
+        return array_map(fn ($row) => CodMoney::cents($product->price) + max(0, CodMoney::cents(number_format((float) ($row['extra_price'] ?? 0), 2, '.', ''))), $options ?: [['extra_price' => 0]]);
+    }
+
+    public function discountedCents(int $regular, int $percentage): int
+    {
+        return max(1, intdiv($regular * (100 - $percentage) + 50, 100));
+    }
+
+    public function assertFixedSalesRemainPositive(Product $product): void
+    {
+        $minimum = min($this->regularPrices($product));
+        foreach ($product->sales()->whereNull('ended_at')->where('ends_at', '>', now())->where('discount_type', 'fixed')->get() as $sale) {
+            if ($minimum - max(0, CodMoney::cents($product->price) - CodMoney::cents($sale->price)) < 1) {
+                throw ValidationException::withMessages(['price' => 'An existing sale would make an option free or negative. Review the sale before changing these prices.']);
+            }
+        }
+    }
+
+    private function saleCents(ProductSale $sale, int $regular, int $base): int
+    {
+        return $sale->discount_type === 'percentage' ? $this->discountedCents($regular, $sale->percentage)
+            : max(1, $regular - max(0, $base - CodMoney::cents($sale->price)));
+    }
+
+    private function contextCents(array $context, int $regular, bool $flash): int
+    {
+        $prefix = $flash ? 'flash' : 'store';
+        if (! $context[$prefix.'_id']) {
+            return $regular;
+        }
+
+        return $context[$prefix.'_type'] === 'percentage' ? $this->discountedCents($regular, $context[$prefix.'_percentage'])
+            : max(1, $regular - max(0, $context['regular_cents'] - $context[$prefix.'_price']));
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -55,16 +102,16 @@ class SalePriceService
         foreach ($items->sortBy('id') as $item) {
             $product = $item->product;
             $context = $this->context($product);
-            $extra = CodMoney::cents(app(InventoryService::class)->regularUnitPrice($product, $item->color, $item->size)) - $context['regular_cents'];
+            $regular = CodMoney::cents(app(InventoryService::class)->regularUnitPrice($product, $item->color, $item->size));
             $remaining[$product->id] ??= $context['flash_remaining'];
             $flashQuantity = min($item->quantity, $remaining[$product->id]);
             $remaining[$product->id] -= $flashQuantity;
             $segments = [];
             if ($flashQuantity > 0) {
-                $segments[] = $this->segment($flashQuantity, $context['flash_cents'] + $extra, $context['flash_id'], 'flash');
+                $segments[] = $this->segment($flashQuantity, $this->contextCents($context, $regular, true), $context['flash_id'], 'flash');
             }
             if ($item->quantity > $flashQuantity) {
-                $segments[] = $this->segment($item->quantity - $flashQuantity, $context['fallback_cents'] + $extra, $context['store_id'], $context['store_id'] ? 'store' : null);
+                $segments[] = $this->segment($item->quantity - $flashQuantity, $this->contextCents($context, $regular, false), $context['store_id'], $context['store_id'] ? 'store' : null);
             }
             $plans[$item->id] = ['id' => $item->id, 'quantity' => $item->quantity,
                 'unit_price' => $segments[0]['unit_price'],
@@ -116,14 +163,17 @@ class SalePriceService
         $active = $product->sales->firstWhere('id', $activeId);
         $upcoming = $product->sales->filter(fn (ProductSale $sale) => $sale->kind === 'flash' && ! $sale->ended_at && $sale->starts_at->isFuture() && $sale->ends_at->isFuture())->sortBy('starts_at')->first();
 
-        return ['server_now' => now()->toIso8601String(), 'effective_price' => ($context['flash_cents'] ?? $context['fallback_cents']) / 100,
-            'active' => $active ? $this->saleSummary($active) : null,
-            'upcoming' => $upcoming ? $this->saleSummary($upcoming) : null];
+        return ['server_now' => now()->toIso8601String(), 'effective_price' => (float) $this->range($product)['min'],
+            'active' => $active ? $this->saleSummary($active, $product) : null,
+            'upcoming' => $upcoming ? $this->saleSummary($upcoming, $product) : null];
     }
 
-    public function saleSummary(ProductSale $sale): array
+    public function saleSummary(ProductSale $sale, ?Product $product = null): array
     {
-        return ['id' => $sale->id, 'kind' => $sale->kind, 'name' => $sale->name, 'price' => $sale->price,
+        $price = $product ? number_format($this->saleCents($sale, min($this->regularPrices($product)), CodMoney::cents($product->price)) / 100, 2, '.', '') : $sale->price;
+
+        return ['id' => $sale->id, 'kind' => $sale->kind, 'name' => $sale->name, 'price' => $price,
+            'discount_type' => $sale->discount_type ?? 'fixed', 'percentage' => $sale->percentage,
             'starts_at' => $sale->starts_at->toIso8601String(), 'ends_at' => $sale->ends_at->toIso8601String(),
             'remaining_quantity' => $sale->kind === 'flash' ? max(0, $sale->quantity - $sale->used_quantity) : null];
     }
@@ -131,9 +181,18 @@ class SalePriceService
     /** Correlated expression used by catalogue price filters and sorting on both supported databases. */
     public function cataloguePriceSql(): array
     {
-        $select = 'select case when s.price < products.price then s.price else products.price end from product_sales s where s.product_id = products.id and s.ended_at is null and s.starts_at <= ? and s.ends_at > ? and s.kind = ?';
+        $postgres = DB::getDriverName() === 'pgsql';
+        $mode = $postgres ? "products.variants::jsonb->>'pricing_mode'" : "json_extract(products.variants, '$.pricing_mode')";
+        $rowPrice = $postgres ? "select min(cast(v->>'price' as decimal(12,2))) from jsonb_array_elements(products.variants::jsonb->'combinations') v"
+            : "select min(cast(json_extract(value, '$.price') as decimal(12,2))) from json_each(products.variants, '$.combinations')";
+        $extra = $postgres ? "select min(cast(coalesce(v->>'extra_price','0') as decimal(12,2))) from jsonb_array_elements(coalesce(products.variants::jsonb->'combinations',products.variants::jsonb->'sizes','[]'::jsonb)) v"
+            : "select min(cast(coalesce(json_extract(value, '$.extra_price'),0) as decimal(12,2))) from json_each(coalesce(json_extract(products.variants, '$.combinations'),json_extract(products.variants, '$.sizes'),'[]'))";
+        $regular = "(case when {$mode} = 'independent' then coalesce(({$rowPrice}), products.price) else products.price + coalesce(({$extra}),0) end)";
+        $price = "case when s.discount_type = 'percentage' then round({$regular} * (100.0 - s.percentage) / 100.0, 2) when s.price < products.price then {$regular} - (products.price - s.price) else {$regular} end";
+        $clamp = $postgres ? "greatest(0.01, ({$price}))" : "max(0.01, ({$price}))";
+        $select = 'select '.$clamp.' from product_sales s where s.product_id = products.id and s.ended_at is null and s.starts_at <= ? and s.ends_at > ? and s.kind = ?';
 
-        return ['sql' => 'coalesce(('.$select.' and s.used_quantity < s.quantity order by s.id limit 1), ('.$select.' order by s.id limit 1), products.price)',
+        return ['sql' => 'coalesce(('.$select.' and s.used_quantity < s.quantity order by s.id limit 1), ('.$select.' order by s.id limit 1), '.$regular.')',
             'bindings' => [now(), now(), 'flash', now(), now(), 'store']];
     }
 }

@@ -235,6 +235,9 @@ class SellerProductController extends Controller
         if (! is_array($variantsRaw)) {
             throw ValidationException::withMessages(['variants' => 'Enter valid product options before saving.']);
         }
+        if (array_diff(array_keys($variantsRaw), ['colors', 'sizes', 'option1_name', 'option2_name', 'combinations', 'pricing_mode']) !== []) {
+            throw ValidationException::withMessages(['variants' => 'Use no more than two option groups. Remove unsupported option fields before saving.']);
+        }
 
         foreach (['colors', 'sizes'] as $group) {
             if (isset($variantsRaw[$group]) && is_array($variantsRaw[$group])) {
@@ -247,6 +250,8 @@ class SellerProductController extends Controller
             }
         }
         Validator::make($variantsRaw, [
+            'option3_name' => ['prohibited'],
+            'pricing_mode' => ['sometimes', Rule::in(['surcharge', 'independent'])],
             'colors' => ['sometimes', 'array', 'list', 'max:20'],
             'colors.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
             'sizes' => ['sometimes', 'array', 'list', 'max:20'],
@@ -305,6 +310,7 @@ class SellerProductController extends Controller
 
         return [
             ...($matrix !== null ? ['combinations' => $matrix] : []),
+            ...($matrix !== null && ($variantsRaw['pricing_mode'] ?? null) === 'independent' ? ['pricing_mode' => 'independent'] : []),
             'option1_name' => $option1Name,
             'option2_name' => $option2Name,
             'colors' => $colors,

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Commerce\ProductSkuService;
 use App\Services\Commerce\SalePriceService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,12 +11,35 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use LogicException;
 
 class Product extends Model
 {
     use HasFactory;
+
+    public function save(array $options = [])
+    {
+        return DB::transaction(function () use ($options) {
+            $created = ! $this->exists;
+            $skuValues = fn (?array $variants) => array_column($variants['combinations'] ?? [], 'sku');
+            $skuChanged = $created || $this->isDirty('sku') || $skuValues($this->variants) !== $skuValues($this->getOriginal('variants'));
+            $prices = fn (?array $variants) => [$variants['pricing_mode'] ?? null,
+                array_map(fn ($row) => [$row['price'] ?? null, $row['extra_price'] ?? null], $variants['combinations'] ?? $variants['sizes'] ?? [])];
+            if (! $created && ($this->isDirty('price') || $prices($this->variants) !== $prices($this->getOriginal('variants')))) {
+                app(SalePriceService::class)->assertFixedSalesRemainPositive($this);
+            }
+            $saved = parent::save($options);
+            if ($saved) {
+                if ($skuChanged) {
+                    app(ProductSkuService::class)->sync($this);
+                }
+            }
+
+            return $saved;
+        });
+    }
 
     protected static function booted(): void
     {
@@ -114,6 +138,7 @@ class Product extends Model
         'purchase_limit' => 'integer',
         'sales_count' => 'integer',
         'variants' => 'array',
+        'low_stock_active' => 'boolean', 'low_stock_cycle' => 'integer',
     ];
 
     protected $attributes = ['compliance_restricted' => false, 'moderation_version' => 0];
@@ -140,7 +165,7 @@ class Product extends Model
         return app(SalePriceService::class)->range($this);
     }
 
-    protected $hidden = ['verified_rating', 'sales'];
+    protected $hidden = ['verified_rating', 'sales', 'low_stock_active', 'low_stock_cycle'];
 
     public function moderationDecisions(): HasMany
     {
