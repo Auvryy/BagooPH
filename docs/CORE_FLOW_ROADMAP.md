@@ -7674,6 +7674,13 @@ Verification evidence:
   generic Not Found page, while registration returned 200. Deployed pages do
   not yet expose the new scanner permission prop or use Bagoo recovery.
   These checks verify the existing deployment, not this unpublished branch.
+- A follow-up traversal of the offered logistics lists, pagination and detail
+  links returned 200 for all 46 requests across those accounts. Live detail
+  coverage includes one handover report and three hub activity reviews; this
+  pass did not exercise populated manifest, COD or return detail pages. All
+  64 deployed JavaScript/CSS assets needed by the ten existing hub entries
+  and application shell returned 200 with the correct content type. No new
+  scan-capability prop is present in the deployed accounts' page responses.
 
 Scoped local navigation/page-recovery assessment: **5/10 -> 8/10**. This measures
 permitted links, readable recovery and verified local page loading; it does
