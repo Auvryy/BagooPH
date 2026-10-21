@@ -56,6 +56,13 @@ authored flash quota cannot remove used units or exceed used units plus current
 stock. Scheduling does not create or reserve physical stock; checkout still
 checks actual option stock and quota under the product lock.
 
+Shop vouchers may cover all eligible shop products or a selected list of 1–100
+published, eligible products. All variants of a chosen product qualify. Drafts
+retain the selection; publishing checks current ownership and eligibility and
+saves an immutable revision. Only qualifying selected merchandise counts toward
+the minimum spend and discount. Existing orders and later returns keep the
+original selection and amounts. See [the selected-product voucher contract](voucher-plan/PRODUCT_SELECTION.md).
+
 Sellers edit personal/shop contact numbers, profile photos, shop description, logo and banner directly in settings. These changes preserve the registered shop's approval and catalogue eligibility. Legal identity, birth date, shop name, category, pickup address and private business/identity evidence require the correction request and history beside identity information in merchant account settings. A restricted shop's contact/branding edit cannot reactivate it or open new work. The original sign-in email stays fixed; additional verified contact/recovery addresses use current-password confirmation and emailed OTP verification.
 
 Approval, rejection, suspension, and reactivation follow [ADMIN_FLOW.md](ADMIN_FLOW.md). Suspending the seller or their shop blocks new listings/orders in that scope and sends unfulfilled orders to an admin exception queue. It cannot silently cancel orders, restore stock, erase history, or bypass custody. Reactivation re-checks account and shop eligibility; document approval alone cannot clear an independent suspension.

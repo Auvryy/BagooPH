@@ -49,7 +49,7 @@ Do not begin all four batches or reorganize unrelated work automatically.
 | Code entry | Optional; never required when an eligible public offer can be selected |
 | Cancellation | Preserve current non-restoration of voucher use; no automatic replacement or sibling reallocation |
 
-Shop-funded shipping, first-order targeting, category/product targeting, loyalty
+Shop-funded shipping, first-order targeting, category targeting, loyalty
 points, cashback, wallet balances, invitation campaigns, gamification, live
 sales, refunds/exchanges and advertising attribution are deferred. Whole-shop
 and platform-wide offers are enough for the first useful release. No new paid
@@ -57,6 +57,13 @@ service, mobile app change or payment method is needed.
 
 These limits are Bagoo design choices, informed by
 [official references](REFERENCES.md), not universal marketplace rules.
+
+The separately selected [product-selection extension](PRODUCT_SELECTION.md)
+adds shop vouchers for 1–100 owned products, including their variants. It keeps
+whole-shop offers, existing voucher slots and immutable revisions. Only
+qualifying selected merchandise counts toward the targeted minimum and
+discount; original order and return amounts retain that scope. Code-only
+discovery and other deferred promotion workflows remain separate selections.
 
 ## Funding must be explicit
 

@@ -49,6 +49,14 @@ Shopping Bag does not reserve stock; checkout validates and decrements it atomic
 
 If selected items belong to multiple shops, checkout creates a separate order, parcel, tracking number, shipping fee, and seller pickup route per shop. The buyer may see them under one checkout result, but their fulfillment and delivery timelines remain independent. A shop voucher reduces only its matching shop order; a platform voucher is divided proportionally without exceeding its calculated checkout discount.
 
+A selected-product shop voucher identifies its qualifying listings and covers
+their available variants. Only qualifying selected merchandise counts toward
+its minimum and reduction; other products and shipping cannot qualify it.
+Product details show applicable offers, and the voucher collection and checkout
+explain the restriction. Purchased amounts and partial/full return bases retain
+the original scope even after a listing or campaign changes. See
+[selected-product vouchers](voucher-plan/PRODUCT_SELECTION.md).
+
 Successful checkout and My Purchases links open the existing purchases and tracking workspace, with item details and parcel actions. Restricted buyers retain only their owned recorded-order view under the exception above.
 
 Account settings keep the original sign-in email and allow verified additional contact/recovery addresses with current-password confirmation and an emailed code. Buyers edit contact numbers and profile photos directly; address changes require an active approved account. Saving a photo updates the profile and header from the saved result. Addresses apply to future orders; existing order snapshots remain intact. Present recorded first, middle and last names separately; never guess missing components from a legacy combined name. Legal name, birth date and private identity evidence use the correction request and history beside identity information in settings, with Platform Admin review. Unreviewed buyers correct their application in the marketplace modal.
