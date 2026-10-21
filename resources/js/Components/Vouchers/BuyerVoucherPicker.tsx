@@ -4,6 +4,7 @@ import axios from 'axios';
 import { VoucherOffer } from '@/hooks/usePurchaseQuote';
 import { PaginatedData } from '@/types';
 import SavedVoucherButton from './SavedVoucherButton';
+import BuyerVoucherScope from './BuyerVoucherScope';
 
 const money = (value: number | string) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value));
 
@@ -30,6 +31,7 @@ export function VoucherChoiceCards({ offers, chosen, onChoose, busy = false }: {
                         : <span className="block text-xs font-bold text-[#C20836]">Save {money(offer.saving ?? 0)} on this checkout</span>}
                 </span>
             </label>
+            <div className="mt-2"><BuyerVoucherScope offer={offer} /></div>
             <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200 pt-3"><span className="text-xs text-slate-600">{offer.code}</span><SavedVoucherButton offer={offer} /></div>
         </div>)}
     </div>;

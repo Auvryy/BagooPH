@@ -66,9 +66,16 @@ values. Store grouping stays distinct from the approved department. Verify
 product selectors, public price ranges, search, Shopping Bag and checkout use
 the same current prices; prior orders remain unchanged.
 
-Code-only/product-scoped vouchers, bundles and cash withdrawal requests remain
+Code-only vouchers, bundles and cash withdrawal requests remain
 separate features. Keep approval, the sole shop, the 14 master roots, buyer-only
 completion, original financial evidence and the agreed 10% commission.
+
+After SE03/SE04 were merged, the user selected the product-voucher extension on
+`feat/seller-product-vouchers`, targeting `SEL-VOU-008`. Its
+[bounded contract](../voucher-plan/PRODUCT_SELECTION.md) covers owned product
+selection, saved revisions, buyer eligibility, qualifying-only calculations and
+original cancellation/refund amounts. Keep its authoring, money and UI checks
+distinct; this selection does not start code-only discovery or bundle pricing.
 
 Automated tests, a build and source inspection are distinct from a live browser,
 printer or simultaneous PostgreSQL check. Preserve the separate status of

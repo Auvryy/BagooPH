@@ -17,6 +17,7 @@ use App\Services\Commerce\SalePriceService;
 use App\Services\Finance\CodMoney;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\ShopEligibilityService;
+use App\Services\Vouchers\VoucherProductScopeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use RuntimeException;
@@ -67,6 +68,8 @@ class CheckoutQuoteService
     {
         $revisions = $selection instanceof Voucher ? collect([$selection->currentRevision]) : ($selection ?? collect());
         $pricePlans = app(SalePriceService::class)->plan($items);
+        $lineAmounts = collect($pricePlans)->map(fn ($plan) => collect($plan['price_segments'])
+            ->sum(fn ($segment) => CodMoney::cents(number_format($segment['unit_price'], 2, '.', '')) * $segment['quantity']));
         $shops = $items->groupBy(fn (CartItem $item) => $item->product->shop_id)->sortKeys()->map(function (Collection $group, int $shopId) use ($deliveryType, $pricePlans) {
             $subtotal = $group->sum(fn (CartItem $item) => collect($pricePlans[$item->id]['price_segments'])
                 ->sum(fn ($segment) => CodMoney::cents(number_format($segment['unit_price'], 2, '.', '')) * $segment['quantity']));
@@ -90,20 +93,25 @@ class CheckoutQuoteService
                 break;
             }
             $failedRevisionId = $revision->id;
-            $reason = $this->unavailableReason($revision, $shops, $buyer);
+            $qualified = ($revision->product_scope ?? 'all') === 'selected'
+                ? $this->selectedProductBasis($revision, $items, $lineAmounts, $shops) : null;
+            $reason = $this->unavailableReason($revision, $shops, $buyer, $qualified['subtotal'] ?? null);
             if ($reason) {
                 break;
             }
             $shipping = $revision->discount_type === 'free_shipping';
             $scope = $revision->issuer_type === 'shop' ? $shops->only([$revision->shop_id]) : $shops;
             $weights = $scope->map(fn ($shop, $id) => $shipping ? $shop['shipping'] - $shippingDiscounts[$id] : $shop['subtotal'] - $productDiscounts[$id]);
+            if ($qualified !== null) {
+                $weights = $scope->map(fn () => $qualified['subtotal']);
+            }
             $basis = $weights->sum();
             $amount = $revision->discount_type === 'percent'
                 ? intdiv($basis * $revision->percentage_bps + 5000, 10000)
                 : ($shipping && $revision->value_cents === 0 ? $basis : $revision->value_cents);
             $amount = min($basis, $amount, $revision->maximum_cents);
             if ($revision->issuer_type === 'shop') {
-                $gross = SellerSettlementService::split($scope->sum('subtotal'))['seller_cents'];
+                $gross = $qualified['seller_cents'] ?? SellerSettlementService::split($scope->sum('subtotal'))['seller_cents'];
                 $amount = min($amount, $gross);
             }
             if ($amount <= 0) {
@@ -168,9 +176,12 @@ class CheckoutQuoteService
             $candidate = ($selected ?? collect())->reject(fn ($current) => $current->issuer_type === $revision->issuer_type && $current->shop_id === $revision->shop_id)->push($revision);
             $quote = $items !== null ? $this->quote($items, $deliveryType, $candidate, $buyer) : null;
             $saving = $quote ? collect($quote['redemptions'])->firstWhere('revision_id', $revision->id)['discount_cents'] ?? 0 : null;
+            $presented = $this->present($revision);
+            $unavailable = $quote['voucher_error'] ?? ($presented['product_scope'] === 'selected' && $presented['eligible_products'] === []
+                ? 'The qualifying products are currently unavailable.' : null);
 
-            return [...$this->present($revision), 'eligible' => $quote ? $quote['voucher_error'] === null : null,
-                'unavailable_reason' => $quote['voucher_error'] ?? null, 'saving' => $saving === null ? null : $saving / 100];
+            return [...$presented, 'eligible' => $unavailable !== null ? false : ($quote !== null ? true : null),
+                'unavailable_reason' => $unavailable, 'saving' => $saving === null ? null : $saving / 100];
         })->all();
 
         return ['offers' => $offers, 'count' => $count];
@@ -196,6 +207,8 @@ class CheckoutQuoteService
 
     public function present(VoucherRevision $revision): array
     {
+        $products = app(VoucherProductScopeService::class)->publicRows($revision);
+
         return ['id' => $revision->voucher_id, 'revision_id' => $revision->id, 'code' => $revision->code,
             'name' => $revision->name, 'description' => $revision->description, 'discount_type' => $revision->discount_type,
             'discount_value' => $revision->discount_type === 'percent' ? $revision->percentage_bps / 100 : $revision->value_cents / 100,
@@ -203,11 +216,35 @@ class CheckoutQuoteService
             'shop_id' => $revision->shop_id, 'shop_name' => $revision->shop?->name,
             'issuer' => $revision->issuer_type, 'expires_at' => $revision->ends_at->toIso8601String(),
             'starts_at' => $revision->starts_at->toIso8601String(),
-            'use_url' => $revision->issuer_type === 'shop' && $revision->shop?->slug
-                ? route('shop.show', $revision->shop->slug, absolute: false) : route('buyer.cart', absolute: false)];
+            'product_scope' => $revision->product_scope ?? 'all', 'eligible_products' => $products,
+            'use_url' => $products[0]['url'] ?? ($revision->issuer_type === 'shop' && $revision->shop?->slug
+                ? route('shop.show', $revision->shop->slug, absolute: false) : route('buyer.cart', absolute: false))];
     }
 
-    private function unavailableReason(VoucherRevision $revision, Collection $shops, ?User $buyer): ?string
+    /** Match the original purchased-line order and its exact commission allocation for later returns. */
+    private function selectedProductBasis(VoucherRevision $revision, Collection $items, Collection $lineAmounts, Collection $shops): array
+    {
+        $total = $shops->get($revision->shop_id)['subtotal'] ?? 0;
+        if ($total <= 0) {
+            return ['subtotal' => 0, 'seller_cents' => 0];
+        }
+        $commission = SellerSettlementService::split($total)['commission_cents'];
+        $prefix = $previous = $subtotal = $seller = 0;
+        foreach ($items->filter(fn ($item) => $item->product->shop_id === $revision->shop_id) as $item) {
+            $gross = $lineAmounts[$item->id];
+            $prefix += $gross;
+            $next = $this->proportion($commission, $prefix, $total);
+            if (in_array($item->product_id, $revision->product_ids ?? [], true)) {
+                $subtotal += $gross;
+                $seller += $gross - ($next - $previous);
+            }
+            $previous = $next;
+        }
+
+        return ['subtotal' => $subtotal, 'seller_cents' => $seller];
+    }
+
+    private function unavailableReason(VoucherRevision $revision, Collection $shops, ?User $buyer, ?int $qualifiedSubtotal = null): ?string
     {
         $voucher = $revision->voucher;
         if (! $voucher || $voucher->current_revision_id !== $revision->id || $voucher->archived_at
@@ -238,11 +275,15 @@ class CheckoutQuoteService
             || ! ($revision->getAttribute('quote_shop_eligible') ?? app(ShopEligibilityService::class)->isEligible($revision->shop)))) {
             return 'This voucher is not for the selected shop items.';
         }
-        $subtotal = ($revision->issuer_type === 'shop' ? $shops->only([$revision->shop_id]) : $shops)->sum('subtotal');
+        if ($qualifiedSubtotal !== null && $qualifiedSubtotal <= 0) {
+            return 'Choose a qualifying product from this shop to use this voucher.';
+        }
+        $subtotal = $qualifiedSubtotal ?? ($revision->issuer_type === 'shop' ? $shops->only([$revision->shop_id]) : $shops)->sum('subtotal');
         if ($subtotal < $revision->minimum_cents) {
             $remaining = number_format(($revision->minimum_cents - $subtotal) / 100, 2);
 
-            return $revision->issuer_type === 'shop' ? "Add ₱{$remaining} from this shop to use this voucher." : "Add ₱{$remaining} in selected products to use this voucher.";
+            return $qualifiedSubtotal !== null ? "Add ₱{$remaining} in qualifying products from this shop to use this voucher."
+                : ($revision->issuer_type === 'shop' ? "Add ₱{$remaining} from this shop to use this voucher." : "Add ₱{$remaining} in selected products to use this voucher.");
         }
 
         return null;

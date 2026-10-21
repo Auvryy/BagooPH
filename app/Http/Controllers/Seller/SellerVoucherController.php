@@ -7,6 +7,8 @@ use App\Http\Controllers\HandlesVoucherCampaignWrites;
 use App\Models\Voucher;
 use App\Services\ShopEligibilityService;
 use App\Services\Vouchers\VoucherCampaignService;
+use App\Services\Vouchers\VoucherProductScopeService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,6 +17,13 @@ use Inertia\Response;
 class SellerVoucherController extends Controller
 {
     use HandlesVoucherCampaignWrites, HasSellerShop;
+
+    public function products(Request $request, VoucherProductScopeService $scope): JsonResponse
+    {
+        $shop = $this->getActiveShop($request);
+
+        return response()->json(['products' => $scope->search($shop, $request->all())])->header('Cache-Control', 'no-store, private');
+    }
 
     public function index(Request $request, VoucherCampaignService $campaigns): Response
     {

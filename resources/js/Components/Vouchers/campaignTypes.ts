@@ -5,6 +5,7 @@ export interface CampaignTerms {
     discount_type: 'fixed' | 'percent' | 'free_shipping';
     value_cents: number; percentage_bps: number | null; minimum_cents: number; maximum_cents: number;
     budget_cents: number; global_limit: number; per_buyer_limit: number; starts_at: string; ends_at: string;
+    product_scope?: 'all' | 'selected'; product_ids?: number[];
 }
 export interface Campaign {
     id: number; code: string; name: string; issuer_type: 'shop' | 'platform' | 'legacy_unknown';
@@ -13,6 +14,7 @@ export interface Campaign {
     published_terms: CampaignTerms | null; approved_budget_cents: number | null; suspended_at: string | null;
     balance: { redemption_count: number; committed_cents: number; spent_cents: number; released_cents: number } | null;
     legacy_used_count: number | null;
+    selected_products?: import('./VoucherProductSelection').VoucherProduct[];
 }
 export interface CampaignStats {
     campaigns: number; active: number; saves: number; redemptions: number; legacy_uses: number;

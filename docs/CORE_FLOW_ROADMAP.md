@@ -7317,3 +7317,70 @@ reset or reseed were changed. Original live timing, printing and native
 concurrency procedures retain their separate evidence status; these automated
 checks do not award new observed manual passes. After user publication/merge,
 use `./bagoo.sh deploy` and `./bagoo.sh verify` for additive deployment.
+
+
+### Selected-product seller vouchers — October 21, 2026
+
+The user selected `feat/seller-product-vouchers` from merged main `152a3e0`,
+targeting `SEL-VOU-008`. The [contract](voucher-plan/PRODUCT_SELECTION.md) extends
+the existing campaign engine with all-products or 1–100 owned eligible products,
+including their variants. Code-only discovery, bundles and cash withdrawals
+remain separate selections.
+
+Seller drafts retain canonical sorted product IDs. Publication rechecks current
+eligibility and stores an immutable scope. Older edit payloads cannot silently
+replace an existing selection with the whole shop. Both seller URL forms support
+the bounded, searchable product picker. Invalid types, duplicate/foreign IDs,
+limits, stale listings and unauthorized roles have focused rejection checks.
+Buyer product details show applicable offers, and collections, choices and
+applied discounts explain the restriction and link only public qualifying
+products. An empty qualifying catalogue is unavailable in both collection and
+profile offer previews. Search, paging, retained choices, errors, retries and
+out-of-order responses have controlled component checks; Enter in product search
+does not submit a voucher draft.
+
+Qualifying selected merchandise alone supplies the minimum and fixed/percentage
+basis, using current full variant and scheduled-sale prices. Integer-centavo
+seller-share attribution also protects tiny mixed orders. Platform stacking and
+mixed-shop allocations preserve the existing slots and original 10% commission.
+Redemptions retain the selected IDs; retries, cancellations, unpaid wallet
+expiry and original partial/full returns keep their evidence and once-only
+funding behavior. Six actual isolated COD/wallet procedures cover qualifying,
+unrelated and full merchandise returns through delivery, reverse hub custody,
+review, repayment and final receipt. Later listing/campaign changes preserve
+those purchased amounts.
+
+| Scoped engineering assessment | Before | After | Evidence and limit |
+|---|---|---|---|
+| Selected-product voucher flow | 2/10 | 8.5/10 | The existing whole-shop funding foundation now has owned product authoring, immutable scope, qualifying-only prices, buyer guidance and original cancellation/refund checks. Live browser layout and simultaneous native PostgreSQL behavior remain unobserved. This does not raise unrelated role or system readiness. |
+
+Verification: **1,530 broad isolated SQLite `:memory:` checks / 36,081 assertions
+passed**. The final affected-flow run passed **138 checks / 1,816 assertions**,
+including three new boundary cases and revised preview/variant assertions; it
+overlaps 135 broad cases. There are **1,533 distinct backend cases / 36,107 latest
+assertions**, counting overlaps once. **542 frontend checks** passed. The final
+36 voucher checks and nine selector checks passed after the last control and
+test-cleanup refinements. The production TypeScript/Vite build, two asset-budget
+checks, focused PHP formatting and Git whitespace checks passed.
+
+The selected additive migration was applied only to the local Docker database.
+Original column hashes and record counts were preserved: nine users, one shop,
+19 products, four orders and four order items; existing local voucher records
+were empty. No reset or reseed was used. All 31 read-only local public page
+requests, including 17 published product details, and 34 product images returned
+200, with no new Laravel error records. All 277 manifest files exist and the
+compiled entry asset requests returned 200. Authenticated authoring, buyer data
+and money responses were exercised with isolated fixtures rather than writes
+to the development database.
+
+Implementation commits: `d6d6dd6` (scope, authoring, quotes and original returns)
+and `e6a439b` (seller selection and buyer presentation). The branch handoff also
+records its documentation commit and local PR draft. Detailed evidence remains
+local under `.codex/product-vouchers/`.
+
+No workbook verdicts, Flutter code, Azure deployment or user publication changed.
+After user publication/merge, use the existing additive deployment and verification
+workflow; a fresh database is unnecessary. Pause selected-product campaigns
+before reverting to backend code that does not understand their scope, and retain
+original schema and monetary history. Automated/source checks do not award new
+observed manual workbook passes.

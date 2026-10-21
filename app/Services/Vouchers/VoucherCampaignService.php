@@ -91,7 +91,13 @@ class VoucherCampaignService
             if ($event = $this->retry($actor, $meta['request_key'], $fingerprint)) {
                 return $event->voucher;
             }
-            $terms = $this->terms($input, $issuer, $voucher, $meta['request_key']);
+            $scopeInput = $input;
+            if ($voucher && ! array_key_exists('product_scope', $input) && ! array_key_exists('product_ids', $input)) {
+                $prior = $voucher->draft?->terms ?? $voucher->currentRevision?->terms() ?? [];
+                $scopeInput += array_intersect_key($prior, ['product_scope' => true, 'product_ids' => true]);
+            }
+            $terms = [...$this->terms($input, $issuer, $voucher, $meta['request_key']),
+                ...app(VoucherProductScopeService::class)->validate($scopeInput, $shop?->id)];
             if ($voucher) {
                 $this->requireVersion($voucher, $meta['source_version']);
                 abort_if($voucher->archived_at, 422, 'An archived campaign retains its history. Create a new campaign.');
@@ -148,7 +154,8 @@ class VoucherCampaignService
                 $draft = $voucher->draft;
                 abort_unless($draft, 422, 'Save complete draft terms before publication.');
                 abort_unless(CarbonImmutable::parse($draft->terms['ends_at'])->isFuture(), 422, 'Choose a future end date before publishing this draft.');
-                $revision = VoucherRevision::create([...$draft->terms, 'voucher_id' => $voucher->id,
+                $scope = app(VoucherProductScopeService::class)->validate($draft->terms, $voucher->shop_id);
+                $revision = VoucherRevision::create([...$draft->terms, ...$scope, 'voucher_id' => $voucher->id,
                     'revision_number' => (int) $voucher->revisions()->max('revision_number') + 1, 'issuer_type' => $voucher->issuer_type,
                     'shop_id' => $voucher->shop_id, 'funding_party' => $voucher->issuer_type, 'created_by_id' => $actor->id]);
                 $voucher->update(['current_revision_id' => $revision->id, 'is_active' => true]);
@@ -238,6 +245,7 @@ class VoucherCampaignService
             'issuer_type' => $voucher->issuer_type, 'shop_name' => $voucher->shop?->name,
             'state' => $this->state($voucher), 'version' => $voucher->campaign_version, 'has_draft' => $draft !== null,
             'current_revision_id' => $voucher->current_revision_id, 'draft_terms' => $draft,
+            'selected_products' => app(VoucherProductScopeService::class)->sellerRows($voucher->shop_id, $draft ?? $revision?->terms() ?? []),
             'terms' => $terms, 'published_terms' => $revision?->terms(),
             'approved_budget_cents' => $revision?->approvedBudget(), 'balance' => $revision?->balance?->only(['redemption_count', 'committed_cents', 'spent_cents', 'released_cents']),
             'legacy_used_count' => $revision ? null : $voucher->used_count, 'suspended_at' => $voucher->suspended_at?->toIso8601String()];

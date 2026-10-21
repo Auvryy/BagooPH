@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Vouchers\VoucherProductScopeService;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -12,7 +13,7 @@ class VoucherRevision extends VoucherEvidence
 {
     protected $casts = ['value_cents' => 'integer', 'minimum_cents' => 'integer', 'maximum_cents' => 'integer',
         'budget_cents' => 'integer', 'percentage_bps' => 'integer', 'global_limit' => 'integer', 'per_buyer_limit' => 'integer',
-        'starts_at' => 'immutable_datetime', 'ends_at' => 'immutable_datetime', 'shop_id' => 'integer'];
+        'starts_at' => 'immutable_datetime', 'ends_at' => 'immutable_datetime', 'shop_id' => 'integer', 'product_ids' => 'array'];
 
     protected static function booted(): void
     {
@@ -44,6 +45,10 @@ class VoucherRevision extends VoucherEvidence
             if ($revision->discount_type === 'fixed') {
                 Validator::make($data, ['value_cents' => 'required|integer|min:1'])->validate();
             }
+            $scope = app(VoucherProductScopeService::class)->validate([
+                'product_scope' => $revision->product_scope ?? 'all', 'product_ids' => $revision->product_ids ?? [],
+            ], $revision->issuer_type === 'shop' ? $revision->shop_id : null);
+            $revision->fill($scope);
         });
         static::created(fn (self $revision) => $revision->balance()->create([]));
     }
@@ -87,6 +92,7 @@ class VoucherRevision extends VoucherEvidence
     {
         return $this->only(['id', 'voucher_id', 'revision_number', 'issuer_type', 'shop_id', 'funding_party', 'created_by_id',
             'code', 'name', 'description', 'discount_type', 'value_cents', 'percentage_bps', 'minimum_cents', 'maximum_cents',
-            'budget_cents', 'global_limit', 'per_buyer_limit']) + ['starts_at' => $this->starts_at->toIso8601String(), 'ends_at' => $this->ends_at->toIso8601String()];
+            'budget_cents', 'global_limit', 'per_buyer_limit']) + ['product_scope' => $this->product_scope ?? 'all',
+                'product_ids' => $this->product_ids ?? [], 'starts_at' => $this->starts_at->toIso8601String(), 'ends_at' => $this->ends_at->toIso8601String()];
     }
 }

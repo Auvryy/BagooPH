@@ -36,6 +36,7 @@ class VoucherCollectionService
 
     public function present(VoucherRevision $revision, ?User $buyer = null): array
     {
+        $presented = app(CheckoutQuoteService::class)->present($revision);
         $available = app(CheckoutQuoteService::class)->availableQuery(buyer: $buyer)->whereKey($revision->id)->exists();
         $voucher = $revision->voucher;
         $reason = $available ? null : match (true) {
@@ -46,22 +47,27 @@ class VoucherCollectionService
             $revision->starts_at->isFuture() => 'This voucher is not available yet.',
             default => 'This voucher is unavailable for new uses.',
         };
+        if ($available && $presented['product_scope'] === 'selected' && $presented['eligible_products'] === []) {
+            $available = false;
+            $reason = 'The qualifying products are currently unavailable.';
+        }
         $saved = $buyer ? $revision->savedVouchers->firstWhere('buyer_id', $buyer->id) : null;
         $uses = $buyer && $revision->relationLoaded('redemptions') ? $revision->redemptions : collect();
 
-        return [...app(CheckoutQuoteService::class)->present($revision), 'eligible' => $available,
+        return [...$presented, 'eligible' => $available,
             'saved_id' => $saved?->id, 'unavailable_reason' => $reason,
             'uses' => $uses->map(fn ($use) => ['id' => $use->id, 'used_at' => $use->created_at->toIso8601String(),
                 'saving' => $use->discount_cents / 100, 'code' => $use->terms['code'], 'name' => $use->terms['name']])->all()];
     }
 
-    public function shopOffers(int $shopId, ?User $buyer = null): array
+    public function shopOffers(int $shopId, ?User $buyer = null, ?int $productId = null): array
     {
         if ($buyer && (! $buyer->isBuyer() || ! $buyer->canAccessPortal())) {
             $buyer = null;
         }
 
         return app(CheckoutQuoteService::class)->availableQuery(buyer: $buyer)->where('issuer_type', 'shop')->where('shop_id', $shopId)
+            ->when($productId !== null, fn ($query) => $query->where(fn ($q) => $q->where('product_scope', 'all')->orWhereJsonContains('product_ids', $productId)))
             ->with(['savedVouchers' => fn ($q) => $q->where('buyer_id', $buyer?->id ?? 0)])
             ->orderByDesc('id')->limit(6)->get()->map(fn ($revision) => $this->present($revision, $buyer))->all();
     }

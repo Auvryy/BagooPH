@@ -261,6 +261,7 @@ $registerSellerRoutes = function () {
         Route::get('/vouchers', [SellerVoucherController::class, 'index']);
         Route::post('/vouchers', [SellerVoucherController::class, 'store']);
         Route::patch('/vouchers/{voucher}/toggle', [SellerVoucherController::class, 'toggle']);
+        Route::get('/vouchers/products', [SellerVoucherController::class, 'products']);
         Route::get('/vouchers/{voucher}', [SellerVoucherController::class, 'show']);
         Route::patch('/vouchers/{voucher}', [SellerVoucherController::class, 'update']);
         Route::post('/vouchers/{voucher}/actions', [SellerVoucherController::class, 'action']);
@@ -698,6 +699,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('vouchers.store');
     Route::patch('/vouchers/{voucher}/toggle', [SellerVoucherController::class, 'toggle'])->name('vouchers.toggle');
     Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy'])->name('vouchers.destroy');
+    Route::get('/vouchers/products', [SellerVoucherController::class, 'products'])->name('vouchers.products');
     Route::get('/vouchers/{voucher}', [SellerVoucherController::class, 'show'])->name('vouchers.show');
     Route::patch('/vouchers/{voucher}', [SellerVoucherController::class, 'update'])->name('vouchers.update');
     Route::post('/vouchers/{voucher}/actions', [SellerVoucherController::class, 'action'])->name('vouchers.action');
