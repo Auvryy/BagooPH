@@ -105,7 +105,7 @@ class BuyerProductController extends Controller
             'shopStats' => $shopStats,
             'cartQuantities' => $cartQuantities,
             'purchaseAllowance' => app(PurchasePolicyService::class)->remaining($product, $request->user()?->id),
-            'shopOffers' => app(VoucherCollectionService::class)->shopOffers($product->shop_id, $request->user()),
+            'shopOffers' => app(VoucherCollectionService::class)->shopOffers($product->shop_id, $request->user(), $product->id),
         ]);
     }
 }

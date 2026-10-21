@@ -37,7 +37,9 @@ class BuyerReturnAmounts
         $funding = app(VoucherFundingService::class)->amounts($order);
         abort_if($funding['promotion_blockers'] !== [], 409, implode(' ', $funding['promotion_blockers']));
         $units = [];
+        $products = [];
         foreach ($order->items()->orderBy('id')->get() as $item) {
+            $products[$item->id] = $item->product_id;
             abort_unless($item->quantity > 0 && $item->quantity <= 99, 409, 'The original purchased quantity needs review.');
             $gross = CodMoney::cents($item->subtotal);
             $parts = $this->allocate($gross, array_fill(0, $item->quantity, 1));
@@ -55,7 +57,20 @@ class BuyerReturnAmounts
         $platformDiscount = $allocations->filter(fn ($a) => $a->redemption->terms['funding_party'] === 'platform')->sum('product_discount_cents');
         abort_unless($shopDiscount <= array_sum($seller) && $shopDiscount + $platformDiscount <= array_sum($gross), 409,
             'Original product discounts exceed their evidenced merchandise basis.');
-        $shop = $this->allocate($shopDiscount, $seller);
+        $scoped = $allocations->filter(fn ($a) => ($a->redemption->terms['product_scope'] ?? 'all') === 'selected');
+        $shopWeights = $seller;
+        if ($scoped->isNotEmpty()) {
+            abort_unless($scoped->count() === 1 && $scoped->first()->redemption->terms['funding_party'] === 'shop', 409,
+                'The original voucher product selection needs review.');
+            $ids = $scoped->first()->redemption->terms['product_ids'] ?? [];
+            foreach ($units as $index => $unit) {
+                if (! in_array($products[$unit['order_item_id']], $ids, true)) {
+                    $shopWeights[$index] = 0;
+                }
+            }
+            abort_unless($shopDiscount <= array_sum($shopWeights), 409, 'The original selected-product discount exceeds its seller share.');
+        }
+        $shop = $this->allocate($shopDiscount, $shopWeights);
         $platform = $this->allocate($platformDiscount, array_map(fn ($g, $s) => $g - $s, $gross, $shop));
         foreach ($units as $index => &$unit) {
             $unit += ['commission_cents' => $commission[$index], 'shop_discount_cents' => $shop[$index],
