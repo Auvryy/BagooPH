@@ -11,6 +11,7 @@ use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SubdomainRoleMiddleware;
 use App\Http\Middleware\TrackAccountSession;
+use App\Http\Responses\LogisticsErrorResponse;
 use App\Services\Courier\RiderApiResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
@@ -88,8 +89,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json(['code' => 'OPERATION_CONFLICT', 'message' => $exception->getMessage()], 409);
             }
         });
-        $exceptions->respond(function (Response $response) {
-            $request = request();
+        $exceptions->respond(function (Response $response, Throwable $exception, Request $request) {
             if ($response->getStatusCode() === 419 && $request->header('X-Inertia') && $request->is('login', 'custody-recovery/sign-in')) {
                 $path = $request->is('custody-recovery/sign-in') ? '/custody-recovery/sign-in' : '/login';
                 $referrer = parse_url($request->header('Referer', ''));
@@ -103,7 +103,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 return Inertia::location($destination);
             }
 
-            if (request()->is('api/v1/*')) {
+            $response = app(LogisticsErrorResponse::class)->render($request, $response, $exception);
+
+            if ($request->is('api/v1/*')) {
                 $response->headers->set('Cache-Control', 'no-store, private');
                 $response->headers->set('Pragma', 'no-cache');
             }

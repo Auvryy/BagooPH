@@ -30,6 +30,7 @@ interface DashboardProps {
         selected_hub_id: number | null;
         hubs: HubOption[];
         can_view_company: boolean;
+        can_scan: boolean;
     };
     stats: {
         parcels_in_custody: number;
@@ -172,11 +173,11 @@ export default function HubDashboard({
                         Counter pickup
                     </PortalLink>
                     <PortalLink
-                        href={route('hub.scan.station')}
+                        href={route(scope.can_scan ? 'hub.scan.station' : 'hub.deliveries')}
                         className="inline-flex items-center gap-2 rounded-xs bg-[#E00D42] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#C20836]"
                     >
-                        <ScanLine className="h-4 w-4" />
-                        Scan parcel
+                        {scope.can_scan ? <ScanLine className="h-4 w-4" /> : <Package className="h-4 w-4" />}
+                        {scope.can_scan ? 'Scan parcel' : 'View parcels'}
                     </PortalLink>
                 </div>
             )}
@@ -471,8 +472,8 @@ export default function HubDashboard({
                             <h2 className="text-sm font-bold text-slate-900">Recent scan activity</h2>
                             <p className="mt-0.5 text-xs text-slate-500">Latest verified custody events</p>
                         </div>
-                        <PortalLink href={route('hub.scan.station')} className="text-xs font-semibold text-[#E00D42] hover:underline">
-                            Open scanner
+                        <PortalLink href={route(scope.can_scan ? 'hub.scan.station' : 'hub.deliveries')} className="text-xs font-semibold text-[#E00D42] hover:underline">
+                            {scope.can_scan ? 'Open scanner' : 'View parcels'}
                         </PortalLink>
                     </div>
 

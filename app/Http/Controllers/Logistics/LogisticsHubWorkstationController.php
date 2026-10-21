@@ -98,6 +98,7 @@ class LogisticsHubWorkstationController extends Controller
         [$activeHub, $accessibleHubs] = $this->getActiveHub($request, $user);
         $company = $accessibleHubs->first()?->company;
         $isCompanyAdministrator = $user && $this->eligibility->isCompanyAdministrator($user);
+        $canScan = $activeHub && $user?->isLogistics() && $this->eligibility->canScan($user, $activeHub);
 
         $requestedHubId = $request->integer('hub_id');
         $scopeHub = $requestedHubId > 0
@@ -226,7 +227,7 @@ class LogisticsHubWorkstationController extends Controller
                     OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
                     OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
                 ])->count(),
-                'href' => route('hub.scan.station'),
+                'href' => route($canScan ? 'hub.scan.station' : 'hub.deliveries'),
                 'tone' => 'neutral',
             ],
             [
@@ -314,6 +315,7 @@ class LogisticsHubWorkstationController extends Controller
                     'tier' => $hub->tier,
                 ])->values(),
                 'can_view_company' => $isCompanyAdministrator,
+                'can_scan' => $canScan,
             ],
             'stats' => [
                 'parcels_in_custody' => $parcelsInCustody,

@@ -73,6 +73,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const allHubs = (user as any)?.allHubs || [];
     const logisticsCompany = (user as any)?.logisticsCompany;
     const canSwitchHubs = Boolean((user as any)?.canSwitchHubs);
+    const canScanParcels = user?.canScanParcels === true;
 
     const handleUserMenuEnter = () => {
         if (userMenuTimeoutRef.current) clearTimeout(userMenuTimeoutRef.current);
@@ -192,12 +193,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     icon: LayoutDashboard, 
                     current: component === 'Hub/Dashboard' || route().current('hub.dashboard') || (route().current('hub.index') && !url.includes('/scan')) || url === '/hub' || url === '/hub/dashboard'
                 },
-                { 
+                ...(canScanParcels ? [{
                     name: 'Scan Station', 
                     href: route('hub.scan.station'), 
                     icon: ScanLine, 
                     current: component === 'Hub/ScanStation' || route().current('hub.scan.station') || url.startsWith('/hub/scan') 
-                },
+                }] : []),
                 { 
                     name: 'Facility Network',
                     href: route('hub.network'), 
@@ -508,7 +509,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
                                     Facility tools
                                 </p>
-                                <PortalLink
+                                {canScanParcels && <PortalLink
                                     href={route('hub.scan.station')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
                                         component === 'Hub/ScanStation' || route().current('hub.scan.station') || url.startsWith('/hub/scan')
@@ -520,7 +521,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <ScanLine className={`w-4 h-4 shrink-0 ${(component === 'Hub/ScanStation' || url.startsWith('/hub/scan')) ? 'text-white' : 'text-emerald-600 group-hover:text-emerald-700'}`} />
                                         <span>Scan Station</span>
                                     </div>
-                                </PortalLink>
+                                </PortalLink>}
                                 <PortalLink
                                     href={route('hub.counter')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
