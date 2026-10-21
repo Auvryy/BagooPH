@@ -218,7 +218,8 @@ test('account navigation reveals real section links only while Account & Securit
     const submenu = nodes(tree, n => n.props?.id === 'buyer-account-submenu')[0];
     assert.equal(submenu.props.hidden, false); assert.match(submenu.props.className, /border-l/);
     const links = nodes(tree, n => n.type === 'a');
-    assert.equal(links.length, 6); assert.equal(links.at(-1).props['aria-current'], 'location');
+    assert.equal(links.length, 5); assert.equal(links.at(-1).props['aria-current'], 'location');
+    assert.equal(text(links.at(-2)).trim(), 'Identity correction'); assert.doesNotMatch(text(submenu), /Identity details|Verification/);
     let prevented = false;
     links.at(-1).props.onClick({ preventDefault() { prevented = true; } });
     assert(prevented); assert.equal(selected.at(-1), 'login-activity');
@@ -409,7 +410,7 @@ test('account shortcuts target existing sections and all normal settings reuse t
 
 test('manual pane scrolling updates the current section without stealing focus or making requests', () => {
     const h = harness(), fixture = scrollFixture(), root = { current: fixture.container };
-    const ids = ['account-personal', 'account-emails', 'account-password', 'account-identity', 'login-activity'];
+    const ids = ui.buyerAccountSections.map(section => section.id);
     Object.assign(fixture.positions, { 'account-emails': 500, 'account-password': 900, 'account-identity': 1300, 'login-activity': 1800 });
     fixture.container.scrollHeight = 2400;
     const render = () => h.render(() => ui.useSections(true, ids, root), {});
@@ -436,11 +437,12 @@ test('mobile scrolling and viewport/layout changes remeasure the visible section
     } finally { fixture.close(); if (globalThis.accountSessionHarness === h) h.close(); }
 });
 
-test('short final sections become active at the pane bottom', () => {
+test('short final sections become active at the pane bottom and old verification anchors resolve to the identity group', () => {
     const h = harness(), fixture = scrollFixture();
     try {
         fixture.container.scrollTop = 700; fixture.positions['login-activity'] = 1300;
         assert.equal(ui.visibleSettingsSection(['account-personal', 'login-activity'], fixture.container), 'login-activity');
+        assert.equal(ui.settingsSectionFromUrl('/buyer/profile#account-verification', ui.buyerAccountSections.map(section => section.id)), 'account-identity');
         assert.equal(ui.visibleSettingsSection(['missing'], fixture.container), null);
     } finally { fixture.close(); h.close(); }
 });

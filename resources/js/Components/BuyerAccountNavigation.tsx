@@ -1,7 +1,7 @@
-import { ChevronDown, Fingerprint, KeyRound, Mail, MonitorSmartphone, ShieldCheck, UserRound } from 'lucide-react';
+import { ChevronDown, Fingerprint, KeyRound, Mail, MonitorSmartphone, UserRound } from 'lucide-react';
 import { buyerAccountSections, type BuyerAccountSection } from '@/utils/accountSections';
 
-const icons = [UserRound, Mail, Fingerprint, ShieldCheck, KeyRound, MonitorSmartphone];
+const icons = { 'account-personal': UserRound, 'account-emails': Mail, 'account-password': KeyRound, 'account-identity': Fingerprint, 'login-activity': MonitorSmartphone };
 
 export default function BuyerAccountNavigation({ active, selected, disabled, onSelect }: {
     active: boolean; selected: string; disabled: boolean; onSelect: (section: BuyerAccountSection) => void;
@@ -13,8 +13,8 @@ export default function BuyerAccountNavigation({ active, selected, disabled, onS
             <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 opacity-70 transition-transform motion-reduce:transition-none ${active ? 'rotate-180' : ''}`} />
         </button>
         <div id="buyer-account-submenu" hidden={!active} className="ml-6 space-y-1 border-l border-slate-300 pl-2">
-            {buyerAccountSections.map((section, index) => {
-                const Icon = icons[index];
+            {buyerAccountSections.map(section => {
+                const Icon = icons[section.id];
                 return <a key={section.id} href={`${route('buyer.profile', { tab: 'account' })}#${section.id}`} aria-current={active && selected === section.id ? 'location' : undefined}
                     aria-disabled={disabled || undefined} tabIndex={disabled ? -1 : undefined} onClick={event => { if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return; event.preventDefault(); if (!disabled) onSelect(section.id); }}
                     className={`flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-2.5 text-left font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] ${disabled ? 'pointer-events-none opacity-50' : ''} ${active && selected === section.id ? 'bg-rose-50 text-[#C20836]' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>

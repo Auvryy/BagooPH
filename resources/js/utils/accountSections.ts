@@ -1,9 +1,8 @@
 export const buyerAccountSections = [
     { id: 'account-personal', label: 'Personal info' },
     { id: 'account-emails', label: 'Email addresses' },
-    { id: 'account-identity', label: 'Identity details' },
-    { id: 'account-verification', label: 'Verification' },
     { id: 'account-password', label: 'Password' },
+    { id: 'account-identity', label: 'Identity correction' },
     { id: 'login-activity', label: 'Login activity' },
 ] as const;
 
@@ -11,7 +10,8 @@ export type BuyerAccountSection = typeof buyerAccountSections[number]['id'];
 
 export function settingsSectionFromUrl(url: string, sections: readonly string[]): string | null {
     try {
-        const id = decodeURIComponent(new URL(url, 'https://account.invalid').hash.slice(1));
+        let id = decodeURIComponent(new URL(url, 'https://account.invalid').hash.slice(1));
+        if (id === 'account-verification' && sections.includes('account-identity')) id = 'account-identity';
         return sections.includes(id) ? id : null;
     } catch { return null; }
 }

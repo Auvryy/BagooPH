@@ -46,6 +46,59 @@ function assertNoNestedForms(html) {
     }
     assert.equal(open, false);
 }
+
+function htmlElements(html) {
+    const stack = [], elements = [], voidTags = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
+    for (const match of html.matchAll(/<(\/?)([a-z][\w:-]*)([^>]*)>/gi)) {
+        const [, closing, tag, attributes] = match;
+        if (closing) { const node = stack.pop(); assert.equal(node?.tag, tag); node.end = match.index + match[0].length; continue; }
+        const node = { tag, attributes: Object.fromEntries([...attributes.matchAll(/([\w:-]+)="([^"]*)"/g)].map(item => [item[1].toLowerCase(), item[2]])), parent: stack.at(-1), start: match.index, end: match.index + match[0].length };
+        elements.push(node); if (!voidTags.has(tag) && !attributes.endsWith('/')) stack.push(node);
+    }
+    return elements;
+}
+const within = (node, parent) => { for (let current = node.parent; current; current = current.parent) if (current === parent) return true; return false; };
+const buyerSettingsProps = { user: account, initialTab: 'account', addresses: [], wallet: { available: false, balance: null, currency: 'PHP', recent_transactions: [] }, orders: { data: [], current_page: 1, last_page: 1, per_page: 12, total: 0 }, orderCounts: { all: 0 }, currentOrderStatus: 'all', ordersCount: 0 };
+
+test('buyer settings group verification within identity correction before login activity with unique anchors', async () => {
+    const html = await render(ui.Buyer, 'Buyer/Profile', buyerSettingsProps, 'buyer');
+    const nodes = htmlElements(html), byId = id => nodes.find(node => node.attributes.id === id);
+    const ids = nodes.map(node => node.attributes.id).filter(Boolean);
+    assert.equal(new Set(ids).size, ids.length, 'An anchor must identify exactly one section');
+    const ordered = ['account-personal', 'account-emails', 'account-password', 'account-identity', 'login-activity'].map(byId);
+    assert(ordered.every(Boolean));
+    for (let i = 1; i < ordered.length; i++) { assert(ordered[i - 1].start < ordered[i].start); assert.equal(ordered[i - 1].parent, ordered[i].parent); }
+    assert(within(byId('account-verification'), byId('account-identity')));
+    assert(within(byId('identity-correction'), byId('account-identity')));
+    assert.equal(html.match(/>Identity correction</g)?.length, 2, 'One sidebar label and one group heading');
+    assert.doesNotMatch(html, />Identity details</);
+    assert.doesNotMatch(html, /unlimited Cash on Delivery|instant priority order dispatch|100% Cash on Delivery protection/);
+    assertNoNestedForms(html);
+});
+
+test('buyer content headings include icons and correction fields fit the existing settings controls', async () => {
+    const html = await render(ui.Buyer, 'Buyer/Profile', buyerSettingsProps, 'buyer');
+    const nodes = htmlElements(html);
+    for (const title of ['Personal Information', 'Email and recovery', 'Account Password &amp; Security', 'Identity correction', 'Identity verification', 'Request a correction', 'Requests and decisions']) {
+        const heading = nodes.find(node => node.attributes['data-account-section-heading'] === title);
+        assert(heading, `Missing content heading: ${title}`); assert(nodes.some(node => node.tag === 'svg' && within(node, heading)), `Missing content icon: ${title}`);
+    }
+    const correction = nodes.find(node => node.attributes.id === 'identity-correction');
+    const form = nodes.find(node => node.tag === 'form' && within(node, correction));
+    const controls = nodes.filter(node => ['input', 'select', 'textarea'].includes(node.tag) && within(node, form));
+    assert(controls.some(node => node.attributes.type === 'date'));
+    for (const control of controls) { assert.match(control.attributes.class, /rounded-xl/); assert.match(control.attributes.class, /min-h-11/); assert.match(control.attributes.class, /border-slate-300/); }
+    assert.equal(controls.find(node => node.tag === 'textarea').attributes.maxlength, '1000');
+    assert.match(controls.find(node => node.attributes.type === 'file').attributes.accept, /\.pdf/);
+    assert.match(html.slice(form.start, form.end), /PDF.*5 MB|5 MB.*PDF/);
+});
+
+test('pending verification and correction forms remain separate and the upload trigger supports a keyboard', async () => {
+    const html = await render(ui.Buyer, 'Buyer/Profile', { ...buyerSettingsProps, user: { ...account, kyc_status: 'rejected', kyc_feedback: 'Upload a clearer document.' } }, 'buyer');
+    const nodes = htmlElements(html), verification = nodes.find(node => node.attributes.id === 'account-verification');
+    const upload = nodes.find(node => node.tag === 'button' && node.attributes.type === 'button' && within(node, verification) && /Upload New Government ID/.test(html.slice(node.start, node.end)));
+    assert(upload); assert.match(html, /Upload a clearer document\./); assertNoNestedForms(html);
+});
 test('buyer account embeds corrections and emails with an empty, read-only missing birth date', async () => {
     const html = await render(ui.Buyer, 'Buyer/Profile', { user: account, initialTab: 'account', addresses: [], wallet: { available: false, balance: null, currency: 'PHP', recent_transactions: [] }, orders: { data: [], current_page: 1, last_page: 1, per_page: 12, total: 0 }, orderCounts: { all: 0 }, currentOrderStatus: 'all', ordersCount: 0 }, 'buyer');
     assert.match(html, /id="identity-correction"/);
