@@ -7,12 +7,20 @@ Buyers expand **My Account & Security** in the profile sidebar and choose
 profile settings. The portal header and navigation remain in place. An admin sees
 their own history here; it is not a directory of other people's devices.
 
-The buyer sidebar also links to personal information, email addresses, identity
-details, verification and password settings. Selecting a section scrolls the
-desktop settings pane or the document on smaller screens, moves keyboard focus
-to that section and respects reduced motion. The submenu is visible while the
-account tab is active. Section links retain actual anchor destinations for
-opening or copying a link.
+The buyer sidebar lists personal information, email addresses, password,
+**Identity correction**, then Login activity. Verification is inside the identity
+group, alongside correction requests and their decisions. Content headings use
+matching icons, and buyer correction controls follow the surrounding input sizes,
+boundaries and focus treatment. The review, evidence and upload limits stay intact.
+
+Selecting a section scrolls the desktop settings pane or the document on smaller
+screens, moves keyboard focus to that section and respects reduced motion. The
+highlight follows the section actually in view during manual or automatic
+scrolling, including a short final section at the bottom. Viewport and content-size
+changes trigger a fresh position check. These checks do not move keyboard focus,
+change history or make network requests. The submenu is visible while the account
+tab is active. Section links retain actual anchor destinations for opening or
+copying a link; older verification anchors resolve to the identity group.
 
 Session lists load privately when the relevant settings view is opened; a hidden
 courier privacy tab does not load them. Refresh and both independent page controls

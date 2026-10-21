@@ -7546,3 +7546,40 @@ for the user's publication; nothing is pushed by this session.
 Local implementation commits: `71e0a31` (shared session controls and private
 settings loader) and `783ba59` (section navigation, portal integration and
 interaction checks). The combined branch PR title/body remain a local draft.
+
+### Buyer account highlight and identity presentation — October 21, 2026
+
+Follow-up to the settings sections. The active submenu item now follows the
+section at the viewing edge during manual or automatic scrolling. Passive scroll
+listeners share one pending animation frame; viewport changes and observed
+content-size changes recheck positions. The short last section is recognized at
+the bottom. Observing does not move focus, scroll, change history or request data;
+listeners, observers and pending work are removed when leaving the account view.
+
+The buyer menu now follows personal information, email, password, **Identity
+correction**, then Login activity. Verification, correction requests and decisions
+are grouped inside Identity correction. An older verification anchor resolves to
+that group, and the email section has one unique anchor. Content headings use
+matching icons. Buyer correction controls have consistent spacing, boundaries,
+focus treatment and touch sizes, and the initial ID-upload trigger supports a
+keyboard. The recorded identity, review/evidence rules, request destinations and
+file formats/size limits remain unchanged. Verification copy no longer promises
+unimplemented priority dispatch or unlimited payment privileges.
+
+Verification: **574 frontend checks pass**, including **55 focused settings,
+scrolling and rendered-form checks**. **50 identity-review/account-settings PHP
+checks pass with 776 assertions** using isolated SQLite in memory, and the
+TypeScript/Vite production build passes. The checks cover every menu section,
+mobile scrolling, resize/content changes, bottom-of-pane selection, cleanup,
+unique anchors, icon headings and separate verification/correction forms. This
+was static/server-rendered and simulated-interaction verification; no browser
+automation or physical-device UI check was performed. The earlier complete
+backend baseline remains outside this interface selection.
+
+Scoped buyer account navigation/identity-interface assessment: **8/10 -> 8.5/10**.
+The highlight reflects the visible section, and related identity work has one
+clear group with readable controls. Overall security, role, lifecycle and defense
+readiness ratings are unchanged. No database migration/reset, Azure deployment
+or Flutter change was made. Local implementation commits are `a0b7436` (visible
+section highlighting) and `7fa343d` (identity grouping, controls and headings).
+The combined PR title/body remain a local draft; this session has not pushed.
