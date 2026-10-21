@@ -13,7 +13,7 @@ export default function CheckoutVoucherBreakdown({ quote, shopId, price }: { quo
     }).filter(row => row.amount > 0);
     return <dl className="space-y-2 text-xs text-slate-600">
         <div className="flex justify-between gap-3"><dt>Original merchandise</dt><dd>{price(merchandise)}</dd></div>
-        {rows.map(({ offer, amount }) => <div key={offer.revision_id} className="flex justify-between gap-3 text-[#C20836]"><dt>{offer.issuer === 'shop' ? 'Shop discount' : offer.discount_type === 'free_shipping' ? 'Bagoo shipping discount' : 'Bagoo product discount'} · {offer.code}</dt><dd>−{price(amount)}</dd></div>)}
+        {rows.map(({ offer, amount }) => <div key={offer.revision_id} className="flex justify-between gap-3 text-[#C20836]"><dt>{offer.issuer === 'shop' ? 'Shop discount' : offer.discount_type === 'free_shipping' ? 'Bagoo shipping discount' : 'Bagoo product discount'} · {offer.code}{offer.product_scope === 'selected' && <span className="mt-1 block text-slate-600">Selected products only</span>}</dt><dd>−{price(amount)}</dd></div>)}
         <div className="flex justify-between gap-3"><dt>Shipping before discounts</dt><dd>{price(shipping)}</dd></div>
         <div className="flex justify-between gap-3"><dt>{shipping - shippingDiscount === 0 ? 'Free shipping' : 'Shipping payable'}</dt><dd>{price(shipping - shippingDiscount)}</dd></div>
         <div className="flex justify-between gap-3 font-semibold text-[#C20836]"><dt>Total savings</dt><dd>{price(shop?.discount ?? quote.discount)}</dd></div>

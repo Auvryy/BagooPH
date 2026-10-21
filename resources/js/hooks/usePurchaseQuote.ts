@@ -21,6 +21,8 @@ export interface VoucherOffer {
     saved_id?: number | null;
     use_url?: string;
     starts_at?: string;
+    product_scope?: 'all' | 'selected';
+    eligible_products?: { id: number; name: string; url: string }[];
     uses?: { id: number; used_at: string; saving: number; code: string; name: string }[];
 }
 

@@ -4,6 +4,7 @@ import { DialogTitle } from '@headlessui/react';
 import { X } from 'lucide-react';
 import Modal from '@/Components/Modal';
 import { Campaign, campaignMoney, manilaInput, previewPromotion } from './campaignTypes';
+import VoucherProductSelection from './VoucherProductSelection';
 
 export default function CampaignForm({ campaign, platform, onClose }: { campaign: Campaign | null; platform: boolean; onClose: () => void }) {
     const terms = campaign?.draft_terms ?? campaign?.published_terms;
@@ -16,6 +17,7 @@ export default function CampaignForm({ campaign, platform, onClose }: { campaign
         starts_at: manilaInput(terms?.starts_at ?? new Date().toISOString()),
         ends_at: manilaInput(terms?.ends_at ?? new Date(Date.now() + 7 * 86400000).toISOString()),
         request_key: crypto.randomUUID(), source_version: campaign?.version ?? 0,
+        product_scope: terms?.product_scope ?? 'all' as 'all' | 'selected', product_ids: terms?.product_ids ?? [] as number[],
     });
     const [sample, setSample] = useState(form.data.min_spend || '500');
     const example = previewPromotion(form.data, sample);
@@ -26,7 +28,7 @@ export default function CampaignForm({ campaign, platform, onClose }: { campaign
         if (campaign) form.patch(route(`${prefix}.vouchers.update`, campaign.id), options);
         else form.post(route(`${prefix}.vouchers.store`), options);
     };
-    const control = (name: keyof typeof form.data, label: string, type = 'text', extra: Record<string, unknown> = {}) => (
+    const control = (name: Exclude<keyof typeof form.data, 'product_ids'>, label: string, type = 'text', extra: Record<string, unknown> = {}) => (
         <label key={name} className="block text-xs font-semibold text-slate-700">
             {label}
             <input type={type} value={form.data[name]} onChange={event => form.setData(name, (name === 'code' ? event.target.value.toUpperCase() : event.target.value) as never)}
@@ -62,23 +64,28 @@ export default function CampaignForm({ campaign, platform, onClose }: { campaign
                     {control('starts_at', 'Start (Philippine time)', 'datetime-local')}
                     {control('ends_at', 'End (Philippine time)', 'datetime-local')}
                 </div>
+                {!platform && <VoucherProductSelection scope={form.data.product_scope} ids={form.data.product_ids} initialProducts={campaign?.selected_products}
+                    disabled={form.processing} errors={Object.entries(form.errors).filter(([key]) => key === 'product_scope' || key === 'product_ids' || key.startsWith('product_ids.')).map(([, message]) => message)}
+                    onScope={scope => { form.setData(data => ({ ...data, product_scope: scope, product_ids: scope === 'all' ? [] : data.product_ids })); form.clearErrors('product_scope', 'product_ids'); }}
+                    onChange={ids => { form.setData('product_ids', ids); form.clearErrors('product_ids'); }} />}
                 <label className="block text-xs font-semibold text-slate-700">Description (optional)
                     <textarea value={form.data.description} maxLength={1000} onChange={e => form.setData('description', e.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" />
                     {form.errors.description && <span role="alert" className="text-rose-700">{form.errors.description}</span>}
                 </label>
                 <div className="space-y-2 rounded-xl border border-slate-300 bg-slate-50 p-4 text-xs text-slate-700">
                     <h3 className="font-bold text-slate-900">Buyer preview</h3>
+                    {!platform && <p>{form.data.product_scope === 'selected' ? `Selected products only (${form.data.product_ids.length}). Only qualifying products count toward the minimum spend and discount.` : 'Applies to all eligible products from your shop.'}</p>}
                     <p>{form.data.name || 'Your offer title'} · Minimum {campaignMoney(Math.round(Number(form.data.min_spend || 0) * 100))} · Up to {campaignMoney(Math.round(Number(form.data.max_discount || 0) * 100))}</p>
-                    <label className="flex items-center gap-3">Example products purchase (₱)<input aria-label="Example purchase" type="number" min="0" step="0.01" value={sample} onChange={e => setSample(e.target.value)} className="w-28 rounded-lg border border-slate-300 p-2" /></label>
+                    <label className="flex items-center gap-3">Example {form.data.product_scope === 'selected' ? 'qualifying' : 'products'} purchase (₱)<input aria-label="Example purchase" type="number" min="0" step="0.01" value={sample} onChange={e => setSample(e.target.value)} className="w-28 rounded-lg border border-slate-300 p-2" /></label>
                     <p>Example saving: <strong>{campaignMoney(example.discount)}</strong>{form.data.discount_type === 'free_shipping' && ' against an example ₱50 shipping fee; actual fees may differ.'}</p>
                     {!platform && <p>Seller gross share: {campaignMoney(example.sellerShare)} · Promotion cost: {campaignMoney(example.discount)} · Net payout: <strong>{campaignMoney(example.netSeller)}</strong></p>}
                     <p className="text-slate-500">This example excludes other vouchers. Checkout checks actual products, fees, dates and remaining limits.</p>
                 </div>
-                {Object.entries(form.errors).filter(([key]) => !['name', 'code', 'description', 'discount_type', 'discount_value', 'min_spend', 'max_discount', 'budget', 'usage_limit', 'per_buyer_limit', 'starts_at', 'ends_at'].includes(key)).map(([key, message]) => <p key={key} role="alert" className="text-sm text-rose-700">{message}</p>)}
+                {Object.entries(form.errors).filter(([key]) => !['name', 'code', 'description', 'discount_type', 'discount_value', 'min_spend', 'max_discount', 'budget', 'usage_limit', 'per_buyer_limit', 'starts_at', 'ends_at', 'product_scope', 'product_ids'].includes(key) && !key.startsWith('product_ids.')).map(([key, message]) => <p key={key} role="alert" className="text-sm text-rose-700">{message}</p>)}
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-300 p-4">
                 <button type="button" disabled={form.processing} onClick={onClose} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold">Cancel</button>
-                <button disabled={form.processing} className="rounded-xl bg-[#E00D42] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{form.processing ? 'Saving…' : 'Save draft'}</button>
+                <button disabled={form.processing || (form.data.product_scope === 'selected' && form.data.product_ids.length === 0)} className="rounded-xl bg-[#E00D42] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{form.processing ? 'Saving…' : 'Save draft'}</button>
             </div>
         </form>
     </Modal>;

@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { Tag } from 'lucide-react';
 import { VoucherOffer } from '@/hooks/usePurchaseQuote';
 import SavedVoucherButton from '@/Components/Vouchers/SavedVoucherButton';
+import BuyerVoucherScope from '@/Components/Vouchers/BuyerVoucherScope';
 
 const pesos = (value: number | string) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value));
 
@@ -40,6 +41,7 @@ export default function VoucherOfferList({ offers, busy = false, onSelect, allow
                     timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short',
                 })}</p>}
                 {offer.description && <p className="text-xs leading-relaxed text-slate-600">{offer.description}</p>}
+                <BuyerVoucherScope offer={offer} />
                 {offer.unavailable_reason && <p className="text-xs text-amber-800">{offer.unavailable_reason}</p>}
                 {offer.uses?.map(use => <p key={use.id} className="text-xs text-slate-600">Used {new Date(use.used_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })} · Saved {pesos(use.saving)}</p>)}
                 <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
