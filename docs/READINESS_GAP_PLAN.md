@@ -6,6 +6,10 @@ proposal for the remaining work, not authorization to implement every batch.
 verification record. No application behavior, workbook, mobile client or deployed
 environment changes as part of this planning review.
 
+The separately selected [login activity and session controls](ACCOUNT_LOGIN_SECURITY.md)
+addition does not start or complete an RG batch. Its implementation evidence belongs
+in the roadmap; the six proposed readiness batches below retain their own gates.
+
 ## 1. What a 95-point target means
 
 Target **at least 95/100 separately for implementation maturity and defense

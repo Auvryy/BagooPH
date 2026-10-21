@@ -7422,3 +7422,88 @@ it remains unachieved until the selected scope has actual evidence. Whole-device
 Flutter readiness and current Azure acceptance remain separate, unverified
 boundaries for this review. Workbook results, application behavior, database
 records and deployed environments are unchanged.
+
+### Private login activity and device sessions — October 21, 2026
+
+Selected addition before the proposed readiness batches, based on main `c6de561`.
+Each buyer, seller, courier, logistics and admin account now has an owner-only
+Login activity page reached from its existing settings. Holding/status pages
+retain a narrow entry without granting operational access. The stable contract
+and deployment notes are in [ACCOUNT_LOGIN_SECURITY.md](ACCOUNT_LOGIN_SECURITY.md).
+
+Actual successful browser and rider authentication records its original time,
+approximate description and encrypted network/user-agent metadata. Later activity
+does not rewrite that time. Earlier browser sessions and rider tokens have
+unknown sign-in times; no city or physical-device identity is invented. Owners
+receive masked networks, the current session and independent 12-entry active and
+90-day history pages. Stale props from a different account are hidden.
+
+Selected-session and all-other-session sign-out require a current password or a
+purpose/account/role-bound code to the verified original email. Actual browser
+and bearer access is revoked. Saved-login rotation, credential fingerprints and
+an account generation prevent older cookies or stale token issuance returning.
+Retained action results make a retry return its original outcome without ending
+a newer session. Failed code attempts persist; unspent confirmation can retry a
+failed save, while committed confirmation cannot authorize another action.
+
+Password changes retain the current browser and end other sessions; verified
+password resets end all older sessions. Ordinary logout, valid remembered sign-in,
+account closure and restricted access keep their existing meaning. Authentication
+records are disposable when an otherwise unreferenced account can be deleted;
+business-history retention remains unchanged. Sign-out does not change rider
+duty, assignments, physical custody, order status, stock or money.
+
+The additive migration was applied locally without resetting or reseeding. The
+existing nine accounts, one shop, nineteen products and four orders were retained,
+and the migration's identity comparison passed. Owner metadata minimization is
+defined as a daily command; isolated command checks pass, while actual scheduled
+execution still depends on the scheduler service. No Azure deployment or Flutter
+repository change was made.
+
+Fresh focused verification passes **289 backend checks**, including **59 session
+security cases**, and a separate **361-case** wider authentication, closure,
+governance and promotion selection. The frontend selection passes **555 checks**,
+including **13 interaction checks** for the new controls. Those 13 checks and
+the production build also pass after the final confirmation-copy update.
+
+The complete **5,125-case backend run returned 5,096 passes and 29 failures**
+(26 assertions and three errors). Eleven failures came from older guest, flash
+or long-duration business fixtures. They now use real logout, an actual saved
+feedback redirect, or an explicit test-only session lifetime. Production timeouts
+and business assertions remain unchanged. The final **76-case recheck passes**,
+including all 59 session-security cases and every affected fixture method.
+
+Case-by-case comparison leaves **18 pre-existing failures**, each reproduced in
+an isolated source snapshot of main `c6de561` with SQLite in memory:
+
+| Existing test expectation | Cases |
+|---|---:|
+| Email upgrade checks referring to a removed global index | 2 |
+| Card checkout silently becoming COD | 1 |
+| Old rejected-account holding redirects | 3 |
+| Creating a duplicate company name as a legacy fixture | 1 |
+| Former company-request denial responses | 2 |
+| Earlier subdomain error text, sign-in and registration expectations | 9 |
+
+These are not a passing complete-suite result. The original full run, isolated
+main comparisons and final focused reruns establish the selected feature's gate;
+no remaining failure is unexplained by that comparison. The separate deployment
+helper selection retains its previously recorded **five passes and one scheduler
+mock failure**. Neither baseline is evidence of an Azure outage or authorization
+to change the deferred readiness scope.
+
+Local implementation commits: `a0d5a4e` (tracking and credential boundaries),
+`0d0e3f4` (confirmed revocation and security checks), `885d947` (explicit flow
+fixtures), and `16a23c0` (portal interfaces and interaction checks). These commits
+have descriptive bodies. The combined PR description remains a local draft;
+commits have not been pushed and no GitHub PR or deployment was created.
+
+Scoped owner-visible login/session-control assessment: **3/10 -> 8/10**. The
+previous browser/token stores offered no unified owner view or remote controls;
+the new page provides actionable, confirmed access management with tested
+ownership, expiry, replay and recovery behavior. This does not increase the
+overall role, commerce, defense or physical-device readiness ratings. Descriptions
+are approximate, HTTPS remains necessary for deployed private access, and actual
+browser/device, mail-delivery and fresh PostgreSQL concurrency acceptance remain
+separate. No browser automation was used; all database tests use isolated SQLite
+in memory.
