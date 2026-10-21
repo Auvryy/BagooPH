@@ -7231,3 +7231,89 @@ After user publication/merge, Azure needs the normal additive
 `./bagoo.sh deploy` and `./bagoo.sh verify`; it does not need a database reset.
 The original blocked timing, printing and native-concurrency procedures remain
 separate evidence work, and unchanged policy differences retain their status.
+
+
+### Seller variants, stock alerts and percentage sales — October 21, 2026
+
+The selected SE03 and SE04 batches share `feat/seller-variants-and-sales`, based
+on the merged SE01/SE02 delivery. The [selected plan](seller-readiness-plan/README.md)
+covers nine targeted cases plus buyer visibility of saved listing facts. Larger
+voucher, bundle and cash-withdrawal proposals remain separate selections.
+
+Independent option rows retain full selling prices, stock and unique SKUs.
+Legacy surcharge pricing remains explicit and unchanged. Row validation rejects
+missing/zero/invalid prices, invalid stock and repeated codes with field-specific
+feedback. Blank, repeated and excessive option names have immediate input
+feedback; saved option errors appear beside their entries. Valid size/SKU `0`
+values are preserved rather than treated as missing. A shared, case-normalized database SKU key protects listing and option
+identities, including numeric codes and case expansion of existing valid main
+SKUs. Failed claims roll back edits. Copies receive fresh row SKUs. New order
+items snapshot the current selected SKU and price; later listing changes and
+checkout replay cannot rewrite purchased values.
+
+Whole 1%–99% percentage sales apply to complete option prices, including legacy
+adjustments. Integer-centavo rounding, current ranges, catalogue price filters,
+product selections, Bag quotes and checkout use the same terms. Running store
+sale edits invalidate stale quotes while existing orders retain their original
+prices. Running flash slots retain their authored terms and schedule; name-only
+percentage edits do not mistake a cached base preview for a changed discount.
+Both seller URL forms support sale creation, editing and ending with the same
+authority. The missing subdomain aliases were added and the persisted actions
+were checked on both entry points. Authored quotas account for used units plus
+current physical stock without creating/reserving stock. Fixed reductions and
+later price edits cannot make an option free or negative. Split flash/store purchases reserve and release their
+original allocations once.
+
+Active unrestricted stock falling from above five to five or fewer records one
+durable seller alert. Further low-stock edits do not repeat it; replenishment
+resets the crossing. Owner edits, checkout inventory and restoration use the
+same transaction and persisted identity. Rollback retains neither a stock
+change nor an alert; delivery replay produces one notification. New low-stock
+products and private/archived edits do not generate operational crossings. The
+existing bell opens Products, without a Products sidebar dot.
+
+Buyers receive saved brand, New/Used condition, declared weight, dimensions,
+department and visible store memberships. A short summary near the title links
+to the full specifications, with readable units and explicit missing values.
+Hidden memberships remain private. Selected option prices/SKUs and linked image
+handlers have controlled component checks. Equal-price variants use their real
+option price before selection, and sale labels use the correct regular option
+price rather than an unrelated base price.
+
+| Scoped engineering assessment | Before | After | Evidence and limit |
+|---|---|---|---|
+| Complete variant and sale pricing | 5/10 | 8.5/10 | Saved row prices/SKUs, collision rollback, full-price percentage arithmetic, stale quotes, original orders and cancellation have automated acceptance. Native simultaneous PostgreSQL behavior remains unobserved. |
+| Durable low-stock feedback | 2/10 | 8.5/10 | Manual/inventory crossings, replenishment, replay and rollback are checked. Informational stock does not add sidebar attention dots. |
+| Buyer specification clarity | 6.5/10 | 8.5/10 | Saved values reach guest/buyer responses and render in the summary/specification components; linked images and selected prices are checked. Live browser layout remains unobserved. |
+
+Verification: **1,575 broad isolated SQLite `:memory:` checks / 34,037 assertions passed**.
+The final seller/pricing/navigation follow-up passed **387 checks / 4,567 assertions**,
+including the two additional boundary cases. It overlaps 385 earlier cases;
+there are **1,577 distinct backend checks / 34,091 assertions** across these
+selections, counting overlapping checks once.
+**533 frontend checks** and the TypeScript/Vite production build passed. Focused
+PHP formatting and Git whitespace checks pass. The first broad run exposed an
+old exact range expectation plus three positive fixture inputs that no longer
+met the existing publication/voucher rules. The repaired fixtures retain their
+original behavior assertions; production rules were not relaxed.
+
+The additive schema was applied only to the local Docker database, preserving
+all original product values and counts: nine users, one shop, 19 products, four
+orders and four order items. Existing SKU claims also survived the normalized
+key-capacity refinement. Four read-only public local HTTP destinations returned
+200, including PostgreSQL-backed price filtering/sorting. The 17 public listings
+have no saved condition/dimensions; the populated listing remains one of two
+private drafts. Publishing a completed draft exposes its saved facts, rather
+than inventing values for older products.
+
+Implementation commits: `6e2628b` (complete variant and percentage pricing),
+`3a7ad75` (durable stock crossings), `b9a3fc2` (seller controls and buyer facts),
+`0df5a9b` (valid positive fixtures) and `d66709b` (subdomain sale actions, zero
+values and exact option feedback). The final handoff also records the
+documentation commit and combined local PR draft.
+
+No workbook verdicts, Flutter files, Azure deployment, development/production
+reset or reseed were changed. Original live timing, printing and native
+concurrency procedures retain their separate evidence status; these automated
+checks do not award new observed manual passes. After user publication/merge,
+use `./bagoo.sh deploy` and `./bagoo.sh verify` for additive deployment.
