@@ -7666,14 +7666,23 @@ Verification evidence:
   Existing accounts, products, orders, parcel checkpoints and cash records
   were not reset or reseeded. Automated mutations use isolated SQLite memory;
   runtime checks use ordinary sign-in/out and page reads.
+- Azure access recovered after initially refused requests. All four demo
+  logistics accounts signed in, and all 67 authorized page requests returned
+  200 without technical error traces. Four expected permission denials and
+  sixteen deliberately missing-record/page requests returned 403/404. These
+  still use generic error responses; a separate guest request confirmed the
+  generic Not Found page, while registration returned 200. Deployed pages do
+  not yet expose the new scanner permission prop or use Bagoo recovery.
+  These checks verify the existing deployment, not this unpublished branch.
 
 Scoped local navigation/page-recovery assessment: **5/10 -> 8/10**. This measures
 permitted links, readable recovery and verified local page loading; it does
-not raise overall logistics, lifecycle or security readiness. The supplied
-Azure origin refuses connections from this session, so deployed page behavior
-and rollout remain unverified. No Azure deployment, VM schedule change,
-Flutter change, GitHub push or merge was performed. The combined PR title/body
-are prepared locally; the Azure acceptance requirement remains open.
+not raise overall logistics, lifecycle or security readiness. The normal
+Azure pages checked load successfully; the new navigation and recovery still
+require user publication, deployment and a deployed recheck. No Azure deployment,
+VM schedule change, Flutter change, GitHub push or merge was performed. The
+combined PR title/body are prepared locally; the Azure acceptance requirement
+remains open.
 
 Implementation and verification commits: `17a95bb` (portal navigation/recovery),
 `2cabb3b` (current eligibility fixtures) and `d8e920c` (stable counter comparison).
