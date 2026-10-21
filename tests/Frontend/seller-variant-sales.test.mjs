@@ -155,3 +155,39 @@ test('equal independent prices show the option price before selection and use it
     assert.match(text(ProductCard({ product })), /15%/); assert.doesNotMatch(text(ProductCard({ product })), /83%/);
     assert.equal(saleUnitPrice({ price: 100, price_range: { regular_min: 150 }, sale_offer: { active: { price: 130 } } }, 200), 180);
 });
+
+const editableProduct = { id: 1, name: 'Studio canvas bag', status: 'active', price: '500.00', stock: 5, category_id: 1, weight_kg: '0.80', description: 'A durable canvas bag for everyday journeys.',
+    variants: { option1_name: 'Finish', option2_name: 'Capacity', colors: [{ id: 'natural', name: 'Natural', hex: '#111111', in_stock: true }], sizes: [{ id: 'compact', name: 'Compact', extra_price: 0, stock: 5 }] } };
+function listingEditor() {
+    const h = harness(Listings, { products: { data: [editableProduct], total: 1, current_page: 1, last_page: 1 }, categories: [], shop: { name: 'Bagoo Studio' } });
+    nodes(h.render(), node => node.type === 'button' && node.props.title === 'Edit Product')[0].props.onClick();
+    return h;
+}
+
+test('option entry rejects blank and case-insensitive duplicate values beside the input while retaining existing rows', () => {
+    globalThis.document = { body: {} };
+    try {
+        const h = listingEditor(); let tree = h.render();
+        nodes(tree, node => node.props?.['aria-label'] === 'Finish value')[0].props.onChange({ target: { value: ' natural ' } }); tree = h.render();
+        const duplicate = nodes(tree, node => node.props?.['aria-label'] === 'Finish value')[0];
+        assert.equal(duplicate.props['aria-invalid'], true); duplicate.props.onKeyDown({ key: 'Enter', preventDefault() {} }); tree = h.render();
+        assert.match(text(tree), /already listed/); assert.equal(nodes(tree, node => node.type === Matrix)[0].props.colors.length, 1);
+        nodes(tree, node => node.props?.['aria-label'] === 'Capacity value')[0].props.onKeyDown({ key: 'Enter', preventDefault() {} }); tree = h.render();
+        assert.match(text(tree), /Enter an option value before adding it/);
+        assert.equal(nodes(tree, node => node.type === Matrix)[0].props.sizes.length, 1); assert.equal(h.requests.length, 0);
+        nodes(tree, node => node.props?.['aria-label'] === 'Finish value')[0].props.onChange({ target: { value: 'Black' } }); tree = h.render();
+        nodes(tree, node => node.props?.['aria-label'] === 'Finish value')[0].props.onKeyDown({ key: 'Enter', preventDefault() {} }); tree = h.render();
+        assert.deepEqual(nodes(tree, node => node.type === Matrix)[0].props.colors.map(row => row.name), ['Natural', 'Black']);
+    } finally { delete globalThis.document; }
+});
+
+test('saved option-name errors identify the affected entries in plain language', () => {
+    globalThis.document = { body: {} };
+    try {
+        const h = listingEditor(); h.render();
+        h.forms[1].errors = { 'colors.0.name': 'The colors.0.name field has a duplicate value.', 'sizes.0.name': 'The sizes.0.name field is required.' };
+        const tree = h.render(); assert.match(text(tree), /This option is repeated in this group/); assert.match(text(tree), /Enter a value for this option/);
+        assert.match(text(tree), /Natural/); assert.match(text(tree), /Compact/);
+        assert.equal(nodes(tree, node => node.props?.['aria-label'] === 'Capacity value')[0].props.maxLength, 100);
+    } finally { delete globalThis.document; }
+});

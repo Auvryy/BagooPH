@@ -27,6 +27,7 @@ class VariantCatalogueAcceptanceTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
+        $this->travelTo(now()->startOfMinute());
         $this->shop = Shop::factory()->approved()->create();
         $this->actingAs($this->shop->user);
     }
@@ -178,5 +179,40 @@ class VariantCatalogueAcceptanceTest extends TestCase
         $this->assertDatabaseHas('product_sku_claims', ['sku_key' => '0123456']);
         $product = Product::factory()->create(['sku' => str_repeat('ß', 50)]);
         $this->assertDatabaseHas('product_sku_claims', ['product_id' => $product->id, 'sku_key' => str_repeat('SS', 50)]);
+    }
+
+    #[DataProvider('portals')]
+    public function test_accepted_independent_boundaries_keep_full_prices_stock_and_skus(string $portal): void
+    {
+        $variants = $this->variants();
+        foreach ($variants['combinations'] as &$row) {
+            $row['stock'] = 0;
+            if ($row['size'] === 'Compact') {
+                $row['size'] = '0';
+            }
+        }
+        unset($row);
+        $variants['sizes'][0]['name'] = '0';
+        $variants['combinations'][0] = [...$variants['combinations'][0], 'stock' => 99999, 'price' => '1.00', 'sku' => '0'];
+        $variants['combinations'][1] = [...$variants['combinations'][1], 'price' => '1000000.00', 'sku' => str_repeat('B', 50)];
+        $this->post($portal.'/products', $this->listing($variants))->assertSessionHasNoErrors();
+        $product = Product::sole();
+        $this->assertSame(99999, $product->stock);
+        $this->assertSame($variants['combinations'], $product->variants['combinations']);
+        $this->assertDatabaseHas('product_sku_claims', ['sku_key' => '0', 'product_id' => $product->id]);
+        $this->post($portal.'/products/'.$product->id.'/sales', ['kind' => 'store', 'name' => 'Studio boundary sale',
+            'discount_type' => 'percentage', 'percentage' => '99',
+            'starts_at' => now()->setTimezone('Asia/Manila')->format('Y-m-d\TH:i'),
+            'ends_at' => now()->addHour()->setTimezone('Asia/Manila')->format('Y-m-d\TH:i')])->assertSessionHas('success');
+        $this->assertSame('0.01', app(InventoryService::class)->unitPrice($product->fresh(), 'Natural', '0'));
+        $this->assertSame('10000.00', app(InventoryService::class)->unitPrice($product->fresh(), 'Natural', 'Large'));
+        $sale = $product->sales()->sole();
+        $this->get($portal.'/products/'.$product->id.'/sales')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Seller/ProductSales')->where('sales.data.0.percentage', 99));
+        $this->put($portal.'/products/'.$product->id.'/sales/'.$sale->id, ['percentage' => 1])->assertSessionHas('success');
+        $this->assertSame('0.99', app(InventoryService::class)->unitPrice($product->fresh(), 'Natural', '0'));
+        $this->post($portal.'/products/'.$product->id.'/sales/'.$sale->id.'/end')->assertSessionHas('success');
+        $this->assertSame('1.00', app(InventoryService::class)->unitPrice($product->fresh(), 'Natural', '0'));
+        $this->postJson($portal.'/products', [...$this->listing($this->variants()), 'sku' => '0', 'variants' => null])->assertUnprocessable()->assertJsonValidationErrors('sku');
+        $this->assertDatabaseCount('products', 1);
     }
 }

@@ -239,6 +239,10 @@ $registerSellerRoutes = function () {
         Route::put('/store-categories/{storeCategory}', [SellerStoreCategoryController::class, 'update']);
         Route::delete('/store-categories/{storeCategory}', [SellerStoreCategoryController::class, 'destroy']);
         Route::get('/products', [SellerProductController::class, 'index']);
+        Route::get('/products/{product}/sales', [ProductSaleController::class, 'index'])->where(['product' => '[1-9][0-9]{0,17}']);
+        Route::post('/products/{product}/sales', [ProductSaleController::class, 'store'])->where(['product' => '[1-9][0-9]{0,17}']);
+        Route::put('/products/{product}/sales/{sale}', [ProductSaleController::class, 'update'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}']);
+        Route::post('/products/{product}/sales/{sale}/end', [ProductSaleController::class, 'end'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}']);
         Route::post('/products', [SellerProductController::class, 'store']);
         Route::post('/products/bulk', [SellerProductController::class, 'bulk']);
         Route::post('/products/{product}/duplicate', [SellerProductController::class, 'duplicate']);

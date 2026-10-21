@@ -16,7 +16,7 @@ class ProductSkuService
         $errors = [];
         $values = ['sku' => $product->sku];
         foreach ($product->variants['combinations'] ?? [] as $index => $row) {
-            if (! empty($row['sku'])) {
+            if (isset($row['sku']) && trim((string) $row['sku']) !== '') {
                 $values['combinations.'.$index.'.sku'] = $row['sku'];
             }
         }

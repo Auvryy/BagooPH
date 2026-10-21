@@ -45,8 +45,10 @@ class VariantMatrixService
         }
         $rows = [];
         foreach ($input['combinations'] as $index => $row) {
-            $color = trim((string) ($row['color'] ?? '')) ?: null;
-            $size = trim((string) ($row['size'] ?? '')) ?: null;
+            $color = trim((string) ($row['color'] ?? ''));
+            $size = trim((string) ($row['size'] ?? ''));
+            $color = $color === '' ? null : $color;
+            $size = $size === '' ? null : $size;
             $key = json_encode([$color, $size]);
             if (! isset($expected[$key])) {
                 throw ValidationException::withMessages(['combinations.'.$index.'.color' => 'Each option combination must appear exactly once. Remove duplicate or unknown options.']);

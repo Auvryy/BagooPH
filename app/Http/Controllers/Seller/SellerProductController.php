@@ -98,7 +98,7 @@ class SellerProductController extends Controller
 
         // Auto-generate SKU if left blank by the seller
         $cleanPrefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $validated['name']), 0, 4) ?: 'PROD');
-        $validated['sku'] = ! empty($validated['sku'])
+        $validated['sku'] = isset($validated['sku']) && trim($validated['sku']) !== ''
             ? trim($validated['sku'])
             : 'BGO-'.$cleanPrefix.'-'.strtoupper(Str::random(5));
 
@@ -140,9 +140,9 @@ class SellerProductController extends Controller
 
         // Auto-generate SKU if left blank or reset
         $cleanPrefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $validated['name']), 0, 4) ?: 'PROD');
-        $validated['sku'] = ! empty($validated['sku'])
+        $validated['sku'] = isset($validated['sku']) && trim($validated['sku']) !== ''
             ? trim($validated['sku'])
-            : ($product->sku ?: 'BGO-'.$cleanPrefix.'-'.strtoupper(Str::random(5)));
+            : ($product->sku !== null && $product->sku !== '' ? $product->sku : 'BGO-'.$cleanPrefix.'-'.strtoupper(Str::random(5)));
 
         if ($request->has('variants')) {
             $validated['variants'] = $this->sanitizeVariants($request, (int) $validated['stock']);
@@ -264,7 +264,7 @@ class SellerProductController extends Controller
         $colors = [];
         if (! empty($variantsRaw['colors']) && is_array($variantsRaw['colors'])) {
             foreach ($variantsRaw['colors'] as $idx => $color) {
-                if (is_array($color) && ! empty($color['name'])) {
+                if (is_array($color) && isset($color['name']) && $color['name'] !== '') {
                     $imgUrl = ! empty($color['image_url']) ? trim($color['image_url']) : null;
                     if ($imgUrl && str_starts_with($imgUrl, 'blob:')) {
                         $imgUrl = null;
@@ -284,7 +284,7 @@ class SellerProductController extends Controller
         $sizes = [];
         if (! empty($variantsRaw['sizes']) && is_array($variantsRaw['sizes'])) {
             foreach ($variantsRaw['sizes'] as $idx => $size) {
-                if (is_array($size) && ! empty($size['name'])) {
+                if (is_array($size) && isset($size['name']) && $size['name'] !== '') {
                     $sizes[] = [
                         'id' => (string) ($size['id'] ?? ('s_'.($idx + 1))),
                         'name' => trim($size['name']),

@@ -17,7 +17,7 @@ return new class extends Migration
         foreach (DB::table('products')->select(['id', 'sku', 'variants'])->orderBy('id')->cursor() as $product) {
             $skus = [$product->sku];
             foreach (json_decode($product->variants ?? 'null', true)['combinations'] ?? [] as $row) {
-                if (! empty($row['sku'])) {
+                if (isset($row['sku']) && trim((string) $row['sku']) !== '') {
                     $skus[] = $row['sku'];
                 }
             }
