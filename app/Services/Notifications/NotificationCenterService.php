@@ -33,7 +33,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class NotificationCenterService
 {
-    public const TYPES = ['sale-reminder', 'order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event', 'settlement-event', 'buyer-return'];
+    public const TYPES = ['sale-reminder', 'order-event', 'parcel-event', 'hub-pickup', 'parcel-return', 'governance-event', 'cod-event', 'settlement-event', 'buyer-return', 'inventory-event'];
 
     public function current(User $actor): User
     {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Commerce\LowStockNoticeService;
 use App\Services\Commerce\ProductSkuService;
 use App\Services\Commerce\SalePriceService;
 use App\Services\ShopEligibilityService;
@@ -23,6 +24,7 @@ class Product extends Model
     {
         return DB::transaction(function () use ($options) {
             $created = ! $this->exists;
+            $previousStock = $created ? null : (int) $this->getRawOriginal('stock');
             $skuValues = fn (?array $variants) => array_column($variants['combinations'] ?? [], 'sku');
             $skuChanged = $created || $this->isDirty('sku') || $skuValues($this->variants) !== $skuValues($this->getOriginal('variants'));
             $prices = fn (?array $variants) => [$variants['pricing_mode'] ?? null,
@@ -35,6 +37,7 @@ class Product extends Model
                 if ($skuChanged) {
                     app(ProductSkuService::class)->sync($this);
                 }
+                app(LowStockNoticeService::class)->saved($this, $previousStock, $created);
             }
 
             return $saved;
