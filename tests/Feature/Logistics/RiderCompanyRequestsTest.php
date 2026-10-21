@@ -221,10 +221,13 @@ class RiderCompanyRequestsTest extends TestCase
             $this->assertSame(403, $exception->getStatusCode());
         }
         $response = $this->actingAs($this->rider)->postJson('/courier/company-requests', $body);
-        if (in_array($field, ['kyc_status', 'birthday'], true) || ($field === 'status' && $value === 'inactive')) {
+        if ($field === 'birthday' || ($field === 'kyc_status' && $value === 'pending_approval')) {
             $response->assertRedirect('/pending-approval');
         } else {
             $response->assertForbidden();
+            if (($field === 'status' && in_array($value, ['inactive', 'suspended'], true)) || ($field === 'kyc_status' && $value === 'rejected')) {
+                $response->assertJsonPath('account_status_url', '/account/status');
+            }
         }
         $this->assertDatabaseCount('rider_company_requests', 1);
     }

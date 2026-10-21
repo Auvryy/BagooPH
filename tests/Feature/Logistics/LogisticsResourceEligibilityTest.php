@@ -641,7 +641,7 @@ class LogisticsResourceEligibilityTest extends TestCase
     public function test_ambiguous_owner_company_relationships_require_review_instead_of_a_first_match(): void
     {
         $duplicate = $this->company->replicate();
-        $duplicate->fill(['slug' => 'duplicate-network', 'code' => 'DUPLICATE'])->save();
+        $duplicate->fill(['name' => 'Bagoo Duplicate Owner Network', 'slug' => 'duplicate-network', 'code' => 'DUPLICATE'])->save();
         $delivery = $this->pickup();
         $this->assertSame([], LogisticsCompany::eligible()->pluck('id')->all());
         $this->assertSame([], LogisticsHub::eligible()->pluck('id')->all());
