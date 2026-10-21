@@ -28,6 +28,8 @@
                             <h2 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #0F172A;">
                                 @if($purpose === 'password_reset')
                                     Password Reset Verification Code
+                                @elseif($purpose === 'account_sessions')
+                                    Confirm device sign-out
                                 @else
                                     Email Verification Code
                                 @endif
@@ -37,6 +39,8 @@
                                     We received a request to reset your BagooPH account password. Use the single-use 6-digit code below to verify your identity:
                                 @elseif($purpose === 'account_email')
                                     Use this single-use code to add this email to your BagooPH account for contact and recovery. Your original sign-in email stays the same:
+                                @elseif($purpose === 'account_sessions')
+                                    Use this single-use code to confirm signing out other sessions on your BagooPH account. If you did not request this, do not share the code and review your login activity:
                                 @else
                                     Thank you for signing up with BagooPH. Please use the single-use 6-digit verification code below to confirm your email address:
                                 @endif
