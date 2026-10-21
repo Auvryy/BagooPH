@@ -357,6 +357,8 @@ class HubParcelWorkstationTest extends TestCase
 
     public function test_counter_queries_and_payload_stay_bounded_when_the_queue_grows(): void
     {
+        // Keep session timestamp writes identical while comparing the two queues.
+        $this->freezeTime();
         $parcel = $this->selfPickup(true);
         foreach (range(1, 15) as $_) {
             $this->selfPickup(true);
