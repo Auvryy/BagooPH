@@ -1,9 +1,25 @@
 # Login activity and session controls
 
-Every account can open **Settings -> Login activity -> View devices** at
-`/account/security`. This private page covers buyer, seller, courier, logistics
-and admin accounts. An admin sees their own history through this page; it is not
-a directory of other people's devices.
+Every account can review **Login activity** within its existing settings view.
+Buyers expand **My Account & Security** in the profile sidebar and choose
+**Login activity**. Sellers use their account settings, couriers use
+**Profile -> Privacy and security**, and logistics/admin users use their existing
+profile settings. The portal header and navigation remain in place. An admin sees
+their own history here; it is not a directory of other people's devices.
+
+The buyer sidebar also links to personal information, email addresses, identity
+details, verification and password settings. Selecting a section scrolls the
+desktop settings pane or the document on smaller screens, moves keyboard focus
+to that section and respects reduced motion. The submenu is visible while the
+account tab is active. Section links retain actual anchor destinations for
+opening or copying a link.
+
+Session lists load privately when the relevant settings view is opened; a hidden
+courier privacy tab does not load them. Refresh and both independent page controls
+update the embedded panel without leaving settings. Loading, failure and retry
+states remain inside the panel. Changing accounts hides old data immediately and
+aborts outstanding requests. The direct `/account/security` page remains available
+for older links and applicants/restricted accounts that need narrow security access.
 
 ## What the owner sees
 
@@ -80,10 +96,12 @@ login records encrypt network and user-agent metadata with Laravel casts; the
 existing Laravel session store still retains its standard request metadata.
 That store is never exposed as an account API. Only the configured
 trusted request address is recorded; this feature does not change proxy trust or
-add a location provider. The private page uses no-store responses. Inertia history
-encryption is enabled on HTTPS and localhost origins, where modern browsers
-support it. Plain HTTP demos remain accessible without that extra history
-protection; use HTTPS for deployed private account access.
+add a location provider. Private list responses use no-store headers. Embedded
+lists live in component state rather than the settings page's Inertia props or
+persisted history. The direct security page enables Inertia history encryption on
+HTTPS and localhost origins, where modern browsers support it. Plain HTTP demos
+remain accessible without that extra history protection; use HTTPS for deployed
+private account access.
 
 `account-security:minimise-metadata` clears network/user-agent data and replaces
 the device label after a session has been ended or expired for 90 days. The daily

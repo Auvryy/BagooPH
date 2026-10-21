@@ -7507,3 +7507,42 @@ are approximate, HTTPS remains necessary for deployed private access, and actual
 browser/device, mail-delivery and fresh PostgreSQL concurrency acceptance remain
 separate. No browser automation was used; all database tests use isolated SQLite
 in memory.
+
+### Account settings sections and embedded login activity — October 21, 2026
+
+Follow-up to private login activity on `feat/account-login-sessions`. The buyer's
+**My Account & Security** sidebar entry now reveals personal information, email,
+identity, verification, password and login-activity shortcuts while that tab is
+active. Each shortcut selects the account workspace and scrolls to its real
+section, using the desktop pane or mobile document and respecting reduced motion.
+Anchor entry and keyboard focus are covered by the focused interaction checks.
+
+Buyer, seller, courier, logistics and admin settings now embed the same session
+controls inside their existing navigation. The compact card groups the latest
+sign-in, current/other sessions and recent history. Private lists load on entry;
+the hidden courier privacy tab makes no request. Independent pagination and
+refresh stay within settings. Account changes hide previous data and abort old
+requests; malformed responses, expired authentication and failed refreshes show
+honest recovery feedback. Confirmed sign-out retains its existing password/email,
+ownership and retry protections. The direct security page remains a compatibility
+and restricted-account entry using those same controls.
+
+Verification: **568 frontend checks pass**, including **26 session/settings
+interaction checks**. All 26 focused checks and the TypeScript/Vite production
+build pass after the final accessibility and heading refinements. The unchanged
+backend session-security selection passes **59 checks / 573 assertions** with
+isolated SQLite in memory. No full backend rerun was needed for this interface
+refinement; the previously recorded baseline failures remain unresolved. No
+browser automation or physical-device UI check was performed.
+
+Scoped settings-navigation/interface assessment: **6/10 -> 8/10**. Previously,
+owners scrolled a long account pane and left it to manage sessions. Section
+shortcuts and embedded controls keep that work in the existing portal. This is
+an interface assessment, not an increase in whole-project security or defense
+readiness. No database migration/reset, Azure deployment or Flutter change was
+made for this follow-up. Local commits and a separate local PR draft are prepared
+for the user's publication; nothing is pushed by this session.
+
+Local implementation commits: `71e0a31` (shared session controls and private
+settings loader) and `783ba59` (section navigation, portal integration and
+interaction checks). The combined branch PR title/body remain a local draft.
