@@ -10,6 +10,7 @@ use App\Services\Commerce\CatalogueLocationService;
 use App\Services\Commerce\PurchasePolicyService;
 use App\Services\Commerce\ReviewService;
 use App\Services\Commerce\SaleReminderService;
+use App\Services\Commerce\StoreCategoryService;
 use App\Services\Vouchers\VoucherCollectionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -61,6 +62,8 @@ class BuyerProductController extends Controller
         if (! $product) {
             abort(404, 'Product not found.');
         }
+        $visibleGroups = app(StoreCategoryService::class)->publicRows($product->shop)->pluck('id');
+        $product->load(['storeCategories' => fn ($query) => $query->whereIn('store_categories.id', $visibleGroups)]);
 
         $relatedProducts = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
             ->where('category_id', $product->category_id)

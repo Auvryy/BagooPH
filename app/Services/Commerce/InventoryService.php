@@ -20,6 +20,9 @@ class InventoryService
     public function regularUnitPrice(Product $product, ?string $color, ?string $size): string
     {
         $selection = $this->selection($product, $color, $size);
+        if ($selection['price'] !== null) {
+            return number_format(CodMoney::cents($selection['price']) / 100, 2, '.', '');
+        }
         $extra = $selection['extra_price'];
         if (! is_numeric($extra) || ! is_finite((float) $extra) || (float) $extra < 0 || (float) $extra > 99999999.99) {
             throw new RuntimeException("The price for '{$product->name}' needs to be corrected by its shop.");
@@ -232,6 +235,7 @@ class InventoryService
         }
 
         $extra = $selectedSize['extra_price'] ?? 0;
+        $price = null;
         if (isset($product->variants['combinations'])) {
             $row = collect($product->variants['combinations'])->first(fn ($row) => ($row['color'] ?? null) === $color && ($row['size'] ?? null) === $size);
             if (! $row) {
@@ -239,10 +243,18 @@ class InventoryService
             }
             $available = min($product->stock, (int) $row['stock']);
             $extra = $row['extra_price'] ?? 0;
+            if (($product->variants['pricing_mode'] ?? null) === 'independent') {
+                $price = $row['price'] ?? null;
+                if (! is_string($price) && ! is_numeric($price) || ! preg_match('/\A[0-9]+(?:\.[0-9]{1,2})?\z/', (string) $price)
+                    || CodMoney::cents($price) < 100 || CodMoney::cents($price) > 100000000) {
+                    throw new RuntimeException("The price for '{$product->name}' needs to be corrected by its shop.");
+                }
+            }
         }
 
         return [
             'extra_price' => $extra,
+            'price' => $price,
             'color' => $color,
             'size' => $size,
             'stock' => max(0, $available),

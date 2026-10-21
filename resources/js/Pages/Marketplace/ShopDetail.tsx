@@ -381,7 +381,9 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
                             {products.data.map((product) => {
                                 const priceNum = Number(product.sale_offer?.effective_price ?? product.price);
-                                const compareNum = product.sale_offer?.active && priceNum < Number(product.price) ? Number(product.price) : product.compare_at_price ? Number(product.compare_at_price) : null;
+                                const regularMin = Number(product.price_range?.regular_min ?? product.price);
+                                const compareNum = product.sale_offer?.active && priceNum < regularMin ? regularMin
+                                    : product.compare_at_price ? regularMin + Number(product.compare_at_price) - Number(product.price) : null;
                                 const discountPct = compareNum && compareNum > priceNum 
                                     ? Math.round(((compareNum - priceNum) / compareNum) * 100)
                                     : null;

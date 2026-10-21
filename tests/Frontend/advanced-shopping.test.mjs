@@ -77,7 +77,8 @@ test('upcoming sale offers an owned reminder and permits removing a recorded sub
 });
 test('seller sale page provides real settings and an honest empty state', async () => {
     const html = await render(ui.Sales, 'Seller/ProductSales', { shop, product, sales: { data: [], current_page: 1, last_page: 1, per_page: 20, total: 0, links: [] } }, 'seller');
-    assert.match(html, /No sale scheduled/); assert.match(html, /Sale base price/); assert.match(html, /datetime-local/);
+    assert.match(html, /No sale scheduled/); assert.match(html, /Discount method/); assert.match(html, /Percentage off each option/);
+    assert.match(html, /Base sale price/); assert.match(html, /min="1" max="99"/); assert.match(html, /datetime-local/);
     assert.match(html, /Existing orders keep their original price/); assert.match(html, /Asia\/Manila/);
 });
 

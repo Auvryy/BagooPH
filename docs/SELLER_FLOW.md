@@ -30,6 +30,32 @@ archive/deactivate action can pause new purchases; retained history is never
 hard-deleted. Bulk actions validate the owned selection before writing and
 report each changed, archived or skipped item.
 
+Combination stock supports complete selling prices and unique SKUs for each
+option row. Full row prices are PHP 1.00–1,000,000.00 with up to two decimals;
+stock is a whole number from 0 to 99,999, including the combined stock limit.
+There are at most two groups and 20 values per group. Existing base-price-plus-
+extra listings remain supported explicitly. Listing and combination SKUs share
+one case-normalized namespace; copies receive fresh SKUs. Orders retain their
+original purchased SKU and price even after a listing changes.
+
+An active, unrestricted product crossing from above five units to five or fewer
+records one stock alert for its seller. Further edits below that threshold do
+not repeat it; replenishment above five resets the crossing. Checkout, owner
+stock edits and inventory restoration use the same persisted state and rollback
+boundary. New low-stock listings and draft/archived stock edits do not emit
+operational crossing alerts. These alerts use notifications, without a Products
+sidebar attention dot.
+
+Scheduled sales support either a base sale price or a whole discount from 1%
+to 99%. Percentage discounts apply to the complete selected option price, round
+to the nearest centavo and keep a positive unit price. A fixed sale applies the
+same peso reduction to each option and cannot make an option free or negative.
+Running store-sale edits affect future quotes; prior orders keep their original
+prices. Running flash slots retain their authored terms and schedule. An
+authored flash quota cannot remove used units or exceed used units plus current
+stock. Scheduling does not create or reserve physical stock; checkout still
+checks actual option stock and quota under the product lock.
+
 Sellers edit personal/shop contact numbers, profile photos, shop description, logo and banner directly in settings. These changes preserve the registered shop's approval and catalogue eligibility. Legal identity, birth date, shop name, category, pickup address and private business/identity evidence require the correction request and history beside identity information in merchant account settings. A restricted shop's contact/branding edit cannot reactivate it or open new work. The original sign-in email stays fixed; additional verified contact/recovery addresses use current-password confirmation and emailed OTP verification.
 
 Approval, rejection, suspension, and reactivation follow [ADMIN_FLOW.md](ADMIN_FLOW.md). Suspending the seller or their shop blocks new listings/orders in that scope and sends unfulfilled orders to an admin exception queue. It cannot silently cancel orders, restore stock, erase history, or bypass custody. Reactivation re-checks account and shop eligibility; document approval alone cannot clear an independent suspension.

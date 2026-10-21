@@ -17,6 +17,7 @@ use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
 use App\Services\Commerce\InventoryService;
 use App\Services\Commerce\PhilippineAddressCatalog;
+use App\Services\Commerce\ProductSkuService;
 use App\Services\Commerce\SalePriceService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Notifications\LifecycleNoticeService;
@@ -182,7 +183,7 @@ class CheckoutOrderService
                             'order_id' => $order->id, 'product_id' => $product->id, 'shop_id' => $product->shop_id,
                             'product_sale_id' => $segment['product_sale_id'], 'quantity' => $segment['quantity'],
                             'unit_price' => $segment['unit_price'], 'subtotal' => $segment['subtotal'],
-                            'color' => $item->color, 'size' => $item->size, 'sku_snapshot' => $item->sku_snapshot,
+                            'color' => $item->color, 'size' => $item->size, 'sku_snapshot' => app(ProductSkuService::class)->selected($product, $item->color, $item->size),
                             'declared_weight_kg' => $product->weight_kg,
                         ]);
                     }

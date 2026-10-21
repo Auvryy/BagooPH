@@ -27,6 +27,15 @@ listings show their price range before a complete option selection and the
 chosen option's price afterwards. Bag and checkout still recheck actual prices
 and stock.
 
+The product page shows saved condition, brand, declared weight, dimensions and
+department, with only visible shop-owned merchandising groups. A short facts
+summary sits near the title and links to the full specifications. Missing
+values are stated honestly; existing listings are not assigned invented facts.
+Each independently priced option displays its own SKU and full price.
+Percentage sales discount that full price, including any legacy adjustment,
+and keep the product page, search, Bag and checkout consistent. Previously
+purchased items retain their original price and SKU.
+
 Birth date is required for password and first Google signup, including direct submissions and registration preflight. The buyer must have reached their eighteenth birthday on the server's Philippine calendar. Missing, impossible, future and underage dates are rejected before account creation. The server derives age; a supplied age cannot override it. Existing reviewed identity remains subject to the recorded correction process rather than an invented replacement date.
 
 Suspension blocks new orders and Bag changes. Personal pages and owned history remain readable, and required receipt confirmation for previously approved buyers remains available through the narrow authorized exception unless an explicit security review restricts it. Reading history as an unapproved applicant does not grant receipt confirmation or private pickup-code access. This never permits foreign-order access, premature completion, or new checkout. Approval or document resubmission cannot silently clear a suspension.

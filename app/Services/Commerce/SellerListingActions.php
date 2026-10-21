@@ -45,9 +45,17 @@ class SellerListingActions
             throw ValidationException::withMessages(['product' => 'Ask Platform Admin to review this restriction before copying the listing.']);
         }
         app(ShopEligibilityService::class)->categoryFor($shop, $product->category_id);
-        $copy = $product->replicate(['slug', 'sku', 'rating', 'sales_count', 'compliance_restricted', 'moderation_version'])->withoutRelations();
+        $copy = $product->replicate(['slug', 'sku', 'rating', 'sales_count', 'compliance_restricted', 'moderation_version', 'low_stock_active', 'low_stock_cycle'])->withoutRelations();
         $copy->status = 'draft';
         $copy->sku = 'BGO-COPY-'.Str::upper(Str::random(12));
+        if (($copy->variants['pricing_mode'] ?? null) === 'independent') {
+            $variants = $copy->variants;
+            foreach ($variants['combinations'] as $index => &$row) {
+                $row['sku'] = $copy->sku.'-'.($index + 1);
+            }
+            unset($row);
+            $copy->variants = $variants;
+        }
         $copy->save();
         foreach ($product->images()->orderBy('sort_order')->orderBy('id')->get() as $image) {
             $copy->images()->create($image->only(['image_url', 'sort_order', 'is_primary']));

@@ -3,7 +3,8 @@
 The selected SE01 and SE02 batches share `feat/seller-catalogue-workspaces`.
 Implement listing and worklist controls before connecting store categories and
 complete listing details. Use separate logical commits and one combined
-acceptance gate. Current results and engineering ratings belong in
+acceptance gate. The selected SE03 and SE04 follow on the combined
+`feat/seller-variants-and-sales` branch. Current results and engineering ratings belong in
 [the roadmap](../CORE_FLOW_ROADMAP.md).
 
 ## Selected outcomes
@@ -43,12 +44,27 @@ Weight validation does not introduce a shipping tariff. `SEL-PROD-008` still
 contains a different weight-based charging assumption; keep Bagoo's existing
 subtotal-based fees unless a separate policy change is selected.
 
-## Separate follow-up scope
+## Selected variant and sale follow-up
 
-SE03 proposes independent combination prices/SKUs, precise row feedback and
-persisted low-stock crossing alerts. SE04 proposes percentage authoring,
-complete-variant discounts and tighter authored flash quotas. Neither batch is
-selected by the SE01/SE02 delivery.
+The user selected SE03 and SE04 together on `feat/seller-variants-and-sales`,
+after the SE01/SE02 branch was merged. Keep separate logical commits and one
+combined acceptance gate. SE03 retains complete independent combination prices
+and SKUs, precise row feedback and durable low-stock crossing alerts. SE04 adds
+whole percentage authoring from 1% to 99%, discounts the complete selected
+variant price, permits running store-sale edits for future purchases and limits
+flash quotas to actual stock without reserving it.
+
+Cover the nine targeted cases: `SEL-VAR-001`, `SEL-VAR-005`, `SEL-VAR-006`,
+`SEL-INV-008`, `SEL-DISC-001`, `SEL-DISC-005`, `SEL-DISC-008`, `SEL-DISC-009`
+and `SEL-FLASH-002`. Preserve legacy surcharge listings, original purchased
+SKU/price snapshots, stock restoration and retry safety. The two-group maximum,
+exact option errors and variant image selection also need focused checks.
+
+Buyers must see saved brand, new/used condition, declared weight, dimensions and
+department on the actual product route, with readable units and honest missing
+values. Store grouping stays distinct from the approved department. Verify
+product selectors, public price ranges, search, Shopping Bag and checkout use
+the same current prices; prior orders remain unchanged.
 
 Code-only/product-scoped vouchers, bundles and cash withdrawal requests remain
 separate features. Keep approval, the sole shop, the 14 master roots, buyer-only

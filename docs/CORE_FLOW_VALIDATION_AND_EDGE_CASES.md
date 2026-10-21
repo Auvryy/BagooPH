@@ -203,6 +203,29 @@ unfinished orders rejects without archiving; explicit archive remains separate.
 Category deletion uses a current affected-record preview and removes only the
 category tree and its memberships.
 
+Complete variant rows require their own selling price, stock and SKU. Reject
+missing, zero, excessive-precision or out-of-range prices on the affected row;
+retain valid sibling inputs in the form. Listing and row SKUs reserve one
+case-normalized database key, so a different shop, listing or option cannot
+claim the same identifier. A failed claim rolls back the product edit and its
+claims. Legacy surcharge pricing is explicit; it is not silently converted.
+Treat the valid string `0` in option names and SKUs as a supplied value, with
+the same uniqueness checks. A zero selling price remains invalid.
+
+Percentage sale inputs are whole ASCII integers from 1 to 99. Apply the saved
+percentage to each complete regular option price with integer-centavo rounding,
+including any legacy adjustment. Product selectors, catalogue price filters,
+Bag quotes and checkout agree. Sale changes invalidate an outstanding quote;
+successful checkout replay retains the original order. Original SKU, sale
+allocation and price snapshots survive future edits and cancellation. Flash
+quota authoring checks used units plus current stock without reserving it.
+
+Record one durable notification when active stock crosses from above five to
+five or fewer. Stock changes, the crossing identity and notification intent
+share one transaction. Replenishment resets the crossing, repeated low-stock
+edits do not notify again, and rollback leaves neither a stock change nor a
+notification. Delivery retries cannot create a second notification.
+
 ### Order Fulfillment
 
 - A seller order contains items from exactly one shop. A legacy mixed-shop order is read-only and enters an admin repair queue.

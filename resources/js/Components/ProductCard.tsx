@@ -29,7 +29,9 @@ export default function ProductCard({
 }: ProductCardProps) {
     const priceNum = Number(product.price_range?.min ?? product.sale_offer?.effective_price ?? product.price);
     const maxPrice = Number(product.price_range?.max ?? priceNum);
-    const compareNum = product.sale_offer?.active && priceNum < Number(product.price) ? Number(product.price) : product.compare_at_price ? Number(product.compare_at_price) : null;
+    const regularMin = Number(product.price_range?.regular_min ?? product.price);
+    const compareNum = product.sale_offer?.active && priceNum < regularMin ? regularMin
+        : product.compare_at_price ? regularMin + Number(product.compare_at_price) - Number(product.price) : null;
     const discountPct = maxPrice === priceNum && compareNum && compareNum > priceNum
         ? Math.round(((compareNum - priceNum) / compareNum) * 100)
         : null;

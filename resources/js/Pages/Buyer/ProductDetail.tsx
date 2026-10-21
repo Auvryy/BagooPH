@@ -1,4 +1,6 @@
 import ProductSaleOffer, { type SaleReminderState } from '@/Components/ProductSaleOffer';
+import ProductSpecifications, { ProductFactsSummary } from '@/Components/ProductSpecifications';
+import { selectedRegularPrice, saleUnitPrice } from '@/utils/productPricing';
 import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
@@ -52,6 +54,7 @@ interface VariationSize {
 }
 
 interface Variations {
+    pricing_mode?: 'surcharge' | 'independent';
     combinations?: import('@/Components/VariantStockMatrix').StockCombination[];
     option1_name?: string | null;
     option2_name?: string | null;
@@ -176,19 +179,19 @@ export default function BuyerProductDetail({
     );
 
     // Dynamic price calculation based on selected size/variation
-    const basePrice = Number(product.sale_offer?.effective_price ?? product.price);
+    const completeSelection = (!colorsList.length || selectedColor !== null) && (!sizesList.length || selectedSize !== null);
     const selectedCombination = variations.combinations?.find(row => row.color === (selectedColor?.name ?? null) && row.size === (selectedSize?.name ?? null));
-    const extraPrice = Number(variations.combinations ? selectedCombination?.extra_price ?? 0 : selectedSize?.extra_price ?? 0);
-    const currentPrice = basePrice + extraPrice;
+    const regularPrice = completeSelection ? selectedRegularPrice({ ...product, variants: variations }, selectedColor?.name ?? null, selectedSize?.name ?? null)
+        : Number(product.price_range?.regular_min ?? product.price);
+    const currentPrice = !completeSelection && product.price_range ? Number(product.price_range.min) : saleUnitPrice(product, regularPrice);
     
-    const baseCompare = product.sale_offer?.active && basePrice < Number(product.price) ? Number(product.price) : product.compare_at_price ? Number(product.compare_at_price) : 0;
-    const currentComparePrice = baseCompare > basePrice ? baseCompare + extraPrice : 0;
+    const currentComparePrice = product.sale_offer?.active && currentPrice < regularPrice ? regularPrice
+        : product.compare_at_price && Number(product.compare_at_price) > Number(product.price) ? regularPrice + Number(product.compare_at_price) - Number(product.price) : 0;
     const discountPct = currentComparePrice > currentPrice ? Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100) : 0;
 
-    const completeSelection = (!colorsList.length || selectedColor !== null) && (!sizesList.length || selectedSize !== null);
     const showPriceRange = !completeSelection && product.price_range && Number(product.price_range.max) > Number(product.price_range.min);
     const selectionStock = variations.combinations ? Number(selectedCombination?.stock ?? (completeSelection ? 0 : product.stock)) : Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
-    const sizeAvailable = (size: VariationSize) => !variations.combinations || variations.combinations.some(row => row.size === size.name && (!selectedColor || row.color === selectedColor.name) && row.stock > 0);
+    const sizeAvailable = (size: VariationSize) => !variations.combinations || variations.combinations.some(row => row.size === size.name && (!selectedColor || row.color === selectedColor.name) && Number(row.stock) > 0);
     const isProductOutOfStock = Number(product.stock) <= 0;
     const isSelectionOutOfStock = selectedColor?.in_stock === false || selectionStock <= 0;
     const totalProductInCart = cartQuantities.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
@@ -433,13 +436,14 @@ export default function BuyerProductDetail({
                                 <span className="px-2 py-0.5 rounded bg-[#E00D42] text-white font-sans text-[10px] font-black uppercase tracking-wider">
                                     APPROVED SHOP
                                 </span>
-                                <span className="text-xs text-slate-400 font-sans">SKU: {product.sku || 'Not provided'}</span>
+                                <span className="text-xs text-slate-400 font-sans">SKU: {selectedCombination?.sku || product.sku || 'Not provided'}</span>
                             </div>
 
                             <div className="flex items-start justify-between gap-3">
                                 <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
                                     {product.name}
                                 </h1>
+                            <ProductFactsSummary product={product} />
                                 <button
                                     type="button"
                                     onClick={() => setIsShareModalOpen(true)}
@@ -752,37 +756,7 @@ export default function BuyerProductDetail({
 
                 {/* 3. PRODUCT DESCRIPTION & SPECIFICATIONS */}
                 <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-xs border border-slate-100 space-y-6 font-sans">
-                    <div>
-                        <h3 className="font-black text-slate-900 text-lg mb-4 uppercase tracking-wider font-sans">
-                            Product Specifications
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-sans text-xs">
-                            {[
-                                ['Brand', product.brand || 'Not provided'],
-                                ['Condition', product.condition === 'new' ? 'New' : product.condition === 'used' ? 'Used' : 'Not provided'],
-                                ['Declared weight', product.weight_kg == null ? 'Not recorded' : `${Number(product.weight_kg).toFixed(2)} kg`],
-                                ['Dimensions', [product.length_cm, product.width_cm, product.height_cm].every(value => value != null) ? `${product.length_cm} × ${product.width_cm} × ${product.height_cm} cm` : 'Not recorded'],
-                            ].map(([label, value]) => <div key={label} className="flex gap-4 rounded-xl bg-slate-50 p-3"><span className="w-32 shrink-0 font-bold text-slate-500">{label}:</span><span className="break-words font-bold text-slate-800">{value}</span></div>)}
-                            <div className="flex gap-4 p-3 rounded-xl bg-slate-50">
-                                <span className="text-slate-400 w-32 font-bold">Category:</span>
-                                <span className="text-slate-800 font-bold">{product.category?.name || 'General'}</span>
-                            </div>
-                            <div className="flex gap-4 p-3 rounded-xl bg-slate-50">
-                                <span className="text-slate-400 w-32 font-bold">Warehouse Stock:</span>
-                                <span className={`font-bold ${isProductOutOfStock ? 'text-rose-700' : 'text-slate-800'}`}>
-                                    {isProductOutOfStock ? 'Out of stock' : `${product.stock} units available`}
-                                </span>
-                            </div>
-                            <div className="flex gap-4 p-3 rounded-xl bg-slate-50">
-                                <span className="text-slate-400 w-32 font-bold">Payment:</span>
-                                <span className="text-emerald-600 font-bold">Cash on Delivery</span>
-                            </div>
-                            <div className="flex gap-4 p-3 rounded-xl bg-slate-50">
-                                <span className="text-slate-400 w-32 font-bold">Seller location:</span>
-                                <span className="text-slate-800 font-bold">{product.shop?.city || 'Location unavailable'}</span>
-                            </div>
-                        </div>
-                    </div>
+                    <ProductSpecifications product={product} />
 
                     {shopOffers.length > 0 && <section aria-label="Shop offers" className="space-y-3"><h3 className="font-bold text-slate-900">Shop offers</h3><VoucherOfferList offers={shopOffers} allowSave /></section>}
                     <div>

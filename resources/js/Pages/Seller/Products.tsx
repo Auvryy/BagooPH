@@ -70,6 +70,7 @@ interface VariantSize {
 }
 
 interface ProductVariants {
+    pricing_mode?: 'surcharge' | 'independent';
     combinations?: StockCombination[];
     option1_name?: string | null;
     option2_name?: string | null;
@@ -163,6 +164,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const [createOption2Name, setCreateOption2Name] = useState('Size / Specification');
     const [createVariants, setCreateVariants] = useState<ProductVariants>({ option1_name: null, option2_name: null, colors: [], sizes: [] });
     const [newCreateColorName, setNewCreateColorName] = useState('');
+    const [optionDraftErrors, setOptionDraftErrors] = useState<Record<string, string>>({});
     const [newCreateColorHex, setNewCreateColorHex] = useState('#111111');
     const [newCreateSizeName, setNewCreateSizeName] = useState('');
     const [newCreateSizePrice, setNewCreateSizePrice] = useState('0');
@@ -459,6 +461,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
     };
 
     const openCreate = () => {
+        setOptionDraftErrors({});
         setCreateFileError(null);
         setCreateImageMode('file');
         setCreateGallery([]);
@@ -483,6 +486,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
     };
 
     const openEdit = (product: Product) => {
+        setOptionDraftErrors({});
         setEditingProduct(product);
         setEditImageMode('file');
         setEditFileError(null);
@@ -522,6 +526,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         setEditOption2Name(opt2Name);
 
         const variantsData: ProductVariants = {
+            pricing_mode: product.variants?.pricing_mode ?? 'surcharge',
             combinations: product.variants?.combinations,
             option1_name: hasColors ? opt1Name : null,
             option2_name: hasSizes ? opt2Name : null,
@@ -617,6 +622,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
             }) : [],
             sizes: createHasOption2 ? createVariants.sizes : [],
             combinations: createVariants.combinations,
+            pricing_mode: createVariants.pricing_mode ?? 'independent',
         } : null;
 
         const submissionToken = createForm.data.request_token || newToken();
@@ -701,6 +707,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
             }) : [],
             sizes: editHasOption2 ? editVariants.sizes : [],
             combinations: editVariants.combinations,
+            pricing_mode: editVariants.pricing_mode ?? 'surcharge',
         } : null;
 
         editForm.transform((data) => ({
@@ -983,15 +990,23 @@ export default function SellerProducts({ products, categories, shop, filters = {
         }
     };
 
+    const optionNameError = (value: string, options: { name: string }[]) => {
+        const name = value.trim();
+        if (!name) return 'Enter an option value before adding it.';
+        if (name.length > 100) return 'Use no more than 100 characters for an option value.';
+        if (options.some(option => option.name.trim().toLowerCase() === name.toLowerCase())) return 'This option is already listed. Enter a different value.';
+        if (options.length >= 20) return 'Use no more than 20 values per option group.';
+        return '';
+    };
+    const setOptionError = (isCreate: boolean, group: 'colors' | 'sizes', message: string) =>
+        setOptionDraftErrors(previous => ({ ...previous, [`${isCreate ? 'create' : 'edit'}.${group}`]: message }));
+
     const addColor = (isCreate: boolean) => {
-        if ((isCreate ? createVariants : editVariants).colors.length >= 20) {
-            if (isCreate) createForm.setError('variants', 'Use no more than 20 values per option group.');
-            else editForm.setError('variants', 'Use no more than 20 values per option group.');
-            return;
-        }
         const name = isCreate ? newCreateColorName.trim() : newEditColorName.trim();
         const hex = isCreate ? newCreateColorHex.trim() : newEditColorHex.trim();
-        if (!name) return;
+        const message = optionNameError(name, (isCreate ? createVariants : editVariants).colors);
+        setOptionError(isCreate, 'colors', message);
+        if (message) return;
 
         const draft = isCreate ? createDraftPhoto : editDraftPhoto;
 
@@ -1025,14 +1040,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
     };
 
     const addSize = (isCreate: boolean) => {
-        if ((isCreate ? createVariants : editVariants).sizes.length >= 20) {
-            if (isCreate) createForm.setError('variants', 'Use no more than 20 values per option group.');
-            else editForm.setError('variants', 'Use no more than 20 values per option group.');
-            return;
-        }
         const name = isCreate ? newCreateSizeName.trim() : newEditSizeName.trim();
         const extraPrice = Number(isCreate ? newCreateSizePrice : newEditSizePrice) || 0;
-        if (!name) return;
+        const message = optionNameError(name, (isCreate ? createVariants : editVariants).sizes);
+        setOptionError(isCreate, 'sizes', message);
+        if (message) return;
 
         const newSize: VariantSize = {
             id: `s_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -1077,6 +1089,16 @@ export default function SellerProducts({ products, categories, shop, filters = {
         const setSizeName = isCreate ? setNewCreateSizeName : setNewEditSizeName;
         const sizePrice = isCreate ? newCreateSizePrice : newEditSizePrice;
         const setSizePrice = isCreate ? setNewCreateSizePrice : setNewEditSizePrice;
+
+        const colorFeedback = optionDraftErrors[`${isCreate ? 'create' : 'edit'}.colors`] || (colorName ? optionNameError(colorName, variants.colors) : '');
+        const sizeFeedback = optionDraftErrors[`${isCreate ? 'create' : 'edit'}.sizes`] || (sizeName ? optionNameError(sizeName, variants.sizes) : '');
+        const fieldErrors = (isCreate ? createForm : editForm).errors as Record<string, string>;
+        const savedOptionError = (group: 'colors' | 'sizes', index: number) => {
+            const message = fieldErrors[`${group}.${index}.name`] || '';
+            if (/duplicate/i.test(message)) return 'This option is repeated in this group.';
+            if (/required/i.test(message)) return 'Enter a value for this option.';
+            return message.replace(/(?:colors|sizes)\.[0-9]+\.name/g, 'option value');
+        };
 
         // 1. Zero Variations (Empty State)
         if (!hasOption1 && !hasOption2) {
@@ -1206,7 +1228,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                         {/* Existing Option 1 Values */}
                         {variants.colors.length > 0 && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-1 font-sans text-xs">
-                                {variants.colors.map((c) => (
+                                {variants.colors.map((c, index) => (
                                     <div
                                         key={c.id}
                                         className="flex items-center justify-between gap-2 p-2 bg-slate-50/70 rounded-xl border border-slate-200 hover:border-slate-300 transition"
@@ -1245,6 +1267,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                             <div className="min-w-0">
                                                 <p className="font-bold text-slate-800 text-xs truncate leading-tight font-sans">{c.name}</p>
+                                                {savedOptionError('colors', index) && <span role="alert" className="mt-1 block text-xs text-rose-700">{savedOptionError('colors', index)}</span>}
                                                 <div className="text-[10px] text-slate-400 leading-tight">
                                                     {c.image_url ? (
                                                         <span className="text-emerald-600 font-bold flex items-center gap-0.5">
@@ -1312,14 +1335,14 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     title="Pick color / swatch hex"
                                 />
                             </div>
-                            <input
+                            <div className="min-w-0 flex-1"><input
                                 type="text"
-                                value={colorName}
-                                onChange={(e) => setColorName(e.target.value)}
+                                value={colorName} maxLength={100} aria-label={`${option1Name || 'Option 1'} value`} aria-invalid={!!colorFeedback}
+                                onChange={(e) => { setColorName(e.target.value); setOptionError(isCreate, 'colors', ''); }}
                                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addColor(isCreate); } }}
                                 placeholder={`Add ${option1Name || 'Option 1'} value (e.g. Matte Black)...`}
-                                className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                            />
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                            />{colorFeedback && <p role="alert" className="mt-1 text-xs text-rose-700">{colorFeedback}</p>}</div>
                             <button
                                 type="button"
                                 onClick={() => addColor(isCreate)}
@@ -1394,12 +1417,13 @@ export default function SellerProducts({ products, categories, shop, filters = {
                         {/* Existing Option 2 Values */}
                         {variants.sizes.length > 0 && (
                             <div className="flex flex-wrap gap-2 pb-1 font-sans text-xs">
-                                {variants.sizes.map((s) => (
+                                {variants.sizes.map((s, index) => (
                                     <span
                                         key={s.id}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs shadow-2xs"
+                                        className="inline-flex flex-wrap items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs shadow-2xs"
                                     >
                                         <span className="font-bold">{s.name}</span>
+                                        {savedOptionError('sizes', index) && <span role="alert" className="order-last basis-full text-xs text-rose-700">{savedOptionError('sizes', index)}</span>}
                                         {s.extra_price > 0 && (
                                             <span className="text-[10px] text-emerald-600 font-bold">
                                                 (+{formatPrice(s.extra_price)})
@@ -1420,14 +1444,14 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                         {/* Add Item to Option 2 */}
                         <div className="flex items-center gap-2 font-sans text-xs">
-                            <input
+                            <div className="min-w-0 flex-1"><input
                                 type="text"
-                                value={sizeName}
-                                onChange={(e) => setSizeName(e.target.value)}
+                                value={sizeName} maxLength={100} aria-label={`${option2Name || 'Option 2'} value`} aria-invalid={!!sizeFeedback}
+                                onChange={(e) => { setSizeName(e.target.value); setOptionError(isCreate, 'sizes', ''); }}
                                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSize(isCreate); } }}
                                 placeholder={`Add ${option2Name || 'Option 2'} value (e.g. 256GB, Large, 500ml)...`}
-                                className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
-                            />
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
+                            />{sizeFeedback && <p role="alert" className="mt-1 text-xs text-rose-700">{sizeFeedback}</p>}</div>
                             <div className="w-32 relative">
                                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₱+</span>
                                 <input
@@ -2637,7 +2661,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(true)}
-                                <VariantStockMatrix colors={createHasOption1 ? createVariants.colors : []} sizes={createHasOption2 ? createVariants.sizes : []} value={createVariants.combinations} onChange={combinations => setCreateVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(true)} />
+                                <VariantStockMatrix colors={createHasOption1 ? createVariants.colors : []} sizes={createHasOption2 ? createVariants.sizes : []} value={createVariants.combinations} pricingMode={createVariants.pricing_mode ?? 'independent'} onPricingModeChange={pricing_mode => setCreateVariants(previous => ({ ...previous, pricing_mode }))} basePrice={createForm.data.price} listingSku={createForm.data.sku} errors={createForm.errors} onChange={combinations => setCreateVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(true)} />
                                 <div className="rounded-lg border border-slate-300 p-4">
                                     <label className="block text-sm font-bold text-slate-900" htmlFor="createForm-purchase-limit">Purchase limit per buyer</label>
                                     <input id="createForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={createForm.data.purchase_limit} onChange={event => createForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
@@ -2896,7 +2920,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(false)}
-                                <VariantStockMatrix colors={editHasOption1 ? editVariants.colors : []} sizes={editHasOption2 ? editVariants.sizes : []} value={editVariants.combinations} onChange={combinations => setEditVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(false)} />
+                                <VariantStockMatrix colors={editHasOption1 ? editVariants.colors : []} sizes={editHasOption2 ? editVariants.sizes : []} value={editVariants.combinations} pricingMode={editVariants.pricing_mode ?? 'surcharge'} onPricingModeChange={pricing_mode => setEditVariants(previous => ({ ...previous, pricing_mode }))} basePrice={editForm.data.price} listingSku={editForm.data.sku} errors={editForm.errors} onChange={combinations => setEditVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(false)} />
                                 <div className="rounded-lg border border-slate-300 p-4">
                                     <label className="block text-sm font-bold text-slate-900" htmlFor="editForm-purchase-limit">Purchase limit per buyer</label>
                                     <input id="editForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={editForm.data.purchase_limit} onChange={event => editForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
