@@ -31,6 +31,7 @@ export default function AccountStatus({ status }: { status: Status }) {
                 <AccountReviewRequestForm source={source} />
             </section>)}
             <div className="flex flex-wrap gap-2">
+                <Link href="/account/security" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">Login activity</Link>
                 {status.can_correct_application && <Link href={route('kyc.pending')} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">Correct application</Link>}
                 {status.can_correct_identity && !status.can_open_portal && <Link href={route('identity-corrections.own')} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">Correct reviewed details</Link>}
                 {!status.account.email_verified_at && <Link href={route('verification.notice')} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">Verify email</Link>}

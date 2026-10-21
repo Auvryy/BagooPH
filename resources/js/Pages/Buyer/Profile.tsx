@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
+import AccountSessionLink from '@/Components/AccountSessionLink';
 import BuyerOrderFilters from '@/Components/BuyerOrderFilters';
 import BuyerPurchaseNavigation from '@/Components/BuyerPurchaseNavigation';
 import BuyAgainButton from '@/Components/BuyAgainButton';
@@ -906,6 +907,8 @@ export default function BuyerProfile({
                                 </div>
 
                                 <AccountEmailSettings theme="buyer" />
+
+                                <AccountSessionLink theme="buyer" />
 
                 <AccountIdentitySettings theme="buyer" />
 

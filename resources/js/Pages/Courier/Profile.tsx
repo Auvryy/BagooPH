@@ -5,6 +5,7 @@ import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
 import { CourierAvatar, CourierBadge, CourierFieldError, CourierPanel, courierButton, courierClasses, courierInput, courierPrimary } from '@/Components/CourierUI';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
+import AccountSessionLink from '@/Components/AccountSessionLink';
 import CourierLayout from '@/Layouts/CourierLayout';
 import { courierPath, type CourierScope } from '@/utils/courier';
 import { PageProps } from '@/types';
@@ -127,7 +128,8 @@ export default function CourierProfile({ rider, assignment, vehicle, scope, isOn
                     <section id="profile-privacy" aria-labelledby="profile-privacy-title" hidden={tab !== 'privacy'}>
                     <CourierPanel className="p-4 sm:p-6">
                         <h2 id="profile-privacy-title" className="text-lg font-semibold">Privacy and security</h2>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600">Manage email verification and your password.</p>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600">Manage sign-ins, email verification and your password.</p>
+                        <div className="my-5"><AccountSessionLink theme="courier" /></div>
                         <div className="mb-5"><AccountEmailSettings theme="courier" /></div>
                         <EmailVerificationStatus email={rider.email} verifiedAt={rider.email_verified_at} comfortable className="mt-4 !border-transparent" />
                         <form onSubmit={savePassword} className="mt-5 space-y-4">

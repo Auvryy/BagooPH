@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
+import AccountSessionLink from '@/Components/AccountSessionLink';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import PhoneInput from '@/Components/PhoneInput';
 import UpdatePasswordForm from '@/Pages/Profile/Partials/UpdatePasswordForm';
@@ -355,6 +356,8 @@ export default function SellerProfile({ user, shop }: Props) {
                 </form>
 
                 <AccountEmailSettings theme="seller" />
+
+                <AccountSessionLink theme="seller" />
 
                 <AccountIdentitySettings theme="seller" />
 

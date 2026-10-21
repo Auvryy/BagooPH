@@ -5,6 +5,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PageProps } from '@/types';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
+import AccountSessionLink from '@/Components/AccountSessionLink';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import { AccountClosureReview } from '@/types/accountClosure';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
@@ -56,6 +57,7 @@ export default function Edit({
         <div className="mx-auto max-w-4xl space-y-5">
             <h1 className="text-2xl font-semibold">Account settings</h1>
             <p className="rounded-xl border border-slate-300 bg-white p-4 text-sm text-slate-600">Your account cannot start new work. You can request a correction to reviewed identity here; approval does not clear separate restrictions.</p>
+            <AccountSessionLink theme={role === 'courier' ? 'courier' : role === 'seller' ? 'seller' : role === 'buyer' ? 'buyer' : 'default'} />
             <AccountIdentitySettings theme={role === 'seller' ? 'seller' : role === 'buyer' ? 'buyer' : role === 'courier' ? 'courier' : 'default'} />
         </div>
     ) : (
@@ -148,6 +150,8 @@ export default function Edit({
             </div>
 
             <AccountEmailSettings theme={role === 'seller' ? 'seller' : 'buyer'} />
+
+            <AccountSessionLink theme={role === 'seller' ? 'seller' : role === 'buyer' ? 'buyer' : 'default'} />
 
             <AccountIdentitySettings theme={role === 'seller' ? 'seller' : 'buyer'} />
 
