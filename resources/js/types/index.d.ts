@@ -121,7 +121,7 @@ export interface ProductImage {
     sort_order: number;
 }
 
-export interface SaleSummary { id: number; kind: 'store' | 'flash'; name: string; price: string | number; starts_at: string; ends_at: string; remaining_quantity: number | null }
+export interface SaleSummary { id: number; kind: 'store' | 'flash'; name: string; price: string | number; discount_type?: 'fixed' | 'percentage'; percentage?: number | null; starts_at: string; ends_at: string; remaining_quantity: number | null }
 
 export interface StoreCategory {
     id: number;
@@ -133,7 +133,7 @@ export interface StoreCategory {
 }
 
 export interface Product {
-    price_range?: { min: string; max: string };
+    price_range?: { min: string; max: string; regular_min?: string; regular_max?: string };
     sale_offer?: { server_now?: string; effective_price: number; active: SaleSummary | null; upcoming: SaleSummary | null };
     purchase_limit?: number | null;
     compliance_restricted?: boolean;
@@ -155,6 +155,7 @@ export interface Product {
     stock: number;
     sku?: string | null;
     variants?: {
+        pricing_mode?: 'surcharge' | 'independent';
         combinations?: import('@/Components/VariantStockMatrix').StockCombination[];
         option1_name?: string | null;
         option2_name?: string | null;

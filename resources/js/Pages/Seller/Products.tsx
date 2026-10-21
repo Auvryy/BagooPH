@@ -70,6 +70,7 @@ interface VariantSize {
 }
 
 interface ProductVariants {
+    pricing_mode?: 'surcharge' | 'independent';
     combinations?: StockCombination[];
     option1_name?: string | null;
     option2_name?: string | null;
@@ -522,6 +523,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         setEditOption2Name(opt2Name);
 
         const variantsData: ProductVariants = {
+            pricing_mode: product.variants?.pricing_mode ?? 'surcharge',
             combinations: product.variants?.combinations,
             option1_name: hasColors ? opt1Name : null,
             option2_name: hasSizes ? opt2Name : null,
@@ -617,6 +619,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
             }) : [],
             sizes: createHasOption2 ? createVariants.sizes : [],
             combinations: createVariants.combinations,
+            pricing_mode: createVariants.pricing_mode ?? 'independent',
         } : null;
 
         const submissionToken = createForm.data.request_token || newToken();
@@ -701,6 +704,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
             }) : [],
             sizes: editHasOption2 ? editVariants.sizes : [],
             combinations: editVariants.combinations,
+            pricing_mode: editVariants.pricing_mode ?? 'surcharge',
         } : null;
 
         editForm.transform((data) => ({
@@ -2637,7 +2641,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(true)}
-                                <VariantStockMatrix colors={createHasOption1 ? createVariants.colors : []} sizes={createHasOption2 ? createVariants.sizes : []} value={createVariants.combinations} onChange={combinations => setCreateVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(true)} />
+                                <VariantStockMatrix colors={createHasOption1 ? createVariants.colors : []} sizes={createHasOption2 ? createVariants.sizes : []} value={createVariants.combinations} pricingMode={createVariants.pricing_mode ?? 'independent'} onPricingModeChange={pricing_mode => setCreateVariants(previous => ({ ...previous, pricing_mode }))} basePrice={createForm.data.price} listingSku={createForm.data.sku} errors={createForm.errors} onChange={combinations => setCreateVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(true)} />
                                 <div className="rounded-lg border border-slate-300 p-4">
                                     <label className="block text-sm font-bold text-slate-900" htmlFor="createForm-purchase-limit">Purchase limit per buyer</label>
                                     <input id="createForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={createForm.data.purchase_limit} onChange={event => createForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
@@ -2896,7 +2900,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(false)}
-                                <VariantStockMatrix colors={editHasOption1 ? editVariants.colors : []} sizes={editHasOption2 ? editVariants.sizes : []} value={editVariants.combinations} onChange={combinations => setEditVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(false)} />
+                                <VariantStockMatrix colors={editHasOption1 ? editVariants.colors : []} sizes={editHasOption2 ? editVariants.sizes : []} value={editVariants.combinations} pricingMode={editVariants.pricing_mode ?? 'surcharge'} onPricingModeChange={pricing_mode => setEditVariants(previous => ({ ...previous, pricing_mode }))} basePrice={editForm.data.price} listingSku={editForm.data.sku} errors={editForm.errors} onChange={combinations => setEditVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(false)} />
                                 <div className="rounded-lg border border-slate-300 p-4">
                                     <label className="block text-sm font-bold text-slate-900" htmlFor="editForm-purchase-limit">Purchase limit per buyer</label>
                                     <input id="editForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={editForm.data.purchase_limit} onChange={event => editForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />

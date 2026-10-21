@@ -23,6 +23,7 @@ export default function SellerListingDetails({ data, errors, categories, onChang
     const ordered = categories.filter(category => !category.parent_id).flatMap(root => [root, ...categories.filter(category => category.parent_id === root.id)]);
     return <section className="space-y-4 border-t border-slate-300 pt-5" aria-label="Product details and store categories">
         <h3 className="text-sm font-bold text-slate-900">Product details</h3>
+        <p className="text-xs leading-relaxed text-slate-500">Buyers can view these saved details after you publish the listing. Drafts stay private.</p>
         <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-xs font-semibold text-slate-700">Brand<input value={data.brand} maxLength={100} onChange={event => onChange('brand', event.target.value)} placeholder="No brand, if unbranded" className={input} />{error('brand')}</label>
             <label className="text-xs font-semibold text-slate-700">Condition<select value={data.condition} onChange={event => onChange('condition', event.target.value)} className={input}><option value="">Not specified</option><option value="new">New</option><option value="used">Used</option></select>{error('condition')}</label>
