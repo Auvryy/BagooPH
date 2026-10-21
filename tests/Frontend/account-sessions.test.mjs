@@ -8,7 +8,7 @@ import { build } from 'esbuild';
 const temporary = mkdtempSync(resolve(import.meta.dirname, '../../.codex/account-session-ui-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.accountSessionHarness; delete globalThis.route; });
 const bundled = await build({
-    stdin: { contents: `export {default as Page} from '@/Pages/Account/Security'; export {default as Panel} from '@/Components/AccountSessionPanel'; export {default as Settings} from '@/Components/AccountSessionSettings'; export {default as Entry} from '@/Components/AccountSessionLink'; export * from '@/utils/accountSessions';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: `export {default as Page} from '@/Pages/Account/Security'; export {default as Panel} from '@/Components/AccountSessionPanel'; export {default as Settings} from '@/Components/AccountSessionSettings'; export {default as Navigation} from '@/Components/BuyerAccountNavigation'; export {default as useSections} from '@/hooks/useSettingsSections'; export {default as Entry} from '@/Components/AccountSessionLink'; export * from '@/utils/accountSessions'; export * from '@/utils/accountSections';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'account-session-interactions', setup(builder) {
         builder.onResolve({ filter: /^react$/ }, () => ({ path: 'hooks', namespace: 'security-hooks' }));
@@ -206,4 +206,193 @@ test('request identifiers use secure browser randomness including the UUID fallb
         assert.match(ui.sessionRequestToken(), /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
         Object.defineProperty(globalThis, 'crypto', { configurable: true, value: {} }); assert.throws(() => ui.sessionRequestToken(), /securely prepare/);
     } finally { if (previous) Object.defineProperty(globalThis, 'crypto', previous); else delete globalThis.crypto; }
+});
+
+test('account navigation reveals real section links only while Account & Security is active', () => {
+    const selected = [];
+    let tree = ui.Navigation({ active: false, selected: 'account-personal', disabled: false, onSelect: id => selected.push(id) });
+    assert.equal(nodes(tree, n => n.props?.id === 'buyer-account-submenu')[0].props.hidden, true);
+    const parent = nodes(tree, n => n.type === 'button')[0];
+    assert.equal(parent.props['aria-expanded'], false); parent.props.onClick(); assert.deepEqual(selected, ['account-personal']);
+    tree = ui.Navigation({ active: true, selected: 'login-activity', disabled: false, onSelect: id => selected.push(id) });
+    const submenu = nodes(tree, n => n.props?.id === 'buyer-account-submenu')[0];
+    assert.equal(submenu.props.hidden, false); assert.match(submenu.props.className, /border-l/);
+    const links = nodes(tree, n => n.type === 'a');
+    assert.equal(links.length, 6); assert.equal(links.at(-1).props['aria-current'], 'location');
+    let prevented = false;
+    links.at(-1).props.onClick({ preventDefault() { prevented = true; } });
+    assert(prevented); assert.equal(selected.at(-1), 'login-activity');
+    prevented = false; links[0].props.onClick({ ctrlKey: true, preventDefault() { prevented = true; } }); assert.equal(prevented, false);
+    tree = ui.Navigation({ active: true, selected: 'account-personal', disabled: true, onSelect: id => selected.push(id) });
+    const count = selected.length; nodes(tree, n => n.type === 'a')[0].props.onClick({ preventDefault() {} }); assert.equal(selected.length, count);
+});
+
+test('every normal portal embeds its owned session list without navigating to a new page', async () => {
+    for (const role of ['buyer', 'seller', 'courier', 'logistics', 'admin']) {
+        const h = harness({ role });
+        try {
+            let tree = h.render(ui.Settings, {});
+            assert.match(text(tree), /Loading your signed-in sessions/); assert.equal(tree.props.id, 'login-activity');
+            assert.equal(h.requests.length, 1); assert.equal(h.requests[0].args[0], '/account/security');
+            assert.equal(h.requests[0].args[1].headers.Accept, 'application/json');
+            h.requests[0].resolve({ data: h.props }); await settle(); tree = h.render(ui.Settings, {});
+            const panel = nodes(tree, n => n.type === ui.Panel)[0]; assert(panel); assert.equal(panel.props.sessionOwnerId, h.user.id);
+            assert.equal(nodes(tree, n => n.type === 'a').length, 0); assert.equal(h.posts.length, 0); assert.equal(h.reloads, 0);
+        } finally { h.close(); }
+    }
+});
+
+test('hidden privacy sections do not request login activity and activation loads it once', async () => {
+    const h = harness({ role: 'courier' });
+    try {
+        h.render(ui.Settings, { enabled: false }); assert.equal(h.requests.length, 0);
+        h.render(ui.Settings, { enabled: true }); assert.equal(h.requests.length, 1);
+        h.render(ui.Settings, { enabled: true }); assert.equal(h.requests.length, 1);
+        const signal = h.requests[0].args[1].signal;
+        h.render(ui.Settings, { enabled: false }); assert.equal(signal.aborted, true);
+        h.requests[0].resolve({ data: h.props }); await settle(); assert.equal(nodes(h.render(ui.Settings, { enabled: false }), n => n.type === ui.Panel).length, 0);
+        h.render(ui.Settings, { enabled: true }); assert.equal(h.requests.length, 2);
+    } finally { h.close(); }
+});
+
+test('private-list failures offer retry and HTML or another owner is never rendered', async () => {
+    for (const response of ['<html>Sign in</html>', { sessionOwnerId: 99 }, { ...harnessData(), sessions: { data: [] } }]) {
+        const h = harness();
+        try {
+            h.render(ui.Settings, {}); h.requests[0].resolve({ data: response }); await settle();
+            let tree = h.render(ui.Settings, {}); assert.match(text(tree), /Login activity could not load/); assert.equal(nodes(tree, n => n.type === ui.Panel).length, 0);
+            button(tree, 'Try again').props.onClick(); h.requests[1].resolve({ data: h.props }); await settle();
+            tree = h.render(ui.Settings, {}); assert.equal(nodes(tree, n => n.type === ui.Panel).length, 1);
+        } finally { h.close(); }
+    }
+    const h = harness();
+    try {
+        h.render(ui.Settings, {}); h.requests[0].reject({ response: { status: 401 } }); await settle();
+        assert.match(text(h.render(ui.Settings, {})), /session has ended. Sign in again/);
+    } finally { h.close(); }
+});
+
+function harnessData() {
+    return { sessions: page([session('current', true)]), signIns: page([]), lastSignIn: null, currentSessionId: 'current', sessionOwnerId: 4, canConfirmByEmail: true, historyDays: 90 };
+}
+
+test('changing account immediately hides old sessions, aborts the request and ignores its late response', async () => {
+    const h = harness();
+    try {
+        h.render(ui.Settings, {}); const first = h.requests[0];
+        h.user = { id: 8, role: 'seller' }; let tree = h.render(ui.Settings, {});
+        assert.equal(nodes(tree, n => n.type === ui.Panel).length, 0); assert.equal(first.args[1].signal.aborted, true);
+        first.resolve({ data: h.props }); await settle(); assert.equal(nodes(h.render(ui.Settings, {}), n => n.type === ui.Panel).length, 0);
+        h.requests[1].resolve({ data: { ...h.props, sessionOwnerId: 8 } }); await settle();
+        tree = h.render(ui.Settings, {}); assert.equal(nodes(tree, n => n.type === ui.Panel)[0].props.sessionOwnerId, 8);
+    } finally { h.close(); }
+});
+
+test('embedded pagination and refresh retain both cursors without leaving account settings', async () => {
+    const h = harness();
+    try {
+        h.render(ui.Settings, {}); h.requests[0].resolve({ data: h.props }); await settle();
+        let panel = nodes(h.render(ui.Settings, {}), n => n.type === ui.Panel)[0];
+        const next = panel.props.onPageChange('/account/security?sessions_page=2&history_page=3&user_id=99');
+        assert.equal(h.requests[1].args[0], '/account/security?sessions_page=2&history_page=3');
+        h.requests[1].resolve({ data: { ...h.props, sessions: { ...h.props.sessions, current_page: 2, last_page: 2 }, signIns: { ...h.props.signIns, current_page: 3, last_page: 3 } } }); await next;
+        panel = nodes(h.render(ui.Settings, {}), n => n.type === ui.Panel)[0]; assert.equal(panel.props.sessions.current_page, 2); assert.equal(panel.props.signIns.current_page, 3);
+        const refresh = panel.props.onRefresh(); assert.equal(h.requests[2].args[0], '/account/security?sessions_page=2&history_page=3');
+        h.requests[2].resolve({ data: h.props }); await refresh;
+        assert.equal(h.posts.length, 0); assert.equal(h.reloads, 0);
+    } finally { h.close(); }
+});
+
+test('newer list requests win and unmounting aborts private reads', async () => {
+    const h = harness();
+    try {
+        h.render(ui.Settings, {}); h.requests[0].resolve({ data: h.props }); await settle();
+        const panel = nodes(h.render(ui.Settings, {}), n => n.type === ui.Panel)[0];
+        const older = panel.props.onPageChange('/account/security?sessions_page=2');
+        const newer = panel.props.onPageChange('/account/security?sessions_page=3');
+        assert.equal(h.requests[1].args[1].signal.aborted, true);
+        h.requests[2].resolve({ data: { ...h.props, sessions: { ...h.props.sessions, current_page: 3, last_page: 3 } } }); await newer;
+        h.requests[1].resolve({ data: h.props }); await older;
+        assert.equal(nodes(h.render(ui.Settings, {}), n => n.type === ui.Panel)[0].props.sessions.current_page, 3);
+        const last = panel.props.onRefresh(); const signal = h.requests[3].args[1].signal;
+        h.close(); assert.equal(signal.aborted, true); h.requests[3].resolve({ data: h.props }); await last;
+    } finally { if (globalThis.accountSessionHarness === h) h.close(); }
+});
+
+test('embedded page buttons use the focused loader and disable while a page is loading', async () => {
+    const h = harness(); let resolve;
+    try {
+        h.props.sessions = { ...h.props.sessions, last_page: 2, links: [{ url: null, label: 'Previous', active: false }, { url: '/account/security?sessions_page=1', label: '1', active: true }, { url: '/account/security?sessions_page=2', label: '2', active: false }, { url: '/account/security?sessions_page=2', label: 'Next', active: false }] };
+        const selected = []; h.props.onPageChange = url => { selected.push(url); return new Promise(yes => { resolve = yes; }); };
+        const pagination = () => { const element = nodes(h.render(), n => typeof n.type === 'function' && n.type.name === 'SessionPagination')[0]; return element.type(element.props); };
+        let tree = pagination(); assert.equal(nodes(tree, n => n.type === 'a').length, 0); button(tree, 'Next').props.onClick();
+        assert.deepEqual(selected, ['/account/security?sessions_page=2']); tree = pagination(); assert.equal(button(tree, 'Next').props.disabled, true);
+        resolve(); await settle(); assert.equal(button(pagination(), 'Next').props.disabled, false);
+    } finally { h.close(); }
+});
+
+test('only bounded relative session pages and well-formed owned data are accepted', () => {
+    assert.equal(ui.sessionListUrl('/account/security?history_page=2&role=admin'), '/account/security?history_page=2');
+    for (const url of ['https://other.example.test/account/security', '//other.example.test/account/security', '/logout', '/account/security?sessions_page=0', '/account/security?history_page=1000001', '/account/security?sessions_page=NaN']) assert.throws(() => ui.sessionListUrl(url));
+    const data = harnessData(); assert.equal(ui.confirmedSessionPage(data, 4), data);
+    for (const malformed of [null, [], 'html', { ...data, sessionOwnerId: 8 }, { ...data, sessions: { ...data.sessions, data: [{ ...session('current'), device: {} }] } }, { ...data, signIns: { ...data.signIns, total: -1 } }]) assert.throws(() => ui.confirmedSessionPage(malformed, 4));
+});
+
+function scrollFixture() {
+    const priorDocument = globalThis.document, calls = [], target = { getBoundingClientRect: () => ({ top: 350 }), focus: options => calls.push(['focus', options]), scrollIntoView: options => calls.push(['document', options]) };
+    const container = { scrollHeight: 1300, clientHeight: 600, scrollTop: 50, contains: element => element === target, getBoundingClientRect: () => ({ top: 100 }), scrollTo: options => calls.push(['container', options]) };
+    globalThis.document = { getElementById: id => ['account-personal', 'login-activity'].includes(id) ? target : null };
+    let reduced = false;
+    window.matchMedia = () => ({ matches: reduced }); window.getComputedStyle = () => ({ overflowY: 'auto' });
+    return { container, calls, reduced: value => { reduced = value; }, close: () => { globalThis.document = priorDocument; } };
+}
+
+test('section scrolling uses the desktop pane, mobile document and reduced motion correctly', () => {
+    const h = harness(), fixture = scrollFixture();
+    try {
+        assert.equal(ui.scrollSettingsSection('login-activity', fixture.container), true);
+        assert.deepEqual(fixture.calls[0], ['container', { top: 288, behavior: 'smooth' }]); assert.equal(fixture.calls.filter(call => call[0] === 'document').length, 0);
+        assert.deepEqual(fixture.calls[1], ['focus', { preventScroll: true }]);
+        fixture.calls.length = 0; fixture.container.clientHeight = 1400; fixture.reduced(true);
+        ui.scrollSettingsSection('login-activity', fixture.container); assert.deepEqual(fixture.calls[0], ['document', { block: 'start', behavior: 'auto' }]);
+        assert.equal(ui.scrollSettingsSection('missing', fixture.container), false);
+        fixture.container.contains = () => false; assert.equal(ui.scrollSettingsSection('account-personal', fixture.container), false);
+    } finally { fixture.close(); h.close(); }
+});
+
+test('a section selected from another tab waits for the account panel before scrolling', () => {
+    const h = harness(), fixture = scrollFixture(), root = { current: fixture.container };
+    let active = false;
+    const render = () => h.render(() => ui.useSections(active, ['account-personal', 'login-activity'], root), {});
+    try {
+        render().select('login-activity'); render(); h.frame(); assert.equal(fixture.calls.length, 0);
+        active = true; render(); h.frame(); assert.equal(fixture.calls.filter(call => call[0] === 'container').length, 1);
+        assert.equal(render().selected, 'login-activity');
+        render().select('account-personal'); render(); h.frame(); assert.equal(render().selected, 'account-personal');
+    } finally { fixture.close(); h.close(); }
+});
+
+test('initial account anchors and hash navigation scroll after rendering and clean up on leave', () => {
+    const h = harness(), fixture = scrollFixture(), root = { current: fixture.container };
+    const render = () => h.render(() => ui.useSections(true, ['account-personal', 'login-activity'], root), {});
+    try {
+        window.location.href += '#login-activity'; render(); render(); h.frame(); assert.equal(render().selected, 'login-activity');
+        assert.equal(fixture.calls.filter(call => call[0] === 'container').length, 1);
+        window.location.href = 'https://buyer.example.test/buyer/profile?tab=account#account-personal'; h.event('hashchange'); render(); h.frame(); assert.equal(render().selected, 'account-personal');
+        render().select('login-activity'); render(); const count = fixture.calls.length; h.close(); h.frame(); assert.equal(fixture.calls.length, count);
+        assert.equal(ui.settingsSectionFromUrl('/buyer/profile#unknown', ['login-activity']), null);
+        assert.equal(ui.settingsSectionFromUrl('/buyer/profile#%broken', ['login-activity']), null);
+    } finally { fixture.close(); if (globalThis.accountSessionHarness === h) h.close(); }
+});
+
+test('account shortcuts target existing sections and all normal settings reuse the embedded controls', () => {
+    const source = readFileSync(resolve(import.meta.dirname, '../../resources/js/Pages/Buyer/Profile.tsx'), 'utf8');
+    for (const { id } of ui.buyerAccountSections) {
+        if (id === 'login-activity') continue;
+        assert(source.includes(`id="${id}"`), `Missing settings destination: ${id}`);
+    }
+    for (const file of ['Buyer/Profile', 'Seller/Profile', 'Courier/Profile', 'Profile/Edit']) {
+        const code = readFileSync(resolve(import.meta.dirname, `../../resources/js/Pages/${file}.tsx`), 'utf8');
+        assert.match(code, /<AccountSessionSettings/); assert.doesNotMatch(code, /<AccountSessionLink/);
+    }
 });

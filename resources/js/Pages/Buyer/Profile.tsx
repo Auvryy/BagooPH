@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
-import AccountSessionLink from '@/Components/AccountSessionLink';
+import AccountSessionSettings from '@/Components/AccountSessionSettings';
+import BuyerAccountNavigation from '@/Components/BuyerAccountNavigation';
 import BuyerOrderFilters from '@/Components/BuyerOrderFilters';
 import BuyerPurchaseNavigation from '@/Components/BuyerPurchaseNavigation';
 import BuyAgainButton from '@/Components/BuyAgainButton';
@@ -21,10 +22,11 @@ import { buyerOrderIssueStages, isBuyerOrderIssue } from '@/utils/orderWorkspace
 import { buyerProfileProps } from '@/utils/portalNavigation';
 import { visitPortal } from '@/utils/catalogueRuntime';
 import useResolvedPage from '@/hooks/useResolvedPage';
+import useSettingsSections from '@/hooks/useSettingsSections';
+import { buyerAccountSections, type BuyerAccountSection } from '@/utils/accountSections';
 import '../../../css/buyer-profile.css';
 import { User, Order, Address, PageProps, PaginatedData } from '@/types';
 import { 
-    User as UserIcon, 
     ShieldCheck, 
     ShieldAlert,
     Wallet, 
@@ -74,6 +76,7 @@ interface Props {
 }
 
 type TabType = 'orders' | 'account' | 'addresses' | 'wallet' | 'vouchers';
+const accountSectionIds = buyerAccountSections.map(section => section.id);
 
 interface ProfileFormData {
     name: string;
@@ -134,6 +137,7 @@ export default function BuyerProfile({
     const workspaceRef = useRef<HTMLDivElement>(null);
     const orderScrollRef = useRef<HTMLDivElement>(null);
     const accountScrollRef = useRef<HTMLDivElement>(null);
+    const accountNavigation = useSettingsSections(activeTab === 'account', accountSectionIds, accountScrollRef);
     useEffect(() => {
         if (workspaceRef.current) return setupBuyerProfileWorkspace(workspaceRef.current);
     }, []);
@@ -204,6 +208,12 @@ export default function BuyerProfile({
             return;
         }
         loadOrderPage(route('buyer.profile'), { tab: 'orders', order_status: group === 'issues' ? 'delivery_failed' : 'all' });
+    };
+
+    const openAccountSection = (section: BuyerAccountSection) => {
+        if (orderBusy || receiptGuard.current) return;
+        accountNavigation.select(section);
+        handleTabChange('account');
     };
 
     // Synchronize tab state with URL on browser Back / Forward (popstate)
@@ -423,7 +433,6 @@ export default function BuyerProfile({
     const orderIssueCount = buyerOrderIssueStages.reduce((total, stage) => total + (orderCounts[stage.id] ?? 0), 0);
 
     const navItems: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string | number }[] = [
-        { id: 'account', label: 'My Account & Security', icon: UserIcon },
         { id: 'addresses', label: 'Delivery Address Book', icon: MapPin, badge: addresses.length },
         { id: 'wallet', label: 'Bagoo Wallet', icon: Wallet, badge: wallet.available ? undefined : 'Unavailable' },
         { id: 'vouchers', label: 'Vouchers & Promos', icon: Tag, badge: `${availableVoucherCount} Available` },
@@ -528,6 +537,12 @@ export default function BuyerProfile({
                                 issueCount={orderIssueCount}
                                 disabled={orderBusy || receiptPending !== null}
                                 onSelect={openPurchaseGroup}
+                            />
+                            <BuyerAccountNavigation
+                                active={activeTab === 'account'}
+                                selected={accountNavigation.selected}
+                                disabled={orderBusy || receiptPending !== null}
+                                onSelect={openAccountSection}
                             />
                             {navItems.map((item) => {
                                 const isActive = activeTab === item.id;
@@ -755,7 +770,7 @@ export default function BuyerProfile({
                             <div ref={accountScrollRef} data-buyer-profile-scroll scroll-region="" role="region" aria-label="Account and security settings" tabIndex={0} className="buyer-profile-scroll space-y-6">
                                 
                                 {/* Personal Profile Info Form */}
-                                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+                                <div id="account-personal" tabIndex={-1} className="scroll-mt-28 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6 focus:outline-none">
                                     <div className="border-b border-slate-100 pb-4">
                                         <h3 className="text-base font-black text-slate-900">Personal Information</h3>
                                         <p className="text-xs text-slate-500 font-sans">Update your official contact and recipient profile details</p>
@@ -906,14 +921,12 @@ export default function BuyerProfile({
                                     </form>
                                 </div>
 
-                                <AccountEmailSettings theme="buyer" />
+                                <div id="account-emails" tabIndex={-1} className="scroll-mt-28 focus:outline-none"><AccountEmailSettings theme="buyer" /></div>
 
-                                <AccountSessionLink theme="buyer" />
-
-                <AccountIdentitySettings theme="buyer" />
+                                <div id="account-identity" tabIndex={-1} className="scroll-mt-28 focus:outline-none"><AccountIdentitySettings theme="buyer" /></div>
 
                                 {/* Identity & Trust Verification (KYC) */}
-                                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+                                <div id="account-verification" tabIndex={-1} className="scroll-mt-28 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6 focus:outline-none">
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
                                         <div>
                                             <h3 className="text-base font-black text-slate-900">Identity Verification & Trust Status</h3>
@@ -1107,7 +1120,7 @@ export default function BuyerProfile({
                                 </div>
 
                                 {/* Password & Security Settings */}
-                                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+                                <div id="account-password" tabIndex={-1} className="scroll-mt-28 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6 focus:outline-none">
                                     <div className="border-b border-slate-100 pb-4">
                                         <h3 className="text-base font-black text-slate-900">Account Password & Security</h3>
                                         <p className="text-xs text-slate-500 font-sans">Use a unique password between 8 and 128 characters</p>
@@ -1216,6 +1229,7 @@ export default function BuyerProfile({
                                     )}
                                 </div>
 
+                                <AccountSessionSettings />
                             </div>
                         )}
 

@@ -5,7 +5,8 @@ import EmailVerificationStatus from '@/Components/EmailVerificationStatus';
 import { CourierAvatar, CourierBadge, CourierFieldError, CourierPanel, courierButton, courierClasses, courierInput, courierPrimary } from '@/Components/CourierUI';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
-import AccountSessionLink from '@/Components/AccountSessionLink';
+import AccountSessionSettings from '@/Components/AccountSessionSettings';
+import useSettingsSections from '@/hooks/useSettingsSections';
 import CourierLayout from '@/Layouts/CourierLayout';
 import { courierPath, type CourierScope } from '@/utils/courier';
 import { PageProps } from '@/types';
@@ -31,8 +32,9 @@ function ManagedDetails({ items }: { items: Array<[string, string | null]> }) {
 
 export default function CourierProfile({ rider, assignment, vehicle, scope, isOnline, initialTab = 'information', companyJoining }: Props) {
     const { auth } = usePage<PageProps>().props;
-    const [tab, setTab] = useState<'information' | 'edit' | 'privacy' | 'assignment' | 'vehicle'>(initialTab);
-    useEffect(() => setTab(initialTab), [initialTab]);
+    const [tab, setTab] = useState<'information' | 'edit' | 'privacy' | 'assignment' | 'vehicle'>(() => typeof window !== 'undefined' && window.location.hash === '#login-activity' ? 'privacy' : initialTab);
+    useEffect(() => setTab(window.location.hash === '#login-activity' ? 'privacy' : initialTab), [initialTab]);
+    useSettingsSections(tab === 'privacy', ['login-activity']);
     const [visible, setVisible] = useState<Record<string, boolean>>({});
     const [contactResult, setContactResult] = useState('');
     const [passwordResult, setPasswordResult] = useState('');
@@ -129,7 +131,7 @@ export default function CourierProfile({ rider, assignment, vehicle, scope, isOn
                     <CourierPanel className="p-4 sm:p-6">
                         <h2 id="profile-privacy-title" className="text-lg font-semibold">Privacy and security</h2>
                         <p className="mt-2 text-sm leading-relaxed text-slate-600">Manage sign-ins, email verification and your password.</p>
-                        <div className="my-5"><AccountSessionLink theme="courier" /></div>
+                        <div className="my-5"><AccountSessionSettings enabled={tab === 'privacy'} /></div>
                         <div className="mb-5"><AccountEmailSettings theme="courier" /></div>
                         <EmailVerificationStatus email={rider.email} verifiedAt={rider.email_verified_at} comfortable className="mt-4 !border-transparent" />
                         <form onSubmit={savePassword} className="mt-5 space-y-4">

@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
-import AccountSessionLink from '@/Components/AccountSessionLink';
+import AccountSessionSettings from '@/Components/AccountSessionSettings';
+import useSettingsSections from '@/hooks/useSettingsSections';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import PhoneInput from '@/Components/PhoneInput';
 import UpdatePasswordForm from '@/Pages/Profile/Partials/UpdatePasswordForm';
@@ -37,6 +38,7 @@ interface ProfileFormData {
 }
 
 export default function SellerProfile({ user, shop }: Props) {
+    useSettingsSections(true, ['login-activity']);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatar || null);
     const [fileValidationError, setFileValidationError] = useState<string | null>(null);
@@ -357,7 +359,7 @@ export default function SellerProfile({ user, shop }: Props) {
 
                 <AccountEmailSettings theme="seller" />
 
-                <AccountSessionLink theme="seller" />
+                <AccountSessionSettings />
 
                 <AccountIdentitySettings theme="seller" />
 
