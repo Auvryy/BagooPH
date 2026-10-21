@@ -107,7 +107,7 @@ class ShoppingPurchaseControlsTest extends TestCase
     public function test_seller_cap_validation_and_removal(): void
     {
         [, $shop, $product] = $this->fixture();
-        $payload = ['name' => $product->name, 'price' => $product->price, 'stock' => 20, 'description' => 'A durable everyday item.', 'status' => 'active'];
+        $payload = ['name' => $product->name, 'price' => $product->price, 'stock' => 20, 'description' => 'A durable everyday item.', 'status' => 'active', 'category_id' => $shop->root_category_id, 'weight_kg' => '0.50'];
         $this->actingAs($shop->user);
         foreach ([0, -1, 1.5, 1000001, 'abc'] as $invalid) {
             $this->put(route('seller.products.update', $product), [...$payload, 'purchase_limit' => $invalid])->assertSessionHasErrors('purchase_limit');
@@ -119,7 +119,7 @@ class ShoppingPurchaseControlsTest extends TestCase
     public function test_regular_prices_remain_valid_inputs_for_the_sale_and_money_services(): void
     {
         [, $shop, $product] = $this->fixture();
-        $payload = ['name' => $product->name, 'price' => 100, 'stock' => 20, 'description' => 'A durable everyday item.', 'status' => 'active'];
+        $payload = ['name' => $product->name, 'price' => 100, 'stock' => 20, 'description' => 'A durable everyday item.', 'status' => 'active', 'category_id' => $shop->root_category_id, 'weight_kg' => '0.50'];
         $this->actingAs($shop->user);
         foreach ([0, '1.001', '100000000.00', '1e3'] as $invalid) {
             $this->put(route('seller.products.update', $product), [...$payload, 'price' => $invalid])->assertSessionHasErrors('price');

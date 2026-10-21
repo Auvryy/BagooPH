@@ -310,7 +310,7 @@ class AdvertisementManagementTest extends TestCase
     public function test_real_offer_terms_are_public_without_funding_and_changing_them_suppresses_the_old_ad(): void
     {
         $service = app(VoucherCampaignService::class);
-        $terms = ['code' => 'BAGOO_SHIP', 'name' => 'Bagoo delivery savings', 'description' => 'A capped shipping discount.',
+        $terms = ['code' => 'BAGOOSHIP', 'name' => 'Bagoo delivery savings', 'description' => 'A capped shipping discount.',
             'discount_type' => 'free_shipping', 'discount_value' => '50.00', 'min_spend' => '100.00', 'max_discount' => '30.00',
             'budget' => '5000.00', 'usage_limit' => 100, 'per_buyer_limit' => 2, 'starts_at' => now()->subDay()->toIso8601String(),
             'ends_at' => now()->addDays(2)->toIso8601String(), 'source_version' => 0, 'request_key' => (string) Str::uuid()];
@@ -321,7 +321,7 @@ class AdvertisementManagementTest extends TestCase
         $publication = $this->publish($ad);
         $this->get('/advertisement/'.$ad->slug)->assertRedirect(route('promotions.show', ['slug' => $ad->slug, 'publication' => $publication->id]));
         $this->get('/promotions/'.$ad->slug)->assertInertia(fn (Assert $page) => $page->component('Buyer/Promotion')
-            ->where('promotion.available', true)->where('promotion.offer.maximum_cents', 3000)->where('promotion.offer.code', 'BAGOO_SHIP')
+            ->where('promotion.available', true)->where('promotion.offer.maximum_cents', 3000)->where('promotion.offer.code', 'BAGOOSHIP')
             ->missing('promotion.offer.budget_cents')->missing('promotion.offer.funding_party')->has('products', 1));
         $offer->currentRevision->balance->update(['redemption_count' => 100]);
         $this->assertSame([], app(AdvertisementReader::class)->homepage());
