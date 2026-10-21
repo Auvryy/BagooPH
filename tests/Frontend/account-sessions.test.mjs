@@ -78,7 +78,7 @@ function harness({ role = 'buyer', canUsePortal = true, verified = true } = {}) 
             return tree;
         },
         flush() { for (const [id, fn] of timers) { timers.delete(id); fn(); } },
-        frame() { for (const [id, fn] of frames) { frames.delete(id); fn(); } },
+        frame() { for (const [id, fn] of [...frames]) { frames.delete(id); fn(); } },
         event(name) { events.get(name)?.(); },
         close() { for (const effect of effects) effect?.cleanup?.(); globalThis.window = previousWindow; delete globalThis.accountSessionHarness; },
     };
@@ -339,12 +339,21 @@ test('only bounded relative session pages and well-formed owned data are accepte
 });
 
 function scrollFixture() {
-    const priorDocument = globalThis.document, calls = [], target = { getBoundingClientRect: () => ({ top: 350 }), focus: options => calls.push(['focus', options]), scrollIntoView: options => calls.push(['document', options]) };
-    const container = { scrollHeight: 1300, clientHeight: 600, scrollTop: 50, contains: element => element === target, getBoundingClientRect: () => ({ top: 100 }), scrollTo: options => calls.push(['container', options]) };
-    globalThis.document = { getElementById: id => ['account-personal', 'login-activity'].includes(id) ? target : null };
+    const priorDocument = globalThis.document, priorObserver = globalThis.ResizeObserver, calls = [], observers = [], events = new Map(), positions = { 'account-personal': 100, 'login-activity': 350 };
+    const elements = new Map();
+    const container = { scrollHeight: 1300, clientHeight: 600, scrollTop: 50, contains: element => [...elements.values()].includes(element), getBoundingClientRect: () => ({ top: 100 }),
+        addEventListener: (name, fn) => events.set(name, fn), removeEventListener: name => events.delete(name),
+        scrollTo(options) { calls.push(['container', options]); container.scrollTop = options.top; events.get('scroll')?.(); } };
+    const element = id => {
+        if (!(id in positions)) return null;
+        if (!elements.has(id)) elements.set(id, { id, getBoundingClientRect: () => ({ top: positions[id] - (container.scrollTop - 50) }), getClientRects: () => [{}], focus: options => calls.push(['focus', options]), scrollIntoView: options => calls.push(['document', options]) });
+        return elements.get(id);
+    };
+    globalThis.document = { getElementById: element, scrollingElement: { scrollHeight: 2400, scrollTop: 0 } };
+    globalThis.ResizeObserver = class { constructor(fn) { this.fn = fn; this.active = true; observers.push(this); } observe() {} disconnect() { this.active = false; } };
     let reduced = false;
-    window.matchMedia = () => ({ matches: reduced }); window.getComputedStyle = () => ({ overflowY: 'auto' });
-    return { container, calls, reduced: value => { reduced = value; }, close: () => { globalThis.document = priorDocument; } };
+    window.innerHeight = 800; window.matchMedia = () => ({ matches: reduced }); window.getComputedStyle = node => ({ overflowY: node === container ? 'auto' : 'visible', scrollMarginTop: '112px' });
+    return { container, calls, positions, observers, emit: name => events.get(name)?.(), resize: () => observers.filter(observer => observer.active).forEach(observer => observer.fn()), reduced: value => { reduced = value; }, close: () => { globalThis.document = priorDocument; globalThis.ResizeObserver = priorObserver; } };
 }
 
 test('section scrolling uses the desktop pane, mobile document and reduced motion correctly', () => {
@@ -366,9 +375,9 @@ test('a section selected from another tab waits for the account panel before scr
     const render = () => h.render(() => ui.useSections(active, ['account-personal', 'login-activity'], root), {});
     try {
         render().select('login-activity'); render(); h.frame(); assert.equal(fixture.calls.length, 0);
-        active = true; render(); h.frame(); assert.equal(fixture.calls.filter(call => call[0] === 'container').length, 1);
+        active = true; render(); h.frame(); h.frame(); assert.equal(fixture.calls.filter(call => call[0] === 'container').length, 1);
         assert.equal(render().selected, 'login-activity');
-        render().select('account-personal'); render(); h.frame(); assert.equal(render().selected, 'account-personal');
+        render().select('account-personal'); render(); h.frame(); h.frame(); assert.equal(render().selected, 'account-personal');
     } finally { fixture.close(); h.close(); }
 });
 
@@ -376,9 +385,9 @@ test('initial account anchors and hash navigation scroll after rendering and cle
     const h = harness(), fixture = scrollFixture(), root = { current: fixture.container };
     const render = () => h.render(() => ui.useSections(true, ['account-personal', 'login-activity'], root), {});
     try {
-        window.location.href += '#login-activity'; render(); render(); h.frame(); assert.equal(render().selected, 'login-activity');
+        window.location.href += '#login-activity'; render(); render(); h.frame(); h.frame(); assert.equal(render().selected, 'login-activity');
         assert.equal(fixture.calls.filter(call => call[0] === 'container').length, 1);
-        window.location.href = 'https://buyer.example.test/buyer/profile?tab=account#account-personal'; h.event('hashchange'); render(); h.frame(); assert.equal(render().selected, 'account-personal');
+        window.location.href = 'https://buyer.example.test/buyer/profile?tab=account#account-personal'; h.event('hashchange'); render(); h.frame(); h.frame(); assert.equal(render().selected, 'account-personal');
         render().select('login-activity'); render(); const count = fixture.calls.length; h.close(); h.frame(); assert.equal(fixture.calls.length, count);
         assert.equal(ui.settingsSectionFromUrl('/buyer/profile#unknown', ['login-activity']), null);
         assert.equal(ui.settingsSectionFromUrl('/buyer/profile#%broken', ['login-activity']), null);
@@ -387,12 +396,51 @@ test('initial account anchors and hash navigation scroll after rendering and cle
 
 test('account shortcuts target existing sections and all normal settings reuse the embedded controls', () => {
     const source = readFileSync(resolve(import.meta.dirname, '../../resources/js/Pages/Buyer/Profile.tsx'), 'utf8');
+    const email = readFileSync(resolve(import.meta.dirname, '../../resources/js/Components/AccountEmailSettings.tsx'), 'utf8');
     for (const { id } of ui.buyerAccountSections) {
         if (id === 'login-activity') continue;
-        assert(source.includes(`id="${id}"`), `Missing settings destination: ${id}`);
+        assert((source + email).includes(`id="${id}"`), `Missing settings destination: ${id}`);
     }
     for (const file of ['Buyer/Profile', 'Seller/Profile', 'Courier/Profile', 'Profile/Edit']) {
         const code = readFileSync(resolve(import.meta.dirname, `../../resources/js/Pages/${file}.tsx`), 'utf8');
         assert.match(code, /<AccountSessionSettings/); assert.doesNotMatch(code, /<AccountSessionLink/);
     }
+});
+
+test('manual pane scrolling updates the current section without stealing focus or making requests', () => {
+    const h = harness(), fixture = scrollFixture(), root = { current: fixture.container };
+    const ids = ['account-personal', 'account-emails', 'account-password', 'account-identity', 'login-activity'];
+    Object.assign(fixture.positions, { 'account-emails': 500, 'account-password': 900, 'account-identity': 1300, 'login-activity': 1800 });
+    fixture.container.scrollHeight = 2400;
+    const render = () => h.render(() => ui.useSections(true, ids, root), {});
+    try {
+        render(); h.frame(); assert.equal(render().selected, 'account-personal');
+        for (const id of ids.slice(1)) {
+            fixture.container.scrollTop = fixture.positions[id] - 50; fixture.emit('scroll'); fixture.emit('scroll'); h.frame(); assert.equal(render().selected, id);
+        }
+        fixture.container.scrollTop = 50; fixture.emit('scroll'); h.frame(); assert.equal(render().selected, 'account-personal');
+        assert.equal(fixture.calls.length, 0); assert.equal(h.requests.length, 0); assert.equal(h.posts.length, 0);
+    } finally { fixture.close(); h.close(); }
+});
+
+test('mobile scrolling and viewport/layout changes remeasure the visible section', () => {
+    const h = harness(), fixture = scrollFixture(), root = { current: fixture.container };
+    const render = () => h.render(() => ui.useSections(true, ['account-personal', 'login-activity'], root), {});
+    try {
+        fixture.container.clientHeight = 1500; render(); h.frame(); assert.equal(render().selected, 'account-personal');
+        fixture.positions['login-activity'] = 120; h.event('scroll'); h.frame(); assert.equal(render().selected, 'login-activity');
+        fixture.positions['login-activity'] = 360; h.event('resize'); h.frame(); assert.equal(render().selected, 'account-personal');
+        fixture.positions['login-activity'] = 100; fixture.resize(); h.frame(); assert.equal(render().selected, 'login-activity');
+        assert.equal(fixture.calls.length, 0);
+        h.close(); assert(fixture.observers.every(observer => !observer.active));
+    } finally { fixture.close(); if (globalThis.accountSessionHarness === h) h.close(); }
+});
+
+test('short final sections become active at the pane bottom', () => {
+    const h = harness(), fixture = scrollFixture();
+    try {
+        fixture.container.scrollTop = 700; fixture.positions['login-activity'] = 1300;
+        assert.equal(ui.visibleSettingsSection(['account-personal', 'login-activity'], fixture.container), 'login-activity');
+        assert.equal(ui.visibleSettingsSection(['missing'], fixture.container), null);
+    } finally { fixture.close(); h.close(); }
 });
