@@ -52,7 +52,6 @@ import {
     CheckCircle2,
     Store,
     MessageSquare,
-    ShoppingBag,
     Star,
     Trash2,
     Camera,
@@ -445,30 +444,9 @@ export default function BuyerProfile({
         <BuyerLayout>
             <Head title={`${activeTab === 'orders' ? (showingOrderIssues ? 'Order issues' : 'My Purchases & Order Tracking') : activeTab === 'account' ? 'Personal Information & Security' : activeTab === 'addresses' ? 'Delivery Address Book' : activeTab === 'wallet' ? 'Bagoo Wallet' : 'Vouchers & Promos'} — BagooPH`} />
 
-            <div className="w-full space-y-6 font-sans">
-                
-                {/* 1. TOP HEADER STRIP */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-                    <div>
-                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                            {activeTab === 'orders' ? (showingOrderIssues ? 'Order issues' : 'My Purchases & Order Tracking') : 'Account Settings & Credentials'}
-                        </h1>
-                        <p className="text-xs text-slate-500 font-sans">
-                            {activeTab === 'orders' ? (showingOrderIssues ? 'View delivery issues, returned orders and cancellations' : 'View recorded delivery updates and order receipts') : 'Manage your account information and delivery addresses'}
-                        </p>
-                    </div>
-
-                    <Link
-                        href={route('buyer.index')}
-                        className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 text-xs font-sans font-bold uppercase transition flex items-center gap-2 shadow-2xs w-fit"
-                    >
-                        <ShoppingBag className="w-4 h-4 text-slate-500" />
-                        <span>Continue Shopping</span>
-                    </Link>
-                </div>
-
-                {orderBusy && <p role="status" className="text-xs text-slate-500">Loading current details…</p>}
-                {orderActionError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{orderActionError}</p>}
+            <div className="w-full font-sans">
+                {orderBusy && <p role="status" className="mb-4 text-xs text-slate-500">Loading current details…</p>}
+                {orderActionError && <p role="alert" className="mb-4 rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{orderActionError}</p>}
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -479,6 +457,7 @@ export default function BuyerProfile({
 
                 {/* 2. TWO-COLUMN WORKSPACE: LEFT SIDEBAR + RIGHT WORKSPACE */}
                 <div ref={workspaceRef} className="buyer-profile-workspace grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    <h1 className="sr-only">{activeTab === 'orders' ? (showingOrderIssues ? 'Order issues' : 'My Purchases & Order Tracking') : 'Account Settings & Credentials'}</h1>
                     
                     {/* LEFT SIDEBAR NAVIGATION */}
                     <div data-buyer-profile-scroll scroll-region="" className="buyer-profile-sidebar lg:col-span-4 bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-5">

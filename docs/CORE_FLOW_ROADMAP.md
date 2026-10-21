@@ -7583,3 +7583,22 @@ readiness ratings are unchanged. No database migration/reset, Azure deployment
 or Flutter change was made. Local implementation commits are `a0b7436` (visible
 section highlighting) and `7fa343d` (identity grouping, controls and headings).
 The combined PR title/body remain a local draft; this session has not pushed.
+
+### Compact buyer workspace and horizontal order filters — October 21, 2026
+
+The buyer profile's large heading, subtitle and Continue Shopping strip are
+removed from the visible layout. A screen-reader heading retains page context,
+and the existing adaptive measurement gives the workspace the reclaimed height.
+Purchase and order-issue filters use one horizontally scrollable row with
+non-wrapping buttons, keyboard focus and contained horizontal overscroll.
+Desktop wheel containment permits horizontal trackpad/shift-wheel gestures over
+an overflowing filter row while still containing vertical input over stationary
+panels. Counts, filter requests and tracking refresh retain their existing rules.
+
+The **55 focused buyer/settings/session checks and TypeScript/Vite production
+build pass**. Existing checks now cover horizontal gestures and the removal of
+the visible strip; no browser automation was used. No backend, database, Azure or
+Flutter change was made. Scoped workspace/filter-layout assessment: **7/10 ->
+8/10**, based on recovered space and accessible filters without a second row.
+This does not change overall role or system readiness. The refinement is saved
+in one local commit with the combined PR description kept as a local draft.
