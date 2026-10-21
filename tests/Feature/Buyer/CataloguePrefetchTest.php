@@ -8,6 +8,7 @@ use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ViewErrorBag;
 use Inertia\Inertia;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -43,9 +44,10 @@ class CataloguePrefetchTest extends TestCase
 
     public function test_background_requests_preserve_flash_and_validation_feedback_for_the_next_real_visit(): void
     {
-        $this->withSession(['success' => 'Your changes were saved.', 'errors' => new ViewErrorBag,
-            '_flash' => ['old' => ['success', 'errors'], 'new' => []]])
-            ->get('/buyer/search')->assertStatus(409)->assertSessionHas('success', 'Your changes were saved.')
+        Route::middleware('web')->get('/__test__/catalogue-feedback', fn () => redirect('/buyer/search')
+            ->with('success', 'Your changes were saved.')->with('errors', new ViewErrorBag));
+        $this->withHeader('Purpose', '')->get('/__test__/catalogue-feedback')->assertRedirect('/buyer/search');
+        $this->withHeader('Purpose', 'prefetch')->get('/buyer/search')->assertStatus(409)->assertSessionHas('success', 'Your changes were saved.')
             ->assertSessionHas('errors');
         $this->get('/buyer/search')->assertStatus(409)->assertSessionHas('success', 'Your changes were saved.');
         $this->withHeader('Purpose', '')->get('/buyer/search')->assertOk()

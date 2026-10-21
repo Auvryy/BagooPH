@@ -173,6 +173,7 @@ class VoucherCampaignManagementTest extends TestCase
 
     public function test_scheduled_expired_and_exhausted_states_cannot_be_overridden_by_an_active_flag(): void
     {
+        config(['session.lifetime' => 60 * 24 * 10]);
         [, $scheduled] = $this->published(changes: ['starts_at' => now()->addDay()->toIso8601String()]);
         $this->assertSame('scheduled', app(VoucherCampaignService::class)->state($scheduled));
         $this->travel(8)->days();

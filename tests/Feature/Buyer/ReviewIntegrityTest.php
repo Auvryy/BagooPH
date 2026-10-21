@@ -76,6 +76,7 @@ class ReviewIntegrityTest extends TestCase
 
     public function test_review_edit_window_has_an_inclusive_thirty_day_boundary(): void
     {
+        config(['session.lifetime' => 60 * 24 * 32]);
         $review = $this->savedReview();
         $this->travelTo($review->created_at->copy()->addDays(30));
         $this->actingAs($this->buyer)->patch(route('buyer.reviews.update', $review), ['rating' => 3, 'comment' => 'Updated after using the bag.'])->assertSessionHas('success');

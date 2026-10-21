@@ -135,6 +135,7 @@ class VoucherFundingFoundationTest extends TestCase
 
     public function test_original_stacked_checkout_replays_after_expiry_pause_and_exhaustion(): void
     {
+        config(['session.lifetime' => 60 * 72]);
         [, , $items, $input] = $this->checkout();
         $shop = $this->offer($items[0]->product->shop, ['global_limit' => 1, 'budget_cents' => 10000, 'ends_at' => now()->addHour()]);
         $platform = $this->offer(terms: ['global_limit' => 1, 'budget_cents' => 10000, 'ends_at' => now()->addHour()]);

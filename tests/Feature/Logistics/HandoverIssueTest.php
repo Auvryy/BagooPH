@@ -167,6 +167,7 @@ class HandoverIssueTest extends TestCase
     public function test_guest_and_admin_cannot_create_observations_and_guest_cannot_read(): void
     {
         $parcel = $this->newFlowOrder()->delivery;
+        $this->post('/logout');
         $this->app['auth']->forgetGuards();
         $this->postJson('/handover-issues', $this->input($parcel))->assertUnauthorized();
         $this->getJson('/handover-issues')->assertUnauthorized();

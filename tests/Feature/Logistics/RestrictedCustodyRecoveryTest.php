@@ -120,6 +120,7 @@ class RestrictedCustodyRecoveryTest extends TestCase
     {
         [$parcel, $rider, $work] = $this->restricted();
         $this->authorize($parcel, $work);
+        $this->post('/logout');
         $this->app['auth']->forgetGuards();
         $this->post('http://courier.localhost/custody-recovery/sign-in', ['email' => $rider->email, 'password' => 'password'])->assertRedirect(route('custody-recovery.own'));
         $this->get('http://courier.localhost/custody-recovery')->assertOk();
@@ -155,6 +156,7 @@ class RestrictedCustodyRecoveryTest extends TestCase
 
     public function test_wrong_waybill_expired_authority_and_changed_restriction_preserve_original_custody(): void
     {
+        config(['session.lifetime' => 60 * 48]);
         [$parcel, $rider, $work] = $this->restricted();
         $grant = $this->authorize($parcel, $work);
         $before = $this->snapshot($parcel);
@@ -212,6 +214,7 @@ class RestrictedCustodyRecoveryTest extends TestCase
     {
         [$parcel, $rider] = $this->restricted();
         $before = $this->snapshot($parcel);
+        $this->post('/logout');
         $this->app['auth']->forgetGuards();
         $this->post('http://courier.localhost/custody-recovery/sign-in', ['email' => $rider->email, 'password' => 'password'])->assertSessionHasErrors('email');
         $this->assertGuest();
