@@ -8,6 +8,7 @@ use App\Rules\RegistrationDocument;
 use App\Rules\UniqueAccountEmail;
 use App\Services\AccountIdentityService;
 use App\Services\AccountRegistrationService;
+use App\Services\AccountSessions\AccountSessionService;
 use App\Services\ApplicationValidationService;
 use App\Services\BirthDateEligibility;
 use App\Services\OtpService;
@@ -48,7 +49,7 @@ class RiderAuthController extends Controller
         if (! $request->bearerToken() || ! $token instanceof PersonalAccessToken || ! $token->can('rider:logout')) {
             return response()->json(['message' => 'A rider session is required.'], 401);
         }
-        $token->delete();
+        app(AccountSessionService::class)->logoutNative($request->user(), $token);
 
         return response()->json(['message' => 'Signed out.']);
     }

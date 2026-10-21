@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\AccountSessions\AccountSessionService;
 use App\Services\Logistics\RiderCompanyOfferService;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -124,15 +126,25 @@ class RiderAccountService
 
     public function session(User $user, string $device): array
     {
-        $this->assertAccessible($user);
-        $expires = now()->addMinutes(max(1, min(10080, (int) config('rider_auth.token_minutes'))));
-        $issued = $user->createToken('rider:'.$device, ['rider:account', 'rider:logout', ...($this->settingsAvailable() ? self::SETTINGS_ABILITIES : []),
-            ...($this->operationsAvailable() ? self::OPERATIONS_ABILITIES : []),
-            ...($this->companyAvailable() && $this->companyEligible($user) ? self::COMPANY_ABILITIES : []),
-            ...($this->handoverAvailable() && $user->isEligibleCourier() && $user->canAccessPortal() ? [self::HANDOVER_ABILITY] : [])], $expires);
-        $issued->accessToken->forceFill(['credential_fingerprint' => hash('sha256', $user->getAuthPassword())])->save();
+        $fingerprint = hash('sha256', $user->getAuthPassword());
+        $version = (int) $user->session_version;
 
-        return ['token' => $issued->plainTextToken, 'token_type' => 'Bearer',
-            'expires_at' => $expires->toIso8601String(), 'user' => $this->resource($user)];
+        return DB::transaction(function () use ($user, $device, $fingerprint, $version) {
+            $user = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if (! hash_equals($fingerprint, hash('sha256', $user->getAuthPassword())) || $version !== (int) $user->session_version) {
+                throw new HttpResponseException(response()->json(['message' => 'Your account access changed. Please sign in again.'], 401));
+            }
+            $this->assertAccessible($user);
+            $expires = now()->addMinutes(max(1, min(10080, (int) config('rider_auth.token_minutes'))));
+            $issued = $user->createToken('rider:'.$device, ['rider:account', 'rider:logout', ...($this->settingsAvailable() ? self::SETTINGS_ABILITIES : []),
+                ...($this->operationsAvailable() ? self::OPERATIONS_ABILITIES : []),
+                ...($this->companyAvailable() && $this->companyEligible($user) ? self::COMPANY_ABILITIES : []),
+                ...($this->handoverAvailable() && $user->isEligibleCourier() && $user->canAccessPortal() ? [self::HANDOVER_ABILITY] : [])], $expires);
+            $issued->accessToken->forceFill(['credential_fingerprint' => hash('sha256', $user->getAuthPassword())])->save();
+            app(AccountSessionService::class)->native($user, $issued->accessToken, request(), signIn: true);
+
+            return ['token' => $issued->plainTextToken, 'token_type' => 'Bearer',
+                'expires_at' => $expires->toIso8601String(), 'user' => $this->resource($user)];
+        }, 3);
     }
 }

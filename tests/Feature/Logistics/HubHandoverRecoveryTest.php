@@ -536,6 +536,7 @@ class HubHandoverRecoveryTest extends TestCase
 
     public function test_expiry_preserves_acknowledged_possession_and_allows_fresh_current_authorization(): void
     {
+        config(['session.lifetime' => 60 * 48]);
         $parcel = $this->flowDelivery($this->newFlowOrder(), 'arrived_at_origin_hub');
         $manifest = $this->prepare($parcel, true, true);
         $issue = $this->held($parcel);

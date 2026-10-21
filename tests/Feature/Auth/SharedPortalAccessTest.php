@@ -128,7 +128,7 @@ class SharedPortalAccessTest extends TestCase
             ['POST', '/kyc/'.$applicant->id.'/approve', []],
             ['POST', '/kyc/'.$applicant->id.'/reject', ['reason' => 'Document is unreadable.']],
         ] as [$method, $path, $payload]) {
-            $response = $this->actingAs($admin)->call($method, $prefix.$path, $payload)->assertRedirect();
+            $response = $this->actingAs($admin)->call($method, $prefix.$path, $payload, $this->prepareCookiesForRequest())->assertRedirect();
             $this->assertStringEndsWith(in_array($status, ['inactive', 'suspended'], true) ? '/account/status' : '/login', $response->headers->get('Location'));
             if (in_array($status, ['inactive', 'suspended'], true)) {
                 $this->assertAuthenticatedAs($admin);

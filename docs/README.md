@@ -22,6 +22,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 - [Architecture](ARCHITECTURE.md) explains the Laravel monolith, React/Inertia request path, native JSON API, shared domain services, persistence and deployment boundaries.
 - [Technology presentation](TECH_STACK_PRESENTATION.md) provides a short explanation, choice rationale, concrete examples and questions to prepare for.
 - [Documentation review](DOCUMENTATION_REVIEW.md) records the scope, corrections and verification limits of the October 16 source-based review.
+- [Login activity and session controls](ACCOUNT_LOGIN_SECURITY.md) explains private sign-in history, browser/app revocation, confirmation, retention and deployment requirements for every role.
 
 ## Normative Product Contracts
 

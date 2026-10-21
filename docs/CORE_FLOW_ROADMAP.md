@@ -7422,3 +7422,198 @@ it remains unachieved until the selected scope has actual evidence. Whole-device
 Flutter readiness and current Azure acceptance remain separate, unverified
 boundaries for this review. Workbook results, application behavior, database
 records and deployed environments are unchanged.
+
+### Private login activity and device sessions — October 21, 2026
+
+Selected addition before the proposed readiness batches, based on main `c6de561`.
+Each buyer, seller, courier, logistics and admin account now has an owner-only
+Login activity page reached from its existing settings. Holding/status pages
+retain a narrow entry without granting operational access. The stable contract
+and deployment notes are in [ACCOUNT_LOGIN_SECURITY.md](ACCOUNT_LOGIN_SECURITY.md).
+
+Actual successful browser and rider authentication records its original time,
+approximate description and encrypted network/user-agent metadata. Later activity
+does not rewrite that time. Earlier browser sessions and rider tokens have
+unknown sign-in times; no city or physical-device identity is invented. Owners
+receive masked networks, the current session and independent 12-entry active and
+90-day history pages. Stale props from a different account are hidden.
+
+Selected-session and all-other-session sign-out require a current password or a
+purpose/account/role-bound code to the verified original email. Actual browser
+and bearer access is revoked. Saved-login rotation, credential fingerprints and
+an account generation prevent older cookies or stale token issuance returning.
+Retained action results make a retry return its original outcome without ending
+a newer session. Failed code attempts persist; unspent confirmation can retry a
+failed save, while committed confirmation cannot authorize another action.
+
+Password changes retain the current browser and end other sessions; verified
+password resets end all older sessions. Ordinary logout, valid remembered sign-in,
+account closure and restricted access keep their existing meaning. Authentication
+records are disposable when an otherwise unreferenced account can be deleted;
+business-history retention remains unchanged. Sign-out does not change rider
+duty, assignments, physical custody, order status, stock or money.
+
+The additive migration was applied locally without resetting or reseeding. The
+existing nine accounts, one shop, nineteen products and four orders were retained,
+and the migration's identity comparison passed. Owner metadata minimization is
+defined as a daily command; isolated command checks pass, while actual scheduled
+execution still depends on the scheduler service. No Azure deployment or Flutter
+repository change was made.
+
+Fresh focused verification passes **289 backend checks**, including **59 session
+security cases**, and a separate **361-case** wider authentication, closure,
+governance and promotion selection. The frontend selection passes **555 checks**,
+including **13 interaction checks** for the new controls. Those 13 checks and
+the production build also pass after the final confirmation-copy update.
+
+The complete **5,125-case backend run returned 5,096 passes and 29 failures**
+(26 assertions and three errors). Eleven failures came from older guest, flash
+or long-duration business fixtures. They now use real logout, an actual saved
+feedback redirect, or an explicit test-only session lifetime. Production timeouts
+and business assertions remain unchanged. The final **76-case recheck passes**,
+including all 59 session-security cases and every affected fixture method.
+
+Case-by-case comparison leaves **18 pre-existing failures**, each reproduced in
+an isolated source snapshot of main `c6de561` with SQLite in memory:
+
+| Existing test expectation | Cases |
+|---|---:|
+| Email upgrade checks referring to a removed global index | 2 |
+| Card checkout silently becoming COD | 1 |
+| Old rejected-account holding redirects | 3 |
+| Creating a duplicate company name as a legacy fixture | 1 |
+| Former company-request denial responses | 2 |
+| Earlier subdomain error text, sign-in and registration expectations | 9 |
+
+These are not a passing complete-suite result. The original full run, isolated
+main comparisons and final focused reruns establish the selected feature's gate;
+no remaining failure is unexplained by that comparison. The separate deployment
+helper selection retains its previously recorded **five passes and one scheduler
+mock failure**. Neither baseline is evidence of an Azure outage or authorization
+to change the deferred readiness scope.
+
+Local implementation commits: `a0d5a4e` (tracking and credential boundaries),
+`0d0e3f4` (confirmed revocation and security checks), `885d947` (explicit flow
+fixtures), and `16a23c0` (portal interfaces and interaction checks). These commits
+have descriptive bodies. The combined PR description remains a local draft;
+commits have not been pushed and no GitHub PR or deployment was created.
+
+Scoped owner-visible login/session-control assessment: **3/10 -> 8/10**. The
+previous browser/token stores offered no unified owner view or remote controls;
+the new page provides actionable, confirmed access management with tested
+ownership, expiry, replay and recovery behavior. This does not increase the
+overall role, commerce, defense or physical-device readiness ratings. Descriptions
+are approximate, HTTPS remains necessary for deployed private access, and actual
+browser/device, mail-delivery and fresh PostgreSQL concurrency acceptance remain
+separate. No browser automation was used; all database tests use isolated SQLite
+in memory.
+
+### Account settings sections and embedded login activity — October 21, 2026
+
+Follow-up to private login activity on `feat/account-login-sessions`. The buyer's
+**My Account & Security** sidebar entry now reveals personal information, email,
+identity, verification, password and login-activity shortcuts while that tab is
+active. Each shortcut selects the account workspace and scrolls to its real
+section, using the desktop pane or mobile document and respecting reduced motion.
+Anchor entry and keyboard focus are covered by the focused interaction checks.
+
+Buyer, seller, courier, logistics and admin settings now embed the same session
+controls inside their existing navigation. The compact card groups the latest
+sign-in, current/other sessions and recent history. Private lists load on entry;
+the hidden courier privacy tab makes no request. Independent pagination and
+refresh stay within settings. Account changes hide previous data and abort old
+requests; malformed responses, expired authentication and failed refreshes show
+honest recovery feedback. Confirmed sign-out retains its existing password/email,
+ownership and retry protections. The direct security page remains a compatibility
+and restricted-account entry using those same controls.
+
+Verification: **568 frontend checks pass**, including **26 session/settings
+interaction checks**. All 26 focused checks and the TypeScript/Vite production
+build pass after the final accessibility and heading refinements. The unchanged
+backend session-security selection passes **59 checks / 573 assertions** with
+isolated SQLite in memory. No full backend rerun was needed for this interface
+refinement; the previously recorded baseline failures remain unresolved. No
+browser automation or physical-device UI check was performed.
+
+Scoped settings-navigation/interface assessment: **6/10 -> 8/10**. Previously,
+owners scrolled a long account pane and left it to manage sessions. Section
+shortcuts and embedded controls keep that work in the existing portal. This is
+an interface assessment, not an increase in whole-project security or defense
+readiness. No database migration/reset, Azure deployment or Flutter change was
+made for this follow-up. Local commits and a separate local PR draft are prepared
+for the user's publication; nothing is pushed by this session.
+
+Local implementation commits: `71e0a31` (shared session controls and private
+settings loader) and `783ba59` (section navigation, portal integration and
+interaction checks). The combined branch PR title/body remain a local draft.
+
+### Buyer account highlight and identity presentation — October 21, 2026
+
+Follow-up to the settings sections. The active submenu item now follows the
+section at the viewing edge during manual or automatic scrolling. Passive scroll
+listeners share one pending animation frame; viewport changes and observed
+content-size changes recheck positions. The short last section is recognized at
+the bottom. Observing does not move focus, scroll, change history or request data;
+listeners, observers and pending work are removed when leaving the account view.
+
+The buyer menu now follows personal information, email, password, **Identity
+correction**, then Login activity. Verification, correction requests and decisions
+are grouped inside Identity correction. An older verification anchor resolves to
+that group, and the email section has one unique anchor. Content headings use
+matching icons. Buyer correction controls have consistent spacing, boundaries,
+focus treatment and touch sizes, and the initial ID-upload trigger supports a
+keyboard. The recorded identity, review/evidence rules, request destinations and
+file formats/size limits remain unchanged. Verification copy no longer promises
+unimplemented priority dispatch or unlimited payment privileges.
+
+Verification: **574 frontend checks pass**, including **55 focused settings,
+scrolling and rendered-form checks**. **50 identity-review/account-settings PHP
+checks pass with 776 assertions** using isolated SQLite in memory, and the
+TypeScript/Vite production build passes. The checks cover every menu section,
+mobile scrolling, resize/content changes, bottom-of-pane selection, cleanup,
+unique anchors, icon headings and separate verification/correction forms. This
+was static/server-rendered and simulated-interaction verification; no browser
+automation or physical-device UI check was performed. The earlier complete
+backend baseline remains outside this interface selection.
+
+Scoped buyer account navigation/identity-interface assessment: **8/10 -> 8.5/10**.
+The highlight reflects the visible section, and related identity work has one
+clear group with readable controls. Overall security, role, lifecycle and defense
+readiness ratings are unchanged. No database migration/reset, Azure deployment
+or Flutter change was made. Local implementation commits are `a0b7436` (visible
+section highlighting) and `7fa343d` (identity grouping, controls and headings).
+The combined PR title/body remain a local draft; this session has not pushed.
+
+### Compact buyer workspace and horizontal order filters — October 21, 2026
+
+The buyer profile's large heading, subtitle and Continue Shopping strip are
+removed from the visible layout. A screen-reader heading retains page context,
+and the existing adaptive measurement gives the workspace the reclaimed height.
+Purchase and order-issue filters use one horizontally scrollable row with
+non-wrapping buttons, keyboard focus and contained horizontal overscroll.
+Desktop wheel containment permits horizontal trackpad/shift-wheel gestures over
+an overflowing filter row while still containing vertical input over stationary
+panels. Counts, filter requests and tracking refresh retain their existing rules.
+
+The **55 focused buyer/settings/session checks and TypeScript/Vite production
+build pass**. Existing checks now cover horizontal gestures and the removal of
+the visible strip; no browser automation was used. No backend, database, Azure or
+Flutter change was made. Scoped workspace/filter-layout assessment: **7/10 ->
+8/10**, based on recovered space and accessible filters without a second row.
+This does not change overall role or system readiness. The refinement is saved
+in one local commit with the combined PR description kept as a local draft.
+
+### Buyer sidebar fit and panel alignment — October 21, 2026
+
+The desktop sidebar uses its natural content height, capped at the workspace
+height for an expanded menu that needs scrolling. Its card no longer stretches
+below the links. Tracking refresh sits beside the horizontal order filters, so
+the left sidebar and right control panel start at the same height. The refresh
+control keeps an accessible label and uses its icon on narrow screens.
+
+The **55 focused buyer/settings/session checks and production build pass**.
+An existing interaction check now identifies filter/refresh actions by label
+instead of their former position. No browser automation or backend/database,
+Azure or Flutter change was made. Scoped sidebar/alignment assessment:
+**6/10 -> 8/10**, based on fitting the visible menu and aligned panel tops.
+The fix is one local commit; the combined PR description remains a local draft.

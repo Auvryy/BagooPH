@@ -189,6 +189,7 @@ class KycDecisionGovernanceTest extends TestCase
 
     public function test_identical_approval_retry_preserves_review_and_a_later_suspension(): void
     {
+        config(['session.lifetime' => 60 * 48]);
         $user = $this->applicant('seller');
         $admin = $this->admin();
         $this->inspectKycEvidence($admin, $user);
@@ -207,6 +208,7 @@ class KycDecisionGovernanceTest extends TestCase
 
     public function test_retry_cannot_replace_feedback_reviewer_or_decision(): void
     {
+        config(['session.lifetime' => 60 * 48]);
         $user = $this->applicant();
         $admin = $this->admin();
         $payload = $this->kycPayload($user) + ['reason' => 'Identity is unreadable.'];

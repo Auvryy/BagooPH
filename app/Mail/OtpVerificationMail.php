@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -27,6 +28,7 @@ class OtpVerificationMail extends Mailable
     public function envelope(): Envelope
     {
         $subject = match ($this->purpose) {
+            'account_sessions' => 'Confirm your BagooPH device sign-out',
             'password_reset' => "Your BagooPH Password Reset Code: {$this->otpCode}",
             default => "Your BagooPH Verification Code: {$this->otpCode}",
         };
@@ -49,7 +51,7 @@ class OtpVerificationMail extends Mailable
     /**
      * Get the attachments for the message.
      *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     * @return array<int, Attachment>
      */
     public function attachments(): array
     {

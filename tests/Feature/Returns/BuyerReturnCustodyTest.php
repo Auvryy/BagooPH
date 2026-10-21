@@ -79,6 +79,7 @@ class BuyerReturnCustodyTest extends TestCase
 
     public function test_floor_authority_expected_hub_original_waybill_and_late_dropoff_are_rechecked(): void
     {
+        config(['session.lifetime' => 60 * 24 * 10]);
         $case = $this->approvedReturn();
         $destination = LogisticsHub::findOrFail($case->parcel->hub_ids[0]);
         $origin = LogisticsHub::findOrFail($case->parcel->hub_ids[count($case->parcel->hub_ids) - 1]);

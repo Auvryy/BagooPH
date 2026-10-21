@@ -83,6 +83,7 @@ class AdvertisementManagementTest extends TestCase
         $this->get('/admin/advertisements/artwork/'.$asset->id)->assertOk()->assertHeader('Content-Type', 'image/webp');
         $publication = $this->publish($ad);
         $this->assertCount(1, app(AdvertisementReader::class)->homepage());
+        $this->post('/logout');
         $this->app['auth']->forgetGuards();
         $this->get('/advertisement/'.$ad->slug.'?publication='.$publication->id)->assertRedirect(route('products.show', $this->product->slug));
         $this->get('/advertisement-artwork/'.$asset->token)->assertOk()->assertHeader('Content-Type', 'image/webp');
@@ -219,6 +220,7 @@ class AdvertisementManagementTest extends TestCase
 
     public function test_ending_a_future_placement_never_exposes_its_private_image(): void
     {
+        config(['session.lifetime' => 60 * 72]);
         $ad = $this->draft(['starts_at' => '2026-10-16T10:00', 'ends_at' => '2026-10-17T10:00']);
         $publication = $this->publish($ad, ['publish_now' => false]);
         $this->post('/admin/advertisements/'.$ad->id.'/actions', $this->action($ad, 'end', ['publication_id' => $publication->id]))->assertSessionHas('success');
@@ -336,6 +338,7 @@ class AdvertisementManagementTest extends TestCase
     {
         $ad = $this->draft(['destination_type' => 'collection', 'destination_id' => null, 'product_ids' => [$this->product->id]]);
         $this->publish($ad);
+        $this->post('/logout');
         $this->app['auth']->forgetGuards();
         $this->get('/promotions/'.$ad->slug)->assertOk()->assertInertia(fn (Assert $page) => $page->has('products', 1));
         $buyer = User::factory()->create(['status' => 'pending', 'kyc_status' => 'pending']);

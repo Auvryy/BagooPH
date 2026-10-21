@@ -206,6 +206,7 @@ class HubParcelWorkstationTest extends TestCase
 
     public function test_locked_counter_claim_and_natural_expiry_are_read_only_blockers(): void
     {
+        config(['session.lifetime' => 60 * 24 * 8]);
         $parcel = $this->selfPickup(true);
         $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
         $claim = PickupClaim::where('delivery_id', $parcel->id)->sole();

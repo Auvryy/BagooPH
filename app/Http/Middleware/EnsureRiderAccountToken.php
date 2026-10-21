@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Services\AccountSessions\AccountSessionService;
 use App\Services\RiderAccountService;
 use Closure;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -57,6 +58,11 @@ class EnsureRiderAccountToken
         }
         $token->forceFill(['last_used_at' => now()])->save();
         $request->setUserResolver(fn () => $user->withAccessToken($token));
+        if (! app(AccountSessionService::class)->touchNative($user, $token, $request) && $purpose !== 'logout') {
+            $token->delete();
+
+            return response()->json(['message' => 'This session has ended. Sign in again to continue.'], 401);
+        }
 
         return $next($request);
     }

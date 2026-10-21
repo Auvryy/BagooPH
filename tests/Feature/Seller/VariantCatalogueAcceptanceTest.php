@@ -77,6 +77,7 @@ class VariantCatalogueAcceptanceTest extends TestCase
             if ($buyer) {
                 $this->actingAs($buyer);
             } else {
+                $this->post('/logout');
                 $this->app['auth']->forgetGuards();
             }
             $this->get('http://localhost:8000/product/'.$product->slug)->assertOk()->assertInertia(fn (Assert $page) => $page->component('Buyer/ProductDetail')

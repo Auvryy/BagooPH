@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\AccountSessions\AccountSessionService;
 use App\Services\Advertisements\AdvertisementMeasurementService;
 use App\Services\Commerce\SaleReminderService;
 use App\Services\Logistics\RiderCompanyOfferService;
@@ -60,3 +61,10 @@ Artisan::command('wallet:expire-payments {--limit=100}', function () {
 })->purpose('Release unpaid virtual wallet orders after their one-hour payment deadline');
 
 Schedule::command('wallet:expire-payments')->everyMinute()->withoutOverlapping();
+
+Artisan::command('account-security:minimise-metadata', function () {
+    $count = app(AccountSessionService::class)->minimiseOldMetadata();
+    $this->info("Cleared private device/network metadata from {$count} older ended sessions; revocation protection is retained.");
+})->purpose('Minimise old sign-in metadata without reopening revoked sessions');
+
+Schedule::command('account-security:minimise-metadata')->daily()->withoutOverlapping();

@@ -85,8 +85,8 @@ class AccountClosureService
         }
         $references = [];
         foreach (Schema::getTables() as $table) {
-            // Email ownership and one-time challenges are account settings, not retained work history.
-            if (in_array($table['name'], ['account_emails', 'email_otps'], true)) {
+            // Authentication settings can be removed with an otherwise unreferenced account.
+            if (in_array($table['name'], ['account_emails', 'email_otps', 'account_login_sessions', 'account_session_actions'], true)) {
                 continue;
             }
             foreach (Schema::getForeignKeys($table['name']) as $key) {

@@ -17,6 +17,8 @@ export function setupBuyerProfileWorkspace(workspace: HTMLElement) {
     const containWheel = (event: WheelEvent) => {
         if (!desktop.matches || event.ctrlKey || event.defaultPrevented) return;
         const target = event.target instanceof Element ? event.target : null;
+        const horizontal = target?.closest<HTMLElement>('[data-buyer-profile-horizontal]');
+        if (horizontal && horizontal.scrollWidth > horizontal.clientWidth && (Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.shiftKey)) return;
         const region = target?.closest<HTMLElement>('[data-buyer-profile-scroll]');
         if (!region || region.scrollHeight <= region.clientHeight) event.preventDefault();
     };

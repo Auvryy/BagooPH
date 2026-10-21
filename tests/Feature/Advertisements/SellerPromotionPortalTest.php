@@ -122,6 +122,7 @@ class SellerPromotionPortalTest extends TestCase
         $this->get('/seller/promotions/'.$ad->id.'/preview')->assertNotFound();
         $this->get('/seller/promotions/artwork/'.$asset->id)->assertNotFound();
         $this->get('/seller/promotions')->assertInertia(fn (Assert $page) => $page->has('promotions.data', 0));
+        $this->post('/logout')->assertRedirect();
         $this->app['auth']->forgetGuards();
         $this->getJson('/seller/promotions')->assertUnauthorized();
         $this->get('/advertisement-artwork/'.$asset->token)->assertNotFound();

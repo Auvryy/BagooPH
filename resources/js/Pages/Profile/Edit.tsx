@@ -5,6 +5,8 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PageProps } from '@/types';
 import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
+import AccountSessionSettings from '@/Components/AccountSessionSettings';
+import useSettingsSections from '@/hooks/useSettingsSections';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import { AccountClosureReview } from '@/types/accountClosure';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
@@ -34,6 +36,7 @@ export default function Edit({
     const { auth } = usePage<PageProps>().props;
     const user = auth.user;
     const role = user?.role || 'buyer';
+    useSettingsSections(true, ['login-activity']);
 
     const getBackRoute = () => {
         switch (role) {
@@ -56,6 +59,7 @@ export default function Edit({
         <div className="mx-auto max-w-4xl space-y-5">
             <h1 className="text-2xl font-semibold">Account settings</h1>
             <p className="rounded-xl border border-slate-300 bg-white p-4 text-sm text-slate-600">Your account cannot start new work. You can request a correction to reviewed identity here; approval does not clear separate restrictions.</p>
+            <AccountSessionSettings />
             <AccountIdentitySettings theme={role === 'seller' ? 'seller' : role === 'buyer' ? 'buyer' : role === 'courier' ? 'courier' : 'default'} />
         </div>
     ) : (
@@ -148,6 +152,8 @@ export default function Edit({
             </div>
 
             <AccountEmailSettings theme={role === 'seller' ? 'seller' : 'buyer'} />
+
+            <AccountSessionSettings />
 
             <AccountIdentitySettings theme={role === 'seller' ? 'seller' : 'buyer'} />
 

@@ -31,6 +31,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
             )}
 
             <form onSubmit={submit} className="space-y-4 font-sans">
+                <Link href="/account/security" className="inline-block py-2 text-sm font-semibold text-[#C20836]">Login activity and devices</Link>
                 <div>
                     <button
                         type="submit"

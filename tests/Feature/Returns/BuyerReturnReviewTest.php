@@ -77,6 +77,7 @@ class BuyerReturnReviewTest extends TestCase
 
     public function test_an_owned_request_has_private_original_units_and_replays_without_mutating_delivery_or_money(): void
     {
+        config(['session.lifetime' => 60 * 24 * 10]);
         $order = $this->delivered();
         $before = [$order->getAttributes(), $order->delivery->getAttributes(), $order->items->map->getAttributes()->all()];
         $payload = $this->payload($order) + ['photos' => [UploadedFile::fake()->image('damage.png')]];
@@ -411,6 +412,7 @@ class BuyerReturnReviewTest extends TestCase
 
     public function test_return_notices_target_the_original_seller_and_current_admin_reviewers_without_private_paths(): void
     {
+        config(['session.lifetime' => 60 * 24 * 10]);
         $order = $this->delivered();
         $admin = $this->createApprovedUser('admin');
         $inactive = $this->createApprovedUser('admin', ['status' => 'inactive']);

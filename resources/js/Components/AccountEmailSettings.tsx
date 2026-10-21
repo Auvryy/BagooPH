@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
+import { Mail } from 'lucide-react';
+import AccountSectionHeading from '@/Components/AccountSectionHeading';
 import { type PageProps } from '@/types';
 import { refreshPage, requestErrors } from '@/utils/accountRequests';
 
@@ -23,7 +25,7 @@ export default function AccountEmailSettings({ theme = 'buyer' }: { theme?: 'buy
         return () => window.clearTimeout(timeout);
     }, [cooldown]);
     if (!emailSettings) return null;
-    const card = theme === 'courier' ? 'courier-panel rounded-[8px] bg-white p-4 shadow-sm sm:p-6' : theme === 'seller' ? 'rounded-2xl border border-slate-300 bg-white p-6 shadow-2xs' : 'rounded-2xl border border-slate-300 bg-white p-5 shadow-xs';
+    const card = theme === 'courier' ? 'courier-panel rounded-[8px] bg-white p-4 shadow-sm sm:p-6' : theme === 'seller' ? 'rounded-2xl border border-slate-300 bg-white p-6 shadow-2xs' : 'rounded-3xl border border-slate-300 bg-white p-6 shadow-xs sm:p-8';
     const input = `mt-1 w-full border border-slate-300 bg-white p-2.5 text-sm focus:border-[#E00D42] focus:ring-[#E00D42] ${theme === 'courier' ? 'rounded-[8px]' : 'rounded-xl'}`;
     const action = async (kind: string, address?: number) => {
         if (busy) return;
@@ -42,8 +44,9 @@ export default function AccountEmailSettings({ theme = 'buyer' }: { theme?: 'buy
         } finally { setBusy(''); }
     };
     const submit = (event: FormEvent) => { event.preventDefault(); void action(sent ? 'confirm' : 'send'); };
-    return <section id="account-emails" className={`${card} scroll-mt-24 space-y-4`} data-settings-theme={theme} aria-busy={Boolean(busy)}>
-        <div><h2 className="text-lg font-semibold text-slate-900">Email and recovery</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">Keep your original sign-in email. Add and verify another address for contact and password recovery.</p></div>
+    return <section id="account-emails" tabIndex={-1} className={`${card} scroll-mt-28 space-y-4 focus:outline-none`} data-settings-theme={theme} aria-busy={Boolean(busy)}>
+        {theme === 'buyer' ? <div className="border-b border-slate-200 pb-4"><AccountSectionHeading icon={Mail} title="Email and recovery" description="Keep your original sign-in email. Add and verify another address for contact and password recovery." /></div>
+            : <div><h2 className="text-lg font-semibold text-slate-900">Email and recovery</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">Keep your original sign-in email. Add and verify another address for contact and password recovery.</p></div>}
         <ul className="divide-y divide-slate-200">
             {emailSettings.addresses.map(address => <li key={address.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0"><p className="break-all text-sm font-semibold">{address.email}</p><p className="mt-1 text-xs text-slate-600">{address.is_original ? 'Original sign-in email · ' : 'Additional email · '}{address.verified ? 'Verified' : 'Verification required'}{address.preferred ? ' · Contact email' : ''}</p></div>

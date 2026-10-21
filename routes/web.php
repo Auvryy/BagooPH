@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountEmailController;
 use App\Http\Controllers\AccountReviewController;
+use App\Http\Controllers\AccountSessionController;
 use App\Http\Controllers\AddressLocationController;
 use App\Http\Controllers\Admin\AccountClosureController;
 use App\Http\Controllers\Admin\AccountRestrictionController;
@@ -190,6 +191,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'decide'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.decide');
     Route::get('/account/identity-corrections', [IdentityCorrectionController::class, 'show'])->name('identity-corrections.own');
     Route::get('/account/settings', [ProfileController::class, 'settings'])->name('account.settings');
+    Route::get('/account/security', [AccountSessionController::class, 'index'])->name('account.security');
+    Route::post('/account/security/code', [AccountSessionController::class, 'sendCode'])->middleware('throttle:5,1')->name('account.security.code');
+    Route::post('/account/security/sessions/revoke-others', [AccountSessionController::class, 'others'])->middleware('throttle:10,1')->name('account.security.others');
+    Route::post('/account/security/sessions/{session}/revoke', [AccountSessionController::class, 'revoke'])->whereUuid('session')->middleware('throttle:10,1')->name('account.security.revoke');
     Route::post('/account/emails/send', [AccountEmailController::class, 'send'])->middleware('throttle:10,1')->name('account.emails.send');
     Route::post('/account/emails/confirm', [AccountEmailController::class, 'confirm'])->middleware('throttle:20,1')->name('account.emails.confirm');
     Route::patch('/account/emails/{accountEmail}/preferred', [AccountEmailController::class, 'prefer'])->middleware('throttle:10,1')->name('account.emails.prefer');

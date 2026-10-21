@@ -124,6 +124,7 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
 
             <div className="space-y-6 font-sans text-xs">
                 <Link href={route('account.status')} className="inline-block text-sm font-semibold text-[#E00D42] underline underline-offset-2">Account status and review requests</Link>
+                <Link href="/account/security" className="block text-sm font-semibold text-[#E00D42] underline underline-offset-2">Login activity and devices</Link>
                 <div className="flex items-center justify-between gap-3"><Link href="/notifications" className="font-semibold text-[#E00D42]">View your account updates</Link><NotificationLink /></div>
                 {user.kyc_status === 'pending_approval' && (birthDate.needs_correction || application.can_correct) && (
                     <form onSubmit={handleResubmit} className="space-y-3 rounded-xl border border-amber-300 bg-white p-4">

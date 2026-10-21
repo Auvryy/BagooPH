@@ -11,6 +11,7 @@ All paths below are relative to `/api/v1`. Requests and responses are JSON. Succ
 - Every settings request needs a live, unexpired bearer token, `rider:account` and the corresponding settings ability. The password fingerprint and fresh account eligibility are checked again. Commands recheck both abilities on the authenticated token under the account lock. Malformed, nonpositive or out-of-range token ID prefixes return 401 before an integer database lookup.
 - Only approved, active, open, age-eligible couriers may use these settings. Pending/rejected applicants retain the existing account-status/holding API, without settings access. A company or hub assignment is not required to edit ordinary account contact details.
 - The app must check the supported version, `can_access_portal` and the settings snapshot's capabilities. Client flags never authorize a server command.
+- Owners can inspect and end rider-app sessions from the website's [Login activity](../ACCOUNT_LOGIN_SECURITY.md) page. Remote sign-out deletes the actual bearer token; the app's next protected request returns 401 and requires sign-in again. This changes neither rider duty nor parcel assignments. Token issuance rejects an authentication check that has become stale after a competing password change or bulk revocation. Existing API versions, abilities and response envelopes remain unchanged; the session-management interface is a web feature.
 
 ## Routes
 

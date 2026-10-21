@@ -105,7 +105,9 @@ test('purchase progress includes To pay and Order issues sits directly below pur
     const nav = html.match(/<nav aria-label="Purchase status"[\s\S]*?<\/nav>/)[0];
     assert.equal((nav.match(/<button\b/g) || []).length, 6);
     for (const label of ['All', 'To pay', 'To ship', 'In transit', 'Delivered', 'Completed']) assert.ok(nav.includes(label));
-    assert.doesNotMatch(nav, /Delivery issue|Returned|Cancelled|overflow-x-auto/);
+    assert.doesNotMatch(nav, /Delivery issue|Returned|Cancelled|grid-cols/);
+    assert.match(nav, /overflow-x-auto/);
+    assert.match(nav, /flex-nowrap/);
     const sidebar = html.match(/<nav aria-label="Buyer profile"[\s\S]*?<\/nav>/)[0];
     assert.ok(sidebar.indexOf('My Purchases &amp; Orders') < sidebar.indexOf('Order issues'));
     assert.ok(sidebar.indexOf('Order issues') < sidebar.indexOf('My Account &amp; Security'));
@@ -139,11 +141,11 @@ test('exception and progress buttons invoke existing status loads and controls d
     const tree = ui.Filters({ selected: 'returned', counts, disabled: false, refreshing: false,
         onChange: value => selections.push(value), onRefresh: () => { refreshed = true; } });
     const buttons = nodes(tree, node => node.type === 'button');
-    buttons[3].props.onClick();
+    buttons.find(button => renderToStaticMarkup(button).includes('Cancelled')).props.onClick();
     const progress = ui.Filters({ selected: 'all', counts, disabled: false, refreshing: false,
         onChange: value => selections.push(value), onRefresh() {} });
-    nodes(progress, node => node.type === 'button')[1].props.onClick();
-    buttons[0].props.onClick();
+    nodes(progress, node => node.type === 'button').find(button => renderToStaticMarkup(button).includes('All')).props.onClick();
+    buttons.find(button => button.props['aria-label'] === 'Refresh tracking').props.onClick();
     assert.deepEqual(selections, ['cancelled', 'all']);
     assert.equal(refreshed, true);
     const loading = ui.Filters({ selected: 'all', counts, disabled: true, refreshing: true, onChange() {}, onRefresh() {} });
@@ -245,6 +247,8 @@ test('Account and Security uses a separate scroll region and retains contact, id
     }
     assert.doesNotMatch(html, /aria-label="Purchase results"/);
     assert.match(html, /aria-label="Account and security settings" tabindex="0"/);
+    assert.match(html, /<h1 class="sr-only">/);
+    assert.doesNotMatch(html, /Continue Shopping|Manage your account information and delivery addresses/);
 });
 
 test('bounded scrolling applies only to the desktop profile and never locks the footer or changes other portals', () => {
@@ -266,7 +270,7 @@ function environment() {
     const listeners = new Map(); const viewportListeners = new Map(); const wheelListeners = new Map();
     const frames = new Map(); const properties = new Map(); let frameId = 0; let observer;
     const main = {}; const desktop = { matches: true };
-    class Element { closest() { return this.region; } }
+    class Element { closest(selector) { return selector === '[data-buyer-profile-horizontal]' ? this.horizontal : this.region; } }
     const workspace = { top: 240, getBoundingClientRect() { return { top: this.top }; }, closest: () => main,
         style: { setProperty: (key, value) => properties.set(key, value) },
         addEventListener: (type, listener, options) => { assert.equal(options.passive, false); wheelListeners.set(type, listener); },
@@ -288,15 +292,20 @@ function environment() {
 test('desktop wheel input over stationary or empty panels stays contained, while content and zoom retain native behavior', () => {
     const env = environment(); const cleanup = ui.setupBuyerProfileWorkspace(env.workspace);
     try {
-        const wheel = (region, extra = {}) => {
-            const target = new globalThis.Element(); target.region = region;
+        const wheel = (region, extra = {}, horizontal = null) => {
+            const target = new globalThis.Element(); target.region = region; target.horizontal = horizontal;
             let prevented = false;
-            env.wheelListeners.get('wheel')({ target, ctrlKey: false, defaultPrevented: false, preventDefault: () => { prevented = true; }, ...extra });
+            env.wheelListeners.get('wheel')({ target, deltaX: 0, deltaY: 30, shiftKey: false, ctrlKey: false, defaultPrevented: false, preventDefault: () => { prevented = true; }, ...extra });
             return prevented;
         };
         assert.equal(wheel(null), true);
         assert.equal(wheel({ scrollHeight: 320, clientHeight: 320 }), true);
         assert.equal(wheel({ scrollHeight: 1200, clientHeight: 320 }), false);
+        const filters = { scrollWidth: 900, clientWidth: 420 };
+        assert.equal(wheel(null, { deltaX: 40, deltaY: 0 }, filters), false);
+        assert.equal(wheel(null, { shiftKey: true }, filters), false);
+        assert.equal(wheel(null, {}, filters), true);
+        assert.equal(wheel(null, { deltaX: 40, deltaY: 0 }, { scrollWidth: 420, clientWidth: 420 }), true);
         assert.equal(wheel(null, { ctrlKey: true }), false);
         env.desktop.matches = false;
         assert.equal(wheel(null), false);

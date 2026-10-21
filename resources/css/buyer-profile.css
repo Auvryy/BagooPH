@@ -14,7 +14,9 @@
     }
 
     .buyer-profile-sidebar {
-        height: 100%;
+        height: auto;
+        max-height: 100%;
+        align-self: start;
     }
 
     .buyer-profile-content,

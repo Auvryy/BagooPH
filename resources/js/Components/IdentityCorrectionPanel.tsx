@@ -2,6 +2,8 @@ import UploadHint from '@/Components/UploadHint';
 import React, { useEffect, useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
 import axios from 'axios';
+import { FilePenLine, Fingerprint, History } from 'lucide-react';
+import AccountSectionHeading from '@/Components/AccountSectionHeading';
 import { refreshPage, requestErrors } from '@/utils/accountRequests';
 
 export type Correction = {
@@ -21,6 +23,7 @@ export type IdentityCorrectionProps = {
     subject: CorrectionSubject; categories: { id: number; name: string }[]; adminReview?: boolean;
     baseUrl?: string; decisionBaseUrl?: string;
     theme?: 'buyer' | 'seller' | 'courier' | 'default';
+    embedded?: boolean;
     affectedWork?: { order_id: number; order_number: string; order_status: string }[];
     listings?: { id: number; name: string; category_id: number | null; status: string }[];
 };
@@ -55,7 +58,7 @@ function Review({ correction, endpoint }: { correction: Correction; endpoint: st
     </form>;
 }
 
-export default function IdentityCorrectionPanel({ subject, categories, adminReview = false, baseUrl = '/account/identity-corrections', decisionBaseUrl = '', affectedWork = [], listings = [], theme = 'default' }: IdentityCorrectionProps) {
+export default function IdentityCorrectionPanel({ subject, categories, adminReview = false, baseUrl = '/account/identity-corrections', decisionBaseUrl = '', affectedWork = [], listings = [], theme = 'default', embedded = false }: IdentityCorrectionProps) {
     const fields = [...subject.fields.filter(item => !['birthday', 'root_category_id'].includes(item.key)), { key: 'birthday', label: 'Birth date', type: 'date', options: [] }, ...(subject.role === 'seller' ? [{ key: 'root_category_id', label: 'Shop master category', type: 'category', options: [] }] : [])];
     const [field, setField] = useState('birthday');
     const selected = fields.find(item => item.key === field)!;
@@ -69,7 +72,11 @@ export default function IdentityCorrectionPanel({ subject, categories, adminRevi
     const [sending, setSending] = useState(false);
     const [result, setResult] = useState('');
     const [fileVersion, setFileVersion] = useState(0);
-    const card = theme === 'buyer' ? 'rounded-2xl border border-slate-300 bg-white p-5 shadow-xs' : theme === 'seller' ? 'rounded-2xl border border-slate-300 bg-white p-6 shadow-2xs' : theme === 'courier' ? 'courier-panel rounded-[8px] bg-white p-4 shadow-sm sm:p-6' : 'rounded-xl border border-slate-300 bg-white p-5';
+    const buyer = theme === 'buyer';
+    const inset = buyer && embedded;
+    const card = inset ? 'space-y-5 border-t border-slate-300 pt-6' : buyer ? 'rounded-3xl border border-slate-300 bg-white p-6 shadow-xs sm:p-8' : theme === 'seller' ? 'rounded-2xl border border-slate-300 bg-white p-6 shadow-2xs' : theme === 'courier' ? 'courier-panel rounded-[8px] bg-white p-4 shadow-sm sm:p-6' : 'rounded-xl border border-slate-300 bg-white p-5';
+    const control = buyer ? 'mt-2 block min-h-11 w-full min-w-0 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 shadow-xs transition focus:border-[#E00D42] focus:bg-white focus:ring-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60' : `mt-1 w-full ${theme === 'courier' ? 'rounded-[8px]' : 'rounded-lg'} border-slate-300`;
+    const selectControl = `${control} ${buyer ? 'pr-10' : ''}`;
     const submit = async (event: React.FormEvent) => {
         event.preventDefault();
         if (sending) return;
@@ -92,11 +99,11 @@ export default function IdentityCorrectionPanel({ subject, categories, adminRevi
         } finally { setSending(false); }
     };
     return <div id="identity-correction" className="scroll-mt-24 space-y-5" data-settings-theme={theme}>
-        <section className={card}>
-            <h2 className="text-lg font-semibold">Identity corrections</h2>
+        {!inset && <section className={card}>
+            {buyer ? <AccountSectionHeading icon={Fingerprint} title="Identity correction" /> : <h2 className="text-lg font-semibold">Identity corrections</h2>}
             <p className="mt-2 text-sm text-slate-600">A correction needs supporting evidence and an admin decision. Account roles, separate restrictions and ongoing work stay in place.</p>
-            {subject.provenance.source === 'legacy_without_recorded_review' && <p className="mt-2 text-sm text-amber-800">No earlier identity review is recorded. This request will retain that legacy provenance and record the current review.</p>}
-        </section>
+        </section>}
+        {subject.provenance.source === 'legacy_without_recorded_review' && <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-800">No earlier identity review is recorded. This request will retain that history and record the current review.</p>}
         {adminReview && <section className={card}>
             <h2 className="font-semibold">Responsibilities and listings</h2>
             <p className="mt-2 text-sm text-slate-600">Cash custody and settlement records are not yet available. A correction never completes a handover or settles money.</p>
@@ -104,25 +111,27 @@ export default function IdentityCorrectionPanel({ subject, categories, adminRevi
             {listings.map(product => <p className="text-sm" key={product.id}>{product.name} · {product.status} · {display('root_category_id', product.category_id)}</p>)}</div>
             {listings.length > 0 && <p className="mt-3 text-sm text-amber-800">A shop category correction can make existing listings unavailable. Their categories and purchased-item history will be retained.</p>}
         </section>}
-        <form onSubmit={submit} className={card}>
-            <h2 className="font-semibold">Request a correction</h2>
-            <label className="mt-4 block text-sm font-medium">Detail to correct<select value={field} onChange={event => { const key = event.target.value; setField(key); form.setData('changes', { [key]: subject.values[key] ?? '' }); }} className="mt-1 w-full rounded-lg border-slate-300">{fields.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}</select></label>
-            <p className="mt-2 text-sm text-slate-600">Currently recorded: {display(field, subject.values[field] ?? null)}</p>
-            <label className="mt-3 block text-sm font-medium">Corrected {selected.label.toLowerCase()}
-                {selected.type === 'category' ? <select required value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className="mt-1 w-full rounded-lg border-slate-300"><option value="">Choose a master category</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
-                    : selected.options.length > 0 ? <select value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className="mt-1 w-full rounded-lg border-slate-300"><option value="">Choose a value</option>{selected.options.map(option => <option key={option}>{option}</option>)}</select>
-                        : <input type={selected.type} value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className="mt-1 w-full rounded-lg border-slate-300" />}
-            </label>
-            <label className="mt-4 block text-sm font-medium">Reason<textarea required value={form.data.reason} onChange={event => form.setData('reason', event.target.value)} rows={3} maxLength={1000} className="mt-1 w-full rounded-lg border-slate-300" /></label>
+        <form onSubmit={submit} className={card} aria-busy={sending}>
+            {buyer ? <AccountSectionHeading icon={FilePenLine} title="Request a correction" as="h3" compact description="Choose one reviewed detail and enter the corrected value." /> : <h2 className="font-semibold">Request a correction</h2>}
+            <div className={buyer ? 'grid min-w-0 gap-4 sm:grid-cols-2' : ''}>
+                <label className="mt-4 block min-w-0 text-sm font-semibold text-slate-700">Detail to correct<select value={field} disabled={sending} onChange={event => { const key = event.target.value; setField(key); form.setData('changes', { [key]: subject.values[key] ?? '' }); }} className={selectControl}>{fields.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}</select></label>
+                <label className={`${buyer ? 'mt-4' : 'mt-3'} block min-w-0 text-sm font-semibold text-slate-700`}>Corrected {selected.label.toLowerCase()}
+                    {selected.type === 'category' ? <select required disabled={sending} value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className={selectControl}><option value="">Choose a master category</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
+                        : selected.options.length > 0 ? <select disabled={sending} value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className={selectControl}><option value="">Choose a value</option>{selected.options.map(option => <option key={option}>{option}</option>)}</select>
+                            : <input type={selected.type} disabled={sending} value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className={control} />}
+                </label>
+            </div>
+            <p className={buyer ? 'break-words rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-relaxed text-slate-600' : 'mt-2 text-sm text-slate-600'}>Currently recorded: <span className="font-semibold text-slate-900">{display(field, subject.values[field] ?? null)}</span></p>
+            <label className="mt-4 block text-sm font-semibold text-slate-700">Reason<textarea required disabled={sending} value={form.data.reason} onChange={event => form.setData('reason', event.target.value)} rows={3} maxLength={1000} className={`${control} ${buyer ? 'resize-y' : ''}`} /></label>
             <p className="mt-3 text-sm text-slate-600">Upload replacement evidence if the current documents do not support the correction. Earlier reviewed files are retained.</p>
-            <div key={fileVersion} className="mt-3 grid gap-3 sm:grid-cols-2">{subject.required_documents.map(kind => <label key={kind} className="text-sm font-medium capitalize">{kind === 'orcr' ? 'OR/CR' : kind} document<input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={event => form.setData(fileInputs[kind as keyof typeof fileInputs], event.target.files?.[0] ?? null)} className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm" />
+            <div key={fileVersion} className="mt-3 grid min-w-0 gap-4 sm:grid-cols-2">{subject.required_documents.map(kind => <label key={kind} className="min-w-0 text-sm font-semibold capitalize text-slate-700">{kind === 'orcr' ? 'OR/CR' : kind} document<input type="file" disabled={sending} accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={event => form.setData(fileInputs[kind as keyof typeof fileInputs], event.target.files?.[0] ?? null)} className={buyer ? `${control} overflow-hidden file:mr-3 file:rounded-lg file:border-0 file:bg-rose-50 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-[#C20836]` : 'mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm'} />
             <UploadHint /></label>)}</div>
             {Object.entries(form.errors).map(([key, error]) => <p key={key} role="alert" className="mt-2 text-sm text-rose-700">{error}</p>)}
             {result && <p role="status" className="mt-3 text-sm text-emerald-700">{result}</p>}
-            <button disabled={sending || form.data.reason.trim().length < 5} className="mt-4 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{sending ? 'Submitting...' : 'Submit correction request'}</button>
+            <div className={buyer ? 'flex justify-end border-t border-slate-200 pt-4' : ''}><button disabled={sending || form.data.reason.trim().length < 5} className={buyer ? 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#E00D42] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-50' : 'mt-4 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50'}>{sending ? 'Submitting...' : 'Submit correction request'}</button></div>
         </form>
         <section className={card}>
-            <h2 className="font-semibold">Requests and decisions</h2>
+            {buyer ? <AccountSectionHeading icon={History} title="Requests and decisions" as="h3" compact /> : <h2 className="font-semibold">Requests and decisions</h2>}
             {subject.requests.length === 0 && <p className="mt-3 text-sm text-slate-600">No correction requests have been recorded.</p>}
             {subject.requests.map(correction => <article key={correction.id} className="mt-4 border-t border-slate-300 pt-4">
                 <p className="font-semibold">Request #{correction.id} · {correction.decision?.action === 'approve' ? 'Approved' : correction.decision?.action === 'reject' ? 'Rejected' : correction.current ? 'Awaiting review' : 'A new request is required'}</p>
