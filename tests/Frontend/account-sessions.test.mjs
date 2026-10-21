@@ -1,6 +1,6 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
@@ -8,19 +8,19 @@ import { build } from 'esbuild';
 const temporary = mkdtempSync(resolve(import.meta.dirname, '../../.codex/account-session-ui-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.accountSessionHarness; delete globalThis.route; });
 const bundled = await build({
-    stdin: { contents: `export {default as Page} from '@/Pages/Account/Security'; export {default as Entry} from '@/Components/AccountSessionLink'; export * from '@/utils/accountSessions';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: `export {default as Page} from '@/Pages/Account/Security'; export {default as Panel} from '@/Components/AccountSessionPanel'; export {default as Settings} from '@/Components/AccountSessionSettings'; export {default as Entry} from '@/Components/AccountSessionLink'; export * from '@/utils/accountSessions';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'account-session-interactions', setup(builder) {
         builder.onResolve({ filter: /^react$/ }, () => ({ path: 'hooks', namespace: 'security-hooks' }));
         builder.onLoad({ filter: /.*/, namespace: 'security-hooks' }, () => ({ contents: `export const useState = value => globalThis.accountSessionHarness.state(value); export const useEffect = (fn,deps) => globalThis.accountSessionHarness.effect(fn,deps); export const useRef = value => useState(() => ({current:value}))[0];` }));
         builder.onResolve({ filter: /^axios$/ }, () => ({ path: 'http', namespace: 'security-http' }));
-        builder.onLoad({ filter: /.*/, namespace: 'security-http' }, () => ({ contents: `export default {post: (...args) => globalThis.accountSessionHarness.request(args), isAxiosError: error => !!error?.response};` }));
+        builder.onLoad({ filter: /.*/, namespace: 'security-http' }, () => ({ contents: `export default {post: (...args) => globalThis.accountSessionHarness.request(args), get: (...args) => globalThis.accountSessionHarness.request(args), isAxiosError: error => !!error?.response};` }));
         builder.onResolve({ filter: /^@inertiajs\/react$/ }, () => ({ path: 'inertia', namespace: 'security-inertia' }));
-        builder.onLoad({ filter: /.*/, namespace: 'security-inertia' }, () => ({ contents: `export const Link='a', Head='head'; export const usePage=()=>({props:{auth:{user:globalThis.accountSessionHarness.user}}}); export const router={post:(...args)=>globalThis.accountSessionHarness.posts.push(args),reload:options=>globalThis.accountSessionHarness.reload(options)};` }));
+        builder.onLoad({ filter: /.*/, namespace: 'security-inertia' }, () => ({ contents: `export const Link='a', Head='head'; export const usePage=()=>({url:globalThis.accountSessionHarness.url,props:{auth:{user:globalThis.accountSessionHarness.user}}}); export const router={post:(...args)=>globalThis.accountSessionHarness.posts.push(args),reload:options=>globalThis.accountSessionHarness.reload(options)};` }));
         builder.onResolve({ filter: /^@headlessui\/react$/ }, () => ({ path: 'dialog', namespace: 'security-dialog' }));
         builder.onLoad({ filter: /.*/, namespace: 'security-dialog' }, () => ({ contents: `export const DialogTitle='h2';` }));
         builder.onResolve({ filter: /^lucide-react$/ }, () => ({ path: 'icons', namespace: 'security-icons' }));
-        builder.onLoad({ filter: /.*/, namespace: 'security-icons' }, () => ({ contents: `export const ArrowLeft='svg',Check='svg',Clock3='svg',Globe='svg',History='svg',Laptop='svg',LogOut='svg',MonitorSmartphone='svg',RefreshCw='svg',ShieldCheck='svg',Smartphone='svg',Tablet='svg',ChevronRight='svg';` }));
+        builder.onLoad({ filter: /.*/, namespace: 'security-icons' }, () => ({ contents: `export const ArrowLeft='svg',Check='svg',Clock3='svg',Globe='svg',History='svg',Laptop='svg',LogOut='svg',MonitorSmartphone='svg',RefreshCw='svg',ShieldCheck='svg',Smartphone='svg',Tablet='svg',ChevronRight='svg',ChevronDown='svg',Fingerprint='svg',KeyRound='svg',Mail='svg',UserRound='svg';` }));
         builder.onResolve({ filter: /(?:Layouts\/(?:BuyerOrderAccessLayout|DashboardLayout|CourierLayout|GuestLayout)|Components\/Modal)$/ }, args => ({ path: args.path.split('/').at(-1), namespace: 'security-layout' }));
         builder.onLoad({ filter: /.*/, namespace: 'security-layout' }, args => ({ contents: `export default ${JSON.stringify(args.path)};` }));
     } }],
@@ -51,9 +51,10 @@ function harness({ role = 'buyer', canUsePortal = true, verified = true } = {}) 
     let cursor = 0, timerId = 0;
     const states = [], effects = [], timers = new Map();
     const previousWindow = globalThis.window;
-    globalThis.window = { setTimeout(fn) { const id = ++timerId; timers.set(id, fn); return id; }, clearTimeout(id) { timers.delete(id); } };
+    const frames = new Map(), events = new Map();
+    globalThis.window = { location: { href: 'https://buyer.example.test/buyer/profile?tab=account', hash: '' }, addEventListener: (key, fn) => events.set(key, fn), removeEventListener: key => events.delete(key), requestAnimationFrame(fn) { const id = ++timerId; frames.set(id, fn); return id; }, cancelAnimationFrame: id => frames.delete(id), setTimeout(fn) { const id = ++timerId; timers.set(id, fn); return id; }, clearTimeout(id) { timers.delete(id); } };
     const h = {
-        user: { id: 4, role }, requests: [], posts: [], reloads: 0, reloadFailure: false,
+        user: { id: 4, role }, url: '/buyer/profile?tab=account', requests: [], posts: [], reloads: 0, reloadFailure: false,
         props: { sessions: page([session('current', true), session(uuid)]), signIns: page([session('current', true)]), lastSignIn: session('current', true), currentSessionId: 'current', sessionOwnerId: 4, canConfirmByEmail: verified, canUsePortal, isOnline: true, historyDays: 90 },
         state(initial) {
             const index = cursor++;
@@ -70,25 +71,28 @@ function harness({ role = 'buyer', canUsePortal = true, verified = true } = {}) 
             h.requests.push({ args, resolve, reject }); return promise;
         },
         reload(options) { h.reloads++; if (!h.reloadFailure) options.onSuccess(); options.onFinish(); },
-        render() {
+        render(component = ui.Panel, props = h.props) {
             globalThis.accountSessionHarness = h; cursor = 0;
-            const tree = ui.Page(h.props);
+            const tree = component(props);
             for (const effect of effects) if (effect?.run) { effect.run = false; effect.cleanup = effect.fn(); }
             return tree;
         },
         flush() { for (const [id, fn] of timers) { timers.delete(id); fn(); } },
+        frame() { for (const [id, fn] of frames) { frames.delete(id); fn(); } },
+        event(name) { events.get(name)?.(); },
         close() { for (const effect of effects) effect?.cleanup?.(); globalThis.window = previousWindow; delete globalThis.accountSessionHarness; },
     };
+    h.props.onRefresh = () => new Promise((resolve, reject) => h.reload({ onSuccess: resolve, onFinish: () => { if (h.reloadFailure) reject(new Error('Refresh failed')); } }));
     globalThis.accountSessionHarness = h; return h;
 }
 
 test('all roles use their portal shell; restricted accounts keep only their narrow security surface', () => {
     for (const [role, layout] of [['buyer', 'BuyerOrderAccessLayout'], ['seller', 'DashboardLayout'], ['courier', 'CourierLayout'], ['logistics', 'DashboardLayout'], ['admin', 'DashboardLayout']]) {
         const h = harness({ role });
-        try { const tree = h.render(); assert.equal(tree.type, layout); assert.match(text(tree), /Exact location is not tracked/); assert.match(text(tree), /same device/); } finally { h.close(); }
+        try { assert.equal(h.render(ui.Page).type, layout); const tree = h.render(); assert.match(text(tree), /Exact location is not tracked/); assert.match(text(tree), /same device/); } finally { h.close(); }
     }
     const h = harness({ role: 'courier', canUsePortal: false });
-    try { assert.equal(h.render().type, 'GuestLayout'); } finally { h.close(); }
+    try { assert.equal(h.render(ui.Page).type, 'GuestLayout'); } finally { h.close(); }
 });
 
 test('missing authentication never renders stale account sessions', () => {
@@ -183,7 +187,7 @@ test('saved results stay truthful when refreshing the current view fails', async
     try {
         h.reloadFailure = true; button(h.render(), 'Sign out others').props.onClick(); change(h.render(), 'password', 'Password1234'); submit(h.render());
         h.requests[0].resolve({ data: { reference: uuid, affected_count: 1, message: 'The other session was signed out.' } }); await settle();
-        const tree = h.render(); assert.match(text(tree), /The other session was signed out/); assert.match(text(tree), /updated view could not load/);
+        const tree = h.render(); assert.match(text(tree), /The other session was signed out/); assert.match(text(tree), /updated list could not load/);
     } finally { h.close(); }
 });
 
