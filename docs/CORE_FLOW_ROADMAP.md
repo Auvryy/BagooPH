@@ -7602,3 +7602,18 @@ Flutter change was made. Scoped workspace/filter-layout assessment: **7/10 ->
 8/10**, based on recovered space and accessible filters without a second row.
 This does not change overall role or system readiness. The refinement is saved
 in one local commit with the combined PR description kept as a local draft.
+
+### Buyer sidebar fit and panel alignment — October 21, 2026
+
+The desktop sidebar uses its natural content height, capped at the workspace
+height for an expanded menu that needs scrolling. Its card no longer stretches
+below the links. Tracking refresh sits beside the horizontal order filters, so
+the left sidebar and right control panel start at the same height. The refresh
+control keeps an accessible label and uses its icon on narrow screens.
+
+The **55 focused buyer/settings/session checks and production build pass**.
+An existing interaction check now identifies filter/refresh actions by label
+instead of their former position. No browser automation or backend/database,
+Azure or Flutter change was made. Scoped sidebar/alignment assessment:
+**6/10 -> 8/10**, based on fitting the visible menu and aligned panel tops.
+The fix is one local commit; the combined PR description remains a local draft.

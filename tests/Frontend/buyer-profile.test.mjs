@@ -141,11 +141,11 @@ test('exception and progress buttons invoke existing status loads and controls d
     const tree = ui.Filters({ selected: 'returned', counts, disabled: false, refreshing: false,
         onChange: value => selections.push(value), onRefresh: () => { refreshed = true; } });
     const buttons = nodes(tree, node => node.type === 'button');
-    buttons[3].props.onClick();
+    buttons.find(button => renderToStaticMarkup(button).includes('Cancelled')).props.onClick();
     const progress = ui.Filters({ selected: 'all', counts, disabled: false, refreshing: false,
         onChange: value => selections.push(value), onRefresh() {} });
-    nodes(progress, node => node.type === 'button')[1].props.onClick();
-    buttons[0].props.onClick();
+    nodes(progress, node => node.type === 'button').find(button => renderToStaticMarkup(button).includes('All')).props.onClick();
+    buttons.find(button => button.props['aria-label'] === 'Refresh tracking').props.onClick();
     assert.deepEqual(selections, ['cancelled', 'all']);
     assert.equal(refreshed, true);
     const loading = ui.Filters({ selected: 'all', counts, disabled: true, refreshing: true, onChange() {}, onRefresh() {} });
