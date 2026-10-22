@@ -201,7 +201,7 @@ class HubParcelWorkstationService
             return $next('Continue the recorded parcel recovery', 'Company administrator and assigned recovery handlers', 'recovery', $readable, '/parcel-recovery', $readable ? null : 'This account has no access to the recovery observation.');
         }
         if (in_array($parcel->status, ['unassigned', 'assigned', 'assigned_pickup'], true) && ($custody['kind'] ?? null) === 'seller') {
-            return $next('Await pickup confirmation from the seller', 'Assigned pickup rider',
+            return $next('Pickup rider must confirm collection', 'Assigned pickup rider',
                 blocker: 'The pickup rider must confirm collection from the seller before a hub can receive this parcel.');
         }
         if ($parcel->status === 'picked_up' || ($parcel->status === 'delivery_failed' && $parcel->current_hub_id === null)) {
@@ -223,6 +223,16 @@ class HubParcelWorkstationService
             if ($incoming) {
                 return $next('Receive the parcel on its incoming manifest', 'Assigned receiving handler', 'manifest', $handler,
                     '/manifests/'.$incoming->id, $handler ? null : 'An assigned receiving handler must record the manifest receipt.');
+            }
+        }
+        if ($nextHub = app(HubScanTransferService::class)->nextHub($parcel)) {
+            if ($hub->id === $nextHub->id) {
+                return $next('Confirm physical receipt at '.$nextHub->name, 'Assigned receiving handler', 'scan', $handler, '/scan',
+                    $handler ? null : 'An assigned receiving handler must confirm the physical parcel receipt.');
+            }
+            if ($hub->id === $parcel->current_hub_id) {
+                return $next('Next scan: receipt at '.$nextHub->name, 'Handler at '.$nextHub->name,
+                    blocker: 'Receipt here is recorded. The next hub confirms when the parcel physically arrives.');
             }
         }
         if (! $atHub) {

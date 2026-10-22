@@ -70,6 +70,7 @@ export interface User {
     courier_profile?: CourierProfile | null;
     addresses?: Address[];
     canManageResources?: boolean;
+    canScanParcels?: boolean;
     canViewFinancialOversight?: boolean;
     resourceGovernanceUrl?: string;
 }

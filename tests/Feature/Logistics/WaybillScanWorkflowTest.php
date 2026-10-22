@@ -40,8 +40,8 @@ class WaybillScanWorkflowTest extends TestCase
         $confirm = ['barcode' => $parcel->tracking_number, 'mode' => 'confirm', 'hub_id' => $hub->id,
             'action' => 'RECEIVE_FROM_PICKUP_RIDER', 'expected_status' => 'picked_up'];
         $this->postJson($base.'/scan', $confirm)->assertOk()->assertJsonPath('confirmed', true)
-            ->assertJsonPath('delivery.status', 'arrived_at_origin_hub')->assertJsonPath('delivery.guidance.action', 'manifest')
-            ->assertJsonPath('delivery.guidance.href', $path.'/manifests?hub_id='.$hub->id);
+            ->assertJsonPath('delivery.status', 'arrived_at_origin_hub')->assertJsonPath('delivery.guidance.action', 'wait')
+            ->assertJsonPath('delivery.guidance.href', null)->assertJsonPath('prompt.manifest_url', null);
         $recorded = $this->snapshot($parcel);
         $this->postJson($base.'/scan', $confirm)->assertOk()->assertJsonPath('already_received', true)
             ->assertJsonPath('message', fn ($message) => str_contains($message, 'Already received'));
@@ -93,7 +93,7 @@ class WaybillScanWorkflowTest extends TestCase
         $before = $this->snapshot($parcel);
         $this->postJson('/hub/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id, 'mode' => 'inspect'])
             ->assertOk()->assertJsonPath('prompt.requires_confirmation', false)->assertJsonPath('delivery.guidance.can_act', false)
-            ->assertJsonPath('delivery.guidance.next_step', 'Await pickup confirmation from the seller');
+            ->assertJsonPath('delivery.guidance.next_step', 'Pickup rider must confirm collection');
         $this->postJson('/hub/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id, 'mode' => 'confirm',
             'action' => 'RECEIVE_FROM_PICKUP_RIDER', 'expected_status' => 'assigned_pickup'])->assertStatus(409);
         $this->assertSame($before, $this->snapshot($parcel));

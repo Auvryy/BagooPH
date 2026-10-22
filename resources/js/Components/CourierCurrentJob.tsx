@@ -25,7 +25,7 @@ export default function CourierCurrentJob({ job, stops, currentStop, parcelLabel
     return <CourierPanel className="min-w-0 p-4 sm:p-5">
         <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3"><h2 id="rider-current-job" tabIndex={-1} className="text-lg font-semibold focus:outline-none">{job.preview ? 'Pickup preview' : messagePhase === 'pickup' ? 'Active pickup' : 'Active delivery'}</h2><CourierBadge tone={currentStop === 1 && messagePhase === 'pickup' ? 'waiting' : 'brand'}>{job.stage}</CourierBadge></div>
-            <p className="break-all text-sm font-medium text-slate-600">{job.trackingNumber}</p>
+            <p className="break-all text-sm font-medium text-slate-600"><span className="font-semibold">Waybill:</span> {job.trackingNumber}</p>
         </header>
         {tracking && <div className="mb-5 space-y-2 rounded-[8px] bg-[#FFFAFB] p-3 text-sm text-slate-700"><p><span className="font-semibold">Order:</span> {tracking.status_label}</p><p><span className="font-semibold">Recorded holder:</span> {tracking.custodian}</p><p className="text-xs text-slate-500">Checked {trackingDate(tracking.observed_at)} · Philippine time</p>{tracking.notice && <p role="status" className="text-amber-900">{tracking.notice}</p>}</div>}
         <div className="grid items-start gap-5 min-[860px]:grid-cols-2">

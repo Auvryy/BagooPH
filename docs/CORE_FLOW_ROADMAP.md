@@ -7617,3 +7617,116 @@ instead of their former position. No browser automation or backend/database,
 Azure or Flutter change was made. Scoped sidebar/alignment assessment:
 **6/10 -> 8/10**, based on fitting the visible menu and aligned panel tops.
 The fix is one local commit; the combined PR description remains a local draft.
+
+### Logistics page loading and recovery — October 21, 2026
+
+Reviewed the current company, Bayan Hub and Mother Hub web workspaces on
+`fix/logistics-page-reliability`, starting from merged main `a3f4d6a`.
+Company ownership still does not grant physical scanning. Navigation and
+Overview now use the current handler assignment before offering Scan Station;
+company-only operators open the parcel registry instead. Other existing
+company, handler, custody and cash permissions remain unchanged.
+
+Logistics exceptions now have a Bagoo recovery response even with local debug
+enabled. Direct visits use a small server-rendered page that does not depend
+on the frontend build; Inertia visits receive the matching `Hub/Error` page.
+JSON requests receive a safe message. Missing and foreign records retain their
+404/403 status, form validation retains 422, and native APIs retain their
+existing response contracts. Throttling/method headers survive. Unexpected
+failures have a log reference instead of database or framework details.
+Failed updates never receive an automatic retry link. A stale selected hub
+can be recovered by explicitly opening a currently authorized facility;
+an error response does not resolve potentially broken shared page queries.
+
+Verification evidence:
+
+- The 27 new isolated page/access/recovery checks pass, including both logistics
+  entry points, assigned/unassigned operators, private records, expired forms,
+  actual database query failure, stale selection and asset-version recovery.
+- All 580 frontend checks and the TypeScript/Vite production build pass.
+- The wider 1,094-case logistics, buyer-return, COD, portal-access,
+  notification, browser-session and native-contract selection produced
+  1,093 passes and one counter query-count failure. Session timestamp updates
+  can vary with wall-clock seconds; the comparison now freezes time without
+  changing its equal-query or two-checkpoint-batch requirements. Its focused
+  recheck passes with 1,612 assertions. The wider selection was not repeated
+  after this test-only correction; this is not a fresh green full-suite claim.
+- The 140 eligibility/company-request checks pass after repairing an old
+  duplicate-name fixture and asserting the current restricted-account JSON
+  response. Thirty-nine registration/detail-consistency checks also pass.
+- Direct local HTTP checks across one company administrator and three hub
+  handlers load all 134 authorized page requests at the root and hub aliases.
+  Forty deliberately forbidden/missing requests retain their expected status
+  and show Bagoo recovery without a framework screen. Seventy-eight component
+  renders use the actual returned local props, without browser automation.
+- Eight guest/address requests return 200. All 134 static-asset checks across
+  both local aliases return 200 with the correct content type, including the
+  eleven hub page entries and their dependencies.
+- Nineteen selected PostgreSQL business-table snapshots remain identical.
+  Existing accounts, products, orders, parcel checkpoints and cash records
+  were not reset or reseeded. Automated mutations use isolated SQLite memory;
+  runtime checks use ordinary sign-in/out and page reads.
+- Azure access recovered after initially refused requests. All four demo
+  logistics accounts signed in, and all 67 authorized page requests returned
+  200 without technical error traces. Four expected permission denials and
+  sixteen deliberately missing-record/page requests returned 403/404. These
+  still use generic error responses; a separate guest request confirmed the
+  generic Not Found page, while registration returned 200. Deployed pages do
+  not yet expose the new scanner permission prop or use Bagoo recovery.
+  These checks verify the existing deployment, not this unpublished branch.
+- A follow-up traversal of the offered logistics lists, pagination and detail
+  links returned 200 for all 46 requests across those accounts. Live detail
+  coverage includes one handover report and three hub activity reviews; this
+  pass did not exercise populated manifest, COD or return detail pages. All
+  64 deployed JavaScript/CSS assets needed by the ten existing hub entries
+  and application shell returned 200 with the correct content type. No new
+  scan-capability prop is present in the deployed accounts' page responses.
+
+Scoped local navigation/page-recovery assessment: **5/10 -> 8/10**. This measures
+permitted links, readable recovery and verified local page loading; it does
+not raise overall logistics, lifecycle or security readiness. The normal
+Azure pages checked load successfully; the new navigation and recovery still
+require user publication, deployment and a deployed recheck. No Azure deployment,
+VM schedule change, Flutter change, GitHub push or merge was performed. The
+combined PR title/body are prepared locally; the Azure acceptance requirement
+remains open.
+
+Implementation and verification commits: `17a95bb` (portal navigation/recovery),
+`2cabb3b` (current eligibility fixtures) and `d8e920c` (stable counter comparison).
+
+
+### Confirmed hub receipts for normal deliveries — October 22, 2026
+
+At the user's request, normal outbound delivery now continues through the
+assigned next hub's waybill scan and explicit physical-receipt confirmation.
+Origin intake is still required; each distinct Mother Hub must receive in
+order before the destination Bayan Hub can sort and assign a delivery rider.
+No manual manifest, vehicle selection, sealing or closure is required for this
+normal path. The last confirmed hub remains recorded until the next receipt;
+no unobserved departure is invented. Locked updates retain immutable route,
+source/target state, previous receipt reference, actor and custody evidence.
+Preview scans remain read-only, stale submissions cannot duplicate receipts,
+and unassigned or wrong-facility accounts cannot advance the parcel.
+
+Existing manifest-backed parcels finish their retained workflow. Historical
+transfer and exception/return records remain available as Transfer history;
+reverse-route evidence now accepts the retained confirmed hub receipts too.
+Waybill and order-reference labels are distinct; pickup does not renumber the
+parcel. Normal transfers no longer depend on the incomplete demo van/driver
+choices, and this change requires neither new seed data nor a migration.
+
+Seven isolated journey/access cases pass, including both portal aliases,
+checkout through COD/proof delivery and buyer completion, ordered two-Mother
+transport, skipped-hub rejection and retained outbound evidence. The wider
+146-case selection produced 145 passes and one old expectation that origin
+intake should offer a manifest. That expectation now follows the selected
+next-hub receipt flow; its six-case stage group passes separately. The wider
+selection was not repeated after that test-only expectation correction, and
+the full application backend suite was not run. All 580 frontend checks,
+TypeScript/Vite build and affected PHP formatting checks pass.
+
+Scoped normal-transfer usability assessment: **3/10 to 8/10**, based on removing
+the blocked demo manifest setup and testing the actual buyer-to-delivery path.
+This is local evidence, not a rating of all logistics exceptions or the whole
+system. Azure deployment and deployed acceptance remain separate; no live
+parcel/cash commands or PostgreSQL reset/reseed were performed.
