@@ -64,7 +64,7 @@ class ParcelRecoveryController extends Controller
             $case = $selected->recoveryCase;
             $caseReadableIds = $case ? app(LogisticsManifestService::class)->readable($actor)
                 ->whereIn('id', [$case->originalMember->manifest_id, ...$case->manifests->pluck('id')])->pluck('id')->all() : [];
-            $canAuthorize = $actor->isLogistics() && $this->eligibility->isCompanyAdministrator($actor, $selected->manifest->logistics_company_id);
+            $canAuthorize = $actor->isLogistics() && $this->eligibility->isCompanyManager($actor, $selected->manifest->logistics_company_id);
             $proposal = null;
             $blocker = null;
             $next = null;
@@ -97,7 +97,9 @@ class ParcelRecoveryController extends Controller
             $canIntake = $case?->state === 'authorized' && ! $blocker && $actor->isLogistics()
                 && $this->eligibility->canScan($actor, LogisticsHub::findOrFail($case->observed_hub_id));
             $transfer = $case?->manifests->firstWhere('recovery_leg_index', $case->leg_index);
-            if ($next && $canAuthorize && ! $transfer) {
+            $sourceHub = $case ? $hubs->get($case->hub_ids[$case->leg_index] ?? null) : null;
+            $canPrepare = $sourceHub && app(LogisticsManifestService::class)->canManageAtHub($actor, $sourceHub);
+            if ($next && $canPrepare && ! $transfer) {
                 $creationToken = $request->session()->get('manifest_creation_token');
                 if (! is_string($creationToken)) {
                     $creationToken = (string) Str::uuid();

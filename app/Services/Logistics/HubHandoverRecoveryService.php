@@ -295,7 +295,7 @@ class HubHandoverRecoveryService
     private function reviewer(User $actor, HandoverIssue $issue, ?int $holder = null): void
     {
         abort_unless($actor->canAccessPortal() && $this->issues->canReview($actor, $issue)
-            && ($actor->isAdmin() || ($actor->isLogistics() && $this->eligibility->isCompanyAdministrator($actor, $issue->logistics_company_id)))
+            && ($actor->isAdmin() || ($actor->isLogistics() && $this->eligibility->isCompanyManager($actor, $issue->logistics_company_id)))
             && $actor->id !== $holder, 403, 'An independent current company administrator or platform reviewer must authorize this hub recovery.');
     }
 
@@ -588,7 +588,7 @@ class HubHandoverRecoveryService
         $latest = $issue->recoveryGrants()->reorder()->latest('id')->first();
         $options = [];
         if ($issue->state === 'needs_recovery' && ! $this->latest($issue)
-            && ($actor->isAdmin() || ($actor->isLogistics() && $this->eligibility->isCompanyAdministrator($actor, $issue->logistics_company_id)))
+            && ($actor->isAdmin() || ($actor->isLogistics() && $this->eligibility->isCompanyManager($actor, $issue->logistics_company_id)))
             && $this->issues->canReview($actor, $issue)) {
             $references = [['hub_intake', null], ['hub_failed_return', null]];
             foreach (LogisticsManifest::where('logistics_company_id', $parcel->logistics_company_id)->whereIn('status', ['draft', 'sealed', 'dispatched'])

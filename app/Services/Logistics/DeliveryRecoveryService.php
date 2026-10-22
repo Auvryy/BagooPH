@@ -140,8 +140,8 @@ class DeliveryRecoveryService
 
         return DB::transaction(function () use ($delivery, $actor, $input, $retryAt) {
             [$parcel, $actor] = $this->lock($delivery, $actor);
-            if (! $actor->isLogistics() || ! $this->eligibility->isCompanyAdministrator($actor, $parcel->logistics_company_id)) {
-                throw new DomainException('Only the owning company administrator may approve a retry date.');
+            if (! $actor->isLogistics() || ! $this->eligibility->isCompanyManager($actor, $parcel->logistics_company_id)) {
+                throw new DomainException('Only the company’s Mother Hub manager may approve a retry date.');
             }
             $existing = DeliveryRecoveryEvent::where('delivery_id', $parcel->id)->where('request_token', $input['request_token'])->first();
             if ($existing) {

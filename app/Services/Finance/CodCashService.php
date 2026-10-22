@@ -63,7 +63,7 @@ class CodCashService
             $scope->where('collector_id', $actor->id)->orWhereHas('events', fn ($events) => $events
                 ->where(fn ($parties) => $parties->where('from_user_id', $actor->id)->orWhere('to_user_id', $actor->id)));
             if ($actor->isLogistics() && $actor->canAccessPortal()) {
-                $scope->orWhereIn('logistics_company_id', LogisticsCompany::eligible()->where('user_id', $actor->id)->select('id'))
+                $scope->orWhereIn('logistics_company_id', $this->eligibility->managedCompanies($actor)->select('id'))
                     ->orWhereIn('hub_id', HubHandler::eligible()->where('user_id', $actor->id)->select('hub_id'));
             }
         });
@@ -319,7 +319,7 @@ class CodCashService
         $key = $stage.':'.$input['holder_id'];
         $own = $input['holder_id'] === $actor->id;
         $manager = $stage === 'hub' && $actor->isLogistics() && $actor->canAccessPortal()
-            && $this->eligibility->isCompanyAdministrator($actor, $account->logistics_company_id);
+            && $this->eligibility->isCompanyManager($actor, $account->logistics_company_id);
         abort_unless(($own && ! $actor->isAdmin()) || $manager, 403);
         if ($input['amount'] <= 0 || $input['amount'] > $state['balances'][$key]) {
             throw new DomainException('Offer a positive amount within this recorded holder’s remaining cash responsibility.');
@@ -402,7 +402,7 @@ class CodCashService
     private function cancel(CodAccount $account, User $actor, array $input): CodCashEvent
     {
         $pending = $this->pending($account, $input['offer_reference']);
-        $manager = $actor->isLogistics() && $actor->canAccessPortal() && $this->eligibility->isCompanyAdministrator($actor, $account->logistics_company_id);
+        $manager = $actor->isLogistics() && $actor->canAccessPortal() && $this->eligibility->isCompanyManager($actor, $account->logistics_company_id);
         // Cancelling an unconfirmed offer retains the original holder's entire cash responsibility.
         abort_unless(in_array($actor->id, [$pending['holder_id'], $pending['offered_by_id']], true) || $manager || $actor->isAdmin(), 403);
         $state = $account->state;

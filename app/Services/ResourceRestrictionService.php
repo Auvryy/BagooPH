@@ -13,6 +13,7 @@ use App\Models\Order;
 use App\Models\RestrictionDecision;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\Logistics\LogisticsEligibilityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,7 @@ class ResourceRestrictionService
     {
         $actor = User::find($actor->id);
         abort_unless($actor?->canAccessPortal() && ($actor->isAdmin() || ($actor->isLogistics()
-            && LogisticsCompany::eligible()->where('user_id', $actor->id)->exists())), 403);
+            && app(LogisticsEligibilityService::class)->isCompanyManager($actor))), 403);
 
         return $actor;
     }
@@ -47,7 +48,7 @@ class ResourceRestrictionService
         $query = self::TYPES[$type]::query();
         if (! $actor->isAdmin()) {
             abort_unless(in_array($type, ['hub', 'handler', 'fleet'], true), 403);
-            $query->where('logistics_company_id', LogisticsCompany::eligible()->where('user_id', $actor->id)->value('id'));
+            $query->where('logistics_company_id', app(LogisticsEligibilityService::class)->managedCompanies($actor)->value('id'));
             if (in_array($type, ['handler', 'fleet'], true)) {
                 $query->whereHas('hub', fn ($hub) => $hub->whereColumn('logistics_hubs.logistics_company_id', $query->getModel()->getTable().'.logistics_company_id'));
             }
@@ -302,7 +303,7 @@ class ResourceRestrictionService
     {
         $company = $this->company($type, $resource);
         $companies = collect([$company?->id, $resource->logistics_company_id,
-            $actor->isAdmin() ? null : LogisticsCompany::eligible()->where('user_id', $actor->id)->value('id')])->filter()->unique();
+            $actor->isAdmin() ? null : app(LogisticsEligibilityService::class)->managedCompanies($actor)->value('id')])->filter()->unique();
         $accounts = [$actor->id, $company?->user_id, $type === 'shop' || $type === 'handler' ? $resource->user_id : null, $type === 'fleet' ? $resource->assigned_driver_id : null];
         User::whereIn('id', array_filter($accounts))->orderBy('id')->lockForUpdate()->get();
         LogisticsCompany::whereIn('id', $companies)->orderBy('id')->lockForUpdate()->get();

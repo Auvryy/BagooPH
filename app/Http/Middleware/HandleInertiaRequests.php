@@ -124,9 +124,9 @@ class HandleInertiaRequests extends Middleware
                     'shop' => $user->isSeller() ? Shop::with('rootCategory:id,name,slug')->where('user_id', $user->id)->first() : null,
                     'courier_profile' => $user->role === 'courier' ? $user->courierProfile?->attributesToArray() : null,
                     'logisticsCompany' => $activeHub?->company,
-                    'canSwitchHubs' => $activeHub && $eligibility->isCompanyAdministrator($user),
+                    'canSwitchHubs' => $activeHub && $eligibility->isCompanyManager($user),
                     'canScanParcels' => $user->isLogistics() && $activeHub && $eligibility->canScan($user, $activeHub),
-                    'canManageResources' => $user->canAccessPortal() && ($user->isAdmin() || $eligibility->isCompanyAdministrator($user)),
+                    'canManageResources' => $user->canAccessPortal() && ($user->isAdmin() || $eligibility->isCompanyManager($user)),
                     'canViewFinancialOversight' => $user->closed_at === null && $user->email_verified_at !== null
                         && (($user->isAdmin() && $user->canAccessPortal()) || ($user->isSeller() && $user->isKycApproved())
                             || ($user->isLogistics() && $user->canAccessPortal() && $user->logisticsCompany()->count() === 1)),

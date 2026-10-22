@@ -91,7 +91,7 @@ class RiderCompanyRequestService
         if (! $this->available()) {
             return ['available' => false];
         }
-        $company = LogisticsCompany::eligible()->where('user_id', $actor->id)->firstOrFail();
+        $company = app(LogisticsEligibilityService::class)->managedCompanies($actor)->firstOrFail();
         $page = $query['rider_request_page'] ?? 1;
         Validator::make(['rider_request_page' => $page], ['rider_request_page' => ['required', 'integer', 'min:1', 'max:1000000', $this->number()]])->validate();
         $hubId = $query['hub_id'] ?? null;
@@ -113,14 +113,14 @@ class RiderCompanyRequestService
         $this->requireAvailable();
         $data = $this->validate($input, ['enabled' => ['required', 'boolean'], 'expected_version' => ['required', $this->number(true)],
             'request_token' => $this->token()]);
-        $owned = LogisticsCompany::eligible()->where('user_id', $actor->id)->first();
+        $owned = app(LogisticsEligibilityService::class)->managedCompanies($actor)->first();
         abort_unless($owned && $this->companyOwner($actor), 403);
         $fingerprint = $this->fingerprint(['action' => 'intake', 'company_id' => $owned->id,
             'enabled' => (bool) $data['enabled'], 'expected_version' => (int) $data['expected_version']]);
 
         return DB::transaction(function () use ($actor, $owned, $data, $fingerprint) {
             $company = $this->lock($owned->id, $actor->id);
-            abort_unless($company->user_id === $actor->id && $this->companyOwner($actor), 403);
+            abort_unless(app(LogisticsEligibilityService::class)->isCompanyManager($actor, $company->id) && $this->companyOwner($actor), 403);
             $event = RiderCompanyIntakeEvent::where('actor_id', $actor->id)->where('request_token', $data['request_token'])->first();
             if ($event) {
                 abort_unless(hash_equals($event->fingerprint, $fingerprint), 409, 'This submission key already records another intake decision.');
@@ -268,7 +268,14 @@ class RiderCompanyRequestService
             ->whereHas('hubs', fn ($hub) => $hub->eligible())
             ->whereHas('riderIntakeEvents', fn ($event) => $event->where('after_enabled', true)
                 ->whereColumn('after_version', 'logistics_companies.rider_intake_version')
-                ->whereColumn('actor_id', 'logistics_companies.user_id'));
+                ->where(fn ($scope) => $scope->whereColumn('actor_id', 'logistics_companies.user_id')
+                    ->orWhereExists(fn ($assignment) => $assignment->selectRaw('1')->from('hub_handlers')
+                        ->join('logistics_hubs', 'logistics_hubs.id', '=', 'hub_handlers.hub_id')
+                        ->whereColumn('hub_handlers.user_id', 'rider_company_intake_events.actor_id')
+                        ->whereColumn('hub_handlers.logistics_company_id', 'logistics_companies.id')
+                        ->whereColumn('logistics_hubs.logistics_company_id', 'logistics_companies.id')
+                        ->where('hub_handlers.is_active', true)->where('logistics_hubs.is_active', true)
+                        ->where('logistics_hubs.tier', 'regional_mother_hub'))));
     }
 
     public function intakeRecorded(LogisticsCompany $company): bool
@@ -277,7 +284,10 @@ class RiderCompanyRequestService
             return ! $company->rider_intake_enabled;
         }
 
-        return RiderCompanyIntakeEvent::where('logistics_company_id', $company->id)->where('actor_id', $company->user_id)
+        return RiderCompanyIntakeEvent::where('logistics_company_id', $company->id)
+            ->whereIn('actor_id', User::eligibleLogisticsAccounts()->where(fn ($actor) => $actor->whereKey($company->user_id)
+                ->orWhereHas('hubHandlers', fn ($assignment) => $assignment->eligible()->where('logistics_company_id', $company->id)
+                    ->whereHas('hub', fn ($hub) => $hub->where('tier', 'regional_mother_hub'))))->select('id'))
             ->where('after_version', $company->rider_intake_version)->where('after_enabled', $company->rider_intake_enabled)->exists();
     }
 
@@ -294,7 +304,7 @@ class RiderCompanyRequestService
         $owner = User::find($actor->id);
 
         return $owner?->isLogistics() && $owner->canAccessPortal() && $owner->email_verified_at !== null
-            && app(LogisticsEligibilityService::class)->isCompanyAdministrator($owner);
+            && app(LogisticsEligibilityService::class)->isCompanyManager($owner);
     }
 
     public function applicationBlocker(User $rider, ?CourierProfile $profile): ?string

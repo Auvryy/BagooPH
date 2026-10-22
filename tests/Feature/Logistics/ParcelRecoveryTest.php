@@ -269,7 +269,7 @@ class ParcelRecoveryTest extends TestCase
             ->where('selectedObservation.case.canPrepareTransfer', true)->where('selectedObservation.expectedHub', $case->originalMember->manifest->destinationHub->name));
         $this->actingAs($handler)->get('/hub/parcel-recovery/'.$observation->id)->assertInertia(fn (Assert $page) => $page
             ->component('Hub/ParcelRecovery')->where('selectedObservation.case.originalManifestUrl', null)
-            ->where('selectedObservation.case.canPrepareTransfer', false));
+            ->where('selectedObservation.case.canPrepareTransfer', true));
         $expectedHandler = $this->flowHandler($case->originalMember->manifest->destinationHub);
         $this->actingAs($expectedHandler)->get('/hub/parcel-recovery/'.$observation->id)->assertOk();
         $this->actingAs($this->createApprovedUser('logistics'))->get('/hub/parcel-recovery/'.$observation->id)->assertNotFound();
@@ -290,8 +290,11 @@ class ParcelRecoveryTest extends TestCase
         $manifest = $observation->manifest;
         $sender = $this->flowHandler($manifest->sourceHub);
         $this->actingAs($sender)->get('/hub/manifests/'.$manifest->id)->assertInertia(fn (Assert $page) => $page
-            ->component('Hub/Manifests')->where('selectedManifest.discrepancies.0.recoveryUrl', null));
-        $this->get('/hub/parcel-recovery/'.$observation->id)->assertNotFound();
+            ->component('Hub/Manifests')->where('selectedManifest.discrepancies.0.recoveryUrl', '/hub/parcel-recovery/'.$observation->id));
+        $this->assertTrue($manifest->sourceHub->isMotherHub());
+        $this->get('/hub/parcel-recovery/'.$observation->id)->assertOk();
+        $unrelatedBayan = $this->flowHandler(LogisticsHub::findOrFail($parcel->origin_bayan_hub_id));
+        $this->actingAs($unrelatedBayan)->get('/hub/parcel-recovery/'.$observation->id)->assertNotFound();
         $this->actingAs($receiver)->get('/hub/manifests/'.$manifest->id)->assertInertia(fn (Assert $page) => $page
             ->where('selectedManifest.discrepancies.0.recoveryUrl', '/hub/parcel-recovery/'.$observation->id));
 
@@ -318,7 +321,7 @@ class ParcelRecoveryTest extends TestCase
         $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/close', $this->flowManifestPayload($manifest))->assertOk();
         $this->transfer($case->fresh(), $manager);
         $this->actingAs($motherHandler)->withSession(['active_hub_id' => $manifest->destination_hub_id])
-            ->get(route('hub.dashboard'))->assertInertia(fn (Assert $page) => $page->where('attentionQueue.4.count', 0));
+            ->get(route('hub.dashboard'))->assertInertia(fn (Assert $page) => $page->where('attentionQueue.4.count', 1));
         $this->actingAs($handler)->withSession(['active_hub_id' => $case->observed_hub_id])
             ->get(route('hub.dashboard'))->assertInertia(fn (Assert $page) => $page->where('attentionQueue.4.count', 1));
     }

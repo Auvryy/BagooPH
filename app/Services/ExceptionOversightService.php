@@ -53,9 +53,9 @@ class ExceptionOversightService
     {
         $actor = User::findOrFail($actor->id);
         abort_unless($actor->canAccessPortal() && ($actor->isAdmin()
-            || ($actor->isLogistics() && $this->eligibility->isCompanyAdministrator($actor, $companyId))), 403);
+            || ($actor->isLogistics() && $this->eligibility->isCompanyManager($actor, $companyId))), 403);
         if (! $actor->isAdmin()) {
-            abort_unless($companyId === null || LogisticsCompany::whereKey($companyId)->where('user_id', $actor->id)->exists(), 403);
+            abort_unless($companyId === null || $this->eligibility->isCompanyManager($actor, $companyId), 403);
         }
 
         return $actor;
@@ -82,7 +82,7 @@ class ExceptionOversightService
     public function queue(User $actor, array $filters): LengthAwarePaginator
     {
         $actor = $this->actor($actor);
-        $companyId = $actor->isAdmin() ? null : LogisticsCompany::where('user_id', $actor->id)->value('id');
+        $companyId = $actor->isAdmin() ? null : $this->eligibility->managedCompanies($actor)->value('id');
         $rows = collect();
         foreach (self::SOURCES as $kind => [$class]) {
             if (($filters['kind'] ?? '') !== '' && $filters['kind'] !== $kind) {
@@ -151,7 +151,7 @@ class ExceptionOversightService
     public function sourceGaps(User $actor): array
     {
         $actor = $this->actor($actor);
-        $companyId = $actor->isAdmin() ? null : LogisticsCompany::where('user_id', $actor->id)->value('id');
+        $companyId = $actor->isAdmin() ? null : $this->eligibility->managedCompanies($actor)->value('id');
         $query = Delivery::when($companyId, fn ($q) => $q->where('logistics_company_id', $companyId))
             ->where(function ($q) {
                 $q->where(fn ($failed) => $failed->where('status', 'delivery_failed')->whereNotIn('id', DeliveryAttempt::select('delivery_id')))
@@ -313,7 +313,7 @@ class ExceptionOversightService
             return false;
         }
 
-        return ($user->isLogistics() && ($this->eligibility->isCompanyAdministrator($user, $companyId)
+        return ($user->isLogistics() && ($this->eligibility->isCompanyManager($user, $companyId)
             || HubHandler::eligible()->where('user_id', $user->id)->where('logistics_company_id', $companyId)->exists()))
             || ($user->isCourier() && CourierProfile::operational()->where('user_id', $user->id)->where('logistics_company_id', $companyId)->exists());
     }

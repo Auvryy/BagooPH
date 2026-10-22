@@ -33,7 +33,7 @@ class ParcelRecoveryService
         $actor = User::findOrFail($actor->id);
         $manifests = app(LogisticsManifestService::class)->readable($actor)->where('direction', '!=', 'buyer_return');
         $handlerHubs = null;
-        if (! $actor->isAdmin() && ! $this->eligibility->isCompanyAdministrator($actor)) {
+        if (! $actor->isAdmin() && ! $this->eligibility->isCompanyManager($actor)) {
             $handlerHubs = $this->eligibility->accessibleHubs($actor)->pluck('logistics_hubs.id');
             $manifests->whereIn('destination_hub_id', $this->eligibility->accessibleHubs($actor)->select('logistics_hubs.id'));
         }
@@ -464,7 +464,7 @@ class ParcelRecoveryService
     private function administrator(User $actor, int $companyId): User
     {
         $actor = User::findOrFail($actor->id);
-        abort_unless($actor->isLogistics() && $actor->canAccessPortal() && $this->eligibility->isCompanyAdministrator($actor, $companyId), 403);
+        abort_unless($actor->isLogistics() && $actor->canAccessPortal() && $this->eligibility->isCompanyManager($actor, $companyId), 403);
 
         return $actor;
     }

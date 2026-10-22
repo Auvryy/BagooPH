@@ -177,6 +177,34 @@ class RiderCompanyOffersTest extends TestCase
     }
 
     #[DataProvider('portals')]
+    public function test_existing_mother_handler_issues_an_offer_and_rider_accepts_without_company_owner_login(string $riderBase, string $hubBase): void
+    {
+        $motherHub = LogisticsHub::create(['logistics_company_id' => $this->company->id,
+            'name' => 'Bagoo Mother Hub', 'code' => 'RC02-MOTHER', 'tier' => 'regional_mother_hub',
+            'province' => 'Laguna', 'city_municipality' => 'Calamba', 'is_active' => true, 'address' => '100 Mother Hub Road']);
+        $manager = $this->account('logistics');
+        HubHandler::create(['user_id' => $manager->id, 'hub_id' => $motherHub->id,
+            'logistics_company_id' => $this->company->id, 'is_active' => true]);
+        $this->assertNotSame($this->company->user_id, $manager->id);
+        $issued = $this->actingAs($manager)->postJson($hubBase.'/rider-company-requests/'.$this->request->id.'/offers', $this->offerInput())
+            ->assertOk()->assertJsonPath('data.status', 'offered')->json('data');
+        $offer = RiderCompanyOffer::findOrFail($issued['offer']['id']);
+        $this->assertNull($this->rider->courierProfile->fresh()->logistics_company_id);
+        $input = $this->acceptance($offer);
+        $this->actingAs($this->rider)->postJson($riderBase.'/company-requests/'.$this->request->id.'/accept', $input)->assertOk();
+        $this->postJson($riderBase.'/company-requests/'.$this->request->id.'/accept', $input)->assertOk()->assertJsonPath('data.replayed', true);
+        $this->assertSame($this->company->id, $this->rider->courierProfile->fresh()->logistics_company_id);
+        $this->assertSame($this->hub->id, $this->rider->courierProfile->fresh()->assigned_hub_id);
+        $this->assertSame($this->vehicle->id, $this->rider->courierProfile->fresh()->vehicle_id);
+        $this->assertSame($this->rider->id, $this->vehicle->fresh()->assigned_driver_id);
+        $this->assertFalse($this->rider->courierProfile->fresh()->is_available);
+        $this->assertDatabaseCount('rider_company_consents', 1);
+        $this->assertDatabaseCount('logistics_placement_records', 1);
+        $this->assertSame($manager->id, LogisticsPlacementRecord::sole()->actor_id);
+        $this->assertSame($this->owner->id, $this->company->fresh()->user_id);
+    }
+
+    #[DataProvider('portals')]
     public function test_old_email_placement_cannot_create_membership_without_consent(string $riderBase, string $hubBase): void
     {
         $this->actingAs($this->owner)->postJson($hubBase.'/placements', ['kind' => 'courier', 'email' => $this->rider->email,
@@ -633,5 +661,43 @@ class RiderCompanyOffersTest extends TestCase
         $this->assertDatabaseCount('rider_company_consents', 0);
         $this->offers->riderDecision($this->rider, $this->request->id, 'accepted', $this->acceptance($offer));
         $this->assertDatabaseCount('rider_company_consents', 1);
+    }
+
+    public static function unauthorizedDecisionActors(): array
+    {
+        return [['bayan'], ['foreign_mother'], ['suspended_mother']];
+    }
+
+    #[DataProvider('unauthorizedDecisionActors')]
+    public function test_database_guard_rejects_forged_decisions_from_non_managers(string $kind): void
+    {
+        $actor = $this->account('logistics');
+        $hub = $this->hub;
+        if ($kind !== 'bayan') {
+            $company = $kind === 'foreign_mother' ? $this->foreignCompany() : $this->company;
+            $hub = LogisticsHub::create(['logistics_company_id' => $company->id,
+                'name' => 'Decision Mother Hub', 'code' => 'RC02-GUARD-MH', 'tier' => 'regional_mother_hub',
+                'province' => 'Laguna', 'city_municipality' => 'Calamba', 'is_active' => true, 'address' => '100 Guard Hub Road']);
+        }
+        HubHandler::create(['user_id' => $actor->id, 'hub_id' => $hub->id,
+            'logistics_company_id' => $hub->logistics_company_id, 'is_active' => true]);
+        if ($kind === 'suspended_mother') {
+            $actor->update(['status' => 'suspended']);
+        }
+        $before = $this->request->getRawOriginal();
+        try {
+            DB::transaction(function () use ($actor) {
+                RiderCompanyRequestEvent::create(['rider_company_request_id' => $this->request->id,
+                    'actor_id' => $actor->id, 'request_token' => (string) Str::uuid(),
+                    'fingerprint' => str_repeat('b', 64), 'action' => 'rejected', 'request_version' => 2,
+                    'result' => [], 'reason' => 'Review this rider application.', 'recorded_at' => now()]);
+                DB::table('rider_company_requests')->where('id', $this->request->id)->update(['status' => 'rejected', 'version' => 2]);
+            });
+            $this->fail('A forged non-manager decision bypassed the database guard.');
+        } catch (QueryException $exception) {
+            $this->assertStringContainsString('authorized decision receipt', $exception->getMessage());
+        }
+        $this->assertSame($before, $this->request->fresh()->getRawOriginal());
+        $this->assertSame(0, RiderCompanyRequestEvent::where('actor_id', $actor->id)->count());
     }
 }
