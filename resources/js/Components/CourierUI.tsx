@@ -20,6 +20,13 @@ export function CourierBadge({ children, tone = 'neutral' }: PropsWithChildren<{
     return <span className={`inline-flex items-center gap-1.5 rounded-[8px] border px-3 py-1.5 text-xs font-semibold ${colors[tone]}`}>{children}</span>;
 }
 
+export function CourierParcelIdentifiers({ trackingNumber, orderNumber }: { trackingNumber: string; orderNumber: string | null }) {
+    return <dl className="grid min-w-0 gap-2 text-sm sm:grid-cols-2">
+        <div className="min-w-0"><dt className="text-xs font-medium text-slate-600">Waybill</dt><dd className="mt-1 break-all font-semibold text-slate-900">{trackingNumber}</dd></div>
+        <div className="min-w-0"><dt className="text-xs font-medium text-slate-600">Order reference</dt><dd className="mt-1 break-all font-medium text-slate-800">{orderNumber || 'Not provided'}</dd></div>
+    </dl>;
+}
+
 export function CourierEmpty({ title, children, icon: Icon = Package }: PropsWithChildren<{ title: string; icon?: LucideIcon }>) {
     return <CourierPanel className="px-5 py-10 text-center"><span className="courier-empty-icon mx-auto flex h-16 w-16 items-center justify-center rounded-[8px] border border-rose-300 bg-[#FDF2F4] text-[#C20836]"><Icon className="h-8 w-8" aria-hidden="true" /></span><h2 className="mt-4 text-xl font-bold text-slate-900">{title}</h2><div className="mx-auto mt-2 max-w-md text-base leading-relaxed text-slate-600">{children}</div></CourierPanel>;
 }

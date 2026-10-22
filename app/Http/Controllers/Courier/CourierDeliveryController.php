@@ -103,7 +103,7 @@ class CourierDeliveryController extends Controller
         }
 
         $parcels = new Collection([...$availableJobs, ...$pickupTasks, ...$finalMileTasks]);
-        $parcels->loadMissing(array_map(fn ($relation) => substr($relation, strlen('delivery.')), OrderTrackingService::relations(history: false)));
+        $parcels->loadMissing(['order.items.product:id,name', ...array_map(fn ($relation) => substr($relation, strlen('delivery.')), OrderTrackingService::relations(history: false))]);
 
         return [
             'stats' => [
@@ -114,9 +114,9 @@ class CourierDeliveryController extends Controller
                 'completedToday' => $completedToday,
             ],
             'queues' => [
-                'availablePickups' => $availableJobs->map(fn (Delivery $delivery) => $this->pickupPayload($delivery, true))->values(),
-                'pickupTasks' => $pickupTasks->map(fn (Delivery $delivery) => $this->pickupPayload($delivery, false))->values(),
-                'finalMileTasks' => $finalMileTasks->map(fn (Delivery $delivery) => $this->finalMilePayload($delivery))->values(),
+                'availablePickups' => $availableJobs->map(fn (Delivery $delivery) => $this->pickupPayload($delivery, true, $user))->values(),
+                'pickupTasks' => $pickupTasks->map(fn (Delivery $delivery) => $this->pickupPayload($delivery, false, $user))->values(),
+                'finalMileTasks' => $finalMileTasks->map(fn (Delivery $delivery) => $this->finalMilePayload($delivery, $user))->values(),
                 'recentActivity' => $recentActivity->map(fn (Delivery $delivery) => $this->activityPayload($delivery))->values(),
             ],
         ];
@@ -447,7 +447,7 @@ class CourierDeliveryController extends Controller
         ];
     }
 
-    private function pickupPayload(Delivery $delivery, bool $isAvailable): array
+    private function pickupPayload(Delivery $delivery, bool $isAvailable, User $rider): array
     {
         $held = app(HandoverHoldService::class)->held($delivery);
 
@@ -458,6 +458,8 @@ class CourierDeliveryController extends Controller
             'status' => $delivery->status,
             'tracking' => $delivery->order ? app(OrderTrackingService::class)->present($delivery->order, history: false, parcel: $delivery) : null,
             'itemCount' => $delivery->order?->items?->sum('quantity') ?? 0,
+            'items' => $this->parcelItems($delivery),
+            'retainedByCurrentCourier' => ! $isAvailable && $this->operations->retainsParcel($delivery, $rider),
             'merchant' => [
                 'name' => $delivery->pickup_store_name,
                 'address' => $delivery->pickup_address,
@@ -477,7 +479,7 @@ class CourierDeliveryController extends Controller
         ];
     }
 
-    private function finalMilePayload(Delivery $delivery): array
+    private function finalMilePayload(Delivery $delivery, User $rider): array
     {
         $held = app(HandoverHoldService::class)->held($delivery);
 
@@ -486,6 +488,9 @@ class CourierDeliveryController extends Controller
             'trackingNumber' => $delivery->tracking_number,
             'orderNumber' => $delivery->order?->order_number,
             'status' => $delivery->status,
+            'itemCount' => $delivery->order?->items?->sum('quantity') ?? 0,
+            'items' => $this->parcelItems($delivery),
+            'retainedByCurrentCourier' => $this->operations->retainsParcel($delivery, $rider),
             'tracking' => $delivery->order ? app(OrderTrackingService::class)->present($delivery->order, history: false, parcel: $delivery) : null,
             'recipient' => [
                 'name' => $delivery->delivery_recipient_name,
@@ -513,6 +518,14 @@ class CourierDeliveryController extends Controller
             'failureReason' => DeliveryRecoveryService::REASONS[$delivery->failure_reason] ?? $delivery->failure_reason,
             'canMessage' => true,
         ];
+    }
+
+    private function parcelItems(Delivery $delivery): array
+    {
+        return $delivery->order?->items?->map(fn ($item) => [
+            'name' => $item->product?->name ?? 'Product unavailable',
+            'quantity' => (int) $item->quantity,
+        ])->values()->all() ?? [];
     }
 
     private function activityPayload(Delivery $delivery): array

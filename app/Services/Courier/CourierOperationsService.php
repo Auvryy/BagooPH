@@ -45,6 +45,13 @@ class CourierOperationsService
         };
     }
 
+    public function retainsParcel(Delivery $delivery, User $rider): bool
+    {
+        $custody = $delivery->latestCustodyCheckpoint?->custody_after ?? [];
+
+        return ($custody['kind'] ?? null) === 'courier' && ($custody['user_id'] ?? null) === $rider->id;
+    }
+
     public function claimPickup(User $rider, Delivery $delivery): Delivery
     {
         return DB::transaction(function () use ($rider, $delivery) {

@@ -17,6 +17,7 @@ const bundle = buildSync({
             export * from '@/utils/riderCompany';
             export * from '@/Components/CompanyAssignmentOffer';
             export { default as Deliveries } from '@/Pages/Courier/Deliveries';
+            export { default as WaybillCamera } from '@/Components/WaybillCamera';
             export { default as Profile } from '@/Pages/Courier/Profile';
             export { default as Trips } from '@/Pages/Courier/Earnings';
             export { default as Messages } from '@/Pages/Courier/Messages';
@@ -151,12 +152,14 @@ test('missing intake history disables settings and missing facility copy prevent
 });
 const pickup = {
     id: 1, trackingNumber: 'BGO-PICKUP', orderNumber: 'BGO-ORDER', status: 'assigned_pickup', itemCount: 2,
+    items: [{ name: 'Canvas tote bag', quantity: 2 }],
     merchant: { name: 'Seller store', address: 'Seller road, Laguna', phone: '09171234567' },
     originHub: { name: 'Origin Bayan Hub', address: 'Origin hub road', latitude: 14.1, longitude: 121.2 },
     assignedAt: null, nextAction: 'confirm_pickup', canMessage: true,
 };
 const finalMile = {
     id: 2, trackingNumber: 'BGO-DROP', orderNumber: 'BGO-ORDER', status: 'assigned_to_rider',
+    items: [{ name: 'Linen shirt', quantity: 1 }], itemCount: 1,
     recipient: { name: 'Saved recipient', address: 'Saved buyer road', latitude: 14.5, longitude: 121.6, phone: '+639171234567' },
     destinationHub: { name: 'Destination Bayan Hub', address: 'Destination hub road', latitude: 14.3, longitude: 121.4 },
     payment: { method: 'COD', codAmount: 950.12, codAmountCents: 95012 }, assignedAt: null, nextAction: 'start_delivery', canMessage: true,
@@ -296,17 +299,20 @@ test('activity groups records at Philippine midnight and excludes invalid, futur
     assert.equal(fortnight.reduce((total, day) => total + day.count, 0), 3);
     assert.ok(ui.courierActivitySeries([], 7, now).every(day => day.count === 0));
 });
-test('dashboard uses server overview counts and recent records without inventing earnings or goals', async () => {
+test('task queues use returned work counts and recent records without inventing earnings or goals', async () => {
     const record = { id: 10, trackingNumber: 'BGO-RECENT', orderNumber: 'BGO-OLD', recipientName: 'Actual recipient', deliveryAddress: 'Recorded street', paymentMethod: 'COD', destinationHub: scope.hub, deliveredAt: '2026-10-03T02:00:00Z' };
     const html = await renderPage(ui.Deliveries, 'Deliveries', {
         scope, isOnline: true,
         stats: { availablePickups: 27, activePickups: 3, activePickupLimit: 5, finalMileTasks: 2, completedToday: 12 },
         queues: { pickupTasks: [pickup], recentActivity: [record] },
     });
-    const overview = html.slice(html.indexOf('aria-label="Work overview"'), html.indexOf('aria-label="Task filters"'));
-    for (const count of [27, 3, 2, 12]) assert.match(overview, new RegExp(`<span[^>]*>${count}</span>`));
-    assert.match(html, /aria-label="Pickup capacity in use" aria-valuemin="0" aria-valuemax="5" aria-valuenow="3"/);
+    assert.match(html, /Available to claim/);
+    assert.match(html, />27</);
+    assert.match(html, /Assigned to you/);
+    assert.match(html, />1</);
+    assert.match(html, /aria-label="Claimed pickup capacity in use" aria-valuemin="0" aria-valuemax="5" aria-valuenow="3"/);
     assert.match(html, /2 slots free/);
+    assert.match(html, />12 today</);
     assert.match(html, /Your latest 10 delivery records at this hub/);
     assert.match(html, /Recent deliveries[^]*BGO-RECENT[^]*Actual recipient[^]*Recorded street/);
     assert.doesNotMatch(html, /Today.s earnings|Rider rating|bonus|Estimated arrival|Live GPS|Online time/);
@@ -325,7 +331,7 @@ test('parcel selection preserves queue order and current-stop contact restrictio
 });
 test('missing COD amount remains missing and prepaid jobs do not show a cash amount', async () => {
     const missing = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { finalMileTasks: [{ ...finalMile, payment: { method: 'COD', codAmount: null, codAmountCents: null } }] } });
-    assert.match(missing, /Amount not provided/);
+    assert.match(missing, /COD amount unavailable · refresh tracking/);
     assert.doesNotMatch(missing, /₱0/);
     const prepaid = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { finalMileTasks: [{ ...finalMile, payment: { method: 'PREPAID', codAmount: null, codAmountCents: null } }] } });
     assert.match(prepaid, /PREPAID · No COD due/);
@@ -335,18 +341,44 @@ test('claimed pickup shows seller directions and collection action', async () =>
     const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: true, queues: { pickupTasks: [pickup] } });
     assert.match(html, /role="switch" aria-label="Rider duty" aria-checked="true"/);
     assert.deepEqual(directionDestinations(html), ['Seller road, Laguna']);
-    assert.match(html, /Confirm pickup/);
+    assert.match(html, /Scan waybill · confirm pickup/);
     assert.match(html, /No usable saved pin/);
     assert.match(html, /Use address-based directions/);
     assert.match(html, /phase=pickup/);
     assert.doesNotMatch(html, /Cash due at delivery/);
 });
 test('collected pickup switches directions to origin intake and removes collection action', async () => {
-    const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: false, queues: { pickupTasks: [{ ...pickup, status: 'picked_up', nextAction: 'await_origin_hub_scan' }] } });
+    const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: false, queues: { pickupTasks: [{ ...pickup, status: 'picked_up', nextAction: 'await_origin_hub_scan', retainedByCurrentCourier: true }] } });
     assert.deepEqual(directionDestinations(html), ['14.1,121.2']);
-    assert.match(html, /Hub staff must scan/);
-    assert.doesNotMatch(html, />Confirm pickup</);
+    assert.match(html, /Hub staff must scan it into custody/);
+    assert.doesNotMatch(html, /confirm pickup/);
     assert.match(html, /Existing assigned parcels remain available/);
+});
+test('workspace separates confirmed custody from assignment and keeps product and parcel identity visible', async () => {
+    const carryingPickup = { ...pickup, status: 'picked_up', nextAction: 'await_origin_hub_scan', retainedByCurrentCourier: true,
+        trackingNumber: 'BGO-CARRY-PICKUP', orderNumber: 'ORDER-CARRY-PICKUP', items: [{ name: 'Cotton tote', quantity: 2 }] };
+    const heldDelivery = { ...finalMile, status: 'delivery_failed', nextAction: 'return_to_hub', retainedByCurrentCourier: true, handoverHold: true,
+        trackingNumber: 'BGO-HELD-DELIVERY', orderNumber: 'ORDER-HELD-DELIVERY', items: [{ name: 'Linen jacket', quantity: 1 }] };
+    const assignedPickup = { ...pickup, status: 'assigned_pickup', nextAction: 'confirm_pickup', retainedByCurrentCourier: false,
+        trackingNumber: 'BGO-ASSIGNED-PICKUP', orderNumber: 'ORDER-ASSIGNED-PICKUP', items: [{ name: 'Woven basket', quantity: 3 }] };
+    const carrying = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { pickupTasks: [carryingPickup, assignedPickup], finalMileTasks: [heldDelivery] } });
+    assert.match(carrying, /aria-pressed="true"[^>]*>[^<]*<span>Carrying/);
+    assert.match(carrying, /Cotton tote/);
+    assert.match(carrying, /× 2/);
+    assert.match(carrying, /Linen jacket/);
+    assert.match(carrying, /Carrying · recovery required/);
+    assert.match(carrying, /Open handover recovery/);
+    assert.doesNotMatch(carrying, /Woven basket/);
+    assert.doesNotMatch(carrying, /Scan waybill · record delivery/);
+    assert.match(carrying, /<dt[^>]*>Waybill<\/dt><dd[^>]*>BGO-CARRY-PICKUP/);
+    assert.match(carrying, /<dt[^>]*>Order reference<\/dt><dd[^>]*>ORDER-CARRY-PICKUP/);
+
+    const assigned = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { finalMileTasks: [{ ...finalMile, status: 'out_for_delivery', nextAction: 'complete_delivery', retainedByCurrentCourier: false, trackingNumber: 'BGO-REVIEW', items: [{ name: 'Ceramic cup', quantity: 1 }] }] } });
+    assert.match(assigned, /aria-pressed="true"[^>]*>[^<]*<span>Assigned to you/);
+    assert.match(assigned, /Custody review/);
+    assert.match(assigned, /Ceramic cup/);
+    assert.match(assigned, /Custody review required before delivery/);
+    assert.doesNotMatch(assigned, /Scan waybill · record delivery|Report failed attempt/);
 });
 test('available pickup cannot be claimed off duty or beyond capacity', async () => {
     for (const props of [{ isOnline: false }, { isOnline: true, stats: { activePickups: 5, activePickupLimit: 5 } }]) {
@@ -358,19 +390,26 @@ test('available pickup cannot be claimed off duty or beyond capacity', async () 
 test('final-mile collection targets the destination hub with exact server COD', async () => {
     const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: true, queues: { finalMileTasks: [finalMile] } });
     assert.deepEqual(directionDestinations(html), ['14.3,121.4']);
-    assert.match(html, /Start delivery/);
+    assert.match(html, /Scan waybill · start delivery/);
     assert.match(html, /Map of Destination Bayan Hub/);
     assert.match(html, /aria-label="Zoom in"/);
     assert.match(html, /aria-label="Zoom out"/);
     assert.match(html, /₱950\.12/);
 });
 test('delivery leg uses the saved buyer pin and records delivery separately from receipt', async () => {
-    const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: false, queues: { finalMileTasks: [{ ...finalMile, status: 'out_for_delivery', nextAction: 'complete_delivery' }] } });
+    const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: false, queues: { finalMileTasks: [{ ...finalMile, status: 'out_for_delivery', nextAction: 'complete_delivery', retainedByCurrentCourier: true }] } });
     assert.deepEqual(directionDestinations(html), ['14.5,121.6']);
-    assert.match(html, /Record delivery/);
+    assert.match(html, /Scan waybill · record delivery/);
     assert.match(html, /Map of Saved buyer destination/);
     assert.match(html, /buyer confirms receipt separately/);
     assert.match(html, /phase=final_mile/);
+});
+test('a return-to-hub route treats the buyer address as a reference until reassigned', async () => {
+    const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { finalMileTasks: [{ ...finalMile, status: 'delivery_failed', nextAction: 'return_to_hub', retainedByCurrentCourier: true }] } });
+    assert.deepEqual(directionDestinations(html), ['14.3,121.4']);
+    assert.match(html, /Saved buyer destination[^]*Reference only · if reassigned/);
+    assert.doesNotMatch(html, /Saved buyer destination[^]*Next stop/);
+    assert.match(html, /Return this parcel to the destination hub/);
 });
 test('unassigned dashboard presents an honest empty queue', async () => {
     const html = await renderPage(ui.Deliveries, 'Deliveries', { queues: {}, scope: {}, isOnline: false });
@@ -383,7 +422,7 @@ test('unassigned dashboard presents an honest empty queue', async () => {
 test('an available pickup map is explicitly a preview and never a claimed job', async () => {
     const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: true, queues: { availablePickups: [{ ...pickup, nextAction: 'claim_pickup', canMessage: false }] } });
     assert.match(html, /Pickup preview/);
-    assert.match(html, /Claim the pickup before collecting/);
+    assert.match(html, /Claim this pickup before collecting/);
     assert.doesNotMatch(html, /Your selected stop/);
 });
 test('history explains current scope and avoids unsupported performance and payout claims', async () => {
