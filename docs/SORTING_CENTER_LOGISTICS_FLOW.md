@@ -138,19 +138,20 @@ The seller cannot mark the parcel `PICKED_UP`. Only the assigned pickup rider's 
 3. The scan records operator, facility, time, tracking number, and hub custody.
 4. The order becomes `AT_SORTING_CENTER`.
 5. The pickup assignment ends.
-6. The next receipt is confirmed by the assigned handler at the required Mother Hub; normal outbound transfers do not require preparing a manifest.
+6. The assigned sending handler prepares a manifest for the exact next hub, choosing its eligible vehicle and assigned transport driver.
 
 ### E. Mother-Hub Processing
 
-Every normal outbound parcel must be physically received by each required Mother Hub in its saved route.
+Every outbound parcel travels through each required Mother Hub in its saved route.
 
-1. The assigned next-hub handler scans the unchanged waybill and confirms physical receipt.
-2. The backend validates the previous retained receipt, current source state, company, active facilities, handler assignment and exact next route leg.
-3. Distinct origin and destination Mother Hubs require separate, ordered receipt confirmations before the destination Bayan Hub can receive.
-4. The final required Mother Hub forwards the parcel to the destination Bayan Hub, whose assigned handler scans and confirms its receipt.
-5. Each confirmation appends immutable actor, source/target state, previous receipt reference, route and custody evidence. Preview scans do not change state. Until confirmation, the last confirmed hub remains recorded; no unobserved departure is fabricated.
+1. The sending hub handler prepares the manifest and scans the actual outbound waybills into its draft.
+2. The handler seals the list, then records departure. Only departure transfers custody from the source hub to the recorded vehicle and driver.
+3. The receiving hub handler opens the incoming manifest and scans each physically arriving parcel. A scanner preview alone never records receipt.
+4. Once all expected parcels have supporting receipts and discrepancies are resolved, the receiving handler closes the manifest.
+5. The receiving hub prepares the next manifest when another hub remains. Distinct Mother Hubs require separate, ordered legs before destination Bayan intake.
+6. Feeder legs require an eligible source-hub closed van and assigned available driver; Mother-to-Mother line haul requires an eligible wing truck. Missing assignments block departure with guidance rather than fabricating transport.
 
-Normal outbound receipts need no vehicle selection, manifest creation, sealing or closure. Parcels already using manifest custody finish that recorded workflow. Historical manifests, corrective receipts and return/exception transport remain available without deleting their evidence.
+No separate logistics administrator login is required. Assigned source handlers prepare, seal and dispatch their transfers; assigned destination handlers record and close receipts. Existing Mother Hub handlers manage their eligible company's network and personnel. Management access alone never grants physical scan authority at another facility. Historical direct receipts remain retained evidence; new normal transfers use manifests.
 
 ### F. Destination Bayan Hub and Rider Assignment
 

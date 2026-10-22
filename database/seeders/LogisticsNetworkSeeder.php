@@ -18,14 +18,6 @@ class LogisticsNetworkSeeder extends Seeder
         $buyer = User::where('role', 'buyer')->where('email', 'buyer@bagoo.test')->firstOrFail();
         $finalMileRider = User::where('role', 'courier')->where('email', 'rider@bagoo.test')->firstOrFail();
 
-        $companyAdmin = $this->logisticsUser(
-            'logistics.admin@bagoo.test',
-            'Bagoo Express Administrator',
-            '+63 917 000 0010',
-            'Bagoo Express Operations Office',
-            'Calamba City, Laguna',
-            '4027'
-        );
         $losBanosHandler = $this->logisticsUser(
             'losbanos.hub@bagoo.test',
             'Los Banos Hub Operator',
@@ -71,7 +63,7 @@ class LogisticsNetworkSeeder extends Seeder
         $company = LogisticsCompany::updateOrCreate(
             ['code' => 'BGX'],
             [
-                'user_id' => $companyAdmin->id,
+                'user_id' => $motherHubHandler->id,
                 'name' => 'Bagoo Express Dispatch Fleet',
                 'tin' => '900000001000',
                 'service_areas' => ['NCR', 'Region III', 'Region IV-A'],
@@ -174,17 +166,7 @@ class LogisticsNetworkSeeder extends Seeder
                 'status' => 'active',
             ]
         );
-        LogisticsFleet::updateOrCreate(
-            ['plate_number' => 'BG-LAG-201'],
-            [
-                'logistics_company_id' => $company->id,
-                'hub_id' => $motherHub->id,
-                'vehicle_type' => 'l300_van',
-                'model' => 'Laguna feeder van',
-                'capacity_kg' => 1200,
-                'status' => 'active',
-            ]
-        );
+        $this->call(LogisticsTransportSeeder::class);
 
         CourierProfile::updateOrCreate(
             ['user_id' => $pickupRider->id],
