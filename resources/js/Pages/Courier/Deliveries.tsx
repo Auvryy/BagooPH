@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import useOperationalRefresh from '@/hooks/useOperationalRefresh';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Banknote, Camera, Package, RefreshCw, Search, Truck } from 'lucide-react';
+import { Banknote, Camera, RefreshCw, Search, Truck } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
 import CourierCurrentJob from '@/Components/CourierCurrentJob';
-import { CourierDashboardSummary, CourierDeliveryOverview, CourierRecentDeliveries, type CourierActivity } from '@/Components/CourierDashboard';
-import { CourierDialog, CourierEmpty, CourierFieldError, courierButton, courierClasses, courierInput, courierPrimary } from '@/Components/CourierUI';
+import CourierTaskCard, { type CourierTaskItem } from '@/Components/CourierTaskCard';
+import WaybillCamera from '@/Components/WaybillCamera';
+import { CourierDeliveryOverview, CourierRecentDeliveries, type CourierActivity } from '@/Components/CourierDashboard';
+import { CourierDialog, CourierEmpty, CourierFieldError, CourierPanel, CourierParcelIdentifiers, courierButton, courierClasses, courierInput, courierPrimary } from '@/Components/CourierUI';
 import { courierDate, courierGreeting, courierMoney, courierPath, selectCourierMapJob, type CourierMapJob, type CourierPlace, type CourierScope } from '@/utils/courier';
 import { PageProps, OrderTracking } from '@/types';
 import { currentCourierAction } from '@/utils/orderTracking';
@@ -18,6 +20,8 @@ interface PickupTask {
     id: number;
     trackingNumber: string;
     orderNumber: string | null;
+    items?: CourierTaskItem[];
+    retainedByCurrentCourier?: boolean;
     status: string;
     itemCount: number;
     merchant: CourierPlace & { phone: string | null };
@@ -33,6 +37,9 @@ interface FinalMileTask {
     id: number;
     trackingNumber: string;
     orderNumber: string | null;
+    items?: CourierTaskItem[];
+    itemCount?: number;
+    retainedByCurrentCourier?: boolean;
     status: string;
     recipient: CourierPlace & { phone: string | null };
     payment: { method: string; codAmount: number | null; codAmountCents: number | null };
@@ -52,7 +59,8 @@ interface Props {
     queues?: { availablePickups?: PickupTask[]; pickupTasks?: PickupTask[]; finalMileTasks?: FinalMileTask[]; recentActivity?: CourierActivity[] };
 }
 
-type Tab = 'pickup' | 'final_mile' | 'available';
+type WorkspaceView = 'assigned' | 'carrying' | 'available';
+type WorkspaceEntry = { phase: 'pickup'; task: PickupTask } | { phase: 'available'; task: PickupTask } | { phase: 'final_mile'; task: FinalMileTask };
 type ActionTarget = { id: number; trackingNumber: string; status: 'picked_up' | 'out_for_delivery' | 'delivered' | 'delivery_failed' };
 const actionLabels = { picked_up: 'Confirm pickup', out_for_delivery: 'Start delivery', delivered: 'Record delivery', delivery_failed: 'Record failed attempt' };
 
@@ -62,7 +70,10 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const available = queues?.availablePickups ?? [];
     const deliveries = queues?.finalMileTasks ?? [];
     const activity = queues?.recentActivity ?? [];
-    const [tab, setTab] = useState<Tab>(deliveries.length ? 'final_mile' : pickups.length ? 'pickup' : 'available');
+    const [view, setView] = useState<WorkspaceView>(() => {
+        if ([...pickups, ...deliveries].some((task) => task.retainedByCurrentCourier === true)) return 'carrying';
+        return deliveries.length || pickups.length ? 'assigned' : 'available';
+    });
     const [search, setSearch] = useState('');
     const [selectedMapKey, setSelectedMapKey] = useState<string | null>(null);
     const mapRegion = useRef<HTMLDivElement>(null);
@@ -86,25 +97,47 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     useCourierRequestError(pending, (message) => setErrors({ status: message }));
     const normalizedSearch = search.trim().toLowerCase();
     const matches = (...values: Array<string | null | undefined>) => values.some((value) => value?.toLowerCase().includes(normalizedSearch));
-    const matchingPickups = (items: PickupTask[]) => items.filter((task) => matches(task.trackingNumber, task.orderNumber, task.merchant.name, task.merchant.address, task.originHub.name, task.originHub.address));
-    const matchingDeliveries = deliveries.filter((task) => matches(task.trackingNumber, task.orderNumber, task.recipient.name, task.recipient.address, task.destinationHub.name, task.destinationHub.address));
-    const mapJobs: CourierMapJob[] = tab === 'pickup' || tab === 'available'
-        ? matchingPickups(tab === 'pickup' ? pickups : available).map((task) => {
-            const collected = task.status === 'picked_up';
+    const assignedEntries: WorkspaceEntry[] = [
+        ...pickups.filter((task) => !task.retainedByCurrentCourier).map((task) => ({ phase: 'pickup' as const, task })),
+        ...deliveries.filter((task) => !task.retainedByCurrentCourier).map((task) => ({ phase: 'final_mile' as const, task })),
+    ];
+    const carryingEntries: WorkspaceEntry[] = [
+        ...pickups.filter((task) => task.retainedByCurrentCourier).map((task) => ({ phase: 'pickup' as const, task })),
+        ...deliveries.filter((task) => task.retainedByCurrentCourier).map((task) => ({ phase: 'final_mile' as const, task })),
+    ];
+    const availableEntries: WorkspaceEntry[] = available.map((task) => ({ phase: 'available', task }));
+    const viewEntries = view === 'assigned' ? assignedEntries : view === 'carrying' ? carryingEntries : availableEntries;
+    const visibleEntries = viewEntries.filter(({ phase, task }) => {
+        const itemNames = task.items?.map((item) => item.name) ?? [];
+        if (phase === 'pickup' || phase === 'available') {
+            return matches(task.trackingNumber, task.orderNumber, task.merchant.name, task.merchant.address, task.originHub.name, task.originHub.address, ...itemNames);
+        }
+        return matches(task.trackingNumber, task.orderNumber, task.recipient.name, task.recipient.address, task.destinationHub.name, task.destinationHub.address, ...itemNames);
+    });
+    const mapJobs: CourierMapJob[] = visibleEntries.map(({ phase, task }) => {
+        if (phase === 'pickup' || phase === 'available') {
+            const retained = task.retainedByCurrentCourier === true;
+            const hasRecordedPickup = task.nextAction === 'await_origin_hub_scan';
+            const custodyReview = hasRecordedPickup && !retained;
             return {
-                key: `${tab}-${task.id}`, trackingNumber: task.trackingNumber,
-                stage: task.handoverHold ? 'Handover hold' : tab === 'available' ? 'Available pickup' : collected ? 'Bring to origin hub' : 'Collect from seller',
-                stopLabel: collected ? 'Origin Bayan Hub' : 'Seller pickup point',
-                place: collected ? task.originHub : task.merchant, preview: tab === 'available',
-                instruction: task.handoverHold ? 'Complete the authorized handover recovery before ordinary parcel work continues.' : collected ? 'Hub staff must scan this parcel into custody before it can travel onward.' : tab === 'available' ? 'This is a preview. Claim the pickup before collecting the parcel.' : 'Collect this parcel from the seller, then bring it to the origin Bayan Hub.',
+                key: `${phase}-${task.id}`, trackingNumber: task.trackingNumber,
+                stage: task.handoverHold ? retained ? 'Carrying · recovery required' : 'Handover hold' : phase === 'available' ? 'Available to claim' : retained ? 'Carrying · awaiting hub intake' : hasRecordedPickup ? 'Custody review' : 'Pickup assigned',
+                stopLabel: task.handoverHold ? 'Authorized recovery destination' : custodyReview ? 'Recorded holder needs review' : retained ? 'Origin Bayan Hub' : 'Seller pickup point',
+                place: task.handoverHold || custodyReview ? {} : retained ? task.originHub : task.merchant, preview: phase === 'available',
+                instruction: task.handoverHold ? retained ? 'You still hold this parcel. Follow the authorized recovery instruction and return it to the named hub.' : 'Complete the authorized handover recovery before ordinary parcel work continues.' : retained ? 'Bring this parcel to the origin Bayan Hub. Hub staff must scan it into custody.' : hasRecordedPickup ? 'The pickup stage is recorded, but the latest custody record does not confirm that you hold this parcel. Review tracking before moving it.' : phase === 'available' ? 'Claim this pickup before collecting the parcel from the seller.' : 'Go to the seller, check the parcel, and confirm pickup through the authorized scan.',
             };
-        }) : tab === 'final_mile' ? matchingDeliveries.map((task) => ({
+        }
+        const retained = task.retainedByCurrentCourier === true;
+        const custodyReview = !retained && (task.nextAction === 'return_to_hub' || task.nextAction === 'complete_delivery');
+        const atHub = task.nextAction === 'start_delivery' || task.nextAction === 'return_to_hub' || !retained;
+        return {
             key: `final_mile-${task.id}`, trackingNumber: task.trackingNumber,
-            stage: task.handoverHold ? 'Handover hold' : task.nextAction === 'return_to_hub' ? 'Return to destination hub' : task.nextAction === 'start_delivery' ? 'Collect at destination hub' : 'Out for delivery',
-            stopLabel: task.nextAction !== 'complete_delivery' ? 'Destination Bayan Hub' : 'Saved buyer destination',
-            place: task.nextAction !== 'complete_delivery' ? task.destinationHub : task.recipient, preview: false,
-            instruction: task.handoverHold ? 'Return the evidenced parcel to the named recovery hub. Its eligible handler must record actual receipt.' : task.nextAction === 'return_to_hub' ? 'Return this parcel to the destination hub. Its handler must scan it back before retry or reverse routing.' : task.nextAction === 'start_delivery' ? 'Collect the assigned parcel from this hub before starting delivery.' : 'Record the handoff with a proof photo. The buyer confirms receipt separately.',
-        })) : [];
+            stage: task.handoverHold ? retained ? 'Carrying · recovery required' : 'Handover hold' : custodyReview ? 'Custody review' : task.nextAction === 'return_to_hub' ? 'Carrying · return to hub' : retained ? 'Carrying · out for delivery' : task.nextAction === 'start_delivery' ? 'Final-mile assignment' : 'Custody review',
+            stopLabel: task.handoverHold ? 'Authorized recovery destination' : custodyReview ? 'Recorded holder needs review' : atHub ? 'Destination Bayan Hub' : 'Saved buyer destination',
+            place: task.handoverHold || custodyReview ? {} : atHub ? task.destinationHub : task.recipient, preview: false,
+            instruction: task.handoverHold ? retained ? 'You still hold this parcel. Follow the authorized recovery instruction and return it to the named hub.' : 'Complete the authorized handover recovery before ordinary parcel work continues.' : custodyReview ? 'The parcel stage is recorded, but the latest custody record does not confirm that you hold this parcel. Review tracking before moving it.' : task.nextAction === 'return_to_hub' ? 'Return this parcel to the destination hub. Its handler must scan it back before retry or reverse routing.' : task.nextAction === 'start_delivery' ? 'Collect the assigned parcel from this hub and confirm the actual scan before starting delivery.' : retained ? 'Deliver to the saved destination and record the actual handoff with proof. The buyer confirms receipt separately.' : 'Review the parcel tracking before moving it.',
+        };
+    });
     const selectedMapJob = selectCourierMapJob(mapJobs, selectedMapKey);
     const showOnMap = (key: string) => {
         setSelectedMapKey(key);
@@ -113,8 +146,8 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             mapRegion.current?.querySelector<HTMLElement>('#rider-current-job')?.focus({ preventScroll: true });
         });
     };
-    const selectTab = (next: Tab) => { setTab(next); setSelectedMapKey(null); };
-    const viewQueue = (next: Tab) => { setSearch(''); selectTab(next); };
+    const selectView = (next: WorkspaceView) => { setView(next); setSelectedMapKey(null); };
+    const viewQueue = (next: WorkspaceView) => { setSearch(''); selectView(next); };
     const activeCount = stats?.activePickups ?? pickups.length;
     const limit = stats?.activePickupLimit;
     const claimReason = !scope?.isAssigned ? 'A logistics company and hub assignment is needed.'
@@ -161,7 +194,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             onSuccess: (page) => {
                 const error = (page.props as PageProps).flash?.error;
                 if (error) setErrors({ status: error });
-                else setTab('pickup');
+                else setView('assigned');
             },
             onError: (validation) => setErrors(validation),
             onFinish: () => { pending.current = false; setLoadingId(null); },
@@ -181,6 +214,10 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         if (!currentCourierAction(target, pickups, deliveries)) { setErrors({ status: 'This parcel changed. Refresh tracking before another action.' }); return; }
         if (!barcode.trim()) {
             setErrors({ barcode: 'Enter the code scanned from the parcel waybill.' });
+            return;
+        }
+        if (barcode.trim() !== target.trackingNumber) {
+            setErrors({ barcode: 'The scanned waybill must match the selected parcel before its action can be recorded.' });
             return;
         }
         if ((target.status === 'delivered' || target.status === 'delivery_failed') && !proof) {
@@ -211,24 +248,83 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             onSuccess: (page) => {
                 const error = (page.props as PageProps).flash?.error;
                 if (error) setErrors({ status: error });
-                else resetAction();
+                else {
+                    if (target.status === 'picked_up' || target.status === 'out_for_delivery') setView('carrying');
+                    resetAction();
+                }
             },
             onError: (validation) => setErrors(validation),
             onFinish: () => { pending.current = false; setLoadingId(null); },
         });
     };
 
-    const selectedPickup = tab === 'pickup' || tab === 'available'
-        ? (tab === 'pickup' ? pickups : available).find((task) => selectedMapJob?.key === `${tab}-${task.id}`) : undefined;
-    const selectedDelivery = tab === 'final_mile'
-        ? deliveries.find((task) => selectedMapJob?.key === `final_mile-${task.id}`) : undefined;
-    const collected = selectedPickup?.nextAction === 'await_origin_hub_scan';
-    const departing = selectedDelivery?.nextAction === 'start_delivery';
-    const returning = selectedDelivery?.nextAction === 'return_to_hub';
-    const isCod = selectedDelivery?.payment.method === 'COD';
+    const selectedEntry = visibleEntries.find(({ phase, task }) => selectedMapJob?.key === `${phase}-${task.id}`);
+    const selectedPickup = selectedEntry && (selectedEntry.phase === 'pickup' || selectedEntry.phase === 'available') ? selectedEntry.task : undefined;
+    const selectedDelivery = selectedEntry?.phase === 'final_mile' ? selectedEntry.task : undefined;
+    const selectedHeldTask = selectedEntry?.task.handoverHold ? selectedEntry.task : undefined;
+    const selectedNeedsCustodyReview = Boolean(selectedEntry && !selectedEntry.task.handoverHold && !selectedEntry.task.retainedByCurrentCourier && (
+        (selectedEntry.phase === 'pickup' && selectedEntry.task.nextAction === 'await_origin_hub_scan')
+        || (selectedEntry.phase === 'final_mile' && (selectedEntry.task.nextAction === 'complete_delivery' || selectedEntry.task.nextAction === 'return_to_hub'))
+    ));
+    const selectedReviewTask = selectedNeedsCustodyReview ? selectedEntry?.task : undefined;
+    const selectedPanelTask = selectedHeldTask ?? selectedReviewTask;
+    const collected = selectedPickup?.retainedByCurrentCourier === true;
+    const assignedCount = assignedEntries.length;
+    const carryingCount = carryingEntries.length;
+
+    const renderTaskCard = (entry: WorkspaceEntry) => {
+        const { phase, task } = entry;
+        const key = `${phase}-${task.id}`;
+        const job = mapJobs.find((candidate) => candidate.key === key);
+        if (!job) return null;
+        const held = task.handoverHold === true;
+        const retained = task.retainedByCurrentCourier === true;
+        const itemCount = task.itemCount ?? (task.items ?? []).reduce((total, item) => total + item.quantity, 0);
+        const tone = held || job.stage === 'Custody review' || job.stage === 'Return stage' ? 'waiting' as const : 'brand' as const;
+        const actionButtons = held
+            ? <Link href="/handover-issues" className={`${courierButton} w-full sm:w-auto`}>Open handover recovery</Link>
+            : phase === 'available'
+                ? <><button type="button" onClick={() => claim(task.id)} disabled={loadingId !== null || Boolean(claimReason)} className={`${courierPrimary} w-full sm:w-auto`}>{loadingId === task.id ? 'Claiming…' : 'Claim pickup'}</button>{claimReason && <p className="self-center text-sm leading-relaxed text-slate-600 sm:max-w-52">{claimReason}</p>}</>
+                : phase === 'pickup'
+                    ? task.nextAction === 'confirm_pickup'
+                        ? <button type="button" disabled={loadingId !== null} onClick={() => openAction(task.id, task.trackingNumber, 'picked_up')} className={`${courierPrimary} w-full sm:w-auto`}>Scan waybill · confirm pickup</button>
+                        : task.nextAction === 'await_origin_hub_scan'
+                            ? <span className="inline-flex min-h-12 items-center rounded-[8px] border border-amber-300 bg-[#FFF4DF] px-4 py-3 text-sm font-semibold text-[#92400E]">{retained ? 'Awaiting origin hub intake' : 'Custody review required'}</span>
+                            : null
+                    : task.nextAction === 'return_to_hub' && retained
+                        ? <span className="inline-flex min-h-12 items-center rounded-[8px] border border-amber-300 bg-[#FFF4DF] px-4 py-3 text-sm font-semibold text-[#92400E]">Return to destination hub for intake</span>
+                        : task.nextAction === 'return_to_hub'
+                            ? <span className="inline-flex min-h-12 items-center rounded-[8px] border border-amber-300 bg-[#FFF4DF] px-4 py-3 text-sm font-semibold text-[#92400E]">Custody review required before return</span>
+                        : task.nextAction === 'start_delivery'
+                            ? <button type="button" disabled={loadingId !== null} onClick={() => openAction(task.id, task.trackingNumber, 'out_for_delivery')} className={`${courierPrimary} w-full sm:w-auto`}><Truck className="h-5 w-5" aria-hidden="true" />Scan waybill · start delivery</button>
+                    : task.nextAction === 'complete_delivery' && retained
+                                ? <><button type="button" disabled={loadingId !== null} onClick={() => openAction(task.id, task.trackingNumber, 'delivered')} className={`${courierPrimary} w-full sm:w-auto`}><Truck className="h-5 w-5" aria-hidden="true" />Scan waybill · record delivery</button><button type="button" disabled={loadingId !== null} onClick={() => openAction(task.id, task.trackingNumber, 'delivery_failed')} className={`${courierButton} w-full sm:w-auto`}>Report failed attempt</button></>
+                                : phase === 'final_mile' && task.nextAction === 'complete_delivery'
+                                    ? <span className="inline-flex min-h-12 items-center rounded-[8px] border border-amber-300 bg-[#FFF4DF] px-4 py-3 text-sm font-semibold text-[#92400E]">Custody review required before delivery</span>
+                                    : null;
+        const paymentMethod = phase === 'final_mile' ? task.payment.method.toUpperCase() : '';
+        const paymentSummary = phase === 'final_mile'
+            ? paymentMethod === 'COD'
+                ? task.payment.codAmountCents === null ? 'COD amount unavailable · refresh tracking' : `Cash due at delivery · ${courierMoney(task.payment.codAmountCents / 100)}`
+                : task.payment.method ? `${task.payment.method} · No COD due` : 'Payment method not provided'
+            : undefined;
+        const extraInstruction = phase === 'final_mile' && task.nextAction === 'return_to_hub'
+            ? `${job.instruction} Attempt ${task.failureAttempts}: ${task.failureReason || 'Reason not provided'}.`
+            : job.instruction;
+        const needsCustodyReview = job.stage === 'Custody review';
+        return <CourierTaskCard key={key} id={`courier-task-${key}`} title={phase === 'available' ? 'Available pickup' : phase === 'pickup' ? 'Pickup task' : 'Final-mile delivery'} stage={job.stage} tone={tone} trackingNumber={task.trackingNumber} orderNumber={task.orderNumber} items={task.items ?? []} itemCount={itemCount} stopLabel={job.stopLabel} stopName={held ? 'See handover recovery' : needsCustodyReview ? 'Tracking review required' : job.place.name ?? null} stopAddress={held ? 'Open recovery details for the authorized receiving hub.' : needsCustodyReview ? 'Do not move this parcel until its current holder is reviewed.' : job.place.address ?? null} instruction={extraInstruction} paymentSummary={paymentSummary} selected={selectedMapJob?.key === key} preview={job.preview} onView={() => showOnMap(key)}>
+            {actionButtons}
+        </CourierTaskCard>;
+    };
+    const targetOrderNumber = target
+        ? target.status === 'picked_up'
+            ? pickups.find((task) => task.id === target.id)?.orderNumber ?? null
+            : deliveries.find((task) => task.id === target.id)?.orderNumber ?? null
+        : null;
+    const waybillMismatch = Boolean(target && barcode.trim() && barcode.trim() !== target.trackingNumber);
 
     return (
-        <CourierLayout title={courierGreeting(auth.user?.name)} pageLabel="Dashboard" subtitle={scope?.isAssigned ? 'Your day, one handoff at a time. Let’s keep each parcel moving.' : 'Your logistics team needs to assign a company and hub before new work is available.'} isOnline={isOnline} scope={scope}>
+        <CourierLayout title={courierGreeting(auth.user?.name)} pageLabel="Tasks" subtitle={scope?.isAssigned ? 'See what is assigned to you, what you are carrying, and what you can claim.' : 'Your logistics team needs to assign a company and hub before new work is available.'} isOnline={isOnline} scope={scope}>
             <Head title="Rider dashboard — BagooPH" />
             <div className="space-y-5">
                 <div className="flex flex-wrap justify-end gap-2"><button type="button" disabled={loadingId !== null} onClick={() => {
@@ -238,45 +334,54 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                         onError: setErrors, onFinish: () => { pending.current = false; setLoadingId(null); },
                     });
                 }} className={`${courierButton} gap-2`}><RefreshCw className="h-4 w-4" aria-hidden="true" />{loadingId === -1 ? 'Refreshing…' : 'Refresh tracking'}</button><Link href={courierPath('/cod')} className={`${courierButton} gap-2`}><Banknote className="h-4 w-4" aria-hidden="true" />COD cash handovers</Link></div>
-                <CourierDashboardSummary available={stats?.availablePickups ?? available.length} pickups={activeCount} deliveries={stats?.finalMileTasks ?? deliveries.length} completedToday={stats?.completedToday} onSelect={viewQueue} />
                 {!isOnline && <p className="rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">You are off duty. Existing assigned parcels remain available below; go on duty in the header to receive new work.</p>}
                 {scope?.isAssigned && !scope.isOperational && <p className="rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">New work is paused at your company or hub. Continue handling parcels already assigned to you.</p>}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div role="group" aria-label="Task filters" className="flex flex-wrap gap-2">
-                        {([{ key: 'pickup', label: 'Pickups', count: pickups.length }, { key: 'final_mile', label: 'Deliveries', count: deliveries.length }, { key: 'available', label: 'Available', count: available.length }] as const).map((item) => <button key={item.key} type="button" aria-pressed={tab === item.key} onClick={() => selectTab(item.key)} className={courierClasses(courierButton, 'gap-2 px-3 text-sm font-medium', tab === item.key && 'border-[#E00D42] bg-white text-[#C20836]')}><span>{item.label}</span><span className={`rounded-[8px] px-2 py-0.5 text-xs tabular-nums ${tab === item.key ? 'bg-[#FCE7EA]' : 'bg-slate-100'}`}>{item.count}</span></button>)}
+                        {([{ key: 'assigned', label: 'Assigned to you', count: assignedCount }, { key: 'carrying', label: 'Carrying', count: carryingCount }, { key: 'available', label: 'Available to claim', count: stats?.availablePickups ?? available.length }] as const).map((item) => <button key={item.key} type="button" aria-pressed={view === item.key} onClick={() => selectView(item.key)} className={courierClasses(courierButton, 'gap-2 px-3 text-sm font-medium', view === item.key && 'border-[#E00D42] bg-white text-[#C20836]')}><span>{item.label}</span><span className={`rounded-[8px] px-2 py-0.5 text-xs tabular-nums ${view === item.key ? 'bg-[#FCE7EA]' : 'bg-slate-100'}`}>{item.count}</span></button>)}
                     </div>
-                    <label className="relative block w-full sm:w-60"><span className="sr-only">Search this queue</span><Search className="pointer-events-none absolute left-3 top-4 h-4 w-4 text-slate-500" aria-hidden="true" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tracking, name, or address" className={`${courierInput} mt-0 pl-10 text-sm`} /></label>
+                    <label className="relative block w-full sm:w-72"><span className="sr-only">Search this queue</span><Search className="pointer-events-none absolute left-3 top-4 h-4 w-4 text-slate-500" aria-hidden="true" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Waybill, order, product, or address" className={`${courierInput} mt-0 pl-10 text-sm`} /></label>
                 </div>
-                {mapJobs.length > 1 && <label className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-600" htmlFor="current-parcel">Choose a parcel<select id="current-parcel" value={selectedMapJob?.key ?? ''} onChange={(event) => showOnMap(event.target.value)} className={`${courierInput} mt-0 min-w-0 flex-1 text-sm sm:max-w-md`}>{mapJobs.map((job) => <option key={job.key} value={job.key}>{job.trackingNumber} · {job.stage}</option>)}</select><span className="text-xs">{mapJobs.length} {normalizedSearch ? 'matching' : 'queued'} parcels</span></label>}
                 {!target && <CourierFieldError message={errors.status || Object.values(errors).find(Boolean)} />}
-                {selectedMapJob ? <div id="rider-job-map" ref={mapRegion}>
-                    {selectedPickup && <CourierCurrentJob job={selectedMapJob} stops={[{ place: selectedPickup.merchant, label: 'Seller pickup point' }, { place: selectedPickup.originHub, label: 'Origin Bayan Hub' }]} currentStop={collected ? 1 : 0} parcelLabel={`${selectedPickup.itemCount} ${selectedPickup.itemCount === 1 ? 'item' : 'items'} · Pickup leg`} phone={collected ? null : selectedPickup.merchant.phone} messageDeliveryId={!collected && selectedPickup.canMessage ? selectedPickup.id : undefined} messagePhase="pickup" tracking={selectedPickup.tracking}>
-                        <details className="mt-2 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-medium text-slate-800">Parcel details</summary><div className="space-y-2 pb-4"><p>Order reference: {selectedPickup.orderNumber || 'Not provided'}</p><p>Items: {selectedPickup.itemCount}</p><p>Assigned: {courierDate(selectedPickup.assignedAt)}</p>{collected && selectedPickup.canMessage && <Link href={`${courierPath('/messages')}?delivery=${selectedPickup.id}&phase=pickup`} className={courierButton}>Message seller</Link>}</div></details>
-                        {tab === 'available' && <><button type="button" onClick={() => claim(selectedPickup.id)} disabled={loadingId !== null || Boolean(claimReason)} className={`${courierPrimary} w-full`}>{loadingId === selectedPickup.id ? 'Claiming…' : 'Claim pickup'}</button>{claimReason && <p className="mt-2 text-sm leading-relaxed text-slate-600">{claimReason}</p>}</>}
-                        {selectedPickup.handoverHold && <Link href="/handover-issues" className={`${courierButton} w-full`}>Open handover recovery</Link>}{selectedPickup.nextAction === 'confirm_pickup' && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedPickup.id, selectedPickup.trackingNumber, 'picked_up')} className={`${courierPrimary} w-full`}><Package className="h-5 w-5" aria-hidden="true" />Confirm pickup</button>}
-                    </CourierCurrentJob>}
-                    {selectedDelivery && <CourierCurrentJob job={selectedMapJob} stops={[{ place: selectedDelivery.destinationHub, label: 'Destination Bayan Hub' }, { place: selectedDelivery.recipient, label: 'Saved buyer destination' }]} currentStop={departing || returning ? 0 : 1} parcelLabel={`${selectedDelivery.payment.method || 'Payment method not provided'} · Delivery leg`} phone={departing || returning ? null : selectedDelivery.recipient.phone} messageDeliveryId={!departing && !returning && selectedDelivery.canMessage ? selectedDelivery.id : undefined} messagePhase="final_mile" tracking={selectedDelivery.tracking}>
-                        <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 courier-inset rounded-[8px] border border-rose-200 bg-[#FFF2F4] p-3"><p className="text-xs font-medium text-slate-600">{isCod ? 'Cash due at delivery' : 'Payment method'}</p><p className="text-base font-semibold tabular-nums text-[#C20836]">{isCod ? courierMoney(selectedDelivery.payment.codAmountCents === null ? null : selectedDelivery.payment.codAmountCents / 100) : selectedDelivery.payment.method ? `${selectedDelivery.payment.method} · No COD due` : 'Not provided'}</p>{isCod && <p className="w-full text-xs leading-relaxed text-slate-600">Record counted cash with delivery. Hub handover and platform reconciliation follow separately.</p>}</div>
-                        <details className="mt-2 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-medium text-slate-800">Delivery details</summary><div className="space-y-2 pb-4"><p>Order reference: {selectedDelivery.orderNumber || 'Not provided'}</p><p>Assigned: {courierDate(selectedDelivery.assignedAt)}</p></div></details>
-                        {selectedDelivery.handoverHold ? <Link href="/handover-issues" className={`${courierButton} w-full`}>Open handover recovery</Link> : selectedDelivery.nextAction === 'return_to_hub' ? <p className="text-sm text-amber-800">Attempt {selectedDelivery.failureAttempts}: {selectedDelivery.failureReason}. Return the parcel to the destination hub for its inbound scan.</p> : <><button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, departing ? 'out_for_delivery' : 'delivered')} className={`${courierPrimary} w-full`}><Truck className="h-5 w-5" aria-hidden="true" />{departing ? 'Start delivery' : 'Record delivery'}</button>{!departing && <button type="button" disabled={loadingId !== null} onClick={() => openAction(selectedDelivery.id, selectedDelivery.trackingNumber, 'delivery_failed')} className={`${courierButton} mt-2 w-full`}>Report failed attempt</button>}</>}
-                    </CourierCurrentJob>}
-                </div> : <CourierEmpty title={normalizedSearch ? 'No matching parcels' : tab === 'available' ? 'No available pickups' : tab === 'pickup' ? 'No assigned pickups' : 'No assigned deliveries'}>{normalizedSearch ? 'Try another tracking number, name, or address.' : tab === 'available' ? claimReason || 'Eligible pickups from your origin hub will appear here.' : tab === 'pickup' ? 'Pickups you claim will stay here until the origin hub records intake.' : 'Final-mile parcels appear after your destination hub assigns them to you.'}</CourierEmpty>}
-                <CourierDeliveryOverview activity={activity} activePickups={activeCount} pickupLimit={limit} awaitingIntake={pickups.filter((task) => task.nextAction === 'await_origin_hub_scan').length} claimReason={claimReason} onViewPickups={() => viewQueue('pickup')} />
+                {visibleEntries.length ? <div className="grid items-start gap-5 min-[860px]:grid-cols-[minmax(0,1fr)_minmax(20rem,1.05fr)]">
+                    <section aria-label={`${view === 'assigned' ? 'Assigned to you' : view === 'carrying' ? 'Parcels you are carrying' : 'Available pickups'} queue`} className="space-y-4">
+                        {visibleEntries.map(renderTaskCard)}
+                    </section>
+                    <div className="space-y-4">
+                        <label className="block text-sm font-medium text-slate-700" htmlFor="current-parcel">Selected task
+                            <select id="current-parcel" value={selectedMapJob?.key ?? ''} onChange={(event) => showOnMap(event.target.value)} className={`${courierInput} mt-2 text-sm`}>
+                                {mapJobs.map((job) => <option key={job.key} value={job.key}>Waybill: {job.trackingNumber} · {job.stage}</option>)}
+                            </select>
+                        </label>
+                        {selectedMapJob && <div id="rider-job-map" ref={mapRegion}>
+                            {selectedPanelTask && <CourierPanel className="min-w-0 p-4 sm:p-5"><div className="space-y-4"><div className="flex flex-wrap items-center gap-3"><h2 id="rider-current-job" tabIndex={-1} className="text-lg font-semibold focus:outline-none">{selectedHeldTask ? 'Handover recovery required' : 'Custody record needs review'}</h2><span className="rounded-[8px] bg-[#FFF4DF] px-3 py-1.5 text-xs font-semibold text-[#92400E]">{selectedHeldTask?.retainedByCurrentCourier ? 'Carrying · recovery required' : selectedHeldTask ? 'Custody review' : 'Do not move parcel'}</span></div><CourierParcelIdentifiers trackingNumber={selectedPanelTask.trackingNumber} orderNumber={selectedPanelTask.orderNumber} /><p className="text-sm leading-relaxed text-slate-700">{selectedHeldTask ? selectedHeldTask.retainedByCurrentCourier ? 'The latest recorded custody identifies you as the current holder. Keep the parcel secure and follow its authorized recovery instruction.' : 'This assignment does not confirm that you currently hold the parcel. Review the recorded recovery instruction before moving it.' : 'The parcel stage is recorded, but the latest custody record does not confirm that you hold it. Review tracking before any movement.'}</p>{selectedPanelTask.tracking?.custodian && <p className="text-sm text-slate-700"><span className="font-semibold">Recorded holder:</span> {selectedPanelTask.tracking.custodian}</p>}{selectedPanelTask.tracking?.notice && <p role="status" className="rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-3 text-sm leading-relaxed text-[#92400E]">{selectedPanelTask.tracking.notice}</p>}{selectedHeldTask && <Link href="/handover-issues" className={`${courierPrimary} w-full sm:w-auto`}>Open handover recovery</Link>}</div></CourierPanel>}
+                            {!selectedPanelTask && selectedPickup && <CourierCurrentJob job={selectedMapJob} orderNumber={selectedPickup.orderNumber} stops={[{ place: selectedPickup.merchant, label: 'Seller pickup point' }, { place: selectedPickup.originHub, label: 'Origin Bayan Hub' }]} currentStop={collected ? 1 : 0} parcelLabel={`${selectedPickup.itemCount} ${selectedPickup.itemCount === 1 ? 'item' : 'items'} · Pickup leg`} phone={selectedPickup.nextAction === 'confirm_pickup' ? selectedPickup.merchant.phone : null} messageDeliveryId={!collected && selectedEntry?.phase === 'pickup' && selectedPickup.canMessage ? selectedPickup.id : undefined} messagePhase="pickup" tracking={selectedPickup.tracking}>
+                                <details className="mt-2 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-medium text-slate-800">Assignment details</summary><div className="space-y-2 pb-4"><p>Assigned: {courierDate(selectedPickup.assignedAt)}</p>{!collected && selectedPickup.canMessage && selectedEntry?.phase === 'pickup' && <Link href={`${courierPath('/messages')}?delivery=${selectedPickup.id}&phase=pickup`} className={courierButton}>Message seller</Link>}</div></details>
+                            </CourierCurrentJob>}
+                            {!selectedPanelTask && selectedDelivery && <CourierCurrentJob job={selectedMapJob} orderNumber={selectedDelivery.orderNumber} stops={[{ place: selectedDelivery.destinationHub, label: 'Destination Bayan Hub' }, { place: selectedDelivery.recipient, label: 'Saved buyer destination' }]} currentStop={selectedDelivery.nextAction === 'return_to_hub' || !selectedDelivery.retainedByCurrentCourier ? 0 : 1} futureStopLabel={selectedDelivery.nextAction === 'return_to_hub' ? 'Reference only · if reassigned' : undefined} parcelLabel={`${selectedDelivery.payment.method || 'Payment method not provided'} · Delivery leg`} phone={selectedDelivery.retainedByCurrentCourier && selectedDelivery.nextAction === 'complete_delivery' ? selectedDelivery.recipient.phone : null} messageDeliveryId={selectedDelivery.retainedByCurrentCourier && selectedDelivery.nextAction === 'complete_delivery' && selectedDelivery.canMessage ? selectedDelivery.id : undefined} messagePhase="final_mile" tracking={selectedDelivery.tracking}>
+                                <details className="mt-2 text-sm text-slate-600"><summary className="min-h-12 cursor-pointer py-3 font-medium text-slate-800">Assignment details</summary><div className="space-y-2 pb-4"><p>Assigned: {courierDate(selectedDelivery.assignedAt)}</p></div></details>
+                            </CourierCurrentJob>}
+                        </div>}
+                    </div>
+                </div> : <CourierEmpty title={normalizedSearch ? 'No matching parcels' : view === 'available' ? 'No available pickups' : view === 'carrying' ? 'No parcels recorded in your custody' : 'No tasks assigned to you'}>{normalizedSearch ? 'Try another waybill, order reference, product, or address.' : view === 'available' ? claimReason || 'Eligible pickups from your origin hub will appear here.' : view === 'carrying' ? 'Parcels appear here only after the latest recorded custody identifies you as their current holder.' : 'Pickup and final-mile work assigned to you will appear here. Assignments do not by themselves mean you are carrying a parcel.'}</CourierEmpty>}
+                <CourierDeliveryOverview activity={activity} activePickups={activeCount} pickupLimit={limit} awaitingIntake={pickups.filter((task) => task.retainedByCurrentCourier && task.nextAction === 'await_origin_hub_scan').length} claimReason={claimReason} onViewPickups={() => viewQueue('assigned')} />
                 <CourierRecentDeliveries activity={activity} completedToday={stats?.completedToday} />
             </div>
 
             <CourierDialog open={target !== null} title={target ? actionLabels[target.status] : 'Parcel action'} onClose={() => { if (!pending.current) resetAction(); }} busy={loadingId !== null}>
                 {target && <form onSubmit={submit} className="space-y-4">
-                    <p className="break-all text-sm font-semibold text-slate-700">{target.trackingNumber}</p>
+                    <div className="rounded-[8px] border border-slate-300 bg-[#FFFAFB] p-3"><CourierParcelIdentifiers trackingNumber={target.trackingNumber} orderNumber={targetOrderNumber} /></div>
                     <p className="text-base leading-relaxed text-slate-700">{target.status === 'picked_up' ? 'Confirm only after you have collected this parcel from the seller. Next, bring it to the origin Bayan Hub.' : target.status === 'out_for_delivery' ? 'Confirm that you collected this assigned parcel from the destination Bayan Hub and are starting its delivery leg.' : target.status === 'delivery_failed' ? 'Record the actual attempt, then return the parcel to the destination Bayan Hub. A hub scan is required before recovery.' : 'Record the actual handoff with a proof photo. Only the buyer can confirm receipt and complete the order.'}</p>
                     <CourierFieldError message={errors.status} />
                     {target.status === 'delivery_failed' && <label className="block text-sm font-semibold" htmlFor="failure-reason">Failure reason<select id="failure-reason" required value={failureReason} disabled={loadingId !== null} onChange={event => setFailureReason(event.target.value)} className={courierInput}><option value="">Choose the actual reason</option><option value="customer_unreachable">Customer unreachable</option><option value="customer_unavailable">Customer unavailable or requested another date</option><option value="address_clarification">Wrong or incomplete address</option><option value="unsafe_conditions">Unsafe conditions or severe weather</option><option value="cod_unavailable">Exact COD payment unavailable</option><option value="customer_refused">Customer refused the parcel</option></select><CourierFieldError message={errors.failure_reason} /></label>}
                     {target.status === 'delivery_failed' && <label className="block text-sm font-semibold" htmlFor="attempt-location">Actual attempt location<input id="attempt-location" type="text" required maxLength={255} value={attemptLocation} disabled={loadingId !== null} onChange={event => setAttemptLocation(event.target.value)} className={courierInput} /><CourierFieldError message={errors.location_name} /></label>}
                     <div>
-                        <label htmlFor="pickup-waybill" className="block text-sm font-semibold text-slate-800">Scanned waybill code</label>
-                        <p id="waybill-help" className="mt-1 text-sm text-slate-600">Scan or enter the tracking barcode attached to this parcel after checking its order and contents.</p>
-                        <input id="pickup-waybill" type="text" autoComplete="off" spellCheck={false} maxLength={255} required value={barcode} disabled={loadingId !== null} aria-invalid={Boolean(errors.barcode)} aria-describedby="waybill-help waybill-error" onChange={(event) => setBarcode(event.target.value)} className={courierInput} />
+                        <label htmlFor="pickup-waybill" className="block text-sm font-semibold text-slate-800">Parcel waybill</label>
+                        <p id="waybill-help" className="mt-1 text-sm text-slate-600">Scan the actual label or enter its waybill manually. Scanning fills this field; it does not record the parcel action.</p>
+                        <input id="pickup-waybill" type="text" autoComplete="off" spellCheck={false} maxLength={255} required value={barcode} disabled={loadingId !== null} aria-invalid={Boolean(errors.barcode) || waybillMismatch} aria-describedby="waybill-help waybill-error" onChange={(event) => { setBarcode(event.target.value); setErrors((current) => ({ ...current, barcode: '' })); }} className={courierInput} />
                         <CourierFieldError id="waybill-error" message={errors.barcode} />
+                        {waybillMismatch && <p id="waybill-mismatch" role="status" className="mt-2 rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-3 text-sm leading-relaxed text-[#92400E]">This scanned code does not match the selected parcel waybill. Check the physical label, then scan or enter the matching code. The server verifies it again before recording.</p>}
+                        <WaybillCamera onScan={(value) => { setBarcode(value); setErrors((current) => ({ ...current, barcode: '' })); }} disabled={loadingId !== null} instruction="A camera scan only fills the waybill field. Compare it with the parcel above, then submit the permitted rider action." />
                     </div>
                     {target.status === 'delivered' && <section className="space-y-4 rounded-[8px] border border-slate-300 bg-[#FFFAFB] p-4" aria-label="Recipient and COD collection">
                         <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Banknote className="h-5 w-5 text-[#C20836]" aria-hidden="true" />{walletHandover ? 'Prepaid wallet delivery' : 'Count cash at handoff'}</h3><span className="font-semibold tabular-nums text-[#C20836]">{walletHandover ? 'No cash due' : `Due: ${actionDue === null ? 'Unavailable' : courierMoney(actionDue / 100)}`}</span></div>
@@ -297,7 +402,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                     <label className="block text-sm font-semibold text-slate-800" htmlFor="courier-notes">{target.status === 'delivery_failed' ? 'Attempt notes' : 'Optional note'}<textarea required={target.status === 'delivery_failed'} id="courier-notes" rows={3} maxLength={500} value={notes} disabled={loadingId !== null} aria-invalid={Boolean(errors.courier_notes || errors.notes)} aria-describedby="notes-help notes-error" onChange={(event) => setNotes(event.target.value)} className={`${courierInput} resize-y`} /></label>
                     <p id="notes-help" className="text-sm text-slate-600">Up to 500 characters.{target.status === 'picked_up' ? ' Pickup notes are also sent to the seller.' : ''}</p>
                     <CourierFieldError id="notes-error" message={errors.courier_notes || errors.notes} />
-                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" disabled={loadingId !== null} onClick={resetAction} className={courierButton}>Cancel</button><button type="submit" disabled={loadingId !== null} className={courierPrimary}>{target.status === 'delivered' && <Camera className="h-5 w-5" aria-hidden="true" />}{loadingId !== null ? 'Recording…' : actionLabels[target.status]}</button></div>
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" disabled={loadingId !== null} onClick={resetAction} className={courierButton}>Cancel</button><button type="submit" disabled={loadingId !== null || waybillMismatch} className={courierPrimary}>{target.status === 'delivered' && <Camera className="h-5 w-5" aria-hidden="true" />}{loadingId !== null ? 'Recording…' : actionLabels[target.status]}</button></div>
                 </form>}
             </CourierDialog>
         </CourierLayout>

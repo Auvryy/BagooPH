@@ -14,15 +14,19 @@ Pickup and final-mile work remain phases of the same approved courier account. `
 |---|---|---|
 | 1 | Compact header | BagooPH, actual assigned hub when known, duty state and its control |
 | 2 | Page heading | “Your tasks” and a short real scope or unassigned explanation |
-| 3 | Work filters | Pickups, deliveries, available work; counts from the returned queues |
-| 4 | Task queue | Current stage, stop, complete address, parcel identifier, cash due where applicable, permitted action |
+| 3 | Work filters | Assigned to you, Carrying, Available to claim; counts from the returned authorised queues |
+| 4 | Task queue | A visible card for every matching parcel, its product names/quantities, current stage, next stop, waybill and permitted action |
 | 5 | Selected-stop map | Bounded map below the first task, saved stop and current stage, with address fallback |
 | 6 | Remaining tasks and detail | Returned queue order, disclosed item summary, notes, recorded journey, or history |
 | 7 | Bottom navigation | Existing Tasks, Trips, Messages, and Profile destinations with visible labels |
 
 The first working area should help a rider identify a task without scrolling through decorative panels. Avoid claiming that the first item is an optimized route or a dispatch priority unless the server supplies that priority. Preserve the returned task order or explain an explicit user-selected sort.
 
-Desktop places the selected-stop map beside the first task, with remaining cards below in the returned order. Retain the same reading order and task controls. Use 24px cards, 12–16px controls, soft rose selection, short finite entrance/press motion, and small parcel/waypoint motifs. Do not force four metric tiles onto the phone layout or repeat counts throughout the screen.
+Desktop places the selected-stop map beside the first task, with remaining cards below in the returned order. Retain the same reading order and task controls. Use local 8px card and control radii, soft rose selection, short finite entrance/press motion, and small parcel/waypoint motifs. Do not force four metric tiles onto the phone layout or repeat counts throughout the screen.
+
+“Assigned to you” contains uncollected work and assignments requiring custody review. “Carrying” is based on the latest retained custody naming the signed-in rider; assignment or status labels alone cannot establish possession. A recovery hold blocks ordinary actions without hiding parcels still recorded with the rider. Prefer Carrying on initial entry when recorded parcels are held, otherwise Assigned or Available. Server-confirmed pickup and final-mile departure move focus to Carrying; a preview scan does not.
+
+The same parcel waybill labels the queue card, selected route detail and action form. Order reference is a separate labelled identifier; never replace or regenerate one to make it equal the other. Show product names and quantities before requiring a disclosure, with extra contents available on demand. Keep map details secondary to finding and acting on the parcel queue.
 
 ### Task Card Anatomy
 
@@ -89,7 +93,7 @@ Do not add moving rider dots, automatic ETA, distance rankings, live GPS, or rou
 
 ### Evidence and Action Sheets
 
-Use a compact task heading, recorded parcel identifier, evidence requirements, optional note, and explicit submit/cancel controls. Selecting or previewing a photo never changes delivery status.
+Use a compact task heading, recorded parcel identifier, evidence requirements, optional note, and explicit submit/cancel controls. Selecting or previewing a photo never changes delivery status. The waybill camera fills the existing barcode field only; show a mismatch with the selected waybill and require the ordinary authorised confirmation. Preserve manual entry when native camera barcode detection or camera permission is unavailable, and stop camera tracks when scanning ends or the form closes.
 
 Render validation beside the relevant field and announce the summary. Explain allowed evidence types and size using the actual validation contract. Keep notes and the selected photo after rejection where possible, with a visible replace/remove action. Never invent a successful scan, image, or recipient confirmation.
 
