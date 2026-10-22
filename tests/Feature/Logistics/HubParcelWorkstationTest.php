@@ -27,7 +27,7 @@ class HubParcelWorkstationTest extends TestCase
     {
         return [
             'pickup intake' => ['picked_up', 'origin_bayan_hub_id', 'scan', 'Picked up from seller'],
-            'origin transfer' => ['arrived_at_origin_hub', 'origin_bayan_hub_id', 'manifest', 'Moving through the hub network'],
+            'origin transfer' => ['arrived_at_origin_hub', 'origin_bayan_hub_id', 'wait', 'Moving through the hub network'],
             'Mother Hub sort' => ['arrived_at_mother_hub', 'origin_mother_hub_id', 'scan', 'Moving through the hub network'],
             'Mother Hub transfer' => ['sorted_to_line_haul', 'origin_mother_hub_id', 'manifest', 'Moving through the hub network'],
             'destination sort' => ['arrived_at_destination_hub', 'destination_bayan_hub_id', 'sort', 'Moving through the hub network'],

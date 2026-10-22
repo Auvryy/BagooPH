@@ -17,6 +17,7 @@ use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\HubParcelWorkstationService;
+use App\Services\Logistics\HubScanTransferService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
@@ -953,6 +954,8 @@ class LogisticsHubWorkstationController extends Controller
         try {
             $recovery = app(DeliveryRecoveryService::class);
             $updatedDelivery = match ($requestedAction) {
+                'RECEIVE_NEXT_MOTHER_HUB', 'RECEIVE_NEXT_BAYAN_HUB' => app(HubScanTransferService::class)
+                    ->receive($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['notes'] ?? null),
                 'STAGE_FOR_PICKUP' => app(PickupClaimService::class)->stage($delivery, $request->user(), $hub, $barcode, $expectedStatus),
                 'START_EXPIRED_PICKUP_RETURN' => app(PickupClaimService::class)->beginReturn($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['claim_reference'] ?? ''),
                 'STAGE_SELLER_RETURN' => app(DeliveryReturnService::class)->stage($delivery, $request->user(), $hub, $barcode, $expectedStatus, $validated['route_reference'] ?? ''),
@@ -1102,6 +1105,8 @@ class LogisticsHubWorkstationController extends Controller
     private function scanTargetForAction(string $action): ?string
     {
         return match ($action) {
+            'RECEIVE_NEXT_MOTHER_HUB' => OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+            'RECEIVE_NEXT_BAYAN_HUB' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
             'RECEIVE_FROM_PICKUP_RIDER' => OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB,
             'DISPATCH_TO_FEEDER' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB,
             'RECEIVE_AT_MOTHER_HUB' => OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,

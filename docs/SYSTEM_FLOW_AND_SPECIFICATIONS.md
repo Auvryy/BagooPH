@@ -81,14 +81,15 @@ Seller cancellation is allowed only before pickup and before any rider has claim
 |---|---|---|
 | Seller | Pickup rider scans the waybill at the seller | Pickup Rider |
 | Pickup Rider | Assigned Origin Bayan Hub scans inbound | Origin Bayan Hub |
-| Origin Bayan Hub | Parcel scanned onto a feeder manifest | Feeder manifest and vehicle |
-| Feeder manifest and vehicle | Mother Hub receives manifest and parcel | Origin Mother Hub |
-| Origin Mother Hub | Line-haul manifest when regions differ, otherwise destination feeder manifest | Destination Mother Hub or destination feeder manifest |
-| Destination Mother Hub or feeder manifest | Destination Bayan Hub receives parcel | Destination Bayan Hub |
+| Origin Bayan Hub | Assigned next Mother Hub handler scans and confirms physical receipt | Origin Mother Hub |
+| Origin Mother Hub | Assigned next Mother Hub handler confirms physical receipt when regions differ | Destination Mother Hub |
+| Final required Mother Hub | Destination Bayan Hub handler scans and confirms physical receipt | Destination Bayan Hub |
 | Destination Bayan Hub | Assigned rider scans outbound | Delivery Rider |
 | Delivery Rider | Recipient handoff, proof, and COD record | Buyer |
 | Destination Bayan Hub Counter | One-time claim verification, identity, and COD record | Buyer |
 | Reverse network | Seller return-receipt scan | Seller |
+
+Normal outbound transfers use the next assigned hub's confirmed receipt without manual manifest preparation. The previous confirmed hub remains the recorded holder until that receipt; no departure or vehicle custody is invented. Required Mother Hubs cannot be skipped. Existing manifest-backed parcels and exception/return transfers retain their recorded workflow.
 
 Platform Admin governs marketplace approval, policy, financial audit, and traceable corrections. Logistics Company Admin manages only its own facilities, personnel, manifests, exceptions, and operational remittance. Hub Handlers perform scans only at facilities assigned to them.
 

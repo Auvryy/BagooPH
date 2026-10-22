@@ -138,19 +138,19 @@ The seller cannot mark the parcel `PICKED_UP`. Only the assigned pickup rider's 
 3. The scan records operator, facility, time, tracking number, and hub custody.
 4. The order becomes `AT_SORTING_CENTER`.
 5. The pickup assignment ends.
-6. The parcel is scanned onto a feeder manifest for its assigned Mother Hub.
+6. The next receipt is confirmed by the assigned handler at the required Mother Hub; normal outbound transfers do not require preparing a manifest.
 
 ### E. Mother-Hub Processing
 
-Every parcel must be received and sorted by a Mother Hub.
+Every normal outbound parcel must be physically received by each required Mother Hub in its saved route.
 
-1. Origin Mother Hub scans the feeder manifest and each parcel inbound.
-2. The parcel is sorted into the correct destination line-haul group.
-3. If another regional Mother Hub is required, the parcel is scanned onto a line-haul manifest, received there, and sorted again.
-4. The responsible Mother Hub scans the parcel onto a feeder manifest for the destination Bayan Hub.
-5. Each outbound scan transfers custody to a manifest; each inbound scan transfers custody to the receiving facility.
+1. The assigned next-hub handler scans the unchanged waybill and confirms physical receipt.
+2. The backend validates the previous retained receipt, current source state, company, active facilities, handler assignment and exact next route leg.
+3. Distinct origin and destination Mother Hubs require separate, ordered receipt confirmations before the destination Bayan Hub can receive.
+4. The final required Mother Hub forwards the parcel to the destination Bayan Hub, whose assigned handler scans and confirms its receipt.
+5. Each confirmation appends immutable actor, source/target state, previous receipt reference, route and custody evidence. Preview scans do not change state. Until confirmation, the last confirmed hub remains recorded; no unobserved departure is fabricated.
 
-Each manifest records its number, sending hub, receiving hub, vehicle when used, dispatcher, receiver, departure time, arrival time, and included waybills. A manifest cannot be closed with unscanned or duplicate parcels.
+Normal outbound receipts need no vehicle selection, manifest creation, sealing or closure. Parcels already using manifest custody finish that recorded workflow. Historical manifests, corrective receipts and return/exception transport remain available without deleting their evidence.
 
 ### F. Destination Bayan Hub and Rider Assignment
 

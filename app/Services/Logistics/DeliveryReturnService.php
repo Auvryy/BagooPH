@@ -316,6 +316,11 @@ class DeliveryReturnService
         foreach (array_slice($hubs, 1) as $index => $hubId) {
             $check = $parcel->checkpoints()->where('id', '>', $lastId)->where('id', '<', $beforeId)->where('hub_id', $hubId)
                 ->whereIn('checkpoint_type', ['arrived_at_mother_hub', 'arrived_at_destination_hub'])->orderBy('id')->first();
+            if ($check && app(HubScanTransferService::class)->supportsReceipt($check, $route, $hubs[$index], $hubId)) {
+                $lastId = $check->id;
+
+                continue;
+            }
             $scan = $check ? LogisticsManifestEvent::with(['manifest', 'parcel'])->where('reference', $check->custody_after['manifest_scan_reference'] ?? '')->first() : null;
             $normal = $scan?->event_type === 'parcel_received' && $scan->parcel?->delivery_id === $parcel->id && $scan->parcel->route_snapshot === $route;
             $corrective = $scan?->event_type === 'handover-recovery-received' && $scan->correctiveReceipt?->supports($check)
