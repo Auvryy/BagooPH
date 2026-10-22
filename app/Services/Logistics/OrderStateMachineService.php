@@ -528,6 +528,6 @@ class OrderStateMachineService
 
     private function isCompanyAdmin(User $actor, ?int $companyId): bool
     {
-        return $this->eligibility->isCompanyAdministrator($actor, $companyId);
+        return $this->eligibility->isCompanyManager($actor, $companyId);
     }
 }

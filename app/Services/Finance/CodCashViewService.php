@@ -86,7 +86,7 @@ class CodCashViewService
         if ($actor->isCourier() && $actor->canAccessPortal() && CourierProfile::operational()->where('user_id', $actor->id)->exists()) {
             return 'courier';
         }
-        if ($actor->isLogistics() && $actor->canAccessPortal() && ($this->eligibility->isCompanyAdministrator($actor)
+        if ($actor->isLogistics() && $actor->canAccessPortal() && ($this->eligibility->isCompanyManager($actor)
             || HubHandler::eligible()->where('user_id', $actor->id)->exists())) {
             return 'hub';
         }
@@ -97,7 +97,7 @@ class CodCashViewService
     public function present(CodAccount $account, User $actor, bool $details = true): array
     {
         $state = $this->state($account);
-        $manager = $actor->isLogistics() && $actor->canAccessPortal() && $this->eligibility->isCompanyAdministrator($actor, $account->logistics_company_id);
+        $manager = $actor->isLogistics() && $actor->canAccessPortal() && $this->eligibility->isCompanyManager($actor, $account->logistics_company_id);
         $holders = collect($state['balances'])->filter(fn ($amount) => $amount > 0)->map(function ($amount, $key) use ($actor, $manager) {
             [$stage, $id] = explode(':', $key);
             $user = User::findOrFail($id);

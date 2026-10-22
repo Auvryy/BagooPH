@@ -24,7 +24,7 @@ class RestrictedCustodyRecoveryService
     public function authorizeActor(User $actor, int $companyId): User
     {
         $actor = User::findOrFail($actor->id);
-        abort_unless($actor->canAccessPortal() && ($actor->isAdmin() || $this->eligibility->isCompanyAdministrator($actor, $companyId)), 403);
+        abort_unless($actor->canAccessPortal() && ($actor->isAdmin() || $this->eligibility->isCompanyManager($actor, $companyId)), 403);
 
         return $actor;
     }

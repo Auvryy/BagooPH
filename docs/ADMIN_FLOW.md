@@ -2,7 +2,7 @@
 
 This document defines the admin behavior to build for the core BagooPH project. It specifies decisions, authority, evidence, and acceptance checks; it does not claim that the corresponding screens or records already exist. Current gaps and delivery phases belong in [CORE_FLOW_ROADMAP.md](CORE_FLOW_ROADMAP.md).
 
-Platform Admin governs marketplace access and financial audit. Logistics Company Admin manages its own network. Hub Handlers perform assigned facility operations. These are responsibilities within the existing `admin` and `logistics` account roles, not additional public registration roles. Pickup and delivery remain phases of the same `courier` role.
+Platform Admin governs marketplace access and financial audit. An existing assigned Mother Hub handler manages its own eligible company’s network; a separate logistics administrator login is not required. Hub Handlers perform assigned facility operations. These are responsibilities within the existing `admin` and `logistics` account roles, not additional public registration roles. Pickup and delivery remain phases of the same `courier` role.
 
 Lifecycle ownership follows [SYSTEM_FLOW_AND_SPECIFICATIONS.md](SYSTEM_FLOW_AND_SPECIFICATIONS.md), safety follows [CORE_FLOW_VALIDATION_AND_EDGE_CASES.md](CORE_FLOW_VALIDATION_AND_EDGE_CASES.md), and physical custody follows [SORTING_CENTER_LOGISTICS_FLOW.md](SORTING_CENTER_LOGISTICS_FLOW.md).
 
@@ -18,7 +18,7 @@ A first rider-company association requires the rider's own acknowledgement of th
 | Seller and shop | Active Platform Admin | Identity, business permit, shop details, and an approved root category from the 14 master categories; one registered shop per seller, reviewed with the account's application |
 | Courier | Active Platform Admin | Identity, driver's license, vehicle details, and OR/CR documents; company/hub placement does not replace this review |
 | Logistics company | Active Platform Admin | Company and contact details, business permit, and franchise evidence where applicable to the documented application; no additional accreditation module is implied |
-| Hub Handler | Platform Admin for account eligibility; approved Logistics Company Admin for facility assignment | An eligible `logistics` account with an active handler assignment at an active facility in that company; facility assignment alone cannot grant marketplace approval |
+| Hub Handler | Platform Admin for account eligibility; eligible Mother Hub manager for facility assignment | An eligible `logistics` account with an active handler assignment at an active facility in that company; facility assignment alone cannot grant marketplace approval |
 | Platform Admin | Controlled existing admin access | No public admin registration; active account status and explicit admin role are required for every privileged action |
 
 Registration, email verification, document upload, and company placement do not each constitute approval. Applicants may sign in to their own review/resubmission holding screen; transactional portal access waits for the required approval. Public catalogue browsing follows the buyer guide and grants no transactional permission.
@@ -87,7 +87,7 @@ Every protected read and write applies the same server-side eligibility and acti
 | Actor | Permitted work | Boundary |
 |---|---|---|
 | Platform Admin | Account/shop/company review, reasoned suspension/reactivation, product compliance, cross-company oversight, and financial audit | Read oversight does not confer seller, rider, or handler custody powers. No routine parcel scans, impersonated fulfillment, direct history edits, or unexplained cash changes. |
-| Logistics Company Admin | Own Mother/Bayan Hubs, handler assignments, eligible rider placement, vehicles, manifests, exceptions, and operational remittance | Own company only. Cannot approve platform KYC, override global suspension, access another company's private records, or settle seller proceeds. |
+| Mother Hub manager (existing assigned logistics account; legacy company owners retained) | Own Mother/Bayan Hubs, handler assignments, eligible rider placement, vehicles and exceptions; source/destination handlers manage their manifest steps | Own company only. Cannot approve platform KYC, override global suspension, access another company's private records, or settle seller proceeds. |
 | Hub Handler | Expected-facility inbound, sorting, manifest, outbound, counter, failed-return, and seller-return scans | Active assigned facilities only, with current parcel and route checks. Cannot manage company approval or platform finance. |
 
 New routing or assignment requires an eligible account, company, hub, handler/rider, and vehicle where applicable. Going off duty removes a courier from new work but permits the documented completion of existing assignments; suspension instead requires controlled recovery.

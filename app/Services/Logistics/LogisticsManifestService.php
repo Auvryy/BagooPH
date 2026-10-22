@@ -16,6 +16,7 @@ use App\Models\Order;
 use App\Models\ParcelRecoveryCase;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Returns\BuyerReturnManifestService;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -54,10 +55,12 @@ class LogisticsManifestService
     public function create(User $actor, array $input, ?string $issuedToken): LogisticsManifest
     {
         $actor = User::findOrFail($actor->id);
-        $company = LogisticsCompany::eligible()->where('user_id', $actor->id)->first();
-        if (! $actor->isLogistics() || ! $actor->canAccessPortal() || ! $company) {
-            throw new AuthorizationException('Only the current company administrator may prepare its manifests.');
+        Validator::make($input, ['source_hub_id' => $this->idRules()])->validate();
+        $source = LogisticsHub::eligible()->find($input['source_hub_id']);
+        if (! $source || ! $this->canManageAtHub($actor, $source)) {
+            throw new AuthorizationException('An assigned source-hub handler must prepare this manifest.');
         }
+        $company = LogisticsCompany::eligible()->findOrFail($source->logistics_company_id);
         $input += ['direction' => 'outbound'];
         $input = Validator::make($input, [
             'source_hub_id' => [...$this->idRules(), 'exists:logistics_hubs,id'],
@@ -69,7 +72,7 @@ class LogisticsManifestService
             'buyer_return_case_id' => ['exclude_unless:direction,buyer_return', ...$this->idRules()],
         ])->validate();
         if ($input['direction'] === 'buyer_return') {
-            return app(\App\Services\Returns\BuyerReturnManifestService::class)->create($actor, $input, $issuedToken);
+            return app(BuyerReturnManifestService::class)->create($actor, $input, $issuedToken);
         }
         if ($input['direction'] === 'recovery') {
             $case = ParcelRecoveryCase::findOrFail($input['parcel_recovery_case_id']);
@@ -94,8 +97,8 @@ class LogisticsManifestService
             $driverId = LogisticsFleet::whereKey($input['vehicle_id'])->value('assigned_driver_id');
             $this->eligibility->lockNetwork($company->id, [$actor->id, $driverId], [$input['source_hub_id'], $input['destination_hub_id'], ...($recovery?->hub_ids ?? [])]);
             $actor = User::findOrFail($actor->id);
-            if (! $this->eligibility->isCompanyAdministrator($actor, $company->id)) {
-                throw new AuthorizationException('This company is not managed by the current account.');
+            if (! $this->canManageAtHub($actor, LogisticsHub::findOrFail($input['source_hub_id']))) {
+                throw new AuthorizationException('Your assignment to this source hub is no longer available.');
             }
             $existing = LogisticsManifest::where('created_by_id', $actor->id)->where('creation_token', $input['creation_token'])->first();
             if ($existing) {
@@ -151,7 +154,7 @@ class LogisticsManifestService
             throw new AuthorizationException('This manifest is outside your company or assigned facilities.');
         }
         if ($snapshot->direction === 'buyer_return') {
-            return app(\App\Services\Returns\BuyerReturnManifestService::class)->command($snapshot, $actor, $action, $input);
+            return app(BuyerReturnManifestService::class)->command($snapshot, $actor, $action, $input);
         }
         $input = $this->inputs->normalize($input);
         $rules = ['version' => [...$this->idRules(), 'max:2147483647'], 'request_token' => ['required', 'string', 'uuid'],
@@ -492,7 +495,7 @@ class LogisticsManifestService
             return $this->expectedHub($delivery, $delivery->origin_mother_hub_id, 'regional_mother_hub');
         }
         if ($delivery->status === OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL && $source->isMotherHub()) {
-            if (! $this->actualHubReceipt($delivery, $source->id)) {
+            if (! $this->actualHubReceipt($delivery, $source->id) && ! $this->historicalHubReceipt($delivery, $source->id)) {
                 throw new DomainException('The Mother Hub needs its actual manifest receipt before further departure.');
             }
             if ($delivery->current_hub_id === $delivery->origin_mother_hub_id) {
@@ -523,10 +526,21 @@ class LogisticsManifestService
             ->get()->first(fn ($receipt) => $receipt->supports())?->manifestEvent;
     }
 
+    private function historicalHubReceipt(Delivery $delivery, int $hubId): bool
+    {
+        $checkpoint = DeliveryCheckpoint::where('delivery_id', $delivery->id)->where('hub_id', $hubId)
+            ->where('scan_provenance', 'hub_receipt')->whereNull('source_checkpoint_id')->latest('id')->first();
+        $from = $checkpoint?->custody_before['hub_id'] ?? null;
+
+        return $checkpoint && is_int($from) && app(HubScanTransferService::class)->supportsReceipt(
+            $checkpoint, app(DeliveryReturnService::class)->forwardRoute($delivery), $from, $hubId);
+    }
+
     public function receiptCounts(LogisticsManifest $manifest): array
     {
         if ($manifest->direction === 'buyer_return') {
             $members = $manifest->buyerReturnParcels()->where('included', true)->get();
+
             return ['expected' => $members->count(), 'normal_received' => $members->whereNotNull('received_at')->count(),
                 'corrective_expected_received' => 0, 'unlisted_received' => 0, 'outstanding' => $members->whereNull('received_at')->count()];
         }
@@ -595,18 +609,20 @@ class LogisticsManifestService
             : ($manifest->destinationHub->isMotherHub() ? OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB : OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB);
     }
 
+    public function canManageAtHub(User $actor, LogisticsHub $hub): bool
+    {
+        return $actor->isLogistics() && $actor->canAccessPortal()
+            && ($this->eligibility->isCompanyAdministrator($actor, $hub->logistics_company_id)
+                || $this->eligibility->canScan($actor, $hub));
+    }
+
     private function authorizeCommand(LogisticsManifest $manifest, User $actor, string $action): void
     {
-        if (in_array($action, ['remove', 'seal', 'reopen', 'close', 'close-recovery', 'resolve-discrepancy'], true)) {
-            if (! $this->eligibility->isCompanyAdministrator($actor, $manifest->logistics_company_id)) {
-                throw new AuthorizationException('Only this company administrator may manage its manifest list and closure.');
-            }
-        } else {
-            $hubId = in_array($action, ['receive', 'report-discrepancy', 'correct-discrepancy'], true) ? $manifest->destination_hub_id : $manifest->source_hub_id;
-            $hub = LogisticsHub::findOrFail($hubId);
-            if (! $this->eligibility->canScan($actor, $hub)) {
-                throw new AuthorizationException('An active assignment to the actual scan facility is required.');
-            }
+        $receiving = in_array($action, ['receive', 'close', 'close-recovery', 'report-discrepancy', 'correct-discrepancy', 'resolve-discrepancy'], true);
+        $hub = LogisticsHub::findOrFail($receiving ? $manifest->destination_hub_id : $manifest->source_hub_id);
+        $management = in_array($action, ['remove', 'seal', 'reopen', 'close', 'close-recovery', 'resolve-discrepancy'], true);
+        if (! ($management ? $this->canManageAtHub($actor, $hub) : $this->eligibility->canScan($actor, $hub))) {
+            throw new AuthorizationException('An active assignment to the responsible source or receiving hub is required.');
         }
     }
 

@@ -27,7 +27,7 @@ class HubParcelWorkstationTest extends TestCase
     {
         return [
             'pickup intake' => ['picked_up', 'origin_bayan_hub_id', 'scan', 'Picked up from seller'],
-            'origin transfer' => ['arrived_at_origin_hub', 'origin_bayan_hub_id', 'wait', 'Moving through the hub network'],
+            'origin transfer' => ['arrived_at_origin_hub', 'origin_bayan_hub_id', 'manifest', 'Moving through the hub network'],
             'Mother Hub sort' => ['arrived_at_mother_hub', 'origin_mother_hub_id', 'scan', 'Moving through the hub network'],
             'Mother Hub transfer' => ['sorted_to_line_haul', 'origin_mother_hub_id', 'manifest', 'Moving through the hub network'],
             'destination sort' => ['arrived_at_destination_hub', 'destination_bayan_hub_id', 'sort', 'Moving through the hub network'],
@@ -170,7 +170,7 @@ class HubParcelWorkstationTest extends TestCase
         $hub->update(['operating_hours' => null]);
         $this->get($base.'/counter')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('counterParcels.data.0.guidance.can_act', false)
-            ->where('counterParcels.data.0.guidance.blocker', 'The company administrator must record actual pickup hours before staging.'));
+            ->where('counterParcels.data.0.guidance.blocker', 'The Mother Hub manager must record actual pickup hours before staging.'));
     }
 
     public function test_staged_collection_is_ready_only_for_handler_verification_and_requires_retained_custody(): void

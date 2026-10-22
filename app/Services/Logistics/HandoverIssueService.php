@@ -64,7 +64,7 @@ class HandoverIssueService
                             ->whereIn('status', ['draft', 'sealed', 'dispatched']))->select('delivery_id'));
             });
         }
-        $companyIds = LogisticsCompany::eligible()->where('user_id', $actor->id)->select('id');
+        $companyIds = $this->eligibility->managedCompanies($actor)->select('id');
         $hubIds = HubHandler::eligible()->where('user_id', $actor->id)->select('hub_id');
 
         return $query->where(fn (Builder $parcel) => $parcel->whereIn('logistics_company_id', $companyIds)
@@ -92,7 +92,7 @@ class HandoverIssueService
                 $issue->orWhereHas('recoveryGrants', fn (Builder $grants) => $grants->where('holder_id', $actor->id));
             }
             if ($actor->isLogistics()) {
-                $issue->orWhereIn('logistics_company_id', LogisticsCompany::eligible()->where('user_id', $actor->id)->select('id'));
+                $issue->orWhereIn('logistics_company_id', $this->eligibility->managedCompanies($actor)->select('id'));
                 $issue->orWhereHas('recoveryGrants', fn (Builder $grants) => $grants->whereIn('hub_id', HubHandler::eligible()->where('user_id', $actor->id)->select('hub_id')));
                 $issue->orWhereHas('recoveryGrants', fn (Builder $grants) => $grants->where('holder_id', $actor->id));
             }
@@ -105,7 +105,7 @@ class HandoverIssueService
 
         return $actor->id !== $issue->reporter_id && ($actor->isAdmin()
             || ($actor->isLogistics() && $issue->logistics_company_id !== null
-                && $this->eligibility->isCompanyAdministrator($actor, $issue->logistics_company_id)
+                && $this->eligibility->isCompanyManager($actor, $issue->logistics_company_id)
                 && $issue->delivery->logistics_company_id === $issue->logistics_company_id));
     }
 

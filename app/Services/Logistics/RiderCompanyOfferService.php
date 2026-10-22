@@ -49,7 +49,7 @@ class RiderCompanyOfferService
 
         return DB::transaction(function () use ($actor, $source, $data, $intent, $fingerprint) {
             [$company, $request] = $this->locked($source);
-            abort_unless($company->user_id === $actor->id && $this->requests->companyOwner($actor), 403);
+            abort_unless(app(LogisticsEligibilityService::class)->isCompanyManager($actor, $company->id) && $this->requests->companyOwner($actor), 403);
             if ($receipt = $this->replay($actor, $request, $data['request_token'], $fingerprint)) {
                 return $receipt;
             }
@@ -88,7 +88,7 @@ class RiderCompanyOfferService
 
         return DB::transaction(function () use ($actor, $source, $action, $data, $fingerprint) {
             [$company, $request] = $this->locked($source);
-            abort_unless($company->user_id === $actor->id && $this->requests->companyOwner($actor), 403);
+            abort_unless(app(LogisticsEligibilityService::class)->isCompanyManager($actor, $company->id) && $this->requests->companyOwner($actor), 403);
             if ($receipt = $this->replay($actor, $request, $data['request_token'], $fingerprint)) {
                 return $receipt;
             }
@@ -210,7 +210,7 @@ class RiderCompanyOfferService
         abort_unless($this->requests->companyOwner($actor), 403);
         Validator::make(['request_id' => $id], ['request_id' => ['required', $this->number()]])->validate();
 
-        return RiderCompanyRequest::whereKey($id)->whereHas('company', fn ($query) => $query->where('user_id', $actor->id))->firstOrFail();
+        return RiderCompanyRequest::whereKey($id)->whereIn('logistics_company_id', app(LogisticsEligibilityService::class)->managedCompanies($actor)->select('id'))->firstOrFail();
     }
 
     private function locked(RiderCompanyRequest $source): array

@@ -81,17 +81,17 @@ Seller cancellation is allowed only before pickup and before any rider has claim
 |---|---|---|
 | Seller | Pickup rider scans the waybill at the seller | Pickup Rider |
 | Pickup Rider | Assigned Origin Bayan Hub scans inbound | Origin Bayan Hub |
-| Origin Bayan Hub | Assigned next Mother Hub handler scans and confirms physical receipt | Origin Mother Hub |
-| Origin Mother Hub | Assigned next Mother Hub handler confirms physical receipt when regions differ | Destination Mother Hub |
-| Final required Mother Hub | Destination Bayan Hub handler scans and confirms physical receipt | Destination Bayan Hub |
+| Origin Bayan Hub | Source manifest departure, followed by assigned Mother Hub receipt | Transport driver, then Origin Mother Hub |
+| Origin Mother Hub | Line-haul manifest departure and next Mother Hub receipt when regions differ | Transport driver, then Destination Mother Hub |
+| Final required Mother Hub | Feeder manifest departure and assigned destination handler receipt | Transport driver, then Destination Bayan Hub |
 | Destination Bayan Hub | Assigned rider scans outbound | Delivery Rider |
 | Delivery Rider | Recipient handoff, proof, and COD record | Buyer |
 | Destination Bayan Hub Counter | One-time claim verification, identity, and COD record | Buyer |
 | Reverse network | Seller return-receipt scan | Seller |
 
-Normal outbound transfers use the next assigned hub's confirmed receipt without manual manifest preparation. The previous confirmed hub remains the recorded holder until that receipt; no departure or vehicle custody is invented. Required Mother Hubs cannot be skipped. Existing manifest-backed parcels and exception/return transfers retain their recorded workflow.
+Normal outbound transfers use manifests prepared and sealed by the assigned source hub handler. Recorded departure establishes the vehicle and driver as transport custodians; actual receiving scans establish next-hub custody. The assigned destination handler closes the received manifest. Required Mother Hubs cannot be skipped. Historical direct receipts remain evidence; a preview or assignment cannot replace departure or physical receipt.
 
-Platform Admin governs marketplace approval, policy, financial audit, and traceable corrections. Logistics Company Admin manages only its own facilities, personnel, manifests, exceptions, and operational remittance. Hub Handlers perform scans only at facilities assigned to them.
+Platform Admin governs marketplace approval, policy, financial audit, and traceable corrections. Existing Mother Hub handlers manage their own eligible company’s facilities, personnel and exceptions without a separate administrator login. Legacy company-owner accounts retain scoped compatibility. Hub Handlers perform scans only at facilities assigned to them.
 
 Platform Admin owns account KYC approval; a company's acceptance or hub placement of an already approved courier is a separate operational decision. Approval does not clear an independent suspension, and inactive/suspended admins cannot use the KYC exemption to retain privileges. [ADMIN_FLOW.md](ADMIN_FLOW.md) defines review authority and suspension recovery across all roles under the validation contract.
 

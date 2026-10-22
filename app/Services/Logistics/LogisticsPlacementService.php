@@ -121,9 +121,9 @@ class LogisticsPlacementService
         if (! $currentHub) {
             throw new DomainException('The requested facility is unavailable.');
         }
-        abort_unless($this->eligibility->isCompanyAdministrator($actor, $currentHub->logistics_company_id), 403, 'Only the owning company administrator can manage placement.');
+        abort_unless($this->eligibility->isCompanyManager($actor, $currentHub->logistics_company_id), 403, 'Only the company’s Mother Hub manager can manage placement.');
         $company = $this->eligibility->lockNetwork($currentHub->logistics_company_id, [$actor->id, $subject->id], [$currentHub->id, ...$previousHubs]);
-        abort_unless($company->user_id === $actor->id, 403);
+        abort_unless($this->eligibility->isCompanyManager($actor, $company->id), 403);
 
         return $company;
     }

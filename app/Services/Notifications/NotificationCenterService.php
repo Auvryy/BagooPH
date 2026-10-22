@@ -226,8 +226,8 @@ class NotificationCenterService
             && RiderCompanyRequest::whereKey($data['company_request_id'] ?? 0)->where('rider_id', $user->id)->exists()) {
             return '/courier/profile?tab=assignment';
         }
-        if ($target === 'company-rider-requests' && app(LogisticsEligibilityService::class)->isCompanyAdministrator($user)
-            && RiderCompanyRequest::whereKey($data['company_request_id'] ?? 0)->whereHas('company', fn ($company) => $company->where('user_id', $user->id))->exists()) {
+        if ($target === 'company-rider-requests' && app(LogisticsEligibilityService::class)->isCompanyManager($user)
+            && RiderCompanyRequest::whereKey($data['company_request_id'] ?? 0)->whereIn('logistics_company_id', app(LogisticsEligibilityService::class)->managedCompanies($user)->select('id'))->exists()) {
             return '/hub/network';
         }
         if ($target === 'hub-recovery' && $user->isLogistics() && $user->canAccessPortal()) {

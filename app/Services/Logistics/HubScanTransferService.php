@@ -6,11 +6,8 @@ use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestParcel;
-use App\Models\Order;
 use App\Models\User;
-use App\Services\Wallet\WalletPaymentService;
 use DomainException;
-use Illuminate\Support\Facades\DB;
 
 class HubScanTransferService
 {
@@ -52,51 +49,7 @@ class HubScanTransferService
 
     public function receive(Delivery $parcel, User $actor, LogisticsHub $hub, string $barcode, string $expectedStatus, ?string $notes = null): Delivery
     {
-        return DB::transaction(function () use ($parcel, $actor, $hub, $barcode, $expectedStatus, $notes) {
-            $order = Order::whereKey($parcel->order_id)->lockForUpdate()->firstOrFail();
-            $parcel = Delivery::whereKey($parcel->id)->where('order_id', $order->id)->lockForUpdate()->firstOrFail();
-            $parcel->setRelation('order', $order);
-            $this->eligibility->lockNetwork((int) $parcel->logistics_company_id, [$actor->id], [$parcel->current_hub_id, $hub->id]);
-            $actor = User::findOrFail($actor->id);
-            $hub = LogisticsHub::eligible()->find($hub->id);
-            if (! $hub || ! $actor->isLogistics() || ! $actor->canAccessPortal() || ! $this->eligibility->canScan($actor, $hub)) {
-                throw new DomainException('An active handler at the receiving hub must confirm this parcel receipt.');
-            }
-            if ($order->status !== 'at_sorting_center' || $parcel->status !== $expectedStatus) {
-                throw new DomainException('The parcel changed. Scan its current waybill before confirming receipt.');
-            }
-            app(WalletPaymentService::class)->assertFulfillable($order);
-            app(HandoverHoldService::class)->assertMovable($parcel);
-            $next = $this->nextHub($parcel);
-            if (! $next || $next->id !== $hub->id) {
-                throw new DomainException('Receive this parcel only at its next required hub. Existing manifest transfers must finish their recorded handover.');
-            }
-            $inputs = app(WaybillScanInputService::class);
-            $barcode = $inputs->matchedBarcode($barcode, $parcel, allowOrderNumber: true);
-            $notes = $inputs->normalize(['notes' => $notes])['notes'] ?? null;
-            validator(['notes' => $notes], ['notes' => $inputs->notesRules()])->validate();
-            $previous = $parcel->checkpoints()->whereNull('source_checkpoint_id')->whereNotNull('custody_after')->latest('id')->firstOrFail();
-            $source = DeliveryCheckpoint::state($parcel);
-            if ($previous->target_state !== $source) {
-                throw new DomainException('The parcel state does not match its last confirmed receipt. Review its recorded handover first.');
-            }
-            $route = app(DeliveryReturnService::class)->forwardRoute($parcel);
-            $parcel->status = $hub->isMotherHub() ? 'arrived_at_mother_hub' : 'arrived_at_destination_hub';
-            $parcel->current_hub_id = $hub->id;
-            $parcel->save();
-            DeliveryCheckpoint::record(
-                delivery: $parcel, type: $parcel->status, actor: $actor, hub: $hub,
-                barcodeScanned: $barcode, notes: $notes ?? 'Physical parcel receipt confirmed at the next required hub.',
-                scanProvenance: 'hub_receipt',
-                evidence: ['source_state' => $source, 'target_state' => DeliveryCheckpoint::state($parcel),
-                    'custody_before' => $previous->custody_after,
-                    'custody_after' => ['kind' => 'hub', 'hub_id' => $hub->id,
-                        'hub_receipt' => ['from_hub_id' => $source['current_hub_id'], 'source_checkpoint_id' => $previous->id,
-                            'source_reference' => $previous->record_reference, 'route' => $route]]],
-            );
-
-            return $parcel;
-        });
+        throw new DomainException('Prepare and dispatch the source-hub manifest, then record receipt on that manifest at its destination.');
     }
 
     public function supportsReceipt(DeliveryCheckpoint $checkpoint, array $route, int $from, int $to): bool

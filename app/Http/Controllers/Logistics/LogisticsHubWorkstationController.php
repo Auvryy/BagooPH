@@ -98,7 +98,7 @@ class LogisticsHubWorkstationController extends Controller
         $user = $request->user();
         [$activeHub, $accessibleHubs] = $this->getActiveHub($request, $user);
         $company = $accessibleHubs->first()?->company;
-        $isCompanyAdministrator = $user && $this->eligibility->isCompanyAdministrator($user);
+        $isCompanyAdministrator = $user && $this->eligibility->isCompanyManager($user);
         $canScan = $activeHub && $user?->isLogistics() && $this->eligibility->canScan($user, $activeHub);
 
         $requestedHubId = $request->integer('hub_id');
@@ -340,7 +340,7 @@ class LogisticsHubWorkstationController extends Controller
         $user = $request->user();
         [$activeHub, $accessibleHubs] = $this->getActiveHub($request, $user);
         $company = $accessibleHubs->first()?->company;
-        $isCompanyAdministrator = $user && $this->eligibility->isCompanyAdministrator($user);
+        $isCompanyAdministrator = $user && $this->eligibility->isCompanyManager($user);
         $terminalStatuses = ['delivered', 'customer_collected', 'completed', 'cancelled', 'returned'];
 
         $networkHubs = LogisticsHub::query()
@@ -432,7 +432,7 @@ class LogisticsHubWorkstationController extends Controller
 
     public function placeResource(Request $request, LogisticsPlacementService $placements): JsonResponse|RedirectResponse
     {
-        abort_unless($this->eligibility->isCompanyAdministrator($request->user()), 403, 'Only a company administrator can manage personnel placement.');
+        abort_unless($this->eligibility->isCompanyManager($request->user()), 403, 'Only an assigned Mother Hub manager can manage personnel placement.');
         if (is_string($request->input('email'))) {
             $request->merge(['email' => strtolower(trim($request->input('email')))]);
         }
@@ -696,7 +696,7 @@ class LogisticsHubWorkstationController extends Controller
             'hubs' => $hubs,
             'counterParcels' => $counterParcels,
             'requestToken' => (string) Str::uuid(),
-            'canConfigureHours' => $activeHub && $this->eligibility->isCompanyAdministrator($request->user(), $activeHub->logistics_company_id),
+            'canConfigureHours' => $activeHub && $this->eligibility->isCompanyManager($request->user(), $activeHub->logistics_company_id),
             'recentlyCollected' => $recentlyCollected,
             'search' => $search,
             'basePath' => $basePath,
@@ -721,7 +721,7 @@ class LogisticsHubWorkstationController extends Controller
         $user = $request->user();
         [, $accessibleHubs] = $this->getActiveHub($request, $user);
 
-        abort_unless($user && $this->eligibility->isCompanyAdministrator($user), 403, 'Only a logistics company administrator can change the working facility.');
+        abort_unless($user && $this->eligibility->isCompanyManager($user), 403, 'Only a company manager can change the working facility.');
 
         $hub = $accessibleHubs->firstWhere('id', (int) $validated['hub_id']);
         abort_unless($hub, 403, 'You cannot access this facility.');
@@ -1184,7 +1184,7 @@ class LogisticsHubWorkstationController extends Controller
         DB::transaction(function () use ($request, $values) {
             $hub = LogisticsHub::findOrFail($values['hub_id']);
             $this->eligibility->lockNetwork($hub->logistics_company_id, [$request->user()->id], [$hub->id]);
-            abort_unless($this->eligibility->isCompanyAdministrator($request->user(), $hub->logistics_company_id), 403);
+            abort_unless($this->eligibility->isCompanyManager($request->user(), $hub->logistics_company_id), 403);
             $hub->refresh()->update(['operating_hours' => trim($values['operating_hours'])]);
         });
 

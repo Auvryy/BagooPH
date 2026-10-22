@@ -40,8 +40,9 @@ class WaybillScanWorkflowTest extends TestCase
         $confirm = ['barcode' => $parcel->tracking_number, 'mode' => 'confirm', 'hub_id' => $hub->id,
             'action' => 'RECEIVE_FROM_PICKUP_RIDER', 'expected_status' => 'picked_up'];
         $this->postJson($base.'/scan', $confirm)->assertOk()->assertJsonPath('confirmed', true)
-            ->assertJsonPath('delivery.status', 'arrived_at_origin_hub')->assertJsonPath('delivery.guidance.action', 'wait')
-            ->assertJsonPath('delivery.guidance.href', null)->assertJsonPath('prompt.manifest_url', null);
+            ->assertJsonPath('delivery.status', 'arrived_at_origin_hub')->assertJsonPath('delivery.guidance.action', 'manifest')
+            ->assertJsonPath('delivery.guidance.href', $path.'/manifests?hub_id='.$hub->id)
+            ->assertJsonPath('prompt.manifest_url', $path.'/manifests?hub_id='.$hub->id);
         $recorded = $this->snapshot($parcel);
         $this->postJson($base.'/scan', $confirm)->assertOk()->assertJsonPath('already_received', true)
             ->assertJsonPath('message', fn ($message) => str_contains($message, 'Already received'));

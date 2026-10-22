@@ -33,7 +33,7 @@ class DeliveryRecoveryController extends Controller
 
             return ['id' => $delivery->id, 'trackingNumber' => $delivery->tracking_number, 'status' => $delivery->status,
                 'hubName' => $delivery->destinationBayanHub?->name, 'atHub' => $delivery->current_hub_id === $delivery->destination_bayan_hub_id,
-                'canReview' => $request->user()->isLogistics() && $eligibility->isCompanyAdministrator($request->user(), $delivery->logistics_company_id),
+                'canReview' => $request->user()->isLogistics() && $eligibility->isCompanyManager($request->user(), $delivery->logistics_company_id),
                 'attempts' => $attempts->map(fn (DeliveryAttempt $attempt) => [
                     'id' => $attempt->id, 'reference' => $attempt->reference, 'number' => $attempt->attempt_number,
                     'riderName' => User::find($attempt->rider_id)?->name,
