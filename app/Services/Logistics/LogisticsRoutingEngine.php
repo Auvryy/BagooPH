@@ -234,18 +234,6 @@ class LogisticsRoutingEngine
         $hub = $currentHub ?? $delivery->currentHub;
         $status = strtolower($delivery->status);
 
-        $transfers = app(HubScanTransferService::class);
-        if ($next = $transfers->nextHub($delivery)) {
-            if ($hub?->id === $next->id) {
-                return ['action' => $transfers->action($next), 'prompt' => 'CONFIRM PHYSICAL RECEIPT AT '.$next->name,
-                    'next_status' => $next->isMotherHub() ? 'arrived_at_mother_hub' : 'arrived_at_destination_hub', 'color' => 'blue'];
-            }
-            if ($hub?->id === $delivery->current_hub_id) {
-                return ['action' => 'AWAIT_NEXT_HUB_RECEIPT', 'prompt' => 'NEXT RECEIPT: '.$next->name,
-                    'next_status' => $status, 'color' => 'blue'];
-            }
-        }
-
         if ($hub?->id === $delivery->destination_bayan_hub_id && $status === 'delivery_failed') {
             $attempt = DeliveryAttempt::where('delivery_id', $delivery->id)->latest('attempt_number')->first();
             if ($delivery->current_hub_id === null) {

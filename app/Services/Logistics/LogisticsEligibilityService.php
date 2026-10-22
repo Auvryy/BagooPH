@@ -26,10 +26,10 @@ class LogisticsEligibilityService
         if ($actor->isAdmin()) {
             return $query;
         }
-        $companyId = LogisticsCompany::where('user_id', $actor->id)->value('id');
+        $companyIds = $this->managedCompanies($actor)->pluck('id');
 
-        return $companyId
-            ? $query->where('logistics_company_id', $companyId)
+        return $companyIds->isNotEmpty()
+            ? $query->whereIn('logistics_company_id', $companyIds)
             : $query->whereIn('id', HubHandler::eligible()->where('user_id', $actor->id)->select('hub_id'));
     }
 
@@ -49,13 +49,37 @@ class LogisticsEligibilityService
             return [$hub, $hubs];
         }
 
-        return [$hubs->first(), $hubs];
+        $assignedIds = $request->user()?->isLogistics()
+            ? HubHandler::eligible()->where('user_id', $request->user()->id)->pluck('hub_id')
+            : collect();
+
+        return [$hubs->first(fn (LogisticsHub $hub) => $assignedIds->contains($hub->id)) ?? $hubs->first(), $hubs];
     }
 
     public function isCompanyAdministrator(User $actor, ?int $companyId = null): bool
     {
         return LogisticsCompany::eligible()->where('user_id', $actor->id)
             ->when($companyId !== null, fn (Builder $query) => $query->whereKey($companyId))->exists();
+    }
+
+    public function managedCompanies(User $actor): Builder
+    {
+        $actor = User::find($actor->id);
+        $query = LogisticsCompany::eligible();
+        if (! $actor?->isLogistics() || ! $actor->canAccessPortal()) {
+            return $query->whereKey(0);
+        }
+
+        return $query->where(function (Builder $scope) use ($actor) {
+            $scope->where('user_id', $actor->id)->orWhereIn('id', HubHandler::eligible()
+                ->where('user_id', $actor->id)->whereHas('hub', fn (Builder $hub) => $hub->where('tier', 'regional_mother_hub'))
+                ->select('logistics_company_id'));
+        });
+    }
+
+    public function isCompanyManager(User $actor, ?int $companyId = null): bool
+    {
+        return $this->managedCompanies($actor)->when($companyId !== null, fn (Builder $query) => $query->whereKey($companyId))->exists();
     }
 
     public function canScan(User $actor, LogisticsHub $hub): bool

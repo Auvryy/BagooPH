@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Logistics;
 
 use App\Http\Controllers\Controller;
-use App\Models\LogisticsCompany;
+use App\Models\BuyerReturnParcel;
+use App\Models\Delivery;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
@@ -41,9 +42,11 @@ class LogisticsManifestController extends Controller
     {
         $actor = User::findOrFail($request->user()->id);
         $query = $this->service->readable($actor);
-        $company = $actor->isLogistics() ? LogisticsCompany::eligible()->where('user_id', $actor->id)->first() : null;
+        $sourceHubs = $actor->isLogistics() ? $this->eligibility->accessibleHubs($actor)->get()->filter(fn (LogisticsHub $hub) => $this->service->canManageAtHub($actor, $hub))->values() : collect();
+        $companyIds = $sourceHubs->pluck('logistics_company_id')->unique();
+        $sourceHubIds = $sourceHubs->pluck('id');
         $token = null;
-        if ($company) {
+        if ($sourceHubs->isNotEmpty()) {
             $token = $request->session()->get('manifest_creation_token');
             if (! is_string($token)) {
                 $token = (string) Str::uuid();
@@ -62,7 +65,8 @@ class LogisticsManifestController extends Controller
                 ->whereIn('id', $discrepancies->pluck('id'))->pluck('id')->all();
             $detail = $this->summary($selected) + [
                 'reviewedHold' => app(HandoverHoldService::class)->manifestParcelIds($selected) !== [],
-                'canManage' => $actor->isLogistics() && $company?->id === $selected->logistics_company_id,
+                'canManage' => $this->service->canManageAtHub($actor, $source),
+                'canClose' => $this->service->canManageAtHub($actor, $destination),
                 'canLoad' => $actor->isLogistics() && $this->eligibility->canScan($actor, $source),
                 'canReceive' => $actor->isLogistics() && $this->eligibility->canScan($actor, $destination),
                 'parcels' => $selected->direction === 'buyer_return' ? $selected->buyerReturnParcels()->with('parcel')->orderBy('id')->get()->map(fn ($member) => [
@@ -98,16 +102,19 @@ class LogisticsManifestController extends Controller
         }
 
         return Inertia::render('Hub/Manifests', [
-            'manifests' => $list, 'selectedManifest' => $detail, 'canCreate' => (bool) $company, 'creationToken' => $token,
+            'manifests' => $list, 'selectedManifest' => $detail, 'canCreate' => $sourceHubs->isNotEmpty(), 'creationToken' => $token,
             'commandToken' => (string) Str::uuid(),
-            'buyerReturns' => $company ? \App\Models\BuyerReturnParcel::where('logistics_company_id', $company->id)->where('status', 'at_hub')
+            'buyerReturns' => $sourceHubs->isNotEmpty() ? BuyerReturnParcel::whereIn('logistics_company_id', $companyIds)->whereIn('current_hub_id', $sourceHubIds)->where('status', 'at_hub')
                 ->whereHas('returnCase', fn ($query) => $query->whereIn('status', ['at_destination_hub', 'in_transit']))->with('returnCase')->orderBy('id')->get()
                 ->filter(fn ($parcel) => isset($parcel->hub_ids[$parcel->route_position + 1]))
                 ->map(fn ($parcel) => ['id' => $parcel->buyer_return_case_id, 'reference' => $parcel->returnCase->reference, 'barcode' => $parcel->barcode,
                     'source_hub_id' => $parcel->current_hub_id, 'destination_hub_id' => $parcel->hub_ids[$parcel->route_position + 1], 'weight_grams' => $parcel->weight_grams])->values() : [],
-            'hubs' => $company ? LogisticsHub::eligible()->where('logistics_company_id', $company->id)->orderBy('name')->get(['id', 'name', 'code', 'tier']) : [],
-            'vehicles' => $company ? LogisticsFleet::ready()->whereIn('vehicle_type', ['l300_van', 'wing_truck'])->where('logistics_company_id', $company->id)->whereNotNull('assigned_driver_id')
-                ->with('driver')->orderBy('plate_number')->get()->map(fn ($fleet) => ['id' => $fleet->id, 'hub_id' => $fleet->hub_id,
+            'hubs' => LogisticsHub::eligible()->whereIn('logistics_company_id', $companyIds)->orderBy('name')->get(['id', 'name', 'code', 'tier', 'logistics_company_id']),
+            'sourceHubIds' => $sourceHubIds,
+            'vehicles' => $sourceHubs->isNotEmpty() ? LogisticsFleet::ready()->whereIn('vehicle_type', ['l300_van', 'wing_truck'])->whereIn('logistics_company_id', $companyIds)->whereIn('hub_id', $sourceHubIds)->whereNotNull('assigned_driver_id')
+                ->whereHas('driver.courierProfile', fn ($profile) => $profile->operational()->where('is_available', true))
+                ->whereNotIn('assigned_driver_id', LogisticsManifest::where('status', 'dispatched')->select('driver_id'))
+                ->with('driver')->orderBy('plate_number')->get()->reject(fn ($fleet) => Delivery::riderHasActiveWork($fleet->assigned_driver_id))->values()->map(fn ($fleet) => ['id' => $fleet->id, 'hub_id' => $fleet->hub_id,
                     'plate_number' => $fleet->plate_number, 'vehicle_type' => $fleet->vehicle_type, 'driver_name' => $fleet->driver->name]) : [],
             'basePath' => $request->is('hub/*') ? '/hub/manifests' : '/manifests',
         ]);

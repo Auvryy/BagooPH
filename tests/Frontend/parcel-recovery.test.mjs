@@ -94,7 +94,7 @@ test('partial corrective manifest counts keep unlisted receipts separate and pre
     const hub = { id: 1, name: 'Origin Bayan Hub', code: 'BH-1', tier: 'local_bayan_hub' };
     const selected = { id: 3, reference: 'MFT-ORIGINAL', type: 'feeder', direction: 'outbound', status: 'sealed', version: 4, included_count: 2,
         source: hub, destination: { ...hub, id: 2, name: 'Mother Hub', code: 'MH-1', tier: 'regional_mother_hub' },
-        vehicle_plate: 'BGO-1001', driver_name: 'Juan Santos', dispatched_at: null, received_at: null, canManage: true, canLoad: true, canReceive: true,
+        vehicle_plate: 'BGO-1001', driver_name: 'Juan Santos', dispatched_at: null, received_at: null, canManage: true, canClose: true, canLoad: true, canReceive: true,
         receiptCounts: { expected: 2, normal_received: 0, corrective_expected_received: 1, unlisted_received: 1, outstanding: 1 },
         parcels: [{ id: 1, tracking_number: 'BGO-EXPECTED', included: true, status: 'arrived_at_mother_hub', received_at: null,
             receipt_condition: null, corrective_receipt: { reference: 'HMR-EXPECTED', received_at: '2026-10-14T00:00:00Z' } },
@@ -112,4 +112,20 @@ test('partial corrective manifest counts keep unlisted receipts separate and pre
     assert.match(html, /Unlisted receipt.*original expected count unchanged/);
     assert.match(html, /<button[^>]*disabled=""[^>]*>Close reviewed recovery/);
     assert.doesNotMatch(html, /Record departure|Reopen with reason|Remove with reason|All parcels received/);
+});
+
+
+test('source manifest management does not expose receiving closure to the sending handler', async () => {
+    const hub = { id: 1, name: 'Origin Bayan Hub', code: 'BH-1', tier: 'local_bayan_hub' };
+    const selected = { id: 3, reference: 'MFT-ARRIVAL', type: 'feeder', direction: 'outbound', status: 'received', version: 4,
+        included_count: 1, source: hub, destination: { ...hub, id: 2, name: 'Mother Hub' }, vehicle_plate: 'BGO-1001',
+        driver_name: 'Juan Santos', dispatched_at: null, received_at: null, canManage: true, canClose: false,
+        canLoad: true, canReceive: false, parcels: [], discrepancies: [], events: [] };
+    const html = await render(Manifests, 'Hub/Manifests', { manifests: { data: [selected], links: [] }, selectedManifest: selected,
+        canCreate: true, creationToken: 'CREATION', commandToken: 'COMMAND', basePath: '/hub/manifests', hubs: [], vehicles: [] });
+    assert.doesNotMatch(html, /Close received manifest|Close reviewed recovery|Record parcel receipt/);
+    const destination = await render(Manifests, 'Hub/Manifests', { manifests: { data: [selected], links: [] },
+        selectedManifest: { ...selected, canManage: false, canClose: true, canLoad: false, canReceive: true },
+        canCreate: false, creationToken: null, commandToken: 'COMMAND', basePath: '/hub/manifests', hubs: [], vehicles: [] });
+    assert.match(destination, /Close received manifest/);
 });

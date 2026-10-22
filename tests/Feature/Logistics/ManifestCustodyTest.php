@@ -109,7 +109,7 @@ class ManifestCustodyTest extends TestCase
     public static function deniedActors(): array
     {
         return ['buyer' => ['buyer', 'load'], 'seller' => ['seller', 'load'], 'rider' => ['courier', 'load'], 'platform' => ['admin', 'load'],
-            'company floor bypass' => ['manager', 'load'], 'handler manager bypass' => ['handler', 'seal'],
+            'company floor bypass' => ['manager', 'load'], 'destination cannot seal source manifest' => ['wrong_handler', 'seal'],
             'wrong facility' => ['wrong_handler', 'load'], 'foreign company' => ['foreign_manager', 'load']];
     }
 

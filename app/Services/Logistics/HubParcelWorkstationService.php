@@ -154,13 +154,13 @@ class HubParcelWorkstationService
         $custody = $parcel->latestCustodyCheckpoint?->custody_after ?? ['kind' => 'unknown'];
         $atHub = ($custody['kind'] ?? null) === 'hub' && ($custody['hub_id'] ?? null) === $hub->id && $parcel->current_hub_id === $hub->id;
         $handler = $actor->isLogistics() && $this->eligibility->canScan($actor, $hub);
-        $manager = $actor->isLogistics() && $this->eligibility->isCompanyAdministrator($actor, $parcel->logistics_company_id);
+        $manager = $actor->isLogistics() && $this->eligibility->isCompanyManager($actor, $parcel->logistics_company_id);
         $guide = [
             'stage' => self::STAGES[$parcel->status] ?? 'Unrecognized parcel stage',
             'order_status' => OrderTrackingService::label($parcel->order, $parcel),
             'custodian' => $this->custodian($parcel, $custody),
             'custody_recorded_at' => $parcel->latestCustodyCheckpoint?->created_at->toIso8601String(),
-            'next_step' => 'Review the parcel records', 'responsible' => 'Company administrator',
+            'next_step' => 'Review the parcel records', 'responsible' => 'Mother Hub manager',
             'blocker' => null, 'action' => 'wait', 'can_act' => false, 'href' => null,
             'eligible_rider_ids' => [], 'ready_for_collection' => false,
         ];
@@ -175,7 +175,7 @@ class HubParcelWorkstationService
                 'can_act' => $readable, 'href' => $readable ? '/handover-issues/'.$held->id : null];
         }
         if (($custody['kind'] ?? 'unknown') === 'unknown') {
-            return $next('Review missing custody evidence', 'Company administrator', blocker: 'No retained custody checkpoint establishes the parcel holder. A status or assignment cannot replace a handover.');
+            return $next('Review missing custody evidence', 'Mother Hub manager', blocker: 'No retained custody checkpoint establishes the parcel holder. A status or assignment cannot replace a handover.');
         }
         $expectedOrder = match ($parcel->status) {
             'picked_up' => ['picked_up'],
@@ -187,18 +187,18 @@ class HubParcelWorkstationService
             default => null,
         };
         if ($expectedOrder && ! in_array($parcel->order?->status, $expectedOrder, true)) {
-            return $next('Review the order and parcel stages', 'Company administrator', blocker: 'The recorded commercial order state does not match this parcel stage. Refresh or review its source records before continuing.');
+            return $next('Review the order and parcel stages', 'Mother Hub manager', blocker: 'The recorded commercial order state does not match this parcel stage. Refresh or review its source records before continuing.');
         }
         if (in_array($parcel->status, self::TERMINAL, true) || in_array($parcel->order?->status, ['cancelled', 'completed', 'returned'], true)) {
             $awaitBuyer = $parcel->order?->status === 'delivered' && ($custody['kind'] ?? null) === 'buyer'
                 && ($custody['user_id'] ?? null) === $parcel->order->buyer_id;
 
-            return $next($awaitBuyer ? 'Await buyer receipt confirmation' : 'Retain the recorded outcome', $awaitBuyer ? 'Owning buyer' : 'Company administrator', blocker: 'No further hub custody action is available.');
+            return $next($awaitBuyer ? 'Await buyer receipt confirmation' : 'Retain the recorded outcome', $awaitBuyer ? 'Owning buyer' : 'Mother Hub manager', blocker: 'No further hub custody action is available.');
         }
         if (in_array($parcel->status, ['parcel_recovery_held', 'parcel_recovery_in_transit'], true)) {
             $readable = app(ParcelRecoveryService::class)->observations($actor)->whereHas('recoveryCase', fn ($case) => $case->where('delivery_id', $parcel->id))->exists();
 
-            return $next('Continue the recorded parcel recovery', 'Company administrator and assigned recovery handlers', 'recovery', $readable, '/parcel-recovery', $readable ? null : 'This account has no access to the recovery observation.');
+            return $next('Continue the recorded parcel recovery', 'Mother Hub manager and assigned recovery handlers', 'recovery', $readable, '/parcel-recovery', $readable ? null : 'This account has no access to the recovery observation.');
         }
         if (in_array($parcel->status, ['unassigned', 'assigned', 'assigned_pickup'], true) && ($custody['kind'] ?? null) === 'seller') {
             return $next('Pickup rider must confirm collection', 'Assigned pickup rider',
@@ -209,7 +209,7 @@ class HubParcelWorkstationService
             $expectedHub = $parcel->status === 'picked_up' ? $parcel->origin_bayan_hub_id : $parcel->destination_bayan_hub_id;
             if (($custody['kind'] ?? null) !== 'courier' || ($custody['user_id'] ?? null) !== $expectedRider
                 || $hub->id !== $expectedHub || $parcel->current_hub_id !== null) {
-                return $next('Review the expected rider handover', 'Company administrator', blocker: 'Recorded custody does not match the expected rider.');
+                return $next('Review the expected rider handover', 'Mother Hub manager', blocker: 'Recorded custody does not match the expected rider.');
             }
 
             return $next('Receive the physical parcel from its rider', 'Assigned receiving handler', 'scan', $handler, '/scan', $handler ? null : 'An assigned handler must record the intake scan.');
@@ -225,18 +225,19 @@ class HubParcelWorkstationService
                     '/manifests/'.$incoming->id, $handler ? null : 'An assigned receiving handler must record the manifest receipt.');
             }
         }
-        if ($nextHub = app(HubScanTransferService::class)->nextHub($parcel)) {
-            if ($hub->id === $nextHub->id) {
-                return $next('Confirm physical receipt at '.$nextHub->name, 'Assigned receiving handler', 'scan', $handler, '/scan',
-                    $handler ? null : 'An assigned receiving handler must confirm the physical parcel receipt.');
-            }
-            if ($hub->id === $parcel->current_hub_id) {
-                return $next('Next scan: receipt at '.$nextHub->name, 'Handler at '.$nextHub->name,
-                    blocker: 'Receipt here is recorded. The next hub confirms when the parcel physically arrives.');
+        if ($atHub) {
+            $outgoing = app(LogisticsManifestService::class)->readable($actor)
+                ->where('source_hub_id', $hub->id)->whereIn('status', ['draft', 'sealed'])
+                ->whereHas('parcels', fn ($members) => $members->where('delivery_id', $parcel->id)->where('included', true))
+                ->latest('id')->first();
+            if ($outgoing) {
+                return $next($outgoing->status === 'draft' ? 'Finish loading and seal the existing manifest' : 'Record departure on the sealed manifest',
+                    'Assigned source-hub handler', 'manifest', $handler, '/manifests/'.$outgoing->id,
+                    $handler ? null : 'The assigned source-hub handler must continue this original manifest.');
             }
         }
         if (! $atHub) {
-            return $next('Review custody before another hub action', 'Company administrator', blocker: 'The selected facility is not the recorded parcel holder.');
+            return $next('Review custody before another hub action', 'Mother Hub manager', blocker: 'The selected facility is not the recorded parcel holder.');
         }
         if ($custody['manifest_scan_reference'] ?? null) {
             $receipt = LogisticsManifestEvent::with('manifest')->where('reference', $custody['manifest_scan_reference'])
@@ -244,7 +245,7 @@ class HubParcelWorkstationService
                 ->whereHas('parcel', fn ($member) => $member->where('delivery_id', $parcel->id))
                 ->whereHas('manifest', fn ($manifest) => $manifest->where('logistics_company_id', $parcel->logistics_company_id))->first();
             if ($receipt && $receipt->manifest->status !== 'closed') {
-                return $next('Finish the incoming manifest receipt and closure', 'Assigned receiver records receipts; company administrator closes',
+                return $next('Finish the incoming manifest receipt and closure', 'Assigned receiving handler records receipts and closes',
                     'manifest', $manager || $handler, '/manifests/'.$receipt->manifest_id,
                     'The incoming manifest is '.$receipt->manifest->status.'. Complete its receiving checks before the next handover.');
             }
@@ -252,18 +253,18 @@ class HubParcelWorkstationService
         if ($parcel->status === 'assigned_to_rider') {
             $profile = $parcel->assignedRider?->courierProfile;
             if (! $this->eligibility->isOperational($profile) || $profile->assigned_hub_id !== $hub->id || $profile->logistics_company_id !== $parcel->logistics_company_id) {
-                return $next('Review the assigned rider\'s eligibility', 'Company administrator', blocker: 'The assigned rider is unavailable for this facility. Preserve the assignment and hub custody until authorized recovery is recorded.');
+                return $next('Review the assigned rider\'s eligibility', 'Mother Hub manager', blocker: 'The assigned rider is unavailable for this facility. Preserve the assignment and hub custody until authorized recovery is recorded.');
             }
 
             return $next('Await the assigned rider\'s departure scan', $parcel->assignedRider?->name ?? 'Assigned final-mile rider', blocker: 'Rider assignment leaves custody at the hub until that rider scans departure.');
         }
         if ($parcel->status === 'sorted_to_barangay_bin') {
             if ($parcel->delivery_type !== 'doorstep' || $parcel->order?->status !== 'sorted' || $hub->id !== $parcel->destination_bayan_hub_id) {
-                return $next('Review the recorded sorting state', 'Company administrator', blocker: 'Rider assignment requires a sorted doorstep parcel at its destination Bayan Hub.');
+                return $next('Review the recorded sorting state', 'Mother Hub manager', blocker: 'Rider assignment requires a sorted doorstep parcel at its destination Bayan Hub.');
             }
             $ids = $riders->filter(fn ($rider) => ! $rider['assigned_barangay'] || strcasecmp(trim($rider['assigned_barangay']), trim((string) $parcel->order?->destination_barangay)) === 0)->pluck('id')->values()->all();
 
-            return [...$next('Assign an eligible final-mile rider', 'Company administrator or assigned handler', 'assign', ($manager || $handler) && $ids !== [], '/deliveries',
+            return [...$next('Assign an eligible final-mile rider', 'Mother Hub manager or assigned handler', 'assign', ($manager || $handler) && $ids !== [], '/deliveries',
                 blocker: ! ($manager || $handler) ? 'This account may read the parcel but cannot assign its rider.' : ($ids === [] ? 'No available eligible rider serves this facility and barangay.' : null)), 'eligible_rider_ids' => $ids];
         }
         if ($parcel->status === 'ready_for_hub_pickup') {
@@ -285,7 +286,7 @@ class HubParcelWorkstationService
         }
         if ($prompt['action'] === 'STAGE_FOR_PICKUP') {
             $blocker = ! $hub->allows_self_pickup ? 'Counter pickup is disabled at this facility.'
-                : (! trim((string) $hub->operating_hours) ? 'The company administrator must record actual pickup hours before staging.' : null);
+                : (! trim((string) $hub->operating_hours) ? 'The Mother Hub manager must record actual pickup hours before staging.' : null);
 
             return $next('Scan to stage the parcel for secure pickup', 'Assigned counter handler', 'scan', $handler && ! $blocker, '/scan', $blocker ?? ($handler ? null : 'An assigned handler must scan pickup staging.'));
         }
@@ -293,20 +294,20 @@ class HubParcelWorkstationService
             try {
                 app(LogisticsManifestService::class)->nextHub($parcel);
             } catch (DomainException $error) {
-                return $next('Review manifest readiness', 'Company administrator', blocker: $error->getMessage());
+                return $next('Review manifest readiness', 'Assigned source-hub handler', blocker: $error->getMessage());
             }
 
-            return $next('Prepare the next manifest and record its load and dispatch scans', 'Company administrator prepares; assigned handler loads and dispatches', 'manifest', $manager || $handler, '/manifests', ($manager || $handler) ? null : 'Company management or an assigned handler must continue the transfer.');
+            return $next('Prepare the next manifest and record its load and dispatch scans', 'Assigned source-hub handler prepares, loads and dispatches', 'manifest', $manager || $handler, '/manifests', ($manager || $handler) ? null : 'An assigned source-hub handler must continue the transfer.');
         }
         if ($prompt['action'] === 'AWAIT_RETRY_REVIEW') {
-            return $next('Review the failed attempt and approved retry date', 'Company administrator', 'review', $manager, '/delivery-recovery', 'A retry requires company approval and the approved date before a handler releases it.');
+            return $next('Review the failed attempt and approved retry date', 'Mother Hub manager', 'review', $manager, '/delivery-recovery', 'A retry requires company approval and the approved date before a handler releases it.');
         }
         if ($prompt['action'] === 'AWAIT_SELLER_RECEIPT') {
             return $next('Await the owning seller\'s return receipt scan', 'Owning seller', blocker: 'Hub staging does not mark the order Returned.');
         }
         if (in_array($prompt['action'], ['SORT_TO_LINE_HAUL', 'RELEASE_APPROVED_RETRY', 'STAGE_SELLER_RETURN'], true)) {
             if ($prompt['action'] === 'SORT_TO_LINE_HAUL' && ! in_array($hub->id, [$parcel->origin_mother_hub_id, $parcel->destination_mother_hub_id], true)) {
-                return $next('Review the recorded Mother Hub route', 'Company administrator', blocker: 'This facility is not a Mother Hub on the original parcel route.');
+                return $next('Review the recorded Mother Hub route', 'Mother Hub manager', blocker: 'This facility is not a Mother Hub on the original parcel route.');
             }
 
             $label = match ($prompt['action']) {
@@ -318,7 +319,7 @@ class HubParcelWorkstationService
             return $next($label, 'Assigned facility handler', 'scan', $handler, '/scan', $handler ? null : 'An assigned handler must record this scan.');
         }
 
-        return $next('Review the parcel\'s supported recovery records', 'Company administrator', blocker: $prompt['action'] === 'AWAIT_RETURN_REVIEW' ? $prompt['prompt'] : 'No supported next hub action is established for this state.');
+        return $next('Review the parcel\'s supported recovery records', 'Mother Hub manager', blocker: $prompt['action'] === 'AWAIT_RETURN_REVIEW' ? $prompt['prompt'] : 'No supported next hub action is established for this state.');
     }
 
     private function custodian(Delivery $parcel, array $custody): string
