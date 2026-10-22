@@ -205,7 +205,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     icon: Building2, 
                     current: component === 'Hub/Network' || route().current('hub.network') || url.startsWith('/hub/network') 
                 },
-                { name: 'Manifests', href: route('hub.manifests.index'), icon: Truck, current: component === 'Hub/Manifests' },
+                { name: 'Transfer history', href: route('hub.manifests.index'), icon: Truck, current: component === 'Hub/Manifests' },
                 { name: 'Buyer returns', href: '/buyer-returns', icon: Package, current: component.startsWith('Returns/') },
                 { name: 'Parcel recovery', href: route('hub.parcel-recovery.index'), icon: AlertTriangle, current: component === 'Hub/ParcelRecovery' },
                 { name: 'Handover issues', href: '/handover-issues', icon: AlertTriangle, current: component.startsWith('Handover/') },
@@ -485,7 +485,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     className={'flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs transition ' + (component === 'Hub/Manifests' ? 'bg-[#E00D42] font-bold text-white' : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900')}
                                 >
                                     <Truck className="h-4 w-4 shrink-0" />
-                                    <span>Manifests</span>
+                                    <span>Transfer history</span>
                                 </PortalLink>
                                 <PortalLink href={route('hub.recovery.index')} className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100">Delivery recovery</PortalLink>
                                 <PortalLink href="/handover-issues" aria-current={component.startsWith('Handover/') ? 'page' : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium ${component.startsWith('Handover/') ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" /><span>Handover issues</span></PortalLink>
@@ -747,7 +747,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                 </Link>
                                                 <Link href={route('hub.manifests.index')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-[#E00D42]">
                                                     <Truck className="h-4 w-4" />
-                                                    <span>Manifests</span>
+                                                    <span>Transfer history</span>
                                                 </Link>
                                                 <Link href={route('hub.recovery.index')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Delivery recovery</Link>
                                             </>

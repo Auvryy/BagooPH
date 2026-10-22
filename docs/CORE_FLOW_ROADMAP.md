@@ -7693,3 +7693,40 @@ remains open.
 
 Implementation and verification commits: `17a95bb` (portal navigation/recovery),
 `2cabb3b` (current eligibility fixtures) and `d8e920c` (stable counter comparison).
+
+
+### Confirmed hub receipts for normal deliveries — October 22, 2026
+
+At the user's request, normal outbound delivery now continues through the
+assigned next hub's waybill scan and explicit physical-receipt confirmation.
+Origin intake is still required; each distinct Mother Hub must receive in
+order before the destination Bayan Hub can sort and assign a delivery rider.
+No manual manifest, vehicle selection, sealing or closure is required for this
+normal path. The last confirmed hub remains recorded until the next receipt;
+no unobserved departure is invented. Locked updates retain immutable route,
+source/target state, previous receipt reference, actor and custody evidence.
+Preview scans remain read-only, stale submissions cannot duplicate receipts,
+and unassigned or wrong-facility accounts cannot advance the parcel.
+
+Existing manifest-backed parcels finish their retained workflow. Historical
+transfer and exception/return records remain available as Transfer history;
+reverse-route evidence now accepts the retained confirmed hub receipts too.
+Waybill and order-reference labels are distinct; pickup does not renumber the
+parcel. Normal transfers no longer depend on the incomplete demo van/driver
+choices, and this change requires neither new seed data nor a migration.
+
+Seven isolated journey/access cases pass, including both portal aliases,
+checkout through COD/proof delivery and buyer completion, ordered two-Mother
+transport, skipped-hub rejection and retained outbound evidence. The wider
+146-case selection produced 145 passes and one old expectation that origin
+intake should offer a manifest. That expectation now follows the selected
+next-hub receipt flow; its six-case stage group passes separately. The wider
+selection was not repeated after that test-only expectation correction, and
+the full application backend suite was not run. All 580 frontend checks,
+TypeScript/Vite build and affected PHP formatting checks pass.
+
+Scoped normal-transfer usability assessment: **3/10 to 8/10**, based on removing
+the blocked demo manifest setup and testing the actual buyer-to-delivery path.
+This is local evidence, not a rating of all logistics exceptions or the whole
+system. Azure deployment and deployed acceptance remain separate; no live
+parcel/cash commands or PostgreSQL reset/reseed were performed.
