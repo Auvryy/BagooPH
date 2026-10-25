@@ -46,7 +46,7 @@
 }
 .courier-soft .courier-map-surface,
 .courier-soft .courier-map-label {
-    border-color: #CBD5E1;
+    border-color: #DEDEE3;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
 }
 .courier-chat-layout { height: var(--courier-chat-height, 100dvh); overflow: hidden; }
@@ -70,8 +70,8 @@
 .courier-job-map .leaflet-container,
 .courier-job-map .leaflet-control,
 .courier-job-map .leaflet-tooltip { font-family: 'Plus Jakarta Sans', sans-serif; }
-.courier-job-map .leaflet-container { background: #F8F6F2; }
-.courier-map-surface .leaflet-tile-pane { filter: grayscale(1); }
+.courier-job-map .leaflet-container { background: #F2F1ED; }
+/* Keep the unfiltered OpenStreetMap light tiles shared with the mobile map. */
 .courier-stop-pin { filter: drop-shadow(0 3px 4px rgba(15,23,42,0.18)); }
 .courier-job-map .leaflet-control-attribution {
     max-width: 100%;

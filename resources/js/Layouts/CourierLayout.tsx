@@ -137,7 +137,7 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
     };
 
     return (
-        <div ref={portal} data-sidebar-collapsed={sidebarCollapsed} data-sidebar-ready={sidebarReady} className={courierClasses('courier-portal courier-soft bg-[#FFFAFB] font-sans text-slate-900 antialiased', isChat ? 'courier-chat-layout min-h-0' : 'min-h-dvh', isDashboard && 'courier-dashboard')}>
+        <div ref={portal} data-sidebar-collapsed={sidebarCollapsed} data-sidebar-ready={sidebarReady} className={courierClasses('courier-portal courier-soft bg-[#FAFAFA] font-sans text-slate-900 antialiased', isChat ? 'courier-chat-layout min-h-0' : 'min-h-dvh', isDashboard && 'courier-dashboard')}>
             <CatalogueNavigationNotice />
             <a href="#rider-content" className="sr-only z-[90] bg-white p-4 text-base font-bold focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to content</a>
             <CourierSidebar component={component} hub={hub} company={scope?.company || 'Company not assigned'} name={auth.user?.name || 'Rider'} initials={initials} subtle collapsed={sidebarCollapsed} mobileOpen={mobileSidebarOpen && !desktop} onCloseMobile={() => setMobileSidebarOpen(false)} />

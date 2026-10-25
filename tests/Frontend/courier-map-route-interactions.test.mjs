@@ -9,8 +9,7 @@ const bundle=await build({stdin:{contents:"export {default} from '@/Components/C
  plugins:[{name:'map-route-harness',setup(b){
  b.onResolve({filter:/^react$/},()=>({path:'react',namespace:'hooks'}));b.onLoad({filter:/.*/,namespace:'hooks'},()=>({contents:`export const useState=v=>globalThis.mapRoute.state(v);export const useRef=v=>globalThis.mapRoute.ref(v);export const useEffect=(f,d)=>globalThis.mapRoute.effect(f,d);`}));
  b.onResolve({filter:/Components\/CourierUI$/},()=>({path:'ui',namespace:'ui'}));b.onLoad({filter:/.*/,namespace:'ui'},()=>({contents:`export const CourierBadge='span',CourierPanel='section',courierButton='',courierClasses=(...v)=>v.filter(Boolean).join(' ');`}));
- b.onResolve({filter:/utils\/courierRoadRoute$/},()=>({path:'request',namespace:'request'}));b.onLoad({filter:/.*/,namespace:'request'},()=>({contents:`export const requestRoadPreview=(...args)=>globalThis.mapRoute.request(...args);`}));
- b.onResolve({filter:/^leaflet$/},()=>({path:'leaflet',namespace:'leaflet'}));b.onLoad({filter:/.*/,namespace:'leaflet'},()=>({contents:`export const map=()=>globalThis.mapRoute.instance;export const tileLayer=()=>globalThis.mapRoute.tiles;export const marker=()=>globalThis.mapRoute.marker;export const divIcon=v=>v;export const layerGroup=()=>globalThis.mapRoute.layer;export const polyline=(points,options)=>{globalThis.mapRoute.lines.push({points,options});return {addTo(){return this}}};export const circleMarker=()=>({addTo(){}});export const latLngBounds=p=>p;`}));
+ b.onResolve({filter:/^leaflet$/},()=>({path:'leaflet',namespace:'leaflet'}));b.onLoad({filter:/.*/,namespace:'leaflet'},()=>({contents:`export const map=()=>globalThis.mapRoute.instance;export const tileLayer=()=>globalThis.mapRoute.tiles;export const marker=()=>globalThis.mapRoute.marker;export const divIcon=v=>v;export const layerGroup=()=>globalThis.mapRoute.layer;export const polyline=(points,options)=>{globalThis.mapRoute.lines.push({points,options});return {addTo(){return this}}};export const circleMarker=()=>({addTo(){return this},bindTooltip(){return this}});export const latLngBounds=p=>p;`}));
  }}]});const file=join(dir,'map.mjs');writeFileSync(file,bundle.outputFiles[0].text);const MapView=(await import(pathToFileURL(file).href)).default;
 const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve()};
 const nodes=tree=>!tree||typeof tree!=='object'?[]:[tree,...[tree.props?.children].flat(Infinity).flatMap(nodes)];
@@ -29,14 +28,20 @@ function harness(t){
  Object.defineProperty(globalThis,'document',{configurable:true,value:h.document});Object.defineProperty(globalThis,'window',{configurable:true,value:{matchMedia:()=>({matches:false})}});Object.defineProperty(globalThis,'navigator',{configurable:true,value:{geolocation:{getCurrentPosition(resolve,reject){h.locate=resolve;h.reject=reject}}}});globalThis.mapRoute=h;
  t.after(()=>{h.close();delete globalThis.mapRoute;for(const[name,value]of Object.entries(original)){if(value)Object.defineProperty(globalThis,name,value);else delete globalThis[name]}});return h;
 }
-test('map requests no location or route until pressed, then draws actual road points',async t=>{
- const h=harness(t);h.render();await tick();h.render();assert.equal(h.calls.length,0);assert.equal(h.locate,undefined);
- h.button('Preview road route').props.onClick();h.render();assert.equal(h.calls.length,0);h.locate({coords:{latitude:14.16,longitude:121.23,accuracy:5},timestamp:Date.now()});await tick();h.render();await tick();
- assert.equal(h.calls.length,1);assert.equal(h.calls[0][0],'pickup-7');assert.equal(h.lines.length,2);assert.equal(h.lines[1].points.length,3);assert.equal(h.lines[1].options.color,'#E00D42');
+test('sample delivery draws its line without requesting location or a routing service', async t => {
+ const h=harness(t);h.props={};h.render();await tick();h.render();await tick();
+ assert.equal(h.calls.length,0);assert.equal(h.locate,undefined);
+ assert.equal(h.lines.length,2);assert.equal(h.lines[1].options.color,'#E00D42');
+ assert.equal(h.lines[1].options.dashArray,'6 6');assert.ok(h.lines[1].points.length>2);
+ assert.match(text(h.tree),/Illustration only/);assert.match(text(h.tree),/Sample rider/);
+ assert.doesNotMatch(text(h.tree),/Origin hub|Geoapify|Preview road route/);
 });
-test('cancel and selection changes discard late location and provider callbacks',async t=>{
- const h=harness(t);h.render();await tick();h.render();h.button('Preview road route').props.onClick();h.render();h.button('Cancel route').props.onClick();h.locate({coords:{},timestamp:Date.now()});await tick();h.render();assert.equal(h.calls.length,0);
- let done;h.response=()=>new Promise(resolve=>{done=resolve});h.button('Preview road route').props.onClick();h.locate({coords:{},timestamp:Date.now()});await tick();assert.equal(h.calls.length,1);
- h.props={job:{...h.props.job,key:'pickup-8',trackingNumber:'BGO-TWO'}};h.render();await tick();h.render();assert.equal(h.calls[0][4].aborted,true);
- done({lines:[[[14.16,121.23],[14.17,121.24]]],mode:'drive'});await tick();h.render();await tick();assert.equal(h.lines.length,0);
+test('switching between a saved stop and the sample replaces and releases its map',async t=>{
+ const h=harness(t);let removed=0;h.instance.remove=()=>{removed++;h.lines=[]};
+ h.render();await tick();h.render();assert.equal(h.lines.length,0);
+ h.button('Try sample route').props.onClick();h.render();await tick();h.render();
+ assert.equal(h.lines.length,2);assert.equal(removed,1);
+ h.button('Show saved stop').props.onClick();h.render();await tick();h.render();
+ assert.equal(h.lines.length,0);assert.equal(removed,2);assert.equal(h.locate,undefined);
+ h.close();assert.equal(removed,3);
 });

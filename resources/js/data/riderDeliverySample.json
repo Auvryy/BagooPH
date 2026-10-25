@@ -1,0 +1,48 @@
+{
+  "label": "Sample delivery route",
+  "notice": "Illustration only. This is not a live rider or an assigned parcel.",
+  "riderLabel": "Sample rider",
+  "deliveryLabel": "Sample delivery point",
+  "coordinates": [
+    [
+      14.282,
+      121.4147
+    ],
+    [
+      14.2816,
+      121.4148
+    ],
+    [
+      14.2811,
+      121.4149
+    ],
+    [
+      14.2806,
+      121.415
+    ],
+    [
+      14.2801,
+      121.4152
+    ],
+    [
+      14.2795,
+      121.4154
+    ],
+    [
+      14.2792,
+      121.416
+    ],
+    [
+      14.279,
+      121.4167
+    ],
+    [
+      14.2788,
+      121.4174
+    ],
+    [
+      14.2786,
+      121.4182
+    ]
+  ]
+}
