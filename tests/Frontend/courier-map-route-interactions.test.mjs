@@ -31,7 +31,8 @@ test('sample delivery draws its line without requesting location or a routing se
  const h=harness(t);h.props={};h.render();await tick();h.render();await tick();
  assert.equal(h.calls.length,0);assert.equal(h.locate,undefined);
  assert.equal(h.lines.length,2);assert.equal(h.lines[1].options.color,'#E00D42');
- assert.equal(h.lines[1].options.dashArray,'6 6');assert.ok(h.lines[1].points.length>2);
+ assert.equal(h.lines[1].options.dashArray,undefined);assert.equal(h.lines[1].options.smoothFactor,0);assert.ok(h.lines[1].points.length>2);
+ assert.match(text(h.tree),/m along mapped streets/);
  assert.match(text(h.tree),/Illustration only/);assert.match(text(h.tree),/Sample rider/);
  assert.doesNotMatch(text(h.tree),/Origin hub|Geoapify|Preview road route/);
 });

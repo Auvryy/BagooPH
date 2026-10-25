@@ -47,8 +47,9 @@ export default function CourierJobMap({ job, embedded = false }: { job?: Courier
             tiles.addTo(instance);
             if (sampleMode) {
                 const points = sample.coordinates.map(p => [p[0], p[1]] as [number, number]);
-                leaflet.polyline(points, { color: '#FFFFFF', weight: 7, interactive: false }).addTo(instance);
-                leaflet.polyline(points, { color: '#E00D42', weight: 4, dashArray: '6 6', interactive: false }).addTo(instance);
+                const roadStyle = { smoothFactor: 0, lineCap: 'round', lineJoin: 'round', interactive: false } as const;
+                leaflet.polyline(points, { ...roadStyle, color: '#FFFFFF', weight: 8 }).addTo(instance);
+                leaflet.polyline(points, { ...roadStyle, color: '#E00D42', weight: 5 }).addTo(instance);
                 for (const [point, label, color] of [[points[0], sample.riderLabel, '#18181B'], [points[points.length - 1], sample.deliveryLabel, '#E00D42']] as const) {
                     leaflet.circleMarker(point, { radius: 9, color: '#FFFFFF', weight: 3, fillColor: color, fillOpacity: 1 }).addTo(instance).bindTooltip(label);
                 }
@@ -90,7 +91,7 @@ export default function CourierJobMap({ job, embedded = false }: { job?: Courier
             </div>
         </div> : <div className="mx-4 rounded-[8px] border border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">No usable saved pin for this stop. {directions ? 'Use address-based directions for this stop.' : 'Ask your logistics team for the destination.'}</div>}
         <div className={courierClasses('space-y-3 pt-3', !embedded && 'px-4 pb-4 sm:px-5')}>
-            {sampleMode ? <div className="space-y-2"><p className="text-xs leading-relaxed text-slate-600">{sample.notice}</p><div className="flex flex-wrap gap-4 text-xs text-slate-700"><span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#18181B]" />{sample.riderLabel}</span><span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#E00D42]" />{sample.deliveryLabel}</span></div></div> : job && <p className="text-sm leading-relaxed text-slate-600">{job.place.address || 'Address not provided'}</p>}
+            {sampleMode ? <div className="space-y-2"><p className="text-xs leading-relaxed text-slate-600">{sample.notice}</p><div className="flex flex-wrap gap-4 text-xs text-slate-700"><span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#18181B]" />{sample.riderLabel}</span><span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#E00D42]" />{sample.deliveryLabel}</span><span>{sample.distanceMeters.toLocaleString()} m along mapped streets</span></div></div> : job && <p className="text-sm leading-relaxed text-slate-600">{job.place.address || 'Address not provided'}</p>}
             {job && <button type="button" className={courierButton} onClick={() => setSampleMode(v => !v)}>{sampleMode ? 'Show saved stop' : 'Try sample route'}</button>}
             <p role="status" className={status === 'error' ? 'text-sm text-amber-800' : 'sr-only'}>{status === 'loading' ? 'Loading the street map…' : status === 'error' ? 'Street tiles could not load. The route illustration and saved addresses remain available.' : 'Street map loaded.'}</p>
             {status === 'error' && <button type="button" onClick={() => setAttempt(v => v + 1)} className={courierButton}><RotateCcw className="h-4 w-4" aria-hidden="true" />Retry map</button>}
