@@ -6,6 +6,14 @@ This document applies `STYLE_GUIDE.md` to the BagooPH courier portal. It defines
 
 Pickup and final-mile work remain phases of the same approved courier account. `COURIER_FLOW.md`, `SYSTEM_FLOW_AND_SPECIFICATIONS.md`, and `CORE_FLOW_VALIDATION_AND_EDGE_CASES.md` govern permissions and transitions. Presentation must preserve mandatory hub custody, buyer-only completion, exact server-owned COD amounts, and private verification access.
 
+## Rider Web Presentation
+
+Use a restrained card-and-control hierarchy inspired by shadcn: white working panels, quiet neutral separators, small shadows, medium-weight labels and grouped filters. Use the neutral light canvas, Bagoo red, Plus Jakarta Sans and explicit 8px corners. Reserve stronger red for the primary action, focus and selected parcel; neutral navigation backgrounds identify the current page with an accent icon. Status meaning remains visible in labels as well as semantic colour.
+
+The sidebar has a compact brand header, clear navigation group, current dispatch information and account identity. Use a clean divider instead of a floating sidebar shadow. Header dates are secondary metadata rather than standalone cards. Profiles retain a compact plain cover, stored avatar, actual identity and existing section controls without decorative transport artwork. Shared panels apply to Tasks, Trips, Messages and Profile without changing their reading order or interaction contracts.
+
+Retain 48px touch targets, keyboard focus, narrow-screen filter scrolling, the 1280px navigation breakpoint, synchronized sidebar movement and the separate chat scroll areas. Adapt existing React/Headless UI components; this visual direction does not require installing another component framework.
+
 ## 1. Make the Next Task Clear
 
 ### Phone Screen Order
@@ -78,7 +86,9 @@ Use a lazily loaded [Leaflet map](https://leafletjs.com/reference.html) with dra
 
 Public street tiles follow the [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/): visible attribution, HTTPS, ordinary browser caching/referrers, and no bulk/offline fetching. Street tiles are best-effort; show load failures and a manual retry without hiding addresses or directions. Keep customer names, phone numbers, and addresses out of tile requests and do not geocode private addresses through a new service. Missing or unprojectable coordinates show address-based directions rather than a default city or guessed pin.
 
-Do not add moving rider dots, automatic ETA, distance rankings, live GPS, or route optimization to imply capabilities outside the approved scope.
+The selected sample map uses the same unfiltered OpenStreetMap light tiles on web and mobile. A clearly labelled public rider-to-delivery illustration shows a dashed line and its two endpoints. It has no logistics hub routes, real parcel binding, automatic location permission or road-provider request. Keep this illustration independent from actual current-stop information; switching to the sample cannot move an assigned destination or confirm any operation. Saved stops retain their addresses and authorized external directions.
+
+The web map can switch between the saved stop and “Try sample route”; the task workspace also exposes a separate sample map when no work is assigned. Release the prior Leaflet instance and resize observer on mode/selection changes or unmount. Keep visible attribution, normal tile caching, 48px zoom/framing controls, loading/error/retry feedback and the Plus Jakarta Sans typeface. No map API key is needed. Native Leaflet runs from bundled local assets in the app's system web view. The sample is not live navigation or certified road geometry.
 
 ## 3. Make Phone Use Comfortable and Recoverable
 

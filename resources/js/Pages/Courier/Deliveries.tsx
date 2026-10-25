@@ -3,6 +3,7 @@ import useOperationalRefresh from '@/hooks/useOperationalRefresh';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Banknote, Camera, RefreshCw, Search, Truck } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
+import CourierJobMap from '@/Components/CourierJobMap';
 import CourierCurrentJob from '@/Components/CourierCurrentJob';
 import CourierTaskCard, { type CourierTaskItem } from '@/Components/CourierTaskCard';
 import WaybillCamera from '@/Components/WaybillCamera';
@@ -75,6 +76,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         return deliveries.length || pickups.length ? 'assigned' : 'available';
     });
     const [search, setSearch] = useState('');
+    const [sampleMapOpen, setSampleMapOpen] = useState(true);
     const [selectedMapKey, setSelectedMapKey] = useState<string | null>(null);
     const mapRegion = useRef<HTMLDivElement>(null);
     const [target, setTarget] = useState<ActionTarget | null>(null);
@@ -120,7 +122,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             const hasRecordedPickup = task.nextAction === 'await_origin_hub_scan';
             const custodyReview = hasRecordedPickup && !retained;
             return {
-                key: `${phase}-${task.id}`, trackingNumber: task.trackingNumber,
+                key: `${phase}-${task.id}`, status: task.status, trackingNumber: task.trackingNumber,
                 stage: task.handoverHold ? retained ? 'Carrying · recovery required' : 'Handover hold' : phase === 'available' ? 'Available to claim' : retained ? 'Carrying · awaiting hub intake' : hasRecordedPickup ? 'Custody review' : 'Pickup assigned',
                 stopLabel: task.handoverHold ? 'Authorized recovery destination' : custodyReview ? 'Recorded holder needs review' : retained ? 'Origin Bayan Hub' : 'Seller pickup point',
                 place: task.handoverHold || custodyReview ? {} : retained ? task.originHub : task.merchant, preview: phase === 'available',
@@ -131,7 +133,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         const custodyReview = !retained && (task.nextAction === 'return_to_hub' || task.nextAction === 'complete_delivery');
         const atHub = task.nextAction === 'start_delivery' || task.nextAction === 'return_to_hub' || !retained;
         return {
-            key: `final_mile-${task.id}`, trackingNumber: task.trackingNumber,
+            key: `final_mile-${task.id}`, status: task.status, trackingNumber: task.trackingNumber,
             stage: task.handoverHold ? retained ? 'Carrying · recovery required' : 'Handover hold' : custodyReview ? 'Custody review' : task.nextAction === 'return_to_hub' ? 'Carrying · return to hub' : retained ? 'Carrying · out for delivery' : task.nextAction === 'start_delivery' ? 'Final-mile assignment' : 'Custody review',
             stopLabel: task.handoverHold ? 'Authorized recovery destination' : custodyReview ? 'Recorded holder needs review' : atHub ? 'Destination Bayan Hub' : 'Saved buyer destination',
             place: task.handoverHold || custodyReview ? {} : atHub ? task.destinationHub : task.recipient, preview: false,
@@ -327,6 +329,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         <CourierLayout title={courierGreeting(auth.user?.name)} pageLabel="Tasks" subtitle={scope?.isAssigned ? 'See what is assigned to you, what you are carrying, and what you can claim.' : 'Your logistics team needs to assign a company and hub before new work is available.'} isOnline={isOnline} scope={scope}>
             <Head title="Rider dashboard — BagooPH" />
             <div className="space-y-5">
+                <details className="rounded-[8px] border border-slate-200 bg-white p-4" open={sampleMapOpen} onToggle={(event) => setSampleMapOpen(event.currentTarget.open)}><summary className="cursor-pointer py-2 text-sm font-semibold">Sample delivery map</summary>{sampleMapOpen && <div className="pt-3"><CourierJobMap /></div>}</details>
                 <div className="flex flex-wrap justify-end gap-2"><button type="button" disabled={loadingId !== null} onClick={() => {
                     if (pending.current) return;
                     pending.current = true; setLoadingId(-1); setErrors({});
@@ -337,8 +340,8 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                 {!isOnline && <p className="rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">You are off duty. Existing assigned parcels remain available below; go on duty in the header to receive new work.</p>}
                 {scope?.isAssigned && !scope.isOperational && <p className="rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">New work is paused at your company or hub. Continue handling parcels already assigned to you.</p>}
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div role="group" aria-label="Task filters" className="flex flex-wrap gap-2">
-                        {([{ key: 'assigned', label: 'Assigned to you', count: assignedCount }, { key: 'carrying', label: 'Carrying', count: carryingCount }, { key: 'available', label: 'Available to claim', count: stats?.availablePickups ?? available.length }] as const).map((item) => <button key={item.key} type="button" aria-pressed={view === item.key} onClick={() => selectView(item.key)} className={courierClasses(courierButton, 'gap-2 px-3 text-sm font-medium', view === item.key && 'border-[#E00D42] bg-white text-[#C20836]')}><span>{item.label}</span><span className={`rounded-[8px] px-2 py-0.5 text-xs tabular-nums ${view === item.key ? 'bg-[#FCE7EA]' : 'bg-slate-100'}`}>{item.count}</span></button>)}
+                    <div role="group" aria-label="Task filters" className="flex max-w-full gap-1 overflow-x-auto rounded-[8px] bg-slate-100 p-1">
+                        {([{ key: 'assigned', label: 'Assigned to you', count: assignedCount }, { key: 'carrying', label: 'Carrying', count: carryingCount }, { key: 'available', label: 'Available to claim', count: stats?.availablePickups ?? available.length }] as const).map((item) => <button key={item.key} type="button" aria-pressed={view === item.key} onClick={() => selectView(item.key)} className={courierClasses(courierButton, 'shrink-0 gap-2 border-transparent bg-transparent px-3 text-sm font-medium hover:bg-slate-200', view === item.key && 'bg-white text-slate-950 shadow-sm hover:bg-white')}><span>{item.label}</span><span className={`rounded-[8px] px-2 py-0.5 text-xs tabular-nums ${view === item.key ? 'bg-slate-100 text-slate-700' : 'bg-slate-200/70 text-slate-600'}`}>{item.count}</span></button>)}
                     </div>
                     <label className="relative block w-full sm:w-72"><span className="sr-only">Search this queue</span><Search className="pointer-events-none absolute left-3 top-4 h-4 w-4 text-slate-500" aria-hidden="true" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Waybill, order, product, or address" className={`${courierInput} mt-0 pl-10 text-sm`} /></label>
                 </div>
