@@ -6,6 +6,14 @@ This document applies `STYLE_GUIDE.md` to the BagooPH courier portal. It defines
 
 Pickup and final-mile work remain phases of the same approved courier account. `COURIER_FLOW.md`, `SYSTEM_FLOW_AND_SPECIFICATIONS.md`, and `CORE_FLOW_VALIDATION_AND_EDGE_CASES.md` govern permissions and transitions. Presentation must preserve mandatory hub custody, buyer-only completion, exact server-owned COD amounts, and private verification access.
 
+## Rider Web Presentation
+
+Use a restrained card-and-control hierarchy inspired by shadcn: white working panels, quiet neutral separators, small shadows, medium-weight labels and grouped filters. Keep the local blush canvas, Bagoo red, Plus Jakarta Sans and explicit 8px corners. Reserve stronger red for the primary action, focus and selected parcel; neutral navigation backgrounds identify the current page with an accent icon. Status meaning remains visible in labels as well as semantic colour.
+
+The sidebar has a compact brand header, clear navigation group, current dispatch information and account identity. Use a clean divider instead of a floating sidebar shadow. Header dates are secondary metadata rather than standalone cards. Profiles retain a compact plain cover, stored avatar, actual identity and existing section controls without decorative transport artwork. Shared panels apply to Tasks, Trips, Messages and Profile without changing their reading order or interaction contracts.
+
+Retain 48px touch targets, keyboard focus, narrow-screen filter scrolling, the 1280px navigation breakpoint, synchronized sidebar movement and the separate chat scroll areas. Adapt existing React/Headless UI components; this visual direction does not require installing another component framework.
+
 ## 1. Make the Next Task Clear
 
 ### Phone Screen Order

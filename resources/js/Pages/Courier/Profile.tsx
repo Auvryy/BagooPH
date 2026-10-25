@@ -85,19 +85,12 @@ export default function CourierProfile({ rider, assignment, vehicle, scope, isOn
             <Head title="Your profile — BagooPH" />
             <div className="space-y-5">
                 <CourierPanel className="overflow-hidden">
-                    <div className="relative h-32 overflow-hidden bg-[#FBEAF0] sm:h-40" data-profile-cover="true">
-                        <p className="absolute left-5 top-5 text-xs font-medium text-[#9D2444] sm:left-6">Your rider workspace</p>
-                        <svg viewBox="0 0 600 160" fill="none" className="absolute right-0 top-0 h-full w-auto max-w-full text-[#E00D42]" aria-hidden="true">
-                            <circle cx="510" cy="75" r="105" fill="#FFF6F8" /><circle cx="340" cy="160" r="75" fill="#FDF2F4" />
-                            <path d="M240 120H310C345 120 335 55 370 55H510" stroke="currentColor" strokeOpacity=".15" strokeWidth="3" strokeDasharray="5 8" />
-                            <rect x="435" y="35" width="60" height="60" rx="8" fill="white" fillOpacity=".75" />
-                            <path d="m465 49 17 9v19l-17 9-17-9V58l17-9Zm0 18v19m-17-28 17 9 17-9m-26-4 17 9" stroke="currentColor" strokeOpacity=".55" strokeWidth="2" strokeLinejoin="round" />
-                            <circle cx="250" cy="120" r="7" fill="white" stroke="currentColor" strokeOpacity=".3" strokeWidth="2" />
-                        </svg>
+                    <div className="relative h-24 border-b border-slate-200 bg-slate-50 sm:h-28" data-profile-cover="true">
+                        <p className="absolute left-5 top-5 text-xs font-medium text-slate-500 sm:left-6">Rider profile</p>
                     </div>
                     <div className="relative px-4 pb-5 sm:px-6 sm:pb-6">
                         <div className="flex flex-wrap items-end justify-between gap-4">
-                            <div className="min-w-0"><CourierAvatar name={rider.name} src={auth.user?.avatar} className="-mt-10 h-24 w-24 bg-[#FBEAF0] text-3xl ring-[6px] ring-white" /><h1 className="mt-4 break-words text-2xl font-semibold tracking-tight">{rider.name}</h1><p className="mt-2 break-all text-sm text-slate-600">{rider.email}</p></div>
+                            <div className="min-w-0"><CourierAvatar name={rider.name} src={auth.user?.avatar} className="-mt-10 h-24 w-24 bg-slate-100 text-3xl ring-[6px] ring-white" /><h1 className="mt-4 break-words text-2xl font-semibold tracking-tight">{rider.name}</h1><p className="mt-2 break-all text-sm text-slate-600">{rider.email}</p></div>
                             <button type="button" onClick={() => setTab('edit')} aria-controls="profile-edit" className={courierButton}><PencilLine className="h-4 w-4" aria-hidden="true" />Edit information</button>
                         </div>
                         <div className="mt-4 flex flex-wrap gap-2"><CourierBadge>Account: {readable(rider.account_status)}</CourierBadge><CourierBadge tone={['approved', 'verified'].includes(rider.kyc_status) ? 'success' : 'neutral'}>Review: {readable(rider.kyc_status)}</CourierBadge></div>
@@ -107,7 +100,7 @@ export default function CourierProfile({ rider, assignment, vehicle, scope, isOn
                     <aside className="min-w-0 space-y-4" aria-label="Rider identity and settings">
                         <CourierPanel className="p-4 sm:p-5"><div className="flex items-center gap-2 text-[#C20836]"><IdCard className="h-5 w-5" aria-hidden="true" /><h2 className="text-sm font-semibold">Rider identity</h2></div><p className="mt-4 text-xs text-slate-500">Account ID</p><p className="mt-1 text-lg font-semibold tabular-nums">{auth.user ? `#${auth.user.id}` : 'Not provided'}</p><dl className="mt-4 space-y-4 text-sm"><div><dt className="text-xs text-slate-500">Mobile number</dt><dd className="mt-1 break-words">{rider.phone || 'Not provided'}</dd></div><div><dt className="flex items-center gap-1.5 text-xs text-slate-500"><Building2 className="h-3.5 w-3.5" aria-hidden="true" />Company</dt><dd className="mt-1 break-words">{assignment.company || 'Not assigned'}</dd></div><div><dt className="flex items-center gap-1.5 text-xs text-slate-500"><MapPin className="h-3.5 w-3.5" aria-hidden="true" />Bayan Hub</dt><dd className="mt-1 break-words">{assignment.hub || 'Not assigned'}</dd></div></dl></CourierPanel>
                         <CourierPanel className="p-2"><nav aria-label="Profile sections" className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap lg:block lg:space-y-1">
-                            {([{ key: 'information', label: 'Information', icon: UserRound }, { key: 'edit', label: 'Edit information', icon: PencilLine }, { key: 'privacy', label: 'Privacy and security', icon: ShieldCheck }, { key: 'assignment', label: 'Assignment', icon: MapPin }, { key: 'vehicle', label: 'Vehicle', icon: Truck }] as const).map(({ key, label, icon: Icon }) => <button key={key} type="button" aria-pressed={tab === key} aria-controls={`profile-${key}`} onClick={() => setTab(key)} className={courierClasses(courierButton, 'min-w-0 justify-start border-transparent px-3 text-left lg:w-full', tab === key && 'bg-[#FFF6F8] text-[#C20836]')}><Icon className="h-4 w-4 shrink-0" aria-hidden="true" /><span>{label}</span></button>)}
+                            {([{ key: 'information', label: 'Information', icon: UserRound }, { key: 'edit', label: 'Edit information', icon: PencilLine }, { key: 'privacy', label: 'Privacy and security', icon: ShieldCheck }, { key: 'assignment', label: 'Assignment', icon: MapPin }, { key: 'vehicle', label: 'Vehicle', icon: Truck }] as const).map(({ key, label, icon: Icon }) => <button key={key} type="button" aria-pressed={tab === key} aria-controls={`profile-${key}`} onClick={() => setTab(key)} className={courierClasses(courierButton, 'min-w-0 justify-start border-transparent px-3 text-left lg:w-full', tab === key && 'bg-slate-100 text-slate-950')}><Icon className="h-4 w-4 shrink-0" aria-hidden="true" /><span>{label}</span></button>)}
                         </nav></CourierPanel>
                     </aside>
                     <div className="min-w-0">

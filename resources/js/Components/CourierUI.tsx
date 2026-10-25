@@ -5,19 +5,19 @@ import { useEffect, useState, type PropsWithChildren } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { CourierPlace, courierInitials, courierPath, directionsUrl, telephoneUrl } from '@/utils/courier';
 
-export const courierButton = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-[8px] border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none';
+export const courierButton = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-[8px] border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-800 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none';
 export const courierPrimary = 'inline-flex min-h-[52px] items-center justify-center gap-2 rounded-[8px] bg-[#E00D42] px-5 py-3 text-sm font-medium text-white transition duration-150 hover:bg-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transform-none motion-reduce:transition-none';
 export const courierInput = 'mt-2 min-h-12 w-full rounded-[8px] border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 shadow-none placeholder:text-slate-500 hover:border-slate-300 focus:border-[#E00D42] focus:ring-[#E00D42]';
 
 export const courierClasses = twMerge;
 
 export function CourierPanel({ children, className = '' }: PropsWithChildren<{ className?: string }>) {
-    return <section className={twMerge('courier-panel courier-enter rounded-[8px] border border-slate-300 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)]', className)}>{children}</section>;
+    return <section className={twMerge('courier-panel courier-enter rounded-[8px] border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.035)]', className)}>{children}</section>;
 }
 
 export function CourierBadge({ children, tone = 'neutral' }: PropsWithChildren<{ tone?: 'neutral' | 'brand' | 'waiting' | 'success' }>) {
     const colors = { neutral: 'border-transparent bg-slate-100 text-slate-700', brand: 'border-transparent bg-[#FDF2F4] text-[#C20836]', waiting: 'border-transparent bg-[#FFF4DF] text-[#92400E]', success: 'border-transparent bg-[#ECFDF5] text-[#047857]' };
-    return <span className={`inline-flex items-center gap-1.5 rounded-[8px] border px-3 py-1.5 text-xs font-semibold ${colors[tone]}`}>{children}</span>;
+    return <span className={`inline-flex items-center gap-1.5 rounded-[8px] border px-2.5 py-1 text-xs font-medium ${colors[tone]}`}>{children}</span>;
 }
 
 export function CourierParcelIdentifiers({ trackingNumber, orderNumber }: { trackingNumber: string; orderNumber: string | null }) {
@@ -28,7 +28,7 @@ export function CourierParcelIdentifiers({ trackingNumber, orderNumber }: { trac
 }
 
 export function CourierEmpty({ title, children, icon: Icon = Package }: PropsWithChildren<{ title: string; icon?: LucideIcon }>) {
-    return <CourierPanel className="px-5 py-10 text-center"><span className="courier-empty-icon mx-auto flex h-16 w-16 items-center justify-center rounded-[8px] border border-rose-300 bg-[#FDF2F4] text-[#C20836]"><Icon className="h-8 w-8" aria-hidden="true" /></span><h2 className="mt-4 text-xl font-bold text-slate-900">{title}</h2><div className="mx-auto mt-2 max-w-md text-base leading-relaxed text-slate-600">{children}</div></CourierPanel>;
+    return <CourierPanel className="px-5 py-10 text-center"><span className="courier-empty-icon mx-auto flex h-16 w-16 items-center justify-center rounded-[8px] border border-rose-300 bg-[#FDF2F4] text-[#C20836]"><Icon className="h-8 w-8" aria-hidden="true" /></span><h2 className="mt-4 text-lg font-semibold text-slate-900">{title}</h2><div className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-600">{children}</div></CourierPanel>;
 }
 
 export function CourierAvatar({ name, src, className = '' }: { name: string; src?: string | null; className?: string }) {
@@ -46,7 +46,7 @@ export function CourierDialog({ open, title, children, onClose, busy = false }: 
         <div className="fixed inset-0 bg-slate-950/50" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center overflow-y-auto p-3 sm:p-6">
             <DialogPanel className="courier-enter relative max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-[8px] border border-slate-300 bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
-                <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-300 bg-white p-4 sm:p-5"><DialogTitle className="text-xl font-bold text-slate-900">{title}</DialogTitle><button type="button" aria-label="Close dialog" disabled={busy} onClick={onClose} className={`${courierButton} h-12 w-12 shrink-0 p-0`}><X className="h-5 w-5" aria-hidden="true" /></button></header>
+                <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-300 bg-white p-4 sm:p-5"><DialogTitle className="text-lg font-semibold text-slate-900">{title}</DialogTitle><button type="button" aria-label="Close dialog" disabled={busy} onClick={onClose} className={`${courierButton} h-12 w-12 shrink-0 p-0`}><X className="h-5 w-5" aria-hidden="true" /></button></header>
                 <div className="p-4 sm:p-5">{children}</div>
             </DialogPanel>
         </div>
@@ -93,7 +93,7 @@ export function CourierStopActions({ place, label, phone, messageDeliveryId, mes
 export function CourierStop(props: StopActionsProps) {
     const { place, label } = props;
     return <div className="space-y-3">
-        <div><p className="text-sm font-semibold text-slate-600">{label}</p><h3 className="mt-1 break-words text-xl font-bold text-slate-900">{place.name || 'Name not provided'}</h3><p className="mt-2 whitespace-pre-line break-words text-base leading-relaxed text-slate-800">{place.address || (place.code ? `Facility ${place.code}. Address not provided.` : 'Address not provided.')}</p></div>
+        <div><p className="text-sm font-semibold text-slate-600">{label}</p><h3 className="mt-1 break-words text-lg font-semibold text-slate-900">{place.name || 'Name not provided'}</h3><p className="mt-2 whitespace-pre-line break-words text-base leading-relaxed text-slate-800">{place.address || (place.code ? `Facility ${place.code}. Address not provided.` : 'Address not provided.')}</p></div>
         <CourierStopActions {...props} />
     </div>;
 }
