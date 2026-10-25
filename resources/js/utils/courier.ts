@@ -19,6 +19,7 @@ export interface CourierPlace {
 }
 
 export interface CourierMapJob {
+    status?: string;
     key: string;
     trackingNumber: string;
     stage: string;

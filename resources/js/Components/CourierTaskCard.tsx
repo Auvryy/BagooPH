@@ -29,8 +29,8 @@ interface Props {
 
 export default function CourierTaskCard({ id, title, stage, tone = 'brand', trackingNumber, orderNumber, items, itemCount, stopLabel, stopName, stopAddress, instruction, paymentSummary, selected, preview = false, onView, children }: Props) {
     const unitLabel = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
-    return <article aria-labelledby={`${id}-title`} className={`min-w-0 overflow-hidden rounded-[8px] border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] ${selected ? 'border-[#E00D42] ring-2 ring-[#FCE7EA]' : 'border-slate-300'}`}>
-        <div className="border-l-4 border-[#E00D42] p-4 sm:p-5">
+    return <article aria-labelledby={`${id}-title`} className={`min-w-0 overflow-hidden rounded-[8px] border bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] ${selected ? 'border-[#E00D42] ring-1 ring-[#E00D42]/10' : 'border-slate-300'}`}>
+        <div className="p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[#FFF6F8] text-[#C20836]"><Package className="h-5 w-5" aria-hidden="true" /></span>

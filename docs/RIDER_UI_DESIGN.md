@@ -78,7 +78,9 @@ Use a lazily loaded [Leaflet map](https://leafletjs.com/reference.html) with dra
 
 Public street tiles follow the [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/): visible attribution, HTTPS, ordinary browser caching/referrers, and no bulk/offline fetching. Street tiles are best-effort; show load failures and a manual retry without hiding addresses or directions. Keep customer names, phone numbers, and addresses out of tile requests and do not geocode private addresses through a new service. Missing or unprojectable coordinates show address-based directions rather than a default city or guessed pin.
 
-Do not add moving rider dots, automatic ETA, distance rankings, live GPS, or route optimization to imply capabilities outside the approved scope.
+An owned current stop may offer an explicit “Preview road route” action. Request a fresh, accurate browser location only after that action. Calculate through the server using the rider's registered vehicle and the authorized saved stop; never accept a caller-selected destination. Use the checkout destination snapshot for a departed delivery. Missing seller coordinates retain address directions. Keep provider credentials server-side, preserve intermediate road geometry and reject unsupported or ferry routes. Do not substitute a straight connector when routing fails.
+
+A road preview is a location snapshot, not live tracking. Cancel pending work and clear the line on task/stage/coordinate changes, hidden pages and unmount. Provide cancellation, retry, Show route and Clear route controls. Do not add moving rider dots, automatic ETA, distance rankings or route optimization to imply capabilities outside the approved scope.
 
 ## 3. Make Phone Use Comfortable and Recoverable
 

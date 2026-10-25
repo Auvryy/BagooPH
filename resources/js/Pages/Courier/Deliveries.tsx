@@ -120,7 +120,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             const hasRecordedPickup = task.nextAction === 'await_origin_hub_scan';
             const custodyReview = hasRecordedPickup && !retained;
             return {
-                key: `${phase}-${task.id}`, trackingNumber: task.trackingNumber,
+                key: `${phase}-${task.id}`, status: task.status, trackingNumber: task.trackingNumber,
                 stage: task.handoverHold ? retained ? 'Carrying · recovery required' : 'Handover hold' : phase === 'available' ? 'Available to claim' : retained ? 'Carrying · awaiting hub intake' : hasRecordedPickup ? 'Custody review' : 'Pickup assigned',
                 stopLabel: task.handoverHold ? 'Authorized recovery destination' : custodyReview ? 'Recorded holder needs review' : retained ? 'Origin Bayan Hub' : 'Seller pickup point',
                 place: task.handoverHold || custodyReview ? {} : retained ? task.originHub : task.merchant, preview: phase === 'available',
@@ -131,7 +131,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         const custodyReview = !retained && (task.nextAction === 'return_to_hub' || task.nextAction === 'complete_delivery');
         const atHub = task.nextAction === 'start_delivery' || task.nextAction === 'return_to_hub' || !retained;
         return {
-            key: `final_mile-${task.id}`, trackingNumber: task.trackingNumber,
+            key: `final_mile-${task.id}`, status: task.status, trackingNumber: task.trackingNumber,
             stage: task.handoverHold ? retained ? 'Carrying · recovery required' : 'Handover hold' : custodyReview ? 'Custody review' : task.nextAction === 'return_to_hub' ? 'Carrying · return to hub' : retained ? 'Carrying · out for delivery' : task.nextAction === 'start_delivery' ? 'Final-mile assignment' : 'Custody review',
             stopLabel: task.handoverHold ? 'Authorized recovery destination' : custodyReview ? 'Recorded holder needs review' : atHub ? 'Destination Bayan Hub' : 'Saved buyer destination',
             place: task.handoverHold || custodyReview ? {} : atHub ? task.destinationHub : task.recipient, preview: false,

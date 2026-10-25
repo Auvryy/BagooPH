@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapPin, Minus, Navigation, Plus, RotateCcw } from 'lucide-react';
-import type { Map as LeafletMap } from 'leaflet';
+import type { Map as LeafletMap, LayerGroup } from 'leaflet';
+import { requestRoadPreview, type RoadPreview } from '@/utils/courierRoadRoute';
 import { CourierBadge, CourierPanel, courierButton, courierClasses } from '@/Components/CourierUI';
 import { courierMapCoordinates, directionsUrl, type CourierMapJob } from '@/utils/courier';
 
 export default function CourierJobMap({ job, embedded = false }: { job: CourierMapJob; embedded?: boolean }) {
     const container = useRef<HTMLDivElement>(null);
     const map = useRef<LeafletMap | null>(null);
+    const routeLayer = useRef<LayerGroup | null>(null);
+    const routeRequest = useRef<AbortController | null>(null);
+    const routeGeneration = useRef(0);
+    const [road, setRoad] = useState<RoadPreview | null>(null);
+    const [routing, setRouting] = useState(false);
+    const [routeError, setRouteError] = useState('');
     const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
     const [attempt, setAttempt] = useState(0);
     const [mapReady, setMapReady] = useState(false);
@@ -14,6 +21,51 @@ export default function CourierJobMap({ job, embedded = false }: { job: CourierM
     const latitude = coordinates?.[0];
     const longitude = coordinates?.[1];
     const directions = directionsUrl(job.place);
+
+    useEffect(() => {
+        const clear = () => { routeGeneration.current++; routeRequest.current?.abort(); routeLayer.current?.clearLayers(); setRoad(null); setRouting(false); setRouteError(''); };
+        clear();
+        const hide = () => { if (document.visibilityState === 'hidden') clear(); };
+        document.addEventListener('visibilitychange', hide);
+        return () => { document.removeEventListener('visibilitychange', hide); routeGeneration.current++; routeRequest.current?.abort(); };
+    }, [job.key, job.stage, job.status, latitude, longitude]);
+
+    const previewRoad = () => {
+        if ((routeRequest.current && !routeRequest.current.signal.aborted) || routing) return;
+        if (job.preview || !job.status || !navigator.geolocation) { setRouteError('Location access is unavailable. Use the stop address or external directions.'); return; }
+        const generation = ++routeGeneration.current;
+        routeRequest.current?.abort();
+        const controller = new AbortController(); routeRequest.current = controller;
+        routeLayer.current?.clearLayers(); setRoad(null); setRouteError(''); setRouting(true);
+        try { navigator.geolocation.getCurrentPosition(async fix => {
+            if (controller.signal.aborted || generation !== routeGeneration.current) return;
+            try {
+                const value = await requestRoadPreview(job.key, job.trackingNumber, job.status!, fix, controller.signal);
+                if (!controller.signal.aborted && generation === routeGeneration.current) setRoad(value);
+            } catch (error) {
+                if (!controller.signal.aborted && generation === routeGeneration.current) setRouteError(error instanceof Error ? error.message : 'The road route is unavailable. Use the stop address.');
+            } finally { if (!controller.signal.aborted && generation === routeGeneration.current) { setRouting(false); if (routeRequest.current === controller) routeRequest.current = null; } }
+        }, () => { if (!controller.signal.aborted && generation === routeGeneration.current) { setRouteError('Your location could not be read. Use the stop address or external directions.'); setRouting(false); routeRequest.current = null; } }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+        } catch { controller.abort(); routeRequest.current = null; setRouting(false); setRouteError('Your browser did not allow location access. Use external directions.'); }
+    };
+
+    useEffect(() => {
+        if (!road || !map.current || !mapReady) return;
+        let cancelled = false;
+        void import('leaflet').then(leaflet => {
+            if (cancelled || !map.current) return;
+            routeLayer.current?.clearLayers();
+            const layer = leaflet.layerGroup().addTo(map.current); routeLayer.current = layer;
+            for (const line of road.lines) {
+                leaflet.polyline(line, { color: '#FFFFFF', weight: 7, opacity: 0.9, interactive: false }).addTo(layer);
+                leaflet.polyline(line, { color: '#E00D42', weight: 4, opacity: 1, interactive: false }).addTo(layer);
+            }
+            const first = road.lines[0][0];
+            leaflet.circleMarker(first, { radius: 6, color: '#FFFFFF', weight: 2, fillColor: '#18181B', fillOpacity: 1 }).addTo(layer);
+            map.current.fitBounds(leaflet.latLngBounds(road.lines.flat()), { padding: [30, 30], maxZoom: 17, animate: false });
+        });
+        return () => { cancelled = true; routeLayer.current?.remove(); routeLayer.current = null; };
+    }, [road, mapReady]);
 
     useEffect(() => {
         if (latitude === undefined || longitude === undefined || !container.current) return;
@@ -28,7 +80,7 @@ export default function CourierJobMap({ job, embedded = false }: { job: CourierM
                 if (cancelled || !container.current) return;
                 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                 const instance = leaflet.map(container.current, {
-                    zoomControl: false, scrollWheelZoom: false, keyboard: true,
+                    preferCanvas: true, zoomControl: false, scrollWheelZoom: false, keyboard: true,
                     zoomAnimation: !reduceMotion, fadeAnimation: !reduceMotion,
                     markerZoomAnimation: !reduceMotion, inertia: !reduceMotion,
                 }).setView([latitude, longitude], 16, { animate: false });
@@ -66,6 +118,7 @@ export default function CourierJobMap({ job, embedded = false }: { job: CourierM
             cancelled = true;
             clearTimeout(loadTimeout);
             observer?.disconnect();
+            routeLayer.current?.remove(); routeLayer.current = null;
             map.current?.remove();
             map.current = null;
         };
@@ -93,7 +146,12 @@ export default function CourierJobMap({ job, embedded = false }: { job: CourierM
                         <button type="button" disabled={!mapReady} onClick={() => map.current?.zoomIn(1, { animate: false })} aria-label="Zoom in" className={`${courierButton} h-12 w-12 p-0`}><Plus className="h-5 w-5" aria-hidden="true" /></button>
                         <button type="button" disabled={!mapReady} onClick={() => map.current?.zoomOut(1, { animate: false })} aria-label="Zoom out" className={`${courierButton} h-12 w-12 p-0`}><Minus className="h-5 w-5" aria-hidden="true" /></button>
                         <button type="button" disabled={!mapReady} onClick={() => { if (coordinates) map.current?.setView(coordinates, 16, { animate: false }); }} className={courierButton}><MapPin className="h-4 w-4" aria-hidden="true" />Show stop</button>
+                        {road && <button type="button" onClick={() => map.current?.fitBounds(road.lines.flat(), { padding: [30, 30], maxZoom: 17, animate: false })} className={courierButton}>Show route</button>}
                     </div>
+                    {!job.preview && job.status && <button type="button" onClick={previewRoad} disabled={!mapReady || routing} className={courierButton}><Navigation className="h-4 w-4" aria-hidden="true" />{routing ? 'Calculating road route…' : 'Preview road route'}</button>}
+                    {routing && <button type="button" className={courierButton} onClick={() => { routeGeneration.current++; routeRequest.current?.abort(); routeRequest.current = null; setRouting(false); }}>Cancel route</button>}
+                    {road && <p role="status" className="text-xs text-slate-600">{road.mode === 'drive' ? 'Driving' : road.mode === 'scooter' ? 'Scooter' : 'Motorcycle'} road preview · from a location snapshot, without live tracking. <button type="button" className="font-medium text-[#C20836] underline" onClick={() => { setRoad(null); routeLayer.current?.clearLayers(); }}>Clear route</button></p>}
+                    {routeError && <p role="status" className="text-sm text-amber-800">{routeError}</p>}
                     <p id="rider-map-help" className="text-xs leading-relaxed text-slate-600">Saved stop · use arrow keys and +/− to explore. Live tracking is unavailable.</p>
                     <p role="status" className={courierClasses('text-sm text-slate-600', embedded && status !== 'error' && 'sr-only')}>{status === 'loading' ? 'Loading the street map…' : status === 'error' ? 'Street tiles could not load. The saved stop and address are still available.' : 'Street map loaded.'}</p>
                     {status === 'error' && <button type="button" onClick={() => setAttempt((value) => value + 1)} className={courierButton}><RotateCcw className="h-4 w-4" aria-hidden="true" />Retry map</button>}
