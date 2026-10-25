@@ -4,15 +4,16 @@ import { AlertTriangle, ArrowRight, Building2, CheckCircle2, Landmark, Receipt, 
 import { CourierDialog, CourierFieldError } from '@/Components/CourierUI';
 import { CashBadge, CashFrame, cashButton, cashDate, cashInput, CashLink, cashMoney, cashPrimary, cashSurface, type CashAccount, type CashMode } from '@/Components/CodCashUI';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
+import { type CourierScope } from '@/utils/courier';
 
 interface LegacyRecord { delivery_id: number; order_number: string; tracking_number: string; status: string; due_cents: number; has_counter_source: boolean }
 interface Props {
     accounts: { data: CashAccount[]; current_page: number; last_page: number; total: number; prev_page_url: string | null; next_page_url: string | null };
     totals: { expected: number; collected: number; rider: number; hub: number; platform: number; reconciled: number; excess: number; differences: number; unverified: number };
-    legacy: LegacyRecord[]; filters: { q?: string }; base: string; mode: CashMode; isOnline: boolean; can_reconcile: boolean; requestToken: string;
+    legacy: LegacyRecord[]; filters: { q?: string }; base: string; mode: CashMode; isOnline: boolean; can_reconcile: boolean; requestToken: string; scope?: CourierScope;
 }
 
-export default function CodRecords({ accounts, totals, legacy, filters, base, mode, isOnline, requestToken }: Props) {
+export default function CodRecords({ accounts, totals, legacy, filters, base, mode, isOnline, requestToken, scope }: Props) {
     const [search, setSearch] = useState(filters.q ?? '');
     const [review, setReview] = useState<LegacyRecord | null>(null);
     const [reason, setReason] = useState('');
@@ -36,7 +37,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
         { label: 'With hubs', amount: totals.hub, Icon: Building2, note: 'Awaiting platform handover' },
         { label: 'At platform', amount: totals.platform, Icon: Landmark, note: `${cashMoney(totals.reconciled)} reconciled` },
     ];
-    return <CashFrame mode={mode} isOnline={isOnline} title="COD cash records" subtitle="Follow each collection, confirm cash handovers, and review what reached the platform.">
+    return <CashFrame mode={mode} isOnline={isOnline} scope={scope} title="COD cash records" subtitle="Follow each collection, confirm cash handovers, and review what reached the platform.">
         <div className="space-y-6 pb-4">
             <section className={`${cashSurface} overflow-hidden`}><div className="flex flex-col justify-between gap-4 border-b border-slate-300 px-5 py-5 sm:flex-row sm:items-center"><div className="flex items-center gap-3"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[8px] bg-[#FDF2F4] text-[#C20836]"><Wallet className="h-6 w-6" aria-hidden="true" /></span><div><h2 className="text-lg font-bold">Every handover has a receipt</h2><p className="mt-1 max-w-xl text-sm leading-relaxed text-slate-600">Cash changes hands only after the named recipient confirms their count.</p></div></div><span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700"><CheckCircle2 className="h-5 w-5 text-emerald-700" aria-hidden="true" />{accounts.total} cash record{accounts.total === 1 ? '' : 's'}</span></div><div className="grid grid-cols-2 divide-x divide-slate-300 lg:grid-cols-4">{metrics.map(({ label, amount, Icon, note }) => <div key={label} className="p-4 sm:p-5"><div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold text-slate-600">{label}</p><Icon className="h-4 w-4 text-slate-500" aria-hidden="true" /></div><p className="mt-3 break-words text-xl font-bold tabular-nums sm:text-2xl">{cashMoney(amount)}</p><p className="mt-2 text-xs leading-relaxed text-slate-600">{note}</p></div>)}</div></section>
             {(totals.differences > 0 || totals.excess > 0) && <div className="flex items-start gap-3 rounded-[8px] border border-amber-300 bg-amber-50 p-4 text-amber-900"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" /><p className="text-sm leading-relaxed"><strong>{totals.differences} unresolved cash difference{totals.differences === 1 ? '' : 's'}.</strong>{totals.excess > 0 && ` ${cashMoney(totals.excess)} in extra cash stays separately recorded with its holder.`} Open the original receipt to review its evidence.</p></div>}

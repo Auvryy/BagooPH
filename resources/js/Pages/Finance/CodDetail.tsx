@@ -5,8 +5,9 @@ import { CourierDialog, CourierFieldError } from '@/Components/CourierUI';
 import { CashBadge, CashFrame, CashJourney, cashButton, cashDate, cashEventLabel, cashInput, cashMoney, cashPrimary, cashSurface, type CashDetail, type CashMode } from '@/Components/CodCashUI';
 import { cashInputCents, cashInputPesos } from '@/utils/codCash';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
+import { type CourierScope } from '@/utils/courier';
 
-interface Props { account: CashDetail; base: string; mode: CashMode; isOnline: boolean; can_reconcile: boolean; requestToken: string }
+interface Props { account: CashDetail; base: string; mode: CashMode; isOnline: boolean; can_reconcile: boolean; requestToken: string; scope?: CourierScope }
 type Action = 'offer' | 'receive' | 'cancel' | 'adjust' | 'reconcile' | 'authorize-recovery';
 interface Target { action: Action; holderId?: number; sourceReference?: string }
 const titles: Record<Action, string> = { offer: 'Offer a cash handover', receive: 'Confirm counted cash', cancel: 'Cancel this handover offer', adjust: 'Review the cash difference', reconcile: 'Reconcile COD at the platform', 'authorize-recovery': 'Authorize a recovery handover' };
@@ -68,12 +69,12 @@ function CashActionDialog({ target, account, base, requestToken, onClose }: { ta
     </form></CourierDialog>;
 }
 
-export default function CodDetail({ account, base, mode, isOnline, can_reconcile, requestToken }: Props) {
+export default function CodDetail({ account, base, mode, isOnline, can_reconcile, requestToken, scope }: Props) {
     const [target, setTarget] = useState<Target | null>(null);
     const differences = Object.entries(account.discrepancies);
     const pending = account.pending;
     const editable = account.status !== 'reconciled';
-    return <CashFrame mode={mode} isOnline={isOnline} title="Cash collection and handovers" subtitle="Review the original amount, the receiving people, and every recorded cash step.">
+    return <CashFrame mode={mode} isOnline={isOnline} scope={scope} title="Cash collection and handovers" subtitle="Review the original amount, the receiving people, and every recorded cash step.">
         <div className="space-y-5 pb-5"><div className="flex flex-wrap items-center justify-between gap-3"><Link href={base} className={cashButton}><ArrowLeft className="h-4 w-4" aria-hidden="true" />Cash records</Link><button className={cashButton} onClick={() => router.reload({only:['account', 'requestToken']})}>Refresh records</button></div>
             <section className={`${cashSurface} p-5 sm:p-6`}><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-slate-600">{account.source_kind === 'rider_collection' ? 'Doorstep collection' : account.source_kind === 'counter_collection' ? 'Counter collection' : 'Older record review'}</p><h2 className="mt-2 text-xl font-bold">{account.order_number}</h2><p className="mt-1 break-all text-sm text-slate-600">{account.tracking_number}</p></div><CashBadge status={account.status} /></div><div className="my-5 flex flex-wrap items-end justify-between gap-4 border-y border-slate-300 py-5"><div><p className="text-xs font-semibold text-slate-600">Original COD due</p><p className="mt-1 text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">{cashMoney(account.expected_cents)}</p></div><div className="flex items-center gap-2 text-sm text-slate-600"><Building2 className="h-5 w-5 shrink-0" aria-hidden="true" /><div><p className="font-semibold text-slate-800">{account.hub_name}</p><p className="mt-1 text-xs">{account.company_name}</p></div></div></div><CashJourney account={account} /></section>
             <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]"><div className="space-y-5">

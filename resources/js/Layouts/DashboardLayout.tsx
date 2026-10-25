@@ -489,6 +489,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 </PortalLink>
                                 <PortalLink href={route('hub.recovery.index')} className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100">Delivery recovery</PortalLink>
                                 <PortalLink href="/handover-issues" aria-current={component.startsWith('Handover/') ? 'page' : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium ${component.startsWith('Handover/') ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" /><span>Handover issues</span></PortalLink>
+                                <PortalLink href={route('hub.cod.index')} aria-current={component === 'Finance/Cod' || component === 'Finance/CodDetail' ? 'page' : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium ${component === 'Finance/Cod' || component === 'Finance/CodDetail' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><Banknote className="h-4 w-4 shrink-0" aria-hidden="true" /><span>COD cash</span></PortalLink>
                                 <PortalLink
                                     href={route('hub.deliveries')}
                                     className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${

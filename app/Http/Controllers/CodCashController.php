@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\CodAccount;
+use App\Models\CourierProfile;
 use App\Models\Delivery;
+use App\Models\User;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\CodCashViewService;
+use App\Services\Logistics\LogisticsEligibilityService;
 use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +18,28 @@ use Inertia\Inertia;
 
 class CodCashController extends Controller
 {
+    private function courierScope(User $actor): ?array
+    {
+        if (! $actor->isCourier()) {
+            return null;
+        }
+
+        $profile = CourierProfile::with(['company', 'hub'])->where('user_id', $actor->id)->first();
+        $hub = $profile?->hub;
+        if ($hub?->logistics_company_id !== $profile?->logistics_company_id) {
+            $hub = null;
+        }
+
+        return [
+            'company' => $profile?->company?->name,
+            'hub' => $hub?->name,
+            'hubCode' => $hub?->code,
+            'barangay' => $profile?->assigned_barangay,
+            'isAssigned' => (bool) ($profile?->logistics_company_id && $hub),
+            'isOperational' => app(LogisticsEligibilityService::class)->isOperational($profile),
+        ];
+    }
+
     private function base(Request $request): string
     {
         $uri = $request->route()->uri();
@@ -28,7 +53,9 @@ class CodCashController extends Controller
     public function index(Request $request, CodCashViewService $views)
     {
         $filters = $request->validate(['q' => ['nullable', 'string', 'max:100'], 'page' => ['nullable', 'integer', 'min:1']]);
-        $data = $views->page($request->user(), $filters) + ['base' => $this->base($request), 'requestToken' => (string) Str::uuid()];
+        $actor = $request->user();
+        $data = $views->page($actor, $filters) + ['base' => $this->base($request), 'requestToken' => (string) Str::uuid(),
+            'scope' => $this->courierScope($actor)];
 
         return $request->expectsJson() ? response()->json($data)->header('Cache-Control', 'private, no-store') : Inertia::render('Finance/Cod', $data);
     }
@@ -38,7 +65,7 @@ class CodCashController extends Controller
         $actor = $cash->current($request->user());
         $account = $cash->account($actor, $account->id);
         $data = ['account' => $views->present($account, $actor), 'mode' => $views->mode($actor), 'can_reconcile' => $actor->isAdmin(),
-            'isOnline' => (bool) $actor->courierProfile?->is_available,
+            'isOnline' => (bool) $actor->courierProfile?->is_available, 'scope' => $this->courierScope($actor),
             'base' => $this->base($request), 'requestToken' => (string) Str::uuid()];
 
         return $request->expectsJson() ? response()->json($data)->header('Cache-Control', 'private, no-store') : Inertia::render('Finance/CodDetail', $data);

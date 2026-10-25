@@ -4,7 +4,7 @@ import { type PropsWithChildren } from 'react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import CourierLayout from '@/Layouts/CourierLayout';
 import BagooLogo from '@/Components/BagooLogo';
-import { courierPath } from '@/utils/courier';
+import { courierPath, type CourierScope } from '@/utils/courier';
 import { PageProps } from '@/types';
 
 export type CashMode = 'admin' | 'hub' | 'courier' | 'recovery';
@@ -32,10 +32,10 @@ export const cashMoney = (cents: number) => new Intl.NumberFormat('en-PH', { sty
 export const cashDate = (date: string) => new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' }).format(new Date(date));
 export const cashEventLabel: Record<string, string> = { rider_collection: 'Rider collection', counter_collection: 'Counter collection', handover_offered: 'Handover offered', handover_received: 'Cash received', handover_cancelled: 'Handover cancelled', adjustment: 'Difference reviewed', platform_reconciled: 'Platform reconciliation', legacy_review: 'Older record reviewed', recovery_authorized: 'Recovery handover authorized' };
 
-export function CashFrame({ children, mode, title, subtitle, isOnline = false }: PropsWithChildren<{ mode: CashMode; title: string; subtitle: string; isOnline?: boolean }>) {
+export function CashFrame({ children, mode, title, subtitle, isOnline = false, scope }: PropsWithChildren<{ mode: CashMode; title: string; subtitle: string; isOnline?: boolean; scope?: CourierScope }>) {
     const { auth, flash } = usePage<PageProps>().props;
     const content = <><Head title={title} />{children}</>;
-    if (mode === 'courier') return <CourierLayout title={title} subtitle={subtitle} isOnline={isOnline} pageLabel="Cash handover" actions={<Link href={courierPath('/deliveries')} className={cashButton}><ArrowLeft className="h-4 w-4" aria-hidden="true" />Deliveries</Link>}>{content}</CourierLayout>;
+    if (mode === 'courier') return <CourierLayout title={title} subtitle={subtitle} isOnline={isOnline} scope={scope} pageLabel="Cash handover" actions={<Link href={courierPath('/deliveries')} className={cashButton}><ArrowLeft className="h-4 w-4" aria-hidden="true" />Deliveries</Link>}>{content}</CourierLayout>;
     if (mode !== 'recovery') return <DashboardLayout title={title} subtitle={subtitle}>{content}</DashboardLayout>;
     return <div className="min-h-screen bg-[#FFFAFB] font-sans text-slate-900"><Head title={title} /><header className="border-b border-slate-300 bg-white"><div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4"><div className="flex items-center gap-3"><BagooLogo className="h-10 w-10" /><div><p className="font-bold">BagooPH</p><p className="text-xs text-slate-600">Recorded cash handover</p></div></div><button className={cashButton} onClick={() => router.post(route('logout'))}><LogOut className="h-4 w-4" aria-hidden="true" />Sign out</button></div></header><main className="mx-auto max-w-6xl space-y-5 px-4 py-6 sm:py-8"><div><p className="text-sm text-slate-600">{auth.user?.name}</p><h1 className="mt-1 text-2xl font-bold">{title}</h1><p className="mt-2 text-sm text-slate-600">{subtitle}</p></div><p className="rounded-[8px] border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">This access covers existing cash responsibilities. Your account and assignment restrictions remain in place.</p>{flash?.success && <p role="status" className="rounded-[8px] border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800">{flash.success}</p>}{content}</main></div>;
 }

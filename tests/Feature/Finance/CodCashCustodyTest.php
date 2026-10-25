@@ -24,6 +24,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
@@ -816,5 +817,27 @@ class CodCashCustodyTest extends TestCase
             $this->assertArrayNotHasKey('private_evidence', $intent->data);
             $this->assertStringNotContainsString($event->request_token, json_encode($intent->data));
         }
+    }
+
+    public function test_courier_cash_pages_retain_the_assigned_company_and_hub_context(): void
+    {
+        $account = $this->collected();
+        $rider = User::with('courierProfile.company', 'courierProfile.hub')->findOrFail($account->collector_id);
+        $profile = $rider->courierProfile;
+        $hub = $profile->hub;
+
+        $this->actingAs($rider)->get('/courier/cod')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Finance/Cod')
+            ->where('scope.company', $profile->company->name)
+            ->where('scope.hub', $hub->name)
+            ->where('scope.hubCode', $hub->code)
+            ->where('scope.isAssigned', true));
+
+        $this->get('/courier/cod/'.$account->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Finance/CodDetail')
+            ->where('scope.company', $profile->company->name)
+            ->where('scope.hub', $hub->name)
+            ->where('scope.hubCode', $hub->code)
+            ->where('scope.isAssigned', true));
     }
 }
