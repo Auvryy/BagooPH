@@ -23,7 +23,7 @@ Pages below were opened in headed Puppeteer against the local Docker site. Each 
 ## Journey and validation notes
 
 - Invalid checkout contact/postal input, unknown or mismatched waybills, underpaid COD, and a review without a chosen rating were rejected during the local order exercise. No authentication edge-case testing was included.
-- The buyer's “Buy again” action returned the Aero Graphite product to the existing Shopping Bag at the current ₱2,750 price. The bag showed one selected item and 18 units in stock. It was left unchanged.
+- The completed order page offers “Buy again.” The Shopping Bag currently contains one Aero Graphite item at ₱2,750 with 18 units in stock. I left the bag unchanged; this observation alone does not prove which action placed that item there.
 - Buyer, seller, pickup rider, hub and delivery rider pages reflected the same order as it advanced. The buyer confirmed receipt; this confirmation was the final commerce step.
 - The hub COD page displayed a recorded ₱2,750 collection entry, but a physical cash handover, platform reconciliation, and seller payout were not exercised. The UI does not prove cash physically changed hands.
 - The local database was not reset or reseeded for this browser pass. Signing into seeded accounts and opening pages did not submit new operational forms.
