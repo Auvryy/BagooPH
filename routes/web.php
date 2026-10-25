@@ -38,6 +38,7 @@ use App\Http\Controllers\BuyerReturnMoneyController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CodCashController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
+use App\Http\Controllers\Courier\CourierRoutePreviewController;
 use App\Http\Controllers\Courier\RiderCompanyRequestController;
 use App\Http\Controllers\ExceptionOversightController;
 use App\Http\Controllers\FinancialOversightController;
@@ -326,6 +327,7 @@ $registerCourierRoutes = function () use ($registerCodRoutes) {
     Route::middleware(['auth', 'subdomain.role:courier', 'courier.approved'])->group(function () use ($registerCodRoutes) {
         $registerCodRoutes();
         Route::get('/deliveries', [CourierDeliveryController::class, 'index']);
+        Route::post('/route-preview/{task}', CourierRoutePreviewController::class)->where('task', '(pickup|final_mile)-[1-9][0-9]*')->middleware('throttle:12,1');
         Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim']);
         Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus']);
         Route::get('/earnings', [CourierDeliveryController::class, 'earnings']);
@@ -741,6 +743,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
 Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courier.')->group(function () use ($registerCodRoutes) {
     $registerCodRoutes(true);
     Route::get('/deliveries', [CourierDeliveryController::class, 'index'])->name('deliveries');
+    Route::post('/route-preview/{task}', CourierRoutePreviewController::class)->where('task', '(pickup|final_mile)-[1-9][0-9]*')->middleware('throttle:12,1')->name('routePreview');
     Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim'])->name('claim');
     Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus'])->name('updateStatus');
     Route::get('/earnings', [CourierDeliveryController::class, 'earnings'])->name('earnings');
