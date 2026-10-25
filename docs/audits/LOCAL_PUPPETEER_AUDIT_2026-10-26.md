@@ -23,10 +23,16 @@ Pages below were opened in headed Puppeteer against the local Docker site. Each 
 ## Journey and validation notes
 
 - Invalid checkout contact/postal input, unknown or mismatched waybills, underpaid COD, and a review without a chosen rating were rejected during the local order exercise. No authentication edge-case testing was included.
-- The completed order page offers “Buy again.” The Shopping Bag currently contains one Aero Graphite item at ₱2,750 with 18 units in stock. I left the bag unchanged; this observation alone does not prove which action placed that item there.
+- “Buy again” was exercised from the completed order in the visible browser. It opened the Shopping Bag and merged the same Aero Graphite product into its existing line, increasing quantity from 1 to 2 and the line total from ₱2,750 to ₱5,500. Decreasing quantity returned the Bag to one unit at ₱2,750; no second order was placed.
 - Buyer, seller, pickup rider, hub and delivery rider pages reflected the same order as it advanced. The buyer confirmed receipt; this confirmation was the final commerce step.
 - The hub COD page displayed a recorded ₱2,750 collection entry, but a physical cash handover, platform reconciliation, and seller payout were not exercised. The UI does not prove cash physically changed hands.
-- The local database was not reset or reseeded for this browser pass. Signing into seeded accounts and opening pages did not submit new operational forms.
+- The local database was not reset or reseeded. The additional Buy again check temporarily changed the existing Bag quantity, then restored it; no new order or cash mutation occurred.
+
+## Additional visible-browser check — October 26, 2026
+
+From the completed order, the buyer clicked “Buy again.” The browser navigated to the Shopping Bag, displayed the success message that matching items have an increased quantity, and showed Aero Graphite at quantity 2 / ₱5,500. The buyer decreased it back to quantity 1 / ₱2,750, then used the visible “Track Order” and “TRACK PARCEL” controls to return to the same purchase. The order detail still showed “Order Completed,” “Buyer confirmed receipt,” and “Review saved.” No new checkout/order was submitted. The browser remains open on that order detail page.
+
+This confirms the local Buy again-to-Bag interaction and restored the observed one-unit Bag state. The three hub/rider/admin route sweeps remain page-load checks; they do not prove every action on those pages. Physical cash transfer, platform COD reconciliation, and seller payout remain unverified. The synthetic delivery proof is not evidence of a real-world handoff.
 
 ## Deployment build note
 
