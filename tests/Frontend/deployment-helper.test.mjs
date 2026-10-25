@@ -23,6 +23,12 @@ test('deploy pauses scheduled work before dependency changes and restarts it onl
     const result = run('deploy', 'deploy');
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(result.calls[0], ['compose', 'stop', 'scheduler']);
+    const composer = result.calls.find(args => args.includes('composer'));
+    const npm = result.calls.find(args => args.includes('npm'));
+    assert.ok(composer.includes('COMPOSER_CACHE_DIR=/var/www/html/storage/framework/cache/composer'));
+    assert.ok(npm.includes('--cache'));
+    assert.ok(npm.includes('/var/www/html/storage/framework/cache/npm'));
+    assert.ok(npm.includes('--prefer-offline'));
     const migration = result.calls.findIndex(args => args.includes('migrate'));
     const caches = result.calls.findIndex(args => args.includes('view:cache'));
     const scheduler = result.calls.findIndex(args => args.join(' ') === 'compose up -d --no-deps scheduler');

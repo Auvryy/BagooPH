@@ -105,14 +105,14 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
         };
     }, [reviewModalOpen]);
 
-    const { data, setData, post, processing, reset, recentlySuccessful, errors } = useForm<{
+    const { data, setData, post, processing, reset, recentlySuccessful, errors, clearErrors, setError } = useForm<{
         order_item_id: number | null;
         rating: number;
         comment: string;
         images: File[];
     }>({
         order_item_id: reviewableItems[0]?.id ?? null,
-        rating: 5,
+        rating: 0,
         comment: '',
         images: [],
     });
@@ -158,9 +158,16 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
 
     const submitReview = (e: React.FormEvent) => {
         e.preventDefault();
+        if (data.rating < 1 || data.rating > 5) {
+            setError('rating', 'Choose a rating from 1 to 5 stars.');
+            return;
+        }
         post(route('buyer.reviews.store'), {
             forceFormData: true,
             preserveScroll: true,
+            onError: (validation) => {
+                if (validation.rating) setError('rating', 'Choose a rating from 1 to 5 stars.');
+            },
             onSuccess: () => {
                 reset();
                 previewRef.current.forEach(url => URL.revokeObjectURL(url));
@@ -289,12 +296,14 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
                                     <label className="block text-xs font-semibold text-slate-700 mb-2">
                                         Your Rating (1 to 5 Stars):
                                     </label>
-                                    <div className="flex items-center gap-2">
+                                    <div role="group" aria-label="Your product rating" aria-describedby={errors.rating ? 'review-rating-error' : undefined} className="flex items-center gap-2">
                                         {[1, 2, 3, 4, 5].map((star) => (
                                             <button
                                                 key={star}
                                                 type="button"
-                                                onClick={() => setData('rating', star)}
+                                                aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
+                                                aria-pressed={data.rating === star}
+                                                onClick={() => { setData('rating', star); clearErrors('rating'); }}
                                                 className="p-1 focus:outline-hidden hover:scale-110 transition-transform cursor-pointer"
                                             >
                                                 <Star className={`w-8 h-8 ${
@@ -303,6 +312,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
                                             </button>
                                         ))}
                                     </div>
+                                    {errors.rating && <p id="review-rating-error" role="alert" className="mt-2 text-xs font-medium text-rose-700">{errors.rating}</p>}
                                 </div>
 
                                 <div>
