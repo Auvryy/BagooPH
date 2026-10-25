@@ -15,17 +15,16 @@ const tick=async()=>{for(let i=0;i<30;i++)await Promise.resolve()};
 const nodes=tree=>!tree||typeof tree!=='object'?[]:[tree,...[tree.props?.children].flat(Infinity).flatMap(nodes)];
 const text=tree=>typeof tree==='string'?tree:Array.isArray(tree)?tree.map(text).join(''):tree&&typeof tree==='object'?text(tree.props?.children):'';
 function harness(t){
- const original=Object.fromEntries(['document','window','navigator'].map(n=>[n,Object.getOwnPropertyDescriptor(globalThis,n)]));const slots=[],effects=[];let cursor=0,pending=[];
+ const original=Object.fromEntries(['document','window','navigator','fetch'].map(n=>[n,Object.getOwnPropertyDescriptor(globalThis,n)]));const slots=[],effects=[];let cursor=0,pending=[];
  const h={calls:[],lines:[],props:{job:{key:'pickup-7',status:'picked_up',trackingNumber:'BGO-ONE',stage:'Carrying',preview:false,stopLabel:'Origin hub',place:{name:'Hub',latitude:14.17,longitude:121.24}}},
  state(initial){const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return[slots[i],v=>{slots[i]=typeof v==='function'?v(slots[i]):v}]},ref(v){return this.state(()=>({current:v}))[0]},effect(fn,deps){const i=cursor++;const old=effects[i];if(!old||deps.some((v,k)=>!Object.is(v,old.deps[k])))pending.push(()=>{old?.cleanup?.();effects[i]={deps,cleanup:fn()}})},
  instance:{attributionControl:{setPrefix(){}},setView(){return this},remove(){},invalidateSize(){},fitBounds(){},zoomIn(){},zoomOut(){}},tiles:{on(){return this},addTo(){}},marker:{addTo(){return this},bindTooltip(){return this}},layer:{addTo(){return this},clearLayers(){h.lines=[]},remove(){h.lines=[]}},
- request(...args){this.calls.push(args);return this.response?this.response():Promise.resolve({task:args[0],waybill:args[1],mode:'motorcycle',lines:[[[14.16,121.23],[14.165,121.235],[14.17,121.24]]],destination:[14.17,121.24],observed_at:'2026-10-25T00:00:00Z',live_tracking:false})},
  render(){cursor=0;pending=[];this.tree=MapView(this.props);for(const node of nodes(this.tree)){const ref=node.props?.ref??node.ref;if(ref&&node.props?.role==='region')ref.current={}}for(const run of pending)run();return this.tree},
  button(label){const button=nodes(this.tree).find(n=>n.type==='button'&&text(n)===label);assert.ok(button,'Missing '+label);return button},
  close(){for(const effect of effects)effect?.cleanup?.()},
  };
  h.document=Object.assign(new EventTarget(),{visibilityState:'visible',createElement:()=>({textContent:''})});
- Object.defineProperty(globalThis,'document',{configurable:true,value:h.document});Object.defineProperty(globalThis,'window',{configurable:true,value:{matchMedia:()=>({matches:false})}});Object.defineProperty(globalThis,'navigator',{configurable:true,value:{geolocation:{getCurrentPosition(resolve,reject){h.locate=resolve;h.reject=reject}}}});globalThis.mapRoute=h;
+ Object.defineProperty(globalThis,'document',{configurable:true,value:h.document});Object.defineProperty(globalThis,'window',{configurable:true,value:{matchMedia:()=>({matches:false})}});Object.defineProperty(globalThis,'navigator',{configurable:true,value:{geolocation:{getCurrentPosition(resolve,reject){h.locate=resolve;h.reject=reject}}}});Object.defineProperty(globalThis,'fetch',{configurable:true,value:(...args)=>{h.calls.push(args);throw new Error('A sample map must not request a routing API')}});globalThis.mapRoute=h;
  t.after(()=>{h.close();delete globalThis.mapRoute;for(const[name,value]of Object.entries(original)){if(value)Object.defineProperty(globalThis,name,value);else delete globalThis[name]}});return h;
 }
 test('sample delivery draws its line without requesting location or a routing service', async t => {

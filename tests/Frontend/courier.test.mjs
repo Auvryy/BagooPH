@@ -630,3 +630,12 @@ test('company request review shows its offer while roster retains actual placeme
         assert.doesNotMatch(html, /Current rider facility<|Hire rider|Approve request/);
     } finally { if (originalRoute === undefined) delete globalThis.route; else globalThis.route = originalRoute; }
 });
+
+test('the sample map starts open for both empty and assigned workspaces without claiming real tracking', async () => {
+    for (const queues of [{}, { pickupTasks: [pickup] }]) {
+        const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: true, queues });
+        assert.match(html, /<details[^>]*open=""[^>]*><summary[^>]*>Sample delivery map/);
+        assert.match(html, /Illustration only/);
+        assert.match(html, /not a live rider or an assigned parcel/);
+    }
+});

@@ -76,6 +76,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         return deliveries.length || pickups.length ? 'assigned' : 'available';
     });
     const [search, setSearch] = useState('');
+    const [sampleMapOpen, setSampleMapOpen] = useState(true);
     const [selectedMapKey, setSelectedMapKey] = useState<string | null>(null);
     const mapRegion = useRef<HTMLDivElement>(null);
     const [target, setTarget] = useState<ActionTarget | null>(null);
@@ -328,7 +329,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         <CourierLayout title={courierGreeting(auth.user?.name)} pageLabel="Tasks" subtitle={scope?.isAssigned ? 'See what is assigned to you, what you are carrying, and what you can claim.' : 'Your logistics team needs to assign a company and hub before new work is available.'} isOnline={isOnline} scope={scope}>
             <Head title="Rider dashboard — BagooPH" />
             <div className="space-y-5">
-                <details className="rounded-[8px] border border-slate-200 bg-white p-4" open={!pickups.length && !deliveries.length}><summary className="cursor-pointer py-2 text-sm font-semibold">Sample delivery map</summary><div className="pt-3"><CourierJobMap /></div></details>
+                <details className="rounded-[8px] border border-slate-200 bg-white p-4" open={sampleMapOpen} onToggle={(event) => setSampleMapOpen(event.currentTarget.open)}><summary className="cursor-pointer py-2 text-sm font-semibold">Sample delivery map</summary>{sampleMapOpen && <div className="pt-3"><CourierJobMap /></div>}</details>
                 <div className="flex flex-wrap justify-end gap-2"><button type="button" disabled={loadingId !== null} onClick={() => {
                     if (pending.current) return;
                     pending.current = true; setLoadingId(-1); setErrors({});
