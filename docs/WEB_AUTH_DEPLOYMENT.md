@@ -186,6 +186,15 @@ and verification commands above to install their PHP code and rebuilt frontend.
 This update needs no new migration, reseeding or database reset. Keep existing
 HTTPS, session and facility permissions in place.
 
+For an existing BGX demo stopped at origin because the manifest has no eligible
+van/driver, the later transport update includes
+`2026_10_26_000000_repair_existing_demo_transport`. The normal `./bagoo.sh deploy`
+runs this bounded data migration; confirm it is **Ran** after deployment and
+follow [hub-managed parcel transfers](logistics-plan/04-handler-manifests.md).
+The migration recognizes only the existing approved demo network and retains
+original orders, waybills, custody, account passwords and ownership. A vehicle
+assignment conflict stops deployment for review instead of resetting data.
+
 Use an assigned hub handler for floor scans. The company administrator manages
 the network and manifests; that responsibility alone does not grant handler
 scans. The [demo account table](../GETTING_STARTED.md#verified-seed-accounts)

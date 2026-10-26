@@ -6,7 +6,9 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CommissionLedger;
 use App\Models\DeliveryCheckpoint;
+use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifest;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
@@ -15,6 +17,8 @@ use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
@@ -31,8 +35,28 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
 
     }
 
-    public function test_seeded_roles_complete_the_real_los_banos_to_santa_cruz_delivery_flow(): void
+    public static function networks(): array
     {
+        return ['fresh demo' => [false], 'existing demo upgraded during origin intake' => [true]];
+    }
+
+    #[DataProvider('networks')]
+    public function test_seeded_roles_complete_the_real_los_banos_to_santa_cruz_delivery_flow(bool $legacy): void
+    {
+        if ($legacy) {
+            // Reproduce the deployed network: no origin van, an unassigned
+            // Mother Hub van, and neither reserved transport driver.
+            foreach (['origin.transport@bagoo.test', 'mother.transport@bagoo.test'] as $email) {
+                $driver = User::where('email', $email)->sole();
+                $vehicle = $driver->courierProfile->vehicle;
+                $driver->courierProfile->delete();
+                $vehicle->update(['assigned_driver_id' => null]);
+                if ($email === 'origin.transport@bagoo.test') {
+                    $vehicle->delete();
+                }
+                $driver->delete();
+            }
+        }
         $buyer = User::where('email', 'buyer@bagoo.test')->firstOrFail();
         $seller = User::where('email', 'seller@bagoo.test')->firstOrFail();
         $pickupRider = User::where('email', 'pickup.rider@bagoo.test')->firstOrFail();
@@ -110,6 +134,18 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             ->where('checkpoint_type', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)
             ->count());
 
+        if ($legacy) {
+            $this->actingAs($originHandler)->get(route('hub.manifests.index'))->assertOk()
+                ->assertInertia(fn (AssertableInertia $page) => $page->has('vehicles', 0));
+            $before = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(),
+                DeliveryCheckpoint::orderBy('id')->get()->map->getRawOriginal()->all(), $product->fresh()->stock];
+            $migration = require database_path('migrations/2026_10_26_000000_repair_existing_demo_transport.php');
+            $migration->up();
+            $this->assertSame($before, [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(),
+                DeliveryCheckpoint::orderBy('id')->get()->map->getRawOriginal()->all(), $product->fresh()->stock]);
+        }
+        $fleetCount = LogisticsFleet::count();
+        $userCount = User::count();
         $this->scanAndConfirm($originHandler, $delivery, $originHub, 'DISPATCH_TO_FEEDER', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB);
         $this->assertNull($delivery->fresh()->current_hub_id);
         $this->scanAndConfirm($motherHandler, $delivery, $motherHub, 'RECEIVE_AT_MOTHER_HUB', OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB);
@@ -120,6 +156,8 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
         $this->assertNull($delivery->fresh()->current_hub_id);
         $this->scanAndConfirm($destinationHandler, $delivery, $destinationHub, 'RECEIVE_AT_DESTINATION_HUB', OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB);
         $this->assertSame($destinationHub->id, $delivery->fresh()->current_hub_id);
+        $this->assertSame($fleetCount, LogisticsFleet::count(), 'The journey must use deployed transport, not manufacture test vehicles.');
+        $this->assertSame($userCount, User::count(), 'The journey must use the existing seeded drivers.');
 
         $this->actingAs($destinationHandler)->postJson(route('hub.sort'), [
             'delivery_id' => $delivery->id,
@@ -205,7 +243,7 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             $this->actingAs($operator)->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number,
                 'hub_id' => $hub->id, 'mode' => 'inspect'])->assertOk()->assertJsonPath('prompt.requires_confirmation', false)
                 ->assertJsonPath('prompt.manifest_url', '/hub/manifests?hub_id='.$hub->id);
-            $this->confirmFlowManifest($delivery, $hub, str_starts_with($action, 'DISPATCH'), $operator);
+            $this->recordSeededManifest($delivery, $hub, str_starts_with($action, 'DISPATCH'), $operator);
 
             return;
         }
@@ -219,6 +257,39 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             ->assertJsonPath('prompt.requires_confirmation', true);
 
         $this->confirmScan($operator, $delivery, $hub, $action, $expectedStatus);
+    }
+
+    private function recordSeededManifest($delivery, LogisticsHub $hub, bool $departure, User $operator): void
+    {
+        if ($departure) {
+            $vehicle = LogisticsFleet::ready()->where('hub_id', $hub->id)->where('vehicle_type', 'l300_van')->sole();
+            $this->actingAs($operator)->get(route('hub.manifests.index'))->assertOk()
+                ->assertInertia(fn (AssertableInertia $page) => $page
+                    ->where('vehicles', fn ($vehicles) => collect($vehicles)->contains('id', $vehicle->id)));
+            $destinationId = $hub->id === $delivery->origin_bayan_hub_id
+                ? $delivery->origin_mother_hub_id : $delivery->destination_bayan_hub_id;
+            $response = $this->postJson(route('hub.manifests.store'), [
+                'source_hub_id' => $hub->id, 'destination_hub_id' => $destinationId,
+                'vehicle_id' => $vehicle->id, 'creation_token' => session()->get('manifest_creation_token'),
+            ])->assertCreated();
+            $manifest = LogisticsManifest::findOrFail($response->json('manifest.id'));
+            foreach (['load', 'seal', 'dispatch'] as $action) {
+                $this->postJson('/hub/manifests/'.$manifest->id.'/'.$action,
+                    $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
+            }
+            $this->assertSame($vehicle->assigned_driver_id, $manifest->driver_id);
+            $this->assertSame('manifest', DeliveryCheckpoint::lastCustody($delivery->fresh())['kind']);
+        } else {
+            $custody = DeliveryCheckpoint::lastCustody($delivery->fresh());
+            $manifest = LogisticsManifest::findOrFail($custody['manifest_id']);
+            $this->assertSame($hub->id, $manifest->destination_hub_id);
+            $this->actingAs($operator);
+            foreach (['receive', 'close'] as $action) {
+                $this->postJson('/hub/manifests/'.$manifest->id.'/'.$action,
+                    $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
+            }
+        }
+        $delivery->refresh();
     }
 
     private function confirmScan(

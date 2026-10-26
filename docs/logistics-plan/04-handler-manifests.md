@@ -32,12 +32,23 @@ Feeder transport uses a closed van. Mother-to-Mother transport uses a wing truck
 
 ## Existing demo transport repair
 
-Deploying code does not copy seed data into an existing database. For the reserved BGX demo network, an explicit bounded repair is available after deployment:
+Deploying code does not copy seed data into an existing database. The forward migration `2026_10_26_000000_repair_existing_demo_transport` applies the bounded transport repair during the normal `./bagoo.sh deploy` migration step. It recognizes only the existing active BGX demo company with its original demo company owner or the demo Mother Hub owner. Empty installations, unrelated companies and restricted company owners are left alone. It does not run the full database seeder.
+
+After pulling the merged change, run:
+
+```bash
+./bagoo.sh deploy
+./bagoo.sh verify
+```
+
+Reopen Manifests as the sending handler. The Los Banos source should offer its assigned closed van for the Mother Hub transfer; the Mother Hub should offer its own assigned closed van for the Santa Cruz leg. Preparing a draft still does not move a parcel. Continue the recorded load, seal, dispatch and receiving steps above using the original waybill.
+
+For an explicit demo repair after a separately reviewed setup change, the targeted command remains available:
 
 ```bash
 ./bagoo.sh artisan db:seed --class=LogisticsTransportSeeder --force
 ```
 
-This creates missing demo transport drivers and source-hub vans without resetting the database or changing existing passwords, restrictions or custody. It can attach the missing driver to a matching unused demo van. Conflicting assignments or retained vehicle history stop the transaction with a message for manual review. Do not replace this command with `fresh` or a full reseed of operational data.
+Both paths create missing reserved demo transport drivers and source-hub vans without resetting the database or changing existing passwords, restrictions, driver availability, company ownership or parcel custody. They can attach the missing driver to a matching unused demo van. Conflicting assignments or retained vehicle history stop the entire transaction with a message for manual review; a failed migration is not marked installed. Rolling back the data migration retains transport records that may now support custody. Do not replace these commands with `fresh` or a full reseed of operational data.
 
 New complete demo seeds use the existing Mother Hub handler for company ownership and management, alongside the Bayan handlers, pickup rider, delivery rider and actual transport drivers. Existing deployments can use their eligible Mother Hub assignments for management without transferring legal company ownership or deleting the former owner.
