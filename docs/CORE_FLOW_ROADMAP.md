@@ -7906,3 +7906,14 @@ not establish a physical cash transfer, a real seller payment, or hosted
 acceptance. The labelled hosted QA review and the actual hosted parcel handoff
 still require separate decisions and real-world evidence. No hosted or
 development PostgreSQL financial record was changed for this check.
+
+The previously recorded hosted QA review was identified through the owning demo
+order and the public product page. A one-time cleanup and restore tool was
+prepared as ignored local material, with checks for the exact record, a private backup,
+rating recalculation and explicit operator confirmation. **17 isolated SQLite
+cases / 116 assertions** passed, including changed evidence, backup protection,
+rollback and restore. The CLI also refused a test-environment apply. This is not
+an authenticated application audit feature or a tested hosted PostgreSQL
+operation. The tool is not in the GitHub branch, and the review remains visible;
+any live cleanup needs separate approval, an independent backup, a fresh read-only
+preview and review of the exact tool on the intended server.
