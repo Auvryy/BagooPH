@@ -1,5 +1,7 @@
 # System Flow & Specifications
 
+> The user-selected [New Docs Era logistics version 2](new-docs-era/README.md) supersedes this document's mandatory Mother-Hub rule for local routes, buyer-only completion, old shipping policy, undefined shipping split and company account provisioning restrictions. Retain the original history and unrelated ownership/security rules.
+
 > **Official Curriculum Reference Specification**
 > This document records the customer-facing lifecycle and cross-role responsibilities. The physical custody, mother-hub, exception, self-pickup, notification, and COD rules are authoritative in `docs/SORTING_CENTER_LOGISTICS_FLOW.md`.
 
