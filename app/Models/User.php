@@ -65,6 +65,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     ];
 
     protected $hidden = [
+        'provisioned_by_id', 'provisioned_company_id', 'temporary_password_expires_at',
         'session_version',
         'contact_settings_version',
         'identity_version',
@@ -128,6 +129,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     protected function casts(): array
     {
         return [
+            'must_change_password' => 'boolean', 'temporary_password_expires_at' => 'immutable_datetime',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'birthday' => 'date',
@@ -227,6 +229,8 @@ class User extends Authenticatable implements MustVerifyEmailContract
             && $this->closed_at === null
             && $this->status === 'active'
             && $this->isKycApproved()
+            && ! $this->must_change_password
+            && (! $this->provisioned_company_id || $this->email_verified_at !== null)
             && $this->hasEligibleBirthDate();
     }
 
@@ -253,7 +257,8 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     private function eligibleWorkerQuery(Builder $query, string $role): Builder
     {
-        return $query->where('role', $role)->where('status', 'active')->whereNull('closed_at')
+        return $query->where('role', $role)->where('status', 'active')->whereNull('closed_at')->where('must_change_password', false)
+            ->where(fn ($staff) => $staff->whereNull('provisioned_company_id')->orWhereNotNull('email_verified_at'))
             ->whereIn('kyc_status', self::APPROVED_KYC_STATUSES)
             ->where(function (Builder $query) {
                 $query->where(fn ($legacy) => $legacy->whereNull('birthday')->where('identity_version', 0))->orWhere(function (Builder $query) {

@@ -24,6 +24,7 @@ class Order extends Model
     }
 
     protected $fillable = [
+        'logistics_flow_version', 'shipping_quote',
         'order_number',
         'buyer_id',
         'voucher_id',
@@ -51,6 +52,7 @@ class Order extends Model
     ];
 
     protected $casts = [
+        'logistics_flow_version' => 'integer', 'shipping_quote' => 'array',
         'subtotal' => 'decimal:2',
         'voucher_discount' => 'decimal:2',
         'shipping_fee' => 'decimal:2',

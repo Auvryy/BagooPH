@@ -39,6 +39,7 @@ class Delivery extends Model
     public const MAX_ACTIVE_PICKUPS_PER_RIDER = 5;
 
     protected $fillable = [
+        'route_hub_ids', 'same_hub_bypass',
         'order_id',
         'courier_id',
         'logistics_company_id',
@@ -76,6 +77,7 @@ class Delivery extends Model
     ];
 
     protected $casts = [
+        'route_hub_ids' => 'array', 'same_hub_bypass' => 'boolean',
         'estimated_delivery_at' => 'datetime',
         'assigned_at' => 'datetime',
         'picked_up_at' => 'datetime',

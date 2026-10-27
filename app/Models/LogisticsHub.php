@@ -15,6 +15,7 @@ class LogisticsHub extends Model
     use RetainsRestrictionHistory;
 
     protected $fillable = [
+        'parent_hub_id', 'postal_codes',
         'logistics_company_id',
         'name',
         'code',
@@ -33,6 +34,7 @@ class LogisticsHub extends Model
     ];
 
     protected $casts = [
+        'postal_codes' => 'array',
         'coverage_barangays' => 'array',
         'allows_self_pickup' => 'boolean',
         'is_active' => 'boolean',

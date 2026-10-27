@@ -44,4 +44,9 @@ class CodAccount extends Model
     {
         return $this->hasMany(CodCashEvent::class);
     }
+
+    public function latestEvent(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(CodCashEvent::class)->ofMany('sequence', 'max');
+    }
 }
