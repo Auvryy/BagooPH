@@ -117,6 +117,20 @@ const order = { id: 40, buyer_id: 7, order_number: 'BGO-TRACKING', status: 'prep
     payment_method: 'cod', payment_status: 'pending', created_at: '2026-10-11T00:00:00Z', items: [], tracking,
     buyer: { id: 7, name: 'Ana Santos' }, delivery: { id: 20, status: 'unassigned', tracking_number: 'BGO-PARCEL' } };
 
+test('tracking distinguishes a recorded journey from missing holder details', () => {
+    const legacy = { ...tracking, commercial_status: 'completed', parcel_status: 'delivered',
+        custodian: 'Parcel holder not recorded', custody_recorded_at: null,
+        notice: 'The parcel holder is not recorded. The handover details need review.',
+        history: [{ id: 4, type: 'delivered', label: 'Doorstep handover recorded', location: 'Destination', created_at: null }] };
+    for (const variant of ['buyer', 'default']) {
+        const html = renderToStaticMarkup(createElement(ui.Panel, { tracking: legacy, variant }));
+        assert.match(html, /Doorstep handover recorded/);
+        assert.match(html, /The parcel holder is not recorded/);
+        assert.doesNotMatch(html, /Handover: Not recorded|Holder record:/);
+        assert.match(renderToStaticMarkup(createElement(ui.Panel, { tracking, variant })), /Holder record:/);
+    }
+});
+
 async function render(Component, props, role = 'buyer', retained = null) {
     const previousDocument = globalThis.document;
     if (retained) {
