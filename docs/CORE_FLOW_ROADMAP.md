@@ -7846,3 +7846,74 @@ The earlier seeded cross-role journey was hiding missing deployment resources by
 Verification: **99 backend cases / 4,269 assertions** passed sequentially with isolated SQLite `:memory:` across deployment repair, seed baseline, seeded cross-role journeys, handler journeys, direct-scan bypass and manifest custody. This includes actual `artisan migrate --force` installation/retry, both supported demo owners, unrelated-owner exclusion, restricted-owner/company preservation, unavailable required hubs, conflict rollback, password/availability retention and non-destructive rollback. All **three deployment-helper tests**, formatting for the three affected PHP files and `git diff --check` passed. No frontend behavior changed, so no new frontend production build was required. These checks do not claim execution of this migration on hosted PostgreSQL or hosted end-to-end completion after deployment.
 
 Scoped assessment for upgrading the existing demo transport setup: **4/10 → 8/10**, based on including the repair in normal deployment and proving the resumed seeded journey. Overall project readiness, physical handover/COD reconciliation and seller payout ratings are unchanged. Hosted acceptance requires the user to publish/merge, pull and run normal deployment, then continue the parked parcel in the deployed browser. Task tracking returned HTTP 530, so no saved task/time update is claimed. The branch PR description remains a local draft.
+
+### Delivery audit follow-up — October 27, 2026
+
+An older completed order showed a recorded doorstep handover in its journey while
+another message said the handover was not recorded. Tracking now describes the
+missing parcel holder and asks for review without denying the existing event or
+inventing a holder. A holder timestamp is shown only when holder evidence exists.
+The completed local order with recorded buyer custody still displays that holder.
+
+The seller-proceeds review also reported an amount problem when an otherwise
+matching order was simply unpaid. It now identifies the unpaid payment separately;
+real amount differences remain flagged, and both payment and COD reconciliation
+are still required before authorization. Headless inspection of the local admin
+page confirmed the corrected blockers without submitting cash or payout actions.
+
+Verification: the isolated order-tracking suite passed **36 cases / 2,575
+assertions** and the frontend tracking suite passed **34 cases**. The updated
+purchase-to-settlement and seller-settlement suites passed **30 cases / 2,905
+assertions** using SQLite `:memory:` and synthetic evidence. The earlier combined
+cash and settlement selection passed **70 cases / 6,332 assertions** before the
+warning change. Two focused courier proof checks passed **19 assertions**,
+covering missing or untrusted proof and unchanged delivery state; the cash suite
+also covered an unchecked cash confirmation. The production TypeScript/Vite build, scoped PHP formatting and
+diff checks passed. Headless browser checks reached several account sections on
+local desktop, login activity in a local phone-sized layout, and identity
+correction on hosted desktop; the earlier reported shortcut failure did not
+reproduce in fresh tabs. Some browser tabs later stopped receiving input or
+timed out and are not treated as evidence of an application defect.
+
+Scoped assessments: missing-holder tracking clarity **4/10 → 8/10**; pending
+seller-proceeds guidance **5/10 → 8/10**. These ratings cover the tested
+messages and gates, not overall delivery or financial readiness. The hosted
+changes are not deployed, the older hosted holder record still needs review, and
+the hosted parcel still requires an actual recipient handoff and buyer receipt.
+The local cash flow was verified by isolated tests, not a physical cash transfer;
+the existing labelled hosted QA review remains visible. The task-management
+session was expired, so no task or time update is claimed.
+
+### Isolated browser cash and proceeds check — October 27, 2026
+
+A separate headless browser check used a disposable Laravel server with SQLite
+`:memory:`, a read-only project mount and isolated storage. The server rejected
+PostgreSQL and disk-backed SQLite configurations before application boot. The
+synthetic delivered order, buyer confirmation and original COD collection were
+created by backend test helpers, not browser clicks.
+
+The browser then recorded the synthetic rider-to-hub and hub-to-platform offers
+and receipts, platform reconciliation, seller-release authorization and a test
+payment with a synthetic proof image. It first confirmed that the empty payment
+form was blocked. A separate seller session showed the saved payment after a
+fresh reload: PHP 950 COD included PHP 900 in products and PHP 50 shipping; the
+seller share was PHP 810 and the platform commission PHP 90. No page exception
+or HTTP 5xx was captured during these interactions.
+
+Scoped evidence assessment for the cash and proceeds browser path: **3/10 →
+8/10**. The check exercises the controls with disposable test records; it does
+not establish a physical cash transfer, a real seller payment, or hosted
+acceptance. The labelled hosted QA review and the actual hosted parcel handoff
+still require separate decisions and real-world evidence. No hosted or
+development PostgreSQL financial record was changed for this check.
+
+The previously recorded hosted QA review was identified through the owning demo
+order and the public product page. A one-time cleanup and restore tool was
+prepared as ignored local material, with checks for the exact record, a private backup,
+rating recalculation and explicit operator confirmation. **17 isolated SQLite
+cases / 116 assertions** passed, including changed evidence, backup protection,
+rollback and restore. The CLI also refused a test-environment apply. This is not
+an authenticated application audit feature or a tested hosted PostgreSQL
+operation. The tool is not in the GitHub branch, and the review remains visible;
+any live cleanup needs separate approval, an independent backup, a fresh read-only
+preview and review of the exact tool on the intended server.

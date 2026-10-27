@@ -107,7 +107,10 @@ class SellerSettlementService
                 || app(CodCashService::class)->atStage($state ?? [], 'hub') > 0))) {
             $blockers[] = 'COD requires platform reconciliation with no unresolved cash or extra money.';
         }
-        if ($order->payment_method !== 'cod' || $order->payment_status !== 'paid' || ! $cash
+        if ($order->payment_status !== 'paid') {
+            $blockers[] = 'The order payment is not yet marked paid.';
+        }
+        if ($order->payment_method !== 'cod' || ! $cash
             || $cash->delivery_id !== $parcel?->id || $cash->product_subtotal_cents !== CodMoney::cents($order->subtotal)
             || $cash->shipping_cents !== CodMoney::cents($order->shipping_fee)
             || $cash->discount_cents !== CodMoney::cents($order->voucher_discount)

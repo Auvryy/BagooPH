@@ -35,7 +35,7 @@ export default function OrderTrackingPanel({ tracking, onRefresh, refreshing = f
             <OrderTrackingStatus tracking={tracking} />
             <dl className="grid gap-4 text-sm sm:grid-cols-2">
                 <div><dt className="text-xs text-slate-500">Parcel stage</dt><dd className="mt-1 font-semibold text-slate-900">{tracking.stage_label}</dd></div>
-                <div><dt className="text-xs text-slate-500">Recorded parcel holder</dt><dd className="mt-1 font-semibold text-slate-900">{tracking.custodian}</dd><dd className="mt-1 text-xs text-slate-500">Handover: {trackingDate(tracking.custody_recorded_at)}</dd></div>
+                <div><dt className="text-xs text-slate-500">Recorded parcel holder</dt><dd className="mt-1 font-semibold text-slate-900">{tracking.custodian}</dd>{tracking.custody_recorded_at && <dd className="mt-1 text-xs text-slate-500">Holder record: {trackingDate(tracking.custody_recorded_at)}</dd>}</div>
             </dl>
             {tracking.notice && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{tracking.notice}</p>}
             <div className="rounded-lg border border-slate-300 bg-slate-50 p-3"><p className="text-xs font-semibold text-slate-500">Next step · {tracking.responsible}</p><p className="mt-1 text-sm text-slate-800">{tracking.next_step}</p></div>

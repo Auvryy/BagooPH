@@ -73,7 +73,7 @@ export default function BuyerParcelProgress({ tracking, order, notices = [], onR
             </summary>
             <div className="space-y-5 pb-2 pt-3">
                 <dl className="grid gap-3 text-xs text-slate-600 sm:grid-cols-2">
-                    <div><dt>Recorded parcel holder</dt><dd className="mt-1 break-words font-semibold text-slate-800">{tracking.custodian}</dd><dd className="mt-1">Handover: {trackingDate(tracking.custody_recorded_at)}</dd></div>
+                    <div><dt>Recorded parcel holder</dt><dd className="mt-1 break-words font-semibold text-slate-800">{tracking.custodian}</dd>{tracking.custody_recorded_at && <dd className="mt-1">Holder record: {trackingDate(tracking.custody_recorded_at)}</dd>}</div>
                     <div><dt>Last checked</dt><dd className="mt-1">{trackingDate(tracking.observed_at)} · Philippine time</dd></div>
                 </dl>
                 {tracking.failure && <div className="space-y-1 text-sm text-amber-900"><p>Recorded attempt {tracking.failure.attempt_number}: {tracking.failure.reason}</p><p className="text-xs">Attempt: {trackingDate(tracking.failure.attempted_at)}</p>{tracking.failure.retry_at && <p className="font-semibold">Approved retry: {trackingDate(tracking.failure.retry_at)} · Philippine time</p>}</div>}

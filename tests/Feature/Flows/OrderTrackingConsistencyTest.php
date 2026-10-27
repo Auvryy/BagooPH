@@ -87,6 +87,7 @@ class OrderTrackingConsistencyTest extends TestCase
                 ->where('queues.'.$key.'.0.tracking.custodian', $tracking['custodian']));
         }
         if ($stage === 'delivered') {
+            $this->assertNotNull($tracking['custody_recorded_at']);
             $this->completeFlowOrder($parcel->order);
             $completed = $this->assertOwnedViews($parcel->order, 'completed', 'Buyer confirmed receipt');
             $this->assertSame('Buyer confirmed receipt', collect($completed['history'])->last()['label']);
@@ -247,6 +248,33 @@ class OrderTrackingConsistencyTest extends TestCase
         $this->assertNotNull($tracking['notice']);
         $this->assertSame('Bagoo support', $tracking['responsible']);
         $this->assertDatabaseCount('delivery_checkpoints', 0);
+    }
+
+    public static function missingHolderSnapshots(): array
+    {
+        return ['no snapshot' => [null], 'unknown holder' => [['kind' => 'unknown']]];
+    }
+
+    #[DataProvider('missingHolderSnapshots')]
+    public function test_legacy_delivery_history_does_not_claim_the_handover_event_is_missing(?array $snapshot): void
+    {
+        $order = Order::factory()->create(['status' => 'completed']);
+        $parcel = Delivery::factory()->create(['order_id' => $order->id, 'status' => 'delivered']);
+        foreach (['delivered', 'buyer_completed'] as $type) {
+            DeliveryCheckpoint::create([
+                'delivery_id' => $parcel->id, 'checkpoint_type' => $type,
+                'custody_after' => $snapshot,
+            ]);
+        }
+
+        $tracking = app(OrderTrackingService::class)->present($order->fresh());
+
+        $this->assertSame('Parcel holder not recorded', $tracking['custodian']);
+        $this->assertNull($tracking['custody_recorded_at']);
+        $this->assertSame('The parcel holder is not recorded. The handover details need review.', $tracking['notice']);
+        $this->assertSame(['Doorstep handover recorded', 'Buyer confirmed receipt'], array_column($tracking['history'], 'label'));
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertDatabaseCount('delivery_checkpoints', 2);
     }
 
     private function confirmReferencedScan(Delivery $parcel, LogisticsHub $hub, string $action, string $reference): void

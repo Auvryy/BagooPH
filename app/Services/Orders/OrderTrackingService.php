@@ -137,7 +137,8 @@ class OrderTrackingService
             'tone' => $notice || in_array($status, ['delivery_failed', 'returned', 'cancelled', 'unknown'], true)
                 ? 'attention' : (in_array($status, ['delivered', 'completed'], true) ? 'success' : 'progress'),
             'custodian' => $this->holder($order, $parcel, $checkpoint, $custody),
-            'custody_recorded_at' => $checkpoint?->created_at?->toIso8601String(),
+            'custody_recorded_at' => in_array($custody['kind'] ?? null, ['seller', 'courier', 'hub', 'manifest', 'buyer'], true)
+                ? $checkpoint?->created_at?->toIso8601String() : null,
             'next_step' => $step, 'responsible' => $responsible, 'notice' => $notice,
             'observed_at' => now()->toIso8601String(),
             'history' => $history && $parcel ? $parcel->checkpoints->filter(fn ($event) => $event->source_checkpoint_id === null && isset(self::EVENTS[$event->checkpoint_type]))
@@ -197,7 +198,7 @@ class OrderTrackingService
         $kind = $custody['kind'] ?? 'unknown';
         if (! in_array($kind, ['seller', 'courier', 'hub', 'manifest', 'buyer'], true)
             && ! in_array($parcel->status, ['unassigned', 'assigned', 'assigned_pickup', 'cancelled'], true)) {
-            return 'The parcel handover is not recorded. Its holder and next handover need review.';
+            return 'The parcel holder is not recorded. The handover details need review.';
         }
         $holders = match ($parcel->status) {
             'picked_up', 'out_for_delivery' => ['courier'],
