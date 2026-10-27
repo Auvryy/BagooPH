@@ -7883,3 +7883,26 @@ the hosted parcel still requires an actual recipient handoff and buyer receipt.
 The local cash flow was verified by isolated tests, not a physical cash transfer;
 the existing labelled hosted QA review remains visible. The task-management
 session was expired, so no task or time update is claimed.
+
+### Isolated browser cash and proceeds check — October 27, 2026
+
+A separate headless browser check used a disposable Laravel server with SQLite
+`:memory:`, a read-only project mount and isolated storage. The server rejected
+PostgreSQL and disk-backed SQLite configurations before application boot. The
+synthetic delivered order, buyer confirmation and original COD collection were
+created by backend test helpers, not browser clicks.
+
+The browser then recorded the synthetic rider-to-hub and hub-to-platform offers
+and receipts, platform reconciliation, seller-release authorization and a test
+payment with a synthetic proof image. It first confirmed that the empty payment
+form was blocked. A separate seller session showed the saved payment after a
+fresh reload: PHP 950 COD included PHP 900 in products and PHP 50 shipping; the
+seller share was PHP 810 and the platform commission PHP 90. No page exception
+or HTTP 5xx was captured during these interactions.
+
+Scoped evidence assessment for the cash and proceeds browser path: **3/10 →
+8/10**. The check exercises the controls with disposable test records; it does
+not establish a physical cash transfer, a real seller payment, or hosted
+acceptance. The labelled hosted QA review and the actual hosted parcel handoff
+still require separate decisions and real-world evidence. No hosted or
+development PostgreSQL financial record was changed for this check.
