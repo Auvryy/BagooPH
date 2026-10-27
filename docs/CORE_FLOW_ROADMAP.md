@@ -7846,3 +7846,40 @@ The earlier seeded cross-role journey was hiding missing deployment resources by
 Verification: **99 backend cases / 4,269 assertions** passed sequentially with isolated SQLite `:memory:` across deployment repair, seed baseline, seeded cross-role journeys, handler journeys, direct-scan bypass and manifest custody. This includes actual `artisan migrate --force` installation/retry, both supported demo owners, unrelated-owner exclusion, restricted-owner/company preservation, unavailable required hubs, conflict rollback, password/availability retention and non-destructive rollback. All **three deployment-helper tests**, formatting for the three affected PHP files and `git diff --check` passed. No frontend behavior changed, so no new frontend production build was required. These checks do not claim execution of this migration on hosted PostgreSQL or hosted end-to-end completion after deployment.
 
 Scoped assessment for upgrading the existing demo transport setup: **4/10 → 8/10**, based on including the repair in normal deployment and proving the resumed seeded journey. Overall project readiness, physical handover/COD reconciliation and seller payout ratings are unchanged. Hosted acceptance requires the user to publish/merge, pull and run normal deployment, then continue the parked parcel in the deployed browser. Task tracking returned HTTP 530, so no saved task/time update is claimed. The branch PR description remains a local draft.
+
+### Delivery audit follow-up — October 27, 2026
+
+An older completed order showed a recorded doorstep handover in its journey while
+another message said the handover was not recorded. Tracking now describes the
+missing parcel holder and asks for review without denying the existing event or
+inventing a holder. A holder timestamp is shown only when holder evidence exists.
+The completed local order with recorded buyer custody still displays that holder.
+
+The seller-proceeds review also reported an amount problem when an otherwise
+matching order was simply unpaid. It now identifies the unpaid payment separately;
+real amount differences remain flagged, and both payment and COD reconciliation
+are still required before authorization. Headless inspection of the local admin
+page confirmed the corrected blockers without submitting cash or payout actions.
+
+Verification: the isolated order-tracking suite passed **36 cases / 2,575
+assertions** and the frontend tracking suite passed **34 cases**. The updated
+purchase-to-settlement and seller-settlement suites passed **30 cases / 2,905
+assertions** using SQLite `:memory:` and synthetic evidence. The earlier combined
+cash and settlement selection passed **70 cases / 6,332 assertions** before the
+warning change. Two focused courier proof checks passed **19 assertions**,
+covering missing or untrusted proof and unchanged delivery state; the cash suite
+also covered an unchecked cash confirmation. The production TypeScript/Vite build, scoped PHP formatting and
+diff checks passed. Headless browser checks reached several account sections on
+local desktop, login activity in a local phone-sized layout, and identity
+correction on hosted desktop; the earlier reported shortcut failure did not
+reproduce in fresh tabs. Some browser tabs later stopped receiving input or
+timed out and are not treated as evidence of an application defect.
+
+Scoped assessments: missing-holder tracking clarity **4/10 → 8/10**; pending
+seller-proceeds guidance **5/10 → 8/10**. These ratings cover the tested
+messages and gates, not overall delivery or financial readiness. The hosted
+changes are not deployed, the older hosted holder record still needs review, and
+the hosted parcel still requires an actual recipient handoff and buyer receipt.
+The local cash flow was verified by isolated tests, not a physical cash transfer;
+the existing labelled hosted QA review remains visible. The task-management
+session was expired, so no task or time update is claimed.
