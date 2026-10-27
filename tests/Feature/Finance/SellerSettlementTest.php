@@ -264,6 +264,39 @@ class SellerSettlementTest extends TestCase
         $this->assertDatabaseCount('commission_ledgers', 0);
     }
 
+    public function test_pending_payment_does_not_suggest_matching_order_amounts_are_wrong(): void
+    {
+        $cash = $this->collected();
+        $admin = $this->createApprovedUser('admin');
+        $this->actingAs($cash->order->buyer)->post('/buyer/orders/'.$cash->order_id.'/confirm')->assertSessionHas('success');
+
+        $response = $this->actingAs($admin)->getJson('/seller-settlements/'.$cash->order_id)->assertOk();
+        $blockers = $response->json('record.blockers');
+        $this->assertContains('COD requires platform reconciliation with no unresolved cash or extra money.', $blockers);
+        $this->assertContains('The order payment is not yet marked paid.', $blockers);
+        $this->assertNotContains('The original order and cash amounts need evidence review.', $blockers);
+        $this->postJson('/seller-settlements/'.$cash->order_id.'/authorize', $this->input())->assertConflict();
+
+        $cash->order->update(['total_amount' => '0.01']);
+        $blockers = $this->getJson('/seller-settlements/'.$cash->order_id)->assertOk()->json('record.blockers');
+        $this->assertContains('The original order and cash amounts need evidence review.', $blockers);
+        $this->postJson('/seller-settlements/'.$cash->order_id.'/authorize', $this->input())->assertConflict();
+        $this->assertDatabaseCount('seller_settlements', 0);
+    }
+
+    public function test_reconciled_cash_with_unpaid_order_still_blocks_release(): void
+    {
+        [$cash, $admin] = $this->eligible();
+        $cash->order->fresh()->update(['payment_status' => 'pending']);
+
+        $blockers = $this->actingAs($admin)->getJson('/seller-settlements/'.$cash->order_id)->assertOk()->json('record.blockers');
+        $this->assertContains('The order payment is not yet marked paid.', $blockers);
+        $this->assertNotContains('The original order and cash amounts need evidence review.', $blockers);
+        $this->postJson('/seller-settlements/'.$cash->order_id.'/authorize', $this->input())->assertConflict();
+        $this->assertDatabaseCount('seller_settlements', 0);
+        $this->assertDatabaseCount('commission_ledgers', 0);
+    }
+
     public static function rounding(): array
     {
         return [[1, 0, 1], [5, 1, 4], [15, 2, 13], [10005, 1001, 9004], [99999999, 10000000, 89999999]];
