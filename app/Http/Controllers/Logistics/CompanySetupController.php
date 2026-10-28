@@ -26,7 +26,7 @@ class CompanySetupController extends Controller
             'companies' => $companies->map->only(['id', 'name']),
             'company' => $company->only(['id', 'name', 'base_shipping_cents', 'included_weight_grams', 'additional_kg_cents', 'shipping_earnings_model', 'tariff_version']),
             'canProvision' => $company->user_id === $actor->id,
-            'hubs' => $company->hubs()->orderBy('tier')->orderBy('name')->get(['id', 'logistics_company_id', 'name', 'code', 'tier', 'province', 'city_municipality', 'parent_hub_id', 'postal_codes', 'coverage_barangays', 'is_active'])
+            'hubs' => $company->hubs()->orderBy('tier')->orderBy('name')->get(['id', 'logistics_company_id', 'name', 'code', 'tier', 'province', 'city_municipality', 'parent_hub_id', 'postal_codes', 'coverage_barangays', 'is_active', 'latitude', 'longitude', 'address'])
                 ->map(fn ($hub) => $hub->toArray() + ['coverage_token' => $service->coverageToken($hub)]),
             'staff' => DB::table('company_staff_provisions')->join('users', 'users.id', '=', 'company_staff_provisions.user_id')
                 ->join('logistics_hubs', 'logistics_hubs.id', '=', 'company_staff_provisions.hub_id')

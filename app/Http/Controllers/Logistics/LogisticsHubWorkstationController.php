@@ -375,6 +375,7 @@ class LogisticsHubWorkstationController extends Controller
                     'name' => $h->name,
                     'code' => $h->code,
                     'tier' => $h->tier,
+                    'parent_hub_id' => $h->parent_hub_id,
                     'company_name' => $h->company?->name ?? 'Bagoo Express Dispatch Fleet',
                     'company_code' => $h->company?->code ?? 'BGX',
                     'province' => $h->province,
