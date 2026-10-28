@@ -83,7 +83,7 @@ The same preserved visible browser created another hub and confirmed postal rese
 
 Scoped counter-handover usability: **4/10 → 8/10**. The rating reflects reachable controls and preserved verification, not a new overall system/defense score. No Azure deployment, physical-device proof, PostgreSQL concurrency result or external seller transfer is claimed. Browser, role sessions and the isolated memory server remain running without foreground-focus calls. Task tracking remains unavailable due to expired authentication. Local commits `7e0bb7a` (forms/guidance) and `0e1d4ec` (recorded recovery links) are retained; the remaining readiness/deployment changes and combined [PR draft](audits/LOCAL_LOGISTICS_UI_AUDIT_PR_DRAFT.md) form the final handoff. Only the user publishes.
 
-### Logistics visual workspace: October 28, 2026, in progress
+### Logistics visual workspace: October 28-29, 2026, in progress
 
 The active `feat/logistics-visual-workspace` branch starts at merged `main`
 `7da3b7e`. It connects the logistics pages with grouped navigation, actual saved
@@ -97,28 +97,47 @@ One fresh seeded regional COD purchase completed through actual Puppeteer
 controls: seller readiness, pickup, origin intake, two sealed bags/two closed
 manifests, Mother sorting, destination receipt, rider/POD and automatic completion.
 Original PHP 2,910 collection, named counted hub receipt and buyer tracking were
-verified. Nineteen main destinations returned HTTP 200 with one content heading
-and no desktop document overflow. This does not establish every detail, exception
-or phone layout. A return request exists, but its subsequent approval/intake is
-not yet verified.
+verified. Nineteen desktop destinations and all 22 root/create destinations at
+390px and 768px passed heading/width checks. The final 44-check responsive pass
+used the refined scanner, money and review pages. Real Tab/Shift+Tab, Escape,
+destination selection and desktop-breakpoint checks passed after fixing drawer
+focus. A buyer return was approved and intaken using its separate barcode,
+measured weight, condition and photo; the original order stayed completed.
+
+Return source review and automated navigation checks then found that an already
+prepared manifest was hidden before loading and its root URL could lead to 404.
+The presenter now resolves the retained route reservation and each portal's
+actual path. Guidance distinguishes the sending handler, arrival scan, hub
+staging and seller receipt. The barcode artwork is optional in the logistics
+view, keeping the next action prominent. No command authority or financial
+transition was changed.
 
 The foundation PHP selection passed **22/574**, the page/company selection
 **78/10,651**, and the focused actual-holder/recovery selection **5/627**
-(tests/assertions; overlapping selections). Earlier affected frontend checks
-passed **77 cases**; the latest narrower refinements passed **30 cases**. The final
-TypeScript/Vite production build passed after the guide permission fix with type
-checking retained, using a bounded 0.5-CPU/1,536MB container and 1,024MB Node heap.
+(tests/assertions; overlapping selections). The latest seven-file frontend run
+passed **107 cases**, superseding the older 77-, 30- and 106-case selections. The
+latest isolated return-custody run passed **16 tests / 1,642 assertions**, including
+root and hub-subdomain manifest GETs and buyer-link exclusion. The latest
+TypeScript/Vite production build passed with type checking retained, using a
+bounded 0.5-CPU/1,536MB container and 1,024MB Node heap.
 An earlier reduced 512MB heap exhausted memory; shared-page null guards also
 required correction before the passing build. PHP formatting passed for all
-seven changed PHP files. The owned browser and
-worker were closed after the user reported PC lag. The all-page mobile, keyboard,
-detail and current exception/return checks remain pending.
+seven earlier changed PHP files, with the latest two return PHP files also
+passing formatting. The one owned headless browser had zero open tabs when
+inspected after the user reported lag; it and its worker were closed. Current
+populated counter/retry/recovery/reverse-return controls, remaining resource,
+account and activation details, and the newest return visual guidance still
+need browser acceptance. No captured runtime JavaScript/server errors were present
+in the saved fresh-run audit.
 
 Provisional scoped logistics clarity assessment: **6/10 -> 8/10**, supported by
 the normal handover journey and shared visual controls. This is not a finished
-whole-flow or defense rating. Local foundation commit `d9f64f3` and accessibility
-commit `fc8b650` are saved alongside six feature commits, listed in the review.
-The combined [PR description](audits/LOGISTICS_VISUAL_WORKSPACE_PR_DRAFT.md)
+whole-flow or defense rating. Local commits `d0b1536` (phone money/review pages)
+and `16efe70` (return navigation/guidance) save the latest implementation. Earlier
+commits and remaining acceptance checks are listed in the workspace review.
+Return next-action clarity is provisionally **5/10 -> 7/10**, based on correct
+actor/staging guidance and tested navigation, pending its browser review. The
+combined [PR description](audits/LOGISTICS_VISUAL_WORKSPACE_PR_DRAFT.md)
 remains a local draft. No publication, Azure deployment or Flutter edit is claimed.
 
 ## Current Implementation Audit
