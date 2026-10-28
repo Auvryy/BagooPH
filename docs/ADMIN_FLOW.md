@@ -198,3 +198,7 @@ Deliver approval/access/audit foundations in Phase 0. Manifests, delivery recove
 Current admin and logistics-company gaps and their approved delivery phase are tracked only in `docs/CORE_FLOW_ROADMAP.md`.
 
 The bounded delivery breakdown is in [admin-plan/README.md](admin-plan/README.md). Its branch allocation does not replace these contracts or imply that the planned functions are implemented.
+
+## New logistics ownership and financial contract
+
+The platform approves a registered logistics company. Its approved owner creates Mother/child facilities, explicit parents/postal coverage and named operator/rider accounts. Staff activation requires a fresh password and email verification; operators do not inherit company ownership. The platform can review future shipping settings and the global Delivery earnings ledger. Each company owner sees only their company, and sellers/riders see only their own earnings. Product commission remains 10%, separate from the frozen standard/dedicated shipping pool. New valid deliveries complete and release entitlements automatically; actual external cash payment still requires its original receipt and reconciliation. See [the source contract](new-docs-era/README.md) and [deployment](new-docs-era/DEPLOYMENT.md).

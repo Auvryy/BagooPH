@@ -38,8 +38,8 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Canonical order flow:
   `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP -> PICKED_UP -> AT_SORTING_CENTER -> SORTED -> ASSIGNED_TO_RIDER -> OUT_FOR_DELIVERY -> DELIVERED -> COMPLETED`.
 - Failure branch: `DELIVERY_FAILED -> RETURNED` or documented rescheduling.
-- Parcels follow `Seller -> Pickup Rider -> Origin Bayan Hub -> at least one Mother Hub -> Destination Bayan Hub -> Delivery Rider or Self-Pickup Counter -> Buyer`; do not create direct seller-to-buyer or Bayan-Hub-to-Bayan-Hub delivery.
-- Only the buyer's receipt confirmation advances `DELIVERED` to `COMPLETED`.
+- The user-selected version-two contract in `docs/new-docs-era/README.md` governs new checkout. Different-child routes follow `Seller -> Pickup Rider -> Origin Child/Bayan Hub -> required parent Mother Hub(s) -> Destination Child/Bayan Hub -> Delivery Rider or Self-Pickup Counter -> Buyer`. Identical origin/destination child hubs use the explicit local-intake bypass. Do not create a shortcut between different child hubs.
+- Valid recipient/POD and original COD/prepaid evidence automatically complete version-two orders and release the retained earnings ledger. COD rider availability still requires acknowledged hub remittance. Historical version-one orders retain buyer receipt confirmation and their original financial evidence.
 - Platform commission is 10% of product sales; seller share is 90%. Keep shipping/handling accounting separate.
 - Preserve the 14 master categories in `docs/CATEGORIES.md`.
 - The `User` password cast hashes values; seed/factory passwords must be raw strings to avoid double hashing.

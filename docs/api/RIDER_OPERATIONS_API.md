@@ -47,7 +47,7 @@ Every command revalidates the fresh account and bearer inside its transaction.
 | GET `rider/notifications` | Page/per_page | Owned durable notices, unread count and authorized destinations |
 | POST `rider/notifications/{notice}/read` | Empty JSON object; notifications ability | Committed owned read IDs |
 | POST `rider/notifications/read-through` | JSON displayed_ids; notifications ability | Exact displayed owned read IDs |
-| GET `rider/cash` | Page/per_page, optional q | Own retained cash accounts; all-owned-journal held total and unavailable earnings |
+| GET `rider/cash` | Page/per_page, optional q | Own retained cash accounts, all-owned-journal held total, actual earnings and shift reconciliation |
 | GET `rider/cash/{account}` | Owned cash account ID | Original journal facts, permitted recipients and history |
 | POST `rider/cash/{account}/offer` | JSON cash-offer body; cash ability | Original offer/event/version; awaiting recipient receipt |
 
@@ -124,7 +124,7 @@ Flutter integration: sign in again, check the operational version and Home flags
 decode IDs/money exactly, render unavailable/empty/denied/failed distinctly, refresh
 after resume/action, retain one pending intent and reconcile uncertain results.
 Claim confirms assignment; collection and authenticated origin-hub intake remain
-separate. Native pre-custody release, restricted recovery and earnings are disabled.
+separate. Native pre-custody release and restricted recovery remain disabled. Version-two earnings now use their retained logistics ledger; historical amounts are never guessed.
 This backend handoff does not claim Android, camera, email or mobile integration.
 
 Deployment requires the additive `2026_10_09_010000_create_rider_commands_table`
@@ -246,7 +246,7 @@ difference and reconciled facts remain distinct. The list summary covers all own
 journals, even when q/page narrows the displayed rows; it names that basis explicitly.
 History exposes source/event references, exact cent strings and discrepancy
 resolution without raw private collection evidence. Detail supplies permitted hub
-recipients. Unsupported earnings are `{available:false, confirmed_cents:null}`.
+recipients. Version-two earnings use `{available:true, confirmed_cents:"…", pending_cents:"…", basis:"original_delivery_earnings_ledger"}`. Trips report the actual pickup or delivery share for that assignment phase. Missing ledger schema retains `{available:false, confirmed_cents:null}`. An empty installed ledger returns zero, rather than treating COD as income.
 
 An offer accepts `expected_version` (retained journal sequence as an ID-range
 string), `recipient_id`, `amount` (exact peso string) and `evidence_reference`
@@ -265,8 +265,8 @@ Flutter integration by batch
 | 2 | Map each distinct command; submit the scanned matching waybill; retain original private proof bytes and exact cash strings; show success only after committed result/reconciliation; refresh return instructions; leave hub/retry/buyer actions to their owning portals. |
 | 3 | Decode trip assignment IDs, exact cents and nullable facts; use Manila assignment-day filters and stable pagination; preserve reassigned original history; download owned relative proof with bearer and no external redirects. |
 | 4 | Keep selected assignment/phase/participant in drafts; persist send/read intent; acknowledge only rendered selected message boundary and exact displayed notice IDs; render unsupported/stale targets honestly; pause polling in background and share the 30/minute budget. |
-| 5 | Render held/remitted/pending/difference/reconciled facts separately; keep earnings unavailable; use the supplied eligible recipient and version for offer; reconcile an uncertain offer before retry; require a separately recorded hub receipt. |
-| Conditional | Stop Mode and Doorstep Guide consume authorized task stops/frozen destination/actual notes. Personal parcel-location tags are planned device-only, account plus assignment scoped, with logout/reassignment/terminal cleanup owned by Flutter. Server tags, reviewed-identity/recovery extensions and any new earnings writer need a separate chosen contract. |
+| 5 | Render held/remitted/pending/difference/reconciled facts separately; render actual ledger earnings separately from COD; use the supplied eligible recipient and version for offer; reconcile an uncertain offer before retry; require a separately recorded hub receipt. |
+| Conditional | Stop Mode and Doorstep Guide consume authorized task stops/frozen destination/actual notes. Personal parcel-location tags are planned device-only, account plus assignment scoped, with logout/reassignment/terminal cleanup owned by Flutter. Server tags and reviewed-identity/recovery extensions remain separate scope. The new logistics earnings writer follows the chosen version-two contract. |
 
 Apply all additive source migrations, including the command table and the finance
 source migrations this branch inherits. Preserve private local proof storage and
@@ -280,3 +280,11 @@ establish them. See the roadmap for actual observed evidence and pending work.
 The [disposable race verifier](../../scripts/verify-rider-races/README.md) reproduces
 only its expressly authorized local PostgreSQL checks; it never uses the normal
 development or deployed database.
+
+## New Docs Era delivery and shift contract
+
+New checkout uses [version two](../new-docs-era/README.md): actual recipient/POD and original payment evidence complete the order automatically. The physical parcel still reports `delivered`. Historical orders retain their buyer confirmation. Native DTOs do not infer completion from a claimed assignment or map position.
+
+`home.shift` and `cash.shift` expose the current retained shift UUID, UTC start, string-cent collected/remitted/held totals, pending handovers, unresolved differences, close eligibility and original account/event references. Missing optional shift/cash schema returns `null`. The shift stores a retained cash-event boundary so consecutive shifts in the same second do not count the previous shift twice. Open old COD obligations still block closing. Only an acknowledged counted hub receipt plus supported discrepancy review clears the rider's responsibility.
+
+Pickup share accrues at actual origin receipt. Prepaid final-mile share releases at verified delivery; COD final-mile share waits for the complete rider-to-hub receipt. COD is collected cash, ledger earnings are entitlement, and neither represents an invented external payout. The existing native command routes continue to use server versions, idempotency and authorization.

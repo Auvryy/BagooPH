@@ -109,3 +109,7 @@ Also verify authorization, suspended accounts, changed payloads, stale pages,
 currency precision, refunds, multi-shop allocations, failure rollback and cash
 separation. Runtime evidence and the scoped assessment belong in
 [the roadmap](CORE_FLOW_ROADMAP.md).
+
+## Version-two automatic proceeds
+
+New checkout freezes the selected company’s tariff and greater actual/volumetric weight; default doorstep shipping is PHP 60. A valid prepaid delivery or counter collection automatically completes the order and credits the balanced original seller/commission/shipping/promotion journal. No COD is created. `wallet:release-delivered` retries when legitimate seller/return blockers clear. Historical version-one payments keep their explicit proceeds action. The seven-day return period remains open after completion; actual reverse intake, seller receipt and approved original-unit adjustments precede the once-only wallet refund. Delivery earnings retains original earned amounts and subtracts those approved product adjustments when displaying net earnings.

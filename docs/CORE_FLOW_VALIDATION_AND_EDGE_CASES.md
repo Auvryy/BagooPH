@@ -1,5 +1,7 @@
 # BagooPH Core Flow Validation and Edge-Case Contract
 
+The user-selected [version-two contract](new-docs-era/README.md) governs new routing, bagging, completion and earnings. Retained version-one fixtures remain explicit; they cannot weaken the new-order acceptance cases.
+
 This document defines the adversarial validation, authorization, concurrency, idempotency, and recovery rules for the buyer, seller, courier, logistics, and admin flows. It is authoritative for how the system rejects invalid input and prevents illegal state or custody changes.
 
 It does not add new business modules. It hardens the approved road-based ecommerce flow in `SYSTEM_FLOW_AND_SPECIFICATIONS.md` and the custody flow in `SORTING_CENTER_LOGISTICS_FLOW.md`.
@@ -148,9 +150,9 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - Public tracking is read-only. Authenticated role actions open their authorized portal flow and still pass the canonical lifecycle service.
 - Internal Mother-Hub checkpoints are read-only to the buyer and map to the canonical commercial status.
 - A buyer cannot select a rider, change custody, approve a retry, or mark an order delivered.
-- Receipt confirmation is accepted only for the buyer's `DELIVERED` order. It is idempotent and creates one completion checkpoint.
-- Buyer confirmation may occur before COD reconciliation, but cash seller settlement remains blocked until both conditions are satisfied. Wallet proceeds require evidenced prepayment and buyer confirmation in their separate virtual journal.
-- Orders never auto-complete because only the buyer may advance `DELIVERED -> COMPLETED`.
+- Historical version-one receipt confirmation accepts only the original buyer’s physically `DELIVERED` order and remains idempotent. New orders complete from the verified handover writer and retain one linked automatic-completion checkpoint.
+- New verified delivery automatically releases earned entitlements. COD rider earnings and duty closure require acknowledged counted hub remittance. Actual external seller payment still requires completed delivery, platform cash reconciliation and real payment evidence. Prepaid virtual proceeds automatically use the original balanced wallet journal; blocked proceeds retry through the scheduler.
+- Version-two POD/recipient/payment writes, completion, original earnings and virtual settlement commit atomically. Any failure rolls them back together. Historical version-one orders retain their buyer-confirmation contract.
 - Buyer cancellation is limited to the original buyer's eligible order before readiness or custody, with the documented reason and hold checks. COD must remain unpaid; an evidenced paid wallet cancellation refunds only its original credits atomically. Restore the cancelled inventory/funding once without changing sibling allocations. Seller cancellation remains limited to its documented pre-custody boundary.
 
 ### Reviews, Messages, and Deferred Disputes

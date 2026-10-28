@@ -28,8 +28,10 @@
     "can_receive": false,
     "can_reconcile": false,
     "earnings": {
-      "available": false,
-      "confirmed_cents": null
+      "available": true,
+      "confirmed_cents": "0",
+      "pending_cents": "0",
+      "basis": "original_delivery_earnings_ledger"
     },
     "expected_cents": "95000",
     "product_subtotal_cents": "90000",

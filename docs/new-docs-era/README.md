@@ -44,4 +44,6 @@ The platform approves a registered logistics company. Its company owner creates 
 
 Logistics uses a restrained shadcn-style workspace with Plus Jakarta Sans, Bagoo red, white raised panels, readable slate borders, 8px controls, compact status badges, consistent tables, clear scanner feedback and dedicated loading/empty/error states. Company setup, parcel scan, bags, manifests, staff and earnings remain reachable from the same shell.
 
+The step-by-step station guide is [OPERATIONS.md](OPERATIONS.md); installation and additive migration instructions are in [DEPLOYMENT.md](DEPLOYMENT.md).
+
 Detailed acceptance is in [ACCEPTANCE.md](ACCEPTANCE.md). Current completion evidence belongs in [the roadmap](../CORE_FLOW_ROADMAP.md), not in this contract.

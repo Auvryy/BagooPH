@@ -2166,7 +2166,7 @@
     "/rider/cash": {
       "get": {
         "operationId": "riderCash",
-        "summary": "Owned journal responsibilities, exact cash and unavailable earnings",
+        "summary": "Owned journal responsibilities, exact cash and recorded earnings and duty shift",
         "security": [
           {
             "nativeBearer": []
@@ -2214,7 +2214,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Owned journal responsibilities, exact cash and unavailable earnings",
+            "description": "Owned journal responsibilities, exact cash and recorded earnings and duty shift",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -4245,20 +4245,27 @@
         "additionalProperties": false
       },
       "Earnings": {
-        "type": "object",
-        "properties": {
-          "available": {
-            "const": false
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RecordedEarnings"
           },
-          "confirmed_cents": {
-            "type": "null"
+          {
+            "type": "object",
+            "properties": {
+              "available": {
+                "const": false
+              },
+              "confirmed_cents": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "available",
+              "confirmed_cents"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "available",
-          "confirmed_cents"
-        ],
-        "additionalProperties": false
+        ]
       },
       "Home": {
         "type": "object",
@@ -4537,6 +4544,16 @@
                 "type": "null"
               }
             ]
+          },
+          "shift": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiderShift"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -4550,7 +4567,8 @@
           "counts",
           "capabilities",
           "limits",
-          "handover_api_version"
+          "handover_api_version",
+          "shift"
         ],
         "additionalProperties": false
       },
@@ -6738,13 +6756,24 @@
               },
               "earnings": {
                 "$ref": "#/components/schemas/Earnings"
+              },
+              "shift": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RiderShift"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [
               "items",
               "pagination",
               "summary",
-              "earnings"
+              "earnings",
+              "shift"
             ],
             "additionalProperties": false
           },
@@ -9154,6 +9183,110 @@
         },
         "required": [
           "data"
+        ],
+        "additionalProperties": false
+      },
+      "RiderShift": {
+        "type": "object",
+        "properties": {
+          "shift_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UUID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "collected_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "remitted_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "held_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "pending_handovers": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unresolved_differences": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "can_close": {
+            "type": "boolean"
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "reference": {
+                  "type": "string"
+                },
+                "last_event_reference": {
+                  "type": "string"
+                },
+                "held_cents": {
+                  "$ref": "#/components/schemas/Cents"
+                }
+              },
+              "required": [
+                "reference",
+                "last_event_reference",
+                "held_cents"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "shift_id",
+          "started_at",
+          "collected_cents",
+          "remitted_cents",
+          "held_cents",
+          "pending_handovers",
+          "unresolved_differences",
+          "can_close",
+          "accounts"
+        ],
+        "additionalProperties": false
+      },
+      "RecordedEarnings": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "const": true
+          },
+          "confirmed_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "pending_cents": {
+            "$ref": "#/components/schemas/Cents"
+          },
+          "basis": {
+            "const": "original_delivery_earnings_ledger"
+          }
+        },
+        "required": [
+          "available",
+          "confirmed_cents",
+          "pending_cents",
+          "basis"
         ],
         "additionalProperties": false
       }
