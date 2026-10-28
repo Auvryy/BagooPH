@@ -41,12 +41,15 @@ class SecureHubPickupTest extends TestCase
         $this->flowNetwork($shop);
         $hub = LogisticsHub::where('tier', 'local_bayan_hub')->where('city_municipality', 'Santa Cruz')->sole();
         $hub->update(['allows_self_pickup' => true]);
-        if ($hours) {
-            $this->actingAs($hub->company->user)->postJson('/hub/counter/hours', ['hub_id' => $hub->id, 'operating_hours' => 'Monday to Saturday, 08:00 to 17:00'])->assertOk();
-        }
+        $this->actingAs($hub->company->user)->postJson('/hub/counter/hours', ['hub_id' => $hub->id, 'operating_hours' => 'Monday to Saturday, 08:00 to 17:00'])->assertOk();
         $order = $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop, shipping: ['delivery_type' => 'hub_self_pickup', 'pickup_hub_id' => $hub->id]);
+        $parcel = $this->flowDelivery($order, 'arrived_at_destination_hub');
+        if (! $hours) {
+            $hub->refresh()->update(['operating_hours' => null]);
+            $this->assertNull($hub->fresh()->operating_hours);
+        }
 
-        return $this->flowDelivery($order, 'arrived_at_destination_hub');
+        return $parcel;
     }
 
     private function staged(string $base = '/hub'): Delivery

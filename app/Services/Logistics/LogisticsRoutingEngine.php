@@ -171,7 +171,8 @@ class LogisticsRoutingEngine
             $motherIds = $local ? collect() : collect([$originMother->id, $destinationMother->id])->unique();
             if (LogisticsHub::eligible()->whereIn('id', $bayanIds)->where('tier', 'local_bayan_hub')->count() !== $bayanIds->count()
                 || LogisticsHub::eligible()->whereIn('id', $motherIds)->where('tier', 'regional_mother_hub')->count() !== $motherIds->count()
-                || ($order->delivery_type === 'hub_self_pickup' && ! LogisticsHub::eligible()->whereKey($destination->id)->where('allows_self_pickup', true)->exists())) {
+                || ($order->delivery_type === 'hub_self_pickup' && ! LogisticsHub::eligible()->whereKey($destination->id)->where('allows_self_pickup', true)
+                    ->when($order->logistics_flow_version >= 2, fn ($query) => $query->readyForSelfPickup())->exists())) {
                 throw new DomainException('The selected facility capabilities changed. Check the route again.');
             }
             if (! $this->matchesDestination($destination->fresh(), $order->shipping_province ?? '', $order->shipping_city ?? '', $order->destination_barangay, $order->shipping_postal_code)) {
@@ -230,7 +231,7 @@ class LogisticsRoutingEngine
     {
         $origin = $this->resolveOriginBayanHub($shop, $company);
         $destination = ($address['delivery_type'] ?? 'doorstep') === 'hub_self_pickup' && ! empty($address['pickup_hub_id'])
-            ? LogisticsHub::eligible()->where('logistics_company_id', $company->id)->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)->find($address['pickup_hub_id'])
+            ? LogisticsHub::readyForSelfPickup()->where('logistics_company_id', $company->id)->find($address['pickup_hub_id'])
             : $this->resolveDestinationBayanHub($address['shipping_province'] ?? '', $address['shipping_city'] ?? '', $address['destination_barangay'] ?? null, $company, $address['shipping_postal_code'] ?? null);
 
         return $origin && $destination && $this->matchesDestination($destination, $address['shipping_province'] ?? '', $address['shipping_city'] ?? '', $address['destination_barangay'] ?? null, $address['shipping_postal_code'] ?? null)

@@ -87,9 +87,9 @@ class CheckoutOrderService
             if (! $this->routingEngine->isContiguousRoadServiceable($data['shipping_province'], $data['shipping_city'])) {
                 throw new CheckoutException('Delivery address is outside contiguous road freight boundaries. Maritime shipping is excluded.');
             }
-            if ($data['delivery_type'] === 'hub_self_pickup' && ! LogisticsHub::eligible()
-                ->whereKey($data['pickup_hub_id'])->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)->exists()) {
-                throw ValidationException::withMessages(['pickup_hub_id' => 'Choose an available Bayan Hub that supports self-pickup.']);
+            if ($data['delivery_type'] === 'hub_self_pickup' && ! LogisticsHub::readyForSelfPickup()
+                ->whereKey($data['pickup_hub_id'])->exists()) {
+                throw ValidationException::withMessages(['pickup_hub_id' => 'Choose an available pickup hub with recorded collection hours, or use doorstep delivery.']);
             }
             $selectedIds = $cartItemIds;
 

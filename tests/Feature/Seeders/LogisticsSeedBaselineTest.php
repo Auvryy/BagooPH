@@ -117,7 +117,7 @@ class LogisticsSeedBaselineTest extends TestCase
         );
 
         $this->assertSame(3, LogisticsHub::where('logistics_company_id', $company->id)->count());
-        $this->assertSame(4, User::where('role', 'courier')->count());
+        $this->assertSame(6, User::where('role', 'courier')->count());
         $this->assertDatabaseHas('courier_profiles', [
             'user_id' => User::where('email', 'pickup.rider@bagoo.test')->firstOrFail()->id,
             'logistics_company_id' => $company->id,
@@ -142,8 +142,11 @@ class LogisticsSeedBaselineTest extends TestCase
     public function test_seeded_transport_is_repeatable_and_ready_without_a_separate_company_login(): void
     {
         $this->seed(DatabaseSeeder::class);
+        $counter = LogisticsHub::where('code', 'BH-LBN-01')->sole();
+        $counter->update(['operating_hours' => 'Monday to Friday, 9 AM to 6 PM']);
         $counts = [User::count(), LogisticsHub::count(), LogisticsFleet::count(), HubHandler::count()];
         $this->seed(DatabaseSeeder::class);
+        $this->assertSame('Monday to Friday, 9 AM to 6 PM', $counter->fresh()->operating_hours);
         $this->assertSame($counts, [User::count(), LogisticsHub::count(), LogisticsFleet::count(), HubHandler::count()]);
         $company = LogisticsCompany::where('code', 'BGX')->sole();
         $mother = User::where('email', 'motherhub@bagoo.test')->sole();
@@ -152,7 +155,9 @@ class LogisticsSeedBaselineTest extends TestCase
         $this->assertTrue($eligibility->isCompanyManager($mother, $company->id));
         $this->assertFalse($eligibility->isCompanyManager($bayan, $company->id));
         $this->assertFalse($eligibility->canScan($mother, LogisticsHub::where('code', 'BH-LBN-01')->sole()));
-        foreach (['origin.transport@bagoo.test' => 'BH-LBN-01', 'mother.transport@bagoo.test' => 'MH-LAG-01'] as $email => $code) {
+        $this->assertSame(2, LogisticsHub::readyForSelfPickup()->count());
+        foreach (['origin.transport@bagoo.test' => 'BH-LBN-01', 'mother.transport@bagoo.test' => 'MH-LAG-01',
+            'mother.backup.transport@bagoo.test' => 'MH-LAG-01', 'return.transport@bagoo.test' => 'BH-SCZ-01'] as $email => $code) {
             $driver = User::where('email', $email)->sole();
             $hub = LogisticsHub::where('code', $code)->sole();
             $vehicle = LogisticsFleet::where('assigned_driver_id', $driver->id)->sole();

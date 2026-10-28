@@ -115,4 +115,37 @@ class NewEraCheckoutTest extends TestCase
         $this->assertSame(20, $product->fresh()->stock);
         $this->assertSame(0, Order::count());
     }
+
+    public function test_unconfigured_counter_is_not_offered_and_cannot_reserve_stock_or_a_checkout_submission(): void
+    {
+        [$buyer, $product, , $cart, $line, $input] = $this->purchase();
+        $hub = LogisticsHub::where('code', 'BH-SCZ-01')->sole();
+        $hub->update(['operating_hours' => '   ']);
+        $input = [...$input, 'delivery_type' => 'hub_self_pickup', 'pickup_hub_id' => $hub->id,
+            'checkout_token' => $this->checkoutToken($buyer, $cart)];
+        $this->actingAs($buyer)->get(route('checkout.index'))->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('pickupHubs',
+                fn ($hubs) => ! collect($hubs)->contains('id', $hub->id)));
+        $this->post(route('checkout.store'), $input)->assertSessionHasErrors('pickup_hub_id');
+        $this->postJson(route('buyer.vouchers.apply'), $input)->assertUnprocessable();
+        $this->assertSame(20, $product->fresh()->stock);
+        $this->assertNotNull($line->fresh());
+        $this->assertSame(0, Order::count());
+        $this->assertSame(0, CheckoutSubmission::count());
+    }
+
+    public function test_counter_hours_change_requires_review_but_successful_checkout_replay_keeps_its_original_order(): void
+    {
+        [$buyer, , , $cart, , $input] = $this->purchase();
+        $hub = LogisticsHub::where('code', 'BH-SCZ-01')->sole();
+        $input = [...$input, 'delivery_type' => 'hub_self_pickup', 'pickup_hub_id' => $hub->id];
+        $hub->update(['operating_hours' => 'Monday to Friday, 9 AM to 5 PM']);
+        $this->actingAs($buyer)->post(route('checkout.store'), $input)->assertSessionHasErrors('checkout_token');
+        $input['checkout_token'] = $this->checkoutToken($buyer, $cart);
+        $this->post(route('checkout.store'), $input)->assertSessionHasNoErrors();
+        $order = Order::sole();
+        $hub->update(['operating_hours' => null]);
+        $this->post(route('checkout.store'), $input)->assertSessionHasNoErrors();
+        $this->assertSame($order->id, Order::sole()->id);
+    }
 }

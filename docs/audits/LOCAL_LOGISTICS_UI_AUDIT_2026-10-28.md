@@ -1,6 +1,6 @@
 # Local logistics browser audit — October 28, 2026
 
-The exercised delivery journeys reached their intended final outcomes: six completed orders and three seller-received returns. Four UI issues and three default-setup blockers were recorded. This is a testing and findings branch; it does not fix application code or establish an unconditional fresh-seed pass.
+The original delivery audit reached six completed orders and three seller-received returns, recording four UI issues and three default-setup blockers. Its original evidence is preserved below. The subsequently authorized repairs and their separate verification are recorded under [Follow-up repairs](#follow-up-repairs); the branch now includes those fixes as well as the audit.
 
 ## Environment and method
 
@@ -71,7 +71,7 @@ The six explicitly labelled additional transport vehicles/drivers also supplied 
 
 The existing development database has a historical synthetic company owner separate from the fresh-seed owner. Its Mother Hub handler correctly lacks owner-only Company setup. Do not reset or reseed that database to make its ownership match a new installation.
 
-## Final evidence and limits
+## Original audit evidence and limits
 
 The final browser run recorded 224 checkpoints: 217 passed, two failed, three were blocked in the default setup, and two desktop-focus observations remain harness reviews because the source of active-window changes was not established. These are audit checkpoints, not 224 independent automated test cases. Low-severity findings were recorded separately; the four UI issues remain unfixed.
 
@@ -84,3 +84,24 @@ Browser checkpoints retain the checks, findings, screenshots, final state and ro
 This run does not prove simultaneous PostgreSQL behavior, load limits, real email delivery, physical cash/seals/parcel handovers, camera/GPS hardware, actual seller bank transfers, or every unrelated governance/payment workflow. Master-tag printing was not invoked because its native print window would interrupt the user's workspace. A released earnings ledger is not proof of an external payout; virtual credits remain website-only records.
 
 Task tracking was unavailable because its authenticated session had expired. No saved board update or measured board time is claimed. Application builds/PHP regressions from the implementation branch are historical evidence; they were not rerun for this documentation-only audit.
+
+## Follow-up repairs
+
+After the audit, the user authorized fixing its findings on the same local branch. The four UI issues are repaired and were rechecked in the preserved browser session without desktop focus commands:
+
+| Finding | Result after repair |
+| --- | --- |
+| UI01 | Creating another child hub and reopening Add hub showed an empty postal field. Failed forms still retain useful input. |
+| UI02 | A fresh pickup scanned at the wrong child hub named its actual origin and kept pickup custody, with no empty recovery link. Recorded in-transit observations instead supply their own authorized recovery URL; backend coverage also opened that specific page. |
+| UI03 | Counter guidance now states the actual identity/code/payment checks. The owning buyer saw automatic-completion wording after collection; historical-order wording remains conditional on its saved flow version. |
+| UI04 | A labelled Headless UI dialog now bounds its height, scrolls its fields and keeps Cancel/Confirm Handover visible. Both 1360×650 and 390×650 checks passed; Escape/reopen worked. A wrong code still failed without cash collection, and the correct code completed a new order through actual mouse clicks at phone width. No keyboard-submit workaround was used. |
+
+The new counter order, BGO-EKH1MDXO, went through buyer checkout, seller confirm/pack/ready, pickup claim/scan, the deliberate wrong-hub check, correct origin intake/staging, one-time buyer code and original COD collection. It completed automatically. Previous orders, bags and manifests were preserved when applying the additive migration to the memory runtime. The operational rider closed duty afterward.
+
+Default readiness also changed. Fresh demo seeds provide collection hours plus a separate Mother backup van/driver and Santa Cruz return van/driver. An additive migration, `2026_10_28_000000_complete_reserved_demo_transport`, upgrades only the exact eligible reserved demo network. It preserves existing passwords, restrictions, assignments, hours and custody history, rejects conflicting resources transactionally, and leaves unrelated owners/empty installations alone. The actual scoped fleet screens displayed both migrated vans. Real companies still require their own correctly configured transport.
+
+Unconfigured counters are excluded from checkout and quote/voucher selection, with server-side rejection before stock or an order is reserved. New route assignment rechecks readiness under network locks. Collection-hour changes invalidate an unsubmitted checkout review; replay of an already successful checkout keeps its original result. Existing counter hours are never invented by the upgrade. An existing owner can record them through Overview → select facility → Counter Self-Pickup → Save pickup hours.
+
+Verification: the final affected checkout/routing/local-delivery/secure-counter/replay/demo-upgrade batch passed **112 tests / 2,900 assertions** in isolated SQLite memory. A final seed/upgrade check passed **13 tests / 93 assertions**, including preservation of customized counter hours on repeat seeding. The separate recovery suite passed, including unchanged pickup custody and authorized observation navigation. All **8 frontend scanner checks** passed. The Docker TypeScript/Vite production build passed; host output permissions required using Docker. PHP formatting and Git whitespace checks passed. Earlier test fixtures were adjusted to configure hours before checkout and to test hours removal after a legitimate purchase; no rejection was weakened to obtain a pass.
+
+Scoped counter-handover usability is assessed at **4/10 before → 8/10 after**, supported by reachable mouse controls, independent scrolling and intact code/payment checks. This does not raise whole-project readiness. The original multi-leg return/recovery run remains historically conditional on its disclosed fixtures; it was not repeated from an untouched fresh database after these repairs. No Azure deployment, external payment, Flutter edit or physical-device claim is included. Browser sessions remain open. The combined PR description is a local draft.
