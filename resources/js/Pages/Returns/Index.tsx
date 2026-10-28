@@ -11,7 +11,7 @@ export default function ReturnsIndex({ cases }: { cases: PaginatedData<Summary> 
     const { auth } = usePage<PageProps>().props;
     const buyer = auth.user?.role === 'buyer';
     return <ReturnLayout>
-        <Head title="Returns and refunds — BagooPH" />
+        <Head title={auth.user?.role === 'logistics' ? 'Buyer returns — BagooPH' : 'Returns and refunds — BagooPH'} />
         <div className={`${auth.user?.role === 'logistics' ? 'max-w-5xl' : 'mx-auto max-w-5xl py-4'} space-y-6`}>
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-300 pb-5">
                 <div>{auth.user?.role === 'logistics' ? <HubPageHeader title="Buyer returns" icon={PackageCheck} description="Follow accepted returns through their actual hub handovers. Decisions, physical receipt and repayment keep separate evidence." /> : <h1 className="text-2xl font-bold text-slate-900">Returns and refunds</h1>}<p className={`mt-2 max-w-2xl text-sm leading-6 text-slate-600 ${auth.user?.role === 'logistics' ? 'hidden' : ''}`}>{buyer
