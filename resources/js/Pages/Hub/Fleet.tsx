@@ -72,20 +72,20 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
     const getTierBadge = (type: string) => {
         if (type === 'motorcycle') {
             return (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-xs bg-emerald-50 text-emerald-700 border border-emerald-300 uppercase font-sans">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-300 uppercase font-sans">
                     Tier 1 • Last-Mile
                 </span>
             );
         }
         if (type === 'l300_van') {
             return (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-xs bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] uppercase font-sans">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] uppercase font-sans">
                     Tier 2 • Feeder Van
                 </span>
             );
         }
         return (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-xs bg-slate-100 text-slate-800 border border-slate-300 uppercase font-sans">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-800 border border-slate-300 uppercase font-sans">
                 Tier 3 • Wing Truck
             </span>
         );
@@ -98,7 +98,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
             actions={
                 <Link
                     href={route('hub.deliveries')}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-lg shadow-sm transition uppercase tracking-wider"
                 >
                     <Truck className="w-3.5 h-3.5" />
                     <span>View Waybills</span>
@@ -111,7 +111,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                 
                 {/* 1. TOP BUSINESS KPI TILES */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Total Fleet</span>
@@ -124,13 +124,13 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Active Duty:</span>
                             <span className="font-bold text-emerald-700">{stats.active} units</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Last-Mile Couriers</span>
@@ -143,13 +143,13 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Coverage:</span>
                             <span className="font-bold text-slate-800">Barangay Streets</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Bayan Feeder Vans</span>
@@ -162,13 +162,13 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Capacity:</span>
                             <span className="font-bold text-slate-800">1,200 kg / shuttle</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Wing Trucks (Trunk)</span>
@@ -181,7 +181,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Transfer Route:</span>
                             <span className="font-bold text-slate-800">Inter-Mother Hub</span>
                         </div>
@@ -189,12 +189,12 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                 </div>
 
                 {/* 2. FILTER TABS */}
-                <div className="bg-white rounded-xs p-3.5 border border-slate-300 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 font-sans">
-                    <div className="flex flex-wrap items-center gap-1 p-0.5 bg-slate-100 rounded-xs border border-slate-200 text-xs w-full sm:w-auto">
+                <div className="bg-white rounded-lg p-3.5 border border-slate-300 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 font-sans">
+                    <div className="flex flex-wrap items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-300 text-xs w-full sm:w-auto">
                         <button
                             type="button"
                             onClick={() => handleFilter('all')}
-                            className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
                                 filters.tier === 'all'
                                     ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
                                     : 'text-slate-500 hover:text-slate-800'
@@ -205,7 +205,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                         <button
                             type="button"
                             onClick={() => handleFilter('motorcycle')}
-                            className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
                                 filters.tier === 'motorcycle'
                                     ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
                                     : 'text-slate-500 hover:text-slate-800'
@@ -216,7 +216,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                         <button
                             type="button"
                             onClick={() => handleFilter('l300_van')}
-                            className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
                                 filters.tier === 'l300_van'
                                     ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
                                     : 'text-slate-500 hover:text-slate-800'
@@ -227,7 +227,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                         <button
                             type="button"
                             onClick={() => handleFilter('wing_truck')}
-                            className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
                                 filters.tier === 'wing_truck'
                                     ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
                                     : 'text-slate-500 hover:text-slate-800'
@@ -242,7 +242,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                         <select
                             value={filters.status}
                             onChange={(e) => handleFilter(undefined, e.target.value)}
-                            className="bg-white border border-slate-300 rounded-xs px-2.5 py-1.5 text-xs font-sans font-bold focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                            className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-sans font-bold focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                         >
                             <option value="all">All Statuses</option>
                             <option value="active">Active</option>
@@ -253,11 +253,11 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                 </div>
 
                 {/* 3. FLEET TABLE */}
-                <div className="bg-white rounded-xs border border-slate-300 shadow-xs overflow-hidden">
+                <div className="bg-white rounded-lg border border-slate-300 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="border-b border-slate-200 bg-slate-50/90 text-[10px] font-bold uppercase tracking-wider text-slate-500 font-sans">
+                                <tr className="border-b border-slate-300 bg-slate-50/90 text-[10px] font-bold uppercase tracking-wider text-slate-500 font-sans">
                                     <th className="py-2.5 px-3.5">Vehicle / Model</th>
                                     <th className="py-2.5 px-3.5">Tier Classification</th>
                                     <th className="py-2.5 px-3.5">Payload Capacity</th>
@@ -278,7 +278,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                         <tr key={vehicle.id} className="hover:bg-slate-50/80 transition">
                                             <td className="py-3 px-3.5">
                                                 <div className="flex items-center gap-2.5">
-                                                    <div className="w-8 h-8 rounded-xs bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
+                                                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 border border-slate-300">
                                                         {getTierIcon(vehicle.vehicle_type)}
                                                     </div>
                                                     <div>
@@ -322,12 +322,12 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                             </td>
 
                                             <td className="py-3 px-3.5 text-right">
-                                                <span className={`inline-block px-1.5 py-0.5 text-[10px] font-bold rounded-xs uppercase font-sans ${
+                                                <span className={`inline-block px-1.5 py-0.5 text-[10px] font-bold rounded-lg uppercase font-sans ${
                                                     vehicle.status === 'active'
                                                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
                                                         : vehicle.status === 'maintenance'
                                                         ? 'bg-rose-50 text-rose-700 border border-rose-300'
-                                                        : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                                        : 'bg-slate-100 text-slate-600 border border-slate-300'
                                                 }`}>
                                                     {vehicle.status}
                                                 </span>

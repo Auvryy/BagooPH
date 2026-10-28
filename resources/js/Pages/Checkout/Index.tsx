@@ -6,6 +6,7 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import BuyerPaymentChoice from '@/Components/BuyerPaymentChoice';
 import PhoneInput from '@/Components/PhoneInput';
+import ShippingCalculation from '@/Components/ShippingCalculation';
 import BuyerVoucherPicker from '@/Components/Vouchers/BuyerVoucherPicker';
 import CheckoutVoucherBreakdown from '@/Components/Vouchers/CheckoutVoucherBreakdown';
 import axios from 'axios';
@@ -37,6 +38,7 @@ import {
 } from 'lucide-react';
 
 export interface PickupHubItem {
+    logistics_company_id: number;
     id: number;
     name: string;
     code: string;
@@ -63,6 +65,7 @@ interface Props {
     checkoutToken: string;
     itemQuantities?: Record<number, number>;
     walletBalanceCents?: number | null;
+    logisticsCompanies?: { id: number; name: string; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number }[];
 }
 
 export default function CheckoutIndex({ 
@@ -80,6 +83,7 @@ export default function CheckoutIndex({
     checkoutToken,
     itemQuantities = {},
     walletBalanceCents = 0,
+    logisticsCompanies = [],
 }: Props) {
     const { flash } = usePage<PageProps>().props;
 
@@ -173,6 +177,7 @@ export default function CheckoutIndex({
         landmark: initialAddress?.landmark || '',
         delivery_type: 'doorstep' as 'doorstep' | 'hub_self_pickup',
         pickup_hub_id: '' as string | number,
+        logistics_company_id: (logisticsCompanies[0]?.id ?? '') as string | number,
         payment_method: 'cod',
         notes: '',
         voucher_code: '',
@@ -234,6 +239,9 @@ export default function CheckoutIndex({
         shop_voucher_revision_ids: data.shop_voucher_revision_ids,
         shipping_province: data.shipping_province,
         shipping_city: data.shipping_city,
+        logistics_company_id: data.logistics_company_id,
+        shipping_postal_code: data.shipping_postal_code,
+        destination_barangay: data.destination_barangay,
         pickup_hub_id: data.delivery_type === 'hub_self_pickup' ? data.pickup_hub_id : '',
         revision: JSON.stringify([items.map(item => [item.id, item.quantity, item.product?.price]),
             data.shipping_address, data.destination_barangay, data.shipping_postal_code,
@@ -241,6 +249,13 @@ export default function CheckoutIndex({
     };
     const pricing = usePurchaseQuote(quoteInput, initialQuote, availableVouchers);
     const quote = pricing.quote;
+    const servingCompanies = pricing.companies ?? logisticsCompanies;
+    useEffect(() => {
+        if (pricing.companies && data.logistics_company_id && data.shipping_postal_code.length === 4
+            && !pricing.companies.some(company => String(company.id) === String(data.logistics_company_id))) {
+            setData({ ...data, logistics_company_id: '', pickup_hub_id: '' });
+        }
+    }, [pricing.companies, data.logistics_company_id]);
     const [pickerSlot, setPickerSlot] = useState<number | null | undefined>(undefined);
     const [bestBusy, setBestBusy] = useState(false);
     const bestPending = useRef(false);
@@ -438,6 +453,14 @@ export default function CheckoutIndex({
                             </div>
 
                             {/* Fulfillment Method Selector Cards */}
+                            <label className="block text-sm font-semibold text-slate-800">Logistics company
+                                <select required value={data.logistics_company_id} onChange={event => setData({ ...data, logistics_company_id: event.target.value, pickup_hub_id: '' })} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-[#E00D42] focus:ring-[#E00D42]">
+                                    <option value="">Choose a logistics company</option>
+                                    {servingCompanies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
+                                </select>
+                                <span className="mt-1.5 block text-xs font-normal text-slate-500">{servingCompanies.length === 0 ? 'No company currently serves both addresses. Review the address or return to your Bag.' : 'Only companies serving both addresses are offered when the postal address is complete.'}</span><span className="mt-1.5 block text-xs font-normal text-slate-500">Shipping uses the greater of actual and volumetric weight. The selected company must serve both addresses.</span>
+                                {errors.logistics_company_id && <span className="mt-1 block text-xs text-rose-700">{errors.logistics_company_id}</span>}
+                            </label>
                             <fieldset className="min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <legend className="sr-only">Delivery method</legend>
                                 {/* Option 1: Doorstep Delivery */}
@@ -510,7 +533,7 @@ export default function CheckoutIndex({
                                         <div>
                                             <h3 className="text-xs font-bold text-slate-900">Select Collection Station (Bayan Hub)</h3>
                                             <p className="text-[11px] text-slate-600 mt-0.5">
-                                                Choose a hub serving the recipient address below. Your parcel travels through the origin Bayan Hub and Mother Hub network before reaching this station. Check order tracking for collection readiness and private claim-code access.
+                                                Choose a hub from your selected company serving the recipient address. Local parcels stay within one child hub; regional parcels travel through the Mother Hub network. Tracking shows collection readiness and private claim-code access.
                                             </p>
                                         </div>
                                     </div>
@@ -529,7 +552,7 @@ export default function CheckoutIndex({
                                             className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] shadow-2xs"
                                         >
                                             <option value="">-- Choose a Local Bayan Hub Station --</option>
-                                            {pickupHubs.map((hub) => (
+                                            {pickupHubs.filter(hub => String(hub.logistics_company_id) === String(data.logistics_company_id)).map((hub) => (
                                                 <option key={hub.id} value={hub.id}>
                                                     [{hub.code}] {hub.name} — {hub.city_municipality}, {hub.province}
                                                 </option>
@@ -826,7 +849,7 @@ export default function CheckoutIndex({
 
                             <div className="divide-y divide-slate-100 font-sans text-xs">
                                 {quote.shops.map(shop => <section key={shop.shop_id} className="space-y-3 py-4" aria-label={shop.shop_name}>
-                                    <h3 className="font-bold text-sm text-slate-900">{shop.shop_name}</h3>
+                                    <h3 className="font-bold text-sm text-slate-900">{shop.shop_name}</h3><ShippingCalculation calculation={shop.shipping_quote} selfPickup={data.delivery_type === 'hub_self_pickup'} />
                                     {items.filter(item => item.product?.shop?.id === shop.shop_id).map((item) => (
                                     <div key={item.id} className="py-3.5 flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-3.5 min-w-0">
@@ -889,7 +912,7 @@ export default function CheckoutIndex({
                                     </div>
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
-                                            <span>{isHubPickup ? 'Bayan Hub Municipal Station Network' : 'Bagoo Express Logistics'}</span>
+                                            <span>{servingCompanies.find(company => String(company.id) === String(data.logistics_company_id))?.name ?? 'Selected logistics company'}</span>
                                             <span className={`px-2 py-0.5 rounded-xs text-[10px] font-sans font-bold ${
                                                 isHubPickup ? 'bg-rose-100 text-[#E00D42]' : 'bg-slate-200 text-slate-800'
                                             }`}>
@@ -898,8 +921,8 @@ export default function CheckoutIndex({
                                         </div>
                                         <p className="text-slate-500 text-[11px] leading-relaxed">
                                             {isHubPickup
-                                                ? 'Seller → Pickup Rider → Origin Bayan Hub → Mother Hub network → Destination Bayan Hub → Buyer collection.'
-                                                : 'Seller → Pickup Rider → Origin Bayan Hub → Mother Hub network → Destination Bayan Hub → Delivery Rider → Buyer.'}
+                                                ? 'Collected from the seller, routed through the company’s hubs and held for your secure counter collection. Local parcels stay within one child hub.'
+                                                : 'Collected from the seller, routed through the company’s hubs and delivered by your assigned rider. Local parcels stay within one child hub.'}
                                         </p>
                                         <p className="text-slate-400 text-[10px] font-sans">
                                             Follow recorded parcel updates in My Purchases after ordering.

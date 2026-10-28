@@ -2,6 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import WaybillCamera from '@/Components/WaybillCamera';
+import ShippingCalculation from '@/Components/ShippingCalculation';
 import WaybillCodes from '@/Components/WaybillCodes';
 import OrderRecipientSummary from '@/Components/OrderRecipientSummary';
 import { Head, Link, router } from '@inertiajs/react';
@@ -1098,6 +1099,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                             </div>
 
                             <p className="text-xs text-slate-700"><strong>Declared product weight:</strong> {declaredParcelWeight(selectedOrderForWaybill.order.items ?? []) ? `${declaredParcelWeight(selectedOrderForWaybill.order.items ?? [])} kg` : 'Not recorded'}</p>
+                            <ShippingCalculation calculation={selectedOrderForWaybill.order.shipping_quote} selfPickup={selectedOrderForWaybill.order.delivery_type === 'hub_self_pickup'} />
                             {/* Package Breakdown */}
                             <div className="space-y-1 text-[11px]">
                                 <span className="text-[9px] font-bold text-slate-400 uppercase block font-sans">PACKAGE CONTENTS:</span>

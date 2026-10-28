@@ -35,7 +35,7 @@ import {
     ScanLine,
     Building2,
     Banknote,
-    AlertTriangle,
+    AlertTriangle, RotateCcw,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -92,6 +92,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
         };
     }, []);
 
+    React.useEffect(() => {
+        if (!sidebarOpen) return;
+        const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setSidebarOpen(false); };
+        window.addEventListener('keydown', closeOnEscape);
+        return () => window.removeEventListener('keydown', closeOnEscape);
+    }, [sidebarOpen]);
+
     const getNavItems = (): NavigationItem[] => {
         if (role === 'admin') {
             return [
@@ -104,6 +111,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Voucher campaigns', href: route('admin.vouchers.index'), icon: Tag, current: component.startsWith('Admin/Voucher') },
                 { name: 'Advertisements', href: route('admin.advertisements.index'), icon: ImagePlus, current: component.startsWith('Admin/Advertisements/') },
                 { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: component.startsWith('Admin/Logistics') || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
+                { name: 'Shipping settings', href: route('hub.company-setup.index'), icon: Settings, current: component === 'Hub/CompanySetup' },
+                { name: 'Delivery earnings', href: '/delivery-earnings', icon: Banknote, current: component === 'Finance/DeliveryEarnings' },
                 { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component === 'Governance/History' || component === 'Governance/HistoryDetail' },
                 { name: 'Delivery exceptions', href: '/exceptions', icon: ShieldAlert, current: component === 'Governance/Exceptions' || component === 'Governance/ExceptionDetail' },
                 { name: 'Buyer returns', href: '/buyer-returns', icon: ShieldAlert, current: component.startsWith('Returns/') },
@@ -172,6 +181,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     children: [
                         { name: 'Overview', href: '/financial-oversight', current: component === 'Finance/Overview' || component === 'Finance/Evidence' },
                         { name: 'Payouts', href: '/seller-settlements', current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },
+                        { name: 'Delivery earnings', href: '/delivery-earnings', current: component === 'Finance/DeliveryEarnings' },
                         { name: 'Virtual proceeds', href: '/wallet/proceeds', current: component === 'Finance/WalletProceeds' },
                         { name: 'Sales report', href: route('seller.reports'), current: component === 'Seller/Reports' },
                     ],
@@ -205,6 +215,9 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     icon: Building2, 
                     current: component === 'Hub/Network' || route().current('hub.network') || url.startsWith('/hub/network') 
                 },
+                ...(user?.canSetupCompany ? [{ name: 'Company setup', href: route('hub.company-setup.index'), icon: Settings, current: component === 'Hub/CompanySetup' }] : []),
+                { name: 'Mother Bags', href: route('hub.mother-bags.index'), icon: Package, current: component === 'Hub/MotherBags' },
+                ...(user?.canManageResources ? [{ name: 'Delivery earnings', href: '/delivery-earnings', icon: Banknote, current: component === 'Finance/DeliveryEarnings' }] : []),
                 { name: 'Manifests', href: route('hub.manifests.index'), icon: Truck, current: component === 'Hub/Manifests' },
                 { name: 'Buyer returns', href: '/buyer-returns', icon: Package, current: component.startsWith('Returns/') },
                 { name: 'Parcel recovery', href: route('hub.parcel-recovery.index'), icon: AlertTriangle, current: component === 'Hub/ParcelRecovery' },
@@ -248,7 +261,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const WorkspaceLink = ['seller', 'logistics', 'admin'].includes(role) ? PortalLink : Link;
 
     return (
-        <div className="h-screen w-full flex overflow-hidden bg-[#F8FAFC] text-slate-900 font-sans antialiased selection:bg-[#E00D42] selection:text-white">
+        <div className={`h-screen w-full flex overflow-hidden bg-[#F8FAFC] text-slate-900 font-sans antialiased selection:bg-[#E00D42] selection:text-white ${role === 'logistics' ? 'logistics-workspace' : ''}`}>
             
             {['seller', 'logistics', 'admin'].includes(role) && <CatalogueNavigationNotice />}
             {/* Backdrop for mobile drawer */}
@@ -260,11 +273,11 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             )}
 
             {/* Sidebar (Permanently Fixed on Desktop) */}
-            <aside className={`
+            <aside id="portal-navigation" className={`
                 fixed inset-y-0 left-0 z-50 w-64 bg-white text-slate-700 border-r border-slate-200 
                 flex flex-col transition-transform duration-200 ease-in-out
-                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-                lg:static lg:translate-x-0 lg:h-full lg:shrink-0 lg:z-30
+                ${sidebarOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'}
+                lg:visible lg:static lg:translate-x-0 lg:h-full lg:shrink-0 lg:z-30
             `}>
                 
                 {/* Brand Header */}
@@ -280,6 +293,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             </div>
                         </Link>
                         <button 
+                            type="button"
+                            aria-label="Close navigation"
                             onClick={() => setSidebarOpen(false)}
                             className="lg:hidden p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
                         >
@@ -308,7 +323,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans flex items-center gap-1">
                                 <Building2 className="w-3 h-3 text-[#E00D42]" /> {canSwitchHubs ? 'Working Facility' : 'Assigned Facility'}
                             </span>
-                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-xs bg-slate-50 text-slate-700 border border-slate-300 uppercase font-sans">
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-300 uppercase font-sans">
                                 {activeHub ? activeHub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub' : 'No facility'}
                             </span>
                         </div>
@@ -319,7 +334,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 type="button"
                                 onClick={() => canSwitchHubs && setHubSwitcherOpen(!hubSwitcherOpen)}
                                 disabled={!canSwitchHubs || switchingHub !== null}
-                                className={`w-full flex items-center justify-between p-2 rounded-xs bg-white border border-slate-300 text-left transition shadow-2xs group ${
+                                className={`w-full flex items-center justify-between p-2 rounded-lg bg-white border border-slate-300 text-left transition shadow-2xs group ${
                                     canSwitchHubs ? 'hover:border-slate-400 cursor-pointer' : 'cursor-default'
                                 }`}
                             >
@@ -477,9 +492,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                             {/* Parcel operations */}
                             <div className="pt-2 border-t border-slate-100 space-y-0.5">
+                                {user?.canSetupCompany && <PortalLink href={route('hub.company-setup.index')} className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold ${component === 'Hub/CompanySetup' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><Settings className="h-4 w-4" />Company setup</PortalLink>}
                                 <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
                                     Operations
                                 </p>
+                                <PortalLink href={route('hub.mother-bags.index')} className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold ${component === 'Hub/MotherBags' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><Package className="h-4 w-4" />Mother Bags</PortalLink>
+                                {user?.canManageResources && <PortalLink href="/delivery-earnings" className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold ${component === 'Finance/DeliveryEarnings' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><Banknote className="h-4 w-4" />Delivery earnings</PortalLink>}
                                 <PortalLink
                                     href={route('hub.manifests.index')}
                                     className={'flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs transition ' + (component === 'Hub/Manifests' ? 'bg-[#E00D42] font-bold text-white' : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900')}
@@ -487,7 +505,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     <Truck className="h-4 w-4 shrink-0" />
                                     <span>Manifests</span>
                                 </PortalLink>
-                                <PortalLink href={route('hub.recovery.index')} className="flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100">Delivery recovery</PortalLink>
+                                <PortalLink href={route('hub.recovery.index')} aria-current={component === 'Hub/Recovery' ? 'page' : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium ${component === 'Hub/Recovery' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><RotateCcw className="h-4 w-4 shrink-0" />Delivery recovery</PortalLink>
                                 <PortalLink href="/handover-issues" aria-current={component.startsWith('Handover/') ? 'page' : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium ${component.startsWith('Handover/') ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" /><span>Handover issues</span></PortalLink>
                                 <PortalLink href={route('hub.cod.index')} aria-current={component === 'Finance/Cod' || component === 'Finance/CodDetail' ? 'page' : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium ${component === 'Finance/Cod' || component === 'Finance/CodDetail' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><Banknote className="h-4 w-4 shrink-0" aria-hidden="true" /><span>COD cash</span></PortalLink>
                                 <PortalLink
@@ -610,6 +628,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between shrink-0 shadow-2xs z-20">
                     <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
                         <button
+                            type="button"
+                            aria-label="Open navigation"
+                            aria-controls="portal-navigation"
+                            aria-expanded={sidebarOpen}
                             onClick={() => setSidebarOpen(true)}
                             className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer shrink-0"
                         >
@@ -746,6 +768,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                     <Building2 className="w-4 h-4 text-slate-400" />
                                                     <span>Facility Network</span>
                                                 </Link>
+                                                <Link href={route('hub.mother-bags.index')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-[#E00D42]"><Package className="h-4 w-4" /><span>Mother Bags</span></Link>
                                                 <Link href={route('hub.manifests.index')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-50 hover:text-[#E00D42]">
                                                     <Truck className="h-4 w-4" />
                                                     <span>Manifests</span>

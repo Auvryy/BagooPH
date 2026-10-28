@@ -14,6 +14,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
 
     return (
         <GuestLayout 
+            guestOnly={false}
             title="Verify Email" 
             subtitle="Please verify your email address to complete your account setup"
             headerBadge="VERIFICATION // 06"

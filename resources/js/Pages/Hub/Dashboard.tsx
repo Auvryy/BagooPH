@@ -167,14 +167,14 @@ export default function HubDashboard({
                 <div className="flex items-center gap-2">
                     <PortalLink
                         href={route('hub.counter')}
-                        className="hidden sm:inline-flex items-center gap-2 rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                        className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                     >
                         <Store className="h-4 w-4" />
                         Counter pickup
                     </PortalLink>
                     <PortalLink
                         href={route(scope.can_scan ? 'hub.scan.station' : 'hub.deliveries')}
-                        className="inline-flex items-center gap-2 rounded-xs bg-[#E00D42] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#C20836]"
+                        className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#C20836]"
                     >
                         {scope.can_scan ? <ScanLine className="h-4 w-4" /> : <Package className="h-4 w-4" />}
                         {scope.can_scan ? 'Scan parcel' : 'View parcels'}
@@ -185,7 +185,7 @@ export default function HubDashboard({
             <Head title="Operations Overview — BagooPH" />
 
             <div className="space-y-5 font-sans">
-                <section className="flex flex-col gap-3 rounded-lg border border-slate-300 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+                <section className="flex flex-col gap-3 rounded-lg border border-slate-300 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 className="text-sm font-bold text-slate-900">Network activity</h2>
                         <p className="mt-1 text-xs text-slate-500">
@@ -198,7 +198,7 @@ export default function HubDashboard({
                             <select
                                 value={scope.selected_hub_id ?? ''}
                                 onChange={(event) => changeScope(event.target.value)}
-                                className="min-w-52 rounded-xs border-slate-300 bg-white py-2 pl-3 pr-8 text-xs font-medium text-slate-800 focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                className="min-w-52 rounded-lg border-slate-300 bg-white py-2 pl-3 pr-8 text-xs font-medium text-slate-800 focus:border-[#E00D42] focus:ring-[#E00D42]"
                             >
                                 <option value="">All facilities</option>
                                 {scope.hubs.map((hub) => (
@@ -208,7 +208,7 @@ export default function HubDashboard({
                                 ))}
                             </select>
                         ) : (
-                            <span className="rounded-xs border border-slate-300 bg-slate-50 px-3 py-2 text-slate-800">
+                            <span className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-800">
                                 {selectedHub?.name ?? 'Assigned facility'}
                             </span>
                         )}
@@ -219,7 +219,7 @@ export default function HubDashboard({
                     {metrics.map((metric) => {
                         const Icon = metric.icon;
                         return (
-                            <div key={metric.label} className="rounded-lg border border-slate-300 bg-white p-4 shadow-xs">
+                            <div key={metric.label} className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
                                 <div className="flex items-start justify-between gap-4">
                                     <div>
                                         <p className="text-xs font-semibold text-slate-600">{metric.label}</p>
@@ -236,15 +236,15 @@ export default function HubDashboard({
                 </section>
 
                 <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-                    <div className="rounded-lg border border-slate-300 bg-white shadow-xs xl:col-span-7">
+                    <div className="rounded-lg border border-slate-300 bg-white shadow-sm xl:col-span-7">
                         <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
                             <div>
                                 <h2 className="text-sm font-bold text-slate-900">Parcel movement</h2>
                                 <p className="mt-0.5 text-xs text-slate-500">Verified inbound and outbound scans · last 7 days</p>
                             </div>
                             <div className="flex items-center gap-3 text-[11px] font-medium text-slate-600">
-                                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-slate-800" />Inbound</span>
-                                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-[#E00D42]" />Outbound</span>
+                                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-lg bg-slate-800" />Inbound</span>
+                                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-lg bg-[#E00D42]" />Outbound</span>
                             </div>
                         </div>
                         {hasMovement ? (
@@ -263,7 +263,7 @@ export default function HubDashboard({
                                                 title={`${day.date}: ${day.outbound} outbound`}
                                             />
                                         </div>
-                                        <div className="mt-2 border-t border-slate-200 pt-2 text-center">
+                                        <div className="mt-2 border-t border-slate-300 pt-2 text-center">
                                             <p className="text-[11px] font-semibold text-slate-600">{day.label}</p>
                                             <p className="text-[10px] text-slate-400">{day.inbound}/{day.outbound}</p>
                                         </div>
@@ -279,7 +279,7 @@ export default function HubDashboard({
                         )}
                     </div>
 
-                    <div className="rounded-lg border border-slate-300 bg-white shadow-xs xl:col-span-5">
+                    <div className="rounded-lg border border-slate-300 bg-white shadow-sm xl:col-span-5">
                         <div className="border-b border-slate-300 px-4 py-3">
                             <h2 className="text-sm font-bold text-slate-900">Needs attention</h2>
                             <p className="mt-0.5 text-xs text-slate-500">Open operational work in this scope</p>
@@ -299,7 +299,7 @@ export default function HubDashboard({
                                         className="flex items-center justify-between gap-4 px-4 py-3 transition hover:bg-slate-50"
                                     >
                                         <div className="flex min-w-0 items-center gap-3">
-                                            <span className={`flex h-8 min-w-8 items-center justify-center rounded-xs border px-2 text-sm font-bold ${toneClasses[item.tone]}`}>
+                                            <span className={`flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-sm font-bold ${toneClasses[item.tone]}`}>
                                                 {item.count}
                                             </span>
                                             <span className="truncate text-sm font-medium text-slate-800">{item.label}</span>
@@ -313,7 +313,7 @@ export default function HubDashboard({
 
                 </section>
 
-                <section className="rounded-lg border border-slate-300 bg-white shadow-xs">
+                <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
                     <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
                         <div>
                             <h2 className="text-sm font-bold text-slate-900">Parcel journey</h2>
@@ -335,7 +335,7 @@ export default function HubDashboard({
                                         href={route('hub.deliveries', { status: stage.status })}
                                         className="group relative z-10 flex flex-col items-center text-center"
                                     >
-                                        <span className="flex h-12 w-12 items-center justify-center rounded-md border-2 border-slate-300 bg-white text-slate-600 shadow-xs transition group-hover:border-[#E00D42] group-hover:text-[#E00D42]">
+                                        <span className="flex h-12 w-12 items-center justify-center rounded-md border-2 border-slate-300 bg-white text-slate-600 shadow-sm transition group-hover:border-[#E00D42] group-hover:text-[#E00D42]">
                                             <Icon className="h-5 w-5" />
                                         </span>
                                         <span className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900">{stage.value}</span>
@@ -389,7 +389,7 @@ export default function HubDashboard({
                     </div>
                 </section>
 
-                <section className="rounded-lg border border-slate-300 bg-white shadow-xs">
+                <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
                     <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
                         <div>
                             <h2 className="text-sm font-bold text-slate-900">Facilities</h2>
@@ -417,11 +417,11 @@ export default function HubDashboard({
                                                     <MapPin className="h-3 w-3" /> {facility.code} · {facility.city_municipality}
                                                 </p>
                                             </div>
-                                            <span className="rounded-xs border border-slate-300 bg-slate-50 px-2 py-1 text-[10px] font-bold uppercase text-slate-600">
+                                            <span className="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-[10px] font-bold uppercase text-slate-600">
                                                 {formatTier(facility.tier)}
                                             </span>
                                         </div>
-                                        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-200 pt-3 text-center">
+                                        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-300 pt-3 text-center">
                                             <div><p className="text-sm font-bold text-slate-900">{facility.parcels}</p><p className="text-xs text-slate-500">Parcels</p></div>
                                             <div><p className="text-sm font-bold text-rose-700">{facility.exceptions}</p><p className="text-xs text-slate-500">Exceptions</p></div>
                                             <div><p className="text-sm font-bold text-slate-900">{facility.active_fleet}</p><p className="text-xs text-slate-500">Fleet</p></div>
@@ -466,7 +466,7 @@ export default function HubDashboard({
                     )}
                 </section>
 
-                <section className="rounded-lg border border-slate-300 bg-white shadow-xs">
+                <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
                     <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
                         <div>
                             <h2 className="text-sm font-bold text-slate-900">Recent scan activity</h2>
