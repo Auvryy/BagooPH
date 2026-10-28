@@ -71,7 +71,11 @@ class LogisticsEligibilityService
         }
 
         return $query->where(function (Builder $scope) use ($actor) {
-            $scope->where('user_id', $actor->id)->orWhereIn('id', HubHandler::eligible()
+            $scope->where('user_id', $actor->id);
+            if ($actor->provisioned_company_id !== null) {
+                return;
+            }
+            $scope->orWhereIn('id', HubHandler::eligible()
                 ->where('user_id', $actor->id)->whereHas('hub', fn (Builder $hub) => $hub->where('tier', 'regional_mother_hub'))
                 ->select('logistics_company_id'));
         });

@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\HasApiTokens;
@@ -245,6 +246,12 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $birthDates->issue($this->birthday, $birthDates->requiresAdult($this->role)) === null;
     }
 
+    public function needsCompanyEmailVerification(): bool
+    {
+        return $this->provisioned_company_id !== null && ! $this->must_change_password && $this->email_verified_at === null
+            && $this->closed_at === null && $this->status === 'active' && $this->isKycApproved() && $this->hasEligibleBirthDate();
+    }
+
     public function scopeEligibleCouriers(Builder $query): Builder
     {
         return $this->eligibleWorkerQuery($query, 'courier');
@@ -257,8 +264,20 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     private function eligibleWorkerQuery(Builder $query, string $role): Builder
     {
-        return $query->where('role', $role)->where('status', 'active')->whereNull('closed_at')->where('must_change_password', false)
-            ->where(fn ($staff) => $staff->whereNull('provisioned_company_id')->orWhereNotNull('email_verified_at'))
+        // Older pending data migrations also use this scope before the additive staff columns exist.
+        $key = 'bagoo.staff_columns_ready';
+        $ready = request()->attributes->get($key);
+        if ($ready === null) {
+            $ready = Schema::hasColumn('users', 'must_change_password');
+            request()->attributes->set($key, $ready);
+        }
+        $query->where('role', $role)->where('status', 'active')->whereNull('closed_at');
+        if ($ready) {
+            $query->where('must_change_password', false)
+                ->where(fn ($staff) => $staff->whereNull('provisioned_company_id')->orWhereNotNull('email_verified_at'));
+        }
+
+        return $query
             ->whereIn('kyc_status', self::APPROVED_KYC_STATUSES)
             ->where(function (Builder $query) {
                 $query->where(fn ($legacy) => $legacy->whereNull('birthday')->where('identity_version', 0))->orWhere(function (Builder $query) {

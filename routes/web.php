@@ -44,27 +44,30 @@ use App\Http\Controllers\FinancialOversightController;
 use App\Http\Controllers\Governance\ResourceRestrictionController;
 use App\Http\Controllers\GovernanceHistoryController;
 use App\Http\Controllers\IdentityCorrectionController;
+use App\Http\Controllers\Logistics\CompanySetupController;
 use App\Http\Controllers\Logistics\DeliveryRecoveryController;
 use App\Http\Controllers\Logistics\HandoverIssueController;
 use App\Http\Controllers\Logistics\HandoverRecoveryController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\Logistics\LogisticsManifestController;
+use App\Http\Controllers\Logistics\MotherBagController;
 use App\Http\Controllers\Logistics\ParcelRecoveryController;
 use App\Http\Controllers\Logistics\RestrictedCustodyRecoveryController;
 use App\Http\Controllers\Logistics\RiderCompanyIntakeController;
 use App\Http\Controllers\Logistics\RiderCompanyOfferController;
+use App\Http\Controllers\LogisticsEarningsController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicTrackingController;
-use App\Http\Controllers\RegistrationPolicyController;
-use App\Http\Controllers\Seller\ProductSaleController;
-use App\Http\Controllers\Seller\PromotionController as SellerPromotionController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\RegistrationPolicyController;
+use App\Http\Controllers\Seller\ProductSaleController;
+use App\Http\Controllers\Seller\PromotionController as SellerPromotionController;
 use App\Http\Controllers\Seller\SellerAiAssistantController;
 use App\Http\Controllers\Seller\SellerDashboardController;
 use App\Http\Controllers\Seller\SellerDisputeController;
@@ -368,12 +371,21 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         $registerResourceRestrictionRoutes();
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard']);
         Route::get('/network', [LogisticsHubWorkstationController::class, 'network']);
+        Route::get('/company-setup', [CompanySetupController::class, 'index']);
+        Route::post('/company-setup/{company}/hubs', [CompanySetupController::class, 'hub'])->middleware('throttle:10,1');
+        Route::post('/company-setup/{company}/staff', [CompanySetupController::class, 'staff'])->middleware('throttle:10,1');
+        Route::post('/company-setup/{company}/tariff', [CompanySetupController::class, 'tariff'])->middleware('throttle:10,1');
+        Route::post('/company-setup/{company}/staff/{staff}/temporary-password', [CompanySetupController::class, 'temporaryPassword'])->middleware('throttle:5,1');
+        Route::post('/company-setup/{company}/hubs/{hub}/coverage', [CompanySetupController::class, 'coverage'])->middleware('throttle:10,1');
         Route::put('/rider-request-intake', [RiderCompanyIntakeController::class, 'update'])->middleware('throttle:10,1');
         Route::post('/rider-company-requests/{companyRequest}/offers', [RiderCompanyOfferController::class, 'store'])->middleware('throttle:10,1');
         Route::post('/rider-company-requests/{companyRequest}/reject', [RiderCompanyOfferController::class, 'reject'])->middleware('throttle:10,1');
         Route::post('/rider-company-requests/{companyRequest}/cancel', [RiderCompanyOfferController::class, 'cancel'])->middleware('throttle:10,1');
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet']);
         Route::get('/manifests', [LogisticsManifestController::class, 'index']);
+        Route::get('/mother-bags', [MotherBagController::class, 'index']);
+        Route::post('/mother-bags', [MotherBagController::class, 'store'])->middleware('throttle:30,1');
+        Route::post('/mother-bags/{bag}/{action}', [MotherBagController::class, 'command'])->whereUuid('bag')->where('action', 'add|remove|seal|reopen|load|unload|open')->middleware('throttle:60,1');
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest');
         Route::post('/manifests', [LogisticsManifestController::class, 'store']);
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
@@ -598,6 +610,7 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/delivery-earnings', [LogisticsEarningsController::class, 'index'])->name('delivery-earnings.index');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/preview', [NotificationController::class, 'preview'])->name('notifications.preview');
     Route::patch('/notifications/read-displayed', [NotificationController::class, 'readDisplayed'])->name('notifications.read-displayed');
@@ -834,12 +847,21 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         $registerResourceRestrictionRoutes();
         Route::get('/dashboard', [LogisticsHubWorkstationController::class, 'dashboard'])->name('dashboard');
         Route::get('/network', [LogisticsHubWorkstationController::class, 'network'])->name('network');
+        Route::get('/company-setup', [CompanySetupController::class, 'index'])->name('company-setup.index');
+        Route::post('/company-setup/{company}/hubs', [CompanySetupController::class, 'hub'])->middleware('throttle:10,1')->name('company-setup.hubs');
+        Route::post('/company-setup/{company}/staff', [CompanySetupController::class, 'staff'])->middleware('throttle:10,1')->name('company-setup.staff');
+        Route::post('/company-setup/{company}/tariff', [CompanySetupController::class, 'tariff'])->middleware('throttle:10,1')->name('company-setup.tariff');
+        Route::post('/company-setup/{company}/staff/{staff}/temporary-password', [CompanySetupController::class, 'temporaryPassword'])->middleware('throttle:5,1')->name('company-setup.temporary-password');
+        Route::post('/company-setup/{company}/hubs/{hub}/coverage', [CompanySetupController::class, 'coverage'])->middleware('throttle:10,1')->name('company-setup.coverage');
         Route::put('/rider-request-intake', [RiderCompanyIntakeController::class, 'update'])->middleware('throttle:10,1')->name('rider-request-intake');
         Route::post('/rider-company-requests/{companyRequest}/offers', [RiderCompanyOfferController::class, 'store'])->middleware('throttle:10,1')->name('rider-company-requests.offers');
         Route::post('/rider-company-requests/{companyRequest}/reject', [RiderCompanyOfferController::class, 'reject'])->middleware('throttle:10,1')->name('rider-company-requests.reject');
         Route::post('/rider-company-requests/{companyRequest}/cancel', [RiderCompanyOfferController::class, 'cancel'])->middleware('throttle:10,1')->name('rider-company-requests.cancel');
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet'])->name('fleet');
         Route::get('/manifests', [LogisticsManifestController::class, 'index'])->name('manifests.index');
+        Route::get('/mother-bags', [MotherBagController::class, 'index'])->name('mother-bags.index');
+        Route::post('/mother-bags', [MotherBagController::class, 'store'])->middleware('throttle:30,1')->name('mother-bags.store');
+        Route::post('/mother-bags/{bag}/{action}', [MotherBagController::class, 'command'])->whereUuid('bag')->where('action', 'add|remove|seal|reopen|load|unload|open')->middleware('throttle:60,1')->name('mother-bags.command');
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest')->name('manifests.show');
         Route::post('/manifests', [LogisticsManifestController::class, 'store'])->name('manifests.store');
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
