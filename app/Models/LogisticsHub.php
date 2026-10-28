@@ -60,6 +60,12 @@ class LogisticsHub extends Model
         return $this->tier === 'local_bayan_hub';
     }
 
+    public function scopeReadyForSelfPickup(Builder $query): Builder
+    {
+        return $query->eligible()->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)
+            ->whereNotNull('operating_hours')->whereRaw("TRIM(operating_hours) <> ''");
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(LogisticsCompany::class, 'logistics_company_id');

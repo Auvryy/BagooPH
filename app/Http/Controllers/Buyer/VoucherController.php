@@ -48,7 +48,7 @@ class VoucherController extends Controller
                 throw new CheckoutException('Delivery address is outside contiguous road freight boundaries. Maritime shipping is excluded.');
             }
             if (! empty($data['pickup_hub_id']) && ($data['delivery_type'] ?? 'doorstep') === 'hub_self_pickup'
-                && ! LogisticsHub::eligible()->whereKey($data['pickup_hub_id'])->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)->exists()) {
+                && ! LogisticsHub::readyForSelfPickup()->whereKey($data['pickup_hub_id'])->exists()) {
                 throw new CheckoutException('Choose an available Bayan Hub that supports self-pickup.');
             }
             $quotes = app(CheckoutQuoteService::class);
@@ -125,7 +125,7 @@ class VoucherController extends Controller
                 throw new CheckoutException('Delivery address is outside contiguous road freight boundaries. Maritime shipping is excluded.');
             }
             if (! empty($data['pickup_hub_id']) && ($data['delivery_type'] ?? 'doorstep') === 'hub_self_pickup'
-                && ! LogisticsHub::eligible()->whereKey($data['pickup_hub_id'])->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)->exists()) {
+                && ! LogisticsHub::readyForSelfPickup()->whereKey($data['pickup_hub_id'])->exists()) {
                 throw new CheckoutException('Choose an available Bayan Hub that supports self-pickup.');
             }
             $items = app(CheckoutQuoteService::class)->selectedItems($buyer, $data['item_ids'], $request->input('item_quantities', []));

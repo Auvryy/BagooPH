@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import WaybillCamera from '@/Components/WaybillCamera';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
@@ -172,7 +173,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             <Head title="Counter Self-Pickup — BagooPH" />
 
             <div className="space-y-5 font-sans">
-                <p className="text-sm text-slate-600">Readiness and attention counts apply to this page. The queue total includes all matching parcels. A handler verifies the buyer and cash at handover; the buyer confirms order receipt afterward.</p>
+                <p className="text-sm text-slate-600">Readiness and attention counts apply to this page. The queue total includes all matching parcels. Check the buyer's photo ID, private claim code and original payment before release.</p>
                 {canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-lg border border-slate-300 bg-white p-4"><label className="text-sm font-semibold">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-sm text-red-700">{errors.operating_hours}</p>}</form>}
                 {!activeHub?.operating_hours && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
 
@@ -443,13 +444,15 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
             {/* RELEASE VERIFICATION MODAL */}
             {selectedParcel && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in font-sans">
-                    <div className="bg-white rounded-lg max-w-md w-full p-5 shadow-2xl border border-slate-300 animate-scale-in">
-                        <div className="flex items-center justify-between pb-2.5 border-b border-slate-300">
+                <Dialog open onClose={() => { if (!submitting) setSelectedParcel(null); }} className="relative z-50 font-sans">
+                    <DialogBackdrop className="fixed inset-0 bg-black/60 backdrop-blur-xs" />
+                    <div className="fixed inset-0 flex items-center justify-center p-4">
+                    <DialogPanel className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-lg border border-slate-300 bg-white shadow-2xl">
+                        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-300 px-5 py-4">
                             <div>
-                                <h3 className="text-xs font-black text-slate-900 uppercase">
+                                <DialogTitle className="text-sm font-bold text-slate-900">
                                     Handover Verification
-                                </h3>
+                                </DialogTitle>
                                 <p className="text-xs text-[#E00D42] font-bold mt-0.5">
                                     {selectedParcel.tracking_number}
                                 </p>
@@ -457,6 +460,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             </div>
                             <button
                                 type="button"
+                                aria-label="Close handover verification"
+                                disabled={submitting}
                                 onClick={() => setSelectedParcel(null)}
                                 className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer rounded-lg"
                             >
@@ -464,7 +469,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             </button>
                         </div>
 
-                        <form onSubmit={handleReleaseSubmit} className="space-y-3.5 mt-3.5">
+                        <form onSubmit={handleReleaseSubmit} className="flex min-h-0 flex-1 flex-col">
+                            <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto overscroll-contain px-5 py-4">
                             <label className="block text-sm font-semibold">Actual parcel waybill<input required value={barcode} onChange={event => setBarcode(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>
                             <WaybillCamera onScan={setBarcode} disabled={submitting || !currentSelectedParcel || !canRelease(currentSelectedParcel)} />
                             <label className="flex items-start gap-2 text-sm"><input type="checkbox" required checked={identityConfirmed} onChange={event => setIdentityConfirmed(event.target.checked)} className="mt-1 border-slate-300" />I checked a valid photo ID matching buyer account #{selectedParcel.buyer_id} and the name below.</label>
@@ -521,9 +527,11 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                             {(!currentSelectedParcel || !canRelease(currentSelectedParcel)) && <p role="alert" className="text-sm text-amber-800">This parcel is no longer ready for release. Close this form and review its current checks.</p>}
                             {Object.entries(errors).map(([key,value]) => <p role="alert" key={key} className="text-sm text-red-700">{value}</p>)}
-                            <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-300 font-sans">
+                            </div>
+                            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-300 bg-white px-5 py-4 font-sans">
                                 <button
                                     type="button"
+                                    disabled={submitting}
                                     onClick={() => setSelectedParcel(null)}
                                     className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-300 cursor-pointer"
                                 >
@@ -538,8 +546,9 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </button>
                             </div>
                         </form>
-                    </div>
+                    </DialogPanel>
                 </div>
+                </Dialog>
             )}
         </DashboardLayout>
     );

@@ -74,7 +74,7 @@ class CheckoutSubmissionService
         })->all();
 
         $tariffs = LogisticsCompany::eligible()->orderBy('id')->get(['id', 'tariff_version', 'base_shipping_cents', 'included_weight_grams', 'additional_kg_cents', 'shipping_earnings_model'])->toArray();
-        $network = LogisticsHub::eligible()->orderBy('id')->get(['id', 'logistics_company_id', 'tier', 'parent_hub_id', 'province', 'city_municipality', 'coverage_barangays', 'postal_codes', 'allows_self_pickup'])->toArray();
+        $network = LogisticsHub::eligible()->orderBy('id')->get(['id', 'logistics_company_id', 'tier', 'parent_hub_id', 'province', 'city_municipality', 'coverage_barangays', 'postal_codes', 'allows_self_pickup', 'operating_hours'])->toArray();
 
         return substr(hash('sha256', json_encode([$rows, $tariffs, $network], JSON_THROW_ON_ERROR)), 0, 32);
     }

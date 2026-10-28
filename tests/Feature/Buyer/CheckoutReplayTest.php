@@ -332,9 +332,10 @@ class CheckoutReplayTest extends TestCase
     {
         [$buyer, $cart, $product, $payload] = $this->checkout();
         $origin = LogisticsHub::where('city_municipality', 'Manila')->where('tier', 'local_bayan_hub')->firstOrFail();
-        $origin->update(['allows_self_pickup' => true]);
+        $origin->update(['allows_self_pickup' => true, 'operating_hours' => '08:00 to 17:00']);
         $payload['delivery_type'] = 'hub_self_pickup';
         $payload['pickup_hub_id'] = $origin->id;
+        $payload['checkout_token'] = app(CheckoutSubmissionService::class)->issue($buyer, $cart);
         $this->actingAs($buyer)->from('/checkout')->post('/checkout', $payload)->assertRedirect('/checkout')->assertSessionHas('error');
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('checkout_submissions', 0);
@@ -373,7 +374,7 @@ class CheckoutReplayTest extends TestCase
         $second = LogisticsHub::create(['logistics_company_id' => $hub->logistics_company_id,
             'name' => 'Pasig Second Counter', 'code' => 'PASIG-SECOND', 'tier' => 'local_bayan_hub',
             'city_municipality' => 'Pasig', 'province' => 'Metro Manila', 'address' => '200 Counter Road',
-            'is_active' => true, 'allows_self_pickup' => true]);
+            'is_active' => true, 'allows_self_pickup' => true, 'operating_hours' => '08:00 to 17:00']);
         $payload['delivery_type'] = 'hub_self_pickup';
         $payload['pickup_hub_id'] = $second->id;
         $payload['checkout_token'] = app(CheckoutSubmissionService::class)->issue($buyer, Cart::where('user_id', $buyer->id)->sole());

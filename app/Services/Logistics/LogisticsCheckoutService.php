@@ -30,7 +30,7 @@ class LogisticsCheckoutService
             });
         }
         if (($address['delivery_type'] ?? 'doorstep') === 'hub_self_pickup' && ! empty($address['pickup_hub_id'])) {
-            $hub = LogisticsHub::eligible()->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)->find($address['pickup_hub_id']);
+            $hub = LogisticsHub::readyForSelfPickup()->find($address['pickup_hub_id']);
             $companies = $hub ? $companies->where('id', $hub->logistics_company_id) : collect();
         }
         if ($selectedId !== null && $selectedId !== '' && $companies->isEmpty()) {

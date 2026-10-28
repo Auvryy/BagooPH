@@ -26,6 +26,8 @@ class LogisticsTransportSeeder extends Seeder
             foreach ([
                 ['BH-LBN-01', 'local_bayan_hub', 'origin.transport@bagoo.test', 'Los Banos Transport Driver', 'BG-LBN-201'],
                 ['MH-LAG-01', 'regional_mother_hub', 'mother.transport@bagoo.test', 'Mother Hub Transport Driver', 'BG-LAG-201'],
+                ['MH-LAG-01', 'regional_mother_hub', 'mother.backup.transport@bagoo.test', 'Mother Hub Backup Transport Driver', 'BG-LAG-202'],
+                ['BH-SCZ-01', 'local_bayan_hub', 'return.transport@bagoo.test', 'Santa Cruz Return Transport Driver', 'BG-SCZ-201'],
             ] as [$code, $tier, $email, $name, $plate]) {
                 $hub = LogisticsHub::eligible()->where('logistics_company_id', $company->id)
                     ->where('code', $code)->where('tier', $tier)->lockForUpdate()->first();

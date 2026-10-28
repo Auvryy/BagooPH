@@ -138,6 +138,12 @@ class LogisticsNetworkSeeder extends Seeder
             ]
         );
 
+        foreach ([$losBanosHub, $santaCruzHub] as $counter) {
+            if ($counter->wasRecentlyCreated) {
+                $counter->update(['operating_hours' => 'Monday to Saturday, 8 AM to 5 PM']);
+            }
+        }
+
         $this->assignHandler($losBanosHandler, $losBanosHub, 'Bayan Hub Operations Handler');
         $losBanosHub->update(['parent_hub_id' => $motherHub->id, 'postal_codes' => ['4030']]);
         $santaCruzHub->update(['parent_hub_id' => $motherHub->id, 'postal_codes' => ['4009']]);
