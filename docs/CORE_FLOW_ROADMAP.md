@@ -83,6 +83,44 @@ The same preserved visible browser created another hub and confirmed postal rese
 
 Scoped counter-handover usability: **4/10 → 8/10**. The rating reflects reachable controls and preserved verification, not a new overall system/defense score. No Azure deployment, physical-device proof, PostgreSQL concurrency result or external seller transfer is claimed. Browser, role sessions and the isolated memory server remain running without foreground-focus calls. Task tracking remains unavailable due to expired authentication. Local commits `7e0bb7a` (forms/guidance) and `0e1d4ec` (recorded recovery links) are retained; the remaining readiness/deployment changes and combined [PR draft](audits/LOCAL_LOGISTICS_UI_AUDIT_PR_DRAFT.md) form the final handoff. Only the user publishes.
 
+### Logistics visual workspace: October 28, 2026, in progress
+
+The active `feat/logistics-visual-workspace` branch starts at merged `main`
+`7da3b7e`. It connects the logistics pages with grouped navigation, actual saved
+hub maps, searchable hub choices, vehicle/driver and eligible-rider cards,
+scan-first bag/transfer controls and explicit actual-holder/next-person guidance.
+Company payloads remain scoped; display changes reuse existing custody,
+authorization, original-route and financial checks. The full scope and remaining
+acceptance are in the [workspace review](audits/LOGISTICS_VISUAL_WORKSPACE_REVIEW_2026-10-28.md).
+
+One fresh seeded regional COD purchase completed through actual Puppeteer
+controls: seller readiness, pickup, origin intake, two sealed bags/two closed
+manifests, Mother sorting, destination receipt, rider/POD and automatic completion.
+Original PHP 2,910 collection, named counted hub receipt and buyer tracking were
+verified. Nineteen main destinations returned HTTP 200 with one content heading
+and no desktop document overflow. This does not establish every detail, exception
+or phone layout. A return request exists, but its subsequent approval/intake is
+not yet verified.
+
+The foundation PHP selection passed **22/574**, the page/company selection
+**78/10,651**, and the focused actual-holder/recovery selection **5/627**
+(tests/assertions; overlapping selections). Earlier affected frontend checks
+passed **77 cases**; the latest narrower refinements passed **30 cases**. The final
+TypeScript/Vite production build passed after the guide permission fix with type
+checking retained, using a bounded 0.5-CPU/1,536MB container and 1,024MB Node heap.
+An earlier reduced 512MB heap exhausted memory; shared-page null guards also
+required correction before the passing build. PHP formatting passed for all
+seven changed PHP files. The owned browser and
+worker were closed after the user reported PC lag. The all-page mobile, keyboard,
+detail and current exception/return checks remain pending.
+
+Provisional scoped logistics clarity assessment: **6/10 -> 8/10**, supported by
+the normal handover journey and shared visual controls. This is not a finished
+whole-flow or defense rating. Local foundation commit `d9f64f3` and accessibility
+commit `fc8b650` are saved alongside six feature commits, listed in the review.
+The combined [PR description](audits/LOGISTICS_VISUAL_WORKSPACE_PR_DRAFT.md)
+remains a local draft. No publication, Azure deployment or Flutter edit is claimed.
+
 ## Current Implementation Audit
 
 Audit baseline: September 24, 2026. Later scoped reviews below update the relevant areas; they do not certify every role.
