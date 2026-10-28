@@ -112,13 +112,13 @@ class LogisticsManifestController extends Controller
                 ->filter(fn ($parcel) => isset($parcel->hub_ids[$parcel->route_position + 1]))
                 ->map(fn ($parcel) => ['id' => $parcel->buyer_return_case_id, 'reference' => $parcel->returnCase->reference, 'barcode' => $parcel->barcode,
                     'source_hub_id' => $parcel->current_hub_id, 'destination_hub_id' => $parcel->hub_ids[$parcel->route_position + 1], 'weight_grams' => $parcel->weight_grams])->values() : [],
-            'hubs' => LogisticsHub::eligible()->whereIn('logistics_company_id', $companyIds)->orderBy('name')->get(['id', 'name', 'code', 'tier', 'logistics_company_id']),
+            'hubs' => LogisticsHub::eligible()->whereIn('logistics_company_id', $companyIds)->orderBy('name')->get(['id', 'name', 'code', 'tier', 'logistics_company_id', 'parent_hub_id', 'latitude', 'longitude', 'address', 'city_municipality', 'province']),
             'sourceHubIds' => $sourceHubIds,
             'vehicles' => $sourceHubs->isNotEmpty() ? LogisticsFleet::ready()->whereIn('vehicle_type', ['l300_van', 'wing_truck'])->whereIn('logistics_company_id', $companyIds)->whereIn('hub_id', $sourceHubIds)->whereNotNull('assigned_driver_id')
                 ->whereHas('driver.courierProfile', fn ($profile) => $profile->operational()->where('is_available', true))
                 ->whereNotIn('assigned_driver_id', LogisticsManifest::where('status', 'dispatched')->select('driver_id'))
                 ->with('driver')->orderBy('plate_number')->get()->reject(fn ($fleet) => Delivery::riderHasActiveWork($fleet->assigned_driver_id))->values()->map(fn ($fleet) => ['id' => $fleet->id, 'hub_id' => $fleet->hub_id,
-                    'plate_number' => $fleet->plate_number, 'vehicle_type' => $fleet->vehicle_type, 'driver_name' => $fleet->driver->name]) : [],
+                    'plate_number' => $fleet->plate_number, 'vehicle_type' => $fleet->vehicle_type, 'driver_name' => $fleet->driver->name, 'capacity_kg' => $fleet->capacity_kg]) : [],
             'basePath' => $request->is('hub/*') ? '/hub/manifests' : '/manifests',
         ]);
     }
@@ -159,8 +159,8 @@ class LogisticsManifestController extends Controller
             ? $manifest->buyerReturnParcels()->where('included', true)->count() : $manifest->included_count,
             'buyerReturnUrl' => $manifest->buyer_return_case_id ? '/buyer-returns/'.$manifest->buyer_return_case_id : null,
             'receiptCounts' => $this->service->receiptCounts($manifest),
-            'source' => $manifest->sourceHub->only(['id', 'name', 'code', 'tier']),
-            'destination' => $manifest->destinationHub->only(['id', 'name', 'code', 'tier']),
+            'source' => $manifest->sourceHub->only(['id', 'name', 'code', 'tier', 'latitude', 'longitude', 'city_municipality', 'province']),
+            'destination' => $manifest->destinationHub->only(['id', 'name', 'code', 'tier', 'latitude', 'longitude', 'city_municipality', 'province']),
             'vehicle_plate' => $manifest->vehicle->plate_number, 'driver_name' => $manifest->driver->name,
             'recoveryUrl' => $manifest->parcel_recovery_case_id
                 ? (request()->is('hub/*') ? '/hub' : '').'/parcel-recovery/'.$manifest->recoveryCase->observation_event_id : null];
