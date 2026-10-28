@@ -13,11 +13,13 @@ const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-buyer-returns-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.returnHarness; delete globalThis.route; });
 const result = await build({ stdin: { contents: `export { default as Create } from '@/Pages/Returns/Create'; export { default as Show } from '@/Pages/Returns/Show'; export { default as Index } from '@/Pages/Returns/Index'; export { default as Custody } from '@/Components/Returns/ReturnCustodyPanel'; export { default as Money } from '@/Components/Returns/ReturnMoneyPanel'; export { default as Manifests } from '@/Pages/Hub/Manifests';`, resolveDir: root, loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false, loader: { '.css': 'empty' }, plugins: [{ name: 'return-controls', setup(builder) {
+        builder.onResolve({ filter: /\.css$/ }, args => ({ path: args.path, namespace: 'return-styles' }));
+        builder.onLoad({ filter: /.*/, namespace: 'return-styles' }, () => ({ contents: '', loader: 'js' }));
         builder.onResolve({ filter: /^@inertiajs\/react$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel)|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'inertia', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^inertia$/, namespace: 'return-probe' }, () => ({ contents: `export * from '@inertiajs/react'; import { useForm as real } from '@inertiajs/react'; export const useForm = initial => globalThis.returnHarness ? globalThis.returnHarness.useForm(initial) : real(initial);`, resolveDir: root }));
         builder.onResolve({ filter: /^react$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel)|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'react', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^react$/, namespace: 'return-probe' }, () => ({ contents: `export * from 'react'; import React from 'react'; export const useRef = initial => globalThis.returnHarness ? globalThis.returnHarness.ref(initial) : React.useRef(initial);`, resolveDir: root }));
-        builder.onResolve({ filter: /^react\/jsx-runtime$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel)|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'jsx', namespace: 'return-probe' } : undefined);
+        builder.onResolve({ filter: /^react\/jsx-runtime$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel)|Pages\/Hub\/Manifests|Components\/Logistics\/VehiclePicker)\.tsx$/.test(args.importer) ? { path: 'jsx', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^jsx$/, namespace: 'return-probe' }, () => ({ contents: `import { jsx as real, jsxs as many, Fragment } from 'react/jsx-runtime'; export { Fragment }; const track = (fn,type,props,key) => { if(globalThis.returnHarness && (props.onSubmit || props.onChange || props.onClick)) globalThis.returnHarness.handlers.push({type,props}); return fn(type,props,key); }; export const jsx=(...args)=>track(real,...args);export const jsxs=(...args)=>track(many,...args);`, resolveDir: root }));
     } }] });
 const path = join(temporary, 'returns.mjs'); writeFileSync(path, result.outputFiles[0].text); const ui = await import(pathToFileURL(path).href);
@@ -143,20 +145,23 @@ test('actual handover validates its separate code and photo, submits the scoped 
 test('manifest preparation selects an actual accepted buyer return and retains only its prescribed next leg', async () => {
     const h = globalThis.returnHarness = new Harness();
     const data = { manifests: { data: [], links: [] }, selectedManifest: null, canCreate: true, creationToken: 'creation-token', commandToken: 'command-token', basePath: '/hub/manifests',
-        hubs: [{ id: 3, name: 'Destination Bayan Hub', code: 'BH-DEST', tier: 'local_bayan_hub' }, { id: 2, name: 'Mother Hub', code: 'MH', tier: 'regional_mother_hub' }],
+        sourceHubIds: [3], hubs: [{ id: 3, name: 'Destination Bayan Hub', code: 'BH-DEST', tier: 'local_bayan_hub', logistics_company_id: 1, parent_hub_id: 2 }, { id: 2, name: 'Mother Hub', code: 'MH', tier: 'regional_mother_hub', logistics_company_id: 1 }],
         vehicles: [{ id: 5, hub_id: 3, plate_number: 'RET-TEST', vehicle_type: 'l300_van', driver_name: 'Assigned Driver' }],
         buyerReturns: [{ id: 11, reference: 'BR-OWNED', barcode: custody.barcode, source_hub_id: 3, destination_hub_id: 2, weight_grams: 2500 }] };
     try {
         await render(ui.Manifests, data, 'logistics');
-        h.control(node => node.type === 'select' && node.props.value === 'outbound').onChange({ target: { value: 'buyer_return' } });
+        h.control(node => node.type === 'input' && node.props.name === 'transfer-direction' && node.props.value === 'buyer_return').onChange();
         let html = await render(ui.Manifests, data, 'logistics'); assert.match(html, /Accepted buyer return/); assert.match(html, /BR-OWNED/);
-        h.control(node => node.type === 'select' && String(node.props.children?.[0]?.props?.children).includes('Choose an actual received return')).onChange({ target: { value: '11' } });
+        h.control(node => node.type === 'input' && node.props.name === 'buyer-return-case' && String(node.props.value) === '11').onChange();
         html = await render(ui.Manifests, data, 'logistics');
         assert.equal(h.form.data.source_hub_id, '3'); assert.equal(h.form.data.destination_hub_id, '2'); assert.equal(h.form.data.buyer_return_case_id, '11');
-        assert.equal(h.handlers.filter(node => node.type === 'select' && node.props.disabled === true).length, 2);
-        h.form.data.vehicle_id = '5'; h.submit();
+        const hubs = [...html.matchAll(/<input\b[^>]*role="combobox"[^>]*>/g)].map(match => match[0]);
+        assert.equal(hubs.length, 2); assert.ok(hubs.every(input => /\bdisabled(?:=|\s|>)/.test(input)));
+        h.control(node => node.type === 'input' && node.props.name === 'transfer-vehicle' && String(node.props.value) === '5').onChange();
+        h.submit();
         assert.equal(h.posts[0].url, '/hub/manifests'); assert.equal(h.posts[0].data.direction, 'buyer_return');
         assert.equal(h.posts[0].data.buyer_return_case_id, '11'); assert.equal(h.posts[0].data.creation_token, 'creation-token');
+        assert.equal(h.posts[0].data.vehicle_id, '5');
     } finally { delete globalThis.returnHarness; }
 });
 
