@@ -70,7 +70,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
         <Head title="Parcel recovery" />
         <div className="space-y-6">
             <HubPageHeader title="Parcel recovery" icon={PackageSearch} description="Recover unexpected parcels through actual scans and recorded transfers back to their original route." actions={<Link href={manifestPath} className={buttonClass}>View manifests</Link>} />
-            <div className="flex flex-wrap gap-2" aria-label="Recovery worklist filters">
+            <div className="flex gap-2 overflow-x-auto pb-1 [&>*]:shrink-0" role="group" aria-label="Recovery worklist filters">
                 {[['open', 'Needs attention'], ['resolved', 'Resolved'], ['all', 'All observations']].map(([value, text]) => <button key={value} type="button" aria-pressed={filters.status === value}
                     onClick={() => router.get(basePath, { status: value }, { preserveScroll: true })}
                     className={`${buttonClass} ${filters.status === value ? 'border-[#E00D42] bg-[#FFFAFB] text-[#E00D42]' : ''}`}>{text}</button>)}

@@ -24,7 +24,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
     return <DashboardLayout title="Fleet & drivers"><Head title="Fleet & drivers — BagooPH" />
         <div className="space-y-6">
             <HubPageHeader title="Fleet & drivers" icon={Truck} description={`Vehicles based at ${activeHub?.name ?? 'your assigned facility'}. Check the vehicle, driver and job before preparing a transfer.`} actions={<Link href={route('hub.manifests.index')} className={hubButton}><Truck className="h-4 w-4" />Open transfers</Link>} />
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[
                 { label: 'Vehicles at this hub', value: stats.total, Icon: Building2 },
                 { label: 'Eligible active vehicles', value: stats.active, Icon: CheckCircle2 },
                 { label: 'Feeder vans', value: stats.vans, Icon: Truck },

@@ -279,104 +279,18 @@ export default function ScanStation({
 
     return (
         <DashboardLayout
-            title="Scan & Intake Workstation"
+            title="Scan station"
             subtitle="Scan a waybill, check its next stop and confirm the physical handover"
         >
             <Head title="Scan Station — Logistics Hub — BagooPH" />
             <HubPageHeader title="Scan station" description="Scan the parcel in front of you. Check the current holder and next stop, then confirm only the handover you actually received." icon={ScanLine} />
 
-            {/* Quick KPI Overview Bar (Minimalist Architectural Stats) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-                <div className="bg-white rounded-lg p-3.5 border border-slate-300 shadow-sm flex items-center justify-between">
-                    <div>
-                        <div className="text-[10px] uppercase font-sans font-bold text-slate-500 tracking-wider">
-                            Parcels in Station
-                        </div>
-                        <div className="text-xl font-bold font-sans text-slate-900 mt-0.5">
-                            {stats.parcels_in_hub}
-                        </div>
-                    </div>
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700">
-                        <Package className="w-4 h-4" />
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-lg p-3.5 border border-slate-300 shadow-sm flex items-center justify-between">
-                    <div>
-                        <div className="text-[10px] uppercase font-sans font-bold text-slate-500 tracking-wider">
-                            Self-Pickup Staged
-                        </div>
-                        <div className="text-xl font-bold font-sans text-slate-900 mt-0.5">
-                            {stats.ready_pickup}
-                        </div>
-                    </div>
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700">
-                        <Boxes className="w-4 h-4" />
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-lg p-3.5 border border-slate-300 shadow-sm flex items-center justify-between">
-                    <div>
-                        <div className="text-[10px] uppercase font-sans font-bold text-slate-500 tracking-wider">
-                            Dispatched Today
-                        </div>
-                        <div className="text-xl font-bold font-sans text-[#E00D42] mt-0.5">
-                            {stats.dispatched_today}
-                        </div>
-                    </div>
-                    <div className="w-8 h-8 rounded-lg bg-[#FDF2F4] border border-[#FCE7EA] flex items-center justify-center text-[#E00D42]">
-                        <ScanLine className="w-4 h-4" />
-                    </div>
-                </div>
-            </div>
-
-            {pendingOriginIntake.length > 0 && (
-                <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-5 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
-                        <div>
-                            <h3 className="text-sm font-bold text-amber-950 font-sans flex items-center gap-2">
-                                <Clock className="w-4 h-4" />
-                                Awaiting origin hub intake
-                            </h3>
-                            <p className="text-xs text-amber-900/80 mt-0.5">
-                                Pickup riders have collected these parcels. Scan each waybill when it physically reaches {activeHub?.name}.
-                            </p>
-                        </div>
-                        <span className="text-xs font-bold text-amber-950 whitespace-nowrap">
-                            {pendingOriginIntake.length} waiting
-                        </span>
-                    </div>
-                    <div className="space-y-2">
-                        {pendingOriginIntake.map((parcel) => (
-                            <button
-                                type="button"
-                                key={parcel.id}
-                                onClick={() => {
-                                    setBarcodeInput(parcel.tracking_number);
-                                    barcodeInputRef.current?.focus();
-                                }}
-                                className="w-full text-left bg-white border border-amber-200 rounded-lg px-3 py-2 hover:border-[#E00D42] transition"
-                            >
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
-                                    <div>
-                                        <div className="text-xs font-bold text-slate-900 font-sans">{parcel.tracking_number}</div>
-                                        <div className="text-[11px] text-slate-600 mt-0.5">
-                                            {parcel.item_names.join(', ') || 'Parcel contents not listed'} · Pickup rider: {parcel.rider_name}
-                                        </div>
-                                    </div>
-                                    <div className="text-[10px] text-slate-500 whitespace-nowrap">{parcel.updated_at}</div>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Navigation Tabs (Style Guide Standard 2px Rectangular) */}
-            <div className="flex border-b border-slate-300 mb-5 gap-1 font-sans text-xs">
+            {/* Scanner views */}
+            <div role="group" aria-label="Scanner views" className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-300 font-sans text-xs [&>button]:shrink-0">
                 <button
                     type="button"
                     onClick={() => setActiveTab('scan')}
+                    aria-pressed={activeTab === 'scan'}
                     className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 -mb-px ${
                         activeTab === 'scan'
                             ? 'border-[#E00D42] text-[#E00D42] bg-white'
@@ -384,13 +298,14 @@ export default function ScanStation({
                     }`}
                 >
                     <ScanLine className="w-4 h-4" />
-                    <span>Intake & Sort Station</span>
+                    <span>Scan parcels</span>
                 </button>
 
                 {activeHub && (activeHub.allows_self_pickup || counterTotal > 0) && (
                     <button
                         type="button"
                         onClick={() => setActiveTab('counter')}
+                        aria-pressed={activeTab === 'counter'}
                         className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 -mb-px ${
                             activeTab === 'counter'
                                 ? 'border-[#E00D42] text-[#E00D42] bg-white'
@@ -398,7 +313,7 @@ export default function ScanStation({
                         }`}
                     >
                         <Boxes className="w-4 h-4" />
-                        <span>Counter Release Desk</span>
+                        <span>Counter queue</span>
                         {counterTotal > 0 && (
                             <span className="px-1.5 py-0.2 bg-slate-100 text-slate-800 text-[10px] rounded-lg border border-slate-300 font-sans font-bold">
                                 {counterTotal}
@@ -410,6 +325,7 @@ export default function ScanStation({
                 <button
                     type="button"
                     onClick={() => setActiveTab('logs')}
+                    aria-pressed={activeTab === 'logs'}
                     className={`flex items-center gap-2 px-4 py-2.5 font-bold transition border-b-2 -mb-px ${
                         activeTab === 'logs'
                             ? 'border-[#E00D42] text-[#E00D42] bg-white'
@@ -417,7 +333,7 @@ export default function ScanStation({
                     }`}
                 >
                     <Clock className="w-4 h-4" />
-                    <span>Station Audit Log</span>
+                    <span>Scan history</span>
                 </button>
             </div>
 
@@ -689,6 +605,95 @@ export default function ScanStation({
                     </div>
                 </div>
             )}
+            <section className="mt-6" aria-label="Station counts and expected arrivals">
+            {/* Quick KPI Overview Bar (Minimalist Architectural Stats) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                <div className="bg-white rounded-lg p-3.5 border border-slate-300 shadow-sm flex items-center justify-between">
+                    <div>
+                        <div className="text-[10px] uppercase font-sans font-bold text-slate-500 tracking-wider">
+                            Parcels in Station
+                        </div>
+                        <div className="text-xl font-bold font-sans text-slate-900 mt-0.5">
+                            {stats.parcels_in_hub}
+                        </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700">
+                        <Package className="w-4 h-4" />
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg p-3.5 border border-slate-300 shadow-sm flex items-center justify-between">
+                    <div>
+                        <div className="text-[10px] uppercase font-sans font-bold text-slate-500 tracking-wider">
+                            Self-Pickup Staged
+                        </div>
+                        <div className="text-xl font-bold font-sans text-slate-900 mt-0.5">
+                            {stats.ready_pickup}
+                        </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700">
+                        <Boxes className="w-4 h-4" />
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg p-3.5 border border-slate-300 shadow-sm flex items-center justify-between">
+                    <div>
+                        <div className="text-[10px] uppercase font-sans font-bold text-slate-500 tracking-wider">
+                            Dispatched Today
+                        </div>
+                        <div className="text-xl font-bold font-sans text-[#E00D42] mt-0.5">
+                            {stats.dispatched_today}
+                        </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-lg bg-[#FDF2F4] border border-[#FCE7EA] flex items-center justify-center text-[#E00D42]">
+                        <ScanLine className="w-4 h-4" />
+                    </div>
+                </div>
+            </div>
+
+            {pendingOriginIntake.length > 0 && (
+                <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-5 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+                        <div>
+                            <h3 className="text-sm font-bold text-amber-950 font-sans flex items-center gap-2">
+                                <Clock className="w-4 h-4" />
+                                Awaiting origin hub intake
+                            </h3>
+                            <p className="text-xs text-amber-900/80 mt-0.5">
+                                Pickup riders have collected these parcels. Scan each waybill when it physically reaches {activeHub?.name}.
+                            </p>
+                        </div>
+                        <span className="text-xs font-bold text-amber-950 whitespace-nowrap">
+                            {pendingOriginIntake.length} waiting
+                        </span>
+                    </div>
+                    <div className="space-y-2">
+                        {pendingOriginIntake.map((parcel) => (
+                            <button
+                                type="button"
+                                key={parcel.id}
+                                onClick={() => {
+                                    setBarcodeInput(parcel.tracking_number);
+                                    barcodeInputRef.current?.focus();
+                                }}
+                                className="w-full text-left bg-white border border-amber-200 rounded-lg px-3 py-2 hover:border-[#E00D42] transition"
+                            >
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                                    <div>
+                                        <div className="text-xs font-bold text-slate-900 font-sans">{parcel.tracking_number}</div>
+                                        <div className="text-[11px] text-slate-600 mt-0.5">
+                                            {parcel.item_names.join(', ') || 'Parcel contents not listed'} · Pickup rider: {parcel.rider_name}
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 whitespace-nowrap">{parcel.updated_at}</div>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            </section>
         </DashboardLayout>
     );
 }

@@ -134,7 +134,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
             <HubPageHeader title="Parcels & waybills" icon={Package} description="Find a parcel, check who holds it and take its next permitted action." actions={canScan && <PortalLink href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`} className={hubPrimary}><ScanLine className="h-4 w-4" />Open scanner</PortalLink>} />
             <p role="status" className={busy ? 'text-sm text-slate-600' : 'sr-only'}>{busy ? 'Updating parcel records…' : ''}</p>
             {readError && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{readError}</p>}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[
                 { label: 'Facility queue', value: counts.all, Icon: Package },
                 { label: 'Recorded hub custody', value: counts.in_hub, Icon: MapPin },
                 { label: 'Counter queue', value: counts.ready_pickup, Icon: Store },
