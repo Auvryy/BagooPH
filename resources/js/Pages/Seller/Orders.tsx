@@ -1098,8 +1098,8 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 </div>
                             </div>
 
-                            <p className="text-xs text-slate-700"><strong>Declared product weight:</strong> {declaredParcelWeight(selectedOrderForWaybill.order.items ?? []) ? `${declaredParcelWeight(selectedOrderForWaybill.order.items ?? [])} kg` : 'Not recorded'}</p>
-                            <ShippingCalculation calculation={selectedOrderForWaybill.order.shipping_quote} selfPickup={selectedOrderForWaybill.order.delivery_type === 'hub_self_pickup'} />
+                            {!selectedOrderForWaybill.order.shipping_quote && <p className="text-xs text-slate-700"><strong>Declared product weight:</strong> {declaredParcelWeight(selectedOrderForWaybill.order.items ?? []) ? `${declaredParcelWeight(selectedOrderForWaybill.order.items ?? [])} kg` : 'Not recorded'}</p>}
+                            <ShippingCalculation calculation={selectedOrderForWaybill.order.shipping_quote} selfPickup={selectedOrderForWaybill.order.delivery_type === 'hub_self_pickup'} showMeasurements />
                             {/* Package Breakdown */}
                             <div className="space-y-1 text-[11px]">
                                 <span className="text-[9px] font-bold text-slate-400 uppercase block font-sans">PACKAGE CONTENTS:</span>

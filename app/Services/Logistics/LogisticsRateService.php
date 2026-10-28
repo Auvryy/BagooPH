@@ -16,11 +16,17 @@ class LogisticsRateService
         $actual = 0;
         $volume = 0;
         $unknown = [];
+        $measurements = [];
         foreach ($items as $item) {
             $product = $item->product;
             $quantity = (int) $item->quantity;
             $actual += (int) round((float) $product->weight_kg * 1000) * $quantity;
             $dimensions = [$product->length_cm, $product->width_cm, $product->height_cm];
+            $measurements[] = [
+                'product_id' => $product->id, 'product_name' => $product->name, 'quantity' => $quantity,
+                'unit_weight_kg' => $product->weight_kg,
+                'length_cm' => $product->length_cm, 'width_cm' => $product->width_cm, 'height_cm' => $product->height_cm,
+            ];
             if (! $product->weight_kg || collect($dimensions)->contains(fn ($value) => ! is_numeric($value) || (float) $value <= 0)) {
                 $unknown[] = (int) $product->id;
             }
@@ -46,6 +52,7 @@ class LogisticsRateService
             'shipping_cents' => $base + $extraKilograms * $additional,
             'earnings_model' => $company?->shipping_earnings_model ?? 'dedicated_fleet',
             'missing_measurement_product_ids' => array_values(array_unique($unknown)),
+            'measurements' => $measurements,
         ];
     }
 

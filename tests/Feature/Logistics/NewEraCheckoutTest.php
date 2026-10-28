@@ -13,6 +13,7 @@ use App\Services\Logistics\LogisticsCheckoutService;
 use App\Services\Orders\CheckoutQuoteService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia;
 use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
 
@@ -54,10 +55,19 @@ class NewEraCheckoutTest extends TestCase
         $this->assertSame(1000, $order->shipping_quote['actual_weight_grams']);
         $this->assertSame(10000, $order->shipping_quote['volumetric_weight_grams']);
         $this->assertSame(10000, $order->shipping_quote['billable_weight_grams']);
+        $measurements = $order->shipping_quote['measurements'];
+        $this->assertSame(['70.00', '50.00', '10.00', '1.00', 1], [
+            $measurements[0]['length_cm'], $measurements[0]['width_cm'], $measurements[0]['height_cm'],
+            $measurements[0]['unit_weight_kg'], $measurements[0]['quantity'],
+        ]);
         $this->assertSame($company->id, $order->delivery->logistics_company_id);
         $this->assertSame(['BH-LBN-01', 'MH-LAG-01', 'BH-SCZ-01'], array_column($order->shipping_quote['route'], 'code'));
         $before = [$order->getAttributes(), $order->delivery->getAttributes()];
         $company->update(['base_shipping_cents' => 12000, 'additional_kg_cents' => 3000, 'tariff_version' => 2]);
+        $product->update(['length_cm' => '10.00', 'weight_kg' => '2.00']);
+        $this->assertSame($measurements, $order->fresh()->shipping_quote['measurements']);
+        $this->actingAs($product->shop->user)->get('/seller/orders')->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('orders.data.0.shipping_quote.measurements.0.length_cm', '70.00'));
         $this->assertSame($before, [$order->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes()]);
         $this->assertSame(19, $product->fresh()->stock);
     }

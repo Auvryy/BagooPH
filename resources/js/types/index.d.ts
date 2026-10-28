@@ -282,6 +282,7 @@ export interface ShippingCalculation {
     additional_kilograms: number;
     included_weight_grams: number;
     missing_measurement_product_ids: number[];
+    measurements?: { product_id: number | null; product_name: string | null; quantity: number; unit_weight_kg: string | null; length_cm: string | null; width_cm: string | null; height_cm: string | null }[];
     route?: { id: number; code: string; name: string; tier: string }[];
     same_hub_bypass?: boolean;
 }
