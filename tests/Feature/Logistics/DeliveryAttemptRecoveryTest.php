@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
@@ -60,6 +61,9 @@ class DeliveryAttemptRecoveryTest extends TestCase
         $this->assertCount(1, Storage::disk('local')->allFiles());
         $handler = $this->flowHandler(LogisticsHub::findOrFail($delivery->destination_bayan_hub_id));
         $this->actingAs($handler)->get($hub.'/delivery-attempts/'.$attempt->id.'/proof')->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $this->get($hub.'/delivery-recovery')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('deliveries.data.0.atHub', false)
+            ->where('deliveries.data.0.guidance.custodian', fn ($holder) => str_contains($holder, $rider->name)));
         $this->actingAs($this->createApprovedUser('logistics'))->get($hub.'/delivery-attempts/'.$attempt->id.'/proof')->assertForbidden();
     }
 

@@ -8,6 +8,7 @@ use App\Models\DeliveryAttempt;
 use App\Models\DeliveryRecoveryEvent;
 use App\Models\User;
 use App\Services\Logistics\DeliveryRecoveryService;
+use App\Services\Logistics\HubParcelWorkstationService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
@@ -27,12 +28,13 @@ class DeliveryRecoveryController extends Controller
         $parcels = Delivery::whereIn('destination_bayan_hub_id', $hubs)
             ->whereHas('destinationBayanHub', fn ($hub) => $hub->whereColumn('logistics_hubs.logistics_company_id', 'deliveries.logistics_company_id'))
             ->whereRaw("deliveries.status in ('delivery_failed', 'return_to_sender')")
-            ->with(['order', 'destinationBayanHub'])->latest('id')->paginate(20);
+            ->with(['order', 'destinationBayanHub', 'currentHub', 'courier', 'assignedRider', 'latestCustodyCheckpoint'])->latest('id')->paginate(20);
         $parcels->through(function (Delivery $delivery) use ($request, $eligibility) {
             $attempts = DeliveryAttempt::where('delivery_id', $delivery->id)->orderBy('attempt_number')->get();
 
             return ['id' => $delivery->id, 'trackingNumber' => $delivery->tracking_number, 'status' => $delivery->status,
                 'hubName' => $delivery->destinationBayanHub?->name, 'atHub' => $delivery->current_hub_id === $delivery->destination_bayan_hub_id,
+                'guidance' => app(HubParcelWorkstationService::class)->guidance($delivery, $delivery->currentHub ?? $delivery->destinationBayanHub, $request->user(), collect(), $request->is('hub/*') ? '/hub' : ''),
                 'canReview' => $request->user()->isLogistics() && $eligibility->isCompanyManager($request->user(), $delivery->logistics_company_id),
                 'attempts' => $attempts->map(fn (DeliveryAttempt $attempt) => [
                     'id' => $attempt->id, 'reference' => $attempt->reference, 'number' => $attempt->attempt_number,
