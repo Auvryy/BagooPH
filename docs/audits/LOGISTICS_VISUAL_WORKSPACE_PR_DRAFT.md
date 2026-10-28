@@ -17,7 +17,8 @@ cards, scan-first controls and transfer progress.
 Phone navigation contains keyboard focus. Counter verification has linked labels,
 44px controls and a reachable footer. Buyer returns expose prepared/arrival
 transfers and explain original-route staging and seller receipt. Recovery displays
-the actual observation hub separately from the intended destination. Supervised
+the actual observation hub separately from the intended destination and retains
+recorded rider/recipient custody after recovery. Supervised
 local handovers accept only their frozen one-hub checkout route and reviewed
 quote, preserving independent receipt, original evidence and legacy/regional guards.
 
@@ -32,7 +33,8 @@ Validation:
   resource decisions/history and populated exception/detail controls.
 - 107 affected frontend checks and the TypeScript/Vite production build passed.
   Latest isolated PHP groups passed 69/5,982 and 51/6,746; return custody passed
-  16/1,642. These selections overlap and are not additive full-suite totals.
+  16/1,642. The final rider/recipient display change passed its actual journey
+  separately (1/244). These selections overlap and are not additive full-suite totals.
 - PHP formatting and Git whitespace checks passed. The final browser is parked
   with zero tabs and no captured unexpected JavaScript/server errors.
 

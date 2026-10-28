@@ -67,6 +67,8 @@ destination intake status and bind the reviewed quote/path to authorization.
 Legacy/regional recovery and terminal/holder/receipt guards remain covered.
 Visual review then caught the observed-hub label using the intended destination;
 both worklist and detail now use the facility on the immutable observation.
+A final delivered-case screenshot exposed a missing rider/recipient custody label;
+those stages now describe the actual retained final-mile and recipient evidence.
 
 A host restart lost an earlier memory runtime. Its screenshots/checkpoints were
 archived and its database records are not represented as current records. The
@@ -74,7 +76,7 @@ final runtime was rebuilt from isolated fixtures and the journeys above complete
 through actual controls. Earlier native-date filling, hidden-dialog assertions,
 phone-normalization expectations and unscoped duplicate map markers interrupted
 automation; the corrected harness verified actual saved outcomes. These were not
-silently counted as successful submissions. The current run has **63 passing
+silently counted as successful submissions. The current run has **64 passing
 checkpoints** and **zero captured unexpected JavaScript/server errors**; checkpoints
 are observations, not independent unit tests.
 
@@ -85,7 +87,10 @@ are observations, not independent unit tests.
   0.5 CPU / 1,536MB and a 1,024MB Node heap. Only PHP display/recovery changes followed.
 - Local/legacy handover and version-two flow selection: **69 passed / 5,982 assertions**.
 - Final parcel-recovery selection: **51 passed / 6,746 assertions**, including the
-  actual observed/expected facility in list and detail.
+  actual observed/expected facility in list and detail. The subsequent custody-copy
+  refinement passed its actual recovery-to-delivery case separately: **1 test /
+  244 assertions**, checking both rider and recipient page payloads. The 51-case
+  group was not repeated after that narrow formatter change.
 - Return-custody selection: **16 passed / 1,642 assertions**, including root and
   hub-subdomain prepared-transfer links and buyer-link exclusion.
 - Earlier foundation/page/company/actual-holder selections passed 22/574,
@@ -143,3 +148,5 @@ is reported separately when created.
 | `d66b629` | fix(logistics): make counter verification easier to use |
 | `29b02ed` | fix(logistics): retain local routes during supervised recovery |
 | `2a460fa` | fix(logistics): show the actual observed recovery hub |
+| `d54d1d4` | docs: finish logistics workspace acceptance handoff |
+| `f2d3b44` | fix(logistics): retain rider and recipient custody labels |

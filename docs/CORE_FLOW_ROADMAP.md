@@ -116,12 +116,14 @@ of the actual scan hub. Supervised handover now supports version-two local route
 only with the original eligible one-hub checkout path/quote and independent actual
 receipt. Terminal, tenant, holder, replay and Mother-route checks remain covered.
 Implementation commits `d66b629` (counter), `29b02ed` (local recovery) and `2a460fa`
-(observed hub) retain these final corrections; earlier commits are in the review.
+(observed hub) and `f2d3b44` (rider/recipient custody labels) retain these final corrections; earlier commits are in the review.
 
 The affected frontend selection passed **107 cases** and the TypeScript/Vite
 production build passed with typing retained and bounded CPU/memory. Only PHP
 changes followed that asset build. Latest isolated PHP groups passed **69 tests /
-5,982 assertions** and **51 / 6,746**; return custody passed **16 / 1,642**. Earlier
+5,982 assertions** and **51 / 6,746**. The final rider/recipient formatter refinement then passed its
+actual recovery-to-delivery case separately (**1 / 244**); the 51-case group was
+not repeated after that narrow copy change. Return custody passed **16 / 1,642**. Earlier
 22/574, 78/10,651 and 5/627 selections overlap; they are not additive full-suite
 totals. PHP formatting and Git whitespace checks passed. A full unrelated suite
 was not rerun, and no development/production PostgreSQL reset was used.
@@ -2213,7 +2215,7 @@ production database was migrated, reset or seeded.
 | Initial BS02 workspaces plus account-settings contract retest | 44 tests, 1,125 assertions, passing |
 | Complete regression run | 2,904 tests, 58,588 assertions; one obsolete order-array assertion, zero errors or skips |
 | Final buyer/seller, settings, financial oversight and normal hub-to-completion regression | 521 tests, 9,944 assertions, passing |
-| Frontend checks, including grouped cards, counts, receipts and restricted history | 63 passing |
+| Frontend checks, including grouped cards, counts, receipts and restricted history | 64 passing |
 | Production TypeScript/Vite build | Passing through `docker compose exec -T app npm run build` |
 | Scoped PHP formatting and Git whitespace check | Passing |
 
