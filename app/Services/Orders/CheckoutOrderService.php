@@ -19,6 +19,7 @@ use App\Services\Commerce\InventoryService;
 use App\Services\Commerce\PhilippineAddressCatalog;
 use App\Services\Commerce\ProductSkuService;
 use App\Services\Commerce\SalePriceService;
+use App\Services\Logistics\LogisticsCheckoutService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
@@ -129,9 +130,10 @@ class CheckoutOrderService
             }
 
             $shopGroups = $items->groupBy(fn (CartItem $item) => $item->product->shop_id)->sortKeys();
+            $company = app(LogisticsCheckoutService::class)->select($items, $data, $data['logistics_company_id']);
             $deliveryType = $data['delivery_type'] ?? 'doorstep';
             $revisions = app(VoucherSelectionService::class)->resolve($data, $items, lock: true);
-            $quote = app(CheckoutQuoteService::class)->quote($items, $deliveryType, $revisions, $buyer);
+            $quote = app(CheckoutQuoteService::class)->quote($items, $deliveryType, $revisions, $buyer, $company);
             // A clock boundary can change prices after the earlier check, even while rows stay locked.
             $submissions->assertCurrentPrices($cart, $confirmationToken, $items);
             if ($quote['voucher_error']) {
@@ -147,6 +149,8 @@ class CheckoutOrderService
                 $discount = $discounts->get($shopId, 0.0);
 
                 $order = Order::create([
+                    'logistics_flow_version' => 2,
+                    'shipping_quote' => $amounts['shipping_quote'],
                     'order_number' => 'BGO-'.strtoupper(Str::random(8)),
                     'buyer_id' => $buyer->id,
                     'voucher_id' => $discount > 0 && $revisions->count() === 1 ? $revisions->first()->voucher_id : null,
@@ -197,6 +201,7 @@ class CheckoutOrderService
                 }
 
                 $delivery = Delivery::create([
+                    'logistics_company_id' => $company->id,
                     'order_id' => $order->id,
                     'tracking_number' => 'BGO-'.strtoupper(Str::random(10)),
                     'delivery_type' => $deliveryType,

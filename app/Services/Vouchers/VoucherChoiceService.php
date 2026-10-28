@@ -3,6 +3,7 @@
 namespace App\Services\Vouchers;
 
 use App\Exceptions\CheckoutException;
+use App\Models\LogisticsCompany;
 use App\Models\User;
 use App\Models\VoucherRevision;
 use App\Services\Orders\CheckoutQuoteService;
@@ -17,20 +18,20 @@ class VoucherChoiceService
 
     public const MAX_COMBINATIONS = 4096;
 
-    public function options(User $buyer, Collection $items, string $deliveryType, array $input, ?int $shopId): array
+    public function options(User $buyer, Collection $items, string $deliveryType, array $input, ?int $shopId, ?LogisticsCompany $company = null): array
     {
         if ($shopId !== null && ! $items->pluck('product.shop_id')->contains($shopId)) {
             throw new CheckoutException('This voucher is not for the selected shop items.');
         }
-        $selected = app(VoucherPreviewService::class)->preview($buyer, $items, $deliveryType, $input)['revisions'];
+        $selected = app(VoucherPreviewService::class)->preview($buyer, $items, $deliveryType, $input, $company)['revisions'];
         $query = VoucherRevision::with(['voucher', 'balance', 'shop:id,name,slug',
             'savedVouchers' => fn ($q) => $q->where('buyer_id', $buyer->id)])
             ->where('issuer_type', $shopId === null ? 'platform' : 'shop')->where('shop_id', $shopId)
             ->where(fn (Builder $q) => $q->whereHas('voucher', fn (Builder $v) => $v->whereColumn('current_revision_id', 'voucher_revisions.id'))
                 ->orWhereHas('savedVouchers', fn (Builder $s) => $s->where('buyer_id', $buyer->id)));
-        $offers = $query->orderByDesc('id')->paginate(12, ['*'], 'voucher_page')->through(function ($revision) use ($selected, $items, $deliveryType, $buyer) {
+        $offers = $query->orderByDesc('id')->paginate(12, ['*'], 'voucher_page')->through(function ($revision) use ($selected, $items, $deliveryType, $buyer, $company) {
             $candidates = $selected->reject(fn ($r) => $r->issuer_type === $revision->issuer_type && $r->shop_id === $revision->shop_id)->push($revision);
-            $quote = app(CheckoutQuoteService::class)->quote($items, $deliveryType, $candidates, $buyer);
+            $quote = app(CheckoutQuoteService::class)->quote($items, $deliveryType, $candidates, $buyer, $company);
             $saving = collect($quote['redemptions'])->firstWhere('revision_id', $revision->id)['discount_cents'] ?? 0;
 
             return [...app(CheckoutQuoteService::class)->present($revision), 'saved_id' => $revision->savedVouchers->first()?->id,
@@ -41,7 +42,7 @@ class VoucherChoiceService
     }
 
     /** Enumerate every bounded allowed combination; never truncate and label a partial search best. */
-    public function best(User $buyer, Collection $items, string $deliveryType): array
+    public function best(User $buyer, Collection $items, string $deliveryType, ?LogisticsCompany $company = null): array
     {
         $quotes = app(CheckoutQuoteService::class);
         $query = $quotes->availableQuery($items, $buyer);
@@ -72,12 +73,12 @@ class VoucherChoiceService
             $offer->setAttribute('quote_shop_eligible', $offer->issuer_type === 'platform' || app(ShopEligibilityService::class)->isEligible($offer->shop));
         }
         $best = collect();
-        $bestQuote = $quotes->quote($items, $deliveryType);
+        $bestQuote = $quotes->quote($items, $deliveryType, buyer: $buyer, company: $company);
         $bestSaving = 0;
         $checked = 0;
         foreach ($this->combinations($slots) as $selection) {
             $checked++;
-            $quote = $quotes->quote($items, $deliveryType, $selection, $buyer);
+            $quote = $quotes->quote($items, $deliveryType, $selection, $buyer, $company);
             $saving = array_sum(array_column($quote['redemptions'], 'discount_cents'));
             if ($quote['voucher_error'] === null && ($saving > $bestSaving || ($saving === $bestSaving && $this->tie($selection, $best) < 0))) {
                 $best = $selection;
