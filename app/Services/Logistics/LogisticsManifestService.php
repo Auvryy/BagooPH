@@ -12,6 +12,8 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsManifestParcel;
+use App\Models\MotherBag;
+use App\Models\MotherBagParcel;
 use App\Models\Order;
 use App\Models\ParcelRecoveryCase;
 use App\Models\User;
@@ -143,7 +145,7 @@ class LogisticsManifestService
         });
     }
 
-    public function command(LogisticsManifest $snapshot, User $actor, string $action, array $input): array
+    public function command(LogisticsManifest $snapshot, User $actor, string $action, array $input, ?MotherBag $bagContext = null): array
     {
         $snapshot = LogisticsManifest::findOrFail($snapshot->id);
         $actor = User::findOrFail($actor->id);
@@ -168,7 +170,7 @@ class LogisticsManifestService
             throw ValidationException::withMessages(['action' => 'Choose a supported manifest action.']);
         }
         $candidate = in_array($action, ['load', 'receive'], true) ? $this->parcelForBarcode($input['barcode']) : null;
-        $fingerprint = $this->fingerprint(['action' => $action, ...$input]);
+        $fingerprint = $this->fingerprint(['action' => $action, ...$input, ...($bagContext ? ['mother_bag_id' => $bagContext->id] : [])]);
         if ($snapshot->direction === 'recovery') {
             $case = ParcelRecoveryCase::findOrFail($snapshot->parcel_recovery_case_id);
             $parcel = Delivery::findOrFail($case->delivery_id);
@@ -178,7 +180,7 @@ class LogisticsManifestService
             }
         }
 
-        return DB::transaction(function () use ($snapshot, $actor, $action, $input, $candidate, $fingerprint) {
+        return DB::transaction(function () use ($snapshot, $actor, $action, $input, $candidate, $fingerprint, $bagContext) {
             $initialIds = $snapshot->parcels()->orderBy('delivery_id')->pluck('delivery_id')->all();
             $heldManifestIds = app(HandoverHoldService::class)->manifestParcelIds($snapshot);
             $deliveryIds = collect([...$initialIds, ...$heldManifestIds, $candidate?->id])->filter()->unique()->sort()->values();
@@ -229,6 +231,11 @@ class LogisticsManifestService
                 case 'load':
                     $this->requireStatus($manifest, 'draft');
                     $delivery = $deliveries->get($candidate->id);
+                    $bagMember = MotherBagParcel::where('active_delivery_id', $candidate->id)->with('bag')->first();
+                    if ($manifest->direction !== 'recovery' && $bagMember && (! $bagContext || $bagMember->mother_bag_id !== $bagContext->id
+                        || $bagMember->bag->manifest_id !== $manifest->id || $bagMember->bag->status !== 'sealed')) {
+                        throw new DomainException('This parcel is inside a sealed Mother Bag. Load its master tag from Mother Bags.');
+                    }
                     if ($manifest->direction === 'recovery' && ($candidate->id !== $recovery?->delivery_id || $manifest->recovery_leg_index !== $recovery->leg_index)) {
                         throw new DomainException('A recovery manifest may carry only the parcel and leg from its original recovery case.');
                     }
@@ -248,6 +255,9 @@ class LogisticsManifestService
                             'source_state' => DeliveryCheckpoint::state($delivery), 'included' => true]);
                     }
                     $payload = ['delivery_id' => $delivery->id, 'custody' => DeliveryCheckpoint::lastCustody($delivery)];
+                    if ($bagContext) {
+                        $payload += ['mother_bag_id' => $bagContext->id, 'master_barcode_scanned' => $bagContext->master_barcode_scanned];
+                    }
                     break;
                 case 'remove':
                     $this->requireStatus($manifest, 'draft');
@@ -256,11 +266,16 @@ class LogisticsManifestService
                     if (! $parcel) {
                         throw new DomainException('Choose a parcel currently included in this draft.');
                     }
+                    $packedMember = MotherBagParcel::where('active_delivery_id', $parcel->delivery_id)->first();
+                    if ($manifest->direction !== 'recovery' && $packedMember && (! $bagContext || $packedMember->mother_bag_id !== $bagContext->id || $bagContext->manifest_id !== $manifest->id)) {
+                        throw new DomainException('A loaded bag keeps its complete sealed membership. Correct the bag before preparing another manifest.');
+                    }
                     $parcel->update(['included' => false, 'active_delivery_id' => null]);
                     break;
                 case 'seal':
                     $this->requireStatus($manifest, 'draft');
                     $this->verifyList($manifest, $deliveries);
+                    app(MotherBagService::class)->assertManifest($manifest, $deliveries->only($manifest->parcels()->where('included', true)->pluck('delivery_id')->all()));
                     $manifest->fill(['status' => 'sealed', 'sealed_at' => now()]);
                     break;
                 case 'reopen':
@@ -271,6 +286,7 @@ class LogisticsManifestService
                 case 'dispatch':
                     $this->requireStatus($manifest, 'sealed');
                     $this->verifyList($manifest, $deliveries);
+                    app(MotherBagService::class)->assertManifest($manifest, $deliveries->only($manifest->parcels()->where('included', true)->pluck('delivery_id')->all()));
                     $vehicle = $this->vehicle($manifest->logistics_company_id, $manifest->source_hub_id, $manifest->vehicle_id, $manifest->driver_id, newWork: true, legType: $manifest->type);
                     if (LogisticsManifest::where('status', 'dispatched')->whereKeyNot($manifest->id)
                         ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->orWhere('driver_id', $manifest->driver_id))->exists()) {
@@ -295,6 +311,7 @@ class LogisticsManifestService
                         }
                         $payload['parcels'][] = ['delivery_id' => $updated->id, 'scan_reference' => $scan->reference];
                     }
+                    app(MotherBagService::class)->departed($manifest, $actor);
                     break;
                 case 'receive':
                     $this->requireStatus($manifest, 'dispatched');
@@ -316,6 +333,7 @@ class LogisticsManifestService
                         $this->requireNotes($input);
                     }
                     $this->verifyRecordedLeg($manifest, $parcel);
+                    app(MotherBagService::class)->assertReceipt($manifest, $delivery);
                     $hubId = $manifest->destination_hub_id;
                     $parcel->update(['received_at' => now(), 'received_by_id' => $actor->id, 'receipt_condition' => 'intact']);
                     if (! $manifest->parcels()->where('included', true)->whereNull('received_at')->exists()) {
@@ -334,6 +352,7 @@ class LogisticsManifestService
                         ]);
                     }
                     $payload = ['physical_scan_reference' => $scan->reference];
+                    app(MotherBagService::class)->received($manifest, $delivery, $actor, $input['barcode']);
                     break;
                 case 'report-discrepancy':
                     $this->requireArriving($manifest);

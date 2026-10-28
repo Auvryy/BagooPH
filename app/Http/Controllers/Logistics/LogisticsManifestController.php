@@ -8,6 +8,7 @@ use App\Models\Delivery;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
+use App\Models\MotherBag;
 use App\Models\User;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\HandoverIssueService;
@@ -64,6 +65,8 @@ class LogisticsManifestController extends Controller
             $readableRecoveryIds = app(ParcelRecoveryService::class)->observations($actor)
                 ->whereIn('id', $discrepancies->pluck('id'))->pluck('id')->all();
             $detail = $this->summary($selected) + [
+                'motherBags' => MotherBag::where('manifest_id', $selected->id)->orderBy('created_at')
+                    ->get(['id', 'reference', 'seal_number', 'status']),
                 'reviewedHold' => app(HandoverHoldService::class)->manifestParcelIds($selected) !== [],
                 'canManage' => $this->service->canManageAtHub($actor, $source),
                 'canClose' => $this->service->canManageAtHub($actor, $destination),

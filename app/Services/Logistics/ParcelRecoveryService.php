@@ -42,6 +42,7 @@ class ParcelRecoveryService
             ->whereIn('payload->kind', ['extra', 'wrong_hub'])->where(function ($query) use ($manifests, $handlerHubs) {
                 $query->whereIn('manifest_id', $manifests->select('id'));
                 if ($handlerHubs) {
+                    $query->orWhereIn('hub_id', $handlerHubs);
                     $query->orWhereHas('recoveryCase', function ($cases) use ($handlerHubs) {
                         $cases->where(function ($scope) use ($handlerHubs) {
                             foreach ($handlerHubs as $hubId) {
@@ -88,8 +89,11 @@ class ParcelRecoveryService
             ->where('tracking_number', $observation->barcode_scanned)->first();
         $member = $delivery ? LogisticsManifestParcel::with('manifest')->where('active_delivery_id', $delivery->id)->where('included', true)->whereNull('received_at')->first() : null;
         $original = $member?->manifest;
+        $scannerMisroute = ($observation->payload['scanner_misroute'] ?? false) === true
+            && $observation->payload['delivery_id'] === $delivery?->id
+            && $observation->hub_id !== $observedManifest->destination_hub_id;
         $checkpoint = $delivery?->checkpoints()->whereNull('source_checkpoint_id')->whereNotNull('custody_after')->latest('id')->first();
-        if (! $delivery || ! $original || $original->id === $observedManifest->id || $original->direction === 'recovery'
+        if (! $delivery || ! $original || ($original->id === $observedManifest->id && ! $scannerMisroute) || $original->direction === 'recovery'
             || $original->logistics_company_id !== $observedManifest->logistics_company_id || $original->status !== 'dispatched'
             || $delivery->status !== app(LogisticsManifestService::class)->transitStatus($original)
             || $delivery->current_hub_id !== null || ! $checkpoint
@@ -106,18 +110,27 @@ class ParcelRecoveryService
         $observed = LogisticsHub::eligible()->where('logistics_company_id', $delivery->logistics_company_id)->find($observation->hub_id);
         $expected = LogisticsHub::eligible()->where('logistics_company_id', $delivery->logistics_company_id)->find($original->destination_hub_id);
         $source = LogisticsHub::eligible()->where('logistics_company_id', $delivery->logistics_company_id)->find($original->source_hub_id);
-        if (! $observed || ! $expected || ! $source || $observation->hub_id !== $observedManifest->destination_hub_id) {
+        if (! $observed || ! $expected || ! $source || (! $scannerMisroute && $observation->hub_id !== $observedManifest->destination_hub_id)) {
             throw new DomainException('The observed facility and original route facilities must be active in this company.');
         }
         $hubs = [$observed->id];
         if ($observed->id !== $expected->id) {
-            if (! $observed->isMotherHub() && ! $expected->isMotherHub()) {
-                if (! $source->isMotherHub()) {
-                    throw new DomainException('This recovery has no recorded Mother Hub for its required transport leg.');
+            if ($scannerMisroute) {
+                $mother = $observed->isMotherHub() ? $observed : app(LogisticsRoutingEngine::class)->resolveMotherHubForBayanHub($observed);
+                $expectedMother = $expected->isMotherHub() ? $expected : app(LogisticsRoutingEngine::class)->resolveMotherHubForBayanHub($expected);
+                if (! $mother || ! $expectedMother) {
+                    throw new DomainException('Configure the observed and expected hub parents before recovering this misroute.');
                 }
-                $hubs[] = $source->id;
+                $hubs = array_values(array_unique([$observed->id, $mother->id, $expectedMother->id, $expected->id]));
+            } else {
+                if (! $observed->isMotherHub() && ! $expected->isMotherHub()) {
+                    if (! $source->isMotherHub()) {
+                        throw new DomainException('This recovery has no recorded Mother Hub for its required transport leg.');
+                    }
+                    $hubs[] = $source->id;
+                }
+                $hubs[] = $expected->id;
             }
-            $hubs[] = $expected->id;
         }
         if ($this->active($delivery)) {
             throw new DomainException('This parcel already has an active recovery case. Continue its original case.');
@@ -407,6 +420,7 @@ class ParcelRecoveryService
             'hub_id' => $hub->id, 'event_type' => 'parcel_received', 'barcode_scanned' => $parcel->tracking_number, 'reason' => $notes,
             'source_state' => $before, 'target_state' => ['delivery_status' => $target], 'payload' => ['parcel_recovery_reference' => $case->reference]]);
         $member->update(['received_at' => now(), 'received_by_id' => $actor->id, 'receipt_condition' => 'intact', 'active_delivery_id' => null]);
+        app(MotherBagService::class)->received($manifest, $parcel, $actor, $parcel->tracking_number);
         if (! $manifest->parcels()->where('included', true)->whereNull('received_at')->exists()) {
             $manifest->fill(['status' => 'received', 'received_at' => now(), 'receiver_id' => $actor->id]);
         }
