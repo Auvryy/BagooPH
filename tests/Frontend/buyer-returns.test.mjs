@@ -119,6 +119,35 @@ test('return custody shows its own code, actual ordered hubs, intake weight and 
     assert.match(expired, /No current drop-off authority/); assert.doesNotMatch(expired, /Bring the approved items|<form/);
 });
 
+test('hub return guidance names the next handler and stages the parcel before asking for seller receipt', async () => {
+    const received = { ...custody, status: 'at_hub', custody: { kind: 'hub' }, current_hub_name: 'Destination Bayan Hub', actions: [] };
+    const onward = await render(ui.Custody, { custody: received, caseId: 11, version: 3 }, 'logistics');
+    assert.match(onward, /Next hub: Mother Hub/);
+    assert.match(onward, /sending handler prepares the next leg/);
+    assert.match(onward, /Open transfers/);
+    assert.ok(onward.indexOf('Next hub: Mother Hub') < onward.indexOf('Barcode and QR for this return'));
+    assert.match(onward, /<details[^>]*><summary[^>]*>Barcode and QR for this return/);
+    const prepared = await render(ui.Custody, { custody: { ...received, manifest_pending: true, manifest_url: '/hub/manifests/5', manifest_reference: 'MFT-ORIGINAL' }, caseId: 11, version: 4 }, 'logistics');
+    assert.match(prepared, /MFT-ORIGINAL is already prepared/);
+    assert.match(prepared, /href="\/hub\/manifests\/5"[^>]*>Continue transfer/);
+    assert.doesNotMatch(prepared, /prepares the next leg|>Open transfers</);
+    const travelling = await render(ui.Custody, { custody: { ...received, custody: { kind: 'manifest' }, status: 'in_transit', current_hub_name: null, manifest_url: '/hub/manifests/5', manifest_reference: 'MFT-ORIGINAL' }, caseId: 11, version: 5 }, 'logistics');
+    assert.match(travelling, /Next: receipt at Mother Hub/);
+    assert.match(travelling, /Mother Hub’s receiving handler/);
+    assert.match(travelling, /href="\/hub\/manifests\/5"[^>]*>Open arrival manifest/);
+    assert.doesNotMatch(travelling, />Open transfers<|>Continue transfer</);
+    const atOrigin = { ...received, position: 2, current_hub_name: 'Origin Bayan Hub', actions: [{ action: 'stage', hub_id: 1, label: 'Stage for seller collection' }] };
+    const staging = await render(ui.Custody, { custody: atOrigin, caseId: 11, version: 6 }, 'logistics');
+    assert.match(staging, /Next: stage for seller collection/);
+    assert.match(staging, /Origin Bayan Hub’s handler stages/);
+    assert.doesNotMatch(staging, /Next: seller records receipt|Open transfers/);
+    const ready = await render(ui.Custody, { custody: { ...atOrigin, status: 'ready_for_seller', actions: [] }, caseId: 11, version: 7 }, 'logistics');
+    assert.match(ready, /Next: seller records receipt/);
+    assert.doesNotMatch(ready, /Next: stage for seller collection|<form/);
+    const buyer = await render(ui.Custody, { custody, caseId: 11, version: 2 });
+    assert.doesNotMatch(buyer, /Barcode and QR for this return|Open transfers/);
+});
+
 test('actual handover validates its separate code and photo, submits the scoped hub and keeps a retry token', async () => {
     const h = globalThis.returnHarness = new Harness();
     try {
