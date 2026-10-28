@@ -6,6 +6,9 @@ import NotificationLink from '@/Components/NotificationLink';
 import PortalLink from '@/Components/PortalLink';
 import CatalogueNavigationNotice from '@/Components/CatalogueNavigationNotice';
 import AdminSidebarNavigation from '@/Components/AdminSidebarNavigation';
+import LogisticsSidebarNavigation from '@/Components/Logistics/SidebarNavigation';
+import '../../css/logistics-workspace.css';
+import { HubPageHeader } from '@/Components/Logistics/Workspace';
 import NavigationAttentionDot from '@/Components/NavigationAttentionDot';
 import { getDomainUrl } from '@/utils/domain';
 import { 
@@ -74,6 +77,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const logisticsCompany = (user as any)?.logisticsCompany;
     const canSwitchHubs = Boolean((user as any)?.canSwitchHubs);
     const canScanParcels = user?.canScanParcels === true;
+    const sharedHubHeading = role === 'logistics' && (component.startsWith('Governance/') || component.startsWith('Handover/') || (component.startsWith('Finance/') && component !== 'Finance/DeliveryEarnings'));
+    const hubPageIcon = component.startsWith('Finance/') ? Banknote : component.startsWith('Handover/') || component.startsWith('Governance/Exception') ? AlertTriangle : component.startsWith('Governance/History') ? ShieldCheck : Settings;
 
     const handleUserMenuEnter = () => {
         if (userMenuTimeoutRef.current) clearTimeout(userMenuTimeoutRef.current);
@@ -321,12 +326,14 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     <div className="p-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
                         <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans flex items-center gap-1">
-                                <Building2 className="w-3 h-3 text-[#E00D42]" /> {canSwitchHubs ? 'Working Facility' : 'Assigned Facility'}
+                                <Building2 className="w-3 h-3 text-[#E00D42]" /> {canSwitchHubs ? 'Viewing facility' : 'Assigned facility'}
                             </span>
                             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-300 uppercase font-sans">
                                 {activeHub ? activeHub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub' : 'No facility'}
                             </span>
                         </div>
+
+                        {canSwitchHubs && !canScanParcels && <p className="mb-2 text-[10px] leading-4 text-slate-500">Viewing this hub. Physical scans need its assigned handler.</p>}
 
                         {/* Facility Switcher Dropdown Button */}
                         <div className="relative">
@@ -435,128 +442,17 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         </div>
                     )}
 
-                    {/* Logistics Multi-Tier Navigation Hierarchy */}
-                    {role === 'logistics' && (
-                        <div className="space-y-4">
-                            {/* Company management */}
-                            <div className="space-y-0.5">
-                                <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
-                                    Company
-                                </p>
-                                {user?.canManageResources && user.resourceGovernanceUrl && <PortalLink
-                                    href={user.resourceGovernanceUrl}
-                                    className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component === 'Governance/Resources' || component === 'Governance/ResourceRestriction' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                                ><ShieldAlert className="h-4 w-4 shrink-0" /><span>Resource activity</span></PortalLink>}
-                                {user?.canManageResources && <PortalLink href="/governance-history" className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component === 'Governance/History' || component === 'Governance/HistoryDetail' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><ShieldCheck className="h-4 w-4 shrink-0" /><span>Governance history</span></PortalLink>}
-                                {user?.canManageResources && <PortalLink href="/exceptions" className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${component === 'Governance/Exceptions' || component === 'Governance/ExceptionDetail' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><ShieldCheck className="h-4 w-4 shrink-0" /><span>Delivery exceptions</span></PortalLink>}
-                                <PortalLink
-                                    href={route('hub.dashboard')}
-                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
-                                        component === 'Hub/Dashboard' || route().current('hub.dashboard') || (route().current('hub.index') && !url.includes('/scan')) || url === '/hub' || url === '/hub/dashboard'
-                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <LayoutDashboard className={`w-4 h-4 shrink-0 ${(component === 'Hub/Dashboard' || url === '/hub' || url === '/hub/dashboard') ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
-                                        <span>Overview</span>
-                                    </div>
-                                </PortalLink>
-                                <PortalLink
-                                    href={route('hub.network')}
-                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
-                                        component === 'Hub/Network' || route().current('hub.network') || url.startsWith('/hub/network')
-                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <Building2 className={`w-4 h-4 shrink-0 ${(component === 'Hub/Network' || url.startsWith('/hub/network')) ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
-                                        <span>Facility Network</span>
-                                    </div>
-                                </PortalLink>
-                                <PortalLink
-                                    href={route('hub.fleet')}
-                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
-                                        component === 'Hub/Fleet' || route().current('hub.fleet') || url.startsWith('/hub/fleet')
-                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <Truck className={`w-4 h-4 shrink-0 ${(component === 'Hub/Fleet' || url.startsWith('/hub/fleet')) ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
-                                        <span>Fleet Management</span>
-                                    </div>
-                                </PortalLink>
-                            </div>
-
-                            {/* Parcel operations */}
-                            <div className="pt-2 border-t border-slate-100 space-y-0.5">
-                                {user?.canSetupCompany && <PortalLink href={route('hub.company-setup.index')} className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold ${component === 'Hub/CompanySetup' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><Settings className="h-4 w-4" />Company setup</PortalLink>}
-                                <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
-                                    Operations
-                                </p>
-                                <PortalLink href={route('hub.mother-bags.index')} className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold ${component === 'Hub/MotherBags' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><Package className="h-4 w-4" />Mother Bags</PortalLink>
-                                {user?.canManageResources && <PortalLink href="/delivery-earnings" className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold ${component === 'Finance/DeliveryEarnings' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><Banknote className="h-4 w-4" />Delivery earnings</PortalLink>}
-                                <PortalLink
-                                    href={route('hub.manifests.index')}
-                                    className={'flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs transition ' + (component === 'Hub/Manifests' ? 'bg-[#E00D42] font-bold text-white' : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900')}
-                                >
-                                    <Truck className="h-4 w-4 shrink-0" />
-                                    <span>Manifests</span>
-                                </PortalLink>
-                                <PortalLink href={route('hub.recovery.index')} aria-current={component === 'Hub/Recovery' ? 'page' : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium ${component === 'Hub/Recovery' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><RotateCcw className="h-4 w-4 shrink-0" />Delivery recovery</PortalLink>
-                                <PortalLink href="/handover-issues" aria-current={component.startsWith('Handover/') ? 'page' : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium ${component.startsWith('Handover/') ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" /><span>Handover issues</span></PortalLink>
-                                <PortalLink href={route('hub.cod.index')} aria-current={component === 'Finance/Cod' || component === 'Finance/CodDetail' ? 'page' : undefined} className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium ${component === 'Finance/Cod' || component === 'Finance/CodDetail' ? 'bg-[#E00D42] text-white' : 'text-slate-600 hover:bg-slate-100'}`}><Banknote className="h-4 w-4 shrink-0" aria-hidden="true" /><span>COD cash</span></PortalLink>
-                                <PortalLink
-                                    href={route('hub.deliveries')}
-                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
-                                        component === 'Hub/Deliveries' || route().current('hub.deliveries') || url.startsWith('/hub/deliveries')
-                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <Package className={`w-4 h-4 shrink-0 ${(component === 'Hub/Deliveries' || url.startsWith('/hub/deliveries')) ? 'text-white' : 'text-slate-400 group-hover:text-slate-900'}`} />
-                                        <span>Parcels & Waybills</span>
-                                    </div>
-                                </PortalLink>
-                            </div>
-
-                            {/* Facility tools */}
-                            <div className="pt-2 border-t border-slate-100 space-y-0.5">
-                                <p className="mb-1 px-3 text-[11px] font-semibold text-slate-500 font-sans">
-                                    Facility tools
-                                </p>
-                                {canScanParcels && <PortalLink
-                                    href={route('hub.scan.station')}
-                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
-                                        component === 'Hub/ScanStation' || route().current('hub.scan.station') || url.startsWith('/hub/scan')
-                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <ScanLine className={`w-4 h-4 shrink-0 ${(component === 'Hub/ScanStation' || url.startsWith('/hub/scan')) ? 'text-white' : 'text-emerald-600 group-hover:text-emerald-700'}`} />
-                                        <span>Scan Station</span>
-                                    </div>
-                                </PortalLink>}
-                                <PortalLink
-                                    href={route('hub.counter')}
-                                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition group ${
-                                        component === 'Hub/CounterPickup' || route().current('hub.counter') || url.startsWith('/hub/counter')
-                                            ? 'bg-[#E00D42] text-white shadow-xs font-bold'
-                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <Store className={`w-4 h-4 shrink-0 ${(component === 'Hub/CounterPickup' || url.startsWith('/hub/counter')) ? 'text-white' : 'text-blue-600 group-hover:text-blue-700'}`} />
-                                        <span>Counter Self-Pickup</span>
-                                    </div>
-                                </PortalLink>
-                            </div>
-                        </div>
-                    )}
+                    {role === 'logistics' && <LogisticsSidebarNavigation items={[
+                        ...navItems,
+                        { name: 'Delivery recovery', href: route('hub.recovery.index'), icon: RotateCcw, current: component === 'Hub/Recovery' || component === 'Hub/DeliveryRecovery' },
+                        ...(user?.canManageResources ? [
+                            ...(user.resourceGovernanceUrl ? [{ name: 'Resource activity', href: user.resourceGovernanceUrl, icon: ShieldAlert, current: component.startsWith('Governance/Resource') }] : []),
+                            { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component.startsWith('Governance/History') },
+                            { name: 'Delivery exceptions', href: '/exceptions', icon: AlertTriangle, current: component.startsWith('Governance/Exception') },
+                        ] : []),
+                        { name: 'Account & security', href: route('profile.edit'), icon: Settings, current: component.startsWith('Profile/') },
+                        { name: 'Workspace guide', href: route('hub.roadmap'), icon: Layers, current: component === 'Hub/Roadmap' },
+                    ]} />}
 
                     {/* Quick Links (Storefront & Settings) */}
                     {(user?.shop || role === 'seller') && (
@@ -638,8 +534,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             <Menu className="w-5 h-5" />
                         </button>
                         <div className="min-w-0">
-                            <h1 className="text-base font-black text-slate-900 tracking-tight truncate">{title}</h1>
-                            {subtitle && <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5 truncate">{subtitle}</div>}
+                            {role === 'logistics' ? <><p className="hidden text-[10px] font-medium text-slate-400 sm:block">Logistics workspace</p><p className="truncate text-sm font-semibold text-slate-800">{title}</p></> : <><h1 className="text-base font-black text-slate-900 tracking-tight truncate">{title}</h1>{subtitle && <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5 truncate">{subtitle}</div>}</>}
                         </div>
                     </div>
 
@@ -818,8 +713,9 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 )}
 
                 {/* Body Content */}
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F8FAFC]">
+                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F8FAFC]" id="portal-main">
                     <div className="max-w-7xl mx-auto space-y-6">
+                        {sharedHubHeading && <HubPageHeader title={title} description={subtitle ?? 'Review the recorded evidence and follow the action available to your account.'} icon={hubPageIcon} />}
                         {children}
                     </div>
                 </main>

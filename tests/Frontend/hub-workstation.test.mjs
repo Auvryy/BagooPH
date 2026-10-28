@@ -11,12 +11,12 @@ import { createInertiaApp } from '@inertiajs/react';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-workstation-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = buildSync({
-    stdin: { contents: `export { default as Registry } from '@/Pages/Hub/Deliveries'; export { default as Counter } from '@/Pages/Hub/CounterPickup'; export { default as Preview } from '@/Components/HubCounterPreview'; export { default as Profile } from '@/Pages/Profile/Edit';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: `export { default as Registry } from '@/Pages/Hub/Deliveries'; export { default as Counter } from '@/Pages/Hub/CounterPickup'; export { default as Preview } from '@/Components/HubCounterPreview'; export { default as Profile } from '@/Pages/Profile/Edit'; export { default as Guide } from '@/Pages/Hub/Roadmap';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', loader: { '.css': 'empty' }, write: false,
 });
 const path = join(temporary, 'workstation.mjs');
 writeFileSync(path, bundle.outputFiles[0].text);
-const { Registry, Counter, Preview, Profile } = await import(pathToFileURL(path).href);
+const { Registry, Counter, Preview, Profile, Guide } = await import(pathToFileURL(path).href);
 globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: () => false, has: () => true };
 after(() => delete globalThis.route);
 
@@ -197,3 +197,17 @@ test('logistics settings show the fixed logistics role rather than a buyer label
     assert.match(html, /Logistics hub account/);assert.doesNotMatch(html, /Registered Buyer/);
     assert.match(html, /Account &amp; security/);
 });
+
+for (const canScan of [false, true]) {
+    test(`workspace guide ${canScan ? 'offers floor scanning to an assigned handler' : 'explains the handler step without sending a company viewer to a forbidden scanner'}`, async () => {
+        const html = await render(Guide, 'Hub/Roadmap', { auth: { user: { id: 1, name: 'Ana Santos', role: 'logistics', canScanParcels: canScan } } });
+        const intake = [...html.matchAll(/<article\b[^>]*>[\s\S]*?<\/article>/g)].map(match => match[0]).find(article => article.includes('Receive the pickup'));
+        assert.ok(intake);
+        if (canScan) {
+            assert.match(intake, /href="\/hub\/scan\/station"/);
+        } else {
+            assert.match(intake, /An assigned floor handler opens Scan Station/);
+            assert.doesNotMatch(intake, /href="\/hub\/scan\/station"/);
+        }
+    });
+}
