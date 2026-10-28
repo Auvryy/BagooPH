@@ -83,62 +83,55 @@ The same preserved visible browser created another hub and confirmed postal rese
 
 Scoped counter-handover usability: **4/10 → 8/10**. The rating reflects reachable controls and preserved verification, not a new overall system/defense score. No Azure deployment, physical-device proof, PostgreSQL concurrency result or external seller transfer is claimed. Browser, role sessions and the isolated memory server remain running without foreground-focus calls. Task tracking remains unavailable due to expired authentication. Local commits `7e0bb7a` (forms/guidance) and `0e1d4ec` (recorded recovery links) are retained; the remaining readiness/deployment changes and combined [PR draft](audits/LOCAL_LOGISTICS_UI_AUDIT_PR_DRAFT.md) form the final handoff. Only the user publishes.
 
-### Logistics visual workspace: October 28-29, 2026, in progress
+### Logistics visual workspace: October 28-29, 2026
 
-The active `feat/logistics-visual-workspace` branch starts at merged `main`
-`7da3b7e`. It connects the logistics pages with grouped navigation, actual saved
-hub maps, searchable hub choices, vehicle/driver and eligible-rider cards,
-scan-first bag/transfer controls and explicit actual-holder/next-person guidance.
-Company payloads remain scoped; display changes reuse existing custody,
-authorization, original-route and financial checks. The full scope and remaining
-acceptance are in the [workspace review](audits/LOGISTICS_VISUAL_WORKSPACE_REVIEW_2026-10-28.md).
+The local `feat/logistics-visual-workspace` branch starts at merged main `7da3b7e`.
+Scoped implementation and all-page local acceptance are complete. Grouped
+navigation, facility context, actual hub maps, searchable hub/vehicle/rider choices,
+scan-first controls and explicit holder/next-person guidance connect the logistics
+pages. The [review matrix](audits/LOGISTICS_VISUAL_WORKSPACE_REVIEW_2026-10-28.md)
+contains the complete page inventory, evidence, limits and implementation commits.
 
-One fresh seeded regional COD purchase completed through actual Puppeteer
-controls: seller readiness, pickup, origin intake, two sealed bags/two closed
-manifests, Mother sorting, destination receipt, rider/POD and automatic completion.
-Original PHP 2,910 collection, named counted hub receipt and buyer tracking were
-verified. Nineteen desktop destinations and all 22 root/create destinations at
-390px and 768px passed heading/width checks. The final 44-check responsive pass
-used the refined scanner, money and review pages. Real Tab/Shift+Tab, Escape,
-destination selection and desktop-breakpoint checks passed after fixing drawer
-focus. A buyer return was approved and intaken using its separate barcode,
-measured weight, condition and photo; the original order stayed completed.
+Actual Puppeteer controls completed four seeded purchases: regional delivery,
+local failed-attempt/supervised handover/timed retry, secure counter and regional
+wrong-hub recovery followed by delivery. Eight manifests closed, four Mother Bags
+were received, four original COD accounts remained, and a separate accepted buyer
+return completed both reverse hub legs, staging and seller receipt without
+rewriting the purchase. Three doorstep collections retained PHP 2,910 each; the
+counter retained PHP 2,850. Named counted receipts released doorstep rider earnings.
+No real bank/seller payout is claimed.
 
-Return source review and automated navigation checks then found that an already
-prepared manifest was hidden before loading and its root URL could lead to 404.
-The presenter now resolves the retained route reservation and each portal's
-actual path. Guidance distinguishes the sending handler, arrival scan, hub
-staging and seller receipt. The barcode artwork is optional in the logistics
-view, keeping the next action prominent. No command authority or financial
-transition was changed.
+All 22 main/create destinations passed 390px/768px heading and width checks,
+repeated after refinements. Real Tab/Shift+Tab, Escape, opener focus, route and
+breakpoint checks passed. Mouse map pins, searchable placement, owner-created
+staff activation/email verification, contact validation/saving, resource decisions
+and populated history/exception controls passed. The final current audit has 63
+passing browser checkpoints and no captured unexpected JavaScript/server errors.
+The one capped headless browser is parked with zero open tabs and retained sessions.
 
-The foundation PHP selection passed **22/574**, the page/company selection
-**78/10,651**, and the focused actual-holder/recovery selection **5/627**
-(tests/assertions; overlapping selections). The latest seven-file frontend run
-passed **107 cases**, superseding the older 77-, 30- and 106-case selections. The
-latest isolated return-custody run passed **16 tests / 1,642 assertions**, including
-root and hub-subdomain manifest GETs and buyer-link exclusion. The latest
-TypeScript/Vite production build passed with type checking retained, using a
-bounded 0.5-CPU/1,536MB container and 1,024MB Node heap.
-An earlier reduced 512MB heap exhausted memory; shared-page null guards also
-required correction before the passing build. PHP formatting passed for all
-seven earlier changed PHP files, with the latest two return PHP files also
-passing formatting. The one owned headless browser had zero open tabs when
-inspected after the user reported lag; it and its worker were closed. Current
-populated counter/retry/recovery/reverse-return controls, remaining resource,
-account and activation details, and the newest return visual guidance still
-need browser acceptance. No captured runtime JavaScript/server errors were present
-in the saved fresh-run audit.
+Browser/automated review fixed phone drawer focus, prepared-return links hidden
+before loading, return next-handler/staging guidance, counter label association
+and 44px controls, and a recovery label using the intended destination in place
+of the actual scan hub. Supervised handover now supports version-two local routes
+only with the original eligible one-hub checkout path/quote and independent actual
+receipt. Terminal, tenant, holder, replay and Mother-route checks remain covered.
+Implementation commits `d66b629` (counter), `29b02ed` (local recovery) and `2a460fa`
+(observed hub) retain these final corrections; earlier commits are in the review.
 
-Provisional scoped logistics clarity assessment: **6/10 -> 8/10**, supported by
-the normal handover journey and shared visual controls. This is not a finished
-whole-flow or defense rating. Local commits `d0b1536` (phone money/review pages)
-and `16efe70` (return navigation/guidance) save the latest implementation. Earlier
-commits and remaining acceptance checks are listed in the workspace review.
-Return next-action clarity is provisionally **5/10 -> 7/10**, based on correct
-actor/staging guidance and tested navigation, pending its browser review. The
-combined [PR description](audits/LOGISTICS_VISUAL_WORKSPACE_PR_DRAFT.md)
-remains a local draft. No publication, Azure deployment or Flutter edit is claimed.
+The affected frontend selection passed **107 cases** and the TypeScript/Vite
+production build passed with typing retained and bounded CPU/memory. Only PHP
+changes followed that asset build. Latest isolated PHP groups passed **69 tests /
+5,982 assertions** and **51 / 6,746**; return custody passed **16 / 1,642**. Earlier
+22/574, 78/10,651 and 5/627 selections overlap; they are not additive full-suite
+totals. PHP formatting and Git whitespace checks passed. A full unrelated suite
+was not rerun, and no development/production PostgreSQL reset was used.
+
+Scoped logistics task clarity: **6/10 → 8/10**; counter controls and return
+next-action clarity: **5/10 → 8/10** each. These reflect tested local usability,
+not a whole-project or defense score. Azure rollout, Flutter, production load/
+PostgreSQL concurrency, physical devices/cash and real external transfers require
+separate evidence. The combined [PR title/body](audits/LOGISTICS_VISUAL_WORKSPACE_PR_DRAFT.md)
+is a local draft, not saved on GitHub. Only the user publishes.
 
 ## Current Implementation Audit
 
