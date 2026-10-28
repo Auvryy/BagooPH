@@ -139,6 +139,8 @@ class LogisticsNetworkSeeder extends Seeder
         );
 
         $this->assignHandler($losBanosHandler, $losBanosHub, 'Bayan Hub Operations Handler');
+        $losBanosHub->update(['parent_hub_id' => $motherHub->id, 'postal_codes' => ['4030']]);
+        $santaCruzHub->update(['parent_hub_id' => $motherHub->id, 'postal_codes' => ['4009']]);
         $this->assignHandler($motherHubHandler, $motherHub, 'Mother Hub Sortation Operator');
         $this->assignHandler($santaCruzHandler, $santaCruzHub, 'Bayan Hub Operations Handler');
 

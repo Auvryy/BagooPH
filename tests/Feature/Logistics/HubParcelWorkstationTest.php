@@ -268,6 +268,7 @@ class HubParcelWorkstationTest extends TestCase
         $parcel = $this->flowDelivery($order, 'in_transit_to_destination_hub');
         $manifest = LogisticsManifest::findOrFail(DeliveryCheckpoint::lastCustody($parcel)['manifest_id']);
         $handler = $this->flowHandler($hub);
+        $this->openFlowMotherBags($manifest, $handler);
         $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest, ['barcode' => $parcel->tracking_number]))->assertOk();
         $this->get('/hub/counter?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('counterCounts.ready', 0)->where('counterParcels.data.0.guidance.action', 'manifest')

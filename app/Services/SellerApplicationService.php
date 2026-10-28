@@ -27,6 +27,8 @@ class SellerApplicationService
                 'phone' => $user->phone,
                 'address' => $user->address,
                 'city' => $user->city,
+                'pickup_province' => $user->province,
+                'pickup_postal_code' => $user->postal_code,
                 'status' => 'pending',
                 'review_status' => 'pending_approval',
                 'review_submitted_at' => now(),

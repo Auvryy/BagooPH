@@ -1,5 +1,7 @@
 # BagooPH Documentation Map
 
+The selected [New Docs Era logistics version 2](new-docs-era/README.md) now overrides conflicting logistics, completion, provisioning, shipping and earnings rules below. Its source is the user-authored architecture PDF. Earlier contracts continue to apply where version 2 does not change them.
+
 Use this map before reading or changing project documentation. A document's authority depends on its category below; newer-looking examples or historical milestone claims do not override the normative specifications.
 
 ## Project Scope

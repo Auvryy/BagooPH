@@ -201,7 +201,11 @@ class BuyerReturnCustodyService
                 && ($parcel->custody['kind'] ?? null) === 'hub' && ($parcel->custody['hub_id'] ?? null) === $parcel->current_hub_id);
         abort_unless($parcel->route_position === count($parcel->hub_ids) - 1 && $held, 409,
             'Record every original reverse hub receipt before staging or seller collection.');
-        foreach (range(0, count($parcel->hub_ids) - 2) as $index) {
+        $intake = $case->events()->where('event_type', 'return-intake')->where('actor_role', 'logistics')->first();
+        abort_unless($intake && ($intake->context['target_state']['current_hub_id'] ?? null) === $parcel->hub_ids[0]
+            && $case->evidence()->where('buyer_return_event_id', $intake->id)->where('purpose', 'intake')->exists(), 409,
+            'The original return needs its actual hub intake and photo evidence.');
+        for ($index = 0; $index < count($parcel->hub_ids) - 1; $index++) {
             $member = $parcel->members()->with('manifest')->where('leg_index', $index)->where('included', true)->whereNotNull('received_at')->first();
             $scan = $member ? LogisticsManifestEvent::where('manifest_id', $member->manifest_id)->where('event_type', 'buyer-return-received')
                 ->where('barcode_scanned', $parcel->barcode)->where('hub_id', $parcel->hub_ids[$index + 1])->first() : null;

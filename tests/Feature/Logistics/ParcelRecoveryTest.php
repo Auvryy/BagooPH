@@ -10,11 +10,13 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsManifestParcel;
+use App\Models\MotherBagParcel;
 use App\Models\ParcelRecoveryCase;
 use App\Models\ParcelRecoveryEvent;
 use App\Models\User;
 use App\Services\ExceptionOversightService;
 use App\Services\Logistics\DeliveryReturnService;
+use App\Services\Logistics\MisrouteTrapService;
 use App\Services\Logistics\ParcelRecoveryService;
 use App\Services\Logistics\PublicTrackingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,6 +39,37 @@ use Throwable;
 class ParcelRecoveryTest extends TestCase
 {
     use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
+
+    public function test_scanning_at_a_wrong_hub_records_a_hold_and_recovers_through_the_mother_on_the_original_manifest(): void
+    {
+        $parcel = $this->flowDelivery($this->newFlowOrder('ready_for_pickup'), 'in_transit_to_mother_hub');
+        $original = LogisticsManifest::findOrFail(DeliveryCheckpoint::lastCustody($parcel)['manifest_id']);
+        $wrong = LogisticsHub::create(['logistics_company_id' => $parcel->logistics_company_id, 'code' => 'QA-WRONG-CHILD',
+            'name' => 'Pagsanjan Child Hub', 'tier' => 'local_bayan_hub', 'parent_hub_id' => $parcel->origin_mother_hub_id,
+            'province' => 'Laguna', 'city_municipality' => 'Pagsanjan', 'address' => '100 Test Warehouse Road', 'is_active' => true]);
+        $handler = $this->flowHandler($wrong);
+        $before = $parcel->getAttributes();
+        $scan = ['barcode' => $parcel->tracking_number, 'hub_id' => $wrong->id, 'mode' => 'inspect'];
+        $this->actingAs($handler)->postJson('/hub/scan', $scan)->assertConflict()->assertJsonPath('success', false);
+        $this->postJson('/hub/scan', $scan)->assertConflict();
+        $this->assertSame($before, $parcel->fresh()->getAttributes());
+        $observation = $original->events()->where('payload->scanner_misroute', true)->sole();
+        $this->assertSame($wrong->id, $observation->hub_id);
+        $expectedHandler = $this->flowHandler($original->destinationHub);
+        $this->openFlowMotherBags($original, $expectedHandler);
+        $this->actingAs($expectedHandler)->postJson('/hub/manifests/'.$original->id.'/receive', $this->flowManifestPayload($original, ['barcode' => $parcel->tracking_number]))->assertConflict();
+        $manager = $wrong->company->user;
+        $case = $this->authorizeCase($observation, $manager);
+        $this->assertSame([$wrong->id, $parcel->origin_mother_hub_id], $case->hub_ids);
+        $this->actingAs($handler)->postJson('/hub/parcel-recovery/'.$observation->id.'/intake', $this->casePayload($case, ['barcode' => $parcel->tracking_number]))->assertOk();
+        $this->transfer($case->fresh(), $manager);
+        $this->assertSame('completed', $case->fresh()->state);
+        $this->assertSame($parcel->origin_mother_hub_id, $parcel->fresh()->current_hub_id);
+        $this->assertSame('arrived_at_mother_hub', $parcel->fresh()->status);
+        $this->assertNull(MotherBagParcel::where('delivery_id', $parcel->id)->sole()->active_delivery_id);
+        $this->assertSame('received', $original->fresh()->status);
+        app(MisrouteTrapService::class)->assertMovable($parcel->fresh());
+    }
 
     public static function incidents(): array
     {
@@ -203,6 +236,7 @@ class ParcelRecoveryTest extends TestCase
         $this->actingAs($handler)->postJson('/hub/parcel-recovery/'.$observation->id.'/intake', $this->casePayload($case, ['barcode' => $parcel->tracking_number]))->assertOk();
         $this->assertOwnedRecoveryTracking($parcel, 'Held for route recovery', LogisticsHub::findOrFail($observation->hub_id)->name);
         $before = $this->snapshot($parcel);
+        $this->openFlowMotherBags($original, $this->flowHandler($original->destinationHub));
         $this->actingAs($this->flowHandler($original->destinationHub))->postJson('/hub/manifests/'.$original->id.'/receive', $this->flowManifestPayload($original, ['barcode' => $parcel->tracking_number]))->assertConflict();
         $this->actingAs($manager)->postJson('/hub/manifests/'.$observation->manifest_id.'/resolve-discrepancy', $this->flowManifestPayload($observation->manifest, ['source_event_id' => $observation->id, 'notes' => 'A manager reason cannot replace receiving evidence.']))->assertConflict();
         $this->assertSame($before, $this->snapshot($parcel));
@@ -346,9 +380,9 @@ class ParcelRecoveryTest extends TestCase
         Storage::fake('local');
         Storage::fake('public');
         $this->patch(route('courier.updateStatus', $parcel), ['status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('proof.jpg'), ...$this->codCollectionInput($parcel)])->assertSessionHas('success');
-        $this->assertSame('delivered', $parcel->order->fresh()->status);
+        $this->assertSame('completed', $parcel->order->fresh()->status);
         $this->completeFlowOrder($parcel->order->fresh());
-        $this->assertSame('pending', $parcel->order->fresh()->payment_status);
+        $this->assertSame('paid', $parcel->order->fresh()->payment_status);
     }
 
     public function test_mother_to_mother_recovery_uses_actual_line_haul_without_replacing_the_original_route(): void
@@ -454,6 +488,7 @@ class ParcelRecoveryTest extends TestCase
         [$parcel, $observation, $manager, $handler] = $this->incident();
         $proposal = app(ParcelRecoveryService::class)->proposal($manager, $observation);
         $original = LogisticsManifest::findOrFail(DeliveryCheckpoint::lastCustody($parcel)['manifest_id']);
+        $this->openFlowMotherBags($original, $this->flowHandler($original->destinationHub));
         $this->actingAs($this->flowHandler($original->destinationHub))->postJson('/hub/manifests/'.$original->id.'/receive', $this->flowManifestPayload($original, ['barcode' => $parcel->tracking_number]))->assertOk();
         $before = $this->snapshot($parcel);
         $this->actingAs($manager)->postJson('/hub/parcel-recovery/'.$observation->id.'/authorize', ['source_token' => $proposal['source_token'], 'request_token' => (string) Str::uuid(), 'notes' => 'This review was prepared before the actual receiving scan.'])->assertConflict();
@@ -534,7 +569,14 @@ class ParcelRecoveryTest extends TestCase
 
     private function observe(Delivery $parcel, string $observedStage, string $city = 'Santa Cruz', string $base = '/hub'): array
     {
-        $other = $this->flowDelivery($this->newFlowOrder('placed', ['shipping_city' => $city, 'destination_barangay' => 'Bambang']), $observedStage);
+        if ($city === 'Los Banos') {
+            // A different origin keeps this a regional transfer under the local-bypass contract.
+            $shop = $this->createE2EShop($this->createApprovedUser('seller'), ['city' => 'Santa Cruz']);
+            $otherOrder = $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop, shipping: ['shipping_city' => $city, 'destination_barangay' => 'Bambang']);
+        } else {
+            $otherOrder = $this->newFlowOrder('placed', ['shipping_city' => $city, 'destination_barangay' => 'Bambang']);
+        }
+        $other = $this->flowDelivery($otherOrder, $observedStage);
         $manifest = LogisticsManifest::findOrFail(DeliveryCheckpoint::lastCustody($other)['manifest_id']);
         $manager = User::findOrFail($manifest->company->user_id);
         $handler = $this->flowHandler($manifest->destinationHub);

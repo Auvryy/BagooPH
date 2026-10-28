@@ -33,7 +33,7 @@ export interface PurchaseQuote {
     discount: number;
     shipping_discount: number;
     total: number;
-    shops: { shop_id: number; shop_name: string; subtotal: number; shipping: number; doorstep_shipping: number; discount: number; product_discount?: number; shipping_discount?: number; total: number }[];
+    shops: { shop_id: number; shop_name: string; subtotal: number; shipping: number; doorstep_shipping: number; discount: number; product_discount?: number; shipping_discount?: number; total: number; shipping_quote?: import('@/types').ShippingCalculation }[];
     items: { id: number; quantity: number; unit_price: number; subtotal: number; price_segments?: import('@/Components/PriceSegments').PriceSegment[] }[];
     voucher: VoucherOffer | null;
     voucher_error: string | null;
@@ -50,6 +50,9 @@ interface QuoteInput {
     shop_voucher_revision_ids?: Record<number, number | null>;
     shipping_province?: string;
     shipping_city?: string;
+    logistics_company_id?: string | number;
+    shipping_postal_code?: string;
+    destination_barangay?: string;
     pickup_hub_id?: string | number;
     bag?: boolean;
     revision: string;
@@ -67,6 +70,7 @@ export default function usePurchaseQuote(input: QuoteInput, initialQuote = empty
     });
     const [fetching, setFetching] = useState(false);
     const [failure, setFailure] = useState('');
+    const [companies, setCompanies] = useState<{ key: string; values: { id: number; name: string }[] } | null>(null);
 
     useEffect(() => {
         const { bag, revision, ...body } = JSON.parse(key) as QuoteInput;
@@ -98,8 +102,12 @@ export default function usePurchaseQuote(input: QuoteInput, initialQuote = empty
             const request = bag
                 ? axios.get(route('cart.index'), { ...options, params: { item_ids: body.item_ids } })
                 : axios.post(route('buyer.vouchers.apply'), body, options);
-            request.then(response => accept(response.data)).catch(error => {
+            const acceptCompanies = (data: { logisticsCompanies?: { id: number; name: string }[] }) => {
+                if (!controller.signal.aborted && Array.isArray(data?.logisticsCompanies)) setCompanies({ key, values: data.logisticsCompanies });
+            };
+            request.then(response => { acceptCompanies(response.data); accept(response.data); }).catch(error => {
                 if (controller.signal.aborted) return;
+                acceptCompanies(error.response?.data);
                 if (error.response?.data?.quote) {
                     accept(error.response.data);
                 } else {
@@ -125,6 +133,7 @@ export default function usePurchaseQuote(input: QuoteInput, initialQuote = empty
     return {
         quote: empty ? emptyPurchaseQuote : snapshot.quote,
         offers: snapshot.offers, pending, failure, current,
+        companies: companies?.key === key ? companies.values : undefined,
         validSelection: current ? snapshot.validSelection : undefined,
         selectionErrors: current ? snapshot.selectionErrors : undefined,
         ready: !empty && current && !pending && !failure && !snapshot.quote.voucher_error,

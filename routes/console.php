@@ -5,6 +5,7 @@ use App\Services\Advertisements\AdvertisementMeasurementService;
 use App\Services\Commerce\SaleReminderService;
 use App\Services\Logistics\RiderCompanyOfferService;
 use App\Services\Wallet\WalletPaymentService;
+use App\Services\Wallet\WalletSettlementService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -61,6 +62,20 @@ Artisan::command('wallet:expire-payments {--limit=100}', function () {
 })->purpose('Release unpaid virtual wallet orders after their one-hour payment deadline');
 
 Schedule::command('wallet:expire-payments')->everyMinute()->withoutOverlapping();
+
+Artisan::command('wallet:release-delivered {--limit=100}', function () {
+    $limit = filter_var($this->option('limit'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 1000]]);
+    if ($limit === false) {
+        $this->error('Use a limit from 1 to 1000.');
+
+        return 2;
+    }
+    $result = app(WalletSettlementService::class)->releaseDelivered($limit);
+    $this->info("Released {$result['released']} delivered wallet proceeds; deferred {$result['deferred']}; failed {$result['failed']}.");
+
+    return $result['failed'] ? 1 : 0;
+})->purpose('Retry automatic virtual proceeds after a delivered order clears its recorded blockers');
+Schedule::command('wallet:release-delivered')->everyMinute()->withoutOverlapping();
 
 Artisan::command('account-security:minimise-metadata', function () {
     $count = app(AccountSessionService::class)->minimiseOldMetadata();

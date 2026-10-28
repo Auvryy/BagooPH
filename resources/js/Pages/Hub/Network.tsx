@@ -134,7 +134,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
             actions={scope.can_scan ? (
                 <Link
                     href={route('hub.scan.station')}
-                    className="inline-flex items-center gap-2 rounded-xs bg-[#E00D42] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#C20836]"
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#C20836]"
                 >
                     <ScanLine className="h-4 w-4" />
                     Scan parcel
@@ -146,7 +146,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
             <div className="space-y-5 font-sans">
                 <CompanyRiderIntake workspace={riderIntake} />
                 {scope.can_switch_facility && hubs.length > 0 && (
-                    <form className="rounded-lg border border-slate-300 bg-white p-5 shadow-xs" onSubmit={(event) => {
+                    <form className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm" onSubmit={(event) => {
                         event.preventDefault();
                         placement.post(route('hub.placements'), { preserveScroll: true, onSuccess: () => placement.reset('email') });
                     }}>
@@ -171,8 +171,8 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                         <button type="submit" disabled={placement.processing} className="mt-4 rounded-md bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white hover:bg-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:opacity-50">{placement.processing ? 'Saving…' : 'Save placement'}</button>
                     </form>
                 )}
-                <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-xs">
-                    <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-center lg:justify-between">
+                <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
+                    <div className="flex flex-col gap-3 border-b border-slate-300 pb-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <h2 className="text-base font-bold text-slate-900">Company facilities</h2>
                             <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -210,7 +210,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                     </div>
                 </section>
 
-                <section className="rounded-lg border border-slate-300 bg-white p-4 shadow-xs">
+                <section className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="relative w-full lg:max-w-md">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -219,7 +219,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                 value={search}
                                 onChange={(event) => setSearch(event.target.value)}
                                 placeholder="Search facility, code, municipality, or province"
-                                className="w-full rounded-xs border-slate-300 bg-white py-2 pl-9 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                className="w-full rounded-lg border-slate-300 bg-white py-2 pl-9 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#E00D42] focus:ring-[#E00D42]"
                             />
                         </div>
 
@@ -233,9 +233,9 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                     key={filter.value}
                                     type="button"
                                     onClick={() => setFilterTier(filter.value)}
-                                    className={`rounded-xs px-3 py-1.5 font-semibold transition ${
+                                    className={`rounded-lg px-3 py-1.5 font-semibold transition ${
                                         filterTier === filter.value
-                                            ? 'bg-white text-slate-900 shadow-xs'
+                                            ? 'bg-white text-slate-900 shadow-sm'
                                             : 'text-slate-500 hover:text-slate-800'
                                     }`}
                                 >
@@ -257,7 +257,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                     key={hub.id}
                                     type="button"
                                     onClick={() => setSelectedHub(hub)}
-                                    className={`group flex min-h-64 flex-col rounded-lg border bg-white p-5 text-left shadow-xs transition hover:border-slate-400 hover:shadow-sm ${
+                                    className={`group flex min-h-64 flex-col rounded-lg border bg-white p-5 text-left shadow-sm transition hover:border-slate-400 hover:shadow-sm ${
                                         isWorkingFacility ? 'border-[#E00D42] ring-1 ring-[#E00D42]/20' : 'border-slate-300'
                                     }`}
                                 >
@@ -272,11 +272,11 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                                 : <Store className="h-4 w-4" />}
                                         </span>
                                         <div className="flex flex-wrap justify-end gap-1.5">
-                                            <span className="rounded-xs border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-bold uppercase text-slate-700">
+                                            <span className="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-bold uppercase text-slate-700">
                                                 {facilityType(hub.tier)}
                                             </span>
                                             {isWorkingFacility && (
-                                                <span className="inline-flex items-center gap-1 rounded-xs border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-bold uppercase text-emerald-700">
+                                                <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-bold uppercase text-emerald-700">
                                                     <Check className="h-3 w-3" /> Working
                                                 </span>
                                             )}
@@ -301,9 +301,9 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                                 {hub.parcel_count.toLocaleString()} / {hub.capacity.toLocaleString()}
                                             </span>
                                         </div>
-                                        <div className="mt-2 h-1.5 overflow-hidden rounded-xs bg-slate-200">
+                                        <div className="mt-2 h-1.5 overflow-hidden rounded-lg bg-slate-200">
                                             <div
-                                                className={`h-full rounded-xs ${capacityTone}`}
+                                                className={`h-full rounded-lg ${capacityTone}`}
                                                 style={{ width: `${Math.min(100, hub.utilization)}%` }}
                                             />
                                         </div>
@@ -323,7 +323,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                         </div>
                                     </div>
 
-                                    <div className="mt-auto flex items-center justify-between border-t border-slate-200 pt-3 text-xs">
+                                    <div className="mt-auto flex items-center justify-between border-t border-slate-300 pt-3 text-xs">
                                         <span className="text-slate-500">
                                             {hub.allows_self_pickup ? `${hub.ready_pickup_count} awaiting counter pickup` : 'Transfer facility'}
                                         </span>
@@ -364,7 +364,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                             <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className="rounded-xs border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-bold uppercase text-slate-700">
+                                        <span className="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-bold uppercase text-slate-700">
                                             {facilityType(selectedHub.tier)}
                                         </span>
                                         <span className="text-xs font-semibold text-[#E00D42]">{selectedHub.code}</span>
@@ -377,7 +377,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                 <button
                                     type="button"
                                     onClick={closeDetails}
-                                    className="rounded-xs border border-slate-300 p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+                                    className="rounded-lg border border-slate-300 p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
                                     aria-label="Close facility details"
                                 >
                                     <X className="h-4 w-4" />
@@ -386,7 +386,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
 
                             <div className="mt-4">
                                 {scope.active_hub_id === selectedHub.id ? (
-                                    <div className="inline-flex items-center gap-2 rounded-xs border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+                                    <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
                                         <Check className="h-4 w-4" />
                                         Current working facility
                                     </div>
@@ -394,7 +394,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => handleSwitchHub(selectedHub.id)}
-                                        className="inline-flex items-center gap-2 rounded-xs bg-[#E00D42] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#C20836]"
+                                        className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#C20836]"
                                     >
                                         <Building2 className="h-4 w-4" />
                                         Use as working facility
@@ -432,16 +432,16 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                         <span className="text-slate-500">Capacity used</span>
                                         <span className="font-semibold text-slate-800">{selectedHub.utilization}%</span>
                                     </div>
-                                    <div className="mt-2 h-1.5 overflow-hidden rounded-xs bg-slate-200">
+                                    <div className="mt-2 h-1.5 overflow-hidden rounded-lg bg-slate-200">
                                         <div
-                                            className={`h-full rounded-xs ${selectedHub.utilization >= 80 ? 'bg-amber-500' : 'bg-[#E00D42]'}`}
+                                            className={`h-full rounded-lg ${selectedHub.utilization >= 80 ? 'bg-amber-500' : 'bg-[#E00D42]'}`}
                                             style={{ width: `${Math.min(100, selectedHub.utilization)}%` }}
                                         />
                                     </div>
                                 </div>
                             </section>
 
-                            <section className="border-t border-slate-200 pt-5">
+                            <section className="border-t border-slate-300 pt-5">
                                 <h3 className="text-sm font-bold text-slate-900">Location</h3>
                                 <div className="mt-3 rounded-md border border-slate-300 bg-slate-50 p-4">
                                     <div className="flex items-start gap-2.5 text-xs leading-5 text-slate-700">
@@ -456,7 +456,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                 </div>
                             </section>
 
-                            <section className="border-t border-slate-200 pt-5">
+                            <section className="border-t border-slate-300 pt-5">
                                 <div className="flex items-center justify-between gap-3">
                                     <div>
                                         <h3 className="text-sm font-bold text-slate-900">Service coverage</h3>
@@ -464,7 +464,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                             {selectedHub.coverage_barangays.length} assigned barangays
                                         </p>
                                     </div>
-                                    <span className="rounded-xs border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700">
+                                    <span className="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700">
                                         {selectedHub.allows_self_pickup ? 'Counter pickup available' : 'Transfer only'}
                                     </span>
                                 </div>
@@ -477,14 +477,14 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                             value={coverageSearch}
                                             onChange={(event) => setCoverageSearch(event.target.value)}
                                             placeholder="Search assigned barangay"
-                                            className="w-full rounded-xs border-slate-300 py-2 pl-9 pr-3 text-xs focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                            className="w-full rounded-lg border-slate-300 py-2 pl-9 pr-3 text-xs focus:border-[#E00D42] focus:ring-[#E00D42]"
                                         />
                                     </div>
                                 )}
 
                                 <div className="mt-3 grid max-h-48 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
                                     {filteredCoverage.length > 0 ? filteredCoverage.map((barangay) => (
-                                        <div key={barangay} className="rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700">
+                                        <div key={barangay} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700">
                                             {barangay}
                                         </div>
                                     )) : (
@@ -495,19 +495,19 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                 </div>
                             </section>
 
-                            <section className="border-t border-slate-200 pt-5">
+                            <section className="border-t border-slate-300 pt-5">
                                 <h3 className="text-sm font-bold text-slate-900">Facility tools</h3>
                                 <div className="mt-3 space-y-2">
                                     <Link
                                         href={route('hub.scan.station')}
-                                        className="flex items-center justify-between rounded-xs border border-slate-300 bg-white px-3 py-3 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
+                                        className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-3 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
                                     >
                                         <span className="flex items-center gap-2.5"><ScanLine className="h-4 w-4 text-[#E00D42]" /> Scan parcel</span>
                                         <ChevronRight className="h-4 w-4 text-slate-400" />
                                     </Link>
                                     <Link
                                         href={route('hub.deliveries')}
-                                        className="flex items-center justify-between rounded-xs border border-slate-300 bg-white px-3 py-3 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
+                                        className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-3 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
                                     >
                                         <span className="flex items-center gap-2.5"><Package className="h-4 w-4 text-slate-600" /> Parcels and waybills</span>
                                         <ChevronRight className="h-4 w-4 text-slate-400" />
@@ -515,7 +515,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                     {selectedHub.allows_self_pickup && (
                                         <Link
                                             href={route('hub.counter')}
-                                            className="flex items-center justify-between rounded-xs border border-slate-300 bg-white px-3 py-3 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
+                                            className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-3 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
                                         >
                                             <span className="flex items-center gap-2.5"><Store className="h-4 w-4 text-slate-600" /> Counter pickup</span>
                                             <ChevronRight className="h-4 w-4 text-slate-400" />

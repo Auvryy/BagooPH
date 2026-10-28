@@ -38,7 +38,7 @@ purchased items retain their original price and SKU.
 
 Birth date is required for password and first Google signup, including direct submissions and registration preflight. The buyer must have reached their eighteenth birthday on the server's Philippine calendar. Missing, impossible, future and underage dates are rejected before account creation. The server derives age; a supplied age cannot override it. Existing reviewed identity remains subject to the recorded correction process rather than an invented replacement date.
 
-Suspension blocks new orders and Bag changes. Personal pages and owned history remain readable, and required receipt confirmation for previously approved buyers remains available through the narrow authorized exception unless an explicit security review restricts it. Reading history as an unapproved applicant does not grant receipt confirmation or private pickup-code access. This never permits foreign-order access, premature completion, or new checkout. Approval or document resubmission cannot silently clear a suspension.
+Suspension blocks new orders and Bag changes. Personal pages and owned history remain readable, and required historical version-one receipt confirmation for previously approved buyers remains available through the narrow authorized exception unless an explicit security review restricts it. Reading history as an unapproved applicant does not grant receipt confirmation or private pickup-code access. This never permits foreign-order access, premature completion, or new checkout. Approval or document resubmission cannot silently clear a suspension.
 
 Checkout requires the recipient, phone, serviceable road-based address, barangay,
 delivery type and the selected payment method. COD remains the default.
@@ -102,16 +102,17 @@ PLACED
 -> ASSIGNED_TO_RIDER
 -> OUT_FOR_DELIVERY
 -> DELIVERED
--> Buyer confirms receipt
--> COMPLETED
+-> Verified recipient/POD and original payment
+-> COMPLETED automatically
 ```
 
-The buyer tracking page shows Mother-Hub and Bayan-Hub checkpoints beneath `AT_SORTING_CENTER`. The buyer cannot choose or assign riders.
+The buyer selects a serving company. Tracking shows its frozen regional hub path or the one-child local bypass, with actual checkpoints beneath `AT_SORTING_CENTER`. Shipping uses the greater actual/volumetric weight and the selected company’s saved tariff, with a PHP 60 default baseline. The buyer cannot choose or assign riders.
 
 At `OUT_FOR_DELIVERY`, the buyer sees the delivery reminder and either the COD
 amount or the original paid wallet status with no cash due. After physical
-handover, the order is `DELIVERED`. Only the buyer's confirmation makes it
-`COMPLETED`; cash settlement also requires platform-level COD reconciliation.
+handover, the physical parcel is `DELIVERED` and a new version-two order becomes
+`COMPLETED` automatically. Historical version-one orders keep buyer receipt
+confirmation. Actual external cash settlement also requires platform-level COD reconciliation.
 Wallet proceeds and refunds use their separate original virtual payment evidence.
 
 An active approved buyer may cancel their own unpaid COD or eligible pending/paid wallet order before
@@ -137,7 +138,7 @@ distinct steps; no case or parcel label proves that money was received. A wallet
 refund follows the same actual return/review prerequisites and is confirmed by
 the original wallet's immutable credit reference, without an external transfer.
 
-After buyer-confirmed completion, each purchased item may receive one verified
+After recorded completion, each purchased item may receive one verified
 review with integer stars from one to five, text up to 1,000 characters and up to
 five JPG, PNG or WEBP photos of 5 MB each. The buyer may edit rating and text once
 within 30 days of posting, retaining the original content privately and keeping
@@ -155,7 +156,7 @@ returned in that snapshot. Newer unseen messages remain unread.
 
 The parcel still travels through the origin Bayan Hub, at least one Mother Hub, and destination Bayan Hub. When ready, the buyer receives the hub address, operating hours, seven-day expiry, and a link to private one-time claim-code access. The code is shown only through the owned order action and never included in a notification. Reminders are sent on days three and six.
 
-At the counter, the buyer presents the claim code and identity confirmation and pays COD if required. Collection maps the order to `DELIVERED`; the buyer then confirms receipt to complete it.
+At the counter, the buyer presents the claim code and identity confirmation and pays COD if required. Collection records physical handover and completes a version-two order automatically. Historical version-one orders retain buyer receipt confirmation.
 
 ## 4. Failure and Return
 

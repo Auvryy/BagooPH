@@ -11,6 +11,7 @@ use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
 use App\Services\KycSubmissionService;
+use App\Services\Logistics\LogisticsCheckoutService;
 use App\Services\Orders\CheckoutOrderService;
 use App\Services\Orders\CheckoutQuoteService;
 use App\Services\Orders\CheckoutSubmissionService;
@@ -90,7 +91,7 @@ class CheckoutController extends Controller
 
         $pickupHubs = LogisticsHub::eligible()->where('tier', 'local_bayan_hub')
             ->where('allows_self_pickup', true)
-            ->get(['id', 'name', 'code', 'city_municipality', 'address', 'province']);
+            ->get(['id', 'name', 'code', 'city_municipality', 'address', 'province', 'logistics_company_id']);
 
         return Inertia::render('Checkout/Index', [
             'cart' => $cart,
@@ -108,6 +109,7 @@ class CheckoutController extends Controller
             'defaultAddressId' => $defaultAddress?->id,
             'addressBookLimit' => BuyerAddressService::LIMIT,
             'pickupHubs' => $pickupHubs,
+            'logisticsCompanies' => app(LogisticsCheckoutService::class)->choices(),
             'checkoutToken' => app(CheckoutSubmissionService::class)->issue($user, $cart, $checkoutItems),
             'walletBalanceCents' => app(WalletLedger::class)->balance($user),
         ]);

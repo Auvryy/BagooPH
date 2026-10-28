@@ -401,8 +401,8 @@ class BuyerReturnMoneyTest extends TestCase
         $this->money($admin, $case, 'record-repayment', ['cash_reference' => 'FINANCE-REPAYMENT']);
         $service = app(FinancialOversightService::class);
         $row = $service->row($case->order->fresh(), $admin, true);
-        $this->assertSame('95000', $row['metrics']['collected']);
-        $this->assertSame('95000', $row['metrics']['reconciled']);
+        $this->assertSame('96000', $row['metrics']['collected']);
+        $this->assertSame('96000', $row['metrics']['reconciled']);
         $this->assertSame('81000', $row['metrics']['settled']);
         $this->assertSame('40500', $row['metrics']['return_deductions']);
         $this->assertSame('45000', $row['metrics']['return_paid']);
@@ -451,7 +451,7 @@ class BuyerReturnMoneyTest extends TestCase
         $this->assertSame(5000, $adjustment->source_snapshot['shipping_discount_cents']);
         $backing = app(BuyerReturnMoneyService::class)->backing($order->fresh());
         $this->assertSame(44500, $backing['available_cents']);
-        $this->assertSame(5000, $backing['protected_shipping_cents']);
+        $this->assertSame(6000, $backing['protected_shipping_cents']);
         $this->actingAs($admin)->post('/buyer-returns/'.$case->id.'/money', $this->payload($case, 'record-repayment', ['cash_reference' => 'NOT-FUNDED-SHIPPING']), ['Accept' => 'application/json'])->assertConflict();
         $funder = $this->createApprovedUser('admin');
         $offer = $this->money($funder, $case, 'offer-funding', ['amount' => '5.00', 'cash_reference' => 'ACTUAL-SHIPPING-FUNDING', 'recipient_id' => $admin->id]);

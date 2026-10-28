@@ -323,7 +323,7 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             'proof_image_file' => UploadedFile::fake()->image('proof.jpg'),
         ])->assertSessionHas('success');
         $this->assertSame('delivered', $delivery->fresh()->status);
-        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertSame('completed', $order->fresh()->status);
         $this->assertSame($approval, $assignedRider->fresh()->kyc_status);
     }
 

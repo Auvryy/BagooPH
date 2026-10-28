@@ -1,306 +1,36 @@
 # Sorting Center and Logistics Flow
 
-> **Status:** Authoritative operational specification.
-> This document defines parcel custody from checkout through completion, including normal doorstep delivery, Mother-Hub transfers, failed delivery, hub self-pickup, basic in-app notifications, and COD custody. It intentionally excludes maritime transport, air freight, live GPS fleet optimization, and automated warehouse machinery.
-> Input validation, authorization, concurrency, idempotency, and recovery rules are authoritative in `docs/CORE_FLOW_VALIDATION_AND_EDGE_CASES.md`.
+The current routing, bagging, company setup and financial contract is [Master Logistics Specification](MASTER_LOGISTICS_SPECIFICATION.md), based on the user-selected [version-two source](new-docs-era/LOGISTICS_SPECIFICATION_V2.pdf). “Child Hub” and the existing “Bayan Hub” label refer to the same municipal facility. Existing database and API names are retained for compatibility.
 
-## 1. Scope and Non-Negotiable Rules
+## Station work
 
-BagooPH uses a road-only hub network. Every parcel follows an authenticated chain of custody and passes through at least one Regional Mother Hub.
-
-```text
-Seller
-  -> Pickup Rider
-  -> Origin Bayan Hub
-  -> Origin Mother Hub
-  -> Destination Mother Hub, only when a different region is required
-  -> Destination Bayan Hub
-  -> Delivery Rider or Self-Pickup Counter
-  -> Buyer
-```
-
-If origin and destination use the same Mother Hub, that one Mother Hub receives and sorts the parcel before forwarding it to the destination Bayan Hub. A parcel must never move directly from the seller to the buyer or directly from an origin Bayan Hub to a destination Bayan Hub.
-
-Other rules:
-
-- An order status is the buyer-facing commercial state.
-- A delivery status and checkpoint record physical parcel custody in greater detail.
-- Every custody change requires an authenticated waybill scan.
-- Manual tracking-number entry is a recovery method only and creates the same audit checkpoint as a scan.
-- Sorting and rider assignment are separate actions.
-- Pickup riders and delivery riders use the same `courier` account role; their current assignment determines the phase.
-- One parcel has one seller pickup origin and one waybill. A multi-shop Shopping Bag must be split into one order and parcel per shop.
-- Only the buyer may change `DELIVERED` to `COMPLETED`.
-
-### Approval and Operational Eligibility
-
-Platform Admin approves marketplace accounts and logistics companies. An approved Logistics Company Admin manages only its own facilities, eligible handler access, and placement of already platform-approved couriers. Company placement cannot grant KYC approval or reverse suspension. Hub Handler is a facility-scoped responsibility of the `logistics` role, not an extra public registration role. See [ADMIN_FLOW.md](ADMIN_FLOW.md) for review authority, state, and suspension rules.
-
-Network contains the owning company's rider requests, versioned assignment offers and paginated current rider roster. A new rider chooses the company and accepts the exact current offer before placement. Offer expiry and current company, rider, facility and vehicle eligibility remain server decisions. Roster edits start from the saved current facility/vehicle/barangay; operators do not guess prior placement. Existing associations keep their original provenance, and same-company moves cannot substitute for a physical handover or reassign original cash responsibility. Handlers cannot review company applications or offers.
-
-New routing, manifest dispatch, and rider assignment require eligible accounts, company, facilities, personnel, and vehicles where applicable. Suspension blocks new work in the affected scope and sends active parcels/cash to authorized exception handling. Preserve the current custodian and checkpoints until a valid recovery scan; changing a status or assignee is not a custody handoff. Reactivation re-checks every required scope and does not silently restart stale work.
-
-## 2. Status Model
-
-### Customer-Facing Order Statuses
-
-```text
-PLACED
--> CONFIRMED
--> PREPARING
--> READY_FOR_PICKUP
--> PICKED_UP
--> AT_SORTING_CENTER
--> SORTED
--> ASSIGNED_TO_RIDER
--> OUT_FOR_DELIVERY
--> DELIVERED
--> COMPLETED
-```
-
-Failure branch:
-
-```text
-OUT_FOR_DELIVERY
--> DELIVERY_FAILED
--> SORTED -> ASSIGNED_TO_RIDER -> OUT_FOR_DELIVERY     (approved retry)
-or
--> RETURNED                                            (return completed at seller)
-```
-
-### Internal Delivery Checkpoints
-
-These do not create extra customer-facing order statuses:
-
-```text
-assigned_pickup
-picked_up
-arrived_at_origin_hub
-in_transit_to_mother_hub
-arrived_at_mother_hub
-sorted_to_line_haul
-in_transit_to_destination_hub
-arrived_at_destination_hub
-sorted_to_barangay_bin
-assigned_to_rider
-out_for_delivery
-delivered
-```
-
-Self-pickup adds `ready_for_hub_pickup` and `customer_collected`. Reverse logistics uses `return_to_sender` internally; the order becomes `RETURNED` only after the seller receives the returned parcel.
-
-Post-delivery buyer returns follow the separate [buyer-return contract](buyer-returns-plan/README.md).
-They retain the successful original order and delivery and have their own return
-barcode. Actual intake at the original destination Bayan Hub starts the reverse
-original Mother Hub sequence. Every leg requires its actual manifest, eligible
-vehicle/driver, source scan and destination receipt. The origin Bayan Hub stages
-the fully received return for its original seller's collection and condition
-confirmation. A scan that only identifies a return does not record intake, and
-seller receipt never proves monetary repayment.
-
-Legacy values such as `pending`, `processing`, `shipped`, generic `in_transit`, and `failed` are compatibility aliases only. New code and documentation must use the canonical values.
-
-## 3. Normal Doorstep Delivery
-
-### A. Checkout and Order Creation
-
-1. The buyer selects COD, confirms the delivery address, barangay, contact number, and doorstep delivery.
-2. The backend validates service coverage and atomically checks and decrements stock.
-3. A multi-shop Shopping Bag is split by shop. Each resulting order receives one delivery record, tracking number, route, and seller pickup origin.
-4. Shop vouchers affect only the matching shop order. Platform vouchers are divided proportionally without exceeding the calculated checkout discount.
-5. The routing engine assigns the origin Bayan Hub, origin Mother Hub, destination Mother Hub when different, destination Bayan Hub, and barangay bin.
-6. Order status becomes `PLACED`.
-7. The seller receives a persistent in-app new-order notification.
-
-### B. Seller Preparation
-
-1. Seller reviews and accepts the order: `PLACED -> CONFIRMED`.
-2. Seller prepares the items: `CONFIRMED -> PREPARING`.
-3. Seller prints and attaches the waybill.
-4. The waybill contains tracking barcode or QR, order number, seller pickup details, buyer destination, COD amount, delivery type, route facility codes, and handling notes.
-5. Seller marks the parcel `READY_FOR_PICKUP`.
-6. The parcel appears on the eligible pickup-rider job board.
-
-The seller cannot mark the parcel `PICKED_UP`. Only the assigned pickup rider's scan may do that.
-
-### C. Pickup Rider Handover
-
-1. An approved, active, and available rider claims the pickup atomically.
-2. The system removes the job from every other rider's available board.
-3. At the seller, the rider scans the waybill and verifies the order number and parcel count.
-4. The scan records the pickup rider as custodian and changes the order to `PICKED_UP`.
-5. The pickup rider brings the parcel only to the assigned origin Bayan Hub.
-
-### D. Origin Bayan Hub Intake
-
-1. An operator assigned to the origin Bayan Hub scans the parcel inbound.
-2. The system verifies the expected facility and current custody.
-3. The scan records operator, facility, time, tracking number, and hub custody.
-4. The order becomes `AT_SORTING_CENTER`.
-5. The pickup assignment ends.
-6. The assigned sending handler prepares a manifest for the exact next hub, choosing its eligible vehicle and assigned transport driver.
-
-### E. Mother-Hub Processing
-
-Every outbound parcel travels through each required Mother Hub in its saved route.
-
-1. The sending hub handler prepares the manifest and scans the actual outbound waybills into its draft.
-2. The handler seals the list, then records departure. Only departure transfers custody from the source hub to the recorded vehicle and driver.
-3. The receiving hub handler opens the incoming manifest and scans each physically arriving parcel. A scanner preview alone never records receipt.
-4. Once all expected parcels have supporting receipts and discrepancies are resolved, the receiving handler closes the manifest.
-5. The receiving hub prepares the next manifest when another hub remains. Distinct Mother Hubs require separate, ordered legs before destination Bayan intake.
-6. Feeder legs require an eligible source-hub closed van and assigned available driver; Mother-to-Mother line haul requires an eligible wing truck. Missing assignments block departure with guidance rather than fabricating transport.
-
-No separate logistics administrator login is required. Assigned source handlers prepare, seal and dispatch their transfers; assigned destination handlers record and close receipts. Existing Mother Hub handlers manage their eligible company's network and personnel. Management access alone never grants physical scan authority at another facility. Historical direct receipts remain retained evidence; new normal transfers use manifests.
-
-### F. Destination Bayan Hub and Rider Assignment
-
-1. Destination Bayan Hub scans the parcel inbound.
-2. Operator scans or selects the destination barangay bin: order becomes `SORTED`.
-3. The system lists only approved, active, available riders assigned to that hub and compatible barangay.
-4. Operator assigns exactly one delivery rider: order becomes `ASSIGNED_TO_RIDER`.
-5. The assignment appears in that rider's queue.
-6. The assigned rider scans the parcel out of the hub: order becomes `OUT_FOR_DELIVERY`.
-
-### G. Buyer Handover and Completion
-
-1. For COD, the rider verifies and collects the exact amount due.
-2. Rider records proof of delivery and delivery notes.
-3. Successful handover changes the order to `DELIVERED`.
-4. Buyer receives an in-app prompt to inspect the order and confirm receipt.
-5. Only the buyer's confirmation changes `DELIVERED -> COMPLETED`.
-6. Seller settlement becomes eligible only after completion and COD reconciliation.
-
-## 4. Failed Delivery, Retry, and Return-to-Sender
-
-### Failure Recording
-
-Only the assigned delivery rider may record a failed attempt. The rider must select a reason and enter useful notes.
-
-Allowed baseline reasons and retry policy:
-
-| Reason | Retry policy |
-|---|---|
-| Customer unreachable | Retryable after hub return and review |
-| Customer unavailable or requested reschedule | Retryable after hub return and an approved retry date |
-| Incorrect or incomplete address | Retryable only when clarification stays inside the assigned destination service area |
-| Unsafe access or severe weather | Retryable after hub review confirms service can resume |
-| COD amount unavailable | Retryable after buyer confirmation that exact payment will be available |
-| Customer refused the parcel | Non-retryable; begin RTS after destination-hub return |
-
-The event increments the attempt count, records time and location, changes the order to `DELIVERY_FAILED`, and instructs the rider to return the parcel to the destination Bayan Hub. A failed parcel must not remain in the rider's active custody after the hub return scan.
-
-### Retry
-
-1. Destination Bayan Hub scans the failed parcel back in.
-2. Handler reviews the reason and contacts the buyer when clarification is needed.
-3. A retry date is recorded; the parcel returns to the barangay sorting queue.
-4. The hub may assign the same or another eligible rider.
-5. Retry follows `SORTED -> ASSIGNED_TO_RIDER -> OUT_FOR_DELIVERY`.
-
-The baseline permits no more than three total delivery attempts. Retryable attempts one and two may be retried. Customer refusal may start RTS earlier; otherwise the third failure starts return-to-sender.
-
-### Return-to-Sender
-
-1. The system creates a reverse route and internal `return_to_sender` state.
-2. Destination Bayan Hub sends the parcel through its Mother Hub route.
-3. Origin Mother Hub forwards it to the origin Bayan Hub.
-4. Origin Bayan Hub records seller-return staging.
-5. Seller or authorized representative receives the parcel through a final scan.
-6. Only that final handover changes the customer-facing order to `RETURNED`.
-
-RTS must preserve the original waybill and append reverse checkpoints. It must not erase the outbound history.
-
-## 5. Hub Self-Pickup
-
-Self-pickup follows the same seller, pickup-rider, origin Bayan Hub, Mother Hub, and destination Bayan Hub route. It diverges only after destination-hub intake.
-
-1. Parcel becomes internally `ready_for_hub_pickup` and is placed on a controlled shelf.
-2. Buyer receives a persistent notification containing hub details, operating hours, expiry date, and a link to private one-time claim-code access. The code itself never appears in a notification, following the validation contract.
-3. Counter handler scans the waybill and enters the claim code.
-4. The system verifies delivery type, destination hub, ready status, unexpired code, and claimant identity.
-5. For COD, the counter handler records the exact cash received before release.
-6. Release consumes the claim code and records `customer_collected`.
-7. The order maps to `DELIVERED`; the buyer then confirms receipt to reach `COMPLETED`.
-
-Default holding period is exactly seven calendar days. The buyer receives reminders on days three and six. An uncollected parcel enters the exception queue after expiry and follows return-to-sender. Silent or ad hoc extensions are not allowed in the baseline.
-
-## 6. Basic In-App Notifications
-
-Notifications are persistent records with unread/read state and a link to the relevant order, parcel, or task. Email, SMS, push services, and real-time sockets are deferred and do not replace the baseline in-app record.
-
-| Event | Recipient | Required message/action |
+| Station | Receive | Prepare the next handoff |
 |---|---|---|
-| Order placed | Seller | Review and accept order |
-| Seller confirmed/preparing/ready | Buyer | Updated order milestone |
-| Ready for pickup | Eligible pickup riders | Job available on pickup board |
-| Pickup claimed | Seller and claiming rider | Rider and pickup details |
-| Parcel picked up | Buyer and seller | Tracking link |
-| Assigned to delivery rider | Assigned rider | Delivery task in queue |
-| Out for delivery | Buyer | Rider and COD amount reminder |
-| Delivery failed | Buyer and destination hub | Reason and next action |
-| Ready for hub pickup | Buyer | Private claim-code access link, hub, and expiry |
-| Delivered/collected | Buyer | Confirm receipt |
-| Completed | Seller | Settlement eligibility |
-| RTS started/returned | Buyer and seller | Return progress and final result |
+| Origin child | Scan the picked-up waybill and confirm actual rider-to-hub receipt | Local bypass: sort locally. Regional: scan parcels into a sealed Mother Bag for the configured parent. |
+| Mother | Verify/open arriving bag seals; individually scan parcels | Read the destination child/Mother and cage guidance, sort, bag, master-tag load and dispatch the next recorded truck/van leg. |
+| Destination child | Verify/open the arriving bag; scan every parcel and finish its manifest receipt | Sort into the saved delivery-area bin and assign an eligible local rider, or stage secure buyer collection. |
+| Delivery rider | Scan the assigned actual parcel out of the hub | Record recipient, original COD/prepaid evidence and private POD at actual handover. |
+| Counter | Stage an actually received self-pickup parcel | Verify private code, identity and original payment before actual release. |
 
-Job-board and assignment-queue entries count as operational rider notifications. Buyer and seller notifications must also appear in their notification center.
+An assigned station operator can receive and prepare manifests at that physical hub. The approved company owner creates the network, personnel, tariffs and fleet. A platform administrator's oversight access does not authorize ordinary physical scans.
 
-## 7. COD Cash Custody and Settlement
+## Scanning
 
-COD cash and order status are related but separate. `DELIVERED` proves parcel handover; it does not prove that cash has been remitted to the platform.
+Scan Station works directly without visiting Overview. Its prompt distinguishes inspection from a permitted confirmation. An inspection or camera preview never transfers custody. Follow the actual next action returned by the server. For a bag transfer, prepare a matching draft manifest, pack/seal in Mother Bags, scan the master tag onto that draft, seal its list and record departure. At arrival, verify/open the bag first, scan individual waybills and close the received manifest.
 
-### Doorstep COD
+The same-child optimization records local destination receipt with the original intake, then permits local sort and dispatch. It creates no transport manifest or Mother-Hub arrival. A different-child journey must traverse the configured hierarchy.
 
-```text
-Amount Due
--> Collected by Delivery Rider
--> Remitted to Destination Bayan Hub
--> Reconciled and Remitted to Platform
--> Seller Settlement Eligible
--> Seller Paid
-```
+## Exceptions
 
-### Self-Pickup COD
+- A wrong hub produces an alarm/error and the expected stop. A dispatched parcel's unexpected physical scan retains a misroute hold. Set it aside and follow company-authorized Parcel recovery through Mother Hub(s).
+- Missing, damaged, duplicate and unexpected parcel observations preserve original custody. Supported receiving/recovery evidence is required to resolve them.
+- An intact-seal checkbox is an actual observation. A broken or mismatched seal needs discrepancy handling.
+- A missed historical handoff uses the existing reviewed Handover issues/recovery process. It does not become a free-form status edit. Bag membership is released only by supported receiving or corrective recovery.
+- Refusal/third failure returns through the reversed frozen route, ending with actual seller receipt. A local return stays at its one child hub.
+- Completed-order buyer returns retain the seven-day delivery window, separate return barcode, actual intake/photo, route receipts, seller receipt and original refund funding.
 
-```text
-Amount Due
--> Collected at Destination Bayan Hub Counter
--> Reconciled and Remitted to Platform
--> Seller Settlement Eligible
--> Seller Paid
-```
+## Money at the station
 
-Every cash movement records amount, order, delivery, collector, remitter, receiver, timestamp, reference number, and reconciliation status. Cash records are append-only; corrections use adjustment entries.
+The original buyer payment, rider-to-hub cash offer, counted receipt, difference review, hub-to-platform handover, platform reconciliation and external seller payment are separate facts. The exact rider shift cannot close while COD is held, a handover is pending or a rider difference is unresolved. A counted hub receipt releases that COD rider's delivery entitlement; it does not claim that a bank payout happened.
 
-Financial rules:
-
-- For COD orders, the order total is the exact cash amount presented to the buyer.
-- The platform commission is 10% of the order product subtotal.
-- The seller share is 90% of the order product subtotal.
-- Shipping and handling are tracked separately and are not included in the 10%/90% product split.
-- Seller payout requires order `COMPLETED` and COD reconciled at platform level.
-- Rider earnings and logistics shipping revenue are separate from seller proceeds.
-- Admin may audit and approve reconciliation but cannot silently rewrite cash history.
-
-The separately selected [Bagoo Wallet](BAGOO_WALLET.md) uses verified original
-prepayment instead of cash collection at either handover. Every parcel, scan,
-recipient, proof and private counter-code requirement still applies. Wallet
-orders create no COD custody or remittance record; their buyer refunds and
-seller virtual proceeds retain separate immutable references.
-
-## 8. Authorization and Scan Validation
-
-- Seller actions are limited to orders containing that seller's items.
-- Pickup jobs are claimable only at `READY_FOR_PICKUP` and while unclaimed.
-- Hub operators scan only at facilities assigned to them; logistics company administrators may manage facilities in their own company.
-- Every scan must match the delivery's expected next facility and state.
-- A final-mile rider must be approved, active, available, assigned to the destination hub, and compatible with the barangay.
-- Only the assigned final-mile rider may scan out or submit a delivery result.
-- Duplicate scans are idempotent and do not create a second custody change.
-- Cancelled, completed, or returned parcels cannot re-enter active dispatch.
-- Claim codes are one-time, stored securely, expire, and are never displayed to unauthorized users.
-
-## 9. Implementation Status
-
-This document defines the required logistics behavior and does not track changing implementation claims. Current evidence, gaps, delivery phases, and deferred scope are maintained only in `docs/CORE_FLOW_ROADMAP.md`.
+New valid deliveries complete automatically and release the authoritative earnings ledger. Use the selected company's frozen standard or dedicated model. Historical version-one orders and money keep their original buyer-confirmation/settlement contract. See [deployment](new-docs-era/DEPLOYMENT.md) and [the roadmap](CORE_FLOW_ROADMAP.md) for release evidence.

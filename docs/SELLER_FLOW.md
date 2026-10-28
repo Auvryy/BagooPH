@@ -115,9 +115,10 @@ Product settlement is not released merely because a rider marks the parcel deliv
 
 For [Bagoo Wallet](BAGOO_WALLET.md), the seller cannot confirm or prepare an unpaid
 order. Verified paid orders follow the same custody route without cash collection.
-After buyer confirmation, a platform admin can record the original 90% seller
-share in **Virtual proceeds**, with original discounts, accepted returns and
-shipping kept separate. Sellers can read their own credits and history; these
+After verified delivery, a version-two order completes automatically and credits
+its original 90% seller share through the balanced virtual journal, with original
+discounts, accepted returns and shipping kept separate. Historical version-one
+payments retain their explicit admin proceeds control. Sellers can read their own credits and history; these
 virtual proceeds cannot be spent, withdrawn or represented as a cash payout.
 
 ## 5. Required Seller Notifications
@@ -133,3 +134,7 @@ virtual proceeds cannot be spent, withdrawn or represented as a cash payout.
 ## 6. Implementation Status
 
 Current seller gaps and their approved delivery phase are tracked only in `docs/CORE_FLOW_ROADMAP.md`.
+
+## Version-two delivery earnings
+
+The authoritative [new logistics contract](new-docs-era/README.md) freezes the buyer-selected company, route, weight calculation and tariff on the purchase. The printed waybill shows that calculation and route. Valid recipient/POD/payment evidence completes new deliveries automatically; the seller’s completed-sales graph uses that saved completion date. Delivery earnings shows original earned product proceeds with original funded promotions and approved return adjustments. A released entitlement is separate from an actual external cash payment.

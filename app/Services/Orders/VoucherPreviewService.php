@@ -3,6 +3,7 @@
 namespace App\Services\Orders;
 
 use App\Exceptions\CheckoutException;
+use App\Models\LogisticsCompany;
 use App\Models\User;
 use App\Models\Voucher;
 use Illuminate\Support\Collection;
@@ -10,7 +11,7 @@ use Illuminate\Support\Collection;
 class VoucherPreviewService
 {
     /** Only preview may clear invalid slots. Final placement always rejects changed availability. */
-    public function preview(User $buyer, Collection $items, string $deliveryType, array $input): array
+    public function preview(User $buyer, Collection $items, string $deliveryType, array $input, ?LogisticsCompany $company = null): array
     {
         $resolver = app(VoucherSelectionService::class);
         $selection = $resolver->normalize($input);
@@ -55,7 +56,7 @@ class VoucherPreviewService
         }
         $quotes = app(CheckoutQuoteService::class);
         do {
-            $quote = $quotes->quote($items, $deliveryType, $revisions, $buyer);
+            $quote = $quotes->quote($items, $deliveryType, $revisions, $buyer, $company);
             $failed = isset($quote['failed_revision_id']) ? $revisions->firstWhere('id', $quote['failed_revision_id']) : null;
             if ($failed) {
                 $slot = $failed->issuer_type === 'platform' ? 'platform' : 'shop:'.$failed->shop_id;

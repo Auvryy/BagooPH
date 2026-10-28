@@ -145,7 +145,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                 <div className="flex items-center gap-2">
                     {canScan && <PortalLink
                         href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition uppercase tracking-wider"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-lg shadow-sm transition uppercase tracking-wider"
                     >
                         <ScanLine className="w-3.5 h-3.5" />
                         <span>Floor Scanner</span>
@@ -162,77 +162,77 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                 
                 {/* 1. TOP PARCEL KPI TILES */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Facility Queue</span>
+                                <span className="font-bold uppercase tracking-wider text-xs">Facility Queue</span>
                                 <Package className="w-3.5 h-3.5 text-slate-700" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-semibold text-slate-900 font-sans tracking-tight">
                                     {counts.all}{' '}
                                     <span className="text-xs font-bold text-slate-400">waybills</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Scope:</span>
                             <span className="font-bold text-slate-800">This facility</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Recorded Hub Custody</span>
+                                <span className="font-bold uppercase tracking-wider text-xs">Recorded Hub Custody</span>
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]"></span>
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-semibold text-slate-900 font-sans tracking-tight">
                                     {counts.in_hub}{' '}
                                     <span className="text-xs font-bold text-slate-400">held</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Source:</span>
                             <span className="font-bold text-[#E00D42]">Retained checkpoints</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Counter Queue</span>
+                                <span className="font-bold uppercase tracking-wider text-xs">Counter Queue</span>
                                 <Truck className="w-3.5 h-3.5 text-amber-600" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-semibold text-slate-900 font-sans tracking-tight">
                                     {counts.ready_pickup}{' '}
                                     <span className="text-xs font-bold text-slate-400">parcels</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Includes:</span>
                             <span className="font-bold text-amber-700">Arrival and staging</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Recorded Handovers Today</span>
+                                <span className="font-bold uppercase tracking-wider text-xs">Recorded Handovers Today</span>
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             </div>
                             <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                                <p className="text-2xl sm:text-3xl font-semibold text-slate-900 font-sans tracking-tight">
                                     {counts.handovers_today}{' '}
                                     <span className="text-xs font-bold text-slate-400">parcels</span>
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Period:</span>
                             <span className="font-bold text-emerald-700">Today, Asia/Manila</span>
                         </div>
@@ -240,7 +240,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                 </div>
 
                 {/* 2. SEARCH AND FILTER CONTROLS */}
-                <div className="bg-white rounded-xs p-3.5 border border-slate-300 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="bg-white rounded-lg p-3.5 border border-slate-300 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
                     <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-80">
                         <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
@@ -250,16 +250,16 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Search tracking number or recipient..."
-                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
+                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
                         />
                     </form>
 
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end font-sans">
-                        <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-xs border border-slate-200 text-xs">
+                        <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-300 text-xs">
                             <button
                                 type="button"
                                 onClick={() => handleFilter('all')}
-                                className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                                     filters.status === 'all'
                                         ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
                                         : 'text-slate-500 hover:text-slate-800'
@@ -270,7 +270,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             <button
                                 type="button"
                                 onClick={() => handleFilter('in_hub')}
-                                className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                                     filters.status === 'in_hub'
                                         ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
                                         : 'text-slate-500 hover:text-slate-800'
@@ -281,7 +281,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             <button
                                 type="button"
                                 onClick={() => handleFilter('ready_pickup')}
-                                className={`px-2.5 py-1 rounded-xs text-[10px] font-bold transition cursor-pointer ${
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                                     filters.status === 'ready_pickup'
                                         ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
                                         : 'text-slate-500 hover:text-slate-800'
@@ -294,7 +294,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                         <select
                             value={filters.delivery_type}
                             onChange={(e) => handleFilter(undefined, e.target.value)}
-                            className="bg-white border border-slate-300 rounded-xs px-2.5 py-1.5 text-xs font-sans font-bold focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                            className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-sans font-bold focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                         >
                             <option value="all">All Types</option>
                             <option value="doorstep">Doorstep Delivery</option>
@@ -304,11 +304,11 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                 </div>
 
                 {/* 3. WAYBILLS TABLE */}
-                <div className="bg-white rounded-xs border border-slate-300 shadow-xs overflow-hidden">
+                <div className="bg-white rounded-lg border border-slate-300 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="border-b border-slate-200 bg-slate-50/90 text-[10px] font-bold uppercase tracking-wider text-slate-500 font-sans">
+                                <tr className="border-b border-slate-300 bg-slate-50/90 text-xs font-bold uppercase tracking-wider text-slate-500 font-sans">
                                     <th className="py-2.5 px-3.5">Tracking Number</th>
                                     <th className="py-2.5 px-3.5">Recipient / Destination</th>
                                     <th className="py-2.5 px-3.5">Delivery Mode</th>
@@ -333,11 +333,11 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                                 <span className="font-sans font-bold text-slate-900 block text-xs">
                                                     {delivery.tracking_number}
                                                 </span>
-                                                <span className="text-[10px] text-slate-400 font-sans block mt-0.5">
+                                                <span className="text-xs text-slate-400 font-sans block mt-0.5">
                                                     Order: {delivery.order_number}
                                                 </span>
                                                 {delivery.items?.length > 0 && (
-                                                    <span className="text-[10px] text-slate-500 font-sans block mt-0.5 truncate max-w-[180px]">
+                                                    <span className="text-xs text-slate-500 font-sans block mt-0.5 truncate max-w-[180px]">
                                                         {delivery.items[0].name}{delivery.items.length > 1 ? ` + ${delivery.items.length - 1} more` : ''}
                                                     </span>
                                                 )}
@@ -354,10 +354,10 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                             </td>
 
                                             <td className="py-3 px-3.5">
-                                                <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-xs font-sans ${
+                                                <span className={`inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded-lg font-sans ${
                                                     delivery.delivery_type === 'hub_self_pickup'
                                                         ? 'bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA]'
-                                                        : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                                        : 'bg-slate-100 text-slate-700 border border-slate-300'
                                                 }`}>
                                                     {delivery.delivery_type === 'hub_self_pickup' ? (
                                                         <>
@@ -372,7 +372,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                             </td>
 
                                             <td className="py-3 px-3.5">
-                                                <span className="font-sans font-bold text-slate-800 px-1.5 py-0.5 rounded-xs bg-slate-100 border border-slate-300 text-[10px] inline-block">
+                                                <span className="font-sans font-bold text-slate-800 px-1.5 py-0.5 rounded-lg bg-slate-100 border border-slate-300 text-xs inline-block">
                                                     {delivery.destination_bin ?? 'Not assigned'}
                                                 </span>
                                             </td>
@@ -385,7 +385,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                                 <span className="font-bold text-slate-900 block">
                                                     ₱{delivery.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                                 </span>
-                                                <span className="text-[10px] text-slate-400 uppercase">
+                                                <span className="text-xs text-slate-400 uppercase">
                                                     {delivery.payment_method}
                                                 </span>
                                             </td>
@@ -401,7 +401,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                                         type="button"
                                                         disabled={busy}
                                                         onClick={() => sortParcel(delivery)}
-                                                        className="px-2.5 py-1.5 rounded-xs bg-slate-900 hover:bg-[#E00D42] text-white text-[10px] font-bold uppercase transition"
+                                                        className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-bold uppercase transition"
                                                     >
                                                         Sort to Bin
                                                     </button>
@@ -417,7 +417,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                                                 ...current,
                                                                 [delivery.id]: event.target.value,
                                                             }))}
-                                                            className="min-w-0 flex-1 border border-slate-300 rounded-xs px-2 py-1.5 text-[10px] font-sans"
+                                                            className="min-w-0 flex-1 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-sans"
                                                         >
                                                             <option value="">Select area rider</option>
                                                             {eligibleRiders
@@ -432,7 +432,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                                             type="button"
                                                             disabled={busy || !delivery.guidance.eligible_rider_ids.includes(Number(selectedRiders[delivery.id]))}
                                                             onClick={() => assignRider(delivery)}
-                                                            className="px-2.5 py-1.5 rounded-xs bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-40 text-white text-[10px] font-bold uppercase transition"
+                                                            className="px-2.5 py-1.5 rounded-lg bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-40 text-white text-xs font-bold uppercase transition"
                                                         >
                                                             Assign
                                                         </button>
@@ -449,7 +449,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
 
                     {/* Pagination */}
                     {deliveries.last_page > 1 && (
-                        <div className="p-3 border-t border-slate-200 flex items-center justify-between text-xs font-sans">
+                        <div className="p-3 border-t border-slate-300 flex items-center justify-between text-xs font-sans">
                             <span className="text-slate-500">
                                 Page {deliveries.current_page} of {deliveries.last_page} ({deliveries.total} total)
                             </span>
@@ -460,7 +460,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                         href={link.url}
                                         only={listProps} preserveScroll preserveState
                                         aria-current={link.active ? 'page' : undefined}
-                                        className={`px-2.5 py-1 rounded-xs text-xs font-bold font-sans transition ${
+                                        className={`px-2.5 py-1 rounded-lg text-xs font-bold font-sans transition ${
                                             link.active
                                                 ? 'bg-[#E00D42] text-white'
                                                 : link.url

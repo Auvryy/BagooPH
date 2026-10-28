@@ -91,7 +91,7 @@ export default function SellerReviews({ reviews, stats, shop, filters = { rating
                 {reviews.data.length === 0 && <div className="space-y-2 py-12 text-center">
                     <MessageSquare className="mx-auto h-6 w-6 text-slate-400" />
                     <h3 className="font-bold text-slate-800">{filters.rating ? 'No reviews with this rating' : 'No customer reviews yet'}</h3>
-                    <p className="text-xs text-slate-500">Completed purchases can be reviewed after the buyer confirms receipt.</p>
+                    <p className="text-xs text-slate-500">Completed purchases can be reviewed after verified delivery.</p>
                 </div>}
                 <div className="divide-y divide-slate-300">
                     {reviews.data.map(review => <article key={review.id} className="space-y-3 py-6 first:pt-0">

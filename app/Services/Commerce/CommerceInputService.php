@@ -40,6 +40,7 @@ class CommerceInputService
             'delivery_type' => ['nullable', Rule::in(['doorstep', 'hub_self_pickup'])],
             'pickup_hub_id' => ['bail', 'required_if:delivery_type,hub_self_pickup', 'nullable', $this->identifier(), 'integer'],
             'payment_method' => ['required', Rule::in(['cod', 'wallet'])],
+            'logistics_company_id' => ['nullable', $this->identifier(), 'integer'],
             'voucher_code' => ['bail', 'nullable', 'string', 'max:50', 'regex:/\A[A-Z0-9_-]+\z/'],
             'save_address' => ['nullable', 'boolean'],
             'item_ids' => ['required', 'array', 'list', 'min:1'],
@@ -52,7 +53,7 @@ class CommerceInputService
             $data['item_quantities'] = $quantities;
         }
 
-        foreach (['shipping_latitude', 'shipping_longitude', 'landmark', 'notes', 'voucher_code', 'pickup_hub_id'] as $field) {
+        foreach (['shipping_latitude', 'shipping_longitude', 'landmark', 'notes', 'voucher_code', 'pickup_hub_id', 'logistics_company_id'] as $field) {
             $data[$field] ??= null;
         }
         foreach (['shipping_latitude', 'shipping_longitude'] as $field) {

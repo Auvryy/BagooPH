@@ -9,7 +9,7 @@ const sections = [
     { key: 'accounts', label: 'Accounts & reviews', icon: Users, names: ['KYC Queue', 'Shop reviews', 'Users', 'Review requests'] },
     { key: 'marketplace', label: 'Marketplace', icon: Store, names: ['Products', 'Voucher campaigns', 'Advertisements'] },
     { key: 'deliveries', label: 'Deliveries & returns', icon: Truck, names: ['Logistics', 'Delivery exceptions', 'Buyer returns', 'Handover issues'] },
-    { key: 'finance', label: 'Finance', icon: Banknote, names: ['COD cash', 'Seller proceeds', 'Wallet credits', 'Virtual proceeds', 'Financial oversight'] },
+    { key: 'finance', label: 'Finance', icon: Banknote, names: ['COD cash', 'Seller proceeds', 'Delivery earnings', 'Shipping settings', 'Wallet credits', 'Virtual proceeds', 'Financial oversight'] },
     { key: 'governance', label: 'Governance', icon: ShieldCheck, names: ['Governance history', 'Resource activity'] },
 ];
 

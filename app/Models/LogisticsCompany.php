@@ -34,6 +34,7 @@ class LogisticsCompany extends Model
     }
 
     protected $fillable = [
+        'base_shipping_cents', 'included_weight_grams', 'additional_kg_cents', 'shipping_earnings_model', 'tariff_version',
         'user_id',
         'name',
         'tin',
@@ -50,6 +51,7 @@ class LogisticsCompany extends Model
     ];
 
     protected $casts = [
+        'base_shipping_cents' => 'integer', 'included_weight_grams' => 'integer', 'additional_kg_cents' => 'integer', 'tariff_version' => 'integer',
         'accreditation_details' => 'array',
         'service_areas' => 'array',
         'is_active' => 'boolean',

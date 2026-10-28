@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\PickupClaim;
 use App\Models\Shop;
 use DomainException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -67,23 +68,27 @@ class LogisticsRoutingEngine
             $query->where('logistics_company_id', $company->id);
         }
 
-        $city = $this->normalizePlace((string) $shop->city);
-        $cityMatch = $city === '' ? null : (clone $query)->get()->first(function (LogisticsHub $hub) use ($city) {
-            $hubCity = $this->normalizePlace((string) $hub->city_municipality);
+        $owner = $shop->user;
+        $city = $this->cityKey((string) $shop->city);
+        $province = $this->normalizePlace((string) ($shop->pickup_province ?: (str_contains((string) $shop->city, ',') ? Str::afterLast($shop->city, ',') : '')));
+        $postal = (string) ($shop->pickup_postal_code ?: ($this->cityKey((string) $owner?->city) === $city ? $owner?->postal_code : ''));
+        $hubs = $query->orderBy('id')->get()->filter(function (LogisticsHub $hub) use ($city, $province, $postal) {
+            if ($province !== '' && $this->normalizePlace($hub->province) !== $province) {
+                return false;
+            }
 
-            return $hubCity !== '' && (str_contains($city, $hubCity) || str_contains($hubCity, $city));
+            return ! empty($hub->postal_codes) && $postal !== ''
+                ? in_array($postal, $hub->postal_codes, true)
+                : $city !== '' && $this->cityKey($hub->city_municipality) === $city;
         });
-        if ($cityMatch) {
-            return $cityMatch;
-        }
 
-        return null;
+        return $this->unambiguousHub($hubs);
     }
 
     /**
      * Resolve the Destination Bayan Hub for a buyer address.
      */
-    public function resolveDestinationBayanHub(string $province, string $city, ?string $barangay = null, ?LogisticsCompany $company = null): ?LogisticsHub
+    public function resolveDestinationBayanHub(string $province, string $city, ?string $barangay = null, ?LogisticsCompany $company = null, ?string $postalCode = null): ?LogisticsHub
     {
         $query = LogisticsHub::eligible()->where('tier', 'local_bayan_hub');
 
@@ -92,10 +97,11 @@ class LogisticsRoutingEngine
         }
 
         // A repeated barangay name or a partial city name cannot override the destination province/city.
-        $hubs = $query->orderBy('id')->get()->filter(fn (LogisticsHub $hub) => $this->matchesDestination($hub, $province, $city, $barangay));
+        $hubs = $query->orderBy('id')->get()->filter(fn (LogisticsHub $hub) => $this->matchesDestination($hub, $province, $city, $barangay, $postalCode));
 
-        return $hubs->first(fn (LogisticsHub $hub) => $barangay && $hub->coversBarangay($barangay))
-            ?? $hubs->first(fn (LogisticsHub $hub) => empty($hub->coverage_barangays));
+        $specific = $hubs->filter(fn (LogisticsHub $hub) => $barangay && $hub->coversBarangay($barangay));
+
+        return $this->unambiguousHub($specific->isNotEmpty() ? $specific : $hubs->filter(fn (LogisticsHub $hub) => empty($hub->coverage_barangays)));
     }
 
     /**
@@ -107,13 +113,18 @@ class LogisticsRoutingEngine
         if (! $bayanHub) {
             return null;
         }
+        if ($bayanHub->parent_hub_id) {
+            return LogisticsHub::eligible()->where('logistics_company_id', $bayanHub->logistics_company_id)
+                ->where('tier', 'regional_mother_hub')->find($bayanHub->parent_hub_id);
+        }
         $province = $this->normalizePlace((string) $bayanHub->province);
 
-        return LogisticsHub::eligible()->where('logistics_company_id', $bayanHub->logistics_company_id)
+        $matches = LogisticsHub::eligible()->where('logistics_company_id', $bayanHub->logistics_company_id)
             ->where('tier', 'regional_mother_hub')
             ->where('is_active', true)
-            ->get()
-            ->first(fn (LogisticsHub $hub) => $this->normalizePlace((string) $hub->province) === $province);
+            ->get()->filter(fn (LogisticsHub $hub) => $this->normalizePlace((string) $hub->province) === $province);
+
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
     /**
@@ -140,41 +151,47 @@ class LogisticsRoutingEngine
             $destination = $order->delivery_type === 'hub_self_pickup' && $order->pickup_hub_id
                 ? LogisticsHub::eligible()->whereKey($order->pickup_hub_id)->where('logistics_company_id', $company->id)
                     ->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)->first()
-                : $this->resolveDestinationBayanHub($order->shipping_province ?? '', $order->shipping_city ?? '', $order->destination_barangay, $company);
+                : $this->resolveDestinationBayanHub($order->shipping_province ?? '', $order->shipping_city ?? '', $order->destination_barangay, $company, $order->shipping_postal_code);
+            $local = $order->logistics_flow_version >= 2 && $origin && $destination && $origin->id === $destination->id;
             $originMother = $origin ? $this->resolveMotherHubForBayanHub($origin) : null;
             $destinationMother = $destination ? $this->resolveMotherHubForBayanHub($destination) : null;
-            if (! $origin || ! $destination || ! $originMother || ! $destinationMother) {
+            if (! $origin || ! $destination || (! $local && (! $originMother || ! $destinationMother))) {
                 throw new DomainException('No complete eligible Bayan and Mother Hub route serves this parcel.');
             }
-            if (! $this->matchesDestination($destination, $order->shipping_province ?? '', $order->shipping_city ?? '', $order->destination_barangay)) {
+            if (! $this->matchesDestination($destination, $order->shipping_province ?? '', $order->shipping_city ?? '', $order->destination_barangay, $order->shipping_postal_code)) {
                 throw new DomainException('Choose a pickup hub serving the stated delivery address.');
             }
             if (! $this->isContiguousRoadServiceable($origin->province, $origin->city_municipality)
                 || ! $this->isContiguousRoadServiceable($destination->province, $destination->city_municipality)) {
                 throw new DomainException('The selected facilities are outside the supported road network.');
             }
-            app(LogisticsEligibilityService::class)->lockNetwork($company->id, hubIds: [
-                $origin->id, $originMother->id, $destinationMother->id, $destination->id,
-            ]);
+            $path = $local ? [$origin->id] : array_values(array_unique([$origin->id, $originMother->id, $destinationMother->id, $destination->id]));
+            app(LogisticsEligibilityService::class)->lockNetwork($company->id, hubIds: $path);
             $bayanIds = collect([$origin->id, $destination->id])->unique();
-            $motherIds = collect([$originMother->id, $destinationMother->id])->unique();
+            $motherIds = $local ? collect() : collect([$originMother->id, $destinationMother->id])->unique();
             if (LogisticsHub::eligible()->whereIn('id', $bayanIds)->where('tier', 'local_bayan_hub')->count() !== $bayanIds->count()
                 || LogisticsHub::eligible()->whereIn('id', $motherIds)->where('tier', 'regional_mother_hub')->count() !== $motherIds->count()
                 || ($order->delivery_type === 'hub_self_pickup' && ! LogisticsHub::eligible()->whereKey($destination->id)->where('allows_self_pickup', true)->exists())) {
                 throw new DomainException('The selected facility capabilities changed. Check the route again.');
             }
-            if (! $this->matchesDestination($destination->fresh(), $order->shipping_province ?? '', $order->shipping_city ?? '', $order->destination_barangay)) {
+            if (! $this->matchesDestination($destination->fresh(), $order->shipping_province ?? '', $order->shipping_city ?? '', $order->destination_barangay, $order->shipping_postal_code)) {
                 throw new DomainException('The destination coverage changed. Check the delivery address again.');
             }
             $barangay = $order->destination_barangay ?? 'GENERAL';
             $parcel->fill([
                 'logistics_company_id' => $company->id, 'logistics_partner' => $company->name,
-                'origin_bayan_hub_id' => $origin->id, 'origin_mother_hub_id' => $originMother->id,
-                'destination_mother_hub_id' => $destinationMother->id, 'destination_bayan_hub_id' => $destination->id,
+                'origin_bayan_hub_id' => $origin->id, 'origin_mother_hub_id' => $local ? null : $originMother->id,
+                'destination_mother_hub_id' => $local ? null : $destinationMother->id, 'destination_bayan_hub_id' => $destination->id,
+                'route_hub_ids' => $order->logistics_flow_version >= 2 ? $path : null, 'same_hub_bypass' => $local,
                 'current_hub_id' => null,
                 'destination_bin' => $order->delivery_type === 'hub_self_pickup'
                     ? null : 'BIN: BRGY-'.strtoupper(str_replace(' ', '-', $barangay)),
             ])->save();
+            if ($order->logistics_flow_version >= 2) {
+                $routeHubs = LogisticsHub::whereIn('id', $path)->get()->keyBy('id');
+                $order->update(['shipping_quote' => [...($order->shipping_quote ?? []), 'route' => array_map(
+                    fn ($id) => $routeHubs[$id]->only(['id', 'code', 'name', 'tier']), $path), 'same_hub_bypass' => $local]]);
+            }
             $delivery->setRawAttributes($parcel->getAttributes(), true)->unsetRelations();
 
             return $delivery;
@@ -197,10 +214,11 @@ class LogisticsRoutingEngine
                     $order->shipping_province ?? '',
                     $order->shipping_city ?? '',
                     $order->destination_barangay,
-                    $company
+                    $company,
+                    $order->shipping_postal_code
                 );
 
-            if ($origin && $destination && $this->resolveMotherHubForBayanHub($origin) && $this->resolveMotherHubForBayanHub($destination)) {
+            if ($origin && $destination && ($origin->id === $destination->id || ($this->resolveMotherHubForBayanHub($origin) && $this->resolveMotherHubForBayanHub($destination)))) {
                 return $company;
             }
         }
@@ -208,13 +226,52 @@ class LogisticsRoutingEngine
         throw new DomainException('No logistics company can provide the complete seller-to-buyer hub route.');
     }
 
-    private function matchesDestination(LogisticsHub $hub, string $province, string $city, ?string $barangay): bool
+    public function serves(LogisticsCompany $company, Shop $shop, array $address): bool
     {
-        $cityKey = fn (string $place) => preg_replace('/^(?:city|municipality) of | (?:city|municipality)$/', '', $this->normalizePlace($place));
+        $origin = $this->resolveOriginBayanHub($shop, $company);
+        $destination = ($address['delivery_type'] ?? 'doorstep') === 'hub_self_pickup' && ! empty($address['pickup_hub_id'])
+            ? LogisticsHub::eligible()->where('logistics_company_id', $company->id)->where('tier', 'local_bayan_hub')->where('allows_self_pickup', true)->find($address['pickup_hub_id'])
+            : $this->resolveDestinationBayanHub($address['shipping_province'] ?? '', $address['shipping_city'] ?? '', $address['destination_barangay'] ?? null, $company, $address['shipping_postal_code'] ?? null);
 
-        return $this->normalizePlace($province) !== '' && $cityKey($city) !== ''
+        return $origin && $destination && $this->matchesDestination($destination, $address['shipping_province'] ?? '', $address['shipping_city'] ?? '', $address['destination_barangay'] ?? null, $address['shipping_postal_code'] ?? null)
+            && ($origin->id === $destination->id || ($this->resolveMotherHubForBayanHub($origin) && $this->resolveMotherHubForBayanHub($destination)));
+    }
+
+    public function forwardSortTarget(Delivery $parcel, ?LogisticsHub $station): ?array
+    {
+        if (! $station || $parcel->order->logistics_flow_version < 2 || ! is_array($parcel->route_hub_ids)
+            || in_array($parcel->status, ['return_to_sender', 'return_in_transit', 'returned', 'parcel_recovery_held', 'parcel_recovery_in_transit'], true)) {
+            return null;
+        }
+        $position = array_search($station->id, $parcel->route_hub_ids, true);
+        $id = $position !== false ? ($parcel->route_hub_ids[$position + 1] ?? null) : null;
+        $next = $id ? LogisticsHub::where('logistics_company_id', $parcel->logistics_company_id)->find($id) : null;
+
+        return $next?->only(['id', 'name', 'code', 'tier']);
+    }
+
+    private function unambiguousHub(Collection $hubs): ?LogisticsHub
+    {
+        if ($hubs->count() > 1) {
+            throw new DomainException('More than one child hub covers this address. The logistics company must correct its service coverage.');
+        }
+
+        return $hubs->first();
+    }
+
+    private function cityKey(string $place): string
+    {
+        return preg_replace('/^(?:city|municipality) of | (?:city|municipality)$/', '', $this->normalizePlace(Str::before($place, ',')));
+    }
+
+    private function matchesDestination(LogisticsHub $hub, string $province, string $city, ?string $barangay, ?string $postalCode = null): bool
+    {
+
+        return $this->normalizePlace($province) !== '' && $this->cityKey($city) !== ''
             && $this->normalizePlace((string) $hub->province) === $this->normalizePlace($province)
-            && $cityKey((string) $hub->city_municipality) === $cityKey($city)
+            && (! empty($hub->postal_codes)
+                ? $postalCode !== null && in_array($postalCode, $hub->postal_codes, true)
+                : $this->cityKey((string) $hub->city_municipality) === $this->cityKey($city))
             && (empty($hub->coverage_barangays) || ($barangay && $hub->coversBarangay($barangay)));
     }
 

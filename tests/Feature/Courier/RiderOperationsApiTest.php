@@ -72,7 +72,7 @@ class RiderOperationsApiTest extends TestCase
             ->assertJsonPath('data.capabilities.cash', true)
             ->assertJsonPath('data.capabilities.pre_custody_release', false)
             ->assertJsonPath('data.capabilities.native_restricted_recovery', false)
-            ->assertJsonPath('data.capabilities.rider_earnings', false);
+            ->assertJsonPath('data.capabilities.rider_earnings', true);
         $this->getJson('/api/v1/rider/trips')->assertOk();
         $this->getJson('/api/v1/rider/cash')->assertOk();
     }

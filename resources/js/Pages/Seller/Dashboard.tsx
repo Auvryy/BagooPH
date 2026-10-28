@@ -264,7 +264,7 @@ export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveri
                                         {chartTitle}
                                     </h3>
                                 </div>
-                                <p className="mt-1 text-xs text-slate-500">{chartMode === 'completed' ? 'Product sales confirmed by the buyer' : 'Delivered orders awaiting buyer confirmation'} · Philippine dates</p>
+                                <p className="mt-1 text-xs text-slate-500">{chartMode === 'completed' ? 'Product sales from completed orders' : 'Historical delivered orders awaiting confirmation'} · Philippine dates</p>
                             </div>
                             <label className="text-xs font-semibold text-slate-600">Period
                                 <select value={salesPeriod} disabled={chartLoading} aria-label="Sales chart period" className="ml-2 rounded-lg border border-slate-300 bg-white py-1.5 pl-2 pr-7 text-xs focus:border-[#E00D42] focus:ring-[#E00D42] disabled:opacity-50"
@@ -282,7 +282,7 @@ export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveri
 
                         {chartLoading && <p role="status" className="mt-2 text-xs text-slate-600">Updating chart...</p>}
                         {chartError && <p role="alert" className="mt-2 text-xs text-rose-700">{chartError}</p>}
-                        {chartMode === 'delivered' && <p className="mt-2 text-xs text-amber-800">These orders have arrived. They count as completed sales after the buyer confirms receipt.</p>}
+                        {chartMode === 'delivered' && <p className="mt-2 text-xs text-amber-800">New deliveries complete automatically after verified handover. These historical orders still need receipt confirmation.</p>}
 
                         {/* Interactive Line Chart Canvas - Sleek, Lower Height */}
                         <div className="relative flex flex-1 flex-col justify-center pt-3 pb-1">
@@ -290,7 +290,7 @@ export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveri
                                 <div className="flex h-32 flex-col items-center justify-center px-6 text-center">
                                     <CheckCircle2 className="mb-2 h-5 w-5 text-slate-400" />
                                     <p className="text-sm font-semibold text-slate-700">{chartMode === 'completed' ? 'No completed sales in this period' : 'No delivered orders awaiting confirmation in this period'}</p>
-                                    <p className="mt-1 text-xs text-slate-500">{chartMode === 'completed' && stats.completedOrderCount > 0 ? 'Your completed sales may be outside this period. Choose a longer period or open Sales report.' : 'Completed sales use the date the buyer confirms receipt.'}</p>
+                                    <p className="mt-1 text-xs text-slate-500">{chartMode === 'completed' && stats.completedOrderCount > 0 ? 'Your completed sales may be outside this period. Choose a longer period or open Sales report.' : 'Completed sales use the recorded completion date.'}</p>
                                 </div>
                             ) : (
                                 <>
@@ -707,7 +707,7 @@ export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveri
                         <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
                             <div>
                                 <h3 className="font-bold text-sm text-slate-900">Top completed products</h3>
-                                <p className="text-xs text-slate-400 font-sans">Ranked by buyer-confirmed units</p>
+                                <p className="text-xs text-slate-400 font-sans">Ranked by completed units</p>
                             </div>
                             <PortalLink href={route('seller.products.index')} className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-1 font-sans uppercase">
                                 <span>Catalog</span>

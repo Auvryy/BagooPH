@@ -28,7 +28,7 @@ export default function LogisticsError({ title, description, requestId, overview
                     {retryUrl && <Link href={retryUrl} className={secondary}><RotateCcw className="h-4 w-4" aria-hidden="true" />Try again</Link>}
                     <Link href={overviewUrl} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#E00D42] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]"><ArrowLeft className="h-4 w-4" aria-hidden="true" />Open Overview</Link>
                 </div>
-                {requestId && <p className="mt-6 break-all border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500">Reference: {requestId}</p>}
+                {requestId && <p className="mt-6 break-all border-t border-slate-300 pt-4 text-xs leading-5 text-slate-500">Reference: {requestId}</p>}
             </section>
         </main>
     </>;

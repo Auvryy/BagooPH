@@ -93,7 +93,7 @@ class SelectedProductVoucherReturnTest extends TestCase
             ->create(['shop_id' => $shop->id, 'discount_type' => 'percent', 'discount_value' => 10, 'min_spend' => 0]);
         $order = $this->checkoutFlowOrder($buyer, $shop, [['product' => $qualifying, 'quantity' => 2], ['product' => $other, 'quantity' => 1]],
             shipping: ['payment_method' => $method, 'shop_voucher_revision_ids' => [$shop->id => $voucher->current_revision_id]]);
-        $this->assertSame('930.00', $order->total_amount);
+        $this->assertSame('940.00', $order->total_amount);
         $admin = $this->createApprovedUser('admin');
         if ($method === 'wallet') {
             $credits = app(WalletCreditService::class);
@@ -133,7 +133,7 @@ class SelectedProductVoucherReturnTest extends TestCase
         $this->post('/buyer-returns/'.$case->id.'/money', $payload)->assertSessionHasNoErrors();
         $this->post('/buyer-returns/'.$case->id.'/money', $payload)->assertSessionHasNoErrors();
         if ($method === 'wallet') {
-            $this->assertSame($expected + 7000, WalletAccount::where('user_id', $buyer->id)->sole()->balance_cents);
+            $this->assertSame($expected + 6000, WalletAccount::where('user_id', $buyer->id)->sole()->balance_cents);
             $this->assertSame($expected, WalletTransaction::where('buyer_return_case_id', $case->id)->sole()->amount_cents);
         } else {
             $payment = BuyerReturnMoneyEvent::where('buyer_return_case_id', $case->id)->where('event_type', 'record-repayment')->sole();

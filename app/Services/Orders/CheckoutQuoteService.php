@@ -5,6 +5,7 @@ namespace App\Services\Orders;
 use App\Exceptions\CheckoutException;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\LogisticsCompany;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Voucher;
@@ -16,6 +17,7 @@ use App\Services\Commerce\InventoryService;
 use App\Services\Commerce\SalePriceService;
 use App\Services\Finance\CodMoney;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Logistics\LogisticsRateService;
 use App\Services\ShopEligibilityService;
 use App\Services\Vouchers\VoucherProductScopeService;
 use Illuminate\Database\Eloquent\Builder;
@@ -64,19 +66,21 @@ class CheckoutQuoteService
     }
 
     /** Current prices come from selectedItems or the locked final checkout. */
-    public function quote(Collection $items, string $deliveryType = 'doorstep', Voucher|Collection|null $selection = null, ?User $buyer = null): array
+    public function quote(Collection $items, string $deliveryType = 'doorstep', Voucher|Collection|null $selection = null, ?User $buyer = null, ?LogisticsCompany $company = null): array
     {
         $revisions = $selection instanceof Voucher ? collect([$selection->currentRevision]) : ($selection ?? collect());
         $pricePlans = app(SalePriceService::class)->plan($items);
         $lineAmounts = collect($pricePlans)->map(fn ($plan) => collect($plan['price_segments'])
             ->sum(fn ($segment) => CodMoney::cents(number_format($segment['unit_price'], 2, '.', '')) * $segment['quantity']));
-        $shops = $items->groupBy(fn (CartItem $item) => $item->product->shop_id)->sortKeys()->map(function (Collection $group, int $shopId) use ($deliveryType, $pricePlans) {
+        $shops = $items->groupBy(fn (CartItem $item) => $item->product->shop_id)->sortKeys()->map(function (Collection $group, int $shopId) use ($deliveryType, $pricePlans, $company) {
             $subtotal = $group->sum(fn (CartItem $item) => collect($pricePlans[$item->id]['price_segments'])
                 ->sum(fn ($segment) => CodMoney::cents(number_format($segment['unit_price'], 2, '.', '')) * $segment['quantity']));
-            $doorstep = $subtotal > 150000 ? 0 : 5000;
+            $shippingQuote = app(LogisticsRateService::class)->quote($group, $company);
+            $doorstep = $shippingQuote['shipping_cents'];
 
             return ['shop_id' => $shopId, 'shop_name' => $group->first()->product->shop->name, 'subtotal' => $subtotal,
-                'doorstep_shipping' => $doorstep, 'shipping' => $deliveryType === 'hub_self_pickup' ? 0 : $doorstep];
+                'doorstep_shipping' => $doorstep, 'shipping' => $deliveryType === 'hub_self_pickup' ? 0 : $doorstep,
+                'shipping_quote' => $shippingQuote];
         });
         $productDiscounts = $shops->map(fn () => 0);
         $shippingDiscounts = $shops->map(fn () => 0);
@@ -168,13 +172,13 @@ class CheckoutQuoteService
             ...($reason && $failedRevisionId ? ['failed_revision_id' => $failedRevisionId] : [])];
     }
 
-    public function offers(?Collection $items = null, string $deliveryType = 'doorstep', int $limit = 24, ?User $buyer = null, ?Collection $selected = null): array
+    public function offers(?Collection $items = null, string $deliveryType = 'doorstep', int $limit = 24, ?User $buyer = null, ?Collection $selected = null, ?LogisticsCompany $company = null): array
     {
         $query = $this->availableQuery($items, $buyer);
         $count = (clone $query)->count();
-        $offers = $query->orderByDesc('id')->limit($limit)->get()->map(function (VoucherRevision $revision) use ($items, $deliveryType, $buyer, $selected) {
+        $offers = $query->orderByDesc('id')->limit($limit)->get()->map(function (VoucherRevision $revision) use ($items, $deliveryType, $buyer, $selected, $company) {
             $candidate = ($selected ?? collect())->reject(fn ($current) => $current->issuer_type === $revision->issuer_type && $current->shop_id === $revision->shop_id)->push($revision);
-            $quote = $items !== null ? $this->quote($items, $deliveryType, $candidate, $buyer) : null;
+            $quote = $items !== null ? $this->quote($items, $deliveryType, $candidate, $buyer, $company) : null;
             $saving = $quote ? collect($quote['redemptions'])->firstWhere('revision_id', $revision->id)['discount_cents'] ?? 0 : null;
             $presented = $this->present($revision);
             $unavailable = $quote['voucher_error'] ?? ($presented['product_scope'] === 'selected' && $presented['eligible_products'] === []

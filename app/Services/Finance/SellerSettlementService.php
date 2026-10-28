@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Services\AccountRestrictionService;
 use App\Services\Notifications\NotificationDeliveryService;
+use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Returns\BuyerReturnAmounts;
 use App\Services\ShopEligibilityService;
 use App\Services\Vouchers\VoucherFundingService;
@@ -68,7 +69,8 @@ class SellerSettlementService
     {
         $cash = $order->codAccount;
         $parcel = $order->delivery;
-        $checkpoint = $parcel?->checkpoints()->where('checkpoint_type', 'buyer_completed')->first();
+        $automatic = app(AutomaticDeliveryCompletionService::class)->evidence($order);
+        $checkpoint = $automatic ?? $parcel?->checkpoints()->where('checkpoint_type', 'buyer_completed')->first();
         $event = $cash?->events()->latest('sequence')->first();
         $state = $event?->target_state;
         $shopIds = $order->items->pluck('shop_id')->unique();
@@ -90,11 +92,11 @@ class SellerSettlementService
         if ($basis['net_seller_cents'] !== null && $basis['net_seller_cents'] < 0) {
             $blockers[] = 'Promotional costs cannot produce a negative seller payout.';
         }
-        if ($order->status !== 'completed' || ! $checkpoint || $checkpoint->scanned_by_id !== $order->buyer_id
+        if (! $automatic && ($order->status !== 'completed' || ! $checkpoint || $checkpoint->scanned_by_id !== $order->buyer_id
             || $checkpoint->actor_role !== 'buyer' || ($checkpoint->source_state['order_status'] ?? null) !== 'delivered'
             || ($checkpoint->target_state['order_status'] ?? null) !== 'completed'
-            || ! in_array($parcel?->status, ['delivered', 'customer_collected'], true)) {
-            $blockers[] = 'The buyer has not confirmed receipt through the documented order flow.';
+            || ! in_array($parcel?->status, ['delivered', 'customer_collected'], true))) {
+            $blockers[] = 'The order needs recorded completion through its verified delivery flow.';
         }
         if (! $cash || ! $cash->reconciled_at || $event?->event_type !== 'platform_reconciled'
             || ($state['reconciled_reference'] ?? null) !== $event?->reference
@@ -192,7 +194,7 @@ class SellerSettlementService
                 'blockers' => $payment ? [] : $eligibility['blockers'], 'currency' => 'PHP',
                 'legacy_ledger' => $record ? ($record->snapshot['legacy_ledger'] ?? null)
                     : $order->commissionLedger?->only(['id', 'status', 'gross_amount', 'seller_amount', 'platform_commission', 'delivery_fee']),
-                'buyer_reference' => $record?->snapshot['buyer_reference'] ?? $order->delivery?->checkpoints()->where('checkpoint_type', 'buyer_completed')->value('record_reference'),
+                'buyer_reference' => $record?->snapshot['buyer_reference'] ?? $order->delivery?->checkpoints()->whereIn('checkpoint_type', ['buyer_completed', 'delivery_completed'])->value('record_reference'),
                 'cash_id' => $record?->cod_account_id ?? $order->codAccount?->id,
                 'cash_reference' => $record?->snapshot['cash_reference'] ?? $order->codAccount?->reference,
                 'reconciliation_reference' => $record?->snapshot['reconciliation_reference']

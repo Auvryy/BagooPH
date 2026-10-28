@@ -110,7 +110,7 @@ class OrderWorkspaceService
 
     public function canConfirmReceipt(Order $order, User $buyer): bool
     {
-        return $order->buyer_id === $buyer->id && app(BuyerAccessService::class)->canAccessExistingOrders($buyer)
+        return $order->logistics_flow_version < 2 && $order->buyer_id === $buyer->id && app(BuyerAccessService::class)->canAccessExistingOrders($buyer)
             && $order->status === 'delivered' && ($order->delivery?->status === 'delivered'
                 || ($order->delivery?->status === 'customer_collected'
                     && app(PickupClaimService::class)->hasCollectionEvidence($order->delivery)));

@@ -73,6 +73,7 @@ class DeliveryReturnService
             $hubs[] = $route['destination_mother_hub_id'];
         }
         $hubs[] = $route['destination_bayan_hub_id'];
+        $hubs = $parcel->route_hub_ids ?? $hubs;
         $this->assertOutboundEvidence($parcel, $hubs, $route, $source->id);
 
         $frozen = DeliveryReturnRoute::create(['delivery_id' => $parcel->id, 'source_checkpoint_id' => $source->id,
@@ -288,7 +289,9 @@ class DeliveryReturnService
 
     public function forwardRoute(Delivery $delivery): array
     {
-        return $delivery->only(['order_id', 'logistics_company_id', 'origin_bayan_hub_id', 'origin_mother_hub_id', 'destination_mother_hub_id', 'destination_bayan_hub_id']);
+        $route = $delivery->only(['order_id', 'logistics_company_id', 'origin_bayan_hub_id', 'origin_mother_hub_id', 'destination_mother_hub_id', 'destination_bayan_hub_id']);
+
+        return $delivery->route_hub_ids ? $route + ['route_hub_ids' => $delivery->route_hub_ids] : $route;
     }
 
     public function evidencedForwardRoute(Delivery $parcel, int $beforeCheckpointId): array
@@ -299,6 +302,7 @@ class DeliveryReturnService
             $hubs[] = $route['destination_mother_hub_id'];
         }
         $hubs[] = $route['destination_bayan_hub_id'];
+        $hubs = $parcel->route_hub_ids ?? $hubs;
         foreach ($hubs as $index => $id) {
             $tier = $index === 0 || $index === count($hubs) - 1 ? 'local_bayan_hub' : 'regional_mother_hub';
             if (! $id || ! LogisticsHub::whereKey($id)->where('logistics_company_id', $parcel->logistics_company_id)->where('tier', $tier)->exists()) {
@@ -312,6 +316,14 @@ class DeliveryReturnService
 
     private function assertOutboundEvidence(Delivery $parcel, array $hubs, array $route, int $beforeId): void
     {
+        if (count($hubs) === 1) {
+            $local = $parcel->checkpoints()->where('checkpoint_type', 'arrived_at_destination_hub')->where('hub_id', $hubs[0])
+                ->where('id', '<', $beforeId)->whereNull('source_checkpoint_id')->first();
+            if (! $parcel->same_hub_bypass || $parcel->origin_bayan_hub_id !== $parcel->destination_bayan_hub_id
+                || ! $local || $local->scan_provenance !== 'local_hub_bypass' || $local->barcode_scanned !== $parcel->tracking_number) {
+                throw new DomainException('A local return needs its actual same-child-hub intake scan.');
+            }
+        }
         $lastId = 0;
         foreach (array_slice($hubs, 1) as $index => $hubId) {
             $check = $parcel->checkpoints()->where('id', '>', $lastId)->where('id', '<', $beforeId)->where('hub_id', $hubId)

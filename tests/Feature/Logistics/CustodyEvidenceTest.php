@@ -29,6 +29,12 @@ use Throwable;
 
 class CustodyEvidenceTest extends TestCase
 {
+    // Retain the historic buyer-confirmation evidence contract for existing orders.
+    protected function flowContractVersion(): int
+    {
+        return 1;
+    }
+
     use CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
     public static function pickupPortals(): array

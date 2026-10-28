@@ -4,7 +4,7 @@ Pickup and delivery riders are phases of the same approved `courier` account. A 
 
 ## 1. Registration and Availability
 
-Courier submits identity, license, vehicle, and required ownership/registration documents. Platform Admin KYC approval is required before transactional portal access; pending/rejected applicants use their own review/resubmission holding screen. For a first company association, an active, approved, email-verified adult rider requests a company with open intake, its owning administrator issues an exact assignment offer, and the rider accepts its displayed version. Acceptance and the company/hub/vehicle placement commit together. This operational placement cannot grant platform approval or reverse suspension. The authority and evidence rules are in [ADMIN_FLOW.md](ADMIN_FLOW.md).
+A self-registering courier submits identity, license, vehicle, and required ownership/registration documents. Platform Admin KYC approval is required before transactional portal access; pending/rejected applicants use their own review/resubmission holding screen. For a first company association, an active, approved, email-verified adult rider requests a company with open intake, its owning administrator issues an exact assignment offer, and the rider accepts its displayed version. Acceptance and the company/hub/vehicle placement commit together. This operational placement cannot grant platform approval or reverse suspension. The authority and evidence rules are in [ADMIN_FLOW.md](ADMIN_FLOW.md).
 
 Company joining lives in Profile → Assignment. The offer records the eligible facility, optional covered barangay, personal or available fleet vehicle, working arrangement and seven-calendar-day expiry. Offers reserve neither a rider nor a vehicle. Current approval, intake, reviewed identity, placement and resource versions are checked again on acceptance; a disable/reactivate cycle requires a new offer. Ordinary contact/photo edits do not invalidate it. Reading an expired offer changes no history; an explicit expiry command or the next application reconciles its terminal decision. The rider remains off duty until deliberately activating duty.
 
@@ -15,6 +15,8 @@ A rider must be active, approved, available, and within eligible company/hub sco
 Going off duty removes the rider from new pickup and final-mile assignment choices at the assigned hub. It does not abandon any parcel already claimed or assigned: the rider must still complete the relevant pickup, hub handoff, delivery, or approved exception process.
 
 Suspension differs from going off duty: it blocks new work and requires controlled recovery of any parcel or cash already held. The expected hub must record custody recovery before reassignment. Recovery uses a narrowly authorized action; approval, resubmission, or a company placement cannot restore unrestricted access to a suspended courier.
+
+An approved logistics company owner may also provision a named rider with a fixed courier role and physical child-hub assignment under [the version-two contract](new-docs-era/README.md). That rider must replace the temporary password, acknowledge the assignment and verify the sign-in email before working. This is distinct from changing an existing account’s role or bypassing suspension.
 
 ## 2. Pickup-Rider Phase
 
@@ -42,7 +44,7 @@ Destination Bayan Hub sorts parcel
 -> OUT_FOR_DELIVERY
 -> Deliver and collect exact COD amount
 -> Record proof and result
--> DELIVERED or DELIVERY_FAILED
+-> DELIVERED and automatic new-order completion, or DELIVERY_FAILED
 ```
 
 Only the assigned final-mile rider can scan out or submit the result. Successful delivery records COD as held by that rider until remittance; it does not mean the money has reached the platform.
@@ -57,11 +59,11 @@ separate client change.
 
 Rider selects a valid failure reason, adds notes, and returns the parcel to the destination Bayan Hub. Hub inbound scan ends rider custody. The hub decides retry scheduling and reassignment. A rider cannot repeatedly reschedule a parcel independently.
 
-Attempts one and two may be retried only after the destination hub receives the parcel and approves a schedule. After the third failed attempt, logistics starts return-to-sender through the Mother-Hub network. The rider cannot mark the parcel `RETURNED`.
+Attempts one and two may be retried only after the destination hub receives the parcel and approves a schedule. Refusal or the third failed attempt starts the reversed purchased route. Regional returns retain their Mother-Hub legs; a one-child local return proceeds to actual seller receipt at that child hub. The rider cannot mark the parcel `RETURNED`.
 
 ## 5. COD Remittance and Earnings
 
-The rider's COD ledger distinguishes cash held, cash remitted, discrepancies, and reconciled transactions. Rider delivery earnings are separate from COD cash and from the seller's product share.
+The rider’s shift ledger distinguishes exact collected, remitted and held COD, pending offers and unresolved differences. Duty cannot close until the actual hub acknowledges the counted cash and the rider’s differences are resolved. COD rider earnings become available after that receipt. Prepaid delivery earnings release at valid delivery; dedicated pickup earnings release at actual origin intake. Standard PHP 60 shipping splits PHP 30 company/PHP 30 delivery; dedicated fleet splits PHP 25 company/PHP 25 delivery/PHP 10 pickup. Integer-cent allocations conserve the original shipping pool. These are earned ledger entitlements, separate from actual payouts. Web earnings and native trip/cash JSON read that ledger; historical cash is never treated as invented earnings.
 
 ## 6. Required Rider Notifications
 

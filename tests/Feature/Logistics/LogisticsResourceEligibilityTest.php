@@ -26,6 +26,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -494,21 +495,37 @@ class LogisticsResourceEligibilityTest extends TestCase
 
     public function test_handler_scope_migration_preserves_flags_and_stamps_the_existing_relationship_only(): void
     {
-        $this->company->update(['status' => 'pending', 'is_active' => false]);
-        $this->handler->update(['kyc_status' => 'rejected']);
-        $migration = require database_path('migrations/2026_10_05_070100_preserve_handler_company_scope.php');
-        $migration->down();
-        $before = DB::table('hub_handlers')->first();
-        $migration->up();
-        $after = DB::table('hub_handlers')->first();
-        $this->assertSame($this->company->id, $after->logistics_company_id);
-        foreach (['id', 'user_id', 'hub_id', 'is_active', 'created_at', 'updated_at'] as $field) {
-            $this->assertSame($before->{$field}, $after->{$field});
+        // Exercise this historical migration against its original schema. Later retained
+        // request triggers intentionally depend on the column and cannot be downgraded.
+        $original = DB::getDefaultConnection();
+        config(['database.connections.historical_scope' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '', 'foreign_key_constraints' => true]]);
+        DB::setDefaultConnection('historical_scope');
+        Schema::clearResolvedInstance('db.schema');
+        try {
+            DB::statement('CREATE TABLE users (id INTEGER PRIMARY KEY, kyc_status TEXT NOT NULL)');
+            DB::statement('CREATE TABLE logistics_companies (id INTEGER PRIMARY KEY, status TEXT NOT NULL, is_active BOOLEAN NOT NULL)');
+            DB::statement('CREATE TABLE logistics_hubs (id INTEGER PRIMARY KEY, logistics_company_id INTEGER NOT NULL REFERENCES logistics_companies(id))');
+            DB::statement('CREATE TABLE hub_handlers (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), hub_id INTEGER NOT NULL REFERENCES logistics_hubs(id), is_active BOOLEAN NOT NULL, created_at TEXT, updated_at TEXT)');
+            DB::table('users')->insert(['id' => 1, 'kyc_status' => 'rejected']);
+            DB::table('logistics_companies')->insert(['id' => 1, 'status' => 'pending', 'is_active' => false]);
+            DB::table('logistics_hubs')->insert(['id' => 1, 'logistics_company_id' => 1]);
+            DB::table('hub_handlers')->insert(['id' => 1, 'user_id' => 1, 'hub_id' => 1, 'is_active' => false, 'created_at' => '2026-10-01 08:00:00', 'updated_at' => '2026-10-01 08:00:00']);
+            $before = (array) DB::table('hub_handlers')->first();
+            $migration = require database_path('migrations/2026_10_05_070100_preserve_handler_company_scope.php');
+            $migration->up();
+            $after = (array) DB::table('hub_handlers')->first();
+            $this->assertSame(1, $after['logistics_company_id']);
+            $this->assertSame($before, array_intersect_key($after, $before));
+            $this->assertSame('rejected', DB::table('users')->value('kyc_status'));
+            $this->assertSame('pending', DB::table('logistics_companies')->value('status'));
+            $this->assertSame(0, DB::table('logistics_companies')->value('is_active'));
+            $migration->down();
+            $this->assertSame($before, (array) DB::table('hub_handlers')->first());
+        } finally {
+            DB::disconnect('historical_scope');
+            DB::setDefaultConnection($original);
+            Schema::clearResolvedInstance('db.schema');
         }
-        $this->assertSame('rejected', $this->handler->fresh()->kyc_status);
-        $this->assertSame('pending', $this->company->fresh()->status);
-        $this->assertSame([], HubHandler::eligible()->pluck('id')->all());
-        $this->assertDatabaseCount('logistics_placement_records', 0);
     }
 
     public function test_buyer_completion_survives_a_restricted_network_without_new_custody(): void

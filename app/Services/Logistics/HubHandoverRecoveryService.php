@@ -504,6 +504,7 @@ class HubHandoverRecoveryService
             'original_expected_count' => $members->count(), 'original_received_count' => $members->whereNotNull('received_at')->count()]);
         if ($context['member_id']) {
             LogisticsManifestParcel::whereKey($context['member_id'])->firstOrFail()->update(['active_delivery_id' => null]);
+            app(MotherBagService::class)->received($manifest, $parcel, $actor, $barcode);
         }
         $manifest->increment('version');
     }

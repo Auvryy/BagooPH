@@ -33,7 +33,7 @@ const shipped = ['courier_pickup', 'picked_up', 'handover_holder_acknowledged', 
     'in_transit_to_mother_hub', 'arrived_at_mother_hub', 'sorted_to_line_haul', 'in_transit_to_destination_hub',
     'arrived_at_destination_hub', 'sorted_to_barangay_bin', 'assigned_to_rider', 'out_for_delivery', 'ready_for_hub_pickup'];
 const handover = ['delivered', 'doorstep_handover', 'customer_collected'];
-const receipt = ['completed', 'buyer_confirmed', 'buyer_completed'];
+const receipt = ['completed', 'buyer_confirmed', 'buyer_completed', 'delivery_completed'];
 const aliases: Record<string, string[]> = {
     placed: ['placed', 'order_placed'], preparing: ['preparing', 'seller_pack'], completed: receipt,
 };

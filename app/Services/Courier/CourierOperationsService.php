@@ -136,6 +136,9 @@ class CourierOperationsService
 
             if ($isAvailable) {
                 $this->eligibility->assertCourierScope($profile, (int) $scope?->logistics_company_id, (int) $scope?->assigned_hub_id);
+                app(RiderShiftService::class)->open($rider, $profile);
+            } else {
+                app(RiderShiftService::class)->close($rider);
             }
 
             $profile->update(['is_available' => $isAvailable]);

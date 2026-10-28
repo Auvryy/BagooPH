@@ -22,6 +22,7 @@ class Shop extends Model
     use RetainsRestrictionHistory;
 
     protected $fillable = [
+        'pickup_province', 'pickup_postal_code',
         'user_id',
         'root_category_id',
         'is_default',

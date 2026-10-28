@@ -9,10 +9,13 @@ interface Props {
     scope: CourierScope;
     summary: { completedDeliveries: number; completedToday: number };
     isOnline: boolean;
+    earningsSummary?: { confirmed_cents: string; pending_cents: string };
+    earningEntries?: { id: string; order_number: string; role: string; amount_cents: number; released: boolean; virtual_only: boolean }[];
+    shift?: { held_cents: number; can_close: boolean; pending_handovers: number; unresolved_differences: number };
     trips: Array<{ id: number; trackingNumber: string; orderNumber: string | null; recipientName: string; deliveryAddress: string; paymentMethod: string; destinationHub: string | null; deliveredAt: string | null }>;
 }
 
-export default function CourierCompletedTrips({ scope, summary, trips, isOnline }: Props) {
+export default function CourierCompletedTrips({ scope, summary, trips, isOnline, earningsSummary, earningEntries = [], shift }: Props) {
     const [search, setSearch] = useState('');
     const [payment, setPayment] = useState('all');
     const [page, setPage] = useState(1);
@@ -40,6 +43,9 @@ export default function CourierCompletedTrips({ scope, summary, trips, isOnline 
         <CourierLayout title="Completed trips" subtitle="Recorded final-mile deliveries at your current company and destination hub." scope={scope} isOnline={isOnline}>
             <Head title="Completed trips — BagooPH" />
             <div className="space-y-5">
+                {earningsSummary && <section aria-label="Recorded delivery earnings" className="grid gap-4 sm:grid-cols-2">{[{ label: 'Released earnings', value: earningsSummary.confirmed_cents }, { label: 'Awaiting cash handover', value: earningsSummary.pending_cents }].map(item => <CourierPanel key={item.label} className="p-5"><p className="text-xs font-medium text-slate-500">{item.label}</p><p className="mt-3 text-2xl font-bold">{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(item.value) / 100)}</p></CourierPanel>)}</section>}
+                {shift && !shift.can_close && <div role="status" className="rounded-[8px] border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">Your shift needs a confirmed hub cash handover before you can close duty. Recorded COD still held: ₱{(shift.held_cents / 100).toFixed(2)}. Pending handovers: {shift.pending_handovers}; unresolved differences: {shift.unresolved_differences}.</div>}
+                {earningEntries.length > 0 && <CourierPanel className="overflow-hidden p-5"><h2 className="text-sm font-semibold">Pickup and delivery earnings</h2><p className="mt-1 text-xs text-slate-500">Original shipping shares. Virtual wallet proceeds and actual cash payments stay separately recorded.</p><div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b border-slate-200 text-xs text-slate-500"><th className="pb-3 font-medium">Order</th><th className="pb-3 font-medium">Work</th><th className="pb-3 font-medium">Earnings</th><th className="pb-3 font-medium">Release</th></tr></thead><tbody>{earningEntries.map(entry => <tr key={entry.id} className="border-b border-slate-100 last:border-0"><td className="py-3 font-semibold">{entry.order_number}</td><td className="py-3 capitalize">{entry.role}</td><td className="py-3">₱{(entry.amount_cents / 100).toFixed(2)}{entry.virtual_only ? ' · Virtual' : ''}</td><td className="py-3 text-xs">{entry.released ? 'Released' : 'Awaiting hub cash receipt'}</td></tr>)}</tbody></table></div></CourierPanel>}
                 <div className="flex justify-end"><Link href={courierPath('/cod')} className={`${courierButton} gap-2`}><Banknote className="h-4 w-4" aria-hidden="true" />COD cash handovers</Link></div>
                 <section aria-label="Trip overview" className="grid grid-cols-2 gap-4 lg:grid-cols-[1fr_1fr_1.5fr]">
                     {[{ label: 'Recorded deliveries', value: summary.completedDeliveries, hint: 'In your current assignment', icon: PackageCheck }, { label: 'Delivered today', value: summary.completedToday, hint: 'Recorded at this hub', icon: CheckCircle2 }].map(({ label, value, hint, icon: Icon }) => <CourierPanel key={label} className="min-w-0 p-4 sm:p-5">

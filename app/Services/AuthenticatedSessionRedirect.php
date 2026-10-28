@@ -16,11 +16,11 @@ class AuthenticatedSessionRedirect
         $request->setUserResolver(fn () => $user);
         // An old intended login/register URL must not send an existing session back to a guest form.
         $request->session()->forget('url.intended');
-        $response = app(AccountReviewService::class)->needsAttention($user)
+        $response = $user->must_change_password ? redirect('/staff/activate') : ($user->needsCompanyEmailVerification() ? redirect()->route('verification.notice') : (app(AccountReviewService::class)->needsAttention($user)
             ? redirect()->route('account.status')
             : ($user->isBuyer()
             ? app(BuyerAccessService::class)->signInDestination($request)
-            : app(EnsureApprovedAccount::class)->handle($request, fn () => redirect($this->portalPath($user))));
+            : app(EnsureApprovedAccount::class)->handle($request, fn () => redirect($this->portalPath($user))))));
 
         if ($response instanceof RedirectResponse) {
             $path = parse_url($response->getTargetUrl(), PHP_URL_PATH) ?: '/';

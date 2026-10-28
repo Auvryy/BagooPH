@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureAccountOpen;
 use App\Http\Middleware\EnsureApprovedAccount;
 use App\Http\Middleware\EnsureApprovedCourier;
 use App\Http\Middleware\EnsureBuyerAccess;
+use App\Http\Middleware\EnsureCompanyStaffActivated;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RoleMiddleware;
@@ -46,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             EnsureAccountOpen::class,
+            EnsureCompanyStaffActivated::class,
             TrackAccountSession::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,

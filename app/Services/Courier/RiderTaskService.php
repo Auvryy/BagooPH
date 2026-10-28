@@ -53,7 +53,8 @@ class RiderTaskService
                 'handover_reporting' => $handoverAvailable && $actor->canAccessPortal() && ($actor->currentAccessToken()?->can(RiderAccountService::HANDOVER_ABILITY) ?? false),
                 'company_joining' => $companyAvailable && app(RiderAccountService::class)->companyEligible($actor)
                     && app(RiderAccountService::class)->hasCompanyAbility($actor, 'rider:company:read'),
-                'pre_custody_release' => false, 'native_restricted_recovery' => false, 'rider_earnings' => false],
+                'pre_custody_release' => false, 'native_restricted_recovery' => false, 'rider_earnings' => Schema::hasTable('logistics_earnings')],
+            'shift' => app(RiderShiftService::class)->resource($actor),
             'limits' => ['per_page_max' => 50, 'poll_interval_seconds' => 30, 'request_budget_per_minute' => 30,
                 'proof_bytes_max' => 5242880, 'message_characters_max' => 1000, 'idempotency_days' => 7]];
     }

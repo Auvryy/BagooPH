@@ -111,6 +111,12 @@ class AuthenticatedSessionController extends Controller
         if ($user->closed_at !== null) {
             return Inertia::location(app(EnsureAccountOpen::class)->handle($request, fn () => redirect('/login')));
         }
+        if ($user->must_change_password) {
+            return Inertia::location(redirect('/staff/activate'));
+        }
+        if ($user->needsCompanyEmailVerification()) {
+            return Inertia::location(redirect()->route('verification.notice'));
+        }
 
         if (app(AccountReviewService::class)->needsAttention($user)) {
             $request->session()->forget('url.intended');

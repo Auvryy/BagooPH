@@ -162,7 +162,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             actions={canScan &&
                 <Link
                     href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-xs shadow-xs transition uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-lg shadow-sm transition uppercase tracking-wider"
                 >
                     <ScanLine className="w-3.5 h-3.5" />
                     <span>Station Scanner</span>
@@ -178,7 +178,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                 {/* 1. TOP STATS TILES */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Ready for Buyer Verification (this page)</span>
@@ -191,13 +191,13 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Requirements:</span>
                             <span className="font-bold text-slate-800">Staging and valid claim</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Needs Attention (this page)</span>
@@ -210,13 +210,13 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Next step:</span>
                             <span className="font-bold text-amber-800">Review the blocker</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Recent Verified Collections</span>
@@ -229,17 +229,17 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">History:</span>
                             <span className="font-bold text-slate-800">Up to five shown</span>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xs p-4 border border-slate-300 shadow-xs flex flex-col justify-between">
+                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
                         <div>
                             <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
                                 <span className="font-bold uppercase tracking-wider text-[10px]">Station Location</span>
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-xs bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] font-sans">
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-lg bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] font-sans">
                                     {activeHub?.code || 'STATION'}
                                 </span>
                             </div>
@@ -252,7 +252,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[11px] font-sans">
+                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Self-Pickup Desk:</span>
                             <span className="font-bold text-emerald-700">{activeHub?.operating_hours ? 'Hours recorded' : 'Setup required'}</span>
                         </div>
@@ -260,7 +260,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                 </div>
 
                 {/* 2. SEARCH BAR & ACTION HEADER */}
-                <div className="bg-white rounded-xs p-3.5 border border-slate-300 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="bg-white rounded-lg p-3.5 border border-slate-300 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
                     <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-96">
                         <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
@@ -268,7 +268,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Tracking code, order number, buyer name or phone..."
-                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
+                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
                         />
                     </form>
 
@@ -282,8 +282,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
                     {/* LEFT (8 COLS): STAGED PARCELS FOR HANDOVER */}
-                    <div className="lg:col-span-8 bg-white rounded-xs p-5 border border-slate-300 shadow-xs">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div className="lg:col-span-8 bg-white rounded-lg p-5 border border-slate-300 shadow-sm">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-300">
                             <div className="flex items-center gap-2">
                                 <Store className="w-4 h-4 text-slate-700" />
                                 <h3 className="text-xs font-black text-slate-900 font-sans uppercase tracking-wider">
@@ -312,10 +312,10 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                                 <span className="font-bold text-slate-900 text-xs">
                                                     {parcel.tracking_number}
                                                 </span>
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded-xs bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] font-bold">
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] font-bold">
                                                     {parcel.destination_bin?.trim() ? parcel.destination_bin : 'Shelf not recorded'}
                                                 </span>
-                                                <span className="text-[10px] uppercase px-1.5 py-0.5 rounded-xs bg-slate-100 text-slate-600 border border-slate-200">
+                                                <span className="text-[10px] uppercase px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-300">
                                                     {parcel.payment_method}
                                                 </span>
                                             </div>
@@ -366,7 +366,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                                 type="button"
                                                 onClick={() => openReleaseModal(parcel)}
                                                 disabled={!canRelease(parcel)}
-                                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xs text-xs font-bold font-sans shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold font-sans shadow-sm transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                                 <span>Release</span>
@@ -379,18 +379,18 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                         <div className="mt-4 pt-3 border-t border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                             <p className="text-slate-600">Showing {counterParcels.from ?? 0} to {counterParcels.to ?? 0} of {counterParcels.total} matching parcels. Page {counterParcels.current_page} of {counterParcels.last_page}.</p>
                             <nav aria-label="Counter queue pages" className="flex items-center gap-2">
-                                {counterParcels.prev_page_url ? <Link href={counterParcels.prev_page_url} preserveScroll className="rounded-xs border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50">Previous</Link>
-                                    : <button type="button" disabled className="rounded-xs border border-slate-300 px-3 py-2 text-slate-400">Previous</button>}
-                                {counterParcels.next_page_url ? <Link href={counterParcels.next_page_url} preserveScroll className="rounded-xs border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50">Next</Link>
-                                    : <button type="button" disabled className="rounded-xs border border-slate-300 px-3 py-2 text-slate-400">Next</button>}
-                                {counterParcels.current_page > counterParcels.last_page && <Link href={counterParcels.first_page_url} className="rounded-xs border border-slate-300 px-3 py-2 font-semibold text-[#E00D42]">First page</Link>}
+                                {counterParcels.prev_page_url ? <Link href={counterParcels.prev_page_url} preserveScroll className="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50">Previous</Link>
+                                    : <button type="button" disabled className="rounded-lg border border-slate-300 px-3 py-2 text-slate-400">Previous</button>}
+                                {counterParcels.next_page_url ? <Link href={counterParcels.next_page_url} preserveScroll className="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50">Next</Link>
+                                    : <button type="button" disabled className="rounded-lg border border-slate-300 px-3 py-2 text-slate-400">Next</button>}
+                                {counterParcels.current_page > counterParcels.last_page && <Link href={counterParcels.first_page_url} className="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-[#E00D42]">First page</Link>}
                             </nav>
                         </div>
                     </div>
 
                     {/* RIGHT (4 COLS): RECENTLY COLLECTED AUDIT LOG */}
-                    <div className="lg:col-span-4 bg-white rounded-xs p-5 border border-slate-300 shadow-xs">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div className="lg:col-span-4 bg-white rounded-lg p-5 border border-slate-300 shadow-sm">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-300">
                             <div className="flex items-center gap-2">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-700" />
                                 <h3 className="text-xs font-black text-slate-900 font-sans uppercase tracking-wider">
@@ -426,7 +426,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             </div>
                         )}
 
-                        <div className="mt-3.5 p-2.5 rounded-xs bg-slate-50 border border-slate-300 text-xs text-slate-800">
+                        <div className="mt-3.5 p-2.5 rounded-lg bg-slate-50 border border-slate-300 text-xs text-slate-800">
                             <p className="font-bold flex items-center gap-1.5 font-sans text-[11px]">
                                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
                                 Verified Station Handover
@@ -444,8 +444,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             {/* RELEASE VERIFICATION MODAL */}
             {selectedParcel && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in font-sans">
-                    <div className="bg-white rounded-xs max-w-md w-full p-5 shadow-2xl border border-slate-300 animate-scale-in">
-                        <div className="flex items-center justify-between pb-2.5 border-b border-slate-200">
+                    <div className="bg-white rounded-lg max-w-md w-full p-5 shadow-2xl border border-slate-300 animate-scale-in">
+                        <div className="flex items-center justify-between pb-2.5 border-b border-slate-300">
                             <div>
                                 <h3 className="text-xs font-black text-slate-900 uppercase">
                                     Handover Verification
@@ -458,7 +458,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             <button
                                 type="button"
                                 onClick={() => setSelectedParcel(null)}
-                                className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer rounded-xs"
+                                className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer rounded-lg"
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -477,7 +477,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     required
                                     value={recipientName}
                                     onChange={(e) => setRecipientName(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                                 />
                             </div>
 
@@ -490,7 +490,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     value={claimCode}
                                     onChange={(e) => setClaimCode(e.target.value)}
                                     required autoComplete="off" placeholder="Enter the buyer’s private claim code"
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                                 />
                             </div>
 
@@ -503,12 +503,12 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     placeholder="e.g. Valid Driver's License inspected"
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xs text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                                 />
                             </div>
 
                             {selectedParcel.payment_method === 'cod' && (
-                                <div className="p-2.5 rounded-xs bg-amber-50 border border-amber-300 text-amber-900 text-xs">
+                                <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs">
                                     <p className="font-bold text-[10px] uppercase">Collect Cash on Delivery</p>
                                     <label className="mt-2 block">Actual cash tender<input required inputMode="decimal" value={cashReceived} onChange={event => setCashReceived(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900" /></label>
                                     <label className="mt-2 block">Change returned<input required inputMode="decimal" value={changeGiven} onChange={event => setChangeGiven(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900" /></label>
@@ -521,18 +521,18 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                             {(!currentSelectedParcel || !canRelease(currentSelectedParcel)) && <p role="alert" className="text-sm text-amber-800">This parcel is no longer ready for release. Close this form and review its current checks.</p>}
                             {Object.entries(errors).map(([key,value]) => <p role="alert" key={key} className="text-sm text-red-700">{value}</p>)}
-                            <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-200 font-sans">
+                            <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-300 font-sans">
                                 <button
                                     type="button"
                                     onClick={() => setSelectedParcel(null)}
-                                    className="px-3 py-1.5 rounded-xs text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-300 cursor-pointer"
+                                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-300 cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={submitting || !currentSelectedParcel || !canRelease(currentSelectedParcel)}
-                                    className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xs text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
+                                    className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold shadow-sm transition cursor-pointer disabled:opacity-50"
                                 >
                                     {submitting ? 'Releasing...' : 'Confirm Handover'}
                                 </button>

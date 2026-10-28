@@ -22,6 +22,7 @@ use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Logistics\LogisticsSortingInputService;
+use App\Services\Logistics\MisrouteTrapService;
 use App\Services\Logistics\OrderStateMachineService;
 use App\Services\Logistics\ParcelRecoveryService;
 use App\Services\Logistics\PickupClaimService;
@@ -907,6 +908,9 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         $routingEngine = app(LogisticsRoutingEngine::class);
+        if ($misroute = app(MisrouteTrapService::class)->inspect($delivery, $hub, $request->user())) {
+            return $this->operationError($request, $misroute, 409);
+        }
         $prompt = $routingEngine->getDynamicScanPrompt($delivery, $hub);
         $alreadyReceived = $delivery->status === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB
             && DeliveryCheckpoint::where('delivery_id', $delivery->id)->where('hub_id', $hub->id)
@@ -1065,6 +1069,7 @@ class LogisticsHubWorkstationController extends Controller
                 'destination_bin' => app(HubParcelWorkstationService::class)->recordedBin($delivery),
                 'guidance' => $guidance,
                 'registry_url' => $registryUrl,
+                'routing_target' => app(LogisticsRoutingEngine::class)->forwardSortTarget($delivery, $hub),
                 'current_hub' => $custodyHub ? [
                     'id' => $custodyHub->id,
                     'name' => $custodyHub->name,

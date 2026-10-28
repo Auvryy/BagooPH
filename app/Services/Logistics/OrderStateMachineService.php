@@ -13,6 +13,8 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\Courier\CourierProofService;
 use App\Services\Finance\CodCashService;
+use App\Services\Finance\LogisticsEarningsService;
+use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Wallet\WalletHandoverService;
 use App\Services\Wallet\WalletPaymentService;
 use DomainException;
@@ -74,7 +76,7 @@ class OrderStateMachineService
         self::STATUS_ARRIVED_AT_MOTHER_HUB => [self::STATUS_IN_TRANSIT_TO_MOTHER_HUB],
         self::STATUS_SORTED_TO_LINE_HAUL => [self::STATUS_ARRIVED_AT_MOTHER_HUB],
         self::STATUS_IN_TRANSIT_TO_DEST_HUB => [self::STATUS_SORTED_TO_LINE_HAUL],
-        self::STATUS_ARRIVED_AT_DEST_HUB => [self::STATUS_IN_TRANSIT_TO_DEST_HUB],
+        self::STATUS_ARRIVED_AT_DEST_HUB => [self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_ARRIVED_AT_ORIGIN_HUB],
         self::STATUS_SORTED_TO_BARANGAY_BIN => [self::STATUS_ARRIVED_AT_DEST_HUB],
         self::STATUS_READY_FOR_HUB_PICKUP => [self::STATUS_ARRIVED_AT_DEST_HUB],
         self::STATUS_ASSIGNED_TO_RIDER => [self::STATUS_SORTED_TO_BARANGAY_BIN],
@@ -118,8 +120,15 @@ class OrderStateMachineService
             $hub = $this->resolveHub($scanMetadata['hub_id'] ?? null);
 
             $this->assertActiveActor($actor);
+            app(MisrouteTrapService::class)->assertMovable($lockedDelivery);
+            $localReceipt = $targetStatus === self::STATUS_ARRIVED_AT_DEST_HUB
+                && $lockedDelivery->same_hub_bypass
+                && $lockedDelivery->origin_bayan_hub_id === $lockedDelivery->destination_bayan_hub_id
+                && $lockedDelivery->route_hub_ids === [$lockedDelivery->origin_bayan_hub_id]
+                && $lockedDelivery->status === self::STATUS_ARRIVED_AT_ORIGIN_HUB;
             $transport = in_array($targetStatus, [self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB,
                 self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT, self::STATUS_RETURN_TO_SENDER], true)
+                && ! $localReceipt
                 ? $this->requireManifestScan($lockedDelivery, $targetStatus, $actor, $hub, $scanMetadata) : null;
             $this->assertActorMayTransition($lockedDelivery, $targetStatus, $actor, $hub, $scanMetadata, $transport);
             if ($transport) {
@@ -140,6 +149,11 @@ class OrderStateMachineService
             $barcode = $scanRequired || isset($scanMetadata['barcode'])
                 ? $inputs->matchedBarcode($scanMetadata['barcode'] ?? null, $lockedDelivery, allowOrderNumber: $hub !== null)
                 : null;
+            if ($targetStatus === self::STATUS_ARRIVED_AT_ORIGIN_HUB && $lockedDelivery->same_hub_bypass
+                && $lockedDelivery->checkpoints()->where('checkpoint_type', $targetStatus)->where('scanned_by_id', $actor->id)
+                    ->where('barcode_scanned', $barcode)->where('hub_id', $hub?->id)->exists()) {
+                return $lockedDelivery;
+            }
 
             if ($lockedDelivery->status === $targetStatus) {
                 $existing = DeliveryCheckpoint::query()
@@ -177,6 +191,9 @@ class OrderStateMachineService
             }
 
             $allowedFrom = self::ALLOWED_FROM[$targetStatus] ?? [];
+            if ($targetStatus === self::STATUS_ARRIVED_AT_DEST_HUB && $lockedDelivery->status === self::STATUS_ARRIVED_AT_ORIGIN_HUB && ! $localReceipt) {
+                throw new DomainException('Only a stored same-child-hub route may use local destination intake.');
+            }
             if (! in_array($lockedDelivery->status, $allowedFrom, true)) {
                 throw new DomainException("Parcel is {$lockedDelivery->status}; it cannot advance to {$targetStatus}.");
             }
@@ -241,12 +258,24 @@ class OrderStateMachineService
                 barcodeScanned: $barcode,
                 evidence: ['source_state' => $sourceState, 'target_state' => DeliveryCheckpoint::state($lockedDelivery),
                     'custody_before' => $custodyBefore, 'custody_after' => $this->custodyAfter($lockedDelivery, $targetStatus, $actor, $hub, $barcode, $custodyBefore, $transport)],
-                scanProvenance: $transport?->event_type === 'parcel_dispatched' ? 'manifest_load_event' : null,
+                scanProvenance: $localReceipt ? 'local_hub_bypass' : ($transport?->event_type === 'parcel_dispatched' ? 'manifest_load_event' : null),
             );
             if ($targetStatus === self::STATUS_DELIVERED && $lockedOrder->payment_method === 'cod') {
                 app(CodCashService::class)->collectRider($lockedDelivery, $actor, $checkpoint, $scanMetadata);
             } elseif ($targetStatus === self::STATUS_DELIVERED) {
                 app(WalletHandoverService::class)->record($lockedDelivery, $actor, $checkpoint, $scanMetadata);
+            }
+            if ($targetStatus === self::STATUS_ARRIVED_AT_ORIGIN_HUB) {
+                app(LogisticsEarningsService::class)->originReceipt($lockedDelivery, $checkpoint);
+            }
+            if ($targetStatus === self::STATUS_DELIVERED) {
+                app(AutomaticDeliveryCompletionService::class)->complete($lockedDelivery, $checkpoint, $actor);
+            }
+            if ($targetStatus === self::STATUS_ARRIVED_AT_ORIGIN_HUB && $lockedDelivery->same_hub_bypass) {
+                return $this->transition($lockedDelivery, self::STATUS_ARRIVED_AT_DEST_HUB, $actor, [
+                    'hub_id' => $hub->id, 'barcode' => $barcode, 'expected_status' => self::STATUS_ARRIVED_AT_ORIGIN_HUB,
+                    'notes' => 'Local delivery: origin and destination share this child hub. Ready for destination sorting.',
+                ]);
             }
 
             return $lockedDelivery;
@@ -382,7 +411,8 @@ class OrderStateMachineService
         $expectedHubId = match ($targetStatus) {
             self::STATUS_ARRIVED_AT_ORIGIN_HUB => $delivery->origin_bayan_hub_id,
             self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT => $transport?->manifest->source_hub_id,
-            self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_ARRIVED_AT_DEST_HUB, self::STATUS_RETURN_TO_SENDER => $transport?->manifest->destination_hub_id,
+            self::STATUS_ARRIVED_AT_DEST_HUB => $delivery->same_hub_bypass ? $delivery->destination_bayan_hub_id : $transport?->manifest->destination_hub_id,
+            self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_RETURN_TO_SENDER => $transport?->manifest->destination_hub_id,
             self::STATUS_SORTED_TO_LINE_HAUL => in_array($delivery->current_hub_id, [$delivery->origin_mother_hub_id, $delivery->destination_mother_hub_id], true) ? $delivery->current_hub_id : null,
             self::STATUS_SORTED_TO_BARANGAY_BIN,
             self::STATUS_READY_FOR_HUB_PICKUP,

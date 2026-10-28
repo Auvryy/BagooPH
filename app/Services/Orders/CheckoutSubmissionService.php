@@ -5,6 +5,8 @@ namespace App\Services\Orders;
 use App\Exceptions\CheckoutException;
 use App\Models\Cart;
 use App\Models\CheckoutSubmission;
+use App\Models\LogisticsCompany;
+use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\BuyerAccessService;
@@ -67,14 +69,21 @@ class CheckoutSubmissionService
             return [$item->id, $item->product_id, $item->quantity, $item->color, $item->size,
                 $item->product?->price, is_numeric($extra) ? number_format((float) $extra, 2, '.', '') : null,
                 $matrix['price'] ?? null, $matrix['sku'] ?? null,
+                $item->product?->weight_kg, $item->product?->length_cm, $item->product?->width_cm, $item->product?->height_cm,
                 $shown?->getAttribute('checkout_price_context') ?? ($item->product ? app(SalePriceService::class)->context($item->product) : null)];
         })->all();
 
-        return substr(hash('sha256', json_encode($rows, JSON_THROW_ON_ERROR)), 0, 32);
+        $tariffs = LogisticsCompany::eligible()->orderBy('id')->get(['id', 'tariff_version', 'base_shipping_cents', 'included_weight_grams', 'additional_kg_cents', 'shipping_earnings_model'])->toArray();
+        $network = LogisticsHub::eligible()->orderBy('id')->get(['id', 'logistics_company_id', 'tier', 'parent_hub_id', 'province', 'city_municipality', 'coverage_barangays', 'postal_codes', 'allows_self_pickup'])->toArray();
+
+        return substr(hash('sha256', json_encode([$rows, $tariffs, $network], JSON_THROW_ON_ERROR)), 0, 32);
     }
 
     public function fingerprint(array $data, int $version = 2): string
     {
+        if (($data['logistics_company_id'] ?? null) === null) {
+            unset($data['logistics_company_id']);
+        }
         if ($version === 1) {
             unset($data['platform_voucher_revision_id'], $data['shop_voucher_revision_ids']);
         }

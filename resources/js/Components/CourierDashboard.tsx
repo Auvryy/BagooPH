@@ -96,6 +96,6 @@ export function CourierRecentDeliveries({ activity, completedToday }: { activity
             <ul className="mt-3 divide-y divide-slate-300 min-[860px]:hidden">{visible.map((trip) => <li key={trip.id} className="space-y-2 py-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="break-all text-sm font-semibold">{trip.trackingNumber}</p><CourierBadge tone="success">Delivered</CourierBadge></div><p className="break-words text-base font-medium">{trip.recipientName || 'Recipient not provided'}</p><p className="break-words text-sm leading-relaxed text-slate-600">{trip.deliveryAddress || 'Address not provided'}</p><p className="text-xs leading-relaxed text-slate-600">{courierDate(trip.deliveredAt)} · {trip.paymentMethod || 'Payment method not provided'}</p></li>)}</ul>
             {activity.length > visible.length && <p className="mt-3 text-xs text-slate-600">Showing {visible.length} of {activity.length} recent records.</p>}
         </>}
-        <p className="mt-4 text-xs leading-relaxed text-slate-600">Buyer receipt confirmation and cash remittance are separate steps.</p>
+        <p className="mt-4 text-xs leading-relaxed text-slate-600">Verified delivery completes new orders automatically. Cash remittance remains a separate recorded handover.</p>
     </CourierPanel>;
 }

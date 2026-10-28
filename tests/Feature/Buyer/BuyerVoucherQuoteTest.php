@@ -66,11 +66,11 @@ class BuyerVoucherQuoteTest extends TestCase
         $second = $this->line($cart, '800.00');
         $ids = [$first->id, $second->id];
         $quote = $this->preview($ids)->assertOk()->assertJsonPath('quote.subtotal', 1600)
-            ->assertJsonPath('quote.shipping_fee', 100)->assertJsonPath('quote.total', 1700)
+            ->assertJsonPath('quote.shipping_fee', 120)->assertJsonPath('quote.total', 1720)
             ->assertJsonPath('quote.items.0.unit_price', 800)->assertJsonPath('quote.items.0.subtotal', 800)->json('quote');
         $this->getJson(route('cart.index', ['item_ids' => $ids]))->assertOk()->assertJsonPath('quote', $quote);
         $this->get(route('checkout.index', ['items' => implode(',', $ids)]))->assertInertia(fn (Assert $page) => $page
-            ->component('Checkout/Index')->where('quote', $quote)->where('total', 1700)->where('shippingFee', 100));
+            ->component('Checkout/Index')->where('quote', $quote)->where('total', 1720)->where('shippingFee', 120));
         $this->get(route('buyer.cart'))->assertInertia(fn (Assert $page) => $page->where('items.0.unit_price', '800.00'));
         $this->assertSame('1.00', $first->fresh()->unit_price);
     }
@@ -107,7 +107,7 @@ class BuyerVoucherQuoteTest extends TestCase
         unset($changes['expired']);
         $this->voucher($changes + ($expired ? ['expires_at' => now()->subMinute()] : []));
         $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertUnprocessable()->assertJsonPath('message', $reason)
-            ->assertJsonPath('quote.voucher', null)->assertJsonPath('quote.discount', 0)->assertJsonPath('quote.total', 550);
+            ->assertJsonPath('quote.voucher', null)->assertJsonPath('quote.discount', 0)->assertJsonPath('quote.total', 560);
     }
 
     public static function unavailableOffers(): array
@@ -141,23 +141,23 @@ class BuyerVoucherQuoteTest extends TestCase
         $second = $this->line($cart, '100.00');
         $this->voucher(['discount_type' => 'free_shipping', 'discount_value' => 75, 'max_discount' => 30]);
         $quote = $this->preview([$free->id, $first->id, $second->id], ['code' => 'BAGOO_SAVE'])->assertOk()
-            ->assertJsonPath('quote.shipping_fee', 100)->assertJsonPath('quote.shipping_discount', 30)
-            ->assertJsonPath('quote.total', 2970)->json('quote');
-        $this->assertEquals([0, 15, 15], array_column($quote['shops'], 'discount'));
-        $this->assertEquals([2000, 835, 135], array_column($quote['shops'], 'total'));
+            ->assertJsonPath('quote.shipping_fee', 180)->assertJsonPath('quote.shipping_discount', 30)
+            ->assertJsonPath('quote.total', 3050)->json('quote');
+        $this->assertEquals([10, 10, 10], array_column($quote['shops'], 'discount'));
+        $this->assertEquals([2050, 850, 150], array_column($quote['shops'], 'total'));
     }
 
-    public function test_quantity_and_self_pickup_changes_remove_a_now_ineligible_shipping_offer(): void
+    public function test_quantity_keeps_the_saved_shipping_discount_while_self_pickup_removes_it(): void
     {
         [, $cart] = $this->bag();
         $line = $this->line($cart, '800.00');
         $this->voucher(['discount_type' => 'free_shipping', 'discount_value' => 30]);
-        $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertOk()->assertJsonPath('quote.total', 820);
+        $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertOk()->assertJsonPath('quote.total', 830);
         $this->preview([$line->id], ['code' => 'BAGOO_SAVE', 'delivery_type' => 'hub_self_pickup'])->assertUnprocessable()
             ->assertJsonPath('quote.discount', 0)->assertJsonPath('quote.total', 800)
             ->assertJsonPath('message', 'There is no shipping fee for this voucher to reduce.');
         $line->update(['quantity' => 2]);
-        $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertUnprocessable()->assertJsonPath('quote.total', 1600);
+        $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertOk()->assertJsonPath('quote.total', 1630);
     }
 
     public function test_percent_and_fixed_caps_never_exceed_eligible_merchandise(): void
@@ -165,9 +165,9 @@ class BuyerVoucherQuoteTest extends TestCase
         [, $cart] = $this->bag();
         $line = $this->line($cart, '200.00');
         $voucher = $this->voucher(['discount_type' => 'percent', 'discount_value' => 25, 'max_discount' => 30]);
-        $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertOk()->assertJsonPath('quote.discount', 30)->assertJsonPath('quote.total', 220);
+        $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertOk()->assertJsonPath('quote.discount', 30)->assertJsonPath('quote.total', 230);
         $this->voucher(['code' => 'BAGOO_FIXED', 'discount_type' => 'fixed', 'discount_value' => 500, 'max_discount' => null]);
-        $this->preview([$line->id], ['code' => 'BAGOO_FIXED'])->assertOk()->assertJsonPath('quote.discount', 200)->assertJsonPath('quote.total', 50);
+        $this->preview([$line->id], ['code' => 'BAGOO_FIXED'])->assertOk()->assertJsonPath('quote.discount', 200)->assertJsonPath('quote.total', 60);
     }
 
     public function test_allocation_is_deterministic_to_the_cent_even_for_large_prices(): void

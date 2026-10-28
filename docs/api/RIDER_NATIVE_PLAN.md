@@ -35,9 +35,7 @@ the state machine, actual file validation and frozen order destination govern.
 
 Pre-custody release is unavailable until a shared reasoned release policy exists.
 Native restricted recovery remains on the established narrow website workflow;
-ordinary suspended tokens are revoked. Rider earnings remain unavailable until
-an authoritative earnings writer exists. COD, shipping charges and seller
-commission cannot supply a guessed earnings value.
+ordinary suspended tokens are revoked. Version-two rider earnings now come from the retained logistics earnings writer, with released and pending shares separate. Missing optional schema remains unavailable; COD, shipping charges and seller commission never supply a guessed earnings value. Home and cash include the actual retained shift reconciliation summary. Flutter rendering/device acceptance is a separate application task.
 
 For every delivered batch, hand off its local commits and routes, OpenAPI and
 sanitized fixtures, fields/abilities/limits/retry rules, exact checks and gaps,

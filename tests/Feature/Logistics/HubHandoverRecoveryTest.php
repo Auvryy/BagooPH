@@ -40,6 +40,12 @@ use Tests\TestCase;
 
 class HubHandoverRecoveryTest extends TestCase
 {
+    // Missed historical manifest receipts keep their original individual-scan evidence.
+    protected function flowContractVersion(): int
+    {
+        return 1;
+    }
+
     use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
     protected function setUp(): void

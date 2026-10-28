@@ -25,7 +25,9 @@ class LifecycleNoticeService
             'preparing' => ['Your order is being prepared', 'The seller is packing your parcel.'],
             'ready_for_pickup' => ['Your order is ready for pickup', 'The parcel is waiting for an eligible pickup rider.'],
             'cancelled' => ['Your order was cancelled', 'Open the order to review its current status.'],
-            'completed' => ['The buyer confirmed receipt', 'The order is completed. Cash reconciliation and seller settlement are separate steps.'],
+            'completed' => $order->logistics_flow_version >= 2
+                ? ['Delivery completed', 'Verified handover completed the order and released its recorded earnings. Actual cash transfers retain their own receipts.']
+                : ['The buyer confirmed receipt', 'The order is completed. Cash reconciliation and seller settlement are separate steps.'],
         };
         $seller = in_array($milestone, ['placed', 'completed'], true);
         $recipientId = $seller ? $order->shop?->user_id : $order->buyer_id;
@@ -76,7 +78,7 @@ class LifecycleNoticeService
         $parcel = $checkpoint->delivery()->with('order.shop')->firstOrFail();
         $order = $parcel->order;
         $body = match ($milestone) {
-            'delivered' => 'Confirm receipt from your order page after checking the parcel.',
+            'delivered' => $order->logistics_flow_version >= 2 ? 'Verified delivery completes this order automatically. Open the order to review its proof and purchase details.' : 'Confirm receipt from your order page after checking the parcel.',
             'delivery_failed' => 'The parcel must return to the destination hub before another attempt or an authorized recovery option.',
             'out_for_delivery' => $order->payment_method === 'cod'
                 ? 'Have PHP '.number_format((float) $order->total_amount, 2).' ready for cash on delivery.'

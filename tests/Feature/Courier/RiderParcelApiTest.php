@@ -77,8 +77,8 @@ class RiderParcelApiTest extends TestCase
         $first = $this->action($parcel, 'final_mile', 'deliver', $body, $key)->assertOk()->assertJsonPath('data.result.operational_stage', 'delivered');
         $this->action($parcel, 'final_mile', 'deliver', $body, $key)->assertOk()->assertJsonPath('data.replayed', true);
         $this->getJson('/api/v1/rider/commands/'.$key)->assertOk()->assertJsonPath('data.result', $first->json('data.result'));
-        $this->assertSame('delivered', $parcel->order->fresh()->status);
-        $this->assertSame('pending', $parcel->order->fresh()->payment_status);
+        $this->assertSame('completed', $parcel->order->fresh()->status);
+        $this->assertSame('paid', $parcel->order->fresh()->payment_status);
         $cash = CodAccount::where('delivery_id', $parcel->id)->sole();
         $this->assertNull($cash->reconciled_at);
         $this->assertSame(1, $cash->events()->count());

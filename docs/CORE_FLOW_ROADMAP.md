@@ -19,15 +19,45 @@ Buyer checkout
 -> Seller fulfillment
 -> Pickup Rider
 -> Origin Bayan Hub
--> Mother Hub
+-> Sealed Mother Bags through required Mother Hub(s), or explicit same-child local bypass
 -> Destination Bayan Hub
 -> Delivery Rider or Self-Pickup Counter
--> Buyer confirmation
--> COD reconciliation
--> Seller settlement
+-> Verified recipient / POD / original payment
+-> Automatic version-two completion and retained earnings release
+-> Acknowledged rider COD remittance and shift closure
+-> Platform cash reconciliation and actual seller transfer evidence, or balanced virtual proceeds
 ```
 
 The core flow is complete only when the entire chain passes cross-role tests without a portal inventing statuses, bypassing custody, settling COD early, or relying on sample success data.
+
+## New Docs Era: October 28, 2026
+
+The user-selected [version-two PDF contract](new-docs-era/README.md) supersedes older buyer-only completion and mandatory-Mother rules for new orders. Historical version-one orders retain their saved flow and amounts. The older dated reviews below are historical evidence, not the current version-two specification.
+
+Implemented: serving-company checkout, ZIP/parent routing with frozen hops and tariff, same-child bypass, volumetric billable weight and PHP 60 baseline, numbered Mother Bags with atomic manifest loading/departure and individual receiving, original-route misroute recovery/RTS, verified automatic completion, separate product/shipping earning sources, counted COD shift closure, and owner-provisioned named staff with first-login/email gates. New shadcn-style hub screens connect company setup, bags, scans, transport and earnings. Actual external seller transfers retain their existing proof; a ledger release does not assert a bank payment.
+
+The acceptance map is [N01–N18](new-docs-era/ACCEPTANCE.md). [OPERATIONS.md](new-docs-era/OPERATIONS.md) names the actual controls and station handoffs. [DEPLOYMENT.md](new-docs-era/DEPLOYMENT.md) covers the additive migration and scheduler. The local PostgreSQL migration completed, including main's previously pending reserved demo-transport repair. Test data remains SQLite memory; no Azure release or Flutter application edit is part of this branch.
+
+Browser evidence: headless Chrome/Puppeteer operated the real buyer, seller, pickup, origin, Mother, destination and final-rider controls in a guarded, separate SQLite-memory server. A regional order completed through two sealed bags/closed manifests; a same-child order completed without a new manifest. Both recorded recipient, synthetic photo proof and original COD, reflected completion/earnings, acknowledged hub cash receipt and closed rider duty. Company-owner account creation also passed through its form. Five logistics pages passed 1440px/390px overflow checks and the mobile drawer opened/closed by keyboard. The proof files and cash are explicitly synthetic; no physical delivery, real cash receipt or device behavior is claimed.
+
+| Acceptance | Authoritative verification sources |
+|---|---|
+| N01–N02: serving company and frozen hierarchy | `NewEraCheckoutTest`, `NewEraRoutingRateTest`, checkout replay/selection cases; regional browser checkout |
+| N03–N04: local bypass and billable rates | `NewEraLocalFlowTest`, rate/checkout tests; one-child browser order and saved shipping calculation |
+| N05–N06: bag/seal/atomic transport | `NewEraMotherBagTest`; scanned bag loading, seal verification and closed regional manifests in the browser |
+| N07–N08: misroute, hold, retries and RTS | `ParcelRecoveryTest`, `HandoverRecoveryTest`, `DeliveryAttemptRecoveryTest`, local/refusal/third-attempt and regional reversed-route cases |
+| N09–N10: verified completion and exact allocations | `CrossRoleOrderDeliveryFlowTest`, local COD/prepaid/return tests and integer-cent model examples; buyer/seller/earnings browser reflection |
+| N11–N12: actual native earnings and exact shifts | native operations/connected/parcel API tests, recovered-shortage and same-second shift cases; both browser hub receipts and duty closures |
+| N13–N14: company ownership, activation and additive schema | `NewEraCompanySetupTest`, browser worker creation/password/email gate, local migration result |
+| N15–N16: connected responsive UI and consistent status | production build, 47 frontend cases, tracking consistency tests and 10 desktop/phone page checks |
+| N17–N18: acceptance and handoff | dated test results in this entry, [operations](new-docs-era/OPERATIONS.md), [deployment](new-docs-era/DEPLOYMENT.md), small local commits and [PR draft](new-docs-era/PR_DRAFT.md) |
+
+Scoped assessment: logistics task clarity **5/10 → 8/10**; implementation of the selected seven algorithms **4/10 → 8/10**. The improvement is the connected operator workflow, explicit route/scan guidance, retained atomic evidence and tested local/return/money paths. These are engineering assessments for this branch, not a whole-project score or thesis certification. The final focused regression passed **418 tests / 18,009 assertions** in isolated SQLite memory, including algorithms, checkout/replay, auth/activation, native rider API, tracking and finance. The production TypeScript/Vite build, **47 rider frontend checks**, and validation of **110 OpenAPI schemas / 15 examples** passed. The combined [local PR title/body](new-docs-era/PR_DRAFT.md) remains a local draft; it is not saved on GitHub and no commits were pushed.
+
+
+The broader logistics/returns/wallet run executed **983 cases**: **981 passed**, with one overlapping proof-storage failure and one reviewed-hold feedback ordering failure. All **32 delivery-attempt cases** passed with a separate test-storage token; after the hold-priority correction, all **65 handover-recovery cases / 5,313 assertions** passed. The specific held-order case also passed with 119 assertions. The complete 983-case batch was not repeated after that narrow correction; the affected groups were rechecked. Concurrent standalone test jobs need distinct `TEST_TOKEN` values so their fake proof disks cannot erase each other. No unresolved scoped failure remains from these findings. The final saved-measurement refinement also passed **96 checkout/rate/voucher/replay cases / 932 assertions**: purchased per-item dimensions and unit weight remain unchanged after later catalogue edits and are supplied to the seller waybill. A separate server rendering check verifies those original measurements/divisor and the historical empty fallback.
+
+Remaining deployment/acceptance limits: Azure rollout, production concurrency/load and physical Android/Flutter acceptance require their own evidence. SQLite tests do not prove concurrent PostgreSQL row locks. Automatic earnings remain distinct from real external payouts. Current company coverage, parents, measurements and driver assignments still need correct operational input; the system rejects unsupported/ambiguous choices instead of inventing a route or a fee.
 
 ## Current Implementation Audit
 

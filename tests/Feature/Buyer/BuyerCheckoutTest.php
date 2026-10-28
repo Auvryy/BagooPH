@@ -78,8 +78,8 @@ class BuyerCheckoutTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Checkout/Index')
             ->where('subtotal', 500)
-            ->where('shippingFee', 50)
-            ->where('total', 550)
+            ->where('shippingFee', 60)
+            ->where('total', 560)
         );
     }
 
@@ -111,7 +111,7 @@ class BuyerCheckoutTest extends TestCase
         $this->assertDatabaseHas('cart_items', ['id' => $cartItem->id, 'quantity' => 2]);
     }
 
-    public function test_checkout_waives_shipping_fee_for_orders_exceeding_threshold(): void
+    public function test_checkout_keeps_the_baseline_shipping_fee_for_orders_exceeding_threshold(): void
     {
         $buyer = User::factory()->create([
             'role' => 'buyer',
@@ -140,7 +140,7 @@ class BuyerCheckoutTest extends TestCase
         $this->assertNotNull($order);
         $this->assertEquals('cod', $order->payment_method);
         $this->assertEquals(2000.00, (float) $order->subtotal);
-        $this->assertEquals(0.00, (float) $order->shipping_fee);
-        $this->assertEquals(2000.00, (float) $order->total_amount);
+        $this->assertEquals(60.00, (float) $order->shipping_fee);
+        $this->assertEquals(2060.00, (float) $order->total_amount);
     }
 }

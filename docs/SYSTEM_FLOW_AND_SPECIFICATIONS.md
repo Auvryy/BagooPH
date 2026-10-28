@@ -1,5 +1,7 @@
 # System Flow & Specifications
 
+> The user-selected [New Docs Era logistics version 2](new-docs-era/README.md) supersedes this document's mandatory Mother-Hub rule for local routes, buyer-only completion, old shipping policy, undefined shipping split and company account provisioning restrictions. Retain the original history and unrelated ownership/security rules.
+
 > **Official Curriculum Reference Specification**
 > This document records the customer-facing lifecycle and cross-role responsibilities. The physical custody, mother-hub, exception, self-pickup, notification, and COD rules are authoritative in `docs/SORTING_CENTER_LOGISTICS_FLOW.md`.
 
@@ -33,12 +35,12 @@ Buyer checkout
 -> Seller fulfillment
 -> Pickup Rider
 -> Origin Bayan Hub
--> at least one Mother Hub
+-> Required Mother Hub(s), unless origin and destination are the same child hub
 -> Destination Bayan Hub
 -> Delivery Rider or Self-Pickup Counter
--> Buyer confirmation
--> COD reconciliation
--> Seller settlement
+-> Verified recipient/POD and original payment
+-> Automatic commercial completion and earnings release
+-> COD remittance/reconciliation and actual external payment evidence, when applicable
 ```
 
 The following rules apply across every portal:
@@ -47,10 +49,10 @@ The following rules apply across every portal:
 - A multi-shop Shopping Bag across different sellers creates one independent order, parcel, waybill, logistics route, and shipping fee per shop.
 - A shop voucher affects only its matching shop order. A platform voucher is divided proportionally among the generated orders without exceeding its calculated checkout discount.
 - Pickup and delivery riders are assignment phases of the same approved `courier` account, not separate account roles.
-- Every parcel passes through at least one Regional Mother Hub. Direct seller-to-buyer and Bayan-Hub-to-Bayan-Hub transport are prohibited.
-- Only the buyer may advance `DELIVERED` to `COMPLETED`.
+- Different-child routes pass through their required parent Mother Hub(s). An identical-child version-two route uses actual local intake and local dispatch. Direct seller-to-buyer and different-child-to-child shortcuts are prohibited.
+- Valid recipient/POD and original payment evidence automatically advance version-two delivery to `COMPLETED`. Historical version-one orders retain the owning buyer’s receipt confirmation.
 - Parcel status and COD custody are separate. Delivery does not prove platform remittance.
-- COD seller settlement requires both `COMPLETED` and platform-level cash reconciliation. The separately selected [Bagoo Wallet](BAGOO_WALLET.md) uses evidenced prepaid virtual credits, buyer-confirmed completion and its own virtual proceeds journal, with no cash collection or remittance.
+- COD seller settlement requires both `COMPLETED` and platform-level cash reconciliation. The separately selected [Bagoo Wallet](BAGOO_WALLET.md) uses evidenced prepaid virtual credits, automatic verified-delivery completion and its own virtual proceeds journal, with no cash collection or remittance.
 - The 90% seller and 10% platform split applies only to product subtotal. Shipping, handling, logistics revenue, and rider earnings remain separate.
 
 ### Status Ownership
@@ -71,7 +73,7 @@ The following rules apply across every portal:
 | `OUT_FOR_DELIVERY -> DELIVERY_FAILED` | Assigned delivery rider | Reason, notes, attempt number, and proof |
 | `DELIVERY_FAILED -> SORTED` | Destination Bayan Hub Handler | Failed parcel returned to hub and retry approved |
 | RTS in progress -> `RETURNED` | Seller through authenticated receipt | Reverse route complete and parcel handed back |
-| `DELIVERED -> COMPLETED` | Buyer | Buyer confirms receipt |
+| `DELIVERED -> COMPLETED` | System, from valid recipient/POD and original payment evidence | Automatic for version-two orders; historical version-one orders retain buyer confirmation |
 
 Seller cancellation is allowed only before pickup and before any rider has claimed parcel custody. Cancellation is a terminal commercial outcome and cannot replace a delivery or return scan.
 
@@ -300,13 +302,13 @@ Reschedule Delivery / Return Parcel
 | **ASSIGNED_TO_RIDER** | Delivery rider has been assigned |
 | **OUT_FOR_DELIVERY** | Rider is delivering the parcel |
 | **DELIVERED** | Parcel successfully delivered |
-| **COMPLETED** | Buyer confirmed receipt |
+| **COMPLETED** | Verified new delivery completed automatically, or a historical buyer receipt was confirmed |
 | **DELIVERY_FAILED** | Delivery attempt failed |
 | **RETURNED** | Parcel returned to seller |
 
 ### Process Summary:
 ```
-Buyer orders → Seller prepares → Pickup Rider collects → Origin Bayan Hub receives → Mother Hub sorts → Destination Bayan Hub receives and sorts → Hub assigns Delivery Rider → Rider delivers → Buyer confirms → Order completed.
+Buyer orders → Seller prepares → Pickup Rider collects → Origin Bayan Hub receives → Mother Hub sorts → Destination Bayan Hub receives and sorts → Hub assigns Delivery Rider → Rider records recipient/POD and original payment → Order completes automatically. Same-child routes use local intake and sorting without a Mother-Hub transfer.
 ```
 
 `AT_SORTING_CENTER` covers the internal Bayan-Hub and Mother-Hub transfer checkpoints shown to the buyer through the tracking timeline. The system must not add internal transport statuses to the 13 customer-facing order statuses.

@@ -14,8 +14,10 @@ use App\Services\Courier\CourierMessagingService;
 use App\Services\Courier\CourierOperationsService;
 use App\Services\Courier\CourierOutcomeService;
 use App\Services\Courier\CourierProofService;
+use App\Services\Courier\RiderShiftService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\CodMoney;
+use App\Services\Finance\LogisticsEarningsService;
 use App\Services\IdentityCorrectionService;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\HandoverHoldService;
@@ -253,7 +255,9 @@ class CourierDeliveryController extends Controller
         $message = match ($targetStatus) {
             OrderStateMachineService::STATUS_PICKED_UP => 'Pickup recorded. Deliver the parcel to the assigned Origin Bayan Hub.',
             OrderStateMachineService::STATUS_OUT_FOR_DELIVERY => 'Final-mile delivery started.',
-            OrderStateMachineService::STATUS_DELIVERED => 'Delivery, proof and exact COD recorded. Hand over the cash separately; the buyer still confirms receipt.',
+            OrderStateMachineService::STATUS_DELIVERED => $delivery->order->logistics_flow_version >= 2
+                ? 'Delivery verified and order completed. Hand over any collected COD separately.'
+                : 'Delivery recorded. Buyer confirmation and any COD remittance remain separate.',
         };
 
         return back()->with('success', $message);
@@ -280,6 +284,13 @@ class CourierDeliveryController extends Controller
         }
 
         return Inertia::render('Courier/Earnings', [
+            'earningsSummary' => app(LogisticsEarningsService::class)->summary($user),
+            'shift' => app(RiderShiftService::class)->ledger($user),
+            'earningEntries' => app(LogisticsEarningsService::class)->scoped($user)->with('order')->latest('earned_at')->limit(100)->get()->map(fn ($entry) => [
+                'id' => $entry->id, 'order_number' => $entry->order->order_number, 'role' => $entry->role,
+                'amount_cents' => (int) $entry->net_amount_cents, 'released' => $entry->released_at !== null,
+                'virtual_only' => $entry->snapshot['virtual_only'],
+            ]),
             'scope' => $this->scopePayload($profile),
             'isOnline' => (bool) $profile?->is_available,
             'summary' => [

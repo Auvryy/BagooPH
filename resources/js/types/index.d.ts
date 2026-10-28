@@ -70,6 +70,7 @@ export interface User {
     courier_profile?: CourierProfile | null;
     addresses?: Address[];
     canManageResources?: boolean;
+    canSetupCompany?: boolean;
     canScanParcels?: boolean;
     canViewFinancialOversight?: boolean;
     resourceGovernanceUrl?: string;
@@ -270,7 +271,26 @@ export interface OrderTracking {
     failure: { attempt_number: number; reason: string; attempted_at: string | null; retry_at: string | null } | null;
 }
 
+export interface ShippingCalculation {
+    company_name: string | null;
+    actual_weight_grams: number;
+    volumetric_weight_grams: number;
+    billable_weight_grams: number;
+    volumetric_divisor: number;
+    base_fee_cents: number;
+    additional_kg_cents: number;
+    additional_kilograms: number;
+    included_weight_grams: number;
+    missing_measurement_product_ids: number[];
+    measurements?: { product_id: number | null; product_name: string | null; quantity: number; unit_weight_kg: string | null; length_cm: string | null; width_cm: string | null; height_cm: string | null }[];
+    route?: { id: number; code: string; name: string; tier: string }[];
+    same_hub_bypass?: boolean;
+}
+
 export interface Order {
+    logistics_flow_version?: number;
+    shipping_quote?: ShippingCalculation | null;
+    delivery_type?: 'doorstep' | 'hub_self_pickup';
     voucher_receipt?: import('@/Components/Vouchers/BuyerVoucherReceipt').VoucherReceipt;
     id: number;
     order_number: string;

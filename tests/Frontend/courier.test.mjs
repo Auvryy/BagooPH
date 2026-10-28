@@ -396,12 +396,12 @@ test('final-mile collection targets the destination hub with exact server COD', 
     assert.match(html, /aria-label="Zoom out"/);
     assert.match(html, /₱950\.12/);
 });
-test('delivery leg uses the saved buyer pin and records delivery separately from receipt', async () => {
+test('delivery leg uses the saved buyer pin and explains verified delivery completion', async () => {
     const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: false, queues: { finalMileTasks: [{ ...finalMile, status: 'out_for_delivery', nextAction: 'complete_delivery', retainedByCurrentCourier: true }] } });
     assert.deepEqual(directionDestinations(html), ['14.5,121.6']);
     assert.match(html, /Scan waybill · record delivery/);
     assert.match(html, /Map of Saved buyer destination/);
-    assert.match(html, /buyer confirms receipt separately/);
+    assert.match(html, /Verified delivery completes new orders automatically/);
     assert.match(html, /phase=final_mile/);
 });
 test('a return-to-hub route treats the buyer address as a reference until reassigned', async () => {

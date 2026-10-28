@@ -470,6 +470,7 @@ class HandoverRecoveryTest extends TestCase
     public function test_reviewed_hold_disables_ordinary_seller_and_web_rider_guidance(): void
     {
         [$parcel, $holder, $issue, $grant] = $this->recovery('assigned_to_rider');
+        $this->assertSame(2, $parcel->order->logistics_flow_version);
         $page = $this->actingAs($holder)->get(route('courier.deliveries'))->assertOk()->inertiaProps('queues');
         $this->assertTrue($page['finalMileTasks'][0]['handoverHold']);
         $this->assertNull($page['finalMileTasks'][0]['nextAction']);

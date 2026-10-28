@@ -43,6 +43,7 @@ class PublicTrackingService
         'completed' => 'Buyer receipt confirmed',
         'buyer_confirmed' => 'Buyer receipt confirmed',
         'buyer_completed' => 'Buyer receipt confirmed',
+        'delivery_completed' => 'Order completed after delivery',
         'delivery_failed' => 'Delivery area',
         'return_to_sender' => 'Return hub receipt',
         'return_in_transit' => 'Return hub transfer',

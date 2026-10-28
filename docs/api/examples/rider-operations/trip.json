@@ -17,8 +17,10 @@
     "payment_method": "cod",
     "collected_cents": "95000",
     "earnings": {
-      "available": false,
-      "confirmed_cents": null
+      "available": true,
+      "confirmed_cents": "0",
+      "pending_cents": "0",
+      "basis": "original_delivery_earnings_ledger"
     },
     "checkpoints": [
       {
