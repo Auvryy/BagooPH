@@ -61,3 +61,9 @@ test('rider cards show only the parcel’s server-authorized choices and never d
     const html = renderToStaticMarkup(createElement(ui.RiderPicker, { riders, eligibleIds: [11], value: '11', onChange() {} }));
     assert.match(html, /Eligible area rider/);assert.doesNotMatch(html, /Unavailable area rider|Current holder/);assert.match(html, /type="radio"/);assert.match(html, /checked/);
 });
+
+test('the progress rail can receive keyboard focus and exposes the current and completed steps as text', () => {
+    const html = renderToStaticMarkup(createElement(ui.HubStepRail, { steps: ui.transferSteps('sealed', true) }));
+    assert.match(html, /tabindex="0"/);assert.equal((html.match(/aria-current="step"/g) ?? []).length, 1);
+    assert.match(html, /Completed/);assert.match(html, /Current step/);assert.match(html, /Waiting/);
+});

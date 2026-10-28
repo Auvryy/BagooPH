@@ -34,11 +34,11 @@ export function HubNextStep({ title, children, action, tone = 'brand', icon: Ico
 
 export type HubStep = { title: string; detail?: string; state: 'done' | 'current' | 'waiting' | 'blocked'; icon?: LucideIcon };
 export function HubStepRail({ steps, label = 'Transfer progress' }: { steps: HubStep[]; label?: string }) {
-    return <ol aria-label={label} className="hub-step-rail flex gap-0 overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 sm:p-5">{steps.map((step, index) => {
+    return <ol tabIndex={0} aria-label={label} className="hub-step-rail flex gap-0 overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] sm:p-5">{steps.map((step, index) => {
         const Icon = step.state === 'done' ? Check : step.icon ?? Circle;
         return <li key={step.title} aria-current={step.state === 'current' ? 'step' : undefined} className="relative flex min-w-[132px] flex-1 items-start gap-2.5 pr-5 last:pr-0">
             <span className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${step.state === 'done' ? 'border-[#E00D42] bg-[#E00D42] text-white' : step.state === 'current' ? 'border-rose-300 bg-rose-50 text-[#E00D42] ring-4 ring-rose-50' : step.state === 'blocked' ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`}><Icon className="h-3.5 w-3.5" /></span>
-            <span className="pt-0.5"><span className={`block text-xs font-semibold ${step.state === 'current' ? 'text-[#C20836]' : step.state === 'waiting' ? 'text-slate-500' : 'text-slate-800'}`}>{step.title}</span>{step.detail && <span className="mt-1 block text-[11px] leading-4 text-slate-500">{step.detail}</span>}</span>
+            <span className="pt-0.5"><span className={`block text-xs font-semibold ${step.state === 'current' ? 'text-[#C20836]' : step.state === 'waiting' ? 'text-slate-500' : 'text-slate-800'}`}>{step.title}<span className="sr-only"> · {{ done: 'Completed', current: 'Current step', waiting: 'Waiting', blocked: 'Blocked' }[step.state]}</span></span>{step.detail && <span className="mt-1 block text-[11px] leading-4 text-slate-500">{step.detail}</span>}</span>
             {index < steps.length - 1 && <ArrowRight aria-hidden="true" className="absolute right-1 top-2 h-3.5 w-3.5 text-slate-300" />}
         </li>;
     })}</ol>;
