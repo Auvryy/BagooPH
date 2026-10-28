@@ -7,6 +7,7 @@ import PortalLink from '@/Components/PortalLink';
 import CatalogueNavigationNotice from '@/Components/CatalogueNavigationNotice';
 import AdminSidebarNavigation from '@/Components/AdminSidebarNavigation';
 import LogisticsSidebarNavigation from '@/Components/Logistics/SidebarNavigation';
+import LogisticsNavigationDrawer from '@/Components/Logistics/NavigationDrawer';
 import '../../css/logistics-workspace.css';
 import { HubPageHeader } from '@/Components/Logistics/Workspace';
 import NavigationAttentionDot from '@/Components/NavigationAttentionDot';
@@ -270,7 +271,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             
             {['seller', 'logistics', 'admin'].includes(role) && <CatalogueNavigationNotice />}
             {/* Backdrop for mobile drawer */}
-            {sidebarOpen && (
+            {sidebarOpen && role !== 'logistics' && (
                 <div 
                     className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 lg:hidden"
                     onClick={() => setSidebarOpen(false)}
@@ -278,6 +279,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             )}
 
             {/* Sidebar (Permanently Fixed on Desktop) */}
+            <LogisticsNavigationDrawer enabled={role === 'logistics'} open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
             <aside id="portal-navigation" className={`
                 fixed inset-y-0 left-0 z-50 w-64 bg-white text-slate-700 border-r border-slate-200 
                 flex flex-col transition-transform duration-200 ease-in-out
@@ -300,8 +302,9 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         <button 
                             type="button"
                             aria-label="Close navigation"
+                            data-autofocus={role === 'logistics' ? true : undefined}
                             onClick={() => setSidebarOpen(false)}
-                            className="lg:hidden p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                            className={`lg:hidden p-1 text-slate-400 hover:text-slate-700 cursor-pointer ${role === 'logistics' ? 'flex min-h-11 min-w-11 items-center justify-center' : ''}`}
                         >
                             <X className="w-5 h-5" />
                         </button>
@@ -516,6 +519,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     </Link>
                 </div>
             </aside>
+            </LogisticsNavigationDrawer>
 
             {/* Main Content Column */}
             <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
@@ -529,7 +533,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             aria-controls="portal-navigation"
                             aria-expanded={sidebarOpen}
                             onClick={() => setSidebarOpen(true)}
-                            className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer shrink-0"
+                            className={`lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer shrink-0 ${role === 'logistics' ? 'flex min-h-11 min-w-11 items-center justify-center' : ''}`}
                         >
                             <Menu className="w-5 h-5" />
                         </button>
