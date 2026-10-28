@@ -14,6 +14,7 @@ import {
     Truck,
 } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { HubNextStep, HubPageHeader } from '@/Components/Logistics/Workspace';
 
 interface HubOption {
     id: number;
@@ -185,6 +186,10 @@ export default function HubDashboard({
             <Head title="Operations Overview — BagooPH" />
 
             <div className="space-y-5 font-sans">
+                <HubPageHeader title="Operations overview" description="Start with work that needs attention, then scan the next actual handover. Counts follow the facility view below." icon={Building2} />
+                <HubNextStep title={activeAttention.length ? activeAttention[0].label : 'Ready for the next handover'} tone={activeAttention.length ? 'warning' : 'brand'} icon={activeAttention.length ? AlertTriangle : ScanLine} action={<PortalLink href={activeAttention[0]?.href ?? (scope.can_scan ? route('hub.scan.station') : route('hub.network'))} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#E00D42] px-4 py-2 text-xs font-semibold text-white hover:bg-[#C20836]">{activeAttention.length ? 'Open worklist' : scope.can_scan ? 'Open scan station' : 'View hub network'}<ChevronRight className="h-3.5 w-3.5" /></PortalLink>}>
+                    {activeAttention.length ? <p>{activeAttention[0].count} {activeAttention[0].count === 1 ? 'item needs' : 'items need'} review in this view. Open its worklist to see the responsible person and permitted next action.</p> : <p>No attention items are recorded in this view. Incoming parcels and new exceptions appear as their actual scans are saved.</p>}
+                </HubNextStep>
                 <section className="flex flex-col gap-3 rounded-lg border border-slate-300 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 className="text-sm font-bold text-slate-900">Network activity</h2>

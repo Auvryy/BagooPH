@@ -2,8 +2,9 @@ import { refreshPage } from '@/utils/accountRequests';
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, router, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { HubNextStep, HubPageHeader, HubRoute } from '@/Components/Logistics/Workspace';
 import HubCounterPreview, { CounterPreviewParcel } from '@/Components/HubCounterPreview';
-import { HubParcelNextStep, HubParcelState, ParcelGuidance } from '@/Components/HubParcelGuidance';
+import { HubParcelAction, HubParcelState, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import WaybillCamera from '@/Components/WaybillCamera';
 import { requestWaybill, waybillCode, WaybillRequestError } from '@/utils/waybillScan';
 import useOperationalRefresh from '@/hooks/useOperationalRefresh';
@@ -282,6 +283,7 @@ export default function ScanStation({
             subtitle="Scan a waybill, check its next stop and confirm the physical handover"
         >
             <Head title="Scan Station — Logistics Hub — BagooPH" />
+            <HubPageHeader title="Scan station" description="Scan the parcel in front of you. Check the current holder and next stop, then confirm only the handover you actually received." icon={ScanLine} />
 
             {/* Quick KPI Overview Bar (Minimalist Architectural Stats) */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
@@ -450,7 +452,7 @@ export default function ScanStation({
                             <div className="bg-white rounded-lg border border-slate-300 p-4 sm:p-5 shadow-sm">
                                 <div className="flex items-center justify-between mb-3">
                                     <label htmlFor="barcode-field" className="block text-xs font-bold text-slate-900 font-sans uppercase tracking-wider">
-                                        Waybill Barcode Input
+                                        Scan or enter a waybill
                                     </label>
                                     
                                     {/* Audio Feedback Toggle */}
@@ -482,10 +484,10 @@ export default function ScanStation({
                                                 spellCheck={false}
                                                 value={barcodeInput}
                                                 onChange={(e) => setBarcodeInput(e.target.value)}
-                                                placeholder="Scan with laser gun or enter tracking..."
+                                                placeholder="Ready for your scanner — or type the tracking code"
                                                 disabled={isSubmitting}
                                                 autoFocus
-                                                className="w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-lg pl-9 pr-3 py-2.5 text-xs font-sans focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] shadow-sm outline-hidden transition"
+                                                className="min-h-14 w-full bg-white border border-slate-300 text-slate-900 placeholder-slate-400 rounded-lg pl-9 pr-3 py-3 text-sm font-sans focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 shadow-sm outline-hidden transition"
                                             />
                                         </div>
                                         <button
@@ -517,24 +519,17 @@ export default function ScanStation({
                                 <div className="bg-white rounded-lg border border-slate-300 shadow-sm p-4 sm:p-5 space-y-4">
                                     <div className="flex items-center justify-between border-b border-slate-300 pb-3">
                                         <span className="text-[11px] font-sans uppercase text-slate-500 tracking-wider font-bold">
-                                            Routing Directive
+                                            Parcel result
                                         </span>
                                         <span className="text-xs font-sans bg-slate-100 text-slate-800 px-2 py-0.5 rounded-lg border border-slate-300 font-bold">
                                             Status: {lastResult.delivery.status.replace(/_/g, ' ')}
                                         </span>
                                     </div>
 
-                                    {/* Prominent Action Directive Banner */}
-                                    <div className="rounded-lg p-4 text-center bg-slate-900 text-white border border-slate-800 shadow-sm">
-                                        <div className="text-[10px] uppercase font-sans font-bold tracking-widest text-slate-400 mb-1">
-                                            {lastResult.confirmed ? 'Custody action saved' : 'Waybill checked'}
-                                        </div>
-                                        <div className="text-lg sm:text-xl font-black font-sans uppercase tracking-tight">
-                                            {lastResult.delivery.guidance.next_step}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3"><HubParcelState guidance={lastResult.delivery.guidance} /><HubParcelNextStep guidance={lastResult.delivery.guidance} hideLink={lastResult.delivery.guidance.action === 'scan'} /></div>
+                                    <HubNextStep title={lastResult.delivery.guidance.next_step} tone={lastResult.delivery.guidance.blocker ? 'warning' : 'brand'} icon={ArrowRight}><p><span className="font-medium text-slate-700">Next person:</span> {lastResult.delivery.guidance.responsible}</p>{lastResult.delivery.guidance.blocker && <p className="mt-1 text-amber-800">{lastResult.delivery.guidance.blocker}</p>}</HubNextStep>
+                                    <HubParcelState guidance={lastResult.delivery.guidance} />
+                                    {lastResult.delivery.routing_target && activeHub && <HubRoute stops={[activeHub,lastResult.delivery.routing_target]} label="Planned next hub" />}
+                                    {lastResult.delivery.guidance.action !== 'scan' && <HubParcelAction guidance={lastResult.delivery.guidance} />}
 
                                     {lastResult.prompt.manifest_url && !lastResult.delivery.guidance.href && lastResult.delivery.guidance.can_act && <div className="rounded-lg border border-slate-300 bg-white p-3.5"><p className="mb-3 text-xs text-slate-700">Use the recorded manifest to load, dispatch or receive this parcel. Its actual list and scans establish transport custody.</p><Link className="text-sm font-semibold text-[#E00D42]" href={lastResult.prompt.manifest_url}>Open manifests</Link></div>}
 
@@ -574,9 +569,9 @@ export default function ScanStation({
                                         <div className="flex items-center gap-2.5">
                                             <Layers className="w-4 h-4 text-slate-700" />
                                             <div>
-                                                <div className="text-[10px] uppercase text-slate-500 font-sans font-bold">{lastResult.delivery.routing_target ? 'Next receiving hub / cage' : 'Destination bin / shelf'}</div>
+                                                <div className="text-[10px] uppercase text-slate-500 font-sans font-bold">Destination bin / shelf</div>
                                                 <div className="text-sm font-bold text-slate-900 font-sans">
-                                                    {lastResult.delivery.routing_target ? `${lastResult.delivery.routing_target.code} · ${lastResult.delivery.routing_target.name}` : lastResult.delivery.destination_bin?.trim() ? lastResult.delivery.destination_bin : lastResult.delivery.delivery_type === 'hub_self_pickup' ? 'Shelf not recorded' : 'Bin not recorded'}
+                                                    {lastResult.delivery.destination_bin?.trim() ? lastResult.delivery.destination_bin : lastResult.delivery.delivery_type === 'hub_self_pickup' ? 'Shelf not recorded' : 'Bin not recorded'}
                                                 </div>
                                             </div>
                                         </div>
@@ -632,7 +627,7 @@ export default function ScanStation({
                             ) : (
                                 <div className="bg-white rounded-lg border border-slate-300 p-8 text-center shadow-sm">
                                     <ScanLine className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                                    <h4 className="font-bold text-sm text-slate-900 font-sans">Awaiting Next Barcode Scan</h4>
+                                    <h4 className="font-bold text-sm text-slate-900 font-sans">Ready for the next parcel</h4>
                                     <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                                         Scan a parcel waybill or enter its tracking code to see the next permitted action and receiving hub.
                                     </p>

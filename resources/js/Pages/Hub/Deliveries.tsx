@@ -4,22 +4,11 @@ import PortalLink from '@/Components/PortalLink';
 import { visitPortal } from '@/utils/catalogueRuntime';
 import { paginationLabel } from '@/utils/catalogueNavigation';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import RiderPicker from '@/Components/Logistics/RiderPicker';
+import { CourierDialog } from '@/Components/CourierUI';
+import { HubBadge, HubEmpty, HubPageHeader, hubButton, hubInput, hubPrimary } from '@/Components/Logistics/Workspace';
 import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
-import { 
-    Package, 
-    Search, 
-    Filter, 
-    Truck, 
-    Store, 
-    MapPin, 
-    ChevronLeft, 
-    ChevronRight, 
-    ScanLine,
-    ArrowUpRight,
-    CheckCircle2,
-    Clock,
-    Tag
-} from 'lucide-react';
+import { Package, Search, Store, MapPin, ScanLine, CheckCircle2, UserRound } from 'lucide-react';
 
 interface DeliveryItem {
     id: number;
@@ -90,6 +79,7 @@ export default function HubDeliveries({ activeHub, deliveries, counts, filters, 
 
 function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, basePath, canScan }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
+    const [choosingId, setChoosingId] = useState<number | null>(null);
     const [selectedRiders, setSelectedRiders] = useState<Record<number, string>>({});
     const pending = useRef(false);
     const [busy, setBusy] = useState(false);
@@ -134,347 +124,39 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
         router.post(`${basePath}/deliveries/${delivery.id}/assign-rider`, {
             rider_id: Number(riderId),
             hub_id: activeHub?.id,
-        }, { preserveScroll: true, onError: errors => setReadError(Object.values(errors)[0] || 'Could not assign this rider. Refresh the list and try again.'), onFinish: finish });
+        }, { preserveScroll: true, onSuccess: page => { const error = (page.props.flash as { error?: string } | undefined)?.error;if (error) setReadError(error);else setChoosingId(null); }, onError: errors => setReadError(Object.values(errors)[0] || 'Could not assign this rider. Refresh the list and try again.'), onFinish: finish });
     };
 
-    return (
-        <DashboardLayout
-            title="Parcels & Waybills"
-            subtitle="Current facility queue, recorded custody and next steps"
-            actions={
-                <div className="flex items-center gap-2">
-                    {canScan && <PortalLink
-                        href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-lg shadow-sm transition uppercase tracking-wider"
-                    >
-                        <ScanLine className="w-3.5 h-3.5" />
-                        <span>Floor Scanner</span>
-                    </PortalLink>}
+    const choosing = deliveries.data.find(delivery => delivery.id === choosingId) ?? null;
+    const ridersForChoice = choosing ? eligibleRiders.filter(rider => choosing.guidance.eligible_rider_ids.includes(rider.id)) : [];
+    return <DashboardLayout title="Parcels & waybills"><Head title="Parcels & waybills — BagooPH" />
+        <div className="space-y-6" aria-busy={busy || undefined}>
+            <HubPageHeader title="Parcels & waybills" icon={Package} description="Find a parcel, check who holds it and take its next permitted action." actions={canScan && <PortalLink href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`} className={hubPrimary}><ScanLine className="h-4 w-4" />Open scanner</PortalLink>} />
+            <p role="status" className={busy ? 'text-sm text-slate-600' : 'sr-only'}>{busy ? 'Updating parcel records…' : ''}</p>
+            {readError && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{readError}</p>}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[
+                { label: 'Facility queue', value: counts.all, Icon: Package },
+                { label: 'Recorded hub custody', value: counts.in_hub, Icon: MapPin },
+                { label: 'Counter queue', value: counts.ready_pickup, Icon: Store },
+                { label: 'Handed over today', value: counts.handovers_today, Icon: CheckCircle2 },
+            ].map(({ label, value, Icon }) => <div key={label} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><Icon className="h-5 w-5 text-slate-400" /><div><p className="text-xs text-slate-500">{label}</p><p className="mt-1 text-xl font-bold text-slate-900">{value}</p></div></div>)}</div>
+            <section className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm" aria-label="Filter parcels">
+                <form onSubmit={handleSearchSubmit} className="flex min-w-56 flex-1 gap-2"><div className="relative min-w-0 flex-1"><label className="sr-only" htmlFor="parcel-search">Search waybill, order or buyer</label><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input id="parcel-search" value={searchTerm} disabled={busy} onChange={event => setSearchTerm(event.target.value)} className={`${hubInput} pl-9`} placeholder="Waybill, order or buyer" /></div><button disabled={busy} className={hubButton}>Search</button></form>
+                <label className="text-xs font-semibold text-slate-600">Queue<select disabled={busy} value={filters.status} onChange={event => handleFilter(event.target.value)} className={`${hubInput} mt-1`}><option value="all">All parcels</option><option value="in_hub">In hub custody</option><option value="ready_pickup">Counter queue</option></select></label>
+                <label className="text-xs font-semibold text-slate-600">Delivery method<select disabled={busy} value={filters.delivery_type} onChange={event => handleFilter(undefined, event.target.value)} className={`${hubInput} mt-1`}><option value="all">All methods</option><option value="doorstep">Doorstep delivery</option><option value="hub_self_pickup">Counter pickup</option></select></label>
+            </section>
+            <p className="text-xs leading-5 text-slate-500">The queue includes rider handovers awaiting intake. A queue entry does not prove physical receipt. Today’s handovers use retained scans and Philippine dates.</p>
+            {!deliveries.data.length ? <div className="rounded-xl border border-slate-200 bg-white"><HubEmpty title="No parcels in this view" description="Try another filter or search. Incoming parcels appear after their recorded pickup or transfer." /></div> : <div className="grid items-start gap-4 xl:grid-cols-2">{deliveries.data.map(delivery => <article key={delivery.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <header className="flex items-start justify-between gap-3 border-b border-slate-100 p-5"><div className="min-w-0"><h2 className="text-sm font-bold text-slate-900">{delivery.buyer_name}</h2><p className="mt-1 flex items-start gap-1.5 text-xs leading-5 text-slate-500"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{delivery.destination_barangay}, {delivery.shipping_city}</p><p className="mt-2 break-words text-xs font-medium text-slate-700">{delivery.tracking_number}</p></div><HubBadge>{delivery.delivery_type === 'hub_self_pickup' ? 'Counter pickup' : 'Doorstep'}</HubBadge></header>
+                <div className="space-y-4 p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><p className="text-sm font-medium text-slate-800">{delivery.items?.[0]?.name ?? `${delivery.item_count} items`}{delivery.items?.length > 1 ? ` + ${delivery.items.length - 1} more` : ''}</p><p className="mt-1 text-xs text-slate-500">Order {delivery.order_number}</p></div><div className="text-right"><p className="text-sm font-semibold text-slate-900">₱{delivery.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p><p className="mt-1 text-xs text-slate-500">{delivery.payment_method.replaceAll('_', ' ')}</p></div></div>
+                    <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3.5 sm:grid-cols-2"><HubParcelState guidance={delivery.guidance} /><div className="space-y-2 text-xs text-slate-600"><p>Sorting bin: <span className="font-semibold text-slate-800">{delivery.destination_bin ?? 'Not assigned'}</span></p><p>Delivery rider: <span className="font-semibold text-slate-800">{delivery.rider_name}</span></p></div></div>
+                    <HubParcelNextStep guidance={delivery.guidance} hideLink={['sort', 'assign'].includes(delivery.guidance.action)} />
+                    {delivery.guidance.can_act && delivery.guidance.action === 'sort' && <button type="button" disabled={busy} onClick={() => sortParcel(delivery)} className={hubPrimary}><Package className="h-4 w-4" />Sort to bin</button>}
+                    {delivery.guidance.can_act && delivery.guidance.action === 'assign' && <button type="button" disabled={busy} onClick={() => { setChoosingId(delivery.id);setReadError(''); }} className={hubPrimary}><UserRound className="h-4 w-4" />Choose delivery rider</button>}
                 </div>
-            }
-        >
-            <Head title="Parcels & Waybills — BagooPH" />
-
-            <div className="space-y-5 font-sans" aria-busy={busy || undefined}>
-                <p role="status" className={busy ? 'text-sm text-slate-600' : 'sr-only'}>{busy ? 'Updating parcel records…' : ''}</p>
-                {readError && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{readError}</p>}
-                <p className="text-sm text-slate-600">This queue includes parcels recorded at this facility and rider handovers awaiting intake. Today's handovers count distinct parcels released to transport, riders or buyers through retained scans.</p>
-                
-                {/* 1. TOP PARCEL KPI TILES */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-xs">Facility Queue</span>
-                                <Package className="w-3.5 h-3.5 text-slate-700" />
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-semibold text-slate-900 font-sans tracking-tight">
-                                    {counts.all}{' '}
-                                    <span className="text-xs font-bold text-slate-400">waybills</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Scope:</span>
-                            <span className="font-bold text-slate-800">This facility</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-xs">Recorded Hub Custody</span>
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]"></span>
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-semibold text-slate-900 font-sans tracking-tight">
-                                    {counts.in_hub}{' '}
-                                    <span className="text-xs font-bold text-slate-400">held</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Source:</span>
-                            <span className="font-bold text-[#E00D42]">Retained checkpoints</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-xs">Counter Queue</span>
-                                <Truck className="w-3.5 h-3.5 text-amber-600" />
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-semibold text-slate-900 font-sans tracking-tight">
-                                    {counts.ready_pickup}{' '}
-                                    <span className="text-xs font-bold text-slate-400">parcels</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Includes:</span>
-                            <span className="font-bold text-amber-700">Arrival and staging</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-xs">Recorded Handovers Today</span>
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-semibold text-slate-900 font-sans tracking-tight">
-                                    {counts.handovers_today}{' '}
-                                    <span className="text-xs font-bold text-slate-400">parcels</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Period:</span>
-                            <span className="font-bold text-emerald-700">Today, Asia/Manila</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 2. SEARCH AND FILTER CONTROLS */}
-                <div className="bg-white rounded-lg p-3.5 border border-slate-300 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-80">
-                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            type="text"
-                            aria-label="Search parcels"
-                            maxLength={120}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Search tracking number or recipient..."
-                            className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"
-                        />
-                    </form>
-
-                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end font-sans">
-                        <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-300 text-xs">
-                            <button
-                                type="button"
-                                onClick={() => handleFilter('all')}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                    filters.status === 'all'
-                                        ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
-                                        : 'text-slate-500 hover:text-slate-800'
-                                }`}
-                            >
-                                ALL ({counts.all})
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleFilter('in_hub')}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                    filters.status === 'in_hub'
-                                        ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
-                                        : 'text-slate-500 hover:text-slate-800'
-                                }`}
-                            >
-                                IN HUB ({counts.in_hub})
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleFilter('ready_pickup')}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                    filters.status === 'ready_pickup'
-                                        ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
-                                        : 'text-slate-500 hover:text-slate-800'
-                                }`}
-                            >
-                                COUNTER QUEUE ({counts.ready_pickup})
-                            </button>
-                        </div>
-
-                        <select
-                            value={filters.delivery_type}
-                            onChange={(e) => handleFilter(undefined, e.target.value)}
-                            className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-sans font-bold focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
-                        >
-                            <option value="all">All Types</option>
-                            <option value="doorstep">Doorstep Delivery</option>
-                            <option value="hub_self_pickup">Hub Counter Pickup</option>
-                        </select>
-                    </div>
-                </div>
-
-                {/* 3. WAYBILLS TABLE */}
-                <div className="bg-white rounded-lg border border-slate-300 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-slate-300 bg-slate-50/90 text-xs font-bold uppercase tracking-wider text-slate-500 font-sans">
-                                    <th className="py-2.5 px-3.5">Tracking Number</th>
-                                    <th className="py-2.5 px-3.5">Recipient / Destination</th>
-                                    <th className="py-2.5 px-3.5">Delivery Mode</th>
-                                    <th className="py-2.5 px-3.5">Sorting Bin</th>
-                                    <th className="py-2.5 px-3.5">Assigned Delivery Rider</th>
-                                    <th className="py-2.5 px-3.5">Order Value</th>
-                                    <th className="py-2.5 px-3.5 ">Parcel Stage / Custody</th>
-                                    <th className="py-2.5 px-3.5 ">Next Step</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-200 text-xs">
-                                {deliveries.data.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={8} className="py-10 text-center text-slate-400 font-sans">
-                                            No waybills found matching current filter criteria.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    deliveries.data.map((delivery) => (
-                                        <tr key={delivery.id} className="hover:bg-slate-50/80 transition">
-                                            <td className="py-3 px-3.5">
-                                                <span className="font-sans font-bold text-slate-900 block text-xs">
-                                                    {delivery.tracking_number}
-                                                </span>
-                                                <span className="text-xs text-slate-400 font-sans block mt-0.5">
-                                                    Order: {delivery.order_number}
-                                                </span>
-                                                {delivery.items?.length > 0 && (
-                                                    <span className="text-xs text-slate-500 font-sans block mt-0.5 truncate max-w-[180px]">
-                                                        {delivery.items[0].name}{delivery.items.length > 1 ? ` + ${delivery.items.length - 1} more` : ''}
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            <td className="py-3 px-3.5">
-                                                <span className="font-bold text-slate-800 block">
-                                                    {delivery.buyer_name}
-                                                </span>
-                                                <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                                                    <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                                                    {delivery.destination_barangay}, {delivery.shipping_city}
-                                                </span>
-                                            </td>
-
-                                            <td className="py-3 px-3.5">
-                                                <span className={`inline-flex items-center gap-1 text-xs font-bold px-1.5 py-0.5 rounded-lg font-sans ${
-                                                    delivery.delivery_type === 'hub_self_pickup'
-                                                        ? 'bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA]'
-                                                        : 'bg-slate-100 text-slate-700 border border-slate-300'
-                                                }`}>
-                                                    {delivery.delivery_type === 'hub_self_pickup' ? (
-                                                        <>
-                                                            <Store className="w-3 h-3" /> Counter Pickup
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Truck className="w-3 h-3" /> Doorstep
-                                                        </>
-                                                    )}
-                                                </span>
-                                            </td>
-
-                                            <td className="py-3 px-3.5">
-                                                <span className="font-sans font-bold text-slate-800 px-1.5 py-0.5 rounded-lg bg-slate-100 border border-slate-300 text-xs inline-block">
-                                                    {delivery.destination_bin ?? 'Not assigned'}
-                                                </span>
-                                            </td>
-
-                                            <td className="py-3 px-3.5 text-slate-700 font-sans text-xs">
-                                                {delivery.rider_name}
-                                            </td>
-
-                                            <td className="py-3 px-3.5 font-sans">
-                                                <span className="font-bold text-slate-900 block">
-                                                    ₱{delivery.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                                </span>
-                                                <span className="text-xs text-slate-400 uppercase">
-                                                    {delivery.payment_method}
-                                                </span>
-                                            </td>
-
-                                            <td className="py-3 px-3.5 min-w-[220px]">
-                                                <HubParcelState guidance={delivery.guidance} />
-                                            </td>
-
-                                            <td className="py-3 px-3.5 min-w-[260px] space-y-2">
-                                                <HubParcelNextStep guidance={delivery.guidance} hideLink={['sort', 'assign'].includes(delivery.guidance.action)} />
-                                                {delivery.guidance.can_act && delivery.guidance.action === 'sort' && (
-                                                    <button
-                                                        type="button"
-                                                        disabled={busy}
-                                                        onClick={() => sortParcel(delivery)}
-                                                        className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-bold uppercase transition"
-                                                    >
-                                                        Sort to Bin
-                                                    </button>
-                                                )}
-
-                                                {delivery.guidance.can_act && delivery.guidance.action === 'assign' && (
-                                                    <div className="flex items-center justify-end gap-1.5 min-w-[260px]">
-                                                        <select
-                                                            disabled={busy}
-                                                            aria-label={`Rider for ${delivery.tracking_number}`}
-                                                            value={selectedRiders[delivery.id] || ''}
-                                                            onChange={(event) => setSelectedRiders((current) => ({
-                                                                ...current,
-                                                                [delivery.id]: event.target.value,
-                                                            }))}
-                                                            className="min-w-0 flex-1 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-sans"
-                                                        >
-                                                            <option value="">Select area rider</option>
-                                                            {eligibleRiders
-                                                                .filter((rider) => delivery.guidance.eligible_rider_ids.includes(rider.id))
-                                                                .map((rider) => (
-                                                                    <option key={rider.id} value={rider.id}>
-                                                                        {rider.name}{rider.assigned_barangay ? ` — ${rider.assigned_barangay}` : ''}
-                                                                    </option>
-                                                                ))}
-                                                        </select>
-                                                        <button
-                                                            type="button"
-                                                            disabled={busy || !delivery.guidance.eligible_rider_ids.includes(Number(selectedRiders[delivery.id]))}
-                                                            onClick={() => assignRider(delivery)}
-                                                            className="px-2.5 py-1.5 rounded-lg bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-40 text-white text-xs font-bold uppercase transition"
-                                                        >
-                                                            Assign
-                                                        </button>
-                                                    </div>
-                                                )}
-
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Pagination */}
-                    {deliveries.last_page > 1 && (
-                        <div className="p-3 border-t border-slate-300 flex items-center justify-between text-xs font-sans">
-                            <span className="text-slate-500">
-                                Page {deliveries.current_page} of {deliveries.last_page} ({deliveries.total} total)
-                            </span>
-                            <div className="flex items-center gap-1">
-                                {deliveries.links.map((link, idx) => link.url ? (
-                                    <PortalLink
-                                        key={idx}
-                                        href={link.url}
-                                        only={listProps} preserveScroll preserveState
-                                        aria-current={link.active ? 'page' : undefined}
-                                        className={`px-2.5 py-1 rounded-lg text-xs font-bold font-sans transition ${
-                                            link.active
-                                                ? 'bg-[#E00D42] text-white'
-                                                : link.url
-                                                ? 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
-                                                : 'text-slate-300 pointer-events-none'
-                                        }`}
-                                    >{paginationLabel(link.label)}</PortalLink>
-                                ) : <span key={idx} aria-disabled="true" className="px-2.5 py-1 text-xs font-bold text-slate-500">{paginationLabel(link.label)}</span>)}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-            </div>
-        </DashboardLayout>
-    );
+            </article>)}</div>}
+            {deliveries.last_page > 1 && <nav aria-label="Parcel pages" className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500"><span>Page {deliveries.current_page} of {deliveries.last_page} · {deliveries.total} parcels</span><div className="flex flex-wrap gap-2">{deliveries.links.map((link, index) => link.url ? <PortalLink key={index} href={link.url} only={listProps} preserveScroll preserveState aria-current={link.active ? 'page' : undefined} className={`${hubButton} ${link.active ? 'border-rose-300 bg-rose-50 text-[#C20836]' : ''}`}>{paginationLabel(link.label)}</PortalLink> : <span key={index} aria-disabled="true" className="px-3 py-2 text-slate-400">{paginationLabel(link.label)}</span>)}</div></nav>}
+        </div>
+        <CourierDialog open={Boolean(choosing)} onClose={() => setChoosingId(null)} busy={busy} title="Choose delivery rider">{choosing && <div className="space-y-4"><p className="text-sm leading-6 text-slate-600">{choosing.tracking_number} · {choosing.destination_barangay}. Only riders eligible for this parcel are listed.</p><RiderPicker riders={eligibleRiders} eligibleIds={choosing.guidance.eligible_rider_ids} value={selectedRiders[choosing.id] ?? ''} onChange={value => setSelectedRiders(current => ({ ...current, [choosing.id]: value }))} disabled={busy} />{!ridersForChoice.length && <HubEmpty title="No eligible riders available" description="Riders need the right service area and vehicle, duty enabled and acknowledged COD. Ask the rider or company manager to review readiness." icon={UserRound} action={<PortalLink href={route('hub.network')} className={hubButton}>Review hub team</PortalLink>} />}{readError && <p role="alert" className="text-sm text-red-700">{readError}</p>}<div className="flex justify-end gap-2 border-t border-slate-200 pt-4"><button type="button" className={hubButton} disabled={busy} onClick={() => setChoosingId(null)}>Cancel</button><button type="button" className={hubPrimary} disabled={busy || !choosing.guidance.eligible_rider_ids.includes(Number(selectedRiders[choosing.id]))} onClick={() => assignRider(choosing)}>{busy ? 'Assigning…' : 'Assign rider'}</button></div></div>}</CourierDialog>
+    </DashboardLayout>;
 }

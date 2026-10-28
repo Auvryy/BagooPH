@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import WaybillCamera from '@/Components/WaybillCamera';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { HubNextStep, HubPageHeader, HubStepRail } from '@/Components/Logistics/Workspace';
 import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import { 
     Store, 
@@ -50,6 +51,7 @@ interface Props {
         tier: string;
         city_municipality: string;
         operating_hours: string | null;
+        allows_self_pickup?: boolean;
     } | null;
     counterParcels: {
         data: CounterParcel[];
@@ -78,6 +80,7 @@ interface Props {
 
 export default function HubCounterPickup({ activeHub, counterParcels, recentlyCollected, search, requestToken, canConfigureHours, basePath, canScan, counterCounts }: Props) {
     const pageParcels = counterParcels.data;
+    const isCounterHub = activeHub?.tier === 'local_bayan_hub' && activeHub.allows_self_pickup !== false;
     const [searchTerm, setSearchTerm] = useState(search || '');
     const [selectedParcel, setSelectedParcel] = useState<CounterParcel | null>(null);
     const [recipientName, setRecipientName] = useState('');
@@ -158,24 +161,27 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
     return (
         <DashboardLayout
-            title="Counter Self-Pickup"
+            title="Counter pickup"
             subtitle="Customer handover verification & zero-fee claim desk"
             actions={canScan &&
                 <Link
                     href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-lg shadow-sm transition uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-lg shadow-sm transition"
                 >
                     <ScanLine className="w-3.5 h-3.5" />
-                    <span>Station Scanner</span>
+                    <span>Scan station</span>
                 </Link>
             }
         >
             <Head title="Counter Self-Pickup — BagooPH" />
 
             <div className="space-y-5 font-sans">
+                <HubPageHeader title="Counter pickup" icon={Store} description="Stage the parcel, then verify the buyer and their private claim code before handing it over." />
+                {isCounterHub && <HubStepRail label="Counter release checks" steps={[{ title: 'Stage parcel', detail: 'Recorded hub arrival', state: 'waiting' }, { title: 'Verify buyer', detail: 'Photo ID and claim code', state: 'waiting' }, { title: 'Check payment', detail: 'Collect cash only for COD', state: 'waiting' }, { title: 'Record handover', detail: 'Release the actual parcel', state: 'waiting' }]} />}
+                {!isCounterHub && <HubNextStep title={activeHub?.tier === 'local_bayan_hub' ? 'Counter pickup is disabled at this hub' : 'Counter pickup is handled by child hubs'} icon={Store}><p>{canConfigureHours ? 'Choose an eligible child hub in the facility switcher to manage its pickup counter. Changing the view does not grant physical handler access.' : 'Use your assigned facility for its recorded parcel work. The company manager and assigned child-hub handler manage counter pickup.'}</p></HubNextStep>}
                 <p className="text-sm text-slate-600">Readiness and attention counts apply to this page. The queue total includes all matching parcels. Check the buyer's photo ID, private claim code and original payment before release.</p>
-                {canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-lg border border-slate-300 bg-white p-4"><label className="text-sm font-semibold">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-sm text-red-700">{errors.operating_hours}</p>}</form>}
-                {!activeHub?.operating_hours && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
+                {isCounterHub && canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-lg border border-slate-300 bg-white p-4"><label className="text-sm font-semibold">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-sm text-red-700">{errors.operating_hours}</p>}</form>}
+                {isCounterHub && !activeHub?.operating_hours && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
 
                 {/* 1. TOP STATS TILES */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -255,7 +261,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Self-Pickup Desk:</span>
-                            <span className="font-bold text-emerald-700">{activeHub?.operating_hours ? 'Hours recorded' : 'Setup required'}</span>
+                            <span className={`font-bold ${!isCounterHub ? 'text-slate-500' : activeHub?.operating_hours ? 'text-emerald-700' : 'text-amber-700'}`}>{!isCounterHub ? 'Not a pickup counter' : activeHub?.operating_hours ? 'Hours recorded' : 'Setup required'}</span>
                         </div>
                     </div>
                 </div>

@@ -24,7 +24,8 @@ import {
     Phone,
     Shield,
     Store,
-    Truck
+    Truck,
+    Building2,
 } from 'lucide-react';
 
 export default function Edit({
@@ -63,7 +64,7 @@ export default function Edit({
             <AccountIdentitySettings theme={role === 'seller' ? 'seller' : role === 'buyer' ? 'buyer' : role === 'courier' ? 'courier' : 'default'} />
         </div>
     ) : (
-        <div className="max-w-4xl mx-auto space-y-6 font-sans">
+        <div className={`${role === 'logistics' ? 'max-w-5xl' : 'max-w-4xl mx-auto'} space-y-6 font-sans`}>
             {/* Top Navigation Breadcrumb / Back Link */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
                 <div className="flex items-center gap-3">
@@ -76,6 +77,7 @@ export default function Edit({
                         {role === 'admin' && <Shield className="w-5 h-5 text-emerald-400" />}
                         {role === 'seller' && <Store className="w-5 h-5" />}
                         {role === 'courier' && <Truck className="w-5 h-5" />}
+                        {role === 'logistics' && <Building2 className="w-5 h-5" />}
                         {role === 'buyer' && <User className="w-5 h-5" />}
                     </div>
                     <div>
@@ -83,7 +85,7 @@ export default function Edit({
                             {role === 'admin' ? 'Admin Profile & Security' :
                              role === 'seller' ? 'Merchant Account Settings' :
                              role === 'courier' ? 'Courier Fleet Settings' :
-                             'Account Settings'}
+                             role === 'logistics' ? 'Account & security' : 'Account Settings'}
                         </h1>
                         <p className="text-xs text-slate-500 font-medium">
                             {role === 'admin' ? 'Manage root credentials, platform governance keys, and account authentication' :
@@ -125,7 +127,7 @@ export default function Edit({
                                 {role === 'admin' ? 'Platform Super Administrator' :
                                  role === 'seller' ? 'Verified Merchant' :
                                  role === 'courier' ? 'Fleet Logistics Rider' :
-                                 'Registered Buyer'}
+                                 role === 'logistics' ? 'Logistics hub account' : 'Registered Buyer'}
                             </p>
                         </div>
                     </div>
@@ -206,10 +208,10 @@ export default function Edit({
     if (role === 'courier' || role === 'logistics') {
         return (
             <DashboardLayout
-                title="Courier Account Settings"
-                subtitle="Manage rider credentials and account security"
+                title={role === 'logistics' ? 'Account & security' : 'Courier Account Settings'}
+                subtitle={role === 'logistics' ? 'Manage your profile, identity and sign-in security' : 'Manage rider credentials and account security'}
             >
-                <Head title="Courier Settings — BagooPH Logistics" />
+                <Head title={role === 'logistics' ? 'Account & security — BagooPH Logistics' : 'Courier Settings — BagooPH Logistics'} />
                 {content}
             </DashboardLayout>
         );
