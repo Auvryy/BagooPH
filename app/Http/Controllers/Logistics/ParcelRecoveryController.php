@@ -164,6 +164,12 @@ class ParcelRecoveryController extends Controller
         if (($custody['kind'] ?? null) === 'manifest') {
             return 'In transport on '.($custody['manifest_reference'] ?? 'the original manifest');
         }
+        if (($custody['kind'] ?? null) === 'courier') {
+            return 'With the recorded rider';
+        }
+        if (($custody['kind'] ?? null) === 'buyer') {
+            return 'Delivered to the recipient';
+        }
 
         return 'No supported parcel custody linked yet';
     }

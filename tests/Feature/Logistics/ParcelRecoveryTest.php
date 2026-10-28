@@ -400,10 +400,14 @@ class ParcelRecoveryTest extends TestCase
         $rider = $this->flowRider($destination);
         $this->postJson(route('hub.assignRider', $parcel), ['rider_id' => $rider->id])->assertOk();
         $this->actingAs($rider)->patch(route('courier.updateStatus', $parcel), ['status' => 'out_for_delivery', 'barcode' => $parcel->tracking_number])->assertSessionHas('success');
+        $this->actingAs($manager)->get('/hub/parcel-recovery/'.$observation->id)->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('selectedObservation.custody', 'With the recorded rider'));
         Storage::fake('local');
         Storage::fake('public');
-        $this->patch(route('courier.updateStatus', $parcel), ['status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('proof.jpg'), ...$this->codCollectionInput($parcel)])->assertSessionHas('success');
+        $this->actingAs($rider)->patch(route('courier.updateStatus', $parcel), ['status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('proof.jpg'), ...$this->codCollectionInput($parcel)])->assertSessionHas('success');
         $this->assertSame('completed', $parcel->order->fresh()->status);
+        $this->actingAs($manager)->get('/hub/parcel-recovery/'.$observation->id)->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('selectedObservation.custody', 'Delivered to the recipient'));
         $this->completeFlowOrder($parcel->order->fresh());
         $this->assertSame('paid', $parcel->order->fresh()->payment_status);
     }
