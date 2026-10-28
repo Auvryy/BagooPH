@@ -386,11 +386,11 @@ class OrderLifecycleService
             if ($lockedOrder->status === 'completed') {
                 return $lockedOrder;
             }
-            if ($lockedOrder->logistics_flow_version >= 2) {
-                throw new RuntimeException('This order completes automatically after verified delivery and payment. Refresh tracking; contact support if its delivery evidence still needs review.');
-            }
             if ($lockedOrder->delivery) {
                 app(HandoverHoldService::class)->assertMovable($lockedOrder->delivery);
+            }
+            if ($lockedOrder->logistics_flow_version >= 2) {
+                throw new RuntimeException('This order completes automatically after verified delivery and payment. Refresh tracking; contact support if its delivery evidence still needs review.');
             }
             $physical = $lockedOrder->delivery;
             $collected = $physical?->status === 'customer_collected' && app(PickupClaimService::class)->hasCollectionEvidence($physical);
