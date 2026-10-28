@@ -28,6 +28,13 @@ use Throwable;
 
 class ReturnCustodyTest extends TestCase
 {
+    // Historical reverse paths keep their original Mother-Hub loops.
+    // New local and regional version-two returns are covered by NewEraLocalFlowTest.
+    protected function flowContractVersion(): int
+    {
+        return 1;
+    }
+
     use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
     public static function portals(): array

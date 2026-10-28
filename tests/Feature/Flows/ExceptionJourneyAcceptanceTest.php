@@ -38,6 +38,12 @@ class ExceptionJourneyAcceptanceTest extends TestCase
         Storage::fake('local');
     }
 
+    // Historical orders retain buyer receipt and cash reconciliation before seller payment.
+    protected function flowContractVersion(): int
+    {
+        return 1;
+    }
+
     public function test_failed_delivery_returns_to_hub_and_retries_before_buyer_completion_and_seller_payment(): void
     {
         $parcel = $this->flowDelivery($this->newFlowOrder(), 'out_for_delivery');
@@ -77,7 +83,7 @@ class ExceptionJourneyAcceptanceTest extends TestCase
         $deliveryInput = $this->codCollectionInput($parcel) + ['status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('retry-handover.jpg')];
         $this->patch(route('courier.updateStatus', $parcel), $deliveryInput)->assertSessionHas('success');
         $cash = CodAccount::sole();
-        $this->assertSame([90000, 5000, 0, 95000], [$cash->product_subtotal_cents, $cash->shipping_cents, $cash->discount_cents, $cash->expected_cents]);
+        $this->assertSame([90000, 6000, 0, 96000], [$cash->product_subtotal_cents, $cash->shipping_cents, $cash->discount_cents, $cash->expected_cents]);
         $this->assertSame($rider->id, $cash->collector_id);
         $this->assertSame($cash->expected_cents, $cash->state['balances']['rider:'.$rider->id]);
         $this->assertSame('delivered', $parcel->order->fresh()->status);
@@ -350,7 +356,7 @@ class ExceptionJourneyAcceptanceTest extends TestCase
         $this->assertSame(SellerSettlementService::pesos($record->commission_cents), $ledger->platform_commission);
         $this->assertSame($record->product_cents, $record->seller_cents + $record->commission_cents);
         $this->assertSame(['810.00', '90.00'], [$ledger->seller_amount, $ledger->platform_commission]);
-        $this->assertSame($parcel->delivery_type === 'hub_self_pickup' ? '0.00' : '50.00', $ledger->delivery_fee);
+        $this->assertSame($parcel->delivery_type === 'hub_self_pickup' ? '0.00' : '60.00', $ledger->delivery_fee);
     }
 
     private function originalCheckpoints(Delivery $parcel, ?array $ids = null): array

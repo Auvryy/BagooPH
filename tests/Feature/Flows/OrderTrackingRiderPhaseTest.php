@@ -31,7 +31,8 @@ class OrderTrackingRiderPhaseTest extends TestCase
         $this->assertSame($parcel->origin_bayan_hub_id, $parcel->destination_bayan_hub_id);
         if ($stage === 'out_for_delivery') {
             $this->assertSame($parcel->courier_id, $parcel->assigned_rider_id);
-            $this->assertTrue($parcel->checkpoints()->where('checkpoint_type', 'arrived_at_mother_hub')->exists());
+            $this->assertFalse($parcel->checkpoints()->where('checkpoint_type', 'arrived_at_mother_hub')->exists());
+            $this->assertTrue($parcel->same_hub_bypass);
         }
         $order = $order->fresh(OrderTrackingService::relations());
         $tracking = app(OrderTrackingService::class)->present($order);

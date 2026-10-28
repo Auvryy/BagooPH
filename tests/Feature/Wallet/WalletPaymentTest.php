@@ -80,7 +80,7 @@ class WalletPaymentTest extends TestCase
         [$buyer, $order, $product] = $this->purchase('cod');
         $this->assertSame('cod', $order->payment_method);
         $this->assertSame('pending', $order->payment_status);
-        $this->assertSame('150.00', $order->total_amount);
+        $this->assertSame('160.00', $order->total_amount);
         $this->assertNull($order->walletPayment);
         $this->assertSame(19, $product->fresh()->stock);
         $this->travel(61)->minutes();
@@ -99,8 +99,8 @@ class WalletPaymentTest extends TestCase
         $reopened = $this->command($buyer, $order);
         $this->assertSame('paid', $reopened->outcome);
         $this->assertSame($first->wallet_transaction_id, $reopened->wallet_transaction_id);
-        $this->assertSame(85000, WalletAccount::where('user_id', $buyer->id)->sole()->balance_cents);
-        $this->assertSame(15000, WalletAccount::where('kind', 'escrow')->sole()->balance_cents);
+        $this->assertSame(84000, WalletAccount::where('user_id', $buyer->id)->sole()->balance_cents);
+        $this->assertSame(16000, WalletAccount::where('kind', 'escrow')->sole()->balance_cents);
         $this->assertSame(1, WalletTransaction::where('kind', 'wallet_payment')->count());
         $this->assertTrue(app(WalletPaymentService::class)->paid($order->fresh()));
         $this->assertSame(19, $product->fresh()->stock);
@@ -174,7 +174,7 @@ class WalletPaymentTest extends TestCase
         $this->travel($minutes)->minutes();
         $this->assertSame($outcome, $this->command($buyer, $order)->outcome);
         $this->assertSame($outcome === 'paid' ? 19 : 20, $product->fresh()->stock);
-        $this->assertSame($outcome === 'paid' ? 85000 : 100000, WalletAccount::where('user_id', $buyer->id)->sole()->balance_cents);
+        $this->assertSame($outcome === 'paid' ? 84000 : 100000, WalletAccount::where('user_id', $buyer->id)->sole()->balance_cents);
         $this->assertSame(0, app(WalletPaymentService::class)->expireDue());
     }
 
@@ -245,7 +245,7 @@ class WalletPaymentTest extends TestCase
         $payload['item_ids'] = [$line->id];
         $payload['checkout_token'] = app(CheckoutSubmissionService::class)->issue($buyer, $cart);
         $second = app(CheckoutOrderService::class)->place($buyer, $cart, [$line->id], $payload)->sole();
-        $this->fund($buyer, '150.00');
+        $this->fund($buyer, '160.00');
         $this->assertSame('paid', $this->command($buyer, $first)->outcome);
         $this->assertSame('failed', $this->command($buyer, $second)->outcome);
         $this->assertSame(0, WalletAccount::where('user_id', $buyer->id)->sole()->balance_cents);

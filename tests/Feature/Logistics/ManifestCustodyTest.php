@@ -28,6 +28,13 @@ class ManifestCustodyTest extends TestCase
 {
     use CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
+    // These cases retain the version-one individual-manifest protocol.
+    // Version-two bag requirements and atomic departures are in NewEraMotherBagTest.
+    protected function flowContractVersion(): int
+    {
+        return 1;
+    }
+
     public static function portals(): array
     {
         return ['root' => ['/hub'], 'subdomain' => ['http://hub.localhost']];

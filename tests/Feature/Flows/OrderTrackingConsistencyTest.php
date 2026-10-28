@@ -59,7 +59,7 @@ class OrderTrackingConsistencyTest extends TestCase
             ['sorted_to_barangay_bin', 'sorted', 'Sorted at destination hub', null],
             ['assigned_to_rider', 'assigned_to_rider', 'Assigned to delivery rider', null],
             ['out_for_delivery', 'out_for_delivery', 'Out for delivery', 'Delivery rider (handover recorded)'],
-            ['delivered', 'delivered', 'Delivered · awaiting buyer confirmation', 'Buyer (handover recorded)'],
+            ['delivered', 'completed', 'Order completed after verified delivery', 'Buyer (handover recorded)'],
         ];
     }
 
@@ -89,9 +89,9 @@ class OrderTrackingConsistencyTest extends TestCase
         if ($stage === 'delivered') {
             $this->assertNotNull($tracking['custody_recorded_at']);
             $this->completeFlowOrder($parcel->order);
-            $completed = $this->assertOwnedViews($parcel->order, 'completed', 'Buyer confirmed receipt');
-            $this->assertSame('Buyer confirmed receipt', collect($completed['history'])->last()['label']);
-            $this->assertSame('pending', $parcel->order->fresh()->payment_status);
+            $completed = $this->assertOwnedViews($parcel->order, 'completed', 'Order completed after verified delivery');
+            $this->assertSame('Order completed after verified delivery', collect($completed['history'])->last()['label']);
+            $this->assertSame('paid', $parcel->order->fresh()->payment_status);
             $this->assertDatabaseCount('commission_ledgers', 0);
         }
     }

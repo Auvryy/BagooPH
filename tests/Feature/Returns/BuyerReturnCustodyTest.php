@@ -58,7 +58,7 @@ class BuyerReturnCustodyTest extends TestCase
         $this->assertSame('seller_received', $case->fresh()->status);
         $this->assertSame(['kind' => 'seller', 'user_id' => $case->seller_id], $case->parcel->fresh()->custody);
         $this->assertSame($before, [$order->fresh()->getAttributes(), $delivery->fresh()->getAttributes(), $delivery->checkpoints()->get()->map->getAttributes()->all()]);
-        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertSame('completed', $order->fresh()->status);
         $this->assertDatabaseCount('seller_settlements', 0);
         $this->assertDatabaseCount('buyer_return_evidence', 3);
     }
@@ -215,23 +215,19 @@ class BuyerReturnCustodyTest extends TestCase
         $this->assertSame(3, $case->parcel->fresh()->route_position);
     }
 
-    public function test_reusing_the_endpoint_bayan_id_does_not_remove_either_mother_hub_leg(): void
+    public function test_same_child_return_stages_for_seller_without_inventing_a_mother_leg(): void
     {
         $shop = $this->createE2EShop($this->createApprovedUser('seller'), ['city' => 'Santa Cruz']);
         $order = $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop, [], 'ready_for_pickup');
         $case = $this->approvedReturn($order);
         $hubs = $case->parcel->hub_ids;
-        $this->assertCount(3, $hubs);
-        $this->assertSame($hubs[0], $hubs[2]);
-        $this->assertNotSame($hubs[0], $hubs[1]);
+        $this->assertCount(1, $hubs);
         $this->intake($case);
         $this->actingAs($this->flowHandler(LogisticsHub::findOrFail($hubs[0])))->post('/buyer-returns/'.$case->id.'/custody',
-            $this->custodyPayload($case, 'stage', ['hub_id' => $hubs[0]]))->assertConflict();
-        $this->leg($case);
-        $this->leg($case);
-        $this->assertSame(2, $case->parcel->fresh()->route_position);
-        $this->assertSame('at_origin_hub', $case->fresh()->status);
-        $this->assertSame(2, LogisticsManifest::where('direction', 'buyer_return')->count());
+            $this->custodyPayload($case, 'stage', ['hub_id' => $hubs[0]]))->assertSessionHasNoErrors();
+        $this->assertSame(0, $case->parcel->fresh()->route_position);
+        $this->assertSame('ready_for_seller', $case->fresh()->status);
+        $this->assertSame(0, LogisticsManifest::where('direction', 'buyer_return')->count());
     }
 
     public function test_a_failed_intake_photo_record_leaves_no_new_file_or_physical_intake_and_allows_retry(): void
@@ -267,7 +263,7 @@ class BuyerReturnCustodyTest extends TestCase
         $this->assertSame('seller', $case->parcel->fresh()->custody['kind']);
         $this->assertSame('seller_received', $case->parcel->fresh()->status);
         $this->assertDatabaseCount('seller_settlements', 0);
-        $this->assertSame('delivered', $case->order->fresh()->status);
+        $this->assertSame('completed', $case->order->fresh()->status);
     }
 
     public function test_receipt_recording_may_cross_a_clock_second_and_its_retained_time_governs_the_window(): void
@@ -305,7 +301,7 @@ class BuyerReturnCustodyTest extends TestCase
         $this->postJson('/hub/manifests/'.$manifest->id.'/close', $this->flowManifestPayload($manifest))->assertOk();
         $this->assertSame('OBSERVED-MISTYPED-RETURN', $source->fresh()->barcode_scanned);
         $this->assertSame('at_hub', $case->parcel->fresh()->status);
-        $this->assertSame('delivered', $case->order->fresh()->status);
+        $this->assertSame('completed', $case->order->fresh()->status);
     }
 
     public function test_additive_custody_migration_preserves_existing_manifest_records_and_database_guards(): void

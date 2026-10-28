@@ -115,7 +115,7 @@ class AcceptedRiderCompanyJourneyTest extends TestCase
         $cash = CodAccount::where('order_id', $order->id)->sole();
         $cashBefore = $cash->getAttributes();
         $this->assertGreaterThan(0, $cash->state['balances']['rider:'.$final->id]);
-        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertSame('completed', $order->fresh()->status);
         $this->assertSame(0, CommissionLedger::where('order_id', $order->id)->count());
         app(LogisticsPlacementService::class)->placeCourier(User::findOrFail($company->user_id), $origin,
             $final, null, null, $destination->id);

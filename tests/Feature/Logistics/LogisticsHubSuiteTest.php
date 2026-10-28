@@ -532,8 +532,8 @@ class LogisticsHubSuiteTest extends TestCase
             'change_given' => '0', 'cash_confirmed' => true, 'notes' => 'Buyer photo ID verified and actual COD counted.',
         ])->assertRedirect()->assertSessionHas('success');
         $this->assertSame(OrderStateMachineService::STATUS_CUSTOMER_COLLECTED, $delivery->fresh()->status);
-        $this->assertSame('delivered', $order->fresh()->status);
-        $this->assertSame('pending', $order->fresh()->payment_status);
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame('paid', $order->fresh()->payment_status);
         $this->assertDatabaseCount('cod_custody_entries', 1);
     }
 

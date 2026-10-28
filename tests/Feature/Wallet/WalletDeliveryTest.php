@@ -60,7 +60,7 @@ class WalletDeliveryTest extends TestCase
         $this->assertDatabaseCount('cod_custody_entries', 0);
         $this->assertDatabaseCount('commission_ledgers', 0);
         $this->assertTrue($parcel->checkpoints()->where('checkpoint_type', 'arrived_at_mother_hub')->exists());
-        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertSame('completed', $order->fresh()->status);
         $this->actingAs($order->buyer)->post('/buyer/orders/'.$order->id.'/confirm')->assertSessionHas('success');
         $this->assertSame('completed', $order->fresh()->status);
         $this->assertSame('paid', $order->fresh()->payment_status);
@@ -109,7 +109,7 @@ class WalletDeliveryTest extends TestCase
         ])->assertOk()->assertJsonPath('data.result.operational_stage', 'delivered');
         $this->assertDatabaseCount('cod_accounts', 0);
         $this->assertDatabaseCount('wallet_handover_receipts', 1);
-        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertSame('completed', $order->fresh()->status);
     }
 
     public function test_wallet_counter_collection_keeps_identity_code_and_receipt_without_a_cash_receipt(): void

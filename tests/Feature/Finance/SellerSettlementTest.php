@@ -32,6 +32,12 @@ class SellerSettlementTest extends TestCase
 {
     use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
+    // Historical orders still require buyer receipt and platform cash reconciliation.
+    protected function flowContractVersion(): int
+    {
+        return 1;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

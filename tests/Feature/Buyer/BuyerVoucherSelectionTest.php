@@ -129,6 +129,7 @@ class BuyerVoucherSelectionTest extends TestCase
     public function test_picker_explains_scheduled_expired_minimum_and_zero_shipping_without_private_funding(): void
     {
         [, $items, $payload] = $this->bag(['2000.00']);
+        $payload['delivery_type'] = 'hub_self_pickup';
         $this->offer(terms: ['starts_at' => now()->addDay()]);
         $this->offer(terms: ['ends_at' => now()->subMinute()]);
         $this->offer(attributes: ['min_spend' => 3000]);
@@ -200,13 +201,13 @@ class BuyerVoucherSelectionTest extends TestCase
         $this->assertDatabaseCount('voucher_redemptions', 0);
     }
 
-    public function test_one_cent_shipping_remainder_stays_on_paid_parcels_and_zero_fee_shop_keeps_its_merchandise(): void
+    public function test_one_cent_shipping_remainder_stays_on_one_parcel_and_all_shops_retain_their_baseline_fee(): void
     {
         [, $items, $payload] = $this->bag(['100.00', '100.00', '2000.00']);
         $offer = $this->offer(attributes: ['discount_type' => 'free_shipping', 'discount_value' => '0.01', 'max_discount' => '0.01']);
         $this->postJson(route('buyer.vouchers.best'), $payload)->assertOk()->assertJsonPath('quote.discount', 0.01)
             ->assertJsonPath('quote.shops.0.shipping_discount', 0.01)->assertJsonPath('quote.shops.1.shipping_discount', 0)
-            ->assertJsonPath('quote.shops.2.total', 2000)->assertJsonPath('quote.shops.2.discount', 0);
+            ->assertJsonPath('quote.shops.2.total', 2060)->assertJsonPath('quote.shops.2.discount', 0);
         $this->postJson(route('buyer.vouchers.best'), array_replace($payload, ['delivery_type' => 'hub_self_pickup']))->assertOk()
             ->assertJsonPath('selection.platform_voucher_revision_id', null)->assertJsonPath('quote.discount', 0);
     }
@@ -251,7 +252,7 @@ class BuyerVoucherSelectionTest extends TestCase
             ->where('order.voucher_receipt.discounts.0.code', 'SHOPRECORDED')
             ->where('order.voucher_receipt.discounts.0.name', 'Recorded offer')
             ->where('order.voucher_receipt.discounts.0.product_discount', 100)
-            ->where('order.voucher_receipt.total_savings', 100)->where('order.voucher_receipt.total', 950));
+            ->where('order.voucher_receipt.total_savings', 100)->where('order.voucher_receipt.total', 960));
         $this->get(route('buyer.profile', ['tab' => 'vouchers', 'voucher_tab' => 'used']))->assertInertia(fn (Assert $p) => $p
             ->where('voucherCollection.counts.used', 1)->where('voucherCollection.offers.data.0.uses.0.saving', 100)
             ->where('voucherCollection.offers.data.0.uses.0.code', 'SHOPRECORDED'));

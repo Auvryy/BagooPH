@@ -129,7 +129,7 @@ class BuyerReturnReviewTest extends TestCase
             $response->assertSessionHasErrors('return');
             $this->assertSame(0, BuyerReturnCase::count());
         }
-        $this->assertSame($complete ? 'completed' : 'delivered', $order->fresh()->status);
+        $this->assertSame('completed', $order->fresh()->status);
     }
 
     public function test_status_labels_without_physical_evidence_and_pre_delivery_requests_are_rejected(): void

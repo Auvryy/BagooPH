@@ -67,7 +67,7 @@ class RiderConnectedApiTest extends TestCase
         $this->getJson('/api/v1/rider/trips?from_date=2026-02-30')->assertUnprocessable();
         $this->getJson('/api/v1/rider/trips?per_page=51')->assertUnprocessable();
         $this->assertNull($response->json('data.items.0.collected_cents'));
-        $this->assertNull($response->json('data.items.0.earnings.confirmed_cents'));
+        $this->assertSame('0', $response->json('data.items.0.earnings.confirmed_cents'));
     }
 
     public function test_actual_hub_retry_reassignment_retains_original_rider_history_and_private_attempt(): void
@@ -182,7 +182,7 @@ class RiderConnectedApiTest extends TestCase
         $handler = $this->flowHandler($parcel->destinationBayanHub);
         $due = (string) $cash->expected_cents;
         $this->getJson('/api/v1/rider/cash/'.$cash->id)->assertOk()->assertJsonPath('data.own_held_cents', $due)
-            ->assertJsonPath('data.collected_cents', $due)->assertJsonPath('data.earnings.confirmed_cents', null);
+            ->assertJsonPath('data.collected_cents', $due)->assertJsonPath('data.earnings.confirmed_cents', '0')->assertJsonPath('data.earnings.pending_cents', '2500');
         $body = ['expected_version' => (string) $cash->version, 'recipient_id' => (string) $handler->id,
             'amount' => (string) $parcel->order->total_amount, 'evidence_reference' => 'RIDER-CASH-001'];
         $this->key();
@@ -202,8 +202,8 @@ class RiderConnectedApiTest extends TestCase
         $command($admin, 'receive', ['offer_reference' => $nextOffer->reference, 'received_amount' => (string) $parcel->order->total_amount]);
         $command($admin, 'reconcile', []);
         $this->getJson('/api/v1/rider/cash/'.$cash->id)->assertOk()->assertJsonPath('data.status', 'reconciled')->assertJsonPath('data.reconciled_cents', $due);
-        $this->getJson('/api/v1/rider/cash')->assertOk()->assertJsonPath('data.summary.own_held_cents', '0')->assertJsonPath('data.earnings.available', false);
-        $this->assertSame('delivered', $parcel->order->fresh()->status);
+        $this->getJson('/api/v1/rider/cash')->assertOk()->assertJsonPath('data.summary.own_held_cents', '0')->assertJsonPath('data.earnings.available', true)->assertJsonPath('data.earnings.confirmed_cents', '2500');
+        $this->assertSame('completed', $parcel->order->fresh()->status);
         $other = $this->createApprovedUser('courier');
         $this->native($other);
         $this->getJson('/api/v1/rider/cash/'.$cash->id)->assertNotFound();

@@ -13,6 +13,7 @@ use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
+use App\Models\MotherBag;
 use App\Models\Order;
 use App\Models\Shop;
 use App\Models\User;
@@ -20,6 +21,8 @@ use App\Services\AccountRestrictionService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\Logistics\DeliveryReturnService;
+use App\Services\Logistics\LogisticsRoutingEngine;
+use App\Services\Logistics\MotherBagService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -44,6 +47,11 @@ trait InteractsWithOrderActions
     private bool $flowAttemptStorageFaked = false;
 
     private bool $flowSettlementStorageFaked = false;
+
+    protected function flowContractVersion(): int
+    {
+        return 2;
+    }
 
     /** Explicit financial actions; buyer confirmation itself never performs settlement. */
     public function settleFlowOrder(Order $order): void
@@ -117,6 +125,14 @@ trait InteractsWithOrderActions
         $before = Order::pluck('id');
         $response = $this->actingAs($buyer)->post(route('checkout.store'), $payload)->assertSessionHasNoErrors();
         $orders = Order::whereNotIn('id', $before)->with('items.product', 'delivery', 'buyer')->get();
+        if ($this->flowContractVersion() === 1) {
+            // Explicit historical-contract fixtures retain individual manifests and buyer receipt.
+            // Establish this before fulfillment; no custody or payment evidence is fabricated.
+            foreach ($orders as $order) {
+                $order->update(['logistics_flow_version' => 1]);
+                app(LogisticsRoutingEngine::class)->planDeliveryRoute($order->delivery, $order, $order->shop);
+            }
+        }
         $response->assertRedirect(($payload['payment_method'] ?? 'cod') === 'wallet'
             ? ($orders->count() === 1 ? route('wallet.payments.show', $orders->first()->walletPayment)
                 : route('buyer.profile', ['tab' => 'orders', 'order_status' => 'to_pay'])) : route('buyer.orders.index'));
@@ -124,8 +140,12 @@ trait InteractsWithOrderActions
         foreach ($orders as $order) {
             $this->assertSame('placed', $order->status);
             $this->assertSame('pending', $order->payment_status);
-            $this->assertNotNull($order->delivery->origin_mother_hub_id);
-            $this->assertNotNull($order->delivery->destination_mother_hub_id);
+            if ($order->delivery->same_hub_bypass) {
+                $this->assertSame([$order->delivery->origin_bayan_hub_id], $order->delivery->route_hub_ids);
+            } else {
+                $this->assertNotNull($order->delivery->origin_mother_hub_id);
+                $this->assertNotNull($order->delivery->destination_mother_hub_id);
+            }
         }
         foreach ($stocks as [$product, $expected]) {
             $this->assertSame($expected, $product->fresh()->stock);
@@ -161,6 +181,7 @@ trait InteractsWithOrderActions
             'shipping_address' => '100 Market Road', 'shipping_city' => 'Santa Cruz',
             'shipping_province' => 'Laguna', 'shipping_postal_code' => '4009',
             'destination_barangay' => 'Poblacion III', 'delivery_type' => 'doorstep', 'payment_method' => 'cod',
+            'logistics_company_id' => $this->flowCompany?->id,
         ], $shipping);
     }
 
@@ -173,7 +194,7 @@ trait InteractsWithOrderActions
                 return;
             }
             $this->actingAs($seller)->withSession(['active_seller_shop_id' => $shop->id])->post(route('seller.orders.'.$action, $order))
-                ->assertSessionHasNoErrors()->assertSessionHas('success');
+                ->assertSessionHasNoErrors()->assertSessionMissing('error')->assertSessionHas('success');
             $this->assertSame($target, $order->fresh()->status);
         }
         $this->assertSame($stage, $order->fresh()->status);
@@ -194,10 +215,13 @@ trait InteractsWithOrderActions
             'city_municipality' => 'Santa Cruz', 'address' => '100 Mother Hub Road', 'is_active' => true,
         ]);
         foreach (array_unique([$shop->city, $destination]) as $city) {
-            LogisticsHub::firstOrCreate([
-                'logistics_company_id' => $company->id, 'tier' => 'local_bayan_hub', 'city_municipality' => $city,
-            ], ['name' => $city.' Bayan Hub', 'code' => 'FLOW-BH-'.LogisticsHub::count(),
-                'province' => 'Laguna', 'address' => '100 Bayan Hub Road', 'is_active' => true]);
+            $key = fn (string $name) => Str::of(Str::ascii($name))->lower()->replaceMatches('/[^a-z0-9]+/', ' ')->squish()->toString();
+            if (! LogisticsHub::where('logistics_company_id', $company->id)->where('tier', 'local_bayan_hub')
+                ->get()->contains(fn ($hub) => $key($hub->city_municipality) === $key($city))) {
+                LogisticsHub::create(['logistics_company_id' => $company->id, 'tier' => 'local_bayan_hub',
+                    'city_municipality' => $city, 'name' => $city.' Bayan Hub', 'code' => 'FLOW-BH-'.LogisticsHub::count(),
+                    'province' => 'Laguna', 'address' => '100 Bayan Hub Road', 'is_active' => true]);
+            }
         }
     }
 
@@ -275,7 +299,11 @@ trait InteractsWithOrderActions
             $response = $this->postJson($base.'/manifests', ['source_hub_id' => $hub->id, 'destination_hub_id' => $destinationId,
                 'direction' => $direction, 'vehicle_id' => $vehicle->id, 'creation_token' => session()->get('manifest_creation_token')])->assertCreated();
             $manifest = LogisticsManifest::findOrFail($response->json('manifest.id'));
-            $this->actingAs($handler)->postJson($base.'/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
+            if ($delivery->order->logistics_flow_version >= 2) {
+                $this->packFlowMotherBag($delivery, $manifest, $handler);
+            } else {
+                $this->actingAs($handler)->postJson($base.'/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
+            }
             $this->actingAs($manager)->postJson($base.'/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
             $this->actingAs($handler)->postJson($base.'/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
         } else {
@@ -283,12 +311,31 @@ trait InteractsWithOrderActions
             $this->assertSame('manifest', $custody['kind']);
             $manifest = LogisticsManifest::findOrFail($custody['manifest_id']);
             $this->assertSame($hub->id, $manifest->destination_hub_id);
+            $this->openFlowMotherBags($manifest, $handler);
             $this->actingAs($handler)->postJson($base.'/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
             $this->actingAs($manager)->postJson($base.'/manifests/'.$manifest->id.'/close', $this->flowManifestPayload($manifest))->assertOk();
             $this->actingAs($handler)->postJson(route('hub.scan'), ['barcode' => $delivery->tracking_number,
                 'hub_id' => $hub->id, 'mode' => 'inspect'])->assertOk();
         }
         $delivery->refresh();
+    }
+
+    public function packFlowMotherBag(Delivery $delivery, LogisticsManifest $manifest, User $handler): MotherBag
+    {
+        $service = app(MotherBagService::class);
+        $bag = $service->create($handler, ['source_hub_id' => $manifest->source_hub_id, 'destination_hub_id' => $manifest->destination_hub_id, 'creation_token' => (string) Str::uuid()]);
+        $bag = $service->command($bag, $handler, 'add', ['version' => $bag->version, 'barcode' => $delivery->tracking_number]);
+        $bag = $service->command($bag, $handler, 'seal', ['version' => $bag->version, 'seal_number' => 'QA-SEAL-'.Str::upper(Str::random(12))]);
+
+        return $service->command($bag, $handler, 'load', ['version' => $bag->version, 'barcode' => $bag->reference, 'seal_number' => $bag->seal_number, 'manifest_id' => $manifest->id]);
+    }
+
+    public function openFlowMotherBags(LogisticsManifest $manifest, User $handler): void
+    {
+        foreach (MotherBag::where('manifest_id', $manifest->id)->where('status', 'in_transit')->get() as $bag) {
+            app(MotherBagService::class)->command($bag, $handler, 'open', ['version' => $bag->version,
+                'barcode' => $bag->reference, 'seal_number' => $bag->seal_number, 'seal_intact' => true]);
+        }
     }
 
     public function flowManifestPayload(LogisticsManifest $manifest, array $fields = []): array
@@ -306,7 +353,7 @@ trait InteractsWithOrderActions
         }
         $this->sellerFlowStage($order, 'ready_for_pickup');
         $origin = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
-        $mother = LogisticsHub::findOrFail($delivery->origin_mother_hub_id);
+        $mother = $delivery->origin_mother_hub_id ? LogisticsHub::findOrFail($delivery->origin_mother_hub_id) : null;
         $destination = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
         $pickup = $this->flowRider($origin, in_array($stage, ['assigned_pickup', 'picked_up'], true) ? $rider : null);
         $this->actingAs($pickup)->post(route('courier.claim', $delivery))->assertSessionHas('success');
@@ -319,31 +366,36 @@ trait InteractsWithOrderActions
         if ($stage === 'picked_up') {
             return $delivery->fresh();
         }
-        foreach ([
-            ['arrived_at_origin_hub', $origin, 'RECEIVE_FROM_PICKUP_RIDER'],
-            ['in_transit_to_mother_hub', $origin, 'DISPATCH_TO_FEEDER'],
-            ['arrived_at_mother_hub', $mother, 'RECEIVE_AT_MOTHER_HUB'],
-            ['sorted_to_line_haul', $mother, 'SORT_TO_LINE_HAUL'],
-        ] as [$target, $hub, $action]) {
-            $this->confirmFlowScan($delivery, $hub, $action);
-            $this->assertSame($target, $delivery->fresh()->status);
-            if ($stage === $target) {
+        if ($delivery->same_hub_bypass) {
+            $this->confirmFlowScan($delivery, $origin, 'RECEIVE_FROM_PICKUP_RIDER');
+            $this->assertSame('arrived_at_destination_hub', $delivery->fresh()->status);
+        } else {
+            foreach ([
+                ['arrived_at_origin_hub', $origin, 'RECEIVE_FROM_PICKUP_RIDER'],
+                ['in_transit_to_mother_hub', $origin, 'DISPATCH_TO_FEEDER'],
+                ['arrived_at_mother_hub', $mother, 'RECEIVE_AT_MOTHER_HUB'],
+                ['sorted_to_line_haul', $mother, 'SORT_TO_LINE_HAUL'],
+            ] as [$target, $hub, $action]) {
+                $this->confirmFlowScan($delivery, $hub, $action);
+                $this->assertSame($target, $delivery->fresh()->status);
+                if ($stage === $target) {
+                    return $delivery->fresh();
+                }
+            }
+            if ($delivery->origin_mother_hub_id !== $delivery->destination_mother_hub_id) {
+                $this->confirmFlowManifest($delivery, $mother, true);
+                $mother = LogisticsHub::findOrFail($delivery->destination_mother_hub_id);
+                $this->confirmFlowManifest($delivery, $mother, false);
+                $this->confirmFlowScan($delivery, $mother, 'SORT_TO_LINE_HAUL');
+            }
+            $this->confirmFlowManifest($delivery, $mother, true);
+            $this->assertSame('in_transit_to_destination_hub', $delivery->fresh()->status);
+            if ($stage === 'in_transit_to_destination_hub') {
                 return $delivery->fresh();
             }
+            $this->confirmFlowManifest($delivery, $destination, false);
+            $this->assertSame('arrived_at_destination_hub', $delivery->fresh()->status);
         }
-        if ($delivery->origin_mother_hub_id !== $delivery->destination_mother_hub_id) {
-            $this->confirmFlowManifest($delivery, $mother, true);
-            $mother = LogisticsHub::findOrFail($delivery->destination_mother_hub_id);
-            $this->confirmFlowManifest($delivery, $mother, false);
-            $this->confirmFlowScan($delivery, $mother, 'SORT_TO_LINE_HAUL');
-        }
-        $this->confirmFlowManifest($delivery, $mother, true);
-        $this->assertSame('in_transit_to_destination_hub', $delivery->fresh()->status);
-        if ($stage === 'in_transit_to_destination_hub') {
-            return $delivery->fresh();
-        }
-        $this->confirmFlowManifest($delivery, $destination, false);
-        $this->assertSame('arrived_at_destination_hub', $delivery->fresh()->status);
         if ($stage === 'arrived_at_destination_hub') {
             return $delivery->fresh();
         }
@@ -378,12 +430,12 @@ trait InteractsWithOrderActions
         $this->actingAs($final)->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('proof.jpg'),
-        ])->assertSessionHas('success');
+        ])->assertSessionHasNoErrors()->assertSessionMissing('error')->assertSessionHas('success');
         $delivery->refresh();
         $this->assertSame('delivered', $delivery->status);
         $this->assertTrue(Storage::disk('local')->exists($delivery->proof_image));
-        $this->assertSame('delivered', $order->fresh()->status);
-        $this->assertSame($order->payment_method === 'wallet' ? 'paid' : 'pending', $order->fresh()->payment_status);
+        $this->assertSame($order->logistics_flow_version >= 2 ? 'completed' : 'delivered', $order->fresh()->status);
+        $this->assertSame($order->payment_method === 'wallet' || $order->logistics_flow_version >= 2 ? 'paid' : 'pending', $order->fresh()->payment_status);
 
         return $delivery;
     }
@@ -394,7 +446,7 @@ trait InteractsWithOrderActions
             ->assertSessionHas('success');
         $this->assertSame('completed', $order->fresh()->status);
         $this->assertSame('delivered', $order->fresh()->delivery->status);
-        $this->assertSame('pending', $order->fresh()->payment_status);
+        $this->assertSame($order->logistics_flow_version >= 2 || $order->payment_method === 'wallet' ? 'paid' : 'pending', $order->fresh()->payment_status);
     }
 
     public function restrictFlowAccount(User $subject, string $action): void

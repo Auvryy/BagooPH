@@ -31,6 +31,13 @@ use Tests\TestCase;
 
 class WalletMoneyTest extends TestCase
 {
+    // Preserve explicit settlement and refund controls for retained version-one payments.
+    // New automatic virtual settlement is covered by NewEraLocalFlowTest.
+    protected function flowContractVersion(): int
+    {
+        return 1;
+    }
+
     use AssertsDeliveryCheckpoints, CreatesBuyerReturns, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
     protected function setUp(): void
@@ -120,7 +127,7 @@ class WalletMoneyTest extends TestCase
         $this->postJson('/wallet/proceeds/'.$order->id, $payload)->assertOk()->assertJsonPath('reference', $reference);
         $this->assertSame(18000, WalletAccount::where('user_id', $seller->id)->sole()->balance_cents);
         $this->assertSame(2000, WalletAccount::where('kind', 'commission')->sole()->balance_cents);
-        $this->assertSame(5000, WalletAccount::where('kind', 'shipping')->sole()->balance_cents);
+        $this->assertSame(6000, WalletAccount::where('kind', 'shipping')->sole()->balance_cents);
         $this->assertSame(0, WalletAccount::where('kind', 'escrow')->sole()->balance_cents);
         $this->assertDatabaseCount('cod_accounts', 0);
         $this->assertDatabaseCount('commission_ledgers', 0);
@@ -141,10 +148,10 @@ class WalletMoneyTest extends TestCase
         if (! $settleFirst) {
             $this->actingAs($admin)->postJson('/wallet/proceeds/'.$order->id, $this->settlementInput($order))->assertOk();
         }
-        $this->assertSame($funded ? 86500 : 85000, WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents);
+        $this->assertSame($funded ? 85500 : 84000, WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents);
         $this->assertSame($funded ? 8500 : 9000, WalletAccount::where('user_id', $seller->id)->sole()->balance_cents);
         $this->assertSame(1000, WalletAccount::where('kind', 'commission')->sole()->balance_cents);
-        $this->assertSame(5000, WalletAccount::where('kind', 'shipping')->sole()->balance_cents);
+        $this->assertSame(6000, WalletAccount::where('kind', 'shipping')->sole()->balance_cents);
         $this->assertSame($funded ? -1000 : 0, WalletAccount::where('kind', 'promotion')->sole()->balance_cents);
         $this->assertSame(0, WalletAccount::where('kind', 'escrow')->sole()->balance_cents);
         $this->assertSame(1, WalletTransaction::where('kind', 'wallet_return_refund')->count());
@@ -167,7 +174,7 @@ class WalletMoneyTest extends TestCase
         $case = $this->receivedReturn($order);
         $this->refund($admin, $case);
         $this->actingAs($admin)->postJson('/wallet/proceeds/'.$order->id, $this->settlementInput($order))->assertOk();
-        $this->assertSame(94934, WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents);
+        $this->assertSame(93934, WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents);
         $this->assertSame(59, WalletAccount::where('user_id', $seller->id)->sole()->balance_cents);
         $this->assertSame(7, WalletAccount::where('kind', 'commission')->sole()->balance_cents);
         $this->assertSame(0, (int) WalletEntry::sum('delta_cents'));
@@ -187,7 +194,7 @@ class WalletMoneyTest extends TestCase
             Event::forget('eloquent.created: '.WalletEntry::class);
         }
         $this->assertNull($order->walletPayment->fresh()->settlement_transaction_id);
-        $this->assertSame(25000, WalletAccount::where('kind', 'escrow')->sole()->balance_cents);
+        $this->assertSame(26000, WalletAccount::where('kind', 'escrow')->sole()->balance_cents);
         $this->assertSame(0, WalletTransaction::where('kind', 'wallet_settlement')->count());
     }
 
@@ -249,7 +256,7 @@ class WalletMoneyTest extends TestCase
         $this->assertDatabaseCount('wallet_voucher_releases', 0);
         $this->assertSame(3000, (int) DB::table('voucher_revision_balances')->sum('committed_cents'));
         $this->assertSame('paid', $order->fresh()->payment_status);
-        $this->assertSame(78000, WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents);
+        $this->assertSame(77000, WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents);
         $this->assertSame(0, WalletTransaction::where('kind', 'wallet_delivery_refund')->count());
     }
 }

@@ -109,7 +109,7 @@ class SecureHubPickupTest extends TestCase
         $this->assertSame((int) round((float) $parcel->order->total_amount * 100), $cash->amount_cents);
         $this->assertSame('buyer', DeliveryCheckpoint::lastCustody($parcel->fresh())['kind']);
         $this->assertNull($parcel->fresh()->current_hub_id);
-        $this->assertSame('delivered', $parcel->order->fresh()->status);
+        $this->assertSame('completed', $parcel->order->fresh()->status);
         $before = $this->snapshot($parcel);
         $this->postJson($base.'/release', $payload)->assertOk();
         $this->assertSame($before, $this->snapshot($parcel));
@@ -117,17 +117,17 @@ class SecureHubPickupTest extends TestCase
         $this->assertSame($before, $this->snapshot($parcel));
         $this->actingAs($this->createApprovedUser('buyer'))->post('http://localhost/buyer/orders/'.$parcel->order_id.'/confirm')->assertForbidden();
         $this->actingAs($parcel->order->buyer)->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertInertia(fn (Assert $page) => $page
-            ->where('canConfirmReceipt', true)->where('pickupCodeAvailable', false)
-            ->where('order.tracking.commercial_status', 'delivered')->where('order.tracking.stage_label', 'Collected at hub counter')
-            ->where('order.tracking.custodian', 'Buyer (handover recorded)')->where('order.tracking.responsible', 'Buyer')
+            ->where('canConfirmReceipt', false)->where('pickupCodeAvailable', false)
+            ->where('order.tracking.commercial_status', 'completed')->where('order.tracking.stage_label', 'Collected at hub counter')
+            ->where('order.tracking.custodian', 'Buyer (handover recorded)')->where('order.tracking.responsible', 'No further receipt action')
             ->where('pickupClaim.status', 'collected')->missing('order.delivery.pickup_claim'));
         $this->post(route('buyer.orders.confirm', $parcel->order_id))->assertSessionHas('success');
         $this->assertSame('completed', $parcel->order->fresh()->status);
         $this->get('http://localhost/buyer/orders/'.$parcel->order_id)->assertInertia(fn (Assert $page) => $page
             ->where('canConfirmReceipt', false)->where('pickupCodeAvailable', false)
-            ->where('order.tracking.status_label', 'Buyer confirmed receipt')->where('order.tracking.stage_label', 'Collected at hub counter'));
+            ->where('order.tracking.status_label', 'Order completed after verified delivery')->where('order.tracking.stage_label', 'Collected at hub counter'));
         $this->assertSame('customer_collected', $parcel->fresh()->status);
-        $this->assertSame('pending', $parcel->order->fresh()->payment_status);
+        $this->assertSame('paid', $parcel->order->fresh()->payment_status);
         $this->assertNull($parcel->order->fresh()->commissionLedger);
         $this->assertSame($stock, $parcel->order->items->first()->product->fresh()->stock);
         $this->actingAs($actor)->postJson($base.'/release', $payload)->assertOk();

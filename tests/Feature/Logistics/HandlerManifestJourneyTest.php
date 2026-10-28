@@ -80,7 +80,7 @@ class HandlerManifestJourneyTest extends TestCase
         $this->patch(route('courier.updateStatus', $parcel), [...$this->codCollectionInput($parcel->fresh()),
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('receipt.jpg'),
         ])->assertSessionHas('success');
-        $this->assertSame('delivered', $order->fresh()->status);
+        $this->assertSame('completed', $order->fresh()->status);
         $this->actingAs($order->buyer)->post('http://localhost'.route('buyer.orders.confirm', $order, false))->assertSessionHas('success');
         $this->assertSame('completed', $order->fresh()->status);
         $this->assertSame($waybill, $parcel->fresh()->tracking_number);
@@ -110,7 +110,8 @@ class HandlerManifestJourneyTest extends TestCase
         $count = $parcel->checkpoints()->count();
         $this->actingAs($receiver)->postJson($path.'/seal', $this->flowManifestPayload($manifest))->assertForbidden();
         $this->assertSame($count, $parcel->checkpoints()->count());
-        $this->actingAs($handler)->postJson($path.'/load', $this->flowManifestPayload($manifest, ['barcode' => $parcel->tracking_number]))->assertOk();
+        $this->packFlowMotherBag($parcel, $manifest, $handler);
+        $this->actingAs($handler);
         $this->postJson($path.'/seal', $this->flowManifestPayload($manifest))->assertOk();
         $dispatch = $this->flowManifestPayload($manifest);
         $this->postJson($path.'/dispatch', $dispatch)->assertOk();
@@ -119,6 +120,7 @@ class HandlerManifestJourneyTest extends TestCase
         $this->assertSame($checkpointCount, $parcel->checkpoints()->count());
         $this->assertSame('manifest', DeliveryCheckpoint::lastCustody($parcel->fresh())['kind']);
         $this->postJson($path.'/receive', $this->flowManifestPayload($manifest, ['barcode' => $parcel->tracking_number]))->assertForbidden();
+        $this->openFlowMotherBags($manifest, $receiver);
         $this->actingAs($receiver)->postJson($path.'/receive', $this->flowManifestPayload($manifest, ['barcode' => $parcel->tracking_number]))->assertOk();
         $this->postJson($path.'/close', $this->flowManifestPayload($manifest))->assertOk();
         $this->assertSame($destination->id, $parcel->fresh()->current_hub_id);
