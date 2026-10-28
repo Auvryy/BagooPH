@@ -21,7 +21,7 @@ class MisrouteTrapService
             return null;
         }
         if (in_array($parcel->status, ['picked_up', 'assigned_pickup'], true) && $hub->id !== $parcel->origin_bayan_hub_id) {
-            return 'Wrong hub. This pickup belongs at '.$parcel->originBayanHub?->name.'. Set the parcel aside and contact the origin hub before any custody update.';
+            return 'Wrong hub. This pickup belongs at '.$parcel->originBayanHub?->name.'. Ask the pickup rider to bring it to that hub. No hub receipt or recovery case was recorded.';
         }
         $member = LogisticsManifestParcel::with('manifest')->where('active_delivery_id', $parcel->id)->whereNull('received_at')->first();
         $manifest = $member?->manifest;

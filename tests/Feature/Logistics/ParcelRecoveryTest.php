@@ -40,6 +40,22 @@ class ParcelRecoveryTest extends TestCase
 {
     use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
+    public function test_wrong_hub_before_origin_intake_gives_pickup_guidance_without_an_empty_recovery_link_or_custody_change(): void
+    {
+        $parcel = $this->flowDelivery($this->newFlowOrder('ready_for_pickup'), 'picked_up');
+        $wrong = $parcel->destinationBayanHub;
+        $before = $parcel->getRawOriginal();
+        $custody = DeliveryCheckpoint::lastCustody($parcel);
+        $this->actingAs($this->flowHandler($wrong))->postJson('/hub/scan', [
+            'barcode' => $parcel->tracking_number, 'hub_id' => $wrong->id, 'mode' => 'inspect',
+        ])->assertConflict()->assertJsonPath('recovery_url', null)
+            ->assertJsonPath('error', fn ($message) => str_contains($message, $parcel->originBayanHub->name)
+                && str_contains($message, 'Ask the pickup rider'));
+        $this->assertSame($before, $parcel->fresh()->getRawOriginal());
+        $this->assertSame($custody, DeliveryCheckpoint::lastCustody($parcel->fresh()));
+        $this->assertSame(0, LogisticsManifestEvent::where('payload->scanner_misroute', true)->count());
+    }
+
     public function test_scanning_at_a_wrong_hub_records_a_hold_and_recovers_through_the_mother_on_the_original_manifest(): void
     {
         $parcel = $this->flowDelivery($this->newFlowOrder('ready_for_pickup'), 'in_transit_to_mother_hub');
@@ -54,6 +70,9 @@ class ParcelRecoveryTest extends TestCase
         $this->postJson('/hub/scan', $scan)->assertConflict();
         $this->assertSame($before, $parcel->fresh()->getAttributes());
         $observation = $original->events()->where('payload->scanner_misroute', true)->sole();
+        $this->postJson('/hub/scan', $scan)->assertConflict()->assertJsonPath('recovery_url',
+            route('hub.parcel-recovery.show', $observation, absolute: false));
+        $this->get(route('hub.parcel-recovery.show', $observation, absolute: false))->assertOk();
         $this->assertSame($wrong->id, $observation->hub_id);
         $expectedHandler = $this->flowHandler($original->destinationHub);
         $this->openFlowMotherBags($original, $expectedHandler);

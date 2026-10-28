@@ -100,3 +100,16 @@ test('a separate buyer-return response opens only its scoped case and never conf
         await assert.rejects(ui.requestWaybill('/hub/scan', {}, new AbortController().signal), /return details were incomplete/);
     } finally { globalThis.fetch = fetch; globalThis.document = document; }
 });
+
+test('scanner recovery navigation requires a specific relative observation URL supplied by the server', async () => {
+    const fetch = globalThis.fetch; const document = globalThis.document;
+    globalThis.document = { cookie: '', querySelector: () => ({ content: 'rendered' }) };
+    try {
+        for (const [url, expected] of [[null, null], ['/hub/parcel-recovery/23', '/hub/parcel-recovery/23'], ['/parcel-recovery/23', '/parcel-recovery/23'], ['https://foreign.test/parcel-recovery/23', null], ['//foreign.test/parcel-recovery/23', null], ['/hub/parcel-recovery', null], ['javascript:run()', null]]) {
+            globalThis.fetch = async () => Response.json({ success: false, error: 'Wrong hub.', recovery_url: url }, { status: 409 });
+            await assert.rejects(ui.requestWaybill('/hub/scan', {}, new AbortController().signal), error => {
+                assert.equal(error.recoveryUrl, expected); assert.equal(error.status, 409); return true;
+            });
+        }
+    } finally { globalThis.fetch = fetch; globalThis.document = document; }
+});

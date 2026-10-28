@@ -149,6 +149,7 @@ export default function ScanStation({
         alreadyReceived?: boolean;
     } | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
+    const [recoveryUrl, setRecoveryUrl] = useState<string | null>(null);
     const [scanMessage, setScanMessage] = useState<string | null>(null);
     const [returnResult, setReturnResult] = useState<{ reference: string; barcode: string; href: string; status: string } | null>(null);
     const [sessionExpired, setSessionExpired] = useState(false);
@@ -160,6 +161,7 @@ export default function ScanStation({
         setLastResult(null);
         setReturnResult(null);
         setScanError(null);
+        setRecoveryUrl(null);
         setScanMessage(null);
         setIsSubmitting(false);
         return () => { pendingRequest.current?.abort(); pendingRequest.current = null; };
@@ -210,6 +212,7 @@ export default function ScanStation({
         pendingRequest.current = request;
         setIsSubmitting(true);
         setScanError(null);
+        setRecoveryUrl(null);
         setScanMessage(null);
         setSessionExpired(false);
         if (!confirming) { setLastResult(null); setReturnResult(null); }
@@ -234,6 +237,7 @@ export default function ScanStation({
             setLastResult(null);
             setBarcodeInput(String(body.barcode ?? ''));
             setScanError(error instanceof Error ? error.message : 'The waybill could not be checked. Try again.');
+            setRecoveryUrl(error instanceof WaybillRequestError ? error.recoveryUrl : null);
             setSessionExpired(error instanceof WaybillRequestError && [401, 419].includes(error.status));
         } finally {
             if (pendingRequest.current === request) {
@@ -424,7 +428,7 @@ export default function ScanStation({
                             <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
                             <div className="text-xs font-sans">
                                 <span className="font-bold">Scan Routing Error:</span> {scanError}
-                                {scanError.includes('Wrong hub') && <a href={route('hub.parcel-recovery.index')} className="mt-2 block font-semibold underline underline-offset-4">Open Parcel recovery</a>}
+                                {recoveryUrl && <Link href={recoveryUrl} className="mt-2 block font-semibold underline underline-offset-4">Open Parcel recovery</Link>}
                                 {sessionExpired && <button type="button" onClick={() => window.location.reload()}
                                     className="mt-2 block rounded-lg border border-red-300 bg-white px-3 py-2 font-semibold">Reload scanner</button>}
                             </div>

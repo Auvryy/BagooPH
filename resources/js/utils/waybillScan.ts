@@ -22,7 +22,7 @@ export function selectWaybill(values: Array<{ rawValue: string }>, origin: strin
 }
 
 export class WaybillRequestError extends Error {
-    constructor(message: string, public status = 0) { super(message); }
+    constructor(message: string, public status = 0, public recoveryUrl: string | null = null) { super(message); }
 }
 
 /** Read the current cookie for every request, including after an Inertia sign-in. */
@@ -56,7 +56,8 @@ export async function requestWaybill<T>(path: string, body: Record<string, unkno
         const fieldError = Object.values(data?.errors ?? {}).flat().find(value => typeof value === 'string');
         const message = response.status >= 500 ? 'The scanner is temporarily unavailable. Try again shortly.'
             : fieldError ?? data?.error ?? data?.message ?? 'The waybill could not be checked. Try again.';
-        throw new WaybillRequestError(String(message), response.status);
+        const recoveryUrl = typeof data?.recovery_url === 'string' && /^\/(?:hub\/)?parcel-recovery\/[1-9][0-9]{0,17}$/.test(data.recovery_url) ? data.recovery_url : null;
+        throw new WaybillRequestError(String(message), response.status, recoveryUrl);
     }
     if (data.return_case) {
         const item = data.return_case;

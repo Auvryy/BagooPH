@@ -909,7 +909,13 @@ class LogisticsHubWorkstationController extends Controller
 
         $routingEngine = app(LogisticsRoutingEngine::class);
         if ($misroute = app(MisrouteTrapService::class)->inspect($delivery, $hub, $request->user())) {
-            return $this->operationError($request, $misroute, 409);
+            $observation = app(ParcelRecoveryService::class)->observations($request->user())
+                ->where('hub_id', $hub->id)->where('payload->scanner_misroute', true)
+                ->where('payload->delivery_id', $delivery->id)->latest('id')->first();
+
+            return $this->operationError($request, $misroute, 409, [
+                'recovery_url' => $observation ? route('hub.parcel-recovery.show', $observation, absolute: false) : null,
+            ]);
         }
         $prompt = $routingEngine->getDynamicScanPrompt($delivery, $hub);
         $alreadyReceived = $delivery->status === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB
@@ -1336,10 +1342,10 @@ class LogisticsHubWorkstationController extends Controller
         return back()->with('success', $message);
     }
 
-    private function operationError(Request $request, string $message, int $status = 422): JsonResponse|RedirectResponse
+    private function operationError(Request $request, string $message, int $status = 422, array $details = []): JsonResponse|RedirectResponse
     {
         if ($request->wantsJson()) {
-            return response()->json(['success' => false, 'error' => $message], $status);
+            return response()->json(['success' => false, 'error' => $message, ...$details], $status);
         }
 
         return back()->with('error', $message);
