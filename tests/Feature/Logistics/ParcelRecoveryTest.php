@@ -72,7 +72,11 @@ class ParcelRecoveryTest extends TestCase
         $observation = $original->events()->where('payload->scanner_misroute', true)->sole();
         $this->postJson('/hub/scan', $scan)->assertConflict()->assertJsonPath('recovery_url',
             route('hub.parcel-recovery.show', $observation, absolute: false));
-        $this->get(route('hub.parcel-recovery.show', $observation, absolute: false))->assertOk();
+        $this->get(route('hub.parcel-recovery.show', $observation, absolute: false))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('selectedObservation.observedHub', $wrong->name)
+                ->where('selectedObservation.expectedHub', $original->destinationHub->name));
+        $this->get('/hub/parcel-recovery')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('observations.data.0.observedHub', $wrong->name));
         $this->assertSame($wrong->id, $observation->hub_id);
         $expectedHandler = $this->flowHandler($original->destinationHub);
         $this->openFlowMotherBags($original, $expectedHandler);
