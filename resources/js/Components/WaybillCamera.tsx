@@ -4,7 +4,7 @@ import { selectWaybill } from '@/utils/waybillScan';
 interface Detector { detect(video: HTMLVideoElement): Promise<Array<{ rawValue: string }>> }
 type DetectorConstructor = new (options: { formats: string[] }) => Detector;
 
-export default function WaybillCamera({ onScan, disabled = false, instruction = 'A camera scan fills the waybill field. Review it and submit the appropriate manifest action.' }: { onScan: (value: string) => void; disabled?: boolean; instruction?: string }) {
+export default function WaybillCamera({ onScan, disabled = false, instruction = 'Scan the parcel waybill to fill this field. Check the scanned code and complete the required details below.' }: { onScan: (value: string) => void; disabled?: boolean; instruction?: string }) {
     const video = useRef<HTMLVideoElement>(null);
     const stream = useRef<MediaStream | null>(null);
     const detector = useRef<Detector | null>(null);
