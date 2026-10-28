@@ -1,5 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState, type FormEvent } from 'react';
+import { ArrowRight, Building2, Landmark, Receipt, Wallet } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { cashButton, cashInput, cashSurface } from '@/Components/CodCashUI';
 import type { PageProps } from '@/types';
@@ -20,11 +21,13 @@ export default function Overview({ records, totals, filters, mode, error, stateO
         <Head title={title} />
         <div className="space-y-5">
             <section className={`${cashSurface} p-5`}>
+                {mode === 'company' ? <><h2 className="font-semibold">Follow the original cash receipts</h2><ol aria-label="COD receipt stages" className="mt-4 flex flex-wrap items-center gap-3">{[{ name: 'Buyer payment', Icon: Receipt }, { name: 'Rider or counter', Icon: Wallet }, { name: 'Hub receipt', Icon: Building2 }, { name: 'Platform receipt', Icon: Landmark }].map(({ name, Icon }, index) => <li key={name} className="flex items-center gap-3"><span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"><Icon className="h-4 w-4 text-slate-400" />{name}</span>{index < 3 && <ArrowRight className="h-3.5 w-3.5 text-slate-300" />}</li>)}</ol><p className="mt-4 text-xs leading-6 text-slate-500">Cards show the same money at different stages; review each source separately. Product proceeds keep the original 90% seller / 10% Bagoo split. Shipping stays separate. Date filters use the original collection date in Philippine time, or the order date before collection.</p></> : <>
                 <h2 className="font-semibold">{mode === 'seller' ? 'Your proceeds and payments' : 'Recorded money and its sources'}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{mode === 'seller'
                     ? 'See proceeds awaiting payment and payments backed by recorded receipts. Payouts shows the payment history for each order. Sales report shows completed sales and estimated shares.'
                     : 'Cash cards follow the same money at different stages. Review each stage separately. Product proceeds use the original 90% seller and 10% platform split, with shipping and discounts shown separately.'}</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">Date filters use the original cash collection date in Philippine time. Orders awaiting collection use their order date. Each card links to the records contributing to that total.</p>
+                </>}
             </section>
             {error && <p role="alert" className="rounded-[8px] border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{error}</p>}
             {Object.values(errors ?? {}).length > 0 && <div role="alert" className="rounded-[8px] border border-red-300 bg-red-50 p-4 text-sm text-red-800">{Object.values(errors).map((message, index) => <p key={index}>{message}</p>)}</div>}

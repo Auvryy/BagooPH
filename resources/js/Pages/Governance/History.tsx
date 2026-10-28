@@ -21,7 +21,7 @@ export default function History({ events, filters, sources, subjectTypes, scope 
     const control = 'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]';
 
     return <DashboardLayout title="Governance history" subtitle={scope === 'platform' ? 'Recorded application, shop, account and product decisions' : 'Recorded activity decisions for your company’s hubs, handlers and fleet'}>
-        <Head title="Governance history — Bagoo Admin" />
+        <Head title="Governance history — BagooPH" />
         <div className="space-y-6">
             <form onSubmit={(event) => { event.preventDefault(); router.get('/governance-history', input, { preserveState: true }); }} className="rounded-xl border border-slate-300 bg-white p-5">
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
