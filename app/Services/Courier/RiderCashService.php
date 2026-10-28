@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\CodCashViewService;
+use App\Services\Finance\LogisticsEarningsService;
 use Brick\Math\BigInteger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -39,7 +40,8 @@ class RiderCashService
 
         return ['items' => $rows->getCollection()->map(fn ($account) => $this->resource($account, $request->user(), false))->all(),
             'summary' => ['own_held_cents' => $held, 'accounts_with_unresolved_difference' => $unresolved, 'basis' => 'all_owned_cash_journals'],
-            'earnings' => ['available' => false, 'confirmed_cents' => null],
+            'earnings' => app(LogisticsEarningsService::class)->summary($request->user()),
+            'shift' => app(RiderShiftService::class)->resource($request->user()),
             'pagination' => ['page' => $rows->currentPage(), 'per_page' => $rows->perPage(), 'total' => $rows->total(), 'last_page' => $rows->lastPage()]];
     }
 
@@ -70,7 +72,7 @@ class RiderCashService
                 'holder_id' => (string) $pending['holder_id'], 'recipient_id' => (string) $pending['recipient_id'],
                 'holder_name' => $pending['holder_name'], 'recipient_name' => $pending['recipient_name']] : null,
             'can_offer' => $ownHeld !== '0' && ! $pending && $source['status'] !== 'reconciled',
-            'can_receive' => false, 'can_reconcile' => false, 'earnings' => ['available' => false, 'confirmed_cents' => null]];
+            'can_receive' => false, 'can_reconcile' => false, 'earnings' => app(LogisticsEarningsService::class)->summary($actor, $account->delivery_id)];
         foreach (['expected_cents', 'product_subtotal_cents', 'discount_cents', 'shipping_cents', 'collected_cents', 'reconciled_cents', 'excess_cents'] as $field) {
             $data[$field] = (string) $source[$field];
         }

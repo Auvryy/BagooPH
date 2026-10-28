@@ -9,8 +9,14 @@ use LogicException;
 class LogisticsEarning extends Model
 {
     use HasUuids;
+
     protected $guarded = ['id'];
-    protected function casts(): array { return ['amount_cents' => 'integer', 'net_amount_cents' => 'integer', 'snapshot' => 'array', 'earned_at' => 'immutable_datetime', 'released_at' => 'immutable_datetime', 'reversed_at' => 'immutable_datetime']; }
+
+    protected function casts(): array
+    {
+        return ['amount_cents' => 'integer', 'net_amount_cents' => 'integer', 'snapshot' => 'array', 'earned_at' => 'immutable_datetime', 'released_at' => 'immutable_datetime', 'reversed_at' => 'immutable_datetime'];
+    }
+
     protected static function booted(): void
     {
         static::updating(function (self $record): void {
@@ -20,6 +26,14 @@ class LogisticsEarning extends Model
         });
         static::deleting(fn () => throw new LogicException('Earnings evidence is retained.'));
     }
-    public function order() { return $this->belongsTo(Order::class); }
-    public function user() { return $this->belongsTo(User::class); }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

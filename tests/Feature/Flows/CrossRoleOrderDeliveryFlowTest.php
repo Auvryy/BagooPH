@@ -4,19 +4,26 @@ namespace Tests\Feature\Flows;
 
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\CodAccount;
 use App\Models\CommissionLedger;
 use App\Models\DeliveryCheckpoint;
+use App\Models\LogisticsEarning;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\Courier\RiderShiftService;
+use App\Services\Finance\CodCashService;
+use App\Services\Finance\CodMoney;
 use App\Services\Logistics\OrderStateMachineService;
+use App\Services\Orders\AutomaticDeliveryCompletionService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Concerns\InteractsWithCheckoutSubmission;
@@ -133,6 +140,8 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
         $this->assertSame($checkpointCount, DeliveryCheckpoint::where('delivery_id', $delivery->id)
             ->where('checkpoint_type', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)
             ->count());
+        $this->assertDatabaseHas('logistics_earnings', ['delivery_id' => $delivery->id, 'role' => 'pickup', 'user_id' => $pickupRider->id, 'amount_cents' => 1000]);
+        $this->assertNotNull(LogisticsEarning::where('delivery_id', $delivery->id)->where('role', 'pickup')->sole()->released_at);
 
         if ($legacy) {
             $this->actingAs($originHandler)->get(route('hub.manifests.index'))->assertOk()
@@ -191,14 +200,53 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
         $this->assertStringStartsWith('delivery-proofs/', $delivery->fresh()->proof_image);
         $proofPath = $delivery->fresh()->proof_image;
         $this->assertTrue(Storage::disk('local')->exists($proofPath));
-        $this->assertSame('delivered', $order->fresh()->status);
-        $this->assertSame('pending', $order->fresh()->payment_status);
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame('paid', $order->fresh()->payment_status);
         $this->assertSame(0, CommissionLedger::where('order_id', $order->id)->count());
+        $earnings = LogisticsEarning::where('delivery_id', $delivery->id)->get()->keyBy('role');
+        $this->assertSame(5, $earnings->count());
+        $this->assertSame(2500, $earnings['company']->amount_cents);
+        $this->assertSame(2500, $earnings['delivery']->amount_cents);
+        $this->assertSame(CodMoney::cents($order->subtotal), $earnings['seller']->amount_cents + $earnings['platform']->amount_cents);
+        $this->assertSame((int) floor(CodMoney::cents($order->subtotal) * .9), $earnings['seller']->amount_cents);
+        $this->assertNotNull($earnings['seller']->released_at);
+        $this->assertNotNull($earnings['company']->released_at);
+        $this->assertNull($earnings['delivery']->released_at);
+        app(AutomaticDeliveryCompletionService::class)->complete($delivery->fresh(), $delivery->checkpoints()->where('checkpoint_type', 'delivered')->sole(), $finalRider);
+        $this->assertDatabaseCount('logistics_earnings', 5);
+
+        $shift = app(RiderShiftService::class);
+        $this->assertSame(CodMoney::cents($order->total_amount), $shift->ledger($finalRider)['held_cents']);
+        try {
+            $shift->close($finalRider);
+            $this->fail('A shift with retained COD must not close.');
+        } catch (\DomainException $exception) {
+            $this->assertStringContainsString('COD', $exception->getMessage());
+        }
+        $cash = CodAccount::where('delivery_id', $delivery->id)->sole();
+        $commands = app(CodCashService::class);
+        $offer = $commands->command($finalRider, $cash, 'offer', [
+            'expected_version' => $cash->fresh()->version, 'request_token' => (string) Str::uuid(),
+            'holder_id' => $finalRider->id, 'recipient_id' => $destinationHandler->id, 'amount' => (string) $order->total_amount,
+            'evidence_reference' => 'SYNTHETIC-TEST-RIDER-COUNT',
+            'reason' => 'Isolated test: rider counted the original COD for the receiving hub.',
+        ]);
+        $this->assertFalse($shift->ledger($finalRider)['can_close']);
+        $commands->command($destinationHandler, $cash, 'receive', [
+            'expected_version' => $cash->fresh()->version, 'request_token' => (string) Str::uuid(), 'offer_reference' => $offer->reference,
+            'received_amount' => (string) $order->total_amount, 'receipt_confirmed' => true,
+            'evidence_reference' => 'SYNTHETIC-TEST-HUB-RECEIPT', 'reason' => 'Isolated test: hub acknowledged the exact counted original collection.',
+        ]);
+        $this->assertNotNull($earnings['delivery']->fresh()->released_at);
+        $this->assertTrue($shift->ledger($finalRider)['can_close']);
+        $closed = $shift->close($finalRider);
+        $this->assertNotNull($closed->closed_at);
+        $this->assertNull($shift->close($finalRider));
 
         $this->actingAs($buyer)->post(route('buyer.orders.confirm', $order))->assertSessionHas('success');
         $this->assertSame('completed', $order->fresh()->status);
         $this->assertSame('delivered', $delivery->fresh()->status);
-        $this->assertSame('pending', $order->fresh()->payment_status);
+        $this->assertSame('paid', $order->fresh()->payment_status);
 
         $this->assertSame([
             'seller_pack',
@@ -216,7 +264,7 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             'assigned_to_rider',
             'out_for_delivery',
             'delivered',
-            'buyer_completed',
+            'delivery_completed',
         ], DeliveryCheckpoint::where('delivery_id', $delivery->id)->orderBy('id')->pluck('checkpoint_type')->all());
 
         $completed = [$order->fresh()->getRawOriginal(), $delivery->fresh()->getRawOriginal(),
@@ -273,7 +321,8 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
                 'vehicle_id' => $vehicle->id, 'creation_token' => session()->get('manifest_creation_token'),
             ])->assertCreated();
             $manifest = LogisticsManifest::findOrFail($response->json('manifest.id'));
-            foreach (['load', 'seal', 'dispatch'] as $action) {
+            $this->packFlowMotherBag($delivery, $manifest, $operator);
+            foreach (['seal', 'dispatch'] as $action) {
                 $this->postJson('/hub/manifests/'.$manifest->id.'/'.$action,
                     $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();
             }
@@ -284,6 +333,7 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             $manifest = LogisticsManifest::findOrFail($custody['manifest_id']);
             $this->assertSame($hub->id, $manifest->destination_hub_id);
             $this->actingAs($operator);
+            $this->openFlowMotherBags($manifest, $operator);
             foreach (['receive', 'close'] as $action) {
                 $this->postJson('/hub/manifests/'.$manifest->id.'/'.$action,
                     $this->flowManifestPayload($manifest, ['barcode' => $delivery->tracking_number]))->assertOk();

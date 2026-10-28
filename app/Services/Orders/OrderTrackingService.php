@@ -58,7 +58,7 @@ class OrderTrackingService
         'assigned_to_rider' => 'Delivery rider assigned', 'out_for_delivery' => 'Delivery rider departed',
         'delivered' => 'Doorstep handover recorded', 'customer_collected' => 'Collected at hub counter',
         'doorstep_handover' => 'Recipient handover recorded', 'completed' => 'Buyer confirmed receipt',
-        'buyer_confirmed' => 'Buyer confirmed receipt', 'buyer_completed' => 'Buyer confirmed receipt',
+        'buyer_confirmed' => 'Buyer confirmed receipt', 'buyer_completed' => 'Buyer confirmed receipt', 'delivery_completed' => 'Order completed after verified delivery',
         'delivery_failed' => 'Delivery attempt failed', 'failed_delivery_hub_return' => 'Failed delivery returned to destination hub',
         'delivery_rescheduled' => 'Approved retry released for sorting',
         'expired_pickup_return_started' => 'Uncollected parcel entered the return route',
@@ -109,6 +109,10 @@ class OrderTrackingService
 
     public static function label(?Order $order, ?Delivery $parcel): string
     {
+        if (($order?->logistics_flow_version ?? 1) >= 2 && self::commercialStatus($order, $parcel) === 'completed') {
+            return 'Order completed after verified delivery';
+        }
+
         return self::LABELS[self::commercialStatus($order, $parcel)];
     }
 
@@ -129,7 +133,7 @@ class OrderTrackingService
         }
 
         return [
-            'commercial_status' => $status, 'status_label' => self::LABELS[$status],
+            'commercial_status' => $status, 'status_label' => self::label($order, $parcel),
             'parcel_status' => $parcel?->status,
             'delivery_type' => $order->delivery_type,
             'placed_at' => $order->created_at?->toIso8601String(),
@@ -252,7 +256,9 @@ class OrderTrackingService
             return ['This order was cancelled. No further delivery is scheduled.', 'No delivery action'];
         }
         if ($status === 'completed') {
-            return ['Receipt is confirmed. Your order history remains available.', 'No further receipt action'];
+            return [$order->logistics_flow_version >= 2
+                ? 'Verified delivery completed this order automatically. Your return window and order history remain available.'
+                : 'Receipt is confirmed. Your order history remains available.', 'No further receipt action'];
         }
         if ($status === 'returned') {
             return ['The seller received the returned parcel. The recorded return journey is retained.', 'No delivery action'];

@@ -7,6 +7,7 @@ use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\User;
 use App\Rules\ApplicationText;
+use App\Services\Finance\LogisticsEarningsService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -97,7 +98,7 @@ class RiderTripService
             'commercial_status' => $parcel->order->status, 'current_operational_stage' => $parcel->status,
             'recipient' => $originalRecipient, 'address' => $handoff?->location_name,
             'payment_method' => $parcel->order->payment_method, 'collected_cents' => $cash ? (string) $cash->expected_cents : null,
-            'earnings' => ['available' => false, 'confirmed_cents' => null],
+            'earnings' => app(LogisticsEarningsService::class)->summary($actor, $parcel->id, $pickup ? 'pickup' : 'delivery'),
             'checkpoints' => $events->map(fn ($event) => ['id' => (string) $event->id, 'reference' => $event->record_reference,
                 'kind' => $event->checkpoint_type, 'recorded_at' => RiderApiInput::time($event->created_at),
                 'waybill_matched' => $event->barcode_scanned !== null && $event->barcode_scanned === $parcel->tracking_number,

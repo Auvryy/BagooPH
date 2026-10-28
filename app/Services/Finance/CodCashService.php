@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Courier\CourierProofService;
+use App\Services\Courier\RiderShiftService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Logistics\WaybillScanInputService;
@@ -128,6 +129,9 @@ class CodCashService
             || $checkpoint->checkpoint_type !== 'delivered' || $checkpoint->barcode_scanned !== $parcel->tracking_number
             || ($checkpoint->source_state['delivery_status'] ?? null) !== 'out_for_delivery') {
             throw new DomainException('Cash collection needs the actual assigned-rider handoff source.');
+        }
+        if ($parcel->order->logistics_flow_version >= 2) {
+            app(RiderShiftService::class)->open($actor);
         }
         $account = $this->createAccount($parcel, 'rider_collection', $actor->id, ['delivery_checkpoint_id' => $checkpoint->id]);
         $state = $account->state;
@@ -555,6 +559,10 @@ class CodCashService
             $account->reconciled_at = $event->created_at;
         }
         $account->save();
+        if (in_array($type, ['rider_collection', 'counter_collection'], true) && $account->order->logistics_flow_version >= 2) {
+            $account->order->update(['payment_status' => 'paid']);
+        }
+        app(LogisticsEarningsService::class)->cashReceived($event);
         $this->notices->record($event);
 
         return $event;

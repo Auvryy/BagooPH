@@ -14,11 +14,14 @@ use App\Models\WalletTransaction;
 use App\Rules\ApplicationText;
 use App\Services\AccountRestrictionService;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Returns\BuyerReturnAmounts;
 use App\Services\ShopEligibilityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class WalletSettlementService
 {
@@ -68,12 +71,13 @@ class WalletSettlementService
         if (! app(WalletPaymentService::class)->paid($order)) {
             $issues[] = 'The original wallet payment is not verified.';
         }
-        $checkpoint = $order->delivery?->checkpoints()->where('checkpoint_type', 'buyer_completed')->whereNull('source_checkpoint_id')->first();
-        if ($order->status !== 'completed' || ! $checkpoint || $checkpoint->scanned_by_id !== $order->buyer_id
+        $automatic = app(AutomaticDeliveryCompletionService::class)->evidence($order);
+        $checkpoint = $automatic ?? $order->delivery?->checkpoints()->where('checkpoint_type', 'buyer_completed')->whereNull('source_checkpoint_id')->first();
+        if (! $automatic && ($order->status !== 'completed' || ! $checkpoint || $checkpoint->scanned_by_id !== $order->buyer_id
             || $checkpoint->actor_role !== 'buyer' || ($checkpoint->source_state['order_status'] ?? null) !== 'delivered'
             || ($checkpoint->target_state['order_status'] ?? null) !== 'completed'
-            || ! in_array($order->delivery?->status, ['delivered', 'customer_collected'], true)) {
-            $issues[] = 'The buyer must confirm receipt through the recorded delivery flow.';
+            || ! in_array($order->delivery?->status, ['delivered', 'customer_collected'], true))) {
+            $issues[] = 'The order needs recorded completion through its verified delivery flow.';
         }
         if ($order->buyerReturns()->whereNotIn('status', BuyerReturnCase::TERMINAL)->exists()) {
             $issues[] = 'A buyer return still needs review or repayment.';
@@ -123,24 +127,74 @@ class WalletSettlementService
             $view = $this->present($order);
             abort_unless($view['can_settle'], 409, implode(' ', $view['blockers']));
             abort_unless(hash_equals($view['consent'], $data['consent']), 409, 'The payable virtual proceeds changed. Review the current amounts again.');
-            $revisionIds = VoucherOrderAllocation::where('order_id', $order->id)->with('redemption')->get()->pluck('redemption.voucher_revision_id')->unique();
-            VoucherRevisionBalance::whereIn('voucher_revision_id', $revisionIds)->orderBy('voucher_revision_id')->lockForUpdate()->get();
-            $ledger = app(WalletLedger::class);
-            $seller = $ledger->user($order->items->first()->shop->user);
-            $escrow = $ledger->platform('escrow');
-            $commission = $ledger->platform('commission');
-            $shipping = $ledger->platform('shipping');
-            $promotion = $ledger->platform('promotion');
-            $transaction = $ledger->post('settlement:'.$payment->id, 'wallet_settlement', $view['seller_cents'],
-                [$seller->id => $view['seller_cents'], $escrow->id => -$view['escrow_cents'], $commission->id => $view['commission_cents'],
-                    $shipping->id => $view['shipping_cents'], $promotion->id => -$view['promotion_cents']], $admin, trim($data['reason']),
-                ['payment_id' => $payment->id, 'consent' => $view['consent'], 'basis' => $this->basis($order), 'demo_only' => true],
-                orderId: $order->id, token: $data['request_token']);
-            $this->spendPromotions($order, $transaction);
-            $payment->update(['settlement_transaction_id' => $transaction->id]);
 
-            return $transaction;
+            return $this->creditProceeds($admin, $order, $payment, $view, $data['request_token'], trim($data['reason']));
         }, 3);
+    }
+
+    public function settleOnDelivery(Order $original): ?WalletTransaction
+    {
+        return DB::transaction(function () use ($original) {
+            $order = Order::whereKey($original->id)->lockForUpdate()->firstOrFail();
+            $order->load('delivery', 'items.shop.user');
+            if ($order->payment_method !== 'wallet' || ! ($completion = app(AutomaticDeliveryCompletionService::class)->evidence($order))) {
+                return null;
+            }
+            $payment = WalletPayment::where('order_id', $order->id)->lockForUpdate()->firstOrFail();
+            if ($payment->settlement_transaction_id) {
+                return WalletTransaction::findOrFail($payment->settlement_transaction_id);
+            }
+            $actor = User::findOrFail($completion->scanned_by_id);
+            User::whereIn('id', [$actor->id, $order->buyer_id, $order->items->first()->shop->user_id])->orderBy('id')->lockForUpdate()->get();
+            $order->load('items.shop.user');
+            $view = $this->present($order);
+            if (! $view['can_settle']) {
+                return null;
+            }
+
+            return $this->creditProceeds($actor, $order, $payment, $view, (string) Str::uuid(),
+                'Automatic virtual proceeds after verified delivery '.$completion->record_reference.'.');
+        }, 3);
+    }
+
+    public function releaseDelivered(int $limit = 100): array
+    {
+        $result = ['released' => 0, 'deferred' => 0, 'failed' => 0];
+        $orders = Order::where('logistics_flow_version', '>=', 2)->where('payment_method', 'wallet')->where('status', 'completed')
+            ->whereHas('walletPayment', fn ($q) => $q->where('status', 'paid')->whereNull('settlement_transaction_id'))
+            ->whereDoesntHave('buyerReturns', fn ($q) => $q->whereNotIn('status', BuyerReturnCase::TERMINAL))
+            ->orderBy('id')->limit($limit)->get();
+        foreach ($orders as $order) {
+            try {
+                $result[$this->settleOnDelivery($order) ? 'released' : 'deferred']++;
+            } catch (\Throwable $error) {
+                $result['failed']++;
+                Log::error('Automatic virtual proceeds need review.', ['order_id' => $order->id, 'exception_type' => $error::class]);
+            }
+        }
+
+        return $result;
+    }
+
+    private function creditProceeds(User $actor, Order $order, WalletPayment $payment, array $view, string $token, string $reason): WalletTransaction
+    {
+        $revisionIds = VoucherOrderAllocation::where('order_id', $order->id)->with('redemption')->get()->pluck('redemption.voucher_revision_id')->unique();
+        VoucherRevisionBalance::whereIn('voucher_revision_id', $revisionIds)->orderBy('voucher_revision_id')->lockForUpdate()->get();
+        $ledger = app(WalletLedger::class);
+        $seller = $ledger->user($order->items->first()->shop->user);
+        $escrow = $ledger->platform('escrow');
+        $commission = $ledger->platform('commission');
+        $shipping = $ledger->platform('shipping');
+        $promotion = $ledger->platform('promotion');
+        $transaction = $ledger->post('settlement:'.$payment->id, 'wallet_settlement', $view['seller_cents'],
+            [$seller->id => $view['seller_cents'], $escrow->id => -$view['escrow_cents'], $commission->id => $view['commission_cents'],
+                $shipping->id => $view['shipping_cents'], $promotion->id => -$view['promotion_cents']], $actor, $reason,
+            ['payment_id' => $payment->id, 'consent' => $view['consent'], 'basis' => $this->basis($order), 'demo_only' => true],
+            orderId: $order->id, token: $token);
+        $this->spendPromotions($order, $transaction);
+        $payment->update(['settlement_transaction_id' => $transaction->id]);
+
+        return $transaction;
     }
 
     private function spendPromotions(Order $order, WalletTransaction $transaction): void

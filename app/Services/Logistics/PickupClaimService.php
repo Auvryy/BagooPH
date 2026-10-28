@@ -16,6 +16,7 @@ use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Finance\CodCashService;
 use App\Services\Notifications\LifecycleNoticeService;
+use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Wallet\WalletPaymentService;
 use Carbon\CarbonImmutable;
 use DomainException;
@@ -46,12 +47,15 @@ class PickupClaimService
             }
             $custody = DeliveryCheckpoint::lastCustody($parcel);
             $scan = LogisticsManifestEvent::with(['manifest', 'parcel'])->where('reference', $custody['manifest_scan_reference'] ?? '')->first();
+            $localReceipt = $parcel->same_hub_bypass && $parcel->route_hub_ids === [$hub->id]
+                && $parcel->checkpoints()->where('checkpoint_type', 'arrived_at_destination_hub')->where('hub_id', $hub->id)
+                    ->where('scan_provenance', 'local_hub_bypass')->whereNotNull('barcode_scanned')->exists();
             if ($expectedStatus !== 'arrived_at_destination_hub' || $parcel->status !== $expectedStatus
                 || $parcel->order->status !== 'at_sorting_center' || $parcel->current_hub_id !== $hub->id
                 || ($custody['kind'] ?? null) !== 'hub' || ($custody['hub_id'] ?? null) !== $hub->id
-                || ! $scan || $scan->event_type !== 'parcel_received' || $scan->hub_id !== $hub->id
+                || (! $localReceipt && (! $scan || $scan->event_type !== 'parcel_received' || $scan->hub_id !== $hub->id
                 || $scan->parcel->delivery_id !== $parcel->id || $scan->manifest->direction !== 'outbound' || $scan->manifest->status !== 'closed'
-                || $scan->parcel->route_snapshot !== app(DeliveryReturnService::class)->forwardRoute($parcel)) {
+                || $scan->parcel->route_snapshot !== app(DeliveryReturnService::class)->forwardRoute($parcel)))) {
                 throw new DomainException('Pickup staging requires the actual destination manifest receipt and closure.');
             }
             $source = DeliveryCheckpoint::state($parcel);
@@ -176,13 +180,14 @@ class PickupClaimService
             $cash = $walletPaid ? null : CodCustodyEntry::create(['order_id' => $parcel->order_id, 'delivery_id' => $parcel->id, 'logistics_company_id' => $parcel->logistics_company_id,
                 'hub_id' => $hub->id, 'actor_id' => $actor->id, 'holder_user_id' => $actor->id, 'pickup_claim_event_id' => $event->id,
                 'entry_type' => 'counter_collection', 'amount_cents' => $due, 'tender_cents' => $tender, 'change_cents' => $change]);
-            DeliveryCheckpoint::record($parcel, 'customer_collected', actor: $actor, hub: $hub, barcodeScanned: $barcode,
+            $handover = DeliveryCheckpoint::record($parcel, 'customer_collected', actor: $actor, hub: $hub, barcodeScanned: $barcode,
                 notes: ($walletPaid ? 'Matching buyer photo ID, one-time claim and original wallet payment confirmed. Evidence: ' : 'Matching buyer photo ID, one-time claim and exact COD collection confirmed. Evidence: ').$event->reference,
                 evidence: ['source_state' => $source, 'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custody,
                     'custody_after' => ['kind' => 'buyer', 'user_id' => $buyer->id, 'pickup_collection_reference' => $event->reference]]);
             if ($cash) {
                 app(CodCashService::class)->collectCounter($parcel, $actor, $cash, $input['request_token']);
             }
+            app(AutomaticDeliveryCompletionService::class)->complete($parcel, $handover, $actor);
             $this->notices->pickup($claim, 'collected');
 
             return ['success' => true, 'delivery' => $parcel, 'message' => $walletPaid ? 'Buyer collection recorded. The parcel was prepaid with virtual wallet credits.' : 'Buyer collection and COD custody recorded.'];
