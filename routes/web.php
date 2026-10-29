@@ -26,6 +26,7 @@ use App\Http\Controllers\Buyer\BuyerReviewController;
 use App\Http\Controllers\Buyer\CartController;
 use App\Http\Controllers\Buyer\CheckoutController;
 use App\Http\Controllers\Buyer\CustomerServiceAssistantController;
+use App\Http\Controllers\Buyer\MobileCapabilitiesController;
 use App\Http\Controllers\Buyer\OrderHistoryController;
 use App\Http\Controllers\Buyer\PickupClaimController;
 use App\Http\Controllers\Buyer\SaleReminderController;
@@ -96,6 +97,9 @@ $baseDomains = array_unique(array_filter([
 ]));
 
 Route::get('/address-locations', AddressLocationController::class)->middleware('throttle:120,1')->name('address-locations');
+
+Route::get('/buyer/mobile-capabilities', MobileCapabilitiesController::class)
+    ->middleware('throttle:60,1,buyer-mobile-capabilities')->name('buyer.mobile-capabilities');
 
 $registerResourceRestrictionRoutes = function () {
     Route::get('/resources', [ResourceRestrictionController::class, 'index'])->name('resources.index');
