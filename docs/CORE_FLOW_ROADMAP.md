@@ -30,9 +30,42 @@ Buyer checkout
 
 The core flow is complete only when the entire chain passes cross-role tests without a portal inventing statuses, bypassing custody, settling COD early, or relying on sample success data.
 
+## Buyer mobile web connections: October 29, 2026
+
+The web branch `feat/buyer-mobile-web-integration`, based on merged main
+`4e6d6e3`, adds capability v1 (`91795f5`), verified native Google exchange and
+registration (`02a887d`), and configured stateless Android/iOS HTTPS associations
+(`7eebac8`). Existing session/CSRF, browser Google, buyer approval and domain
+writers remain authoritative. Google and app associations default to disabled;
+device push and future versioned efficiency changes are explicitly deferred.
+
+The [implemented contracts](api/BUYER_MOBILE_INTEGRATION.md),
+[executed fixture pack](api/buyer-mobile-contract-handoff/README.md),
+[acceptance report](api/BUYER_MOBILE_INTEGRATION_ACCEPTANCE.md) and
+[local PR draft](api/BUYER_MOBILE_INTEGRATION_PR_DRAFT.md) describe exact schemas,
+provider/signing prerequisites, failure/retry behavior and deployment/rollback.
+Broader isolated groups passed **239/3,459**, **210/4,941** and **15/648**. The
+final focused contract/browser/policy/session group passed **129/1,223** after
+verifier freshness and fixture refinements. These are overlapping selections,
+not an additive full-suite total. PHP formatting, Composer validation and Git
+whitespace checks passed. Tests remained SQLite memory; no new database migration,
+production write, browser automation or physical-device proof was performed.
+
+Real localhost reads confirm guest session and disabled capability JSON, expected
+disabled Google 503 and association 404 states without redirects. Azure's two
+read-only probes returned 403; deployed source and provider/device acceptance are
+unverified. A tested session-state fixture exposed the mobile adapter's missing
+`/buyer` Home alias. The actual web redirect was preserved and the finding sent
+to the mobile owner; its repair acknowledgement remains pending at this cutoff.
+Publication/deployment, approved provider/release identities and native SDK/device
+acceptance remain external gates. Scoped **web API readiness:
+2/10 → 8/10**; this does not increase overall delivery or native-app readiness.
+
+
 ## New Docs Era: October 28, 2026
 
 The user-selected [version-two PDF contract](new-docs-era/README.md) supersedes older buyer-only completion and mandatory-Mother rules for new orders. Historical version-one orders retain their saved flow and amounts. The older dated reviews below are historical evidence, not the current version-two specification.
+
 
 Implemented: serving-company checkout, ZIP/parent routing with frozen hops and tariff, same-child bypass, volumetric billable weight and PHP 60 baseline, numbered Mother Bags with atomic manifest loading/departure and individual receiving, original-route misroute recovery/RTS, verified automatic completion, separate product/shipping earning sources, counted COD shift closure, and owner-provisioned named staff with first-login/email gates. New shadcn-style hub screens connect company setup, bags, scans, transport and earnings. Actual external seller transfers retain their existing proof; a ledger release does not assert a bank payment.
 
