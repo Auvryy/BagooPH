@@ -26,7 +26,7 @@ class MotherBagController extends Controller
         $query = $service->readable($actor)->with(['source', 'destination'])->withCount(['parcels' => fn ($q) => $q->whereNull('removed_at')]);
         $selected = $request->filled('bag') ? (clone $query)->findOrFail($request->query('bag')) : null;
         $summary = fn (MotherBag $bag) => $bag->only(['id', 'reference', 'status', 'seal_number', 'version', 'source_hub_id', 'destination_hub_id', 'manifest_id', 'parcels_count'])
-            + ['source' => $bag->source->only(['id', 'name', 'code']), 'destination' => $bag->destination->only(['id', 'name', 'code'])];
+            + ['source' => $bag->source->only(['id', 'name', 'code', 'tier', 'latitude', 'longitude']), 'destination' => $bag->destination->only(['id', 'name', 'code', 'tier', 'latitude', 'longitude'])];
         $detail = $selected ? $summary($selected) + [
             'canPack' => $eligibility->canScan($actor, $selected->source),
             'canOpen' => $eligibility->canScan($actor, $selected->destination),
@@ -41,9 +41,10 @@ class MotherBagController extends Controller
 
         return Inertia::render('Hub/MotherBags', [
             'bags' => (clone $query)->latest()->paginate(20)->withQueryString()->through($summary), 'selectedBag' => $detail,
-            'hubs' => $hubs->map(fn ($hub) => $hub->only(['id', 'name', 'code', 'tier', 'logistics_company_id']) + ['canScan' => $eligibility->canScan($actor, $hub)]),
+            'hubs' => $hubs->map(fn ($hub) => $hub->only(['id', 'name', 'code', 'tier', 'logistics_company_id', 'parent_hub_id', 'latitude', 'longitude', 'address', 'city_municipality', 'province']) + ['canScan' => $eligibility->canScan($actor, $hub)]),
             'manifests' => LogisticsManifest::whereIn('source_hub_id', $stations->pluck('id'))->where('status', 'draft')
-                ->get(['id', 'reference', 'source_hub_id', 'destination_hub_id']),
+                ->with(['vehicle', 'driver'])->get()->map(fn ($manifest) => $manifest->only(['id', 'reference', 'source_hub_id', 'destination_hub_id'])
+                    + ['vehicle_plate' => $manifest->vehicle?->plate_number, 'driver_name' => $manifest->driver?->name]),
             'creationToken' => (string) Str::uuid(), 'basePath' => $request->is('hub/*') ? '/hub/mother-bags' : '/mother-bags',
         ]);
     }

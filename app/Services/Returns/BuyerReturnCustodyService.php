@@ -5,10 +5,12 @@ namespace App\Services\Returns;
 use App\Models\BuyerReturnCase;
 use App\Models\BuyerReturnEvent;
 use App\Models\BuyerReturnEvidence;
+use App\Models\BuyerReturnManifestRoute;
 use App\Models\BuyerReturnParcel;
 use App\Models\Delivery;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
 use App\Models\User;
@@ -251,14 +253,18 @@ class BuyerReturnCustodyService
             && $case->status === 'ready_for_seller' && $parcel->status === 'ready_for_seller') {
             $options[] = ['action' => 'seller-receive', 'hub_id' => null, 'label' => 'Confirm actual return receipt'];
         }
-        $manifest = $parcel->members()->with('manifest')->latest('id')->first()?->manifest;
+        $manifestRoute = BuyerReturnManifestRoute::where('buyer_return_case_id', $case->id)->orderByDesc('leg_index')->first();
+        $manifest = $manifestRoute ? LogisticsManifest::find($manifestRoute->manifest_id) : null;
+        $canReadManifest = $manifest && $actor->isLogistics()
+            && app(LogisticsManifestService::class)->readable($actor)->whereKey($manifest->id)->exists();
 
         return ['barcode' => $parcel->barcode, 'status' => $parcel->status, 'position' => $parcel->route_position,
             'weight_grams' => $parcel->weight_grams, 'custody' => $parcel->custody, 'actions' => $options,
             'hubs' => array_map(fn ($id) => $hubs->get($id)?->only(['id', 'name', 'code', 'address', 'operating_hours']), $parcel->hub_ids),
             'can_dropoff' => $case->status === 'approved' && $case->dropoff_until && now()->lessThanOrEqualTo($case->dropoff_until),
-            'current_hub_name' => $hubs->get($parcel->current_hub_id)?->name, 'manifest_url' => $manifest && $actor->isLogistics()
-                && app(LogisticsManifestService::class)->readable($actor)->whereKey($manifest->id)->exists() ? '/manifests/'.$manifest->id : null,
+            'current_hub_name' => $hubs->get($parcel->current_hub_id)?->name, 'manifest_url' => $canReadManifest
+                ? (str_starts_with(request()->getHost(), 'hub.') ? '/manifests/' : '/hub/manifests/').$manifest->id : null,
+            'manifest_pending' => $canReadManifest && $manifestRoute->leg_index === $parcel->route_position && in_array($manifest->status, ['draft', 'sealed'], true),
             'manifest_reference' => $manifest?->reference];
     }
 }

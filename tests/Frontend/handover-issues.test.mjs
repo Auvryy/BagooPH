@@ -164,7 +164,10 @@ test('hub source selection requires an explicit choice before it offers holder a
     const html = await render(Show, 'Handover/Show', { issue: { ...detail, state: 'needs_recovery', recovery: { ...heldRecovery, mode: null },
         hub_recovery: { grant: null, options: [{ key: 'source-9', mode: 'hub_manifest', reference_id: 9, label: 'Corrective receipt: MFT-ORIGINAL',
             source_token: 'CURRENT', holder_options: [{ id: 1, name: 'Juan Santos', status: 'active' }] }] } } }, 'logistics');
-    assert.match(html, /Choose the supported original source/);
+    assert.match(html, /Original handover source/);
+    assert.match(html, /Recorded transport manifest/);
+    assert.match(html, /type="radio" name="recovery-source"/);
+    assert.doesNotMatch(html, /name="recovery-source"[^>]*checked/);
     assert.match(html, /MFT-ORIGINAL/);
     assert.match(html, /Unlisted receipt|unlisted receipt/);
     assert.doesNotMatch(html, /Authorize actual hub recovery|Acknowledge possession|Receive recovery parcel/);

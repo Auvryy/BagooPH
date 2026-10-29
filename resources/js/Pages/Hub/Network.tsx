@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import CompanyRiderIntake from '@/Components/CompanyRiderIntake';
+import HubMap from '@/Components/Logistics/HubMap';
+import { HubPageHeader, HubPanel } from '@/Components/Logistics/Workspace';
 import type { CompanyRiderIntake as Intake } from '@/types/riderCompany';
 
 interface NetworkScope {
@@ -37,8 +39,9 @@ interface HubItem {
     city_municipality: string;
     barangay: string;
     address: string;
-    latitude: number;
-    longitude: number;
+    latitude: number | null;
+    longitude: number | null;
+    parent_hub_id?: number | null;
     capacity: number;
     coverage_barangays: string[];
     allows_self_pickup: boolean;
@@ -144,6 +147,17 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
             <Head title="Facility Network — BagooPH" />
 
             <div className="space-y-5 font-sans">
+                <HubPageHeader title="Hub network" description="See how your company’s hubs connect. Choose a pin or facility card to inspect its coverage and available actions." icon={Building2} />
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)]">
+                    <HubMap hubs={filteredHubs} selectedId={selectedHub?.id ?? activeHub?.id} onSelect={hub => setSelectedHub(hubs.find(item => item.id === hub.id) ?? null)} className="h-[340px]" />
+                    <HubPanel title="Your network at a glance" icon={<Warehouse className="h-4 w-4" />}>
+                        <div className="flex gap-5"><div><p className="text-3xl font-bold tracking-tight text-slate-950">{motherHubs.length}</p><p className="mt-1 text-xs text-slate-500">Mother Hubs</p></div><div className="border-l border-slate-200 pl-5"><p className="text-3xl font-bold tracking-tight text-slate-950">{bayanHubs.length}</p><p className="mt-1 text-xs text-slate-500">Bayan Hubs</p></div></div>
+                        <div className="mt-5 space-y-3 border-t border-slate-200 pt-4 text-xs text-slate-600"><p className="flex items-center gap-2"><span className="h-3 w-3 rounded bg-slate-900" />Mother Hub · transfers between service areas</p><p className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-[#E00D42]" />Bayan Hub · pickup, local sorting and delivery</p></div>
+                        <p className="mt-4 text-xs leading-5 text-slate-500">Map links show configured hub relationships. A parcel follows its own saved route and actual scans.</p>
+                        {activeHub && <div className="mt-4 rounded-lg bg-slate-50 p-3"><p className="text-[11px] text-slate-500">Current facility view</p><p className="mt-1 text-xs font-semibold text-slate-900">{activeHub.name}</p></div>}
+                    </HubPanel>
+                </div>
+                {scope.can_switch_facility && <details className="rounded-xl border border-slate-200 bg-white shadow-sm"><summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-slate-800">People & placements <span className="ml-2 text-xs font-normal text-slate-500">Rider requests and handler assignments</span></summary><div className="space-y-4 border-t border-slate-200 p-4">
                 <CompanyRiderIntake workspace={riderIntake} />
                 {scope.can_switch_facility && hubs.length > 0 && (
                     <form className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm" onSubmit={(event) => {
@@ -171,6 +185,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                         <button type="submit" disabled={placement.processing} className="mt-4 rounded-md bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white hover:bg-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:opacity-50">{placement.processing ? 'Saving…' : 'Save placement'}</button>
                     </form>
                 )}
+                </div></details>}
                 <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
                     <div className="flex flex-col gap-3 border-b border-slate-300 pb-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>

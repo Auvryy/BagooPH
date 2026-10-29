@@ -1,9 +1,9 @@
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { RecoveryActionForm, RecoveryGrantSummary } from '@/Components/HandoverRecoveryPanel';
-import { issueInput, issueSurface, type IssueDetail } from '@/Components/HandoverUI';
+import { ScanLine, Truck } from 'lucide-react';
+import { issueSurface, type IssueDetail } from '@/Components/HandoverUI';
 
 export default function HubHandoverRecoveryPanel({ issue }: { issue: IssueDetail }) {
-    const id = useId();
     const [sourceKey, setSourceKey] = useState('');
     const recovery = issue.hub_recovery;
     if (!recovery || (!recovery.grant && !recovery.options.length)) return null;
@@ -13,12 +13,7 @@ export default function HubHandoverRecoveryPanel({ issue }: { issue: IssueDetail
     return <section className={`${issueSurface} space-y-4`}>
         <h2 className="font-bold">Supervised hub recovery</h2>
         <p className="text-sm leading-relaxed text-slate-600">Use the known physical parcel and its original facility or transport source. Corrective receipts record what is received now; they preserve the original list, scans and departure times. An unlisted receipt stays separate from the expected parcels.</p>
-        {recovery.options.length > 0 && <label htmlFor={`${id}-source`} className="block text-sm font-semibold">Original handover source
-            <select id={`${id}-source`} required value={selected?.key ?? ''} onChange={event => setSourceKey(event.target.value)} className={issueInput}>
-                <option value="">Choose the supported original source</option>
-                {recovery.options.map(source => <option key={source.key} value={source.key}>{source.label}</option>)}
-            </select>
-        </label>}
+        {recovery.options.length > 0 && <fieldset className="space-y-2"><legend className="mb-2 text-sm font-semibold text-slate-700">Original handover source</legend>{recovery.options.map(source => <label key={source.key} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 ${selected?.key === source.key ? 'border-rose-300 bg-rose-50/50' : 'border-slate-200 bg-white'}`}><input required type="radio" name="recovery-source" checked={selected?.key === source.key} onChange={() => setSourceKey(source.key)} className="mt-1 border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /><span className="rounded-lg bg-slate-50 p-2 text-slate-400">{source.mode === 'hub_intake' ? <ScanLine className="h-4 w-4" /> : <Truck className="h-4 w-4" />}</span><span className="min-w-0"><span className="block text-sm font-semibold text-slate-800">{source.mode === 'hub_intake' ? 'Original hub intake' : source.mode === 'hub_failed_return' ? 'Recorded failed-delivery return' : source.mode === 'hub_manifest' ? 'Recorded transport manifest' : 'Existing authorized recovery'}</span><span className="mt-1 block break-words text-xs leading-5 text-slate-500">{source.label}</span></span></label>)}</fieldset>}
         {selected && <RecoveryActionForm key={`${selected.key}:${selected.source_token}:${issue.version}`}
             url={`/handover-issues/${issue.id}/authorize-hub-recovery`} title="Authorize actual hub recovery" button="Authorize recovery"
             description="Choose the known holder from the evidence. The original source fixes the receiving facility and route; independent authorization does not grant handler access."

@@ -5,7 +5,7 @@ import { GovernanceEvent, RecordedValues, governanceTime, recordLabel } from '@/
 
 export default function HistoryDetail({ event }: { event: GovernanceEvent }) {
     return <DashboardLayout title="Recorded decision" subtitle={`${event.source_label} · ${recordLabel(event.subject.type)} #${event.subject.id}`} actions={<Link href="/governance-history" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold">Back to history</Link>}>
-        <Head title="Recorded decision — Bagoo Admin" />
+        <Head title="Recorded decision — BagooPH" />
         <div className="space-y-6">
             <section className="rounded-xl border border-slate-300 bg-white p-6">
                 <h2 className="text-lg font-semibold text-slate-900">{recordLabel(event.action)}</h2>

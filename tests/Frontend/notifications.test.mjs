@@ -87,7 +87,9 @@ for (const [kind, portal, shell] of roles) {
             assert.match(html, /BGO-HUB/);
             assert.match(html, /rounded-\[8px\]/);
         }
-        assert.doesNotMatch(html, />My account<|min-h-screen bg-\[#FFFAFB\]/);
+        assert.doesNotMatch(html, /min-h-screen bg-\[#FFFAFB\]/);
+        if (['company', 'handler'].includes(kind)) assert.match(html, /Account &amp; security/);
+        else assert.doesNotMatch(html, />My account</);
         const empty = await render(ui.Notifications, { portal, accountUrl: '/dashboard', available: true, filter: 'unread', notices: page() }, user);
         assert.match(empty, new RegExp(shell));
         assert.match(empty, /min-h-60 flex-col items-center justify-center/);

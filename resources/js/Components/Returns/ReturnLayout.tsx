@@ -10,5 +10,5 @@ export default function ReturnLayout({ children }: PropsWithChildren) {
         const active = auth.user.status === 'active' && ['approved', 'verified'].includes(auth.user.kyc_status ?? '');
         return <BuyerOrderAccessLayout canUsePortal={active}>{children}</BuyerOrderAccessLayout>;
     }
-    return <DashboardLayout title="Returns and refunds" subtitle="Review the original purchase, return and repayment history.">{children}</DashboardLayout>;
+    return <DashboardLayout title={auth.user?.role === 'logistics' ? 'Buyer returns' : 'Returns and refunds'} subtitle="Review the original purchase, return and repayment history.">{children}</DashboardLayout>;
 }

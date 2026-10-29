@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { ShieldCheck } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { PaginatedData } from '@/types';
+import { HubEmpty } from '@/Components/Logistics/Workspace';
+import type { PageProps, PaginatedData } from '@/types';
 
 type Resource = {
     id: number; type: string; name: string; status: string; eligible: boolean;
@@ -10,6 +12,7 @@ type Resource = {
 type Props = { resources: PaginatedData<Resource>; types: string[]; filters: { type: string; search: string }; baseUrl: string };
 
 export default function Resources({ resources, types, filters, baseUrl }: Props) {
+    const logistics = usePage<PageProps>().props.auth.user?.role === 'logistics';
     const [search, setSearch] = useState(filters.search);
     const filter = (type: string) => router.get(baseUrl, { type, search }, { preserveState: true });
 
@@ -22,7 +25,7 @@ export default function Resources({ resources, types, filters, baseUrl }: Props)
                 <button type="submit" className="self-end rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Search</button>
             </form>
             <p className="text-sm text-slate-600">Open a review to see current work and record a reasoned decision. Reinstating a parent preserves separate restrictions on its children.</p>
-            {resources.data.length === 0 ? <div className="rounded-xl border border-slate-300 bg-white p-6 text-sm text-slate-500">No resources match this review.</div> : <div className="space-y-3">{resources.data.map(resource => <article key={resource.id} className="flex flex-col gap-4 rounded-xl border border-slate-300 bg-white p-5 sm:flex-row sm:items-start sm:justify-between">
+            {resources.data.length === 0 ? <div className="rounded-xl border border-slate-300 bg-white">{logistics ? <HubEmpty icon={ShieldCheck} title="No resources match this review" description="Try another resource type or search for a shorter name or vehicle plate. Each resource keeps its own activity and approval records." /> : <p className="p-6 text-sm text-slate-500">No resources match this review.</p>}</div> : <div className="space-y-3">{resources.data.map(resource => <article key={resource.id} className="flex flex-col gap-4 rounded-xl border border-slate-300 bg-white p-5 sm:flex-row sm:items-start sm:justify-between">
                 <div><h2 className="font-semibold">{resource.name}</h2><p className="mt-1 text-sm capitalize">Local activity: {resource.status.replaceAll('_', ' ')} · {resource.eligible ? 'Eligible for new work' : 'Unavailable for new work'}</p><div className="mt-3 space-y-1 text-xs text-slate-600">{resource.parents.map(parent => <p key={parent.label}>{parent.label}: {parent.name} · {parent.eligible ? 'Eligible' : 'Unavailable'}</p>)}</div></div>
                 <Link href={`${baseUrl}/${resource.type}/${resource.id}`} className="shrink-0 self-start rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50">Review activity</Link>
             </article>)}</div>}

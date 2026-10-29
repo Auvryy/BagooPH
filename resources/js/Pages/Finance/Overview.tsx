@@ -1,5 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState, type FormEvent } from 'react';
+import { ArrowRight, Building2, Landmark, Receipt, Wallet } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { cashButton, cashInput, cashSurface } from '@/Components/CodCashUI';
 import type { PageProps } from '@/types';
@@ -20,11 +21,13 @@ export default function Overview({ records, totals, filters, mode, error, stateO
         <Head title={title} />
         <div className="space-y-5">
             <section className={`${cashSurface} p-5`}>
+                {mode === 'company' ? <><h2 className="font-semibold">Follow the original cash receipts</h2><ol tabIndex={0} aria-label="COD receipt stages; scroll to view every stage" className="mt-4 flex items-center gap-3 overflow-x-auto pb-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">{[{ name: 'Buyer payment', Icon: Receipt }, { name: 'Rider or counter', Icon: Wallet }, { name: 'Hub receipt', Icon: Building2 }, { name: 'Platform receipt', Icon: Landmark }].map(({ name, Icon }, index) => <li key={name} className="flex shrink-0 items-center gap-3"><span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"><Icon className="h-4 w-4 text-slate-400" />{name}</span>{index < 3 && <ArrowRight className="h-3.5 w-3.5 text-slate-300" />}</li>)}</ol><p className="mt-4 text-xs leading-6 text-slate-500">Each card follows the same cash at a different stage. Review its original source record. Product proceeds stay 90% seller / 10% Bagoo; shipping stays separate.</p></> : <>
                 <h2 className="font-semibold">{mode === 'seller' ? 'Your proceeds and payments' : 'Recorded money and its sources'}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{mode === 'seller'
                     ? 'See proceeds awaiting payment and payments backed by recorded receipts. Payouts shows the payment history for each order. Sales report shows completed sales and estimated shares.'
                     : 'Cash cards follow the same money at different stages. Review each stage separately. Product proceeds use the original 90% seller and 10% platform split, with shipping and discounts shown separately.'}</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">Date filters use the original cash collection date in Philippine time. Orders awaiting collection use their order date. Each card links to the records contributing to that total.</p>
+                </>}
             </section>
             {error && <p role="alert" className="rounded-[8px] border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{error}</p>}
             {Object.values(errors ?? {}).length > 0 && <div role="alert" className="rounded-[8px] border border-red-300 bg-red-50 p-4 text-sm text-red-800">{Object.values(errors).map((message, index) => <p key={index}>{message}</p>)}</div>}
@@ -35,6 +38,7 @@ export default function Overview({ records, totals, filters, mode, error, stateO
                 {mode === 'admin' && <><label className="text-sm font-semibold">Company<select className={cashInput} value={form.company ?? ''} onChange={event => update('company', event.target.value)}><option value="">All companies</option>{companies.map(company => <option key={company.id} value={company.id}>{company.name} · #{company.id}</option>)}</select></label>
                     <label className="text-sm font-semibold">Seller recipient<select className={cashInput} value={form.recipient ?? ''} onChange={event => update('recipient', event.target.value)}><option value="">All recipients</option>{recipients.map(recipient => <option key={recipient.id} value={recipient.id}>{recipient.name} · #{recipient.id}</option>)}</select></label></>}
                 <div className="flex flex-wrap gap-2"><button className={cashButton}>Apply filters</button><Link href="/financial-oversight" className={cashButton}>Reset</Link></div>
+                {mode === 'company' && <p className="text-xs leading-5 text-slate-500 sm:col-span-2 xl:col-span-3">Dates use the recorded collection in Philippine time. Orders awaiting collection use their original order date.</p>}
             </form>
             {filters.metric && <p className="text-sm text-slate-600">Showing sources for {totals.find(total => total.key === filters.metric)?.label.toLowerCase() ?? financeState(filters.metric)}.</p>}
             <section aria-label="Financial totals" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{totals.map(total => <article key={total.key} className={`${cashSurface} p-5`}>

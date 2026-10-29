@@ -52,7 +52,7 @@ class ParcelRecoveryController extends Controller
         if ($status !== 'all') {
             $status === 'resolved' ? $query->whereIn('id', $resolved) : $query->whereNotIn('id', $resolved);
         }
-        $rows = $query->with(['manifest.destinationHub', 'actor', 'recoveryCase'])->latest('id')->paginate(15)->withQueryString();
+        $rows = $query->with(['hub', 'manifest.destinationHub', 'actor', 'recoveryCase'])->latest('id')->paginate(15)->withQueryString();
         $readableIds = app(LogisticsManifestService::class)->readable($actor)
             ->whereIn('id', [...$rows->getCollection()->pluck('manifest_id'), $selected?->manifest_id])->pluck('id')->all();
         $rows->through(fn ($event) => $this->summary($event, $base, in_array($event->id, $resolved, true), in_array($event->manifest_id, $readableIds, true)));
@@ -60,7 +60,7 @@ class ParcelRecoveryController extends Controller
         $creationToken = null;
         $vehicles = [];
         if ($selected) {
-            $selected->load(['manifest.destinationHub', 'actor', 'recoveryCase.events.actor', 'recoveryCase.manifests', 'recoveryCase.delivery.order']);
+            $selected->load(['hub', 'manifest.destinationHub', 'actor', 'recoveryCase.events.actor', 'recoveryCase.manifests', 'recoveryCase.delivery.order']);
             $case = $selected->recoveryCase;
             $caseReadableIds = $case ? app(LogisticsManifestService::class)->readable($actor)
                 ->whereIn('id', [$case->originalMember->manifest_id, ...$case->manifests->pluck('id')])->pluck('id')->all() : [];
@@ -151,7 +151,7 @@ class ParcelRecoveryController extends Controller
     private function summary(LogisticsManifestEvent $event, string $base, bool $resolved, bool $canOpenManifest): array
     {
         return ['id' => $event->id, 'reference' => $event->reference, 'kind' => $event->payload['kind'], 'barcode' => $event->barcode_scanned,
-            'observedHub' => $event->manifest->destinationHub->name, 'reporter' => $event->actor->name,
+            'observedHub' => $event->hub?->name ?? 'Hub not recorded', 'reporter' => $event->actor->name,
             'reportedAt' => $event->created_at->toIso8601String(), 'state' => $resolved ? 'resolved' : ($event->recoveryCase?->state ?? 'needs_review'),
             'url' => $base.'/parcel-recovery/'.$event->id, 'manifestUrl' => $canOpenManifest ? $base.'/manifests/'.$event->manifest_id : null];
     }
@@ -163,6 +163,12 @@ class ParcelRecoveryController extends Controller
         }
         if (($custody['kind'] ?? null) === 'manifest') {
             return 'In transport on '.($custody['manifest_reference'] ?? 'the original manifest');
+        }
+        if (($custody['kind'] ?? null) === 'courier') {
+            return 'With the recorded rider';
+        }
+        if (($custody['kind'] ?? null) === 'buyer') {
+            return 'Delivered to the recipient';
         }
 
         return 'No supported parcel custody linked yet';

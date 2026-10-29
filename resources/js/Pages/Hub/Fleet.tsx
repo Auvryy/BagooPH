@@ -1,346 +1,45 @@
-import React from 'react';
+import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
+import { Bike, Building2, CheckCircle2, Phone, Truck, UserRound } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { 
-    Truck, 
-    Bike, 
-    ShieldCheck, 
-    Search, 
-    CheckCircle2, 
-    Clock, 
-    AlertCircle,
-    User,
-    Phone,
-    Layers,
-    Filter
-} from 'lucide-react';
+import { HubBadge, HubEmpty, HubPageHeader, HubSearch, hubButton, hubInput } from '@/Components/Logistics/Workspace';
 
 interface FleetVehicle {
-    id: number;
-    plate_number: string;
-    vehicle_type: string;
-    model: string;
-    capacity_kg: number;
-    status: string;
-    hub_name: string;
-    hub_code: string;
-    driver_name: string;
-    driver_phone: string;
-    driver_email: string;
+    id: number; plate_number: string; vehicle_type: string; model: string; capacity_kg: number;
+    status: string; hub_name: string; hub_code: string; driver_name: string; driver_phone: string; driver_email: string;
 }
-
 interface Props {
-    activeHub: {
-        id: number;
-        name: string;
-        code: string;
-        tier: string;
-    } | null;
-    hubs: any[];
+    activeHub: { id: number; name: string; code: string; tier: string } | null;
     fleet: FleetVehicle[];
-    stats: {
-        total: number;
-        active: number;
-        motorcycles: number;
-        vans: number;
-        trucks: number;
-    };
-    filters: {
-        tier: string;
-        status: string;
-    };
+    stats: { total: number; active: number; motorcycles: number; vans: number; trucks: number };
+    filters: { tier: string; status: string };
 }
+const vehicleNames: Record<string, string> = { motorcycle: 'Motorcycle', tricycle: 'Tricycle', l300_van: 'Feeder van', wing_truck: 'Wing truck' };
+const vehicleWork: Record<string, string> = { motorcycle: 'Pickup and doorstep delivery', tricycle: 'Pickup and doorstep delivery', l300_van: 'Child hub ↔ Mother Hub', wing_truck: 'Mother Hub ↔ Mother Hub' };
 
 export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
-    const handleFilter = (tier?: string, status?: string) => {
-        router.get(
-            route('hub.fleet'),
-            {
-                tier: tier !== undefined ? tier : filters.tier,
-                status: status !== undefined ? status : filters.status,
-            },
-            { preserveState: true, preserveScroll: true }
-        );
-    };
-
-    const getTierIcon = (type: string) => {
-        if (type === 'motorcycle') return <Bike className="w-4 h-4 text-emerald-600" />;
-        if (type === 'wing_truck') return <Truck className="w-4 h-4 text-purple-600" />;
-        return <Truck className="w-4 h-4 text-blue-600" />;
-    };
-
-    const getTierBadge = (type: string) => {
-        if (type === 'motorcycle') {
-            return (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-300 uppercase font-sans">
-                    Tier 1 • Last-Mile
-                </span>
-            );
-        }
-        if (type === 'l300_van') {
-            return (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#FDF2F4] text-[#E00D42] border border-[#FCE7EA] uppercase font-sans">
-                    Tier 2 • Feeder Van
-                </span>
-            );
-        }
-        return (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-800 border border-slate-300 uppercase font-sans">
-                Tier 3 • Wing Truck
-            </span>
-        );
-    };
-
-    return (
-        <DashboardLayout
-            title="Fleet Management"
-            subtitle="Multi-tier dispatch vehicles & assigned drivers"
-            actions={
-                <Link
-                    href={route('hub.deliveries')}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-lg shadow-sm transition uppercase tracking-wider"
-                >
-                    <Truck className="w-3.5 h-3.5" />
-                    <span>View Waybills</span>
-                </Link>
-            }
-        >
-            <Head title="Fleet Management — BagooPH" />
-
-            <div className="space-y-5 font-sans">
-                
-                {/* 1. TOP BUSINESS KPI TILES */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Total Fleet</span>
-                                <Truck className="w-3.5 h-3.5 text-slate-700" />
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {stats.total}{' '}
-                                    <span className="text-xs font-bold text-slate-400">vehicles</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Active Duty:</span>
-                            <span className="font-bold text-emerald-700">{stats.active} units</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Last-Mile Couriers</span>
-                                <Bike className="w-3.5 h-3.5 text-emerald-600" />
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {stats.motorcycles}{' '}
-                                    <span className="text-xs font-bold text-slate-400">bikes</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Coverage:</span>
-                            <span className="font-bold text-slate-800">Barangay Streets</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Bayan Feeder Vans</span>
-                                <Truck className="w-3.5 h-3.5 text-[#E00D42]" />
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {stats.vans}{' '}
-                                    <span className="text-xs font-bold text-slate-400">L300s</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Capacity:</span>
-                            <span className="font-bold text-slate-800">1,200 kg / shuttle</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg p-4 border border-slate-300 shadow-sm flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between text-slate-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Wing Trucks (Trunk)</span>
-                                <Truck className="w-3.5 h-3.5 text-slate-800" />
-                            </div>
-                            <div className="mt-2">
-                                <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
-                                    {stats.trucks}{' '}
-                                    <span className="text-xs font-bold text-slate-400">heavy</span>
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
-                            <span className="text-slate-500">Transfer Route:</span>
-                            <span className="font-bold text-slate-800">Inter-Mother Hub</span>
-                        </div>
-                    </div>
+    const [search, setSearch] = useState('');
+    const handleFilter = (tier: string, status: string) => router.get(route('hub.fleet'), { tier, status, ...(activeHub ? { hub_id: activeHub.id } : {}) }, { preserveState: true, preserveScroll: true });
+    const shown = fleet.filter(vehicle => [vehicle.plate_number, vehicle.model, vehicle.driver_name, vehicle.hub_name].join(' ').toLowerCase().includes(search.trim().toLowerCase()));
+    return <DashboardLayout title="Fleet & drivers"><Head title="Fleet & drivers — BagooPH" />
+        <div className="space-y-6">
+            <HubPageHeader title="Fleet & drivers" icon={Truck} description={`Vehicles based at ${activeHub?.name ?? 'your assigned facility'}. Check the vehicle, driver and job before preparing a transfer.`} actions={<Link href={route('hub.manifests.index')} className={hubButton}><Truck className="h-4 w-4" />Open transfers</Link>} />
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[
+                { label: 'Vehicles at this hub', value: stats.total, Icon: Building2 },
+                { label: 'Eligible active vehicles', value: stats.active, Icon: CheckCircle2 },
+                { label: 'Feeder vans', value: stats.vans, Icon: Truck },
+                { label: 'Wing trucks', value: stats.trucks, Icon: Truck },
+            ].map(({ label, value, Icon }) => <div key={label} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><span className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 text-slate-500"><Icon className="h-4 w-4" /></span><div><p className="text-xs text-slate-500">{label}</p><p className="mt-1 text-xl font-bold text-slate-900">{value}</p></div></div>)}</div>
+            <section className="space-y-4" aria-label="Facility vehicles">
+                <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><div className="min-w-48 flex-1"><HubSearch label="Search loaded vehicles" value={search} onChange={setSearch} placeholder="Plate, driver or model" /></div>
+                    <label className="min-w-36 text-xs font-semibold text-slate-600">Vehicle type<select value={filters.tier} onChange={event => handleFilter(event.target.value, filters.status)} className={`${hubInput} mt-1`}><option value="all">All vehicle types</option><option value="motorcycle">Motorcycles</option><option value="tricycle">Tricycles</option><option value="l300_van">Feeder vans</option><option value="wing_truck">Wing trucks</option></select></label>
+                    <label className="min-w-36 text-xs font-semibold text-slate-600">Vehicle activity<select value={filters.status} onChange={event => handleFilter(filters.tier, event.target.value)} className={`${hubInput} mt-1`}><option value="all">All activity</option><option value="active">Active</option><option value="idle">Idle</option><option value="maintenance">Maintenance</option></select></label>
                 </div>
-
-                {/* 2. FILTER TABS */}
-                <div className="bg-white rounded-lg p-3.5 border border-slate-300 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 font-sans">
-                    <div className="flex flex-wrap items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-300 text-xs w-full sm:w-auto">
-                        <button
-                            type="button"
-                            onClick={() => handleFilter('all')}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                                filters.tier === 'all'
-                                    ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
-                                    : 'text-slate-500 hover:text-slate-800'
-                            }`}
-                        >
-                            ALL TIERS ({stats.total})
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleFilter('motorcycle')}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                                filters.tier === 'motorcycle'
-                                    ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
-                                    : 'text-slate-500 hover:text-slate-800'
-                            }`}
-                        >
-                            MOTORCYCLES ({stats.motorcycles})
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleFilter('l300_van')}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                                filters.tier === 'l300_van'
-                                    ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
-                                    : 'text-slate-500 hover:text-slate-800'
-                            }`}
-                        >
-                            FEEDER VANS ({stats.vans})
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleFilter('wing_truck')}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                                filters.tier === 'wing_truck'
-                                    ? 'bg-white text-slate-900 shadow-2xs border border-slate-300'
-                                    : 'text-slate-500 hover:text-slate-800'
-                            }`}
-                        >
-                            WING TRUCKS ({stats.trucks})
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                        <span className="text-xs text-slate-500">Status:</span>
-                        <select
-                            value={filters.status}
-                            onChange={(e) => handleFilter(undefined, e.target.value)}
-                            className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-sans font-bold focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
-                        >
-                            <option value="all">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="idle">Idle / Available</option>
-                            <option value="maintenance">Maintenance</option>
-                        </select>
-                    </div>
-                </div>
-
-                {/* 3. FLEET TABLE */}
-                <div className="bg-white rounded-lg border border-slate-300 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-slate-300 bg-slate-50/90 text-[10px] font-bold uppercase tracking-wider text-slate-500 font-sans">
-                                    <th className="py-2.5 px-3.5">Vehicle / Model</th>
-                                    <th className="py-2.5 px-3.5">Tier Classification</th>
-                                    <th className="py-2.5 px-3.5">Payload Capacity</th>
-                                    <th className="py-2.5 px-3.5">Assigned Driver</th>
-                                    <th className="py-2.5 px-3.5">Home Facility</th>
-                                    <th className="py-2.5 px-3.5 text-right">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-200 text-xs">
-                                {fleet.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="py-10 text-center text-slate-400 font-sans">
-                                            No vehicles found matching current filter.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    fleet.map((vehicle) => (
-                                        <tr key={vehicle.id} className="hover:bg-slate-50/80 transition">
-                                            <td className="py-3 px-3.5">
-                                                <div className="flex items-center gap-2.5">
-                                                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 border border-slate-300">
-                                                        {getTierIcon(vehicle.vehicle_type)}
-                                                    </div>
-                                                    <div>
-                                                        <span className="font-sans font-bold text-slate-900 block text-xs">
-                                                            {vehicle.plate_number}
-                                                        </span>
-                                                        <span className="text-[11px] text-slate-500 truncate block max-w-xs font-sans">
-                                                            {vehicle.model}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </td>
-
-                                            <td className="py-3 px-3.5">
-                                                {getTierBadge(vehicle.vehicle_type)}
-                                            </td>
-
-                                            <td className="py-3 px-3.5 font-sans font-bold text-slate-800">
-                                                {vehicle.capacity_kg.toLocaleString()} kg
-                                            </td>
-
-                                            <td className="py-3 px-3.5">
-                                                <div className="flex items-center gap-1.5">
-                                                    <User className="w-3.5 h-3.5 text-slate-400" />
-                                                    <span className="font-medium text-slate-800">{vehicle.driver_name}</span>
-                                                </div>
-                                                {vehicle.driver_phone !== 'N/A' && (
-                                                    <span className="text-[10px] text-slate-400 font-sans block mt-0.5">
-                                                        {vehicle.driver_phone}
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            <td className="py-3 px-3.5">
-                                                <span className="font-sans font-bold text-[#E00D42] block text-xs">
-                                                    {vehicle.hub_code}
-                                                </span>
-                                                <span className="text-[11px] text-slate-500">
-                                                    {vehicle.hub_name}
-                                                </span>
-                                            </td>
-
-                                            <td className="py-3 px-3.5 text-right">
-                                                <span className={`inline-block px-1.5 py-0.5 text-[10px] font-bold rounded-lg uppercase font-sans ${
-                                                    vehicle.status === 'active'
-                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-                                                        : vehicle.status === 'maintenance'
-                                                        ? 'bg-rose-50 text-rose-700 border border-rose-300'
-                                                        : 'bg-slate-100 text-slate-600 border border-slate-300'
-                                                }`}>
-                                                    {vehicle.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div>
-        </DashboardLayout>
-    );
+                <p className="text-xs leading-5 text-slate-500">{shown.length} matching vehicles. Active status alone does not reserve a vehicle or confirm driver availability. The transfer form checks the actual route and driver.</p>
+                {!shown.length ? <div className="rounded-xl border border-slate-200 bg-white"><HubEmpty icon={Truck} title="No vehicles in this view" description="Try another type or activity filter, or clear the search. Vehicle placement is managed in Hub network." /></div> : <div className="grid gap-4 lg:grid-cols-2">{shown.map(vehicle => { const Icon = ['motorcycle', 'tricycle'].includes(vehicle.vehicle_type) ? Bike : Truck;return <article key={vehicle.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5"><div className="flex items-center gap-3"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600"><Icon className="h-6 w-6" /></span><div><h2 className="text-base font-bold text-slate-900">{vehicle.plate_number}</h2><p className="mt-1 text-xs text-slate-500">{vehicleNames[vehicle.vehicle_type] ?? vehicle.vehicle_type.replaceAll('_', ' ')}{vehicle.model ? ` · ${vehicle.model}` : ''}</p></div></div><HubBadge tone={vehicle.status === 'maintenance' ? 'warning' : 'neutral'}>{vehicle.status}</HubBadge></div>
+                    <div className="space-y-4 p-5"><div className="flex flex-wrap justify-between gap-2 text-sm"><p className="font-medium text-slate-700">{vehicleWork[vehicle.vehicle_type] ?? 'Assigned hub work'}</p><p className="text-slate-500">{vehicle.capacity_kg.toLocaleString()} kg capacity</p></div><div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3.5"><UserRound className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" /><div className="min-w-0"><p className="text-xs text-slate-500">Assigned driver</p><p className="mt-1 text-sm font-semibold text-slate-800">{vehicle.driver_name}</p>{vehicle.driver_phone !== 'N/A' && <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500"><Phone className="h-3 w-3" />{vehicle.driver_phone}</p>}</div></div><p className="flex items-center gap-2 text-xs text-slate-500"><Building2 className="h-3.5 w-3.5" />{vehicle.hub_name} · {vehicle.hub_code}</p></div>
+                </article>; })}</div>}
+            </section>
+        </div>
+    </DashboardLayout>;
 }

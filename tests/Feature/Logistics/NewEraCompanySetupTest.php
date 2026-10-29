@@ -35,6 +35,27 @@ class NewEraCompanySetupTest extends TestCase
             'email' => 'CREW-QA@BAGOO.TEST', 'phone' => '09175551831', 'password' => 'Temporary-QA!4825'];
     }
 
+    public function test_company_map_payload_keeps_saved_coordinates_and_excludes_another_company(): void
+    {
+        $company = $this->company();
+        $hub = $company->hubs()->where('tier', 'local_bayan_hub')->firstOrFail();
+        $hub->update(['latitude' => 14.16, 'longitude' => 121.24]);
+        $foreignOwner = User::factory()->create(['role' => 'logistics', 'status' => 'active']);
+        $foreignCompany = LogisticsCompany::create(['user_id' => $foreignOwner->id, 'name' => 'Separate Map Company',
+            'slug' => 'separate-map-company', 'code' => 'MAP-OTHER', 'status' => 'active', 'is_active' => true]);
+        $foreign = LogisticsHub::create(['logistics_company_id' => $foreignCompany->id, 'name' => 'Separate Map Hub',
+            'code' => 'MAP-OTHER-HUB', 'tier' => 'regional_mother_hub', 'province' => 'Laguna',
+            'city_municipality' => 'Calamba', 'address' => 'Test address', 'latitude' => 14.2, 'longitude' => 121.1, 'is_active' => true]);
+        $this->actingAs($company->user)->get('/hub/company-setup')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Hub/CompanySetup')->where('hubs', function ($hubs) use ($hub, $foreign) {
+                $saved = collect($hubs)->firstWhere('id', $hub->id);
+
+                return $saved && (float) $saved['latitude'] === 14.16 && (float) $saved['longitude'] === 121.24
+                    && $saved['parent_hub_id'] === $hub->parent_hub_id && $saved['address'] === $hub->address
+                    && ! collect($hubs)->contains('id', $foreign->id);
+            }));
+    }
+
     public function test_owner_creates_a_scoped_operator_and_initial_password_and_email_checks_gate_work(): void
     {
         $company = $this->company();

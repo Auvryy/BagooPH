@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import WaybillCamera from '@/Components/WaybillCamera';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import { HubNextStep, HubPageHeader, HubStepRail, hubInput } from '@/Components/Logistics/Workspace';
 import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import { 
     Store, 
@@ -50,6 +51,7 @@ interface Props {
         tier: string;
         city_municipality: string;
         operating_hours: string | null;
+        allows_self_pickup?: boolean;
     } | null;
     counterParcels: {
         data: CounterParcel[];
@@ -78,6 +80,7 @@ interface Props {
 
 export default function HubCounterPickup({ activeHub, counterParcels, recentlyCollected, search, requestToken, canConfigureHours, basePath, canScan, counterCounts }: Props) {
     const pageParcels = counterParcels.data;
+    const isCounterHub = activeHub?.tier === 'local_bayan_hub' && activeHub.allows_self_pickup !== false;
     const [searchTerm, setSearchTerm] = useState(search || '');
     const [selectedParcel, setSelectedParcel] = useState<CounterParcel | null>(null);
     const [recipientName, setRecipientName] = useState('');
@@ -158,24 +161,27 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
     return (
         <DashboardLayout
-            title="Counter Self-Pickup"
+            title="Counter pickup"
             subtitle="Customer handover verification & zero-fee claim desk"
             actions={canScan &&
                 <Link
                     href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-lg shadow-sm transition uppercase tracking-wider"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white text-xs font-bold font-sans rounded-lg shadow-sm transition"
                 >
                     <ScanLine className="w-3.5 h-3.5" />
-                    <span>Station Scanner</span>
+                    <span>Scan station</span>
                 </Link>
             }
         >
             <Head title="Counter Self-Pickup — BagooPH" />
 
             <div className="space-y-5 font-sans">
+                <HubPageHeader title="Counter pickup" icon={Store} description="Stage the parcel, then verify the buyer and their private claim code before handing it over." />
+                {isCounterHub && <HubStepRail label="Counter release checks" steps={[{ title: 'Stage parcel', detail: 'Recorded hub arrival', state: 'waiting' }, { title: 'Verify buyer', detail: 'Photo ID and claim code', state: 'waiting' }, { title: 'Check payment', detail: 'Collect cash only for COD', state: 'waiting' }, { title: 'Record handover', detail: 'Release the actual parcel', state: 'waiting' }]} />}
+                {!isCounterHub && <HubNextStep title={activeHub?.tier === 'local_bayan_hub' ? 'Counter pickup is disabled at this hub' : 'Counter pickup is handled by child hubs'} icon={Store}><p>{canConfigureHours ? 'Choose an eligible child hub in the facility switcher to manage its pickup counter. Changing the view does not grant physical handler access.' : 'Use your assigned facility for its recorded parcel work. The company manager and assigned child-hub handler manage counter pickup.'}</p></HubNextStep>}
                 <p className="text-sm text-slate-600">Readiness and attention counts apply to this page. The queue total includes all matching parcels. Check the buyer's photo ID, private claim code and original payment before release.</p>
-                {canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-lg border border-slate-300 bg-white p-4"><label className="text-sm font-semibold">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-sm text-red-700">{errors.operating_hours}</p>}</form>}
-                {!activeHub?.operating_hours && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
+                {isCounterHub && canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-lg border border-slate-300 bg-white p-4"><label className="text-sm font-semibold">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-sm text-red-700">{errors.operating_hours}</p>}</form>}
+                {isCounterHub && !activeHub?.operating_hours && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
 
                 {/* 1. TOP STATS TILES */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -255,7 +261,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                         </div>
                         <div className="mt-3 pt-2.5 border-t border-slate-300 flex items-center justify-between text-[11px] font-sans">
                             <span className="text-slate-500">Self-Pickup Desk:</span>
-                            <span className="font-bold text-emerald-700">{activeHub?.operating_hours ? 'Hours recorded' : 'Setup required'}</span>
+                            <span className={`font-bold ${!isCounterHub ? 'text-slate-500' : activeHub?.operating_hours ? 'text-emerald-700' : 'text-amber-700'}`}>{!isCounterHub ? 'Not a pickup counter' : activeHub?.operating_hours ? 'Hours recorded' : 'Setup required'}</span>
                         </div>
                     </div>
                 </div>
@@ -451,7 +457,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-300 px-5 py-4">
                             <div>
                                 <DialogTitle className="text-sm font-bold text-slate-900">
-                                    Handover Verification
+                                    Verify counter handover
                                 </DialogTitle>
                                 <p className="text-xs text-[#E00D42] font-bold mt-0.5">
                                     {selectedParcel.tracking_number}
@@ -463,61 +469,72 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 aria-label="Close handover verification"
                                 disabled={submitting}
                                 onClick={() => setSelectedParcel(null)}
-                                className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer rounded-lg"
+                                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700"
                             >
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleReleaseSubmit} className="flex min-h-0 flex-1 flex-col">
+                        <form onSubmit={handleReleaseSubmit} aria-busy={submitting || undefined} className="flex min-h-0 flex-1 flex-col">
                             <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto overscroll-contain px-5 py-4">
-                            <label className="block text-sm font-semibold">Actual parcel waybill<input required value={barcode} onChange={event => setBarcode(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>
-                            <WaybillCamera onScan={setBarcode} disabled={submitting || !currentSelectedParcel || !canRelease(currentSelectedParcel)} />
-                            <label className="flex items-start gap-2 text-sm"><input type="checkbox" required checked={identityConfirmed} onChange={event => setIdentityConfirmed(event.target.checked)} className="mt-1 border-slate-300" />I checked a valid photo ID matching buyer account #{selectedParcel.buyer_id} and the name below.</label>
+                            <label className="block text-sm font-semibold">Actual parcel waybill<input required disabled={submitting} value={barcode} onChange={event => setBarcode(event.target.value)} className={`${hubInput} mt-1 min-h-11`} /></label>
+                            <WaybillCamera onScan={setBarcode} disabled={submitting || !currentSelectedParcel || !canRelease(currentSelectedParcel)} instruction="Scan the parcel waybill, then check the buyer’s ID, private claim code and payment before confirming handover." />
+                            <label className="flex items-start gap-2 text-sm"><input type="checkbox" required disabled={submitting} checked={identityConfirmed} onChange={event => setIdentityConfirmed(event.target.checked)} className="mt-1 border-slate-300" />I checked a valid photo ID matching buyer account #{selectedParcel.buyer_id} and the name below.</label>
                             <div>
-                                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">
-                                    Recipient Name (ID Verified)
+                                <label htmlFor="counter-recipient-name" className="mb-1 block text-sm font-semibold text-slate-700">
+                                    Recipient name on the ID
                                 </label>
                                 <input
+                                    id="counter-recipient-name"
+                                    name="recipient_name"
                                     type="text"
+                                    autoComplete="off"
+                                    disabled={submitting}
                                     required
                                     value={recipientName}
                                     onChange={(e) => setRecipientName(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                                    className={`${hubInput} min-h-11`}
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">
-                                    One-time Claim Code
+                                <label htmlFor="counter-claim-code" className="mb-1 block text-sm font-semibold text-slate-700">
+                                    One-time claim code
                                 </label>
                                 <input
+                                    id="counter-claim-code"
+                                    name="claim_code"
                                     type="text"
+                                    spellCheck={false}
+                                    disabled={submitting}
                                     value={claimCode}
                                     onChange={(e) => setClaimCode(e.target.value)}
                                     required autoComplete="off" placeholder="Enter the buyer’s private claim code"
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                                    className={`${hubInput} min-h-11`}
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">
-                                    Staff Handover Note
+                                <label htmlFor="counter-handover-note" className="mb-1 block text-sm font-semibold text-slate-700">
+                                    Handover note
                                 </label>
                                 <input
+                                    id="counter-handover-note"
+                                    name="notes"
                                     type="text"
+                                    disabled={submitting}
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     placeholder="e.g. Valid Driver's License inspected"
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                                    className={`${hubInput} min-h-11`}
                                 />
                             </div>
 
                             {selectedParcel.payment_method === 'cod' && (
                                 <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs">
                                     <p className="font-bold text-[10px] uppercase">Collect Cash on Delivery</p>
-                                    <label className="mt-2 block">Actual cash tender<input required inputMode="decimal" value={cashReceived} onChange={event => setCashReceived(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900" /></label>
-                                    <label className="mt-2 block">Change returned<input required inputMode="decimal" value={changeGiven} onChange={event => setChangeGiven(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900" /></label>
+                                    <label className="mt-2 block">Actual cash tender<input required disabled={submitting} inputMode="decimal" value={cashReceived} onChange={event => setCashReceived(event.target.value)} className={`${hubInput} mt-1 min-h-11`} /></label>
+                                    <label className="mt-2 block">Change returned<input required disabled={submitting} inputMode="decimal" value={changeGiven} onChange={event => setChangeGiven(event.target.value)} className={`${hubInput} mt-1 min-h-11`} /></label>
                                     <label className="mt-3 flex items-start gap-2"><input required type="checkbox" checked={cashConfirmed} onChange={event => setCashConfirmed(event.target.checked)} />I received the cash and returned any correct change.</label>
                                     <p className="text-sm font-black mt-0.5">
                                         ₱{selectedParcel.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -533,14 +550,14 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     type="button"
                                     disabled={submitting}
                                     onClick={() => setSelectedParcel(null)}
-                                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-300 cursor-pointer"
+                                    className="min-h-11 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={submitting || !currentSelectedParcel || !canRelease(currentSelectedParcel)}
-                                    className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold shadow-sm transition cursor-pointer disabled:opacity-50"
+                                    className="min-h-11 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50"
                                 >
                                     {submitting ? 'Releasing...' : 'Confirm Handover'}
                                 </button>

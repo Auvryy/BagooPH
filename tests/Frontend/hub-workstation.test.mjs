@@ -11,12 +11,12 @@ import { createInertiaApp } from '@inertiajs/react';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-workstation-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = buildSync({
-    stdin: { contents: `export { default as Registry } from '@/Pages/Hub/Deliveries'; export { default as Counter } from '@/Pages/Hub/CounterPickup'; export { default as Preview } from '@/Components/HubCounterPreview';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: `export { default as Registry } from '@/Pages/Hub/Deliveries'; export { default as Counter } from '@/Pages/Hub/CounterPickup'; export { default as Preview } from '@/Components/HubCounterPreview'; export { default as Profile } from '@/Pages/Profile/Edit'; export { default as Guide } from '@/Pages/Hub/Roadmap';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', loader: { '.css': 'empty' }, write: false,
 });
 const path = join(temporary, 'workstation.mjs');
 writeFileSync(path, bundle.outputFiles[0].text);
-const { Registry, Counter, Preview } = await import(pathToFileURL(path).href);
+const { Registry, Counter, Preview, Profile, Guide } = await import(pathToFileURL(path).href);
 globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: () => false, has: () => true };
 after(() => delete globalThis.route);
 
@@ -58,10 +58,10 @@ test('registry separates parcel stage, order state and actual custodian while sh
     const html = await render(Registry, 'Hub/Deliveries', registry());
     assert.match(html, /Received at destination Bayan Hub/);
     assert.match(html, /Order:<\/span> At Sorting Center/);
-    assert.match(html, /Recorded custodian:<\/span> Destination Bayan Hub/);
-    assert.match(html, /Recorded Handovers Today/);
-    assert.match(html, /Today, Asia\/Manila/);
-    assert.match(html, /Sort to Bin/);
+    assert.match(html, /With:<\/span> Destination Bayan Hub/);
+    assert.match(html, /Handed over today/);
+    assert.match(html, /Philippine dates/);
+    assert.match(html, /Sort to bin/);
     assert.doesNotMatch(html, /100% Fulfilled|No action|STAGE: UNASSIGNED/);
 });
 test('missing evidence has a visible blocker and no sorting or assignment control', async () => {
@@ -69,22 +69,23 @@ test('missing evidence has a visible blocker and no sorting or assignment contro
         next_step: 'Review missing custody evidence', blocker: 'No retained custody checkpoint establishes the parcel holder.' } }]));
     assert.match(html, /Review missing custody evidence/);
     assert.match(html, /No retained custody checkpoint/);
-    assert.doesNotMatch(html, /Sort to Bin|Select area rider/);
+    assert.doesNotMatch(html, /Sort to bin|Choose delivery rider/);
 });
-test('assignment offers only the server-authorized riders and does not label them as current custodians', async () => {
+test('assignment opens a deliberate rider choice while preserving the actual current custodian', async () => {
     const html = await render(Registry, 'Hub/Deliveries', registry([{ ...parcel, status: 'sorted_to_barangay_bin', guidance: { ...guidance,
         action: 'assign', eligible_rider_ids: [11], next_step: 'Assign an eligible final-mile rider' } }], { eligibleRiders: [
         { id: 11, name: 'Eligible area rider', assigned_barangay: 'Poblacion III', vehicle_type: 'motorcycle' },
         { id: 12, name: 'Unavailable area rider', assigned_barangay: 'Poblacion III', vehicle_type: 'motorcycle' },
     ], canScan: false }));
-    assert.match(html, /<option value="11">Eligible area rider/);
-    assert.doesNotMatch(html, /Unavailable area rider|Floor Scanner/);
-    assert.match(html, /Recorded custodian:<\/span> Destination Bayan Hub/);
+    assert.match(html, /Choose delivery rider/);
+    assert.doesNotMatch(html, /name="delivery-rider"/);
+    assert.doesNotMatch(html, /Unavailable area rider|Open scanner/);
+    assert.match(html, /With:<\/span> Destination Bayan Hub/);
 });
 test('an empty queue remains truthful and zero counts do not become a success percentage', async () => {
     const html = await render(Registry, 'Hub/Deliveries', registry([], { counts: { all: 0, in_hub: 0, out_for_delivery: 0, ready_pickup: 0, handovers_today: 0 }, canScan: false }));
-    assert.match(html, /No waybills found/);
-    assert.doesNotMatch(html, /100%|Station Active|Floor Scanner/);
+    assert.match(html, /No parcels in this view/);
+    assert.doesNotMatch(html, /100%|Station Active|Open scanner/);
 });
 test('arrived counter parcels show staging guidance and a disabled release control', async () => {
     const html = await render(Counter, 'Hub/CounterPickup', counter([{ ...parcel, delivery_type: 'hub_self_pickup', guidance: { ...guidance,
@@ -168,7 +169,7 @@ test('scanner counter preview shows actual guidance and uses the full secure cou
         assert.match(html, /Showing the latest 2 of 25 counter parcels/);
         assert.match(html, /Shelf not recorded/);
         assert.match(html, /COUNTER-B2/);
-        assert.match(html, /Recorded custodian:<\/span> Destination Bayan Hub/);
+        assert.match(html, /With:<\/span> Destination Bayan Hub/);
         assert.match(html, /This pickup claim is expired or already used/);
         assert.ok(html.includes(`href="${basePath}/counter?hub_id=2&amp;search=BGO-WORKSTATION"`));
         assert.match(html, /Open full counter queue/);
@@ -183,3 +184,30 @@ test('empty scanner previews distinguish an empty facility queue from a bounded 
     assert.match(noMatch, /Search the full counter queue/);
     assert.doesNotMatch(noMatch, /No parcels waiting at this counter/);
 });
+
+test('Mother Hub view explains the child counter without prompting unsupported counter setup', async () => {
+    const html = await render(Counter, 'Hub/CounterPickup', counter([], { activeHub: { ...hub, tier: 'regional_mother_hub', allows_self_pickup: false, operating_hours: null }, canConfigureHours: true }));
+    assert.match(html, /Counter pickup is handled by child hubs/);
+    assert.doesNotMatch(html, /Actual pickup operating hours|Save pickup hours|Setup required/);
+    assert.match(html, /Changing the view does not grant physical handler access/);
+});
+
+test('logistics settings show the fixed logistics role rather than a buyer label', async () => {
+    const html = await render(Profile, 'Profile/Edit', { mustVerifyEmail: false, closure: { id: 1, name: 'Ana Santos', role: 'logistics', source_token: null, outcome: 'retained', allowed: false, blockers: [], work: [], references: [], closure: null, retention_note: 'Retain original work evidence.' } });
+    assert.match(html, /Logistics hub account/);assert.doesNotMatch(html, /Registered Buyer/);
+    assert.match(html, /Account &amp; security/);
+});
+
+for (const canScan of [false, true]) {
+    test(`workspace guide ${canScan ? 'offers floor scanning to an assigned handler' : 'explains the handler step without sending a company viewer to a forbidden scanner'}`, async () => {
+        const html = await render(Guide, 'Hub/Roadmap', { auth: { user: { id: 1, name: 'Ana Santos', role: 'logistics', canScanParcels: canScan } } });
+        const intake = [...html.matchAll(/<article\b[^>]*>[\s\S]*?<\/article>/g)].map(match => match[0]).find(article => article.includes('Receive the pickup'));
+        assert.ok(intake);
+        if (canScan) {
+            assert.match(intake, /href="\/hub\/scan\/station"/);
+        } else {
+            assert.match(intake, /An assigned floor handler opens Scan Station/);
+            assert.doesNotMatch(intake, /href="\/hub\/scan\/station"/);
+        }
+    });
+}

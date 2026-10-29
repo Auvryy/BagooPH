@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithOrderActions;
@@ -75,6 +76,26 @@ class BuyerReturnCustodyTest extends TestCase
         $this->assertSame($before, [$parcel->fresh()->getAttributes(), $case->events()->count(), $case->order->delivery->fresh()->getAttributes()]);
         $this->get('/buyer-returns/'.$case->id)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('returnCase.custody.barcode', $parcel->barcode)->where('returnCase.custody.actions.0.action', 'intake'));
+    }
+
+    public static function manifestPortals(): array
+    {
+        return ['root' => ['http://localhost', '/hub/manifests/'], 'hub subdomain' => ['http://hub.localhost', '/manifests/']];
+    }
+
+    #[DataProvider('manifestPortals')]
+    public function test_the_return_manifest_link_opens_its_readable_manifest_on_each_portal(string $origin, string $manifestPath): void
+    {
+        $case = $this->approvedReturn();
+        $this->intake($case);
+        $manifest = $this->prepareLeg($case);
+        $handler = $this->flowHandler($manifest->sourceHub);
+        $this->actingAs($handler)->get($origin.'/buyer-returns/'.$case->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('returnCase.custody.manifest_url', $manifestPath.$manifest->id)->where('returnCase.custody.manifest_pending', true));
+        $this->get($origin.$manifestPath.$manifest->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Hub/Manifests')->where('selectedManifest.id', $manifest->id));
+        $this->actingAs($case->order->buyer)->get($origin.'/buyer-returns/'.$case->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('returnCase.custody.manifest_url', null)->where('returnCase.custody.manifest_pending', false));
     }
 
     public function test_floor_authority_expected_hub_original_waybill_and_late_dropoff_are_rechecked(): void

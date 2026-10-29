@@ -1,5 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { PackageCheck, ChevronRight } from 'lucide-react';
+import { HubPageHeader } from '@/Components/Logistics/Workspace';
 import ReturnLayout from '@/Components/Returns/ReturnLayout';
 import ReturnStatus, { returnDate } from '@/Components/Returns/ReturnStatus';
 import { PageProps, PaginatedData } from '@/types';
@@ -10,10 +11,10 @@ export default function ReturnsIndex({ cases }: { cases: PaginatedData<Summary> 
     const { auth } = usePage<PageProps>().props;
     const buyer = auth.user?.role === 'buyer';
     return <ReturnLayout>
-        <Head title="Returns and refunds — BagooPH" />
-        <div className="mx-auto max-w-5xl space-y-6 py-4">
+        <Head title={auth.user?.role === 'logistics' ? 'Buyer returns — BagooPH' : 'Returns and refunds — BagooPH'} />
+        <div className={`${auth.user?.role === 'logistics' ? 'max-w-5xl' : 'mx-auto max-w-5xl py-4'} space-y-6`}>
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-300 pb-5">
-                <div><h1 className="text-2xl font-bold text-slate-900">Returns and refunds</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{buyer
+                <div>{auth.user?.role === 'logistics' ? <HubPageHeader title="Buyer returns" icon={PackageCheck} description="Follow accepted returns through their actual hub handovers. Decisions, physical receipt and repayment keep separate evidence." /> : <h1 className="text-2xl font-bold text-slate-900">Returns and refunds</h1>}<p className={`mt-2 max-w-2xl text-sm leading-6 text-slate-600 ${auth.user?.role === 'logistics' ? 'hidden' : ''}`}>{buyer
                     ? 'Request a return from your purchase within seven days of delivery, including after confirming receipt. Follow each decision, parcel handover and repayment here.'
                     : 'Check the buyer’s original items and evidence. A return decision, physical receipt and repayment are separate steps.'}</p></div>
                 {buyer && <Link href={route('buyer.orders.index')} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">My purchases</Link>}

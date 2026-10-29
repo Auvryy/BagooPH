@@ -1,0 +1,44 @@
+.logistics-workspace {
+    height: 100dvh;
+    background: #f7f8fa;
+    --hub-outline: #e2e8f0;
+}
+.logistics-workspace > aside { box-shadow: 1px 0 0 rgba(15, 23, 42, .025); }
+.logistics-workspace > div > header { height: 72px; box-shadow: 0 1px 2px rgba(15, 23, 42, .025); }
+.logistics-workspace main { background: #f7f8fa; padding: 24px; }
+.logistics-workspace main > div { max-width: 1440px; }
+.logistics-workspace main :where(h1, h2, h3) { letter-spacing: -.025em; }
+.logistics-workspace main :where(.font-black, .font-extrabold) { font-weight: 700; }
+.logistics-workspace main :where(.uppercase) { text-transform: none; letter-spacing: 0; }
+.logistics-workspace main :where(.tracking-widest, .tracking-wider) { letter-spacing: 0; }
+.logistics-workspace main :where(.rounded-2xl, .rounded-3xl) { border-radius: 12px; }
+.logistics-workspace main :where(.border-slate-300):not(input):not(select):not(textarea):not(button):not(a) { border-color: #e2e8f0; }
+.logistics-workspace main :where(section.bg-white, article.bg-white, .shadow-sm.bg-white) { box-shadow: 0 1px 3px rgba(15, 23, 42, .035), 0 4px 16px rgba(15, 23, 42, .025); }
+.logistics-workspace main :where(input, select, textarea) { border-radius: 8px; }
+.logistics-workspace main :where(input, select, textarea):focus-visible { outline-offset: 2px; }
+.logistics-workspace main :where(th) { background: #f8fafc; font-size: 11px; font-weight: 600; color: #64748b; }
+.logistics-workspace main :where(tbody tr):hover { background-color: #fbfcfe; }
+.logistics-workspace main :where(td, th) { border-color: #e2e8f0; }
+.logistics-workspace main :where(button, a, input, select, textarea):focus-visible { outline: 2px solid #e00d42; outline-offset: 3px; }
+.logistics-navigation-drawer :where(button, a, input, select, textarea):focus-visible { outline: 2px solid #e00d42; outline-offset: 3px; }
+.logistics-workspace .hub-step-rail { scrollbar-width: thin; }
+.hub-network-map .leaflet-container { z-index: 0; background: #e9eff0; font-family: inherit; }
+.hub-network-map .leaflet-control-zoom { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(15, 23, 42, .08); }
+.hub-network-map .leaflet-control-zoom a { color: #334155; font-family: inherit; }
+.hub-network-map .leaflet-control-attribution { font-family: inherit; font-size: 9px; }
+.hub-network-map .leaflet-tooltip { padding: 7px 10px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155; font-family: inherit; font-size: 11px; box-shadow: 0 2px 6px rgba(15, 23, 42, .08); }
+.hub-map-pin { background: none; border: 0; }
+.hub-map-pin-dot { display: block; width: 28px; height: 28px; border: 5px solid white; border-radius: 50%; background: #e00d42; box-shadow: 0 2px 8px rgba(15, 23, 42, .25); }
+.hub-map-mother { border-radius: 8px; background: #0f172a; }
+.hub-map-selected .hub-map-pin-dot { outline: 4px solid rgba(224, 13, 66, .25); }
+.hub-network-map .leaflet-marker-icon:focus-visible { outline: 3px solid #e00d42; outline-offset: 4px; border-radius: 50%; }
+@media (max-width: 639px) {
+    .logistics-workspace main { padding: 16px; }
+    .logistics-workspace > div > header { padding-inline: 12px; height: 64px; }
+    .logistics-workspace .hub-page-heading { gap: 16px; }
+    .logistics-workspace .hub-page-heading > div:last-child:has(a) { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .logistics-workspace *, .logistics-workspace *::before, .logistics-workspace *::after,
+    .logistics-navigation-drawer *, .logistics-navigation-drawer *::before, .logistics-navigation-drawer *::after { scroll-behavior: auto !important; transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}

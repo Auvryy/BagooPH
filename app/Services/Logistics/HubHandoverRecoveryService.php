@@ -43,7 +43,7 @@ class HubHandoverRecoveryService
         abort_unless($items->isNotEmpty() && $items->pluck('shop_id')->filter()->unique()->count() === 1
             && ! $items->contains(fn ($item) => $item->shop_id === null), 409, 'Recovery requires the original purchased items and one known owning shop.');
 
-        return $this->canonical([
+        $core = [
             'parcel' => $parcel->only(['id', 'order_id', 'logistics_company_id', 'tracking_number', 'delivery_type',
                 'origin_bayan_hub_id', 'origin_mother_hub_id', 'destination_mother_hub_id', 'destination_bayan_hub_id',
                 'pickup_address', 'delivery_address', 'delivery_recipient_name', 'delivery_phone']),
@@ -53,7 +53,14 @@ class HubHandoverRecoveryService
             'items' => $items->map(fn ($item) => $item->only(['id', 'product_id', 'shop_id', 'quantity', 'unit_price', 'subtotal', 'sku_snapshot', 'color', 'size']))->all(),
             'shops' => Shop::whereIn('id', $items->pluck('shop_id'))->orderBy('id')->get()
                 ->map(fn ($shop) => $shop->only(['id', 'user_id', 'root_category_id', 'status', 'review_status', 'review_version', 'review_decision_id']))->all(),
-        ]);
+        ];
+        if ($parcel->order->logistics_flow_version >= 2 && $parcel->same_hub_bypass) {
+            $core['local_route'] = ['version' => $parcel->order->logistics_flow_version,
+                'hubs' => $parcel->route_hub_ids, 'same_hub_bypass' => $parcel->same_hub_bypass,
+                'quote' => $parcel->order->shipping_quote];
+        }
+
+        return $this->canonical($core);
     }
 
     private function canonical(array $value): array
@@ -72,12 +79,25 @@ class HubHandoverRecoveryService
 
     private function route(Delivery $parcel): void
     {
-        $ids = array_filter([$parcel->origin_bayan_hub_id, $parcel->origin_mother_hub_id, $parcel->destination_mother_hub_id, $parcel->destination_bayan_hub_id]);
-        abort_unless(count($ids) === 4
+        if ($parcel->order->logistics_flow_version >= 2 && $parcel->same_hub_bypass) {
+            $hubId = $parcel->origin_bayan_hub_id;
+            $quote = $parcel->order->shipping_quote ?? [];
+            abort_unless($hubId && $hubId === $parcel->destination_bayan_hub_id
+                && $parcel->origin_mother_hub_id === null && $parcel->destination_mother_hub_id === null
+                && $parcel->route_hub_ids === [$hubId]
+                && ($quote['version'] ?? null) === 2 && ($quote['company_id'] ?? null) === $parcel->logistics_company_id
+                && ($quote['same_hub_bypass'] ?? null) === true && is_array($quote['route'] ?? null)
+                && array_column($quote['route'], 'id') === [$hubId]
+                && LogisticsHub::eligible()->whereKey($hubId)->where('logistics_company_id', $parcel->logistics_company_id)
+                    ->where('tier', 'local_bayan_hub')->exists(), 409, 'Recovery needs the original eligible local hub and its saved checkout route.');
+        } else {
+            $ids = array_filter([$parcel->origin_bayan_hub_id, $parcel->origin_mother_hub_id, $parcel->destination_mother_hub_id, $parcel->destination_bayan_hub_id]);
+            abort_unless(count($ids) === 4
             && LogisticsHub::eligible()->where('logistics_company_id', $parcel->logistics_company_id)->whereIn('id', $ids)->count() === count(array_unique($ids))
             && LogisticsHub::whereIn('id', [$ids[0], $ids[3]])->where('tier', 'local_bayan_hub')->count() === count(array_unique([$ids[0], $ids[3]]))
             && LogisticsHub::whereIn('id', [$ids[1], $ids[2]])->where('tier', 'regional_mother_hub')->count() === count(array_unique([$ids[1], $ids[2]])), 409,
-            'Recovery needs the retained eligible Bayan and Mother Hub network.');
+                'Recovery needs the retained eligible Bayan and Mother Hub network.');
+        }
         abort_if($parcel->delivered_at || in_array($parcel->order->status, ['cancelled', 'delivered', 'completed', 'returned'], true), 409,
             'Recovery cannot replace a terminal commercial outcome.');
     }
@@ -101,7 +121,9 @@ class HubHandoverRecoveryService
             $context += ['hub_id' => $origin ? $parcel->origin_bayan_hub_id : $parcel->current_hub_id,
                 'holder_hub_id' => $origin ? $parcel->origin_bayan_hub_id : $parcel->current_hub_id,
                 'driver_id' => $origin ? $parcel->courier_id : null, 'source_kind' => $origin ? 'pickup' : 'hub',
-                'target_status' => $origin || $parcel->status === 'arrived_at_origin_hub' ? 'arrived_at_origin_hub' : 'arrived_at_destination_hub'];
+                'target_status' => $parcel->order->logistics_flow_version >= 2 && $parcel->same_hub_bypass
+                    ? 'arrived_at_destination_hub'
+                    : ($origin || $parcel->status === 'arrived_at_origin_hub' ? 'arrived_at_origin_hub' : 'arrived_at_destination_hub')];
         } elseif ($mode === 'hub_failed_return') {
             $attempt = app(DeliveryRecoveryService::class)->latestAttempt($parcel);
             abort_unless($parcel->status === 'delivery_failed' && $parcel->order->status === 'delivery_failed'

@@ -69,7 +69,7 @@ test('actual scanner result separates arrival, commercial state, custody and mis
     const html = await render(result);
     assert.match(html, /Shelf not recorded/);
     assert.match(html, /Order:<\/span> At Sorting Center/);
-    assert.match(html, /Recorded custodian:<\/span> Destination Bayan Hub/);
+    assert.match(html, /With:<\/span> Destination Bayan Hub/);
     assert.match(html, /Scan to stage the parcel for secure pickup/);
     assert.match(html, /Confirm custody action/);
     assert.doesNotMatch(html, /SELF-PICKUP-SHELF|BIN: GENERAL/);

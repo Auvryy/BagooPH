@@ -3,6 +3,8 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { AlertTriangle, ArrowRight, CheckCircle2, PackageSearch, ScanLine } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import WaybillCamera from '@/Components/WaybillCamera';
+import { HubEmpty, HubNextStep, HubPageHeader, HubRoute } from '@/Components/Logistics/Workspace';
+import VehiclePicker from '@/Components/Logistics/VehiclePicker';
 
 interface Observation {
     id: number; reference: string; kind: string; barcode: string; observedHub: string;
@@ -66,12 +68,9 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
 
     return <DashboardLayout title="Parcel recovery">
         <Head title="Parcel recovery" />
-        <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-                <div><h1 className="text-2xl font-bold text-slate-900">Parcel recovery</h1><p className="mt-1 max-w-2xl text-sm text-slate-600">Recover unexpected parcels through actual hub scans and recorded transfers back to their original route.</p></div>
-                <Link href={manifestPath} className={buttonClass}>View manifests</Link>
-            </div>
-            <div className="flex flex-wrap gap-2" aria-label="Recovery worklist filters">
+        <div className="space-y-6">
+            <HubPageHeader title="Parcel recovery" icon={PackageSearch} description="Recover unexpected parcels through actual scans and recorded transfers back to their original route." actions={<Link href={manifestPath} className={buttonClass}>View manifests</Link>} />
+            <div className="flex gap-2 overflow-x-auto pb-1 [&>*]:shrink-0" role="group" aria-label="Recovery worklist filters">
                 {[['open', 'Needs attention'], ['resolved', 'Resolved'], ['all', 'All observations']].map(([value, text]) => <button key={value} type="button" aria-pressed={filters.status === value}
                     onClick={() => router.get(basePath, { status: value }, { preserveScroll: true })}
                     className={`${buttonClass} ${filters.status === value ? 'border-[#E00D42] bg-[#FFFAFB] text-[#E00D42]' : ''}`}>{text}</button>)}
@@ -85,12 +84,13 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                         <p className="break-all text-sm font-semibold text-slate-900">{observation.barcode}</p><p className="mt-1 text-xs text-slate-600">{observation.observedHub}</p>
                         <p className="mt-2 text-xs font-semibold text-slate-800">{label(observation.state)}</p><p className="mt-1 text-xs text-slate-500">{date(observation.reportedAt)}</p>
                     </Link>)}</div>
-                    <nav className="mt-4 flex flex-wrap gap-2" aria-label="Recovery worklist pages">{observations.links.map((page, index) => page.url
+                    {observations.links.filter(page => page.url).length > 1 && <nav className="mt-4 flex flex-wrap gap-2" aria-label="Recovery worklist pages">{observations.links.map((page, index) => page.url
                         ? <Link key={index} href={page.url} aria-current={page.active ? 'page' : undefined} className={buttonClass}>{page.label.replaceAll('&laquo;', '‹').replaceAll('&raquo;', '›')}</Link>
-                        : <span key={index} className="px-3 py-2 text-sm text-slate-400">{page.label.replaceAll('&laquo;', '‹').replaceAll('&raquo;', '›')}</span>)}</nav>
+                        : <span key={index} className="px-3 py-2 text-sm text-slate-400">{page.label.replaceAll('&laquo;', '‹').replaceAll('&raquo;', '›')}</span>)}</nav>}
                 </section>
-                {!selected ? <section className="rounded-lg border border-slate-300 bg-white p-6"><h2 className="font-semibold text-slate-900">Choose a reported parcel</h2><p className="mt-2 text-sm text-slate-600">Review its actual observation, current custodian and supported next step. Unknown waybills remain open until their original parcel can be established.</p></section>
+                {!selected ? <section className="rounded-xl border border-slate-200 bg-white"><HubEmpty icon={PackageSearch} title={observations.data.length ? "Choose a reported parcel" : "No recovery work in this view"} description={observations.data.length ? "See its current holder, authorized route and next action. Unknown waybills remain open until the original parcel is established." : "Parcels reported with an arrival problem appear here for company review. You can check another filter or continue ordinary parcel handling."} /></section>
                     : <div className="space-y-5">
+                        <HubNextStep title={selected.canAuthorize ? 'Company: review this observation' : selected.canIntake ? 'Receiving handler: scan the actual parcel' : selected.case?.canPrepareTransfer ? 'Company: prepare the next recovery transfer' : selected.case?.state === 'in_transit' ? 'Receiving handler: receive the arriving transfer' : selected.case?.state === 'completed' ? 'Physical recovery recorded' : 'Review the recorded evidence'} tone={selected.blocker ? 'warning' : selected.case?.state === 'completed' ? 'success' : 'brand'}><p>{selected.blocker ?? 'Use the supported action below. An approval or transfer plan does not record physical custody.'}</p></HubNextStep>
                         <section className="rounded-lg border border-slate-300 bg-white p-5">
                             <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="break-all text-lg font-semibold text-slate-900">{selected.barcode}</h2><span className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700">{label(selected.state)}</span></div>
                             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -101,7 +101,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                             </dl>
                             <p className="mt-4 whitespace-pre-wrap text-sm text-slate-700">{selected.notes}</p>
                             {selected.manifestUrl && <Link href={selected.manifestUrl} className="mt-4 inline-block text-sm font-semibold text-[#E00D42]">Open the observation manifest</Link>}
-                            {selected.route.length > 0 && <div className="mt-4 rounded-lg border border-slate-300 bg-slate-50 p-3"><h3 className="text-sm font-semibold text-slate-800">Authorized recovery route</h3><ol className="mt-2 flex flex-wrap items-center gap-2">{selected.route.map((hub, index) => <li key={hub.id} className="flex items-center gap-2 text-sm text-slate-700">{index > 0 && <ArrowRight className="h-4 w-4 text-slate-400" />}<span>{hub.name}<span className="ml-1 text-xs text-slate-500">({hub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'})</span></span></li>)}</ol></div>}
+                            {selected.route.length > 0 && <div className="mt-4"><HubRoute stops={selected.route} currentHubId={selected.case?.currentHubId} label="Authorized recovery route" /></div>}
                             {selected.blocker && <div role="alert" className="mt-4 flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"><AlertTriangle className="h-5 w-5 shrink-0" /><p>{selected.blocker}</p></div>}
                             {selected.handoverHold && <div role="status" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950">
                                 <p>This parcel has a reviewed handover hold. Only its specifically authorized original recovery can continue, after the known holder acknowledges possession. The hold ends at the correct receiving hub.</p>
@@ -125,7 +125,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                             {selected.case.state === 'completed' && <div className="mt-4 flex gap-2 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900"><CheckCircle2 className="h-5 w-5 shrink-0" /><p>The original expected hub received the parcel. Its normal journey may continue after manifest closure. The company still reviews the observation and its linked receipt before resolving the discrepancy.</p></div>}
                             {selected.case.canPrepareTransfer && <form onSubmit={createTransfer} className="mt-4">
                                 <p className="text-sm text-slate-600">Prepare the next recorded transfer. The sending handler loads the actual parcel; the company seals the manifest before departure.</p>
-                                <label className="mt-3 block text-sm font-semibold text-slate-800">Source-hub vehicle and driver<select required disabled={busy} value={transfer.data.vehicle_id} onChange={event => transfer.setData('vehicle_id', event.target.value)} className={inputClass}><option value="">Choose an eligible vehicle</option>{vehicles.map(vehicle => <option key={vehicle.id} value={vehicle.id}>{vehicle.plate} · {vehicle.driver}</option>)}</select></label>
+                                <div className="mt-4"><VehiclePicker label="Source-hub vehicle and driver" vehicles={vehicles.map(vehicle => ({ id: vehicle.id, plate_number: vehicle.plate, driver_name: vehicle.driver }))} value={transfer.data.vehicle_id} onChange={value => transfer.setData('vehicle_id', value)} disabled={busy} /></div>
                                 {!vehicles.length && <p className="mt-2 text-sm text-amber-800">This hub needs an eligible vehicle and available driver for the required transfer type.</p>}
                                 {Object.entries(transfer.errors).map(([key, message]) => <p role="alert" key={key} className="mt-2 text-sm text-red-700">{message}</p>)}
                                 <button disabled={busy || !transfer.data.vehicle_id} className="mt-3 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Prepare recovery manifest</button>

@@ -3,6 +3,7 @@ import { Bell, Check } from 'lucide-react';
 import NotificationLayout, { type NotificationPortal } from '@/Layouts/NotificationLayout';
 import { noticeDate, type Notice } from '@/Components/NotificationMenu';
 import useNotificationAction from '@/hooks/useNotificationAction';
+import { HubPageHeader } from '@/Components/Logistics/Workspace';
 import { PageProps } from '@/types';
 
 interface Props extends NotificationPortal {
@@ -13,17 +14,18 @@ interface Props extends NotificationPortal {
 }
 
 export default function Notifications({ available, filter, notices, readSnapshot, ...portal }: Props) {
-    const { notificationSummary } = usePage<PageProps>().props;
+    const { notificationSummary, auth } = usePage<PageProps>().props;
     const buyer = portal.portal === 'buyer';
+    const logistics = auth.user?.role === 'logistics';
     const Heading = portal.portal === 'dashboard' ? 'h2' : 'h1';
     const { reading, error, success, open, markRead, markAll } = useNotificationAction();
     const button = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-[8px] border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]';
     return (
         <NotificationLayout {...portal}><div className="font-sans text-slate-900">
             <Head title="Notifications" />
-            <section aria-label="All notifications" className={`mx-auto w-full max-w-4xl ${buyer ? 'py-6' : ''}`}>
+            <section aria-label="All notifications" className={`w-full ${logistics ? '' : 'mx-auto max-w-4xl'} ${buyer ? 'py-6' : ''}`}>
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                    <div><Heading className="text-2xl font-bold">Notifications</Heading><p className="mt-1 text-sm text-slate-600">{notificationSummary?.available ? `${notificationSummary.unread} unread updates` : 'Updates for your Bagoo account'}</p></div>
+                    {logistics ? <HubPageHeader title="Notifications" icon={Bell} description={notificationSummary?.available ? `${notificationSummary.unread} unread updates for your account and work.` : 'Updates for your account and work.'} /> : <div><Heading className="text-2xl font-bold">Notifications</Heading><p className="mt-1 text-sm text-slate-600">{notificationSummary?.available ? `${notificationSummary.unread} unread updates` : 'Updates for your Bagoo account'}</p></div>}
                     <nav aria-label="Notification filters" className="flex gap-2">
                         {(['all', 'unread'] as const).map(value => <Link key={value} href={`/notifications?filter=${value}`} preserveScroll aria-current={filter === value ? 'page' : undefined} className={`${button} ${filter === value ? 'border-[#E00D42] bg-rose-50 text-[#E00D42]' : 'bg-white'}`}>{value === 'all' ? 'All' : 'Unread'}</Link>)}
                     </nav>

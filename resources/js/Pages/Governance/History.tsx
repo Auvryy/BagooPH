@@ -19,18 +19,24 @@ export default function History({ events, filters, sources, subjectTypes, scope 
     const { errors } = usePage<PageProps>().props;
     const change = (field: keyof Filters, value: string) => setInput((current) => ({ ...current, [field]: value }));
     const control = 'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]';
+    const companyView = scope === 'own_company_resources';
+    const advancedKeys = ['subject_id', 'actor_id', 'from', 'to'] as const;
+    const activeAdvanced = advancedKeys.filter(key => input[key]).length;
+    const advancedFields = <>
+        <label className="text-sm font-semibold text-slate-700">{companyView ? 'Resource record number' : 'Subject ID'}<input type="number" min="1" className={control} value={input.subject_id} onChange={event => change('subject_id', event.target.value)} /></label>
+        <label className="text-sm font-semibold text-slate-700">{companyView ? 'Reviewer account number' : 'Reviewer ID'}<input type="number" min="1" className={control} value={input.actor_id} onChange={event => change('actor_id', event.target.value)} /></label>
+        <label className="text-sm font-semibold text-slate-700">From (Philippine date)<input type="date" className={control} value={input.from} onChange={event => change('from', event.target.value)} /></label>
+        <label className="text-sm font-semibold text-slate-700">Through (Philippine date)<input type="date" className={control} value={input.to} onChange={event => change('to', event.target.value)} /></label>
+    </>;
 
     return <DashboardLayout title="Governance history" subtitle={scope === 'platform' ? 'Recorded application, shop, account and product decisions' : 'Recorded activity decisions for your company’s hubs, handlers and fleet'}>
-        <Head title="Governance history — Bagoo Admin" />
+        <Head title="Governance history — BagooPH" />
         <div className="space-y-6">
             <form onSubmit={(event) => { event.preventDefault(); router.get('/governance-history', input, { preserveState: true }); }} className="rounded-xl border border-slate-300 bg-white p-5">
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className={`grid gap-4 sm:grid-cols-2 ${companyView ? '' : 'xl:grid-cols-3'}`}>
                     <label className="text-sm font-semibold text-slate-700">Decision source<select className={control} value={input.source} onChange={(event) => change('source', event.target.value)}><option value="">All available sources</option>{sources.map((source) => <option key={source.value} value={source.value}>{source.label}</option>)}</select></label>
                     <label className="text-sm font-semibold text-slate-700">Subject type<select className={control} value={input.subject_type} onChange={(event) => change('subject_type', event.target.value)}><option value="">All subjects</option>{subjectTypes.map((type) => <option key={type} value={type}>{recordLabel(type)}</option>)}</select></label>
-                    <label className="text-sm font-semibold text-slate-700">Subject ID<input type="number" min="1" className={control} value={input.subject_id} onChange={(event) => change('subject_id', event.target.value)} /></label>
-                    <label className="text-sm font-semibold text-slate-700">Reviewer ID<input type="number" min="1" className={control} value={input.actor_id} onChange={(event) => change('actor_id', event.target.value)} /></label>
-                    <label className="text-sm font-semibold text-slate-700">From (Philippine date)<input type="date" className={control} value={input.from} onChange={(event) => change('from', event.target.value)} /></label>
-                    <label className="text-sm font-semibold text-slate-700">Through (Philippine date)<input type="date" className={control} value={input.to} onChange={(event) => change('to', event.target.value)} /></label>
+                    {companyView ? <details open={activeAdvanced > 0 || advancedKeys.some(key => Boolean(errors[key]))} className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 sm:col-span-2"><summary className="cursor-pointer text-sm font-semibold text-slate-700">Dates and record filters{activeAdvanced > 0 ? ` (${activeAdvanced} active)` : ''}</summary><div className="mt-4 grid gap-4 sm:grid-cols-2">{advancedFields}</div></details> : advancedFields}
                 </div>
                 {Object.keys(errors).length > 0 && <div role="alert" className="mt-4 space-y-1 text-sm text-rose-700">{Object.entries(errors).map(([field, message]) => <p key={field}>{message}</p>)}</div>}
                 <div className="mt-4 flex gap-3"><button className="rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white">Apply filters</button><button type="button" onClick={() => { setInput(empty); router.get('/governance-history'); }} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Clear</button></div>
@@ -48,7 +54,7 @@ export default function History({ events, filters, sources, subjectTypes, scope 
                     </tr>)}</tbody>
                 </table></div>
                 {events.data.length === 0 && <p className="p-8 text-center text-sm text-slate-500">No recorded decisions match this view.</p>}
-                <div className="flex items-center justify-between gap-4 border-t border-slate-300 p-5 text-sm"><span className="text-slate-600">Page {events.current_page} of {events.last_page}</span><div className="flex gap-3">{events.prev_page_url && <Link href={events.prev_page_url} className="rounded-lg border border-slate-300 px-3 py-2">Previous</Link>}{events.next_page_url && <Link href={events.next_page_url} className="rounded-lg border border-slate-300 px-3 py-2">Next</Link>}</div></div>
+                {(!companyView || events.last_page > 1) && <div className="flex items-center justify-between gap-4 border-t border-slate-300 p-5 text-sm"><span className="text-slate-600">Page {events.current_page} of {events.last_page}</span><div className="flex gap-3">{events.prev_page_url && <Link href={events.prev_page_url} className="rounded-lg border border-slate-300 px-3 py-2">Previous</Link>}{events.next_page_url && <Link href={events.next_page_url} className="rounded-lg border border-slate-300 px-3 py-2">Next</Link>}</div></div>}
             </div>
         </div>
     </DashboardLayout>;

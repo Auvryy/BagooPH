@@ -83,6 +83,58 @@ The same preserved visible browser created another hub and confirmed postal rese
 
 Scoped counter-handover usability: **4/10 → 8/10**. The rating reflects reachable controls and preserved verification, not a new overall system/defense score. No Azure deployment, physical-device proof, PostgreSQL concurrency result or external seller transfer is claimed. Browser, role sessions and the isolated memory server remain running without foreground-focus calls. Task tracking remains unavailable due to expired authentication. Local commits `7e0bb7a` (forms/guidance) and `0e1d4ec` (recorded recovery links) are retained; the remaining readiness/deployment changes and combined [PR draft](audits/LOCAL_LOGISTICS_UI_AUDIT_PR_DRAFT.md) form the final handoff. Only the user publishes.
 
+### Logistics visual workspace: October 28-29, 2026
+
+The local `feat/logistics-visual-workspace` branch starts at merged main `7da3b7e`.
+Scoped implementation and all-page local acceptance are complete. Grouped
+navigation, facility context, actual hub maps, searchable hub/vehicle/rider choices,
+scan-first controls and explicit holder/next-person guidance connect the logistics
+pages. The [review matrix](audits/LOGISTICS_VISUAL_WORKSPACE_REVIEW_2026-10-28.md)
+contains the complete page inventory, evidence, limits and implementation commits.
+
+Actual Puppeteer controls completed four seeded purchases: regional delivery,
+local failed-attempt/supervised handover/timed retry, secure counter and regional
+wrong-hub recovery followed by delivery. Eight manifests closed, four Mother Bags
+were received, four original COD accounts remained, and a separate accepted buyer
+return completed both reverse hub legs, staging and seller receipt without
+rewriting the purchase. Three doorstep collections retained PHP 2,910 each; the
+counter retained PHP 2,850. Named counted receipts released doorstep rider earnings.
+No real bank/seller payout is claimed.
+
+All 22 main/create destinations passed 390px/768px heading and width checks,
+repeated after refinements. Real Tab/Shift+Tab, Escape, opener focus, route and
+breakpoint checks passed. Mouse map pins, searchable placement, owner-created
+staff activation/email verification, contact validation/saving, resource decisions
+and populated history/exception controls passed. The final current audit has 63
+passing browser checkpoints and no captured unexpected JavaScript/server errors.
+The one capped headless browser is parked with zero open tabs and retained sessions.
+
+Browser/automated review fixed phone drawer focus, prepared-return links hidden
+before loading, return next-handler/staging guidance, counter label association
+and 44px controls, and a recovery label using the intended destination in place
+of the actual scan hub. Supervised handover now supports version-two local routes
+only with the original eligible one-hub checkout path/quote and independent actual
+receipt. Terminal, tenant, holder, replay and Mother-route checks remain covered.
+Implementation commits `d66b629` (counter), `29b02ed` (local recovery) and `2a460fa`
+(observed hub) and `f2d3b44` (rider/recipient custody labels) retain these final corrections; earlier commits are in the review.
+
+The affected frontend selection passed **107 cases** and the TypeScript/Vite
+production build passed with typing retained and bounded CPU/memory. Only PHP
+changes followed that asset build. Latest isolated PHP groups passed **69 tests /
+5,982 assertions** and **51 / 6,746**. The final rider/recipient formatter refinement then passed its
+actual recovery-to-delivery case separately (**1 / 244**); the 51-case group was
+not repeated after that narrow copy change. Return custody passed **16 / 1,642**. Earlier
+22/574, 78/10,651 and 5/627 selections overlap; they are not additive full-suite
+totals. PHP formatting and Git whitespace checks passed. A full unrelated suite
+was not rerun, and no development/production PostgreSQL reset was used.
+
+Scoped logistics task clarity: **6/10 → 8/10**; counter controls and return
+next-action clarity: **5/10 → 8/10** each. These reflect tested local usability,
+not a whole-project or defense score. Azure rollout, Flutter, production load/
+PostgreSQL concurrency, physical devices/cash and real external transfers require
+separate evidence. The combined [PR title/body](audits/LOGISTICS_VISUAL_WORKSPACE_PR_DRAFT.md)
+is a local draft, not saved on GitHub. Only the user publishes.
+
 ## Current Implementation Audit
 
 Audit baseline: September 24, 2026. Later scoped reviews below update the relevant areas; they do not certify every role.
@@ -2163,7 +2215,7 @@ production database was migrated, reset or seeded.
 | Initial BS02 workspaces plus account-settings contract retest | 44 tests, 1,125 assertions, passing |
 | Complete regression run | 2,904 tests, 58,588 assertions; one obsolete order-array assertion, zero errors or skips |
 | Final buyer/seller, settings, financial oversight and normal hub-to-completion regression | 521 tests, 9,944 assertions, passing |
-| Frontend checks, including grouped cards, counts, receipts and restricted history | 63 passing |
+| Frontend checks, including grouped cards, counts, receipts and restricted history | 64 passing |
 | Production TypeScript/Vite build | Passing through `docker compose exec -T app npm run build` |
 | Scoped PHP formatting and Git whitespace check | Passing |
 

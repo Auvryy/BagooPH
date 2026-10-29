@@ -39,6 +39,11 @@ class LogisticsManifestEvent extends Model
         return $this->belongsTo(User::class, 'actor_id');
     }
 
+    public function hub(): BelongsTo
+    {
+        return $this->belongsTo(LogisticsHub::class, 'hub_id');
+    }
+
     public function recoveryCase(): HasOne
     {
         return $this->hasOne(ParcelRecoveryCase::class, 'observation_event_id');
