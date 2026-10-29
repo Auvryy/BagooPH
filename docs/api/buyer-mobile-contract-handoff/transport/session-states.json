@@ -1,0 +1,140 @@
+{
+  "evidence": "Synthetic account states asserted against the existing session-recognition endpoint by ContractFixturesTest. Different cases use independent isolated accounts. No role field is added to the endpoint.",
+  "cases": [
+    {
+      "name": "approved",
+      "setup": {
+        "id": 101,
+        "role": "buyer",
+        "status": "active",
+        "kyc_status": "approved"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/auth/session",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store, private"
+        },
+        "body": {
+          "authenticated": true,
+          "code": "ALREADY_AUTHENTICATED",
+          "redirect": "/buyer"
+        }
+      }
+    },
+    {
+      "name": "pending",
+      "setup": {
+        "id": 101,
+        "role": "buyer",
+        "status": "pending_approval",
+        "kyc_status": "pending_approval"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/auth/session",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store, private"
+        },
+        "body": {
+          "authenticated": true,
+          "code": "ALREADY_AUTHENTICATED",
+          "redirect": "/buyer"
+        }
+      }
+    },
+    {
+      "name": "restricted",
+      "setup": {
+        "id": 101,
+        "role": "buyer",
+        "status": "suspended",
+        "kyc_status": "approved"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/auth/session",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store, private"
+        },
+        "body": {
+          "authenticated": true,
+          "code": "ALREADY_AUTHENTICATED",
+          "redirect": "/account/status"
+        }
+      }
+    },
+    {
+      "name": "rejected",
+      "setup": {
+        "id": 101,
+        "role": "buyer",
+        "status": "active",
+        "kyc_status": "rejected"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/auth/session",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store, private"
+        },
+        "body": {
+          "authenticated": true,
+          "code": "ALREADY_AUTHENTICATED",
+          "redirect": "/account/status"
+        }
+      }
+    },
+    {
+      "name": "wrong-role",
+      "setup": {
+        "id": 101,
+        "role": "seller",
+        "status": "active",
+        "kyc_status": "approved"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/auth/session",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Cache-Control": "no-store, private"
+        },
+        "body": {
+          "authenticated": true,
+          "code": "ALREADY_AUTHENTICATED",
+          "redirect": "/seller/dashboard"
+        }
+      }
+    }
+  ]
+}

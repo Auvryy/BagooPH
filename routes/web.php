@@ -17,6 +17,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Buyer\AdvertisementController as BuyerAdvertisementController;
+use App\Http\Controllers\Buyer\AppAssociationController;
 use App\Http\Controllers\Buyer\BuyAgainController;
 use App\Http\Controllers\Buyer\BuyerDisputeController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Buyer\BuyerReviewController;
 use App\Http\Controllers\Buyer\CartController;
 use App\Http\Controllers\Buyer\CheckoutController;
 use App\Http\Controllers\Buyer\CustomerServiceAssistantController;
+use App\Http\Controllers\Buyer\MobileCapabilitiesController;
 use App\Http\Controllers\Buyer\OrderHistoryController;
 use App\Http\Controllers\Buyer\PickupClaimController;
 use App\Http\Controllers\Buyer\SaleReminderController;
@@ -96,6 +98,12 @@ $baseDomains = array_unique(array_filter([
 ]));
 
 Route::get('/address-locations', AddressLocationController::class)->middleware('throttle:120,1')->name('address-locations');
+
+Route::get('/buyer/mobile-capabilities', MobileCapabilitiesController::class)
+    ->middleware('throttle:60,1,buyer-mobile-capabilities')->name('buyer.mobile-capabilities');
+
+Route::get('/.well-known/assetlinks.json', [AppAssociationController::class, 'android'])->withoutMiddleware('web')->name('buyer.mobile-links.android');
+Route::get('/.well-known/apple-app-site-association', [AppAssociationController::class, 'apple'])->withoutMiddleware('web')->name('buyer.mobile-links.apple');
 
 $registerResourceRestrictionRoutes = function () {
     Route::get('/resources', [ResourceRestrictionController::class, 'index'])->name('resources.index');

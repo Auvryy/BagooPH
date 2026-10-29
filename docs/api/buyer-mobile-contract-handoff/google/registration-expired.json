@@ -1,0 +1,25 @@
+{
+  "evidence": "Synthetic response asserted by BuyerMobile contract tests; isolated SQLite and ephemeral RSA keys, never a live provider token.",
+  "request": {
+    "method": "GET",
+    "path": "/auth/google/native/registration",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status": 422,
+    "headers": {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, private"
+    },
+    "body": {
+      "message": "Your Google registration expired. Start Google sign-in again.",
+      "errors": {
+        "email": [
+          "Your Google registration expired. Start Google sign-in again."
+        ]
+      }
+    }
+  }
+}

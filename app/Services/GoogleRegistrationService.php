@@ -13,20 +13,22 @@ use Illuminate\Validation\ValidationException;
 
 class GoogleRegistrationService
 {
-    public function pending(Request $request): array
+    public const NATIVE_PENDING = 'registration.native_google';
+
+    public function pending(Request $request, string $purpose = 'registration.google'): array
     {
-        $pending = $request->session()->get('registration.google');
+        $pending = $request->session()->get($purpose);
         if (! is_array($pending) || ($pending['expires_at'] ?? 0) <= now()->timestamp) {
-            $request->session()->forget('registration.google');
+            $request->session()->forget($purpose);
             throw ValidationException::withMessages(['email' => 'Your Google registration expired. Start Google sign-in again.']);
         }
 
         return $pending;
     }
 
-    public function register(Request $request): User
+    public function register(Request $request, string $purpose = 'registration.google'): User
     {
-        $pending = $this->pending($request);
+        $pending = $this->pending($request, $purpose);
         $policies = app(RegistrationPolicyService::class);
         $data = $request->validate($policies->rules() + ['registration_nonce' => ['required', 'string', 'max:64']], $policies->messages());
         if (! hash_equals($pending['nonce'], $data['registration_nonce'])) {
@@ -65,7 +67,7 @@ class GoogleRegistrationService
             }
             throw ValidationException::withMessages(['email' => 'An account already uses these details. Please sign in again.']);
         }
-        $request->session()->forget('registration.google');
+        $request->session()->forget($purpose);
 
         return $user;
     }

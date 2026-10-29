@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\GoogleOAuthController;
+use App\Http\Controllers\Auth\NativeGoogleController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\OtpVerificationController;
 use App\Http\Controllers\Auth\PasswordController;
@@ -13,6 +14,14 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
+
+// Native buyer auth keeps the web session and CSRF boundary, with JSON-only outcomes.
+Route::post('auth/google/native', [NativeGoogleController::class, 'exchange'])
+    ->middleware('throttle:10,1,buyer-native-google')->block(10, 5)->name('auth.google.native');
+Route::get('auth/google/native/registration', [NativeGoogleController::class, 'registration'])
+    ->middleware('throttle:30,1,buyer-native-registration')->name('auth.google.native.registration');
+Route::post('auth/google/native/register', [NativeGoogleController::class, 'register'])
+    ->middleware('throttle:10,1,buyer-native-register')->block(10, 5)->name('auth.google.native.registration.store');
 
 Route::get('auth/session', [AuthenticatedSessionController::class, 'session'])
     ->middleware('throttle:60,1,guest-session')->name('auth.session');

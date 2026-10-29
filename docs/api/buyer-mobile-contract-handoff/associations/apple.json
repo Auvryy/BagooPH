@@ -1,0 +1,135 @@
+{
+  "evidence": "Synthetic configured identifiers, asserted against stateless routes by AppAssociationsTest; not approved production identities.",
+  "request": {
+    "method": "GET",
+    "origin": "https://buyer.example.invalid",
+    "path": "/.well-known/apple-app-site-association"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Cache-Control": "max-age=300, public"
+    },
+    "body": {
+      "applinks": {
+        "details": [
+          {
+            "appIDs": [
+              "A1B2C3D4E5.shop.bagooph.bagooBuyerMobile"
+            ],
+            "components": [
+              {
+                "/": "/"
+              },
+              {
+                "/": "/track"
+              },
+              {
+                "/": "/track/*"
+              },
+              {
+                "/": "/cart"
+              },
+              {
+                "/": "/product/*"
+              },
+              {
+                "/": "/buyer/search"
+              },
+              {
+                "/": "/buyer/product/*"
+              },
+              {
+                "/": "/shop/*"
+              },
+              {
+                "/": "/promotions/*"
+              },
+              {
+                "/": "/advertisement/*"
+              },
+              {
+                "/": "/notifications"
+              },
+              {
+                "/": "/buyer-returns"
+              },
+              {
+                "/": "/buyer-returns/*"
+              },
+              {
+                "/": "/pending-approval"
+              },
+              {
+                "/": "/verify-email"
+              },
+              {
+                "/": "/verify-email/*"
+              },
+              {
+                "/": "/checkout"
+              },
+              {
+                "/": "/buyer/profile"
+              },
+              {
+                "/": "/buyer/orders"
+              },
+              {
+                "/": "/buyer/orders/*"
+              },
+              {
+                "/": "/buyer/messages"
+              },
+              {
+                "/": "/buyer/addresses"
+              },
+              {
+                "/": "/buyer/saved-products"
+              },
+              {
+                "/": "/buyer/followed-shops"
+              },
+              {
+                "/": "/account/status"
+              },
+              {
+                "/": "/account/settings"
+              },
+              {
+                "/": "/account/security"
+              },
+              {
+                "/": "/wallet/payments"
+              },
+              {
+                "/": "/wallet/payments/*"
+              },
+              {
+                "/": "/reset-password/*",
+                "?": {
+                  "role": "buyer"
+                }
+              },
+              {
+                "/": "/reset-password/*",
+                "?": {
+                  "role": "*"
+                },
+                "exclude": true
+              },
+              {
+                "/": "/reset-password/*"
+              },
+              {
+                "/": "*",
+                "exclude": true
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

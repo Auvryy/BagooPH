@@ -1,0 +1,18 @@
+{
+  "evidence": "Synthetic configured identifiers, asserted against stateless routes by AppAssociationsTest; not approved production identities.",
+  "request": {
+    "method": "GET",
+    "origin": "https://buyer.example.invalid",
+    "path": "/.well-known/assetlinks.json"
+  },
+  "response": {
+    "status": 404,
+    "headers": {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, private"
+    },
+    "body": {
+      "message": "Buyer app links are not configured."
+    }
+  }
+}

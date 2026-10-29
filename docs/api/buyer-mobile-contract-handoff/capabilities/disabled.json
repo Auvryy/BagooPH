@@ -1,0 +1,22 @@
+{
+    "evidence": "Executed response asserted by Tests\\Feature\\BuyerMobile\\CapabilitiesTest",
+    "request": {
+        "method": "GET",
+        "path": "/buyer/mobile-capabilities",
+        "headers": { "Accept": "application/json" }
+    },
+    "response": {
+        "status": 200,
+        "headers": {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store, private"
+        },
+        "body": {
+            "contract_version": 1,
+            "features": {
+                "native_google_sign_in": false,
+                "device_push": false
+            }
+        }
+    }
+}
