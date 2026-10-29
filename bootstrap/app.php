@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\HandoverHoldException;
+use App\Http\Middleware\BuyerMobileJson;
 use App\Http\Middleware\CrossDomainFallbackMiddleware;
 use App\Http\Middleware\EnsureAccountOpen;
 use App\Http\Middleware\EnsureApprovedAccount;
@@ -33,7 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // These validators must see controls before generic input trimming removes them.
-        $middleware->trimStrings(except: [fn (Request $request) => $request->is('track', 'track/*', 'api/track/*', 'checkout', 'buyer/checkout')
+        $middleware->trimStrings(except: ['account_password', 'id_token', 'registration_nonce', fn (Request $request) => $request->is('track', 'track/*', 'api/track/*', 'checkout', 'buyer/checkout')
             || $request->is('account/security', 'account/security/*')
             || $request->is('api/v1/rider/settings/*') || RiderApiResponse::applies($request)
             || $request->is('handover-issues', 'handover-issues/*')
@@ -44,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
             || ($request->isMethod('PATCH') && $request->is('buyer/addresses/*', 'profile', 'courier/profile/account', 'profile/account', 'cart/*', 'courier/deliveries/*/status', 'deliveries/*/status'))]);
 
         $middleware->prepend(CrossDomainFallbackMiddleware::class);
+        $middleware->prepend(BuyerMobileJson::class);
 
         $middleware->web(append: [
             EnsureAccountOpen::class,
@@ -65,6 +67,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(fn (Request $request, Throwable $exception) => RiderApiResponse::applies($request) || $request->expectsJson());
         $exceptions->report(function (Throwable $exception) {
+            if (BuyerMobileJson::applies(request())) {
+                try {
+                    Log::error('Native buyer operation failed.', ['exception_type' => $exception::class]);
+                } catch (Throwable) {
+                }
+
+                return false;
+            }
             if (RiderApiResponse::applies(request())) {
                 try {
                     Log::error('Native Rider operation failed.', [
@@ -92,6 +102,15 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
         $exceptions->respond(function (Response $response, Throwable $exception, Request $request) {
+            if (BuyerMobileJson::applies($request)) {
+                if ($response->getStatusCode() >= 500) {
+                    $response = response()->json([
+                        'code' => 'SERVICE_UNAVAILABLE', 'message' => 'Buyer sign-in is temporarily unavailable. Use email sign-in or try again later.',
+                    ], 503);
+                }
+
+                return BuyerMobileJson::decorate($response);
+            }
             if ($response->getStatusCode() === 419 && $request->header('X-Inertia') && $request->is('login', 'custody-recovery/sign-in')) {
                 $path = $request->is('custody-recovery/sign-in') ? '/custody-recovery/sign-in' : '/login';
                 $referrer = parse_url($request->header('Referer', ''));
@@ -114,8 +133,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return RiderApiResponse::decorate($response, $request);
         });
-        $exceptions->dontFlash(['otp_token', 'token', 'code', 'claim_code', 'pickup_code', 'signature', 'checkout_token']);
+        $exceptions->dontFlash(['otp_token', 'token', 'code', 'claim_code', 'pickup_code', 'signature', 'checkout_token', 'id_token', 'account_password', 'registration_nonce']);
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request) => BuyerMobileJson::applies($request) || $request->is('api/*') || $request->expectsJson(),
         );
     })->create();

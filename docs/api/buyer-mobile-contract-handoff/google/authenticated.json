@@ -1,0 +1,24 @@
+{
+  "evidence": "Synthetic response asserted by BuyerMobile contract tests; isolated SQLite and ephemeral RSA keys, never a live provider token.",
+  "request": {
+    "method": "POST",
+    "path": "/auth/google/native",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "body": {
+      "id_token": "<GOOGLE_ID_TOKEN>",
+      "remember": false
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, private"
+    },
+    "body": {
+      "authenticated": true
+    }
+  }
+}

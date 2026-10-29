@@ -1,0 +1,20 @@
+{
+  "evidence": "Synthetic response asserted by BuyerMobile contract tests; isolated SQLite and ephemeral RSA keys, never a live provider token.",
+  "request": {
+    "method": "GET",
+    "path": "/auth/session",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, private"
+    },
+    "body": {
+      "authenticated": false
+    }
+  }
+}

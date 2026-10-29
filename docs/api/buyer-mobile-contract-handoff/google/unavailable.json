@@ -1,0 +1,24 @@
+{
+  "evidence": "Synthetic response asserted by BuyerMobile contract tests; isolated SQLite and ephemeral RSA keys, never a live provider token.",
+  "request": {
+    "method": "POST",
+    "path": "/auth/google/native",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "body": {
+      "id_token": "<GOOGLE_ID_TOKEN>"
+    }
+  },
+  "response": {
+    "status": 503,
+    "headers": {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, private"
+    },
+    "body": {
+      "code": "SERVICE_UNAVAILABLE",
+      "message": "Buyer sign-in is temporarily unavailable. Use email sign-in or try again later."
+    }
+  }
+}

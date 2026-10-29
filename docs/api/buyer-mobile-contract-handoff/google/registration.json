@@ -1,0 +1,37 @@
+{
+  "evidence": "Synthetic response asserted by BuyerMobile contract tests; isolated SQLite and ephemeral RSA keys, never a live provider token.",
+  "request": {
+    "method": "GET",
+    "path": "/auth/google/native/registration",
+    "headers": {
+      "Accept": "application/json"
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, private"
+    },
+    "body": {
+      "identity": {
+        "name": "Synthetic Buyer",
+        "email": "native-buyer@bagoo.test"
+      },
+      "registrationNonce": "<SESSION_BOUND_NONCE>",
+      "expiresAt": "<UTC_UNIX_SECONDS>",
+      "birthDateLimits": {
+        "today": "<TODAY_YYYY-MM-DD>",
+        "past_maximum": "<YESTERDAY_YYYY-MM-DD>",
+        "adult_maximum": "<18_YEARS_AGO_YYYY-MM-DD>"
+      },
+      "policies": {
+        "required": true,
+        "terms_version": "2026-10-12",
+        "privacy_version": "2026-10-12",
+        "terms_url": "/terms/2026-10-12",
+        "privacy_url": "/privacy/2026-10-12"
+      }
+    }
+  }
+}

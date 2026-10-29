@@ -1,0 +1,24 @@
+{
+  "evidence": "Synthetic response asserted by BuyerMobile contract tests; isolated SQLite and ephemeral RSA keys, never a live provider token.",
+  "request": {
+    "method": "POST",
+    "path": "/auth/google/native",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "body": {
+      "id_token": "<GOOGLE_ID_TOKEN>"
+    }
+  },
+  "response": {
+    "status": 409,
+    "headers": {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, private"
+    },
+    "body": {
+      "code": "GOOGLE_ACCOUNT_LINK_REQUIRED",
+      "message": "Enter your existing Bagoo password to connect this Google account, or sign in with email."
+    }
+  }
+}
