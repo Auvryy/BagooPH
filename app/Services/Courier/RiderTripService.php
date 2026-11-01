@@ -6,8 +6,10 @@ use App\Models\CodAccount;
 use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\User;
+use App\Models\WalletHandoverReceipt;
 use App\Rules\ApplicationText;
 use App\Services\Finance\LogisticsEarningsService;
+use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -87,8 +89,11 @@ class RiderTripService
         $events = $this->events($assignment, $actor)->orderBy('id')->get();
         $last = $events->last();
         $handoff = $pickup ? null : $events->firstWhere('checkpoint_type', 'delivered');
-        $cash = $handoff ? CodAccount::where('delivery_checkpoint_id', $handoff->id)->where('collector_id', $actor->id)->first() : null;
-        $originalRecipient = $cash?->events()->where('event_type', 'rider_collection')->first()?->private_evidence['recipient_name'] ?? null;
+        $cash = $handoff ? CodAccount::where('delivery_id', $handoff->delivery_id)
+            ->where('delivery_checkpoint_id', $handoff->id)->where('collector_id', $actor->id)->first() : null;
+        $wallet = $handoff ? $this->walletReceipt($handoff, $actor) : null;
+        $originalRecipient = $wallet?->recipient_name
+            ?? $cash?->events()->where('event_type', 'rider_collection')->first()?->private_evidence['recipient_name'] ?? null;
 
         return ['id' => 'trip-'.$assignment->id, 'assignment_reference' => $assignment->record_reference,
             'delivery_id' => (string) $parcel->id, 'task_id' => ($pickup ? 'pickup' : 'final_mile').'-'.$parcel->id,
@@ -113,7 +118,14 @@ class RiderTripService
 
     private function privateProof(DeliveryCheckpoint $checkpoint): bool
     {
-        return is_string($checkpoint->proof_image) && preg_match('/\Adelivery-proofs\/[A-Za-z0-9][A-Za-z0-9._-]*\z/', $checkpoint->proof_image) === 1;
+        return $checkpoint->checkpoint_type === 'delivered' && is_string($checkpoint->proof_image)
+            && preg_match('/\Adelivery-proofs\/[A-Za-z0-9][A-Za-z0-9._-]*\z/', $checkpoint->proof_image) === 1;
+    }
+
+    private function walletReceipt(DeliveryCheckpoint $checkpoint, User $actor): ?WalletHandoverReceipt
+    {
+        return WalletHandoverReceipt::where('delivery_id', $checkpoint->delivery_id)
+            ->where('delivery_checkpoint_id', $checkpoint->id)->where('actor_id', $actor->id)->first();
     }
 
     public function checkpointProof(User $actor, string $trip, string $checkpoint)
@@ -121,8 +133,14 @@ class RiderTripService
         $assignment = $this->owned($actor, $trip);
         $event = $this->events($assignment, $actor)->whereKey(RiderApiInput::id($checkpoint))->where('scanned_by_id', $actor->id)->firstOrFail();
         abort_unless($this->privateProof($event), 404);
-        $cash = CodAccount::where('delivery_checkpoint_id', $event->id)->where('collector_id', $actor->id)->firstOrFail();
-        $hash = $cash->events()->where('event_type', 'rider_collection')->firstOrFail()->private_evidence['proof_hash'];
+        $wallet = $this->walletReceipt($event, $actor);
+        if ($wallet) {
+            $hash = $wallet->proof_hash;
+        } else {
+            $cash = CodAccount::where('delivery_id', $event->delivery_id)
+                ->where('delivery_checkpoint_id', $event->id)->where('collector_id', $actor->id)->firstOrFail();
+            $hash = $cash->events()->where('event_type', 'rider_collection')->firstOrFail()->private_evidence['proof_hash'];
+        }
 
         return $this->proofResponse($event->proof_image, $hash);
     }
@@ -140,7 +158,12 @@ class RiderTripService
     private function proofResponse(string $path, string $hash)
     {
         abort_unless(preg_match('/\Adelivery-(?:attempt-)?proofs\/[A-Za-z0-9][A-Za-z0-9._-]*\z/', $path) === 1 && Storage::disk('local')->exists($path), 404);
-        if (! hash_equals($hash, app(CourierProofService::class)->hash($path))) {
+        try {
+            $matches = hash_equals($hash, app(CourierProofService::class)->hash($path));
+        } catch (DomainException) {
+            $matches = false;
+        }
+        if (! $matches) {
             RiderApiInput::error('EVIDENCE_CHANGED', 'The retained proof no longer matches its accepted image.', 409);
         }
 

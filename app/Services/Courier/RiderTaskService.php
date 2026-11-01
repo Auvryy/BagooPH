@@ -161,7 +161,12 @@ class RiderTaskService
                 'seller' => $preview ? 'Claim before collecting this parcel.' : 'Scan the parcel waybill at the seller.',
                 'origin_hub' => 'Bring the parcel to the origin hub. Its handler confirms intake.',
                 'destination_hub' => $parcel->status === 'delivery_failed' ? 'Return the parcel to the destination hub. Its handler records receipt and any retry.' : 'Scan the assigned parcel out of the destination hub.',
-                default => 'Record recipient handoff and exact cash. The buyer confirms receipt separately.'
+                default => ($parcel->order->payment_method === 'cod'
+                    ? 'Record recipient handoff, private proof and exact cash.'
+                    : 'Record recipient handoff and private proof. This paid Wallet order needs no cash collection.')
+                    .($parcel->order->logistics_flow_version >= 2
+                        ? ' Valid evidence completes the order automatically.' : ' The buyer confirms receipt separately.')
+                    .($parcel->order->payment_method === 'cod' ? ' Collected COD still needs a separate hub receipt.' : '')
             }];
     }
 }

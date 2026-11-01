@@ -231,12 +231,22 @@ class RiderHandoverApiTest extends TestCase
             ...array_diff_key($this->codCollectionInput($parcel), ['request_token' => true]),
             'expected_version' => app(RiderTaskService::class)->version($parcel->fresh(['order'])), 'proof_image_file' => UploadedFile::fake()->image('actual-delivery.png'),
         ])->assertOk();
-        $this->assertSame('delivered', $parcel->order->fresh()->status);
+        $this->assertSame(2, $parcel->order->fresh()->logistics_flow_version);
+        $this->assertSame('completed', $parcel->order->fresh()->status);
+        $this->assertSame('paid', $parcel->order->fresh()->payment_status);
         $cash = CodAccount::where('delivery_id', $parcel->id)->sole();
         $this->assertNull($cash->reconciled_at);
+        $this->assertSame($cash->expected_cents, $cash->state['balances']['rider:'.$final->id]);
+        $earning = DB::table('logistics_earnings')->where('delivery_id', $parcel->id)->where('role', 'delivery')->sole();
+        $this->assertSame($final->id, $earning->user_id);
+        $this->assertGreaterThan(0, $earning->net_amount_cents);
+        $this->assertNull($earning->released_at);
+        $this->assertSame(1, $parcel->checkpoints()->where('checkpoint_type', 'delivery_completed')->count());
         $this->actingAs($parcel->order->buyer)->post(route('buyer.orders.confirm', $parcel->order))->assertSessionHas('success');
         $this->assertSame('completed', $parcel->order->fresh()->status);
-        $this->assertSame('pending', $parcel->order->fresh()->payment_status);
+        $this->assertSame('paid', $parcel->order->fresh()->payment_status);
+        $this->assertSame(1, $parcel->checkpoints()->where('checkpoint_type', 'delivery_completed')->count());
+        $this->assertNull(DB::table('logistics_earnings')->where('id', $earning->id)->value('released_at'));
         $this->assertNull($cash->fresh()->reconciled_at);
         $this->assertTrue(Storage::disk('local')->exists($issue->evidence_path));
     }

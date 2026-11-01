@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithOrderActions;
@@ -23,6 +24,13 @@ use Tests\TestCase;
 class RiderParcelApiTest extends TestCase
 {
     use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
+
+    private int $selectedFlowVersion = 2;
+
+    protected function flowContractVersion(): int
+    {
+        return $this->selectedFlowVersion;
+    }
 
     private function native(User $rider): void
     {
@@ -35,6 +43,37 @@ class RiderParcelApiTest extends TestCase
         $input += ['expected_version' => app(RiderTaskService::class)->version($parcel->fresh(['order'])), 'barcode' => $parcel->tracking_number];
 
         return $this->postJson('/api/v1/rider/tasks/'.$phase.'-'.$parcel->id.'/'.$action, $input);
+    }
+
+    public static function completionVersions(): array
+    {
+        return [[1], [2]];
+    }
+
+    #[DataProvider('completionVersions')]
+    public function test_native_cod_guidance_and_completion_follow_the_original_order_version(int $version): void
+    {
+        $this->selectedFlowVersion = $version;
+        $parcel = $this->flowDelivery($this->newFlowOrder(), 'out_for_delivery');
+        $this->assertSame($version, $parcel->order->logistics_flow_version);
+        $rider = User::findOrFail($parcel->assigned_rider_id);
+        $this->native($rider);
+        $instruction = $this->getJson('/api/v1/rider/tasks/final_mile-'.$parcel->id)->assertOk()->json('data.next_instruction');
+        $this->assertStringContainsString('private proof and exact cash', $instruction);
+        $this->assertStringContainsString('separate hub receipt', $instruction);
+        $this->assertStringContainsString($version === 2 ? 'completes the order automatically' : 'buyer confirms receipt separately', $instruction);
+        $this->assertStringNotContainsString($version === 2 ? 'buyer confirms receipt separately' : 'completes the order automatically', $instruction);
+        $this->action($parcel, 'final_mile', 'deliver', [
+            'recipient_name' => $parcel->order->recipient_name, 'recipient_relationship' => 'buyer',
+            'cash_received' => (string) $parcel->order->total_amount, 'change_given' => '0.00', 'cash_confirmed' => true,
+            'proof_image_file' => UploadedFile::fake()->image('versioned-handoff.png'),
+        ])->assertOk()->assertJsonPath('data.result.commercial_status', $version === 2 ? 'completed' : 'delivered');
+        $this->assertSame($version === 2 ? 'paid' : 'pending', $parcel->order->fresh()->payment_status);
+        $this->assertNull(CodAccount::where('delivery_id', $parcel->id)->sole()->reconciled_at);
+        if ($version === 1) {
+            $this->actingAs($parcel->order->buyer)->post(route('buyer.orders.confirm', $parcel->order))->assertSessionHas('success');
+            $this->assertSame('completed', $parcel->order->fresh()->status);
+        }
     }
 
     public function test_native_pickup_is_waybill_verified_off_duty_and_origin_hub_receives_the_same_record(): void
