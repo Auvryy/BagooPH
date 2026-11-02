@@ -60,8 +60,10 @@ passes 16 checks and the isolated SQLite buyer-address suite passes 12 tests / 7
 assertions, including ownership, stale addresses, order snapshots and replay.
 The checkout replay suite also passed 51 tests / 469 assertions. The frontend
 build passed in an isolated output directory. Two headless map interaction
-checks cover placing and dragging a pin and retrying failed map tiles. Scoped
-buyer pin entry: **2/10 → 6/10**, pending live map and deployment verification.
+checks cover placing and dragging a pin and retrying failed map tiles. The
+picker tells mouse and touch users how to place a pin, with a static copy test.
+Scoped buyer pin entry: **2/10 → 6/10**, pending live map and deployment
+verification.
 An additional 320px touch-emulation check confirmed map taps place a pin,
 dragging updates its coordinates, tapping zoom does not add another pin, and
 the 44px controls fit without horizontal overflow. With OSM tiles blocked, the
@@ -74,6 +76,12 @@ address service preserves both coordinates through validation and storage.
 Those acceptance checks passed alongside the same 22 focused frontend tests;
 this verifies coordinate precision in the application layer, not live provider
 geocoding or routing.
+The latest PC-only regression pass also passed 159 buyer input-validation
+tests / 985 assertions, 60 web courier/map tests, and 125 Rider map/routing
+tests. Provider requests were synthetic or mocked; live account restrictions
+and route-provider behavior remain unverified. Standard OpenStreetMap tiles are
+best-effort with no SLA, so live map availability must be checked before a
+demonstration.
 When a saved address's physical fields change, the server now clears any pin
 unless the buyer explicitly confirmed a new selection; contact-only edits retain
 the pin. This protects older clients that might otherwise resend stale

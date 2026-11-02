@@ -55,6 +55,7 @@ test('location picker distinguishes an empty address from a saved pin', () => {
  const saved = renderToStaticMarkup(createElement(ui.LocationPinPicker, { value: { latitude: 14.5995, longitude: 120.9842 }, onChange() {} }));
  assert.match(empty, /No location pin selected yet/);
  assert.doesNotMatch(empty, /Location pin selected\./);
+ assert.match(empty, /Click or tap the map to place a pin/);
  assert.match(saved, /Location pin selected\./);
  assert.match(saved, /aria-label="Delivery location map"/);
 });

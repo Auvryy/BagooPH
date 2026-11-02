@@ -66,7 +66,7 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
         : 'Map tiles could not load. Check your connection and try again.';
 
     return <div className="location-pin-picker space-y-2">
-        <p className="text-xs text-slate-700">Tap the map to place a pin, then drag it to the exact location.</p>
+        <p className="text-xs text-slate-700">Click or tap the map to place a pin, then drag it to the exact location.</p>
         <div ref={container} role="region" aria-label={`${label} map`} className="h-64 w-full rounded-lg border border-slate-300" />
         <p className="text-xs text-slate-600" role="status">{failed ? tileFailureStatus : pinStatus}</p>
         {failed && <button type="button" onClick={() => setAttempt(previous => previous + 1)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Retry map</button>}

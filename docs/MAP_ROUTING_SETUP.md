@@ -33,6 +33,19 @@ the line unavailable, with address-based external directions as a fallback.
    server enforcement remains off for compatibility with older clients. The
    checkout response exposes `doorstepPinRequired` to indicate the server rule.
 
+## Map tile availability
+
+The Buyer and Courier web maps and Rider's embedded Leaflet map use the
+standard OpenStreetMap raster tile service. Normal interactive viewing is
+supported when its [tile usage policy](https://operations.osmfoundation.org/policies/tiles/)
+is followed, but availability is best-effort with no service-level guarantee.
+Keep attribution visible, retain normal browser Referer and cache behavior, and
+identify native app requests with the app's stable User-Agent. Do not prefetch
+tiles or offer offline downloads from this service. Verify the network before a
+live demonstration and keep the current retry/address fallback visible; choose
+a hosted OSM-derived provider or self-hosted tiles if the deployment needs a
+service guarantee.
+
 ## Buyer client contract
 
 The checkout page's saved addresses include an optional `location_token`.
