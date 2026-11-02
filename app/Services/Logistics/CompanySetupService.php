@@ -167,7 +167,7 @@ class CompanySetupService
 
     public function locationToken(LogisticsHub $hub): string
     {
-        return hash('sha256', json_encode($hub->only(['id', 'logistics_company_id', 'address', 'city_municipality', 'province', 'latitude', 'longitude']), JSON_THROW_ON_ERROR));
+        return hash('sha256', json_encode($hub->only(['id', 'logistics_company_id', 'address', 'barangay', 'city_municipality', 'province', 'latitude', 'longitude']), JSON_THROW_ON_ERROR));
     }
 
     public function location(User $actor, int $companyId, LogisticsHub $snapshot, array $input): void

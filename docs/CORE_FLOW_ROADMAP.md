@@ -45,6 +45,8 @@ company ownership and reject a stale location token. The SQLite company-setup
 suite passed 7 tests / 110 assertions, and 8 logistics frontend checks passed.
 The frontend build passed in an isolated output directory. Scoped hub pin
 management: **2/10 → 6/10**, pending interactive and deployment verification.
+The stale-location token also covers the hub's barangay; after that change the
+SQLite company-setup suite passed 7 tests / 113 assertions.
 
 Buyer address editing and checkout now expose a draggable map pin, with no pin
 invented for an address without coordinates. Web doorstep checkout asks for a

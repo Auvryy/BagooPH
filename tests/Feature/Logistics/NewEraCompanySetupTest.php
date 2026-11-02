@@ -209,5 +209,9 @@ class NewEraCompanySetupTest extends TestCase
         $this->assertEquals(121.24, $hub->fresh()->longitude);
         $this->post($url, [...$pin, 'latitude' => '14.17'])->assertSessionHasErrors('location_token');
         $this->assertEquals(14.16, $hub->fresh()->latitude);
+        $previousLocation = $service->locationToken($hub->fresh());
+        $hub->update(['barangay' => 'A different barangay']);
+        $this->post($url, [...$pin, 'latitude' => '14.18', 'location_token' => $previousLocation])->assertSessionHasErrors('location_token');
+        $this->assertEquals(14.16, $hub->fresh()->latitude);
     }
 }
