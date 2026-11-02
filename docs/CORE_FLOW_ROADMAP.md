@@ -86,6 +86,12 @@ pin persistence/replay passed four tests / 56 assertions.
 With tiles allowed, a local 320px headless browser also loaded four OpenStreetMap
 tiles around a synthetic Philippines center; the status settled and attribution
 remained visible. This does not verify the deployed production origin.
+An isolated desktop Chrome render at a 1366×813 viewport measured the actual
+React/Leaflet picker at 712×256 inside a 760px column, with no horizontal
+overflow, a keyboard-focusable map region, visible OpenStreetMap attribution,
+44×44px zoom controls, and tile-failure retry feedback. OSM requests were
+intentionally host-blocked for this check; it verifies the component shell and
+desktop layout, not the deployed checkout page or live tile availability.
 Scoped selected-pin offline feedback:
 **5/10 → 8/10**, pending physical-device and deployed verification.
 The frontend accepts a complete seven-decimal pin, and the SQLite-backed
