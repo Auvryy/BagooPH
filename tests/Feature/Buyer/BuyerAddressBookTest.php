@@ -256,6 +256,19 @@ class BuyerAddressBookTest extends TestCase
         $this->assertSame('26 Mabini Street', $address->fresh()->street);
     }
 
+    public function test_buyer_can_remove_an_optional_saved_pin_without_changing_the_address(): void
+    {
+        $buyer = User::factory()->create();
+        $address = $this->add($buyer, ['latitude' => '14.55', 'longitude' => '121.05']);
+
+        $this->actingAs($buyer)->patch('/buyer/addresses/'.$address->id, $this->data(['latitude' => null, 'longitude' => null]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('24 Mabini Street', $address->fresh()->street);
+        $this->assertNull($address->fresh()->latitude);
+        $this->assertNull($address->fresh()->longitude);
+    }
+
     public function test_checkout_address_save_errors_point_to_visible_shipping_fields_and_roll_back(): void
     {
         $buyer = User::factory()->create();

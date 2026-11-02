@@ -73,9 +73,14 @@ headless Chrome testing confirmed keyboard Tab focus, a visible 2px focus ring,
 arrow-key panning, and Enter placing a pin at the map center. Enter on the
 marker left the pin unchanged; Enter on a zoom control zoomed without changing
 it. With tile requests blocked, Retry measured 44px high. The map links its
-keyboard instructions to the region for screen readers. Twenty-six focused
-frontend address/map checks and the TypeScript check passed. The status explains
-initial tile loading and offers retry after a 15-second stall.
+keyboard instructions to the region for screen readers. Twenty-eight focused
+frontend address/map checks and the TypeScript check passed. The buyer address
+editor now has a 44px Clear pin action for optional saved pins, including
+zero-valued coordinates; clearing it removes both coordinates without changing
+the street. Registration buyer and seller clear-pin actions also use 44px
+targets. The frontend address/map suite now passes 28 checks, the SQLite buyer
+address-book suite passes 42 tests / 351 assertions, and TypeScript passes. The
+status explains initial tile loading and offers retry after a 15-second stall.
 With tiles allowed, a local 320px headless browser also loaded four OpenStreetMap
 tiles around a synthetic Philippines center; the status settled and attribution
 remained visible. This does not verify the deployed production origin.

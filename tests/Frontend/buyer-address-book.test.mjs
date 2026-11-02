@@ -1,6 +1,6 @@
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
@@ -109,7 +109,23 @@ test('address editor uses the stored recipient, bounded fields and the existing 
  assert.match(html, /does not change your account name/);
  assert.match(html, /aria-label="Delivery location map"/);
  assert.match(html, /Loading map…/);
+ const removablePin = button(html, 'Clear pin');
+ assert.equal(removablePin, undefined);
  for (const field of ['region', 'province', 'city', 'barangay']) assert.match(html, new RegExp(`id="address-${field}"[^>]*required=""`));
+});
+test('a saved optional buyer pin has a 44px clear control, including zero-valued coordinates', async () => {
+ const html = await render(ui.Editor, { user, address: { ...address, latitude: 0, longitude: 121.05 }, count: 1, limit: 10, onClose() {} });
+ const clear = button(html, 'Clear pin');
+ assert.ok(clear);
+ assert.match(clear, /min-h-\[44px\]/);
+});
+test('optional buyer and seller registration pin-clear controls use touch-sized targets', () => {
+ for (const page of ['Register.tsx', 'GoogleRegistration.tsx', 'SellerRegister.tsx']) {
+  const source = readFileSync(resolve(root, `resources/js/Pages/Auth/${page}`), 'utf8');
+  const clear = (source.match(/<button\b[\s\S]*?<\/button>/g) ?? []).find(element => element.includes('Clear pin'));
+  assert.ok(clear, `${page} exposes Clear pin`);
+  assert.match(clear, /min-h-\[44px\]/, `${page} Clear pin target is at least 44px tall`);
+ }
 });
 const quote = { items: [{id:10, quantity:1, unit_price:250, subtotal:250}], subtotal: 250, shipping_fee: 50, doorstep_shipping_fee: 50, discount: 0, total: 300, voucher: null, redemptions: [],
  shops: [{ shop_id: 1, shop_name: 'Bagoo Store', subtotal: 250, shipping: 50, doorstep_shipping: 50, discount: 0, total: 300 }] };

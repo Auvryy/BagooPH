@@ -566,7 +566,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                                 clearErrors('delivery_latitude', 'delivery_longitude');
                                 if (!data.phone.trim()) clearErrors('phone');
                                 setStepErrors(previous => ({ ...previous, delivery_latitude: '', delivery_longitude: '', ...(!data.phone.trim() ? { phone: '' } : {}) }));
-                            }} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Clear pin</button>}
+                            }} className="min-h-[44px] rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Clear pin</button>}
                             {(stepErrors.delivery_latitude || stepErrors.delivery_longitude || errors.delivery_latitude || errors.delivery_longitude) && <p role="alert" className="text-xs text-rose-700">{stepErrors.delivery_latitude || stepErrors.delivery_longitude || errors.delivery_latitude || errors.delivery_longitude}</p>}
                         </div>
 
