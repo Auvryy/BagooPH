@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\Commerce\BuyerAddressService;
+use App\Services\Commerce\CommerceInputService;
 use App\Services\Orders\CheckoutOrderService;
 use App\Services\Orders\CheckoutSubmissionService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -51,6 +52,26 @@ class CommerceInputValidationTest extends TestCase
             'destination_barangay' => 'San Antonio', 'delivery_type' => 'doorstep',
             'payment_method' => 'cod', 'item_ids' => [$line->id],
         ]];
+    }
+
+    public function test_checkout_accepts_bounded_signed_pin_coordinates_through_seven_decimals(): void
+    {
+        [, , , $payload] = $this->checkout();
+        foreach ([
+            ['0', '0', '0', '0'],
+            ['-14.5995123', '-120.9842123', '-14.5995123', '-120.9842123'],
+            ['14.1234567', '120.1234567', '14.1234567', '120.1234567'],
+            ['90', '180', '90', '180'],
+            ['-90', '-180', '-90', '-180'],
+        ] as [$latitude, $longitude, $expectedLatitude, $expectedLongitude]) {
+            $validated = app(CommerceInputService::class)->checkout(
+                [...$payload, 'shipping_latitude' => $latitude, 'shipping_longitude' => $longitude],
+                $payload['item_ids'],
+            );
+
+            $this->assertSame($expectedLatitude, $validated['shipping_latitude']);
+            $this->assertSame($expectedLongitude, $validated['shipping_longitude']);
+        }
     }
 
     #[DataProvider('invalidCheckoutFields')]

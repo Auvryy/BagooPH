@@ -55,6 +55,8 @@ test('a map click places a pin and dragging it reports the new coordinates', asy
     assert.deepEqual(h.marker.options.icon.iconSize, [44, 44]);
     h.marker.point = [14.6, 120.99]; h.marker.events.dragend(); h.render();
     assert.deepEqual(h.changed[1], { latitude: 14.6, longitude: 120.99 });
+    h.mapEvents.click({ latlng: { lat: -14.599512345, lng: -120.984212345 } }); h.render();
+    assert.deepEqual(h.changed[2], { latitude: -14.5995123, longitude: -120.9842123 });
 });
 
 test('keyboard Enter places a pin at the focused map center only', async t => {

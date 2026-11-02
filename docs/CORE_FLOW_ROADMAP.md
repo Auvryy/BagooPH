@@ -94,9 +94,12 @@ map harness verifies that an address change removes the old marker and a new
 selection replaces it. This confirms application-layer precision and marker
 behavior, not live provider geocoding or routing. The marker interaction test
 also requires keyboard focus and an accessible title. The initial status keeps
-the saved pin explicit while map tiles load.
-The latest PC-only regression pass also passed 159 buyer input-validation
-tests / 985 assertions, 60 web courier/map tests, and 125 Rider map/routing
+the saved pin explicit while map tiles load. Checkout pin validation now also
+asserts zero, signed, world-boundary, and seven-decimal inputs on both frontend
+and backend; the Leaflet interaction harness confirms negative points retain
+their sign and seven-decimal precision.
+The latest PC-only regression pass also passed 160 buyer input-validation
+tests / 995 assertions, 60 web courier/map tests, and 125 Rider map/routing
 tests. On 2026-11-03, live Geoapify motorcycle route requests with synthetic
 Manila-area points returned a road MultiLineString with 286 coordinates and an
 endpoint within 500 metres of the requested stop. A headless Chrome request
