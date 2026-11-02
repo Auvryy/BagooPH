@@ -8,6 +8,7 @@ import BuyerPaymentChoice from '@/Components/BuyerPaymentChoice';
 import PhoneInput from '@/Components/PhoneInput';
 import ShippingCalculation from '@/Components/ShippingCalculation';
 import LocationPinPicker from '@/Components/LocationPinPicker';
+import useCheckoutGps from '@/hooks/useCheckoutGps';
 import { changedDeliveryAddress, validDeliveryPin, type CheckoutAddressField } from '@/utils/checkoutLocation';
 import BuyerVoucherPicker from '@/Components/Vouchers/BuyerVoucherPicker';
 import CheckoutVoucherBreakdown from '@/Components/Vouchers/CheckoutVoucherBreakdown';
@@ -92,38 +93,6 @@ export default function CheckoutIndex({
     const [voucherCodeInput, setVoucherCodeInput] = useState('');
     const [voucherError, setVoucherError] = useState<string>('');
 
-    const [isLocating, setIsLocating] = useState(false);
-    const [gpsStatus, setGpsStatus] = useState<string | null>(null);
-
-    const handleCaptureCurrentLocation = () => {
-        if (!navigator.geolocation) {
-            setGpsStatus('Geolocation is not supported by your browser.');
-            return;
-        }
-
-        setIsLocating(true);
-        setGpsStatus('Acquiring precise GPS fix...');
-
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const lat = parseFloat(pos.coords.latitude.toFixed(6));
-                const lng = parseFloat(pos.coords.longitude.toFixed(6));
-                setData(prev => ({
-                    ...prev,
-                    shipping_latitude: lat,
-                    shipping_longitude: lng,
-                }));
-                setIsLocating(false);
-                setGpsStatus(`GPS coordinates pinned (accuracy ±${Math.round(pos.coords.accuracy)}m)`);
-            },
-            (err) => {
-                setIsLocating(false);
-                setGpsStatus('GPS error: ' + err.message);
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-    };
-
     // Inline KYC ID upload form
     const kycForm = useForm<{ id_document: File | null }>({
         id_document: null,
@@ -189,8 +158,10 @@ export default function CheckoutIndex({
         saved_address_id: (initialAddress?.id ?? null) as number | null,
         saved_address_location_token: (initialAddress?.location_token ?? null) as string | null,
     });
+    const gps = useCheckoutGps(point => setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })));
 
     const handleAddressChange = (addressId: string) => {
+        gps.cancel();
         setSelectedAddressId(addressId);
         if (addressId === 'new') {
             setData(prev => ({
@@ -234,9 +205,9 @@ export default function CheckoutIndex({
 
     const updateDeliveryAddress = (field: CheckoutAddressField, value: string) => {
         if (data[field] === value) return;
+        gps.cancel();
         if (data.saved_address_id !== null) setSelectedAddressId('new');
         setData(previous => changedDeliveryAddress(previous, field, value, addresses.length < addressBookLimit));
-        setGpsStatus(null);
     };
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -765,25 +736,25 @@ export default function CheckoutIndex({
                                             </span>
                                             <button
                                                 type="button"
-                                                onClick={handleCaptureCurrentLocation}
-                                                disabled={isLocating}
+                                                onClick={gps.capture}
+                                                disabled={gps.locating}
                                                 className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-300 hover:border-[#E00D42] text-slate-700 hover:text-[#E00D42] rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50 w-fit"
                                             >
                                                 <MapPin className="w-3 h-3 text-[#E00D42]" />
-                                                <span>{isLocating ? 'Acquiring GPS...' : 'Pin My Current Location'}</span>
+                                                <span>{gps.locating ? 'Acquiring GPS...' : 'Pin My Current Location'}</span>
                                             </button>
                                         </div>
 
-                                        {gpsStatus && (
+                                        {gps.status && (
                                             <p className="text-[10px] font-sans text-slate-700 bg-slate-100 px-2 py-1 rounded">
-                                                {gpsStatus}
+                                                {gps.status}
                                             </p>
                                         )}
 
                                         <LocationPinPicker
                                             value={data.shipping_latitude !== '' && data.shipping_longitude !== '' && Number.isFinite(Number(data.shipping_latitude)) && Number.isFinite(Number(data.shipping_longitude))
                                                 ? { latitude: Number(data.shipping_latitude), longitude: Number(data.shipping_longitude) } : null}
-                                            onChange={point => setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude }))}
+                                            onChange={point => { gps.cancel(); setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })); }}
                                         />
                                         {data.saved_address_id !== null && <p className="text-xs text-slate-600">Placing your order will save this pin to the selected address.</p>}
                                         <div className="grid grid-cols-2 gap-2">
@@ -799,7 +770,7 @@ export default function CheckoutIndex({
                                                     max={90}
                                                     placeholder="e.g. 14.0682"
                                                     value={data.shipping_latitude}
-                                                    onChange={(e) => setData('shipping_latitude', e.target.value)}
+                                                    onChange={(e) => { gps.cancel(); setData('shipping_latitude', e.target.value); }}
                                                     className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-sans"
                                                 />
                                                 {errors.shipping_latitude && <p id="checkout-shipping_latitude-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_latitude}</p>}
@@ -816,7 +787,7 @@ export default function CheckoutIndex({
                                                     max={180}
                                                     placeholder="e.g. 121.3256"
                                                     value={data.shipping_longitude}
-                                                    onChange={(e) => setData('shipping_longitude', e.target.value)}
+                                                    onChange={(e) => { gps.cancel(); setData('shipping_longitude', e.target.value); }}
                                                     className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-sans"
                                                 />
                                                 {errors.shipping_longitude && <p id="checkout-shipping_longitude-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_longitude}</p>}

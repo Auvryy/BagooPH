@@ -69,6 +69,13 @@ coordinates. The SQLite address-book suite passed 40 tests / 339 assertions,
 the address frontend suite passed 16 checks, and the worktree build passed.
 Scoped address-change pin safety: **4/10 → 7/10**, pending deployed acceptance.
 
+Checkout GPS requests are now invalidated when the buyer changes the address,
+chooses another saved address, or places a pin manually. Late callbacks cannot
+replace that newer choice, and stale or inaccurate fixes ask the buyer to place
+the pin instead. Eighteen frontend address/GPS checks and the worktree build
+passed. Scoped checkout location-request safety: **3/10 → 7/10**, pending live
+browser and deployment acceptance.
+
 Web checkout now carries a signed snapshot of the selected saved address and
 pin. Under the address lock, a changed snapshot rejects the stale submission
 and asks the buyer to reload; an exact replay still returns the original order
