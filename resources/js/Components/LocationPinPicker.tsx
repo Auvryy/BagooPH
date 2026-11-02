@@ -59,6 +59,12 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
             };
             setPoint.current(current.current);
             instance.on('click', event => notify.current({ latitude: Number(event.latlng.lat.toFixed(7)), longitude: Number(event.latlng.lng.toFixed(7)) }));
+            instance.on('keypress', event => {
+                const keyboardEvent = event.originalEvent;
+                if (keyboardEvent.key !== 'Enter' || keyboardEvent.target !== container.current) return;
+                const center = instance.getCenter();
+                notify.current({ latitude: Number(center.lat.toFixed(7)), longitude: Number(center.lng.toFixed(7)) });
+            });
             if (typeof ResizeObserver !== 'undefined') {
                 observer = new ResizeObserver(() => instance.invalidateSize({ animate: false }));
                 observer.observe(container.current);
@@ -79,8 +85,8 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
     const loadingStatus = value ? 'Loading map… Your pin is still selected.' : 'Loading map…';
 
     return <div className="location-pin-picker space-y-2">
-        <p className="text-xs text-slate-700">Click or tap the map to place a pin, then drag it to the exact location.</p>
-        <div ref={container} role="region" aria-label={`${label} map`} className="h-64 w-full rounded-lg border border-slate-300" />
+        <p className="text-xs text-slate-700">Click or tap the map to place a pin, then drag it to the exact location. Keyboard: focus the map, use arrow keys to move, then press Enter to pin its center.</p>
+        <div ref={container} role="region" aria-label={`${label} map`} className="h-64 w-full rounded-lg border border-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]" />
         <p className="text-xs text-slate-600" role="status">{failed ? tileFailureStatus : loading ? loadingStatus : pinStatus}</p>
         {failed && <button type="button" onClick={() => setAttempt(previous => previous + 1)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Retry map</button>}
     </div>;

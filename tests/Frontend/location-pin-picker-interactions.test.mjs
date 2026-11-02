@@ -32,10 +32,10 @@ function harness(t) {
         state(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === 'function' ? initial() : initial; return [slots[i], value => { slots[i] = typeof value === 'function' ? value(slots[i]) : value; }]; },
         ref(value) { return this.state(() => ({ current: value }))[0]; },
         effect(fn, deps) { const i = cursor++; const old = effects[i]; if (!old || deps.some((value, index) => !Object.is(value, old.deps[index]))) pending.push(() => { old?.cleanup?.(); effects[i] = { deps, cleanup: fn() }; }); },
-        createMap() { h.created++; return { setView() { return this; }, getZoom() { return 15; }, on(name, fn) { h.mapEvents[name] = fn; return this; }, remove() { h.removed++; }, invalidateSize() {} }; },
+        createMap() { h.created++; return { setView(point) { this.center = point; return this; }, getCenter() { return { lat: this.center?.[0] ?? 12.8797, lng: this.center?.[1] ?? 121.774 }; }, getZoom() { return 15; }, on(name, fn) { h.mapEvents[name] = fn; return this; }, remove() { h.removed++; }, invalidateSize() {} }; },
         tiles: { on(name, fn) { h.tileEvents[name] = fn; return this; }, addTo() { return this; } },
         createMarker(point, options) { h.marker = { point, options, events: {}, addTo() { return this; }, on(name, fn) { this.events[name] = fn; return this; }, setLatLng(value) { this.point = value; return this; }, getLatLng() { return { lat: this.point[0], lng: this.point[1] }; }, remove() { this.removed = true; } }; return h.marker; },
-        render() { cursor = 0; pending = []; this.tree = Picker(this.props); for (const node of nodes(this.tree)) if (node.ref && node.props?.role === 'region') node.ref.current = {}; for (const run of pending) run(); return this.tree; },
+        render() { cursor = 0; pending = []; this.tree = Picker(this.props); for (const node of nodes(this.tree)) if (node.ref && node.props?.role === 'region') { this.container ??= {}; node.ref.current = this.container; } for (const run of pending) run(); return this.tree; },
         close() { for (const effect of effects) effect?.cleanup?.(); },
     };
     globalThis.pinHarness = h;
@@ -55,6 +55,17 @@ test('a map click places a pin and dragging it reports the new coordinates', asy
     assert.deepEqual(h.marker.options.icon.iconSize, [44, 44]);
     h.marker.point = [14.6, 120.99]; h.marker.events.dragend(); h.render();
     assert.deepEqual(h.changed[1], { latitude: 14.6, longitude: 120.99 });
+});
+
+test('keyboard Enter places a pin at the focused map center only', async t => {
+    const h = harness(t); h.render(); await tick(); h.render();
+    h.mapEvents.keypress({ originalEvent: { key: 'ArrowRight', target: h.container } });
+    h.mapEvents.keypress({ originalEvent: { key: 'Enter', target: {} } });
+    assert.equal(h.changed.length, 0);
+
+    h.mapEvents.keypress({ originalEvent: { key: 'Enter', target: h.container } }); h.render();
+    assert.deepEqual(h.changed[0], { latitude: 12.8797, longitude: 121.774 });
+    assert.equal(h.marker.options.title, 'Delivery location');
 });
 
 test('map status explains initial tile loading and clears after the first tile batch', async t => {

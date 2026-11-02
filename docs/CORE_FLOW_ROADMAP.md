@@ -68,9 +68,13 @@ Headless Chrome rendered the real React/Leaflet picker at 320px with OSM tile
 requests blocked. A touch tap placed a seven-decimal pin, dragging moved it,
 zoom controls did not create another pin, both controls measured 44×44px,
 attribution stayed visible, and the 296px map caused no horizontal overflow.
-Retry remounted the map with the same selected coordinates. The status explains
-initial tile loading and offers retry after a 15-second stall. Twenty-five
-focused frontend checks and an isolated production build passed.
+Retry remounted the map with the same selected coordinates. Keyboard-only
+headless Chrome testing confirmed arrow-key panning and Enter placing the pin at
+the map center; Enter on a zoom control left the pin unchanged. The map now
+explains those keyboard controls and shows a focus ring. Twenty-six focused
+frontend address/map checks and the TypeScript check passed; generated Tailwind
+CSS contains the focus ring. The status explains initial tile loading and
+offers retry after a 15-second stall.
 Scoped selected-pin offline feedback:
 **5/10 → 8/10**, pending physical-device and deployed verification.
 The frontend accepts a complete seven-decimal pin, and the SQLite-backed
