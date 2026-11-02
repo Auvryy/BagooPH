@@ -6,7 +6,6 @@ use App\Models\CodAccount;
 use App\Models\DeliveryAttempt;
 use App\Models\Message;
 use App\Models\User;
-use App\Services\Commerce\PhilippineAddressCatalog;
 use App\Services\Courier\RiderTaskService;
 use App\Services\Finance\CodCashService;
 use App\Services\Notifications\NotificationDeliveryService;
@@ -17,6 +16,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithOrderActions;
@@ -25,7 +25,7 @@ use Tests\TestCase;
 
 class RiderConnectedApiTest extends TestCase
 {
-    use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
+    use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase, WithRegistrationPolicies;
 
     private function native(User $rider): void
     {
@@ -158,14 +158,21 @@ class RiderConnectedApiTest extends TestCase
 
     public function test_saved_buyer_pin_reaches_both_rider_interfaces_and_survives_later_address_edits(): void
     {
-        $buyer = $this->createApprovedUser('buyer');
+        $this->post('/register', [...$this->registrationPolicies(), 'role' => 'buyer', 'name' => 'Map Route Buyer',
+            'email' => 'route-buyer@example.test', 'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
+            'sex' => 'Female', 'birthday' => '1995-05-15', 'phone' => '09171234567', 'region' => '0400000000',
+            'province' => 'Laguna', 'city' => 'Nagcarlan', 'barangay' => 'Poblacion III', 'address' => '100 Market Road',
+            'postal_code' => '4002', 'delivery_latitude' => '14.281', 'delivery_longitude' => '121.417'])
+            ->assertSessionHasNoErrors();
+        $buyer = User::where('email', 'route-buyer@example.test')->sole();
+        $address = $buyer->addresses()->sole();
+        // Fixture approval represents the separate buyer review, not the subject of this route test.
+        $buyer->update(['kyc_status' => 'approved', 'kyc_reviewed_at' => now()]);
         $shop = $this->createE2EShop($this->createApprovedUser('seller'));
-        $address = $buyer->addresses()->create(['recipient_name' => $buyer->name, 'phone' => '09171234567',
-            'region' => app(PhilippineAddressCatalog::class)->regionFor('Laguna', 'Santa Cruz'),
-            'province' => 'Laguna', 'city' => 'Santa Cruz', 'barangay' => 'Poblacion III',
-            'street' => '100 Market Road', 'postal_code' => '4009', 'type' => 'Home', 'is_default' => true,
-            'latitude' => 14.281, 'longitude' => 121.417]);
         $order = $this->checkoutFlowOrder($buyer, $shop, shipping: ['saved_address_id' => $address->id,
+            'recipient_name' => $address->recipient_name, 'recipient_phone' => $address->phone,
+            'shipping_address' => $address->street, 'shipping_city' => $address->city, 'shipping_province' => $address->province,
+            'destination_barangay' => $address->barangay, 'shipping_postal_code' => $address->postal_code,
             'shipping_latitude' => '14.281', 'shipping_longitude' => '121.417']);
         $address->update(['latitude' => 14.282, 'longitude' => 121.418]);
         $parcel = $this->flowDelivery($order, 'out_for_delivery');

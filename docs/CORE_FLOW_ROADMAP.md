@@ -67,9 +67,10 @@ coordinates. The SQLite address-book suite passed 40 tests / 339 assertions,
 the address frontend suite passed 16 checks, and the worktree build passed.
 Scoped address-change pin safety: **4/10 → 7/10**, pending deployed acceptance.
 
-A full SQLite checkout-to-custody test passed 82 assertions showing that the
-saved buyer pin reaches both assigned Rider API and web navigation after
-collection. Changing the address book afterwards does not move the existing
+A SQLite registration-to-custody test passed 83 assertions showing that a
+buyer pin saved at signup reaches both assigned Rider API and web navigation
+after checkout and collection. The test uses a fixture for the separate buyer
+approval. Changing the address book afterwards does not move the existing
 order's destination. This checks application endpoints, not a live route
 provider or Android device.
 
