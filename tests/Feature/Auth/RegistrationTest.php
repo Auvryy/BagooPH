@@ -40,7 +40,7 @@ class RegistrationTest extends TestCase
             'password_confirmation' => 'Password1234!', 'phone' => '09171234567', 'region' => '1300000000',
             'province' => 'Metro Manila', 'city' => 'Taguig City', 'barangay' => 'Fort Bonifacio',
             'address' => '123 Test Street', 'postal_code' => '1634',
-            'delivery_latitude' => '14.5500000', 'delivery_longitude' => '121.0500000'];
+            'delivery_latitude' => '14.5501234', 'delivery_longitude' => '121.0509876'];
         $this->postJson('/register/validate', [...$input, 'step' => 2, 'delivery_longitude' => null])
             ->assertUnprocessable()->assertJsonValidationErrors('delivery_longitude');
         $this->postJson('/register/validate', [...$input, 'step' => 2, 'phone' => null])
@@ -57,8 +57,8 @@ class RegistrationTest extends TestCase
         $this->assertSame('+639171234567', $address->phone);
         $this->assertSame('City of Taguig', $address->city);
         $this->assertTrue($address->is_default);
-        $this->assertEquals(14.55, $address->latitude);
-        $this->assertEquals(121.05, $address->longitude);
+        $this->assertSame(14.5501234, $address->latitude);
+        $this->assertSame(121.0509876, $address->longitude);
     }
 
     public function test_buyer_registration_with_demographic_fields(): void

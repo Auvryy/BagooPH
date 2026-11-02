@@ -127,6 +127,12 @@ hub reliability checks plus 6 isolated SQLite pin-save cases / 90 assertions:
 buyer and Google registration, seller registration and pickup settings, hub
 creation, and hub-pin updates. The hub's server-rendered test now checks the
 initial tile-loading status while requiring a saved point before enabling Save.
+The expanded precision-persistence regression passed 10 focused SQLite cases /
+228 assertions. Non-rounded seven-decimal latitude and longitude now survive
+buyer, Google-buyer, and seller registration; buyer checkout address and order
+snapshots; seller pickup save and delivery snapshots; and hub creation and pin
+updates. These cases establish SQLite persistence and rider API snapshots, not
+hosted PostgreSQL or deployed-site behavior.
 The latest PC-only regression pass also passed 166 buyer input-validation
 tests / 1,039 assertions, 60 web courier/map tests, and 125 Rider map/routing
 tests. On 2026-11-03, live Geoapify motorcycle route requests with synthetic

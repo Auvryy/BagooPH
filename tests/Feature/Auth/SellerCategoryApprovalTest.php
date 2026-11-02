@@ -67,13 +67,13 @@ class SellerCategoryApprovalTest extends TestCase
     {
         Storage::fake('local');
         [$category] = $this->categories();
-        $data = $this->registration(['root_category_id' => $category->id, 'pickup_latitude' => '14.55', 'pickup_longitude' => '121.05']);
+        $data = $this->registration(['root_category_id' => $category->id, 'pickup_latitude' => '14.5501234', 'pickup_longitude' => '121.0509876']);
         $this->postJson('/register/validate', [...$data, 'step' => 2, 'pickup_longitude' => null])
             ->assertUnprocessable()->assertJsonValidationErrors('pickup_longitude');
         $this->post('/register', $data)->assertSessionHasNoErrors();
         $shop = User::where('email', 'category-applicant@bagoo.test')->sole()->shop;
-        $this->assertSame(14.55, $shop->pickup_latitude);
-        $this->assertSame(121.05, $shop->pickup_longitude);
+        $this->assertSame(14.5501234, $shop->pickup_latitude);
+        $this->assertSame(121.0509876, $shop->pickup_longitude);
         $this->assertSame('pending_approval', $shop->review_status);
     }
 

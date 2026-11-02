@@ -46,13 +46,15 @@ class CheckoutReplayTest extends TestCase
         $this->assertDatabaseCount('checkout_submissions', 0);
         $this->assertSame(10, $product->fresh()->stock);
         $this->assertSame(1, $cart->items()->count());
-        $pinned = [...$payload, 'shipping_latitude' => '14.55', 'shipping_longitude' => '121.05'];
+        $pinned = [...$payload, 'shipping_latitude' => '14.5501234', 'shipping_longitude' => '121.0509876'];
         $this->postJson('/checkout', $pinned)->assertUnprocessable()->assertJsonValidationErrors('save_address');
         $this->assertDatabaseCount('orders', 0);
         $this->post('/checkout', [...$pinned, 'save_address' => true])
             ->assertRedirect(route('buyer.orders.index'))->assertSessionHas('success');
-        $this->assertEquals(14.55, Order::sole()->destination_latitude);
-        $this->assertEquals(14.55, $buyer->addresses()->sole()->latitude);
+        $this->assertSame(14.5501234, Order::sole()->destination_latitude);
+        $this->assertSame(121.0509876, Order::sole()->destination_longitude);
+        $this->assertSame(14.5501234, $buyer->addresses()->sole()->latitude);
+        $this->assertSame(121.0509876, $buyer->addresses()->sole()->longitude);
     }
 
     public function test_enabling_pin_requirement_preserves_an_exact_retry_of_an_older_unpinned_order(): void
@@ -79,11 +81,13 @@ class CheckoutReplayTest extends TestCase
         $this->actingAs($buyer)->postJson('/checkout', $payload)->assertUnprocessable()
             ->assertJsonValidationErrors(['shipping_latitude', 'shipping_longitude']);
         $this->assertNull($address->fresh()->latitude);
-        $payload['shipping_latitude'] = '14.55';
-        $payload['shipping_longitude'] = '121.05';
+        $payload['shipping_latitude'] = '14.5501234';
+        $payload['shipping_longitude'] = '121.0509876';
         $this->post('/checkout', $payload)->assertRedirect(route('buyer.orders.index'))->assertSessionHas('success');
-        $this->assertEquals(14.55, $address->fresh()->latitude);
-        $this->assertEquals(121.05, Order::sole()->destination_longitude);
+        $this->assertSame(14.5501234, $address->fresh()->latitude);
+        $this->assertSame(121.0509876, $address->fresh()->longitude);
+        $this->assertSame(14.5501234, Order::sole()->destination_latitude);
+        $this->assertSame(121.0509876, Order::sole()->destination_longitude);
         $address->fresh()->update(['latitude' => 14.56, 'longitude' => 121.06]);
         $this->post('/checkout', $payload)->assertRedirect(route('buyer.orders.index'))->assertSessionHas('success');
         $this->assertEquals(14.56, $address->fresh()->latitude);
