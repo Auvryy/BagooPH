@@ -68,14 +68,14 @@ An additional 320px touch-emulation check confirmed map taps place a pin,
 dragging updates its coordinates, tapping zoom does not add another pin, and
 the 44px controls fit without horizontal overflow. With OSM tiles blocked, the
 retry state now tells buyers when their selected pin remains in the form; a
-regression test covers that state. Twenty-two focused frontend checks and an
+regression test covers that state. Twenty-three focused frontend checks and an
 isolated production build passed. Scoped selected-pin offline feedback:
 **5/10 → 8/10**, pending physical-device and deployed verification.
-The frontend also accepts a complete seven-decimal pin, and the SQLite-backed
-address service preserves both coordinates through validation and storage.
-Those acceptance checks passed alongside the same 22 focused frontend tests;
-this verifies coordinate precision in the application layer, not live provider
-geocoding or routing.
+The frontend accepts a complete seven-decimal pin, and the SQLite-backed
+address service preserves both coordinates through validation and storage. The
+map harness verifies that an address change removes the old marker and a new
+selection replaces it. This confirms application-layer precision and marker
+behavior, not live provider geocoding or routing.
 The latest PC-only regression pass also passed 159 buyer input-validation
 tests / 985 assertions, 60 web courier/map tests, and 125 Rider map/routing
 tests. On 2026-11-03, live Geoapify motorcycle route requests with synthetic
@@ -85,6 +85,9 @@ from a local web origin also returned HTTP 200, confirming local browser CORS.
 These checks did not cover production-domain restrictions, assigned-stop
 authorization, or phone GPS. Standard OpenStreetMap tiles are best-effort with
 no SLA, so live map availability must be checked before a demonstration.
+Six focused SQLite navigation/pin authorization tests also passed 403
+assertions. A broader courier API run had three unrelated proof-image errors
+because this local PHP runtime lacks GD; the focused navigation tests passed.
 When a saved address's physical fields change, the server now clears any pin
 unless the buyer explicitly confirmed a new selection; contact-only edits retain
 the pin. This protects older clients that might otherwise resend stale

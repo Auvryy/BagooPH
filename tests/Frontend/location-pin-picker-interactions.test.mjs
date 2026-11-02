@@ -88,3 +88,20 @@ test('a tile failure keeps selected-pin feedback visible with retry', async t =>
     assert.equal(text(status), 'Map tiles could not load. Your pin is still selected; retry to view the location.');
     assert.ok(nodes(h.tree).some(node => node.type === 'button' && text(node) === 'Retry map'));
 });
+
+test('clearing a saved pin removes its marker and a new selection replaces it', async t => {
+    const h = harness(t);
+    h.props.value = { latitude: 14.5995123, longitude: 120.9842123 };
+    h.render(); await tick(); h.render();
+    const previousMarker = h.marker;
+    assert.deepEqual(previousMarker.point, [14.5995123, 120.9842123]);
+
+    h.props.value = null; h.render();
+    assert.equal(previousMarker.removed, true);
+    assert.equal(text(nodes(h.tree).find(node => node.props?.role === 'status')), 'No location pin selected yet.');
+
+    h.mapEvents.click({ latlng: { lat: 14.600123456, lng: 120.985456789 } }); h.render();
+    assert.deepEqual(h.changed.at(-1), { latitude: 14.6001235, longitude: 120.9854568 });
+    assert.notEqual(h.marker, previousMarker);
+    assert.deepEqual(h.marker.point, [14.6001235, 120.9854568]);
+});
