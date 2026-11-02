@@ -7,6 +7,7 @@ import BuyerLayout from '@/Layouts/BuyerLayout';
 import BuyerPaymentChoice from '@/Components/BuyerPaymentChoice';
 import PhoneInput from '@/Components/PhoneInput';
 import ShippingCalculation from '@/Components/ShippingCalculation';
+import LocationPinPicker from '@/Components/LocationPinPicker';
 import BuyerVoucherPicker from '@/Components/Vouchers/BuyerVoucherPicker';
 import CheckoutVoucherBreakdown from '@/Components/Vouchers/CheckoutVoucherBreakdown';
 import axios from 'axios';
@@ -760,6 +761,11 @@ export default function CheckoutIndex({
                                             </p>
                                         )}
 
+                                        <LocationPinPicker
+                                            value={data.shipping_latitude !== '' && data.shipping_longitude !== '' && Number.isFinite(Number(data.shipping_latitude)) && Number.isFinite(Number(data.shipping_longitude))
+                                                ? { latitude: Number(data.shipping_latitude), longitude: Number(data.shipping_longitude) } : null}
+                                            onChange={point => setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude }))}
+                                        />
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <label htmlFor="checkout-shipping_latitude" className="block text-[10px] text-slate-500 font-sans mb-0.5">Latitude</label>

@@ -39,10 +39,19 @@ SQLite-memory API test exercises pickup and final-mile hub stops and missing
 coordinates. Scoped hub-stop location availability: **2/10 → 5/10**; this is
 an engineering assessment of the API contract, not end-to-end navigation proof.
 
-Buyer, seller and hub map-pin selection, buyer checkout persistence, web road
-guidance, and end-to-end routing verification remain in progress. Existing Rider
-Mobile road guidance depends on valid assigned-stop coordinates and configured
-map service access. Physical device and deployed-service acceptance remain open.
+Buyer address editing and checkout now expose a draggable map pin, with no pin
+invented for an address without coordinates. Address edits use the existing
+saved-coordinate fields; checkout sends the selected coordinates with the order.
+The buyer address frontend suite passes 13 checks, including empty and saved pin
+presentation, and the production frontend build passed in an isolated output
+directory. Scoped buyer pin entry: **2/10 → 4/10**; interactive map behavior and
+end-to-end checkout persistence still need verification.
+
+Seller and hub map-pin selection, required buyer checkout pins, updating an
+existing saved address from checkout, web road guidance, and end-to-end routing
+verification remain in progress. Existing Rider Mobile road guidance depends on
+valid assigned-stop coordinates and configured map service access. Physical
+device and deployed-service acceptance remain open.
 
 ## Native rider Wallet trip evidence: November 1-2, 2026
 

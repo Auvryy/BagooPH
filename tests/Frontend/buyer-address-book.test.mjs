@@ -14,6 +14,7 @@ after(() => { rmSync(temporary, { recursive: true, force: true }); delete global
 globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: () => false, has: () => true };
 const bundle = await build({ stdin: { contents: `export { default as Profile } from '@/Pages/Buyer/Profile';
  export { default as Editor } from '@/Components/BuyerAddressEditor'; export { default as Checkout } from '@/Pages/Checkout/Index';
+ export { default as LocationPinPicker } from '@/Components/LocationPinPicker';
  export { default as Recipient } from '@/Components/OrderRecipientSummary'; export * from '@/utils/buyerAddresses'; export * from '@/utils/addressLocations';
  export { personalNameError } from '@/utils/registrationValidation';`, resolveDir: root, loader: 'tsx' },
  bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false, loader: { '.css': 'empty' },
@@ -48,6 +49,15 @@ async function render(Component, props) {
 const profile = { user, addresses: [address], wallet: { available: false }, orders: { data: [] }, orderCounts: { all: 0 }, ordersCount: 0, initialTab: 'addresses', canUsePortal: true, addressBookLimit: 10 };
 function button(html, label) { return [...html.matchAll(/<button\b[^>]*>[\s\S]*?<\/button>/g)].map(x => x[0]).find(x => x.includes(label)); }
 
+test('location picker distinguishes an empty address from a saved pin', () => {
+ const empty = renderToStaticMarkup(createElement(ui.LocationPinPicker, { value: null, onChange() {} }));
+ const saved = renderToStaticMarkup(createElement(ui.LocationPinPicker, { value: { latitude: 14.5995, longitude: 120.9842 }, onChange() {} }));
+ assert.match(empty, /No location pin selected yet/);
+ assert.doesNotMatch(empty, /Location pin selected\./);
+ assert.match(saved, /Location pin selected\./);
+ assert.match(saved, /aria-label="Delivery location map"/);
+});
+
 test('address book shows actual saved details, postal code, region, and a clear default deletion rule', async () => {
  const html = await render(ui.Profile, profile);
  for (const value of ['24 Mabini Street', '1600', 'National Capital Region (NCR)', 'Saved Delivery Recipient']) assert.ok(html.includes(value));
@@ -74,6 +84,8 @@ test('address editor uses the stored recipient, bounded fields and the existing 
  assert.match(html, /id="address-street"[^>]*maxLength="500"/i);
  assert.match(html, /id="address-postal-code"[^>]*maxLength="4"/i);
  assert.match(html, /does not change your account name/);
+ assert.match(html, /aria-label="Delivery location map"/);
+ assert.match(html, /No location pin selected yet/);
  for (const field of ['region', 'province', 'city', 'barangay']) assert.match(html, new RegExp(`id="address-${field}"[^>]*required=""`));
 });
 const quote = { items: [{id:10, quantity:1, unit_price:250, subtotal:250}], subtotal: 250, shipping_fee: 50, doorstep_shipping_fee: 50, discount: 0, total: 300, voucher: null, redemptions: [],
@@ -85,6 +97,7 @@ test('checkout preselects the actual default recipient and permits delivery cont
  assert.match(html, /id="checkout-recipient-name"[^>]*value="Default Office Recipient"/);
  assert.doesNotMatch(html, /id="checkout-recipient-name"[^>]*(?:readonly|disabled)/i);
  assert.match(html, /<option value="9" selected=""/);
+ assert.match(html, /aria-label="Delivery location map"/);
 });
 test('waybill recipient uses the complete immutable order details and ignores current profile contact data', () => {
  const html = renderToStaticMarkup(createElement(ui.Recipient, { order: { recipient_name: 'Original Recipient', recipient_phone: '+639171234567', shipping_address: '84 Original Office Street', destination_barangay: 'San Antonio', shipping_city: 'City of Pasig', shipping_province: 'Metro Manila', shipping_postal_code: '1600', buyer: { name: 'Changed Account Name', phone: '+639181234567', address: '15 Future Street' } } }));
