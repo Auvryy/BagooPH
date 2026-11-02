@@ -61,11 +61,11 @@ test('location picker distinguishes an empty address from a saved pin', () => {
 });
 
 test('doorstep pin validation accepts bounded signed coordinates through seven decimals', () => {
- for (const [lat, lng] of [[14.5995, 120.9842], ['14.5995123', '120.9842123'], [0, 0],
+ for (const [lat, lng] of [[14.5995, 120.9842], ['14.5995123', '120.9842123'], [0, 0], ['-0', '-0'],
   ['-14.5995123', '-120.9842123'], ['90', '180'], ['-90', '-180']]) {
   assert.equal(ui.validDeliveryPin(lat, lng), true, `${lat}, ${lng} is a valid coordinate pair`);
  }
- for (const [lat, lng] of [['', ''], ['14.5', ''], ['', '121'], ['NaN', '121'], ['91', '121'], ['14', '181'], ['1e1', '121'], ['14.12345678', '121']]) {
+ for (const [lat, lng] of [['', ''], ['14.5', ''], ['', '121'], ['NaN', '121'], ['91', '121'], ['-91', '121'], ['14', '181'], ['14', '-181'], ['1e1', '121'], ['14.12345678', '121']]) {
   assert.equal(ui.validDeliveryPin(lat, lng), false);
  }
 });

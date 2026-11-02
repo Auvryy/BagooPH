@@ -59,6 +59,7 @@ class CommerceInputValidationTest extends TestCase
         [, , , $payload] = $this->checkout();
         foreach ([
             ['0', '0', '0', '0'],
+            ['-0', '-0', '0', '0'],
             ['-14.5995123', '-120.9842123', '-14.5995123', '-120.9842123'],
             ['14.1234567', '120.1234567', '14.1234567', '120.1234567'],
             ['90', '180', '90', '180'],
@@ -129,6 +130,8 @@ class CommerceInputValidationTest extends TestCase
             'street control before trim' => ['shipping_address', "\n123 Mabini Street"],
             'landmark short' => ['landmark', 'Gate'],
             'latitude too large' => ['shipping_latitude', '90.1'],
+            'latitude negative too large' => ['shipping_latitude', '-90.1'],
+            'longitude negative too large' => ['shipping_longitude', '-180.1'],
             'latitude scientific notation' => ['shipping_latitude', '1e1'],
             'latitude hidden' => ['shipping_latitude', "14.5\u{200B}"],
             'latitude precision' => ['shipping_latitude', '14.12345678'],

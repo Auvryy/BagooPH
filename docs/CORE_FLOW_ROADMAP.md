@@ -115,8 +115,8 @@ including partial-pin feedback for manual coordinates or map selection. The
 TypeScript and production Vite build passed using an isolated `/tmp` output
 directory; the default shared `public/build` location could not be cleared by
 the local user due to its existing permissions.
-The latest PC-only regression pass also passed 162 buyer input-validation
-tests / 1,009 assertions, 60 web courier/map tests, and 125 Rider map/routing
+The latest PC-only regression pass also passed 166 buyer input-validation
+tests / 1,039 assertions, 60 web courier/map tests, and 125 Rider map/routing
 tests. On 2026-11-03, live Geoapify motorcycle route requests with synthetic
 Manila-area points returned a road MultiLineString with 286 coordinates and an
 endpoint within 500 metres of the requested stop. A headless Chrome request
