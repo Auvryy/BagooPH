@@ -43,6 +43,25 @@ address or pin returns a `saved_address_id` validation error; reload and review
 the current address before trying again. Older clients may omit both ID and
 token, but do not receive saved-pin update and stale-selection protection.
 
+For buyer mobile integration, a new doorstep address must submit both
+coordinates and `save_address: true`. For an existing address, submit its ID,
+its `location_token`, its current physical address fields and the confirmed
+coordinates; use `save_address: false` to update that address instead of
+creating a duplicate. On a stale-token error, reload the address and ask the
+buyer to review the pin. If the address book is full, select an existing
+address or remove one before saving a new one. Hub pickup is exempt from the
+new doorstep requirements. Keep the same checkout token and payload for an
+exact retry, so a successful order is not submitted twice.
+
+The currently inspected buyer mobile checkout copies saved coordinates into
+its form but does not submit the saved address ID or location token, and allows
+`save_address` to be false. Its address editor resends coordinates without
+`pin_confirmed`, so an edit to physical fields clears the old pin. These
+observations are not a release gate by themselves:
+recheck the other team's latest work and verify registration, address editing,
+new and existing checkout, a full address book, stale pins, and retry behavior
+before enabling the shared requirement.
+
 When an address-book edit changes the physical address, coordinates are cleared
 unless the buyer places or confirms the pin and the client submits
 `pin_confirmed: true`. Clients should clear an old selection on address edits
