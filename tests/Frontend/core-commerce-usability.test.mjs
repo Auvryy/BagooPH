@@ -21,6 +21,7 @@ const result = await build({
             export const useLayoutEffect = () => {};
             export const useCallback = value => value;
             export const useMemo = callback => callback();
+            export const useId = () => 'core-commerce-pin';
             export default {};
         ` }));
         builder.onResolve({ filter: /^@inertiajs\/react$/ }, () => ({ path: 'inertia', namespace: 'page-inertia' }));
@@ -167,6 +168,17 @@ test('checkout fields expose server-matching limits, persistent labels and assoc
         const input = field(tree, `checkout-${name}`);
         assert.equal(input.props['aria-invalid'], true); assert.equal(text(field(tree, input.props['aria-describedby'])), ({ destination_barangay: 'Choose a supported barangay.', shipping_province: 'Enter a province.', shipping_postal_code: 'Use four digits.' })[name]);
     }
+});
+
+test('doorstep pin feedback accepts manual coordinate entry or map selection without a partial pair', () => {
+    const h = harness();
+    h.render();
+    h.data.shipping_latitude = '';
+    let tree = h.render();
+    all(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+    tree = h.render();
+    assert.match(text(all(tree, node => node.props?.role === 'alert')), /complete, valid latitude\/longitude pair or choose the delivery location on the map/i);
+    assert.equal(h.requests.length, 0);
 });
 
 

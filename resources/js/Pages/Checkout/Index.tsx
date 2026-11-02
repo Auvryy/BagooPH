@@ -346,7 +346,7 @@ export default function CheckoutIndex({
         }
 
         if (data.delivery_type === 'doorstep' && !validDeliveryPin(data.shipping_latitude, data.shipping_longitude)) {
-            setValidationError('Choose a valid delivery location on the map before placing your order.');
+            setValidationError('Enter a complete, valid latitude/longitude pair or choose the delivery location on the map.');
             return;
         }
         if (data.delivery_type === 'doorstep' && data.saved_address_id === null && !data.save_address) {
