@@ -81,6 +81,8 @@ the street. Registration buyer and seller clear-pin actions also use 44px
 targets. The frontend address/map suite now passes 28 checks, the SQLite buyer
 address-book suite passes 42 tests / 351 assertions, and TypeScript passes. The
 status explains initial tile loading and offers retry after a 15-second stall.
+Targeted buyer, seller, and Google registration pin-save tests plus checkout
+pin persistence/replay passed four tests / 56 assertions.
 With tiles allowed, a local 320px headless browser also loaded four OpenStreetMap
 tiles around a synthetic Philippines center; the status settled and attribution
 remained visible. This does not verify the deployed production origin.
