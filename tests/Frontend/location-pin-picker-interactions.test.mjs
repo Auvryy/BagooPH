@@ -62,7 +62,7 @@ test('keyboard Enter places a pin at the focused map center only', async t => {
     const mapRegion = nodes(h.tree).find(node => node.props?.role === 'region');
     const instructions = nodes(h.tree).find(node => node.props?.id === 'pin-picker-help');
     assert.equal(mapRegion.props['aria-describedby'], instructions.props.id);
-    assert.match(text(instructions), /Keyboard: focus the map, use arrow keys to move, then press Enter/);
+    assert.match(text(instructions), /Keyboard: focus the map and use arrow keys to pan; press Enter to pin its center\. Press Tab to reach the zoom controls\./);
     h.mapEvents.keypress({ originalEvent: { key: 'ArrowRight', target: h.container } });
     h.mapEvents.keypress({ originalEvent: { key: 'Enter', target: {} } });
     assert.equal(h.changed.length, 0);
@@ -88,7 +88,9 @@ test('a stalled tile batch times out with recovery guidance and retains the pin'
     h.render(); await tick(); h.render();
     t.mock.timers.tick(15000); h.render();
     assert.equal(text(nodes(h.tree).find(node => node.props?.role === 'status')), 'Map tiles could not load. Your pin is still selected; retry to view the location.');
-    assert.ok(nodes(h.tree).some(node => node.type === 'button' && text(node) === 'Retry map'));
+    const retry = nodes(h.tree).find(node => node.type === 'button' && text(node) === 'Retry map');
+    assert.ok(retry);
+    assert.match(retry.props.className, /min-h-\[44px\]/);
     assert.deepEqual(h.marker.point, [14.5995123, 120.9842123]);
 });
 
