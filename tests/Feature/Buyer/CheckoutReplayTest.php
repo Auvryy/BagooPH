@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\Commerce\BuyerAddressService;
 use App\Services\Orders\CheckoutOrderService;
 use App\Services\Orders\CheckoutSubmissionService;
 use Illuminate\Database\Events\QueryExecuted;
@@ -57,6 +58,31 @@ class CheckoutReplayTest extends TestCase
         $this->assertNull(Order::sole()->destination_latitude);
         config(['checkout.require_doorstep_pin' => true]);
         $this->post('/checkout', $payload)->assertRedirect(route('buyer.orders.index'))->assertSessionHas('success');
+        $this->assertDatabaseCount('orders', 1);
+        $this->assertSame(8, $product->fresh()->stock);
+    }
+
+    public function test_required_pin_updates_the_selected_address_and_an_exact_retry_does_not_overwrite_it(): void
+    {
+        [$buyer, $cart, $product, $payload] = $this->checkout();
+        $address = $buyer->addresses()->create(['recipient_name' => $payload['recipient_name'], 'phone' => '+639171234567',
+            'region' => '1300000000', 'province' => $payload['shipping_province'], 'city' => $payload['shipping_city'],
+            'barangay' => $payload['destination_barangay'], 'street' => $payload['shipping_address'],
+            'postal_code' => $payload['shipping_postal_code'], 'type' => 'Home', 'is_default' => true]);
+        $payload['saved_address_id'] = $address->id;
+        $payload['saved_address_location_token'] = app(BuyerAddressService::class)->locationToken($address);
+        config(['checkout.require_doorstep_pin' => true]);
+        $this->actingAs($buyer)->postJson('/checkout', $payload)->assertUnprocessable()
+            ->assertJsonValidationErrors(['shipping_latitude', 'shipping_longitude']);
+        $this->assertNull($address->fresh()->latitude);
+        $payload['shipping_latitude'] = '14.55';
+        $payload['shipping_longitude'] = '121.05';
+        $this->post('/checkout', $payload)->assertRedirect(route('buyer.orders.index'))->assertSessionHas('success');
+        $this->assertEquals(14.55, $address->fresh()->latitude);
+        $this->assertEquals(121.05, Order::sole()->destination_longitude);
+        $address->fresh()->update(['latitude' => 14.56, 'longitude' => 121.06]);
+        $this->post('/checkout', $payload)->assertRedirect(route('buyer.orders.index'))->assertSessionHas('success');
+        $this->assertEquals(14.56, $address->fresh()->latitude);
         $this->assertDatabaseCount('orders', 1);
         $this->assertSame(8, $product->fresh()->stock);
     }

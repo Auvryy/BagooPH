@@ -144,6 +144,9 @@ hub self-pickup remains available. The checkout page exposes
 54 tests / 506 assertions and the address suite passed 12 tests / 97 assertions.
 Scoped rollout readiness: **2/10 → 5/10**; cross-client UI, activation and
 deployed acceptance remain open.
+An additional SQLite integration check passed 16 assertions with the setting
+enabled: a selected address receives the confirmed pin, and an exact order
+retry cannot overwrite a later address edit.
 
 Rider web can now request an actual road line for an assigned stop after the
 rider selects a vehicle and starts navigation. The server rechecks assignment,
