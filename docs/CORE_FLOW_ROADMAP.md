@@ -78,13 +78,13 @@ this verifies coordinate precision in the application layer, not live provider
 geocoding or routing.
 The latest PC-only regression pass also passed 159 buyer input-validation
 tests / 985 assertions, 60 web courier/map tests, and 125 Rider map/routing
-tests. On 2026-11-03, one live Geoapify motorcycle route request with synthetic
+tests. On 2026-11-03, live Geoapify motorcycle route requests with synthetic
 Manila-area points returned a road MultiLineString with 286 coordinates and an
-endpoint within 500 metres of the requested stop. Automated requests otherwise
-used synthetic or mocked data. This live check did not cover browser-origin
-restrictions, assigned-stop authorization, or phone GPS. Standard OpenStreetMap
-tiles are best-effort with no SLA, so live map availability must be checked
-before a demonstration.
+endpoint within 500 metres of the requested stop. A headless Chrome request
+from a local web origin also returned HTTP 200, confirming local browser CORS.
+These checks did not cover production-domain restrictions, assigned-stop
+authorization, or phone GPS. Standard OpenStreetMap tiles are best-effort with
+no SLA, so live map availability must be checked before a demonstration.
 When a saved address's physical fields change, the server now clears any pin
 unless the buyer explicitly confirmed a new selection; contact-only edits retain
 the pin. This protects older clients that might otherwise resend stale
