@@ -117,6 +117,11 @@ and disabled wheel zoom so page scrolling remains usable.
 TypeScript and production Vite build passed using an isolated `/tmp` output
 directory; the default shared `public/build` location could not be cleared by
 the local user due to its existing permissions.
+Cross-form PC coverage passed 68 frontend registration, seller settings, and
+hub reliability checks plus 6 isolated SQLite pin-save cases / 90 assertions:
+buyer and Google registration, seller registration and pickup settings, hub
+creation, and hub-pin updates. The hub's server-rendered test now checks the
+initial tile-loading status while requiring a saved point before enabling Save.
 The latest PC-only regression pass also passed 166 buyer input-validation
 tests / 1,039 assertions, 60 web courier/map tests, and 125 Rider map/routing
 tests. On 2026-11-03, live Geoapify motorcycle route requests with synthetic

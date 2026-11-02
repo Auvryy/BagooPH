@@ -44,10 +44,11 @@ function overview(canScan) {
 test('hub pin editor requires an actual selected point before saving', async () => {
     const base = { name: 'Test Hub', latitude: null, longitude: null, location_token: 'a'.repeat(64) };
     const empty = await render(HubLocationEditor, 'Hub/Pin', { hub: base, url: '/hub/location' });
-    assert.match(empty, /No location pin selected yet/);
+    assert.match(empty, /role="status">Loading map…<\/p>/);
+    assert.match(empty, /aria-label="Hub location map"/);
     assert.match(empty, /<button[^>]*disabled=""[^>]*>Save hub pin<\/button>/);
     const selected = await render(HubLocationEditor, 'Hub/Pin', { hub: { ...base, latitude: 14.16, longitude: 121.24 }, url: '/hub/location' });
-    assert.match(selected, /Location pin selected/);
+    assert.match(selected, /Loading map… Your pin is still selected/);
     assert.doesNotMatch(selected, /<button[^>]*disabled=""[^>]*>Save hub pin<\/button>/);
 });
 
