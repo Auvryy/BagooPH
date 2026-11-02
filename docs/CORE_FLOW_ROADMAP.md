@@ -30,13 +30,13 @@ Buyer checkout
 
 The core flow is complete only when the entire chain passes cross-role tests without a portal inventing statuses, bypassing custody, settling COD early, or relying on sample success data.
 
-## Native rider Wallet trip evidence: November 1, 2026
+## Native rider Wallet trip evidence: November 1-2, 2026
 
-The local `fix/rider-wallet-trip-evidence` branch starts at merged main
-`f001d39`. Previously, a valid paid Wallet handoff advertised native private proof
-but returned 404 and omitted the original recipient because Trips looked only
-for a COD collection. Trips now use the immutable Wallet receipt matched to the
-original delivery, checkpoint and actor. Later contact edits and rider
+The implementation branch `fix/rider-wallet-trip-evidence` started at main
+`f001d39`. Previously, a valid paid Wallet handoff advertised native private
+proof but returned 404 and omitted the original recipient because Trips looked
+only for a COD collection. Trips now use the immutable Wallet receipt matched
+to the original delivery, checkpoint and actor. Later contact edits and rider
 reassignment cannot replace that evidence. No COD account is created for Wallet.
 Changed or invalid replacement images return the existing evidence-conflict
 response; missing files, foreign ownership and unsafe paths remain unavailable.
@@ -63,11 +63,16 @@ system readiness. Deployment, fresh deployed native acceptance, physical Android
 checks and PostgreSQL concurrency need separate evidence. Phone testing is
 deferred. No production database or mobile operational write gate was changed.
 
-The [API contract](api/RIDER_OPERATIONS_API.md) records the retained sources. The
-[combined PR title/body](api/RIDER_TRIP_EVIDENCE_PR_DRAFT.md) remains a local
-draft. The feature branch is published; GitHub PR status has not been verified.
-Code and regression evidence are in
-local commit `15d7fc3` (`fix(api): retain Wallet trip proof and versioned delivery guidance`).
+**Merge status — November 2, 2026:** PR #144 merged the branch into Bagoo `main`
+at `9ca5db5`. The code commit `15d7fc3` and documentation commit `9e58312` are
+included, followed by final handoff documentation commit `a54c76a`. The recorded
+452-test run happened before merge; it was not rerun by this update. Source merge
+does not confirm Azure deployment, applied migrations, or live cross-role
+acceptance. Phone testing remains deferred.
+
+The [API contract](api/RIDER_OPERATIONS_API.md) records the retained sources.
+The [merged PR summary](api/RIDER_TRIP_EVIDENCE_PR_DRAFT.md) records the merge
+and the remaining deployment and acceptance limits.
 
 ## Buyer mobile web connections: October 29, 2026
 
