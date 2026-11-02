@@ -84,6 +84,19 @@ class CheckoutOrderService
             if ($original = $submissions->replay($buyer, $cart, $tokenHash, $requestHash, $data)) {
                 return $original;
             }
+            $savedAddress = null;
+            if (isset($data['saved_address_id'])) {
+                $savedAddress = $buyer->addresses()->whereKey($data['saved_address_id'])->lockForUpdate()->first();
+                if (! $savedAddress) {
+                    throw ValidationException::withMessages(['saved_address_id' => 'Select an address saved to your account.']);
+                }
+                foreach (['street' => 'shipping_address', 'city' => 'shipping_city', 'province' => 'shipping_province',
+                    'barangay' => 'destination_barangay', 'postal_code' => 'shipping_postal_code'] as $field => $input) {
+                    if ((string) ($savedAddress->{$field} ?? '') !== (string) ($data[$input] ?? '')) {
+                        throw ValidationException::withMessages(['saved_address_id' => 'This saved address changed. Select it again or save a new address.']);
+                    }
+                }
+            }
             if (! $this->routingEngine->isContiguousRoadServiceable($data['shipping_province'], $data['shipping_city'])) {
                 throw new CheckoutException('Delivery address is outside contiguous road freight boundaries. Maritime shipping is excluded.');
             }
@@ -224,6 +237,9 @@ class CheckoutOrderService
                 $orders->push($order->load('delivery', 'items'));
             }
 
+            if ($savedAddress && $data['shipping_latitude'] !== null && $data['shipping_longitude'] !== null) {
+                $savedAddress->update(['latitude' => $data['shipping_latitude'], 'longitude' => $data['shipping_longitude']]);
+            }
             if ($data['save_address']) {
                 try {
                     app(BuyerAddressService::class)->create($buyer, [

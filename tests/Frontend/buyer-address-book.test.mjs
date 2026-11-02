@@ -15,6 +15,7 @@ globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: (
 const bundle = await build({ stdin: { contents: `export { default as Profile } from '@/Pages/Buyer/Profile';
  export { default as Editor } from '@/Components/BuyerAddressEditor'; export { default as Checkout } from '@/Pages/Checkout/Index';
  export { default as LocationPinPicker } from '@/Components/LocationPinPicker';
+ export { validDeliveryPin, changedDeliveryAddress } from '@/utils/checkoutLocation';
  export { default as Recipient } from '@/Components/OrderRecipientSummary'; export * from '@/utils/buyerAddresses'; export * from '@/utils/addressLocations';
  export { personalNameError } from '@/utils/registrationValidation';`, resolveDir: root, loader: 'tsx' },
  bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false, loader: { '.css': 'empty' },
@@ -58,6 +59,25 @@ test('location picker distinguishes an empty address from a saved pin', () => {
  assert.match(saved, /aria-label="Delivery location map"/);
 });
 
+test('doorstep pin validation rejects absent, partial and invalid coordinates', () => {
+ assert.equal(ui.validDeliveryPin(14.5995, 120.9842), true);
+ for (const [lat, lng] of [['', ''], ['14.5', ''], ['NaN', '121'], ['91', '121'], ['14', '181'], ['1e1', '121'], ['14.12345678', '121']]) {
+  assert.equal(ui.validDeliveryPin(lat, lng), false);
+ }
+});
+
+test('editing a saved delivery address removes its old pin and makes a new address', () => {
+ const saved = { shipping_address: 'Old street', shipping_city: 'Makati', shipping_province: 'Metro Manila',
+  destination_barangay: 'San Lorenzo', shipping_postal_code: '1226', shipping_latitude: 14.55,
+  shipping_longitude: 121.02, saved_address_id: 7, save_address: false };
+ assert.equal(ui.changedDeliveryAddress(saved, 'shipping_address', 'Old street', true), saved);
+ const changed = ui.changedDeliveryAddress(saved, 'shipping_address', 'New street', true);
+ assert.equal(changed.shipping_address, 'New street');
+ assert.equal(changed.shipping_latitude, ''); assert.equal(changed.shipping_longitude, '');
+ assert.equal(changed.saved_address_id, null); assert.equal(changed.save_address, true);
+ assert.equal(ui.changedDeliveryAddress(saved, 'shipping_city', 'Pasig', false).save_address, false);
+});
+
 test('address book shows actual saved details, postal code, region, and a clear default deletion rule', async () => {
  const html = await render(ui.Profile, profile);
  for (const value of ['24 Mabini Street', '1600', 'National Capital Region (NCR)', 'Saved Delivery Recipient']) assert.ok(html.includes(value));
@@ -98,6 +118,10 @@ test('checkout preselects the actual default recipient and permits delivery cont
  assert.doesNotMatch(html, /id="checkout-recipient-name"[^>]*(?:readonly|disabled)/i);
  assert.match(html, /<option value="9" selected=""/);
  assert.match(html, /aria-label="Delivery location map"/);
+});
+test('checkout offers to save the first delivery address by default', async () => {
+ const html = await render(ui.Checkout, { cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user, kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [] });
+ assert.match(html, /<input[^>]*type="checkbox"[^>]*checked=""[^>]*\/>\s*<span>Save this address to my address book<\/span>/);
 });
 test('waybill recipient uses the complete immutable order details and ignores current profile contact data', () => {
  const html = renderToStaticMarkup(createElement(ui.Recipient, { order: { recipient_name: 'Original Recipient', recipient_phone: '+639171234567', shipping_address: '84 Original Office Street', destination_barangay: 'San Antonio', shipping_city: 'City of Pasig', shipping_province: 'Metro Manila', shipping_postal_code: '1600', buyer: { name: 'Changed Account Name', phone: '+639181234567', address: '15 Future Street' } } }));

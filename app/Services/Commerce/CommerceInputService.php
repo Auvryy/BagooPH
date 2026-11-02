@@ -43,6 +43,7 @@ class CommerceInputService
             'logistics_company_id' => ['nullable', $this->identifier(), 'integer'],
             'voucher_code' => ['bail', 'nullable', 'string', 'max:50', 'regex:/\A[A-Z0-9_-]+\z/'],
             'save_address' => ['nullable', 'boolean'],
+            'saved_address_id' => ['nullable', $this->identifier(), 'integer'],
             'item_ids' => ['required', 'array', 'list', 'min:1'],
             'item_ids.*' => ['bail', 'required', $this->identifier(), 'integer', 'distinct'],
         ], ['payment_method.in' => 'Choose cash on delivery or Bagoo Wallet. External online payments are not available.',
@@ -64,6 +65,11 @@ class CommerceInputService
         $data['delivery_type'] ??= 'doorstep';
         $data['pickup_hub_id'] = $data['delivery_type'] === 'hub_self_pickup' ? (int) $data['pickup_hub_id'] : null;
         $data['save_address'] = (bool) ($data['save_address'] ?? false);
+        if (($data['saved_address_id'] ?? null) === null) {
+            unset($data['saved_address_id']);
+        } elseif ($data['save_address']) {
+            throw ValidationException::withMessages(['saved_address_id' => 'Choose an existing address or save a new one.']);
+        }
         $data['item_ids'] = array_map('intval', $data['item_ids']);
         sort($data['item_ids'], SORT_NUMERIC);
 

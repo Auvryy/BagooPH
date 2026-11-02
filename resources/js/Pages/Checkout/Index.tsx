@@ -8,6 +8,7 @@ import BuyerPaymentChoice from '@/Components/BuyerPaymentChoice';
 import PhoneInput from '@/Components/PhoneInput';
 import ShippingCalculation from '@/Components/ShippingCalculation';
 import LocationPinPicker from '@/Components/LocationPinPicker';
+import { changedDeliveryAddress, validDeliveryPin, type CheckoutAddressField } from '@/utils/checkoutLocation';
 import BuyerVoucherPicker from '@/Components/Vouchers/BuyerVoucherPicker';
 import CheckoutVoucherBreakdown from '@/Components/Vouchers/CheckoutVoucherBreakdown';
 import axios from 'axios';
@@ -184,7 +185,8 @@ export default function CheckoutIndex({
         voucher_code: '',
         platform_voucher_revision_id: null as number | null,
         shop_voucher_revision_ids: {} as Record<number, number | null>,
-        save_address: false,
+        save_address: !initialAddress && addresses.length < addressBookLimit,
+        saved_address_id: (initialAddress?.id ?? null) as number | null,
     });
 
     const handleAddressChange = (addressId: string) => {
@@ -203,6 +205,7 @@ export default function CheckoutIndex({
                 shipping_longitude: '',
                 landmark: '',
                 save_address: addresses.length < addressBookLimit,
+                saved_address_id: null,
             }));
         } else {
             const found = addresses.find(a => String(a.id) === addressId);
@@ -220,9 +223,17 @@ export default function CheckoutIndex({
                     shipping_longitude: found.longitude ?? '',
                     landmark: found.landmark || '',
                     save_address: false,
+                    saved_address_id: found.id,
                 }));
             }
         }
+    };
+
+    const updateDeliveryAddress = (field: CheckoutAddressField, value: string) => {
+        if (data[field] === value) return;
+        if (data.saved_address_id !== null) setSelectedAddressId('new');
+        setData(previous => changedDeliveryAddress(previous, field, value, addresses.length < addressBookLimit));
+        setGpsStatus(null);
     };
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -357,6 +368,11 @@ export default function CheckoutIndex({
         if (!data.recipient_name.trim() || !data.recipient_phone.trim() || !data.shipping_address.trim()
             || !data.shipping_city.trim() || !data.shipping_province.trim() || !data.destination_barangay.trim() || !data.shipping_postal_code.trim()) {
             setValidationError('Please complete all required recipient and address fields.');
+            return;
+        }
+
+        if (data.delivery_type === 'doorstep' && !validDeliveryPin(data.shipping_latitude, data.shipping_longitude)) {
+            setValidationError('Choose a valid delivery location on the map before placing your order.');
             return;
         }
 
@@ -655,7 +671,7 @@ export default function CheckoutIndex({
                                             maxLength={500}
                                             minLength={5}
                                             value={data.shipping_address}
-                                            onChange={(e) => setData('shipping_address', e.target.value)}
+                                            onChange={(e) => updateDeliveryAddress('shipping_address', e.target.value)}
                                             required
                                             placeholder="House/Unit No., Street name, Subdivision"
                                             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
@@ -674,7 +690,7 @@ export default function CheckoutIndex({
                                             value={data.destination_barangay}
                                             required
                                             maxLength={100}
-                                            onChange={(e) => setData('destination_barangay', e.target.value)}
+                                            onChange={(e) => updateDeliveryAddress('destination_barangay', e.target.value)}
                                             placeholder="e.g. Brgy. Santisimo Rosario"
                                             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                         />
@@ -691,7 +707,7 @@ export default function CheckoutIndex({
                                             maxLength={100}
                                             minLength={2}
                                             value={data.shipping_city}
-                                            onChange={(e) => setData('shipping_city', e.target.value)}
+                                            onChange={(e) => updateDeliveryAddress('shipping_city', e.target.value)}
                                             required
                                             placeholder="e.g. San Pablo City"
                                             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
@@ -710,7 +726,7 @@ export default function CheckoutIndex({
                                             value={data.shipping_province}
                                             required
                                             maxLength={100}
-                                            onChange={(e) => setData('shipping_province', e.target.value)}
+                                            onChange={(e) => updateDeliveryAddress('shipping_province', e.target.value)}
                                             placeholder="e.g. Laguna"
                                             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                         />
@@ -731,7 +747,7 @@ export default function CheckoutIndex({
                                             placeholder="e.g. 4000"
                                             minLength={4}
                                             value={data.shipping_postal_code}
-                                            onChange={(e) => setData('shipping_postal_code', e.target.value)}
+                                            onChange={(e) => updateDeliveryAddress('shipping_postal_code', e.target.value)}
                                             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
                                         />
                                         {errors.shipping_postal_code && <p id="checkout-shipping_postal_code-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_postal_code}</p>}
@@ -742,7 +758,7 @@ export default function CheckoutIndex({
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                             <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                                                 <Crosshair className="w-3.5 h-3.5 text-[#E00D42]" />
-                                                Delivery location (optional)
+                                                Delivery location (required for doorstep delivery)
                                             </span>
                                             <button
                                                 type="button"
@@ -766,6 +782,7 @@ export default function CheckoutIndex({
                                                 ? { latitude: Number(data.shipping_latitude), longitude: Number(data.shipping_longitude) } : null}
                                             onChange={point => setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude }))}
                                         />
+                                        {data.saved_address_id !== null && <p className="text-xs text-slate-600">Placing your order will save this pin to the selected address.</p>}
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <label htmlFor="checkout-shipping_latitude" className="block text-[10px] text-slate-500 font-sans mb-0.5">Latitude</label>

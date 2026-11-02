@@ -40,18 +40,22 @@ coordinates. Scoped hub-stop location availability: **2/10 → 5/10**; this is
 an engineering assessment of the API contract, not end-to-end navigation proof.
 
 Buyer address editing and checkout now expose a draggable map pin, with no pin
-invented for an address without coordinates. Address edits use the existing
-saved-coordinate fields; checkout sends the selected coordinates with the order.
-The buyer address frontend suite passes 13 checks, including empty and saved pin
-presentation, and the production frontend build passed in an isolated output
-directory. Scoped buyer pin entry: **2/10 → 4/10**; interactive map behavior and
-end-to-end checkout persistence still need verification.
+invented for an address without coordinates. Web doorstep checkout asks for a
+valid pin, and changing physical address fields clears the old pin. Successful
+checkout saves a changed pin to the selected address only after checking its
+owner and physical address; a repeated confirmation cannot overwrite a later
+address edit. New addresses can be saved for later. The frontend address suite
+passes 16 checks and the isolated SQLite buyer-address suite passes 12 tests / 76
+assertions, including ownership, stale addresses, order snapshots and replay.
+The checkout replay suite also passed 51 tests / 469 assertions. The frontend
+build passed in an isolated output directory. Scoped buyer pin
+entry: **2/10 → 6/10**, pending interactive map and deployment verification.
 
-Seller and hub map-pin selection, required buyer checkout pins, updating an
-existing saved address from checkout, web road guidance, and end-to-end routing
-verification remain in progress. Existing Rider Mobile road guidance depends on
-valid assigned-stop coordinates and configured map service access. Physical
-device and deployed-service acceptance remain open.
+Seller and hub map-pin selection, server-side required pin enforcement across
+checkout clients, web road guidance, and end-to-end routing verification remain
+in progress. Existing Rider Mobile road guidance depends on valid assigned-stop
+coordinates and configured map service access. Physical device and deployed-service
+acceptance remain open.
 
 ## Native rider Wallet trip evidence: November 1-2, 2026
 
