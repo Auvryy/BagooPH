@@ -60,10 +60,15 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
         if (value && map.current) map.current.setView([value.latitude, value.longitude], Math.max(map.current.getZoom(), 15), { animate: false });
     }, [value?.latitude, value?.longitude]);
 
+    const pinStatus = value ? 'Location pin selected.' : 'No location pin selected yet.';
+    const tileFailureStatus = value
+        ? 'Map tiles could not load. Your pin is still selected; retry to view the location.'
+        : 'Map tiles could not load. Check your connection and try again.';
+
     return <div className="location-pin-picker space-y-2">
         <p className="text-xs text-slate-700">Tap the map to place a pin, then drag it to the exact location.</p>
         <div ref={container} role="region" aria-label={`${label} map`} className="h-64 w-full rounded-lg border border-slate-300" />
-        <p className="text-xs text-slate-600" role="status">{failed ? 'Map tiles could not load. Check your connection and try again.' : value ? 'Location pin selected.' : 'No location pin selected yet.'}</p>
+        <p className="text-xs text-slate-600" role="status">{failed ? tileFailureStatus : pinStatus}</p>
         {failed && <button type="button" onClick={() => setAttempt(previous => previous + 1)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Retry map</button>}
     </div>;
 }

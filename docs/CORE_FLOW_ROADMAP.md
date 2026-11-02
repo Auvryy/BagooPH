@@ -62,6 +62,13 @@ The checkout replay suite also passed 51 tests / 469 assertions. The frontend
 build passed in an isolated output directory. Two headless map interaction
 checks cover placing and dragging a pin and retrying failed map tiles. Scoped
 buyer pin entry: **2/10 → 6/10**, pending live map and deployment verification.
+An additional 320px touch-emulation check confirmed map taps place a pin,
+dragging updates its coordinates, tapping zoom does not add another pin, and
+the 44px controls fit without horizontal overflow. With OSM tiles blocked, the
+retry state now tells buyers when their selected pin remains in the form; a
+regression test covers that state. Twenty-two focused frontend checks and an
+isolated production build passed. Scoped selected-pin offline feedback:
+**5/10 → 8/10**, pending physical-device and deployed verification.
 When a saved address's physical fields change, the server now clears any pin
 unless the buyer explicitly confirmed a new selection; contact-only edits retain
 the pin. This protects older clients that might otherwise resend stale

@@ -77,3 +77,14 @@ test('failed map tiles offer retry and release the old map', async t => {
     assert.ok(retry); retry.props.onClick(); h.render(); await tick(); h.render();
     assert.equal(h.created, 2); assert.equal(h.removed, 1);
 });
+
+test('a tile failure keeps selected-pin feedback visible with retry', async t => {
+    const h = harness(t);
+    h.props.value = { latitude: 14.5995123, longitude: 120.9842123 };
+    h.render(); await tick(); h.render();
+    assert.ok(h.marker);
+    h.tileEvents.tileerror(); h.render();
+    const status = nodes(h.tree).find(node => node.props?.role === 'status');
+    assert.equal(text(status), 'Map tiles could not load. Your pin is still selected; retry to view the location.');
+    assert.ok(nodes(h.tree).some(node => node.type === 'button' && text(node) === 'Retry map'));
+});
