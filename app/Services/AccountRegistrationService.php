@@ -93,6 +93,9 @@ class AccountRegistrationService
             'middle_initial' => ['bail', 'nullable', 'string', new MiddleInitial],
         ];
         $rules += app(RegistrationAddressService::class)->rules();
+        if ($role === 'buyer') {
+            $rules = app(RegistrationDeliveryPinService::class)->addRules($rules);
+        }
         if ($separatedName) {
             foreach (['first_name', 'last_name'] as $field) {
                 $rules[$field] = array_map(fn ($rule) => $rule === 'nullable' ? 'required' : $rule, $rules[$field]);
@@ -132,7 +135,7 @@ class AccountRegistrationService
         return match ($role) {
             'buyer' => [
                 [...$name, 'email', ...$password],
-                ['birthday', 'phone', ...$location, 'id_document', ...$policies],
+                ['birthday', 'phone', ...$location, 'delivery_latitude', 'delivery_longitude', 'id_document', ...$policies],
             ],
             'seller' => [
                 [...$name, 'birthday', 'shop_name', 'root_category_id', 'email'],

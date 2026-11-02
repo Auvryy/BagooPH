@@ -20,7 +20,7 @@ export default function BuyerAddressEditor({ user, address, count, limit, onClos
     const limited = !address && count >= limit;
     const update = (field: 'recipient_name' | 'phone' | 'street' | 'postal_code', value: string) => {
         const next = { ...form.data, [field]: value };
-        form.setData(field === 'street' ? { ...next, latitude: null, longitude: null } : next);
+        form.setData(field === 'street' || field === 'postal_code' ? { ...next, latitude: null, longitude: null } : next);
         const error = buyerAddressErrors(next)[field];
         if (error) form.setError(field, error); else form.clearErrors(field);
     };

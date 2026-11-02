@@ -36,13 +36,14 @@ class GoogleRegistrationService
         }
         $applications = app(ApplicationValidationService::class);
         $request->validate(['phone' => ['bail', 'nullable', 'string', 'max:24']]);
-        $values = $applications->registrationValues($request->only(['first_name', 'middle_initial', 'last_name', 'sex', 'birthday', 'phone', 'region', 'address', 'city', 'province', 'municipality', 'barangay', 'postal_code']) + ['email' => $pending['identity']['email']], 'buyer');
+        $values = $applications->registrationValues($request->only(['first_name', 'middle_initial', 'last_name', 'sex', 'birthday', 'phone', 'region', 'address', 'city', 'province', 'municipality', 'barangay', 'postal_code', 'delivery_latitude', 'delivery_longitude']) + ['email' => $pending['identity']['email']], 'buyer');
         $rules = $applications->rules('buyer');
         foreach (['first_name', 'last_name'] as $field) {
             $rules[$field] = array_map(fn ($rule) => $rule === 'nullable' ? 'required' : $rule, $rules[$field]);
         }
         $rules['middle_initial'] = ['bail', 'nullable', 'string', new MiddleInitial];
         $rules += app(RegistrationAddressService::class)->rules();
+        $rules = app(RegistrationDeliveryPinService::class)->addRules($rules);
         unset($rules['name']);
         $validated = app(RegistrationAddressService::class)->resolve(Validator::make($values, $rules)->validate());
         $parts = ['first_name' => $validated['first_name'], 'middle_name' => $validated['middle_initial'] ?? null, 'last_name' => $validated['last_name']];
@@ -51,12 +52,13 @@ class GoogleRegistrationService
         $account = array_intersect_key($validated, array_flip(ApplicationValidationService::ACCOUNT_FIELDS)) + $parts + ['name' => $name];
         $account['age'] = app(BirthDateEligibility::class)->age($validated['birthday'] ?? null);
         try {
-            $user = DB::transaction(function () use ($pending, $policies, $account) {
+            $user = DB::transaction(function () use ($pending, $policies, $account, $validated) {
                 $user = User::create($account + [
                     'google_id' => $pending['google_id'], 'avatar' => $pending['avatar'],
                     'role' => 'buyer', 'status' => 'active', 'kyc_status' => 'none',
                     'password' => Str::password(40), 'email_verified_at' => now(),
                 ]);
+                app(RegistrationDeliveryPinService::class)->save($user, $validated);
                 $policies->record($user, 'google');
 
                 return $user;

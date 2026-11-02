@@ -59,6 +59,15 @@ build passed in an isolated output directory. Two headless map interaction
 checks cover placing and dragging a pin and retrying failed map tiles. Scoped
 buyer pin entry: **2/10 → 6/10**, pending live map and deployment verification.
 
+Buyer email and Google registration can also save a selected delivery pin as a
+default address when the buyer supplies a complete location and phone number.
+The pin is optional during registration and is requested at web checkout if
+needed. Changing address details clears a previously selected pin. The two
+SQLite registration suites passed 14 tests / 224 assertions, and the combined
+authentication and address frontend suites passed 50 checks. The worktree
+frontend build passed. Scoped signup-to-address continuity: **2/10 → 6/10**;
+live map interaction and deployed acceptance remain unverified.
+
 Seller map-pin selection, server-side required pin enforcement across
 checkout clients, seller pickup snapshots, and end-to-end routing verification
 remain in progress. Existing Rider Mobile road guidance depends on valid

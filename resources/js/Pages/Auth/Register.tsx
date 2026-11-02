@@ -28,6 +28,7 @@ import {
 import { getDomainUrl } from '@/utils/domain';
 import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
+import LocationPinPicker from '@/Components/LocationPinPicker';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
 import { useRegistrationEmailAvailability } from '@/hooks/useRegistrationEmailAvailability';
@@ -65,6 +66,8 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
         barangay: string;
         address: string;
         postal_code: string;
+        delivery_latitude: number | null;
+        delivery_longitude: number | null;
         role: 'buyer';
         id_document: File | null;
         otp_token: string;
@@ -89,6 +92,8 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
         barangay: '',
         address: '',
         postal_code: '',
+        delivery_latitude: null,
+        delivery_longitude: null,
         role: 'buyer',
         id_document: null,
         otp_token: '',
@@ -515,7 +520,7 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                         {/* Province, City, Barangay & Street Address */}
                         <PhilippineAddressSelector
                             onLoadingChange={setAddressLoading}
-                            postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData('postal_code', value)} error={stepErrors.postal_code || errors.postal_code} />}
+                            postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData(previous => previous.postal_code === value ? previous : { ...previous, postal_code: value, delivery_latitude: null, delivery_longitude: null })} error={stepErrors.postal_code || errors.postal_code} />}
                             values={{
                                 region: data.region,
                                 province: data.province,
@@ -525,15 +530,14 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                                 address: data.address,
                             }}
                             onChange={(addr) => {
-                                setData(prev => ({
-                                    ...prev,
-                                    region: addr.region,
-                                    province: addr.province,
-                                    city: addr.city,
-                                    municipality: addr.municipality,
-                                    barangay: addr.barangay,
-                                    address: addr.address,
-                                }));
+                                setData(prev => {
+                                    const changed = prev.region !== addr.region || prev.province !== addr.province || prev.city !== addr.city
+                                        || prev.barangay !== addr.barangay || prev.address !== addr.address;
+                                    return { ...prev, region: addr.region, province: addr.province, city: addr.city,
+                                        municipality: addr.municipality, barangay: addr.barangay, address: addr.address,
+                                        delivery_latitude: changed ? null : prev.delivery_latitude,
+                                        delivery_longitude: changed ? null : prev.delivery_longitude };
+                                });
                                 if (stepErrors.city) setStepErrors(prev => ({ ...prev, city: '' }));
                                 if (stepErrors.address) setStepErrors(prev => ({ ...prev, address: '' }));
                             }}
@@ -550,6 +554,21 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                                 address: stepErrors.address || errors.address,
                             }}
                         />
+
+                        <div className="space-y-2">
+                            <p className="text-sm font-semibold text-slate-800">Delivery map pin (optional)</p>
+                            <p className="text-xs text-slate-600">Add your mobile number to save this address and pin for future deliveries. You can choose a pin at checkout instead.</p>
+                            <LocationPinPicker label="Registration delivery location" value={data.delivery_latitude !== null && data.delivery_longitude !== null
+                                ? { latitude: data.delivery_latitude, longitude: data.delivery_longitude } : null}
+                                onChange={point => { setData(previous => ({ ...previous, delivery_latitude: point.latitude, delivery_longitude: point.longitude })); clearErrors('delivery_latitude', 'delivery_longitude'); setStepErrors(previous => ({ ...previous, delivery_latitude: '', delivery_longitude: '' })); }} />
+                            {(data.delivery_latitude !== null || data.delivery_longitude !== null) && <button type="button" onClick={() => {
+                                setData(previous => ({ ...previous, delivery_latitude: null, delivery_longitude: null }));
+                                clearErrors('delivery_latitude', 'delivery_longitude');
+                                if (!data.phone.trim()) clearErrors('phone');
+                                setStepErrors(previous => ({ ...previous, delivery_latitude: '', delivery_longitude: '', ...(!data.phone.trim() ? { phone: '' } : {}) }));
+                            }} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Clear pin</button>}
+                            {(stepErrors.delivery_latitude || stepErrors.delivery_longitude || errors.delivery_latitude || errors.delivery_longitude) && <p role="alert" className="text-xs text-rose-700">{stepErrors.delivery_latitude || stepErrors.delivery_longitude || errors.delivery_latitude || errors.delivery_longitude}</p>}
+                        </div>
 
                         {/* Optional Government ID Document Upload */}
                         <div>
