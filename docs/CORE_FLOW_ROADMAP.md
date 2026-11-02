@@ -64,14 +64,13 @@ checks cover placing and dragging a pin and retrying failed map tiles. The
 picker tells mouse and touch users how to place a pin, with a static copy test.
 Scoped buyer pin entry: **2/10 → 6/10**, pending live map and deployment
 verification.
-An additional 320px touch-emulation check confirmed map taps place a pin,
-dragging updates its coordinates, tapping zoom does not add another pin, and
-the 44px controls fit without horizontal overflow. With OSM tiles blocked, the
-retry state now tells buyers when their selected pin remains in the form; a
-regression test verifies retry remounts the map with the same saved coordinates.
-The status explains initial tile loading and offers retry after a 15-second
-stall. Twenty-five focused frontend checks and an isolated production build
-passed.
+Headless Chrome rendered the real React/Leaflet picker at 320px with OSM tile
+requests blocked. A touch tap placed a seven-decimal pin, dragging moved it,
+zoom controls did not create another pin, both controls measured 44×44px,
+attribution stayed visible, and the 296px map caused no horizontal overflow.
+Retry remounted the map with the same selected coordinates. The status explains
+initial tile loading and offers retry after a 15-second stall. Twenty-five
+focused frontend checks and an isolated production build passed.
 Scoped selected-pin offline feedback:
 **5/10 → 8/10**, pending physical-device and deployed verification.
 The frontend accepts a complete seven-decimal pin, and the SQLite-backed
