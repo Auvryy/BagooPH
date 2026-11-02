@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { Map as LeafletMap, Marker } from 'leaflet';
 
 type Point = { latitude: number; longitude: number };
@@ -9,6 +9,7 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
     label?: string;
 }) {
     const container = useRef<HTMLDivElement>(null);
+    const instructionsId = useId();
     const map = useRef<LeafletMap | null>(null);
     const marker = useRef<Marker | null>(null);
     const setPoint = useRef<((point: Point | null) => void) | null>(null);
@@ -85,8 +86,8 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
     const loadingStatus = value ? 'Loading map… Your pin is still selected.' : 'Loading map…';
 
     return <div className="location-pin-picker space-y-2">
-        <p className="text-xs text-slate-700">Click or tap the map to place a pin, then drag it to the exact location. Keyboard: focus the map, use arrow keys to move, then press Enter to pin its center.</p>
-        <div ref={container} role="region" aria-label={`${label} map`} className="h-64 w-full rounded-lg border border-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]" />
+        <p id={instructionsId} className="text-xs text-slate-700">Click or tap the map to place a pin, then drag it to the exact location. Keyboard: focus the map, use arrow keys to move, then press Enter to pin its center.</p>
+        <div ref={container} role="region" aria-label={`${label} map`} aria-describedby={instructionsId} className="h-64 w-full rounded-lg border border-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]" />
         <p className="text-xs text-slate-600" role="status">{failed ? tileFailureStatus : loading ? loadingStatus : pinStatus}</p>
         {failed && <button type="button" onClick={() => setAttempt(previous => previous + 1)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Retry map</button>}
     </div>;

@@ -12,7 +12,7 @@ const bundle = await build({ stdin: { contents: "export {default} from '@/Compon
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'pin-picker-harness', setup(builder) {
         builder.onResolve({ filter: /^react$/ }, () => ({ path: 'react', namespace: 'hooks' }));
-        builder.onLoad({ filter: /.*/, namespace: 'hooks' }, () => ({ contents: 'export const useState=v=>globalThis.pinHarness.state(v); export const useRef=v=>globalThis.pinHarness.ref(v); export const useEffect=(f,d)=>globalThis.pinHarness.effect(f,d);' }));
+        builder.onLoad({ filter: /.*/, namespace: 'hooks' }, () => ({ contents: 'export const useState=v=>globalThis.pinHarness.state(v); export const useId=()=>"pin-picker-help"; export const useRef=v=>globalThis.pinHarness.ref(v); export const useEffect=(f,d)=>globalThis.pinHarness.effect(f,d);' }));
         builder.onResolve({ filter: /^leaflet$/ }, () => ({ path: 'leaflet', namespace: 'leaflet' }));
         builder.onLoad({ filter: /.*/, namespace: 'leaflet' }, () => ({ contents: `export const map=()=>globalThis.pinHarness.createMap(); export const tileLayer=()=>globalThis.pinHarness.tiles; export const divIcon=v=>v; export const marker=(p,o)=>globalThis.pinHarness.createMarker(p,o);` }));
         builder.onResolve({ filter: /\.css$/ }, () => ({ path: 'style', namespace: 'style' }));
@@ -59,6 +59,10 @@ test('a map click places a pin and dragging it reports the new coordinates', asy
 
 test('keyboard Enter places a pin at the focused map center only', async t => {
     const h = harness(t); h.render(); await tick(); h.render();
+    const mapRegion = nodes(h.tree).find(node => node.props?.role === 'region');
+    const instructions = nodes(h.tree).find(node => node.props?.id === 'pin-picker-help');
+    assert.equal(mapRegion.props['aria-describedby'], instructions.props.id);
+    assert.match(text(instructions), /Keyboard: focus the map, use arrow keys to move, then press Enter/);
     h.mapEvents.keypress({ originalEvent: { key: 'ArrowRight', target: h.container } });
     h.mapEvents.keypress({ originalEvent: { key: 'Enter', target: {} } });
     assert.equal(h.changed.length, 0);
