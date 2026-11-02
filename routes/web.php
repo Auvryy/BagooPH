@@ -385,6 +385,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::post('/company-setup/{company}/tariff', [CompanySetupController::class, 'tariff'])->middleware('throttle:10,1');
         Route::post('/company-setup/{company}/staff/{staff}/temporary-password', [CompanySetupController::class, 'temporaryPassword'])->middleware('throttle:5,1');
         Route::post('/company-setup/{company}/hubs/{hub}/coverage', [CompanySetupController::class, 'coverage'])->middleware('throttle:10,1');
+        Route::post('/company-setup/{company}/hubs/{hub}/location', [CompanySetupController::class, 'location'])->middleware('throttle:10,1');
         Route::put('/rider-request-intake', [RiderCompanyIntakeController::class, 'update'])->middleware('throttle:10,1');
         Route::post('/rider-company-requests/{companyRequest}/offers', [RiderCompanyOfferController::class, 'store'])->middleware('throttle:10,1');
         Route::post('/rider-company-requests/{companyRequest}/reject', [RiderCompanyOfferController::class, 'reject'])->middleware('throttle:10,1');
@@ -861,6 +862,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/company-setup/{company}/tariff', [CompanySetupController::class, 'tariff'])->middleware('throttle:10,1')->name('company-setup.tariff');
         Route::post('/company-setup/{company}/staff/{staff}/temporary-password', [CompanySetupController::class, 'temporaryPassword'])->middleware('throttle:5,1')->name('company-setup.temporary-password');
         Route::post('/company-setup/{company}/hubs/{hub}/coverage', [CompanySetupController::class, 'coverage'])->middleware('throttle:10,1')->name('company-setup.coverage');
+        Route::post('/company-setup/{company}/hubs/{hub}/location', [CompanySetupController::class, 'location'])->middleware('throttle:10,1')->name('company-setup.location');
         Route::put('/rider-request-intake', [RiderCompanyIntakeController::class, 'update'])->middleware('throttle:10,1')->name('rider-request-intake');
         Route::post('/rider-company-requests/{companyRequest}/offers', [RiderCompanyOfferController::class, 'store'])->middleware('throttle:10,1')->name('rider-company-requests.offers');
         Route::post('/rider-company-requests/{companyRequest}/reject', [RiderCompanyOfferController::class, 'reject'])->middleware('throttle:10,1')->name('rider-company-requests.reject');

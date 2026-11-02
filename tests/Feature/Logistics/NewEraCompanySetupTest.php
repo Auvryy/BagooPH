@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Services\Logistics\CompanySetupService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
@@ -17,10 +19,22 @@ class NewEraCompanySetupTest extends TestCase
 {
     use RefreshDatabase;
 
+    private string $fixtureStorage;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->fixtureStorage = sys_get_temp_dir().'/bagoo-hub-test-'.bin2hex(random_bytes(8));
+        config(['filesystems.disks.local.root' => $this->fixtureStorage.'/private', 'filesystems.disks.public.root' => $this->fixtureStorage.'/public']);
+        Storage::forgetDisk('local');
+        Storage::forgetDisk('public');
         $this->seed(DatabaseSeeder::class);
+    }
+
+    protected function tearDown(): void
+    {
+        File::deleteDirectory($this->fixtureStorage);
+        parent::tearDown();
     }
 
     private function company(): LogisticsCompany
@@ -111,8 +125,12 @@ class NewEraCompanySetupTest extends TestCase
             'parent_hub_id' => $mother->id, 'province' => 'Laguna', 'city_municipality' => 'Pagsanjan',
             'address' => '100 Test Warehouse Road', 'postal_codes' => ['4008'], 'capacity' => 500,
             'allows_self_pickup' => true, 'operating_hours' => 'Monday to Saturday, 8 AM to 5 PM'];
+        $this->actingAs($owner)->postJson('/hub/company-setup/'.$company->id.'/hubs', $input)
+            ->assertUnprocessable()->assertJsonValidationErrors(['latitude', 'longitude']);
+        $input += ['latitude' => '14.2730000', 'longitude' => '121.4550000'];
         $this->actingAs($owner)->post('/hub/company-setup/'.$company->id.'/hubs', $input)->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertDatabaseHas('logistics_hubs', ['code' => 'QA-CH-PAGS', 'parent_hub_id' => $mother->id, 'logistics_company_id' => $company->id]);
+        $this->assertEquals(14.273, LogisticsHub::where('code', 'QA-CH-PAGS')->sole()->latitude);
         $this->post('/hub/company-setup/'.$company->id.'/hubs', [...$input, 'code' => 'QA-CH-DUP'])
             ->assertSessionHasErrors('setup');
         $tariff = ['version' => 1, 'base_fee' => '60.00', 'additional_kg_fee' => '20.00', 'included_weight_grams' => 1000, 'shipping_earnings_model' => 'standard'];
@@ -164,5 +182,32 @@ class NewEraCompanySetupTest extends TestCase
         $owner->update(['status' => 'suspended']);
         $this->actingAs($owner)->postJson('/hub/company-setup/'.$company->id.'/staff', [...$this->person(), 'email' => 'another@bagoo.test'])->assertForbidden();
         $this->assertSame($count, User::count());
+    }
+
+    public function test_hub_pin_updates_require_ownership_valid_coordinates_and_current_location(): void
+    {
+        $company = $this->company();
+        $hub = $company->hubs()->where('tier', 'local_bayan_hub')->firstOrFail();
+        $hub->update(['latitude' => null, 'longitude' => null]);
+        $service = app(CompanySetupService::class);
+        $token = $service->locationToken($hub);
+        $url = '/hub/company-setup/'.$company->id.'/hubs/'.$hub->id.'/location';
+        $pin = ['latitude' => '14.1600000', 'longitude' => '121.2400000', 'location_token' => $token];
+        $other = User::factory()->create(['role' => 'logistics', 'status' => 'active', 'kyc_status' => 'approved']);
+        $this->actingAs($other)->postJson($url, $pin)->assertForbidden();
+        $foreignCompany = LogisticsCompany::create(['user_id' => $other->id, 'name' => 'Separate Pin Company',
+            'slug' => 'separate-pin-company', 'code' => 'PIN-OTHER', 'status' => 'active', 'is_active' => true]);
+        $foreign = LogisticsHub::create(['logistics_company_id' => $foreignCompany->id, 'name' => 'Separate Pin Hub',
+            'code' => 'PIN-OTHER-HUB', 'tier' => 'regional_mother_hub', 'province' => 'Laguna',
+            'city_municipality' => 'Calamba', 'address' => 'Test address', 'is_active' => true]);
+        $this->actingAs($company->user)->post('/hub/company-setup/'.$company->id.'/hubs/'.$foreign->id.'/location',
+            [...$pin, 'location_token' => $service->locationToken($foreign)])->assertSessionHasErrors('location_token');
+        $this->assertNull($foreign->fresh()->latitude);
+        $this->actingAs($company->user)->postJson($url, [...$pin, 'latitude' => '91'])->assertUnprocessable()->assertJsonValidationErrors('latitude');
+        $this->post($url, $pin)->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertEquals(14.16, $hub->fresh()->latitude);
+        $this->assertEquals(121.24, $hub->fresh()->longitude);
+        $this->post($url, [...$pin, 'latitude' => '14.17'])->assertSessionHasErrors('location_token');
+        $this->assertEquals(14.16, $hub->fresh()->latitude);
     }
 }
