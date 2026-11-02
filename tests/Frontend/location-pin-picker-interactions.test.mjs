@@ -14,7 +14,7 @@ const bundle = await build({ stdin: { contents: "export {default} from '@/Compon
         builder.onResolve({ filter: /^react$/ }, () => ({ path: 'react', namespace: 'hooks' }));
         builder.onLoad({ filter: /.*/, namespace: 'hooks' }, () => ({ contents: 'export const useState=v=>globalThis.pinHarness.state(v); export const useId=()=>"pin-picker-help"; export const useRef=v=>globalThis.pinHarness.ref(v); export const useEffect=(f,d)=>globalThis.pinHarness.effect(f,d);' }));
         builder.onResolve({ filter: /^leaflet$/ }, () => ({ path: 'leaflet', namespace: 'leaflet' }));
-        builder.onLoad({ filter: /.*/, namespace: 'leaflet' }, () => ({ contents: `export const map=()=>globalThis.pinHarness.createMap(); export const tileLayer=()=>globalThis.pinHarness.tiles; export const divIcon=v=>v; export const marker=(p,o)=>globalThis.pinHarness.createMarker(p,o);` }));
+        builder.onLoad({ filter: /.*/, namespace: 'leaflet' }, () => ({ contents: `export const map=(element,options)=>globalThis.pinHarness.createMap(element,options); export const tileLayer=(url,options)=>{globalThis.pinHarness.tileConfig={url,options};return globalThis.pinHarness.tiles}; export const divIcon=v=>v; export const marker=(p,o)=>globalThis.pinHarness.createMarker(p,o);` }));
         builder.onResolve({ filter: /\.css$/ }, () => ({ path: 'style', namespace: 'style' }));
         builder.onLoad({ filter: /.*/, namespace: 'style' }, () => ({ contents: '' }));
     } }],
@@ -32,7 +32,7 @@ function harness(t) {
         state(initial) { const i = cursor++; if (!(i in slots)) slots[i] = typeof initial === 'function' ? initial() : initial; return [slots[i], value => { slots[i] = typeof value === 'function' ? value(slots[i]) : value; }]; },
         ref(value) { return this.state(() => ({ current: value }))[0]; },
         effect(fn, deps) { const i = cursor++; const old = effects[i]; if (!old || deps.some((value, index) => !Object.is(value, old.deps[index]))) pending.push(() => { old?.cleanup?.(); effects[i] = { deps, cleanup: fn() }; }); },
-        createMap() { h.created++; return { setView(point) { this.center = point; return this; }, getCenter() { return { lat: this.center?.[0] ?? 12.8797, lng: this.center?.[1] ?? 121.774 }; }, getZoom() { return 15; }, on(name, fn) { h.mapEvents[name] = fn; return this; }, remove() { h.removed++; }, invalidateSize() {} }; },
+        createMap(element, options) { h.created++; h.mapOptions = options; return { setView(point) { this.center = point; return this; }, getCenter() { return { lat: this.center?.[0] ?? 12.8797, lng: this.center?.[1] ?? 121.774 }; }, getZoom() { return 15; }, on(name, fn) { h.mapEvents[name] = fn; return this; }, remove() { h.removed++; }, invalidateSize() {} }; },
         tiles: { on(name, fn) { h.tileEvents[name] = fn; return this; }, addTo() { return this; } },
         createMarker(point, options) { h.marker = { point, options, events: {}, addTo() { return this; }, on(name, fn) { this.events[name] = fn; return this; }, setLatLng(value) { this.point = value; return this; }, getLatLng() { return { lat: this.point[0], lng: this.point[1] }; }, remove() { this.removed = true; } }; return h.marker; },
         render() { cursor = 0; pending = []; this.tree = Picker(this.props); for (const node of nodes(this.tree)) if (node.ref && node.props?.role === 'region') { this.container ??= {}; node.ref.current = this.container; } for (const run of pending) run(); return this.tree; },
@@ -57,6 +57,15 @@ test('a map click places a pin and dragging it reports the new coordinates', asy
     assert.deepEqual(h.changed[1], { latitude: 14.6, longitude: 120.99 });
     h.mapEvents.click({ latlng: { lat: -14.599512345, lng: -120.984212345 } }); h.render();
     assert.deepEqual(h.changed[2], { latitude: -14.5995123, longitude: -120.9842123 });
+});
+
+test('map keeps the existing Leaflet OpenStreetMap tiles, attribution, and page scrolling', async t => {
+    const h = harness(t); h.render(); await tick();
+    assert.equal(h.mapOptions.scrollWheelZoom, false);
+    assert.equal(h.tileConfig.url, 'https://tile.openstreetmap.org/{z}/{x}/{y}.png');
+    assert.equal(h.tileConfig.options.maxZoom, 19);
+    assert.match(h.tileConfig.options.attribution, /openstreetmap\.org\/copyright/);
+    assert.match(h.tileConfig.options.attribution, /OpenStreetMap contributors/);
 });
 
 test('keyboard Enter places a pin at the focused map center only', async t => {

@@ -109,9 +109,11 @@ signed/boundary coordinates, rounding, and rejected out-of-range fixes. The
 scoped checkout GPS affordance moved from **6/10 to 8/10** for touch access,
 focus visibility, and accessible feedback; physical-device permission and
 location accuracy still need later confirmation.
-The focused frontend suites pass 21 address/checkout cases, 8 map interaction
+The focused frontend suites pass 21 address/checkout cases, 9 map interaction
 cases, and 5 GPS cases. The broader checkout interaction suite passes 11 cases,
 including partial-pin feedback for manual coordinates or map selection. The
+Leaflet test also checks the existing OpenStreetMap tile URL, visible attribution,
+and disabled wheel zoom so page scrolling remains usable.
 TypeScript and production Vite build passed using an isolated `/tmp` output
 directory; the default shared `public/build` location could not be cleared by
 the local user due to its existing permissions.
