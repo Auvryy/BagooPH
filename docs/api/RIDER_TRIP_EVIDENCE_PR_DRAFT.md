@@ -1,4 +1,4 @@
-# Pull request draft
+# Merged pull request summary — PR #144
 
 Title: Restore original Wallet evidence and versioned rider delivery guidance
 
@@ -36,10 +36,14 @@ No frontend files or dependencies changed. Deployment, production PostgreSQL
 concurrency and physical Android acceptance remain separate; phone testing is
 deferred. Existing client write gates stay unchanged.
 
-## Local handoff
+## Merge status
 
-The branch starts at `f001d39`. Code and regressions are in `15d7fc3`
-(`fix(api): retain Wallet trip proof and versioned delivery guidance`). Final
-documentation commit evidence is recorded in the handoff.
-This is a local PR draft. The feature branch has been published; GitHub PR
-status has not been verified. The branch has not been merged into main.
+The branch started at `f001d39`. The code and regressions are in `15d7fc3`
+(`fix(api): retain Wallet trip proof and versioned delivery guidance`), followed
+by documentation commits `9e58312` and `a54c76a`. PR #144 merged the branch
+into Bagoo `main` at `9ca5db5` on November 2, 2026.
+
+The recorded 452-test run predates the merge and remains branch-level evidence;
+this documentation update did not rerun it. Merge confirms source inclusion,
+not Azure deployment, migrations, live cross-role acceptance, or Android device
+acceptance. Existing Rider write gates remain unchanged.
