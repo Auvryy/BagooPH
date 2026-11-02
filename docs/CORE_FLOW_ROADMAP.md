@@ -103,9 +103,11 @@ and the worktree build passed. Scoped signup pin continuity: **2/10 → 6/10**;
 live map and deployed acceptance are still needed.
 
 Server-side required pin enforcement across checkout clients and end-to-end
-routing verification remain in progress. Existing Rider Mobile road guidance depends on valid
-assigned-stop coordinates and configured map service access. Physical device and
-deployed-service acceptance remain open.
+routing verification remain in progress. Current Rider Mobile defaults to an
+unavailable in-app routing provider and shows a saved stop or sample line, so
+real mobile road guidance still requires implementation as well as valid stops
+and configured map service access. Physical device and deployed-service
+acceptance remain open.
 
 Rider web can now request an actual road line for an assigned stop after the
 rider selects a vehicle and starts navigation. The server rechecks assignment,
