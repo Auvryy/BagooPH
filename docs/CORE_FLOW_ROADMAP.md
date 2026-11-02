@@ -126,8 +126,21 @@ existing PHP container with separate temporary storage and an 89 MB peak.
 Sixteen headless frontend tests cover road geometry, permission, changing stops
 and tracking cleanup. The frontend build
 passed in an isolated output directory. Scoped Rider web road-line support:
-**2/10 → 6/10**, pending a configured key, live provider validation and seller
-pickup pins. The checks do not prove Android or deployment acceptance.
+**2/10 → 6/10**, pending a configured key and live provider validation. The
+checks do not prove Android or deployment acceptance.
+
+The web parser now rejects road sections separated by more than 10 metres, so
+disconnected geometry is not presented as continuous guidance. Sixteen focused
+frontend routing and lifecycle checks and the worktree build passed. Scoped
+road-line integrity: **5/10 → 6/10**, pending real provider validation.
+
+Rider mobile source currently parses road geometry and rejects reported
+ferries, but its route-result path does not check that the first and last
+points match the requested origin and stop, or that separate sections join.
+Those mobile checks and their PC tests remain open, in addition to the
+user-deferred device acceptance. The buyer mobile checkout currently treats
+coordinates as optional, so server-wide mandatory pins must be coordinated
+with that client before activation.
 
 ## Native rider Wallet trip evidence: November 1-2, 2026
 

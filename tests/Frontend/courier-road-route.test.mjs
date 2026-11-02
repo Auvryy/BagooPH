@@ -24,6 +24,14 @@ test('road geometry uses provider longitude-latitude order and rejects unsafe re
     assert.throws(() => parseRoadRoute({ ...route, features: [{ ...route.features[0], geometry: { type: 'LineString', coordinates: [[181, 14], [121, 14]] } }] }));
     assert.throws(() => parseRoadRoute({ ...route, features: [{ ...route.features[0], geometry: { type: 'LineString', coordinates: Array.from({ length: 10001 }, () => [121, 14]) } }] }));
     assert.throws(() => parseRoadRoute({ type: 'FeatureCollection', features: [] }));
+    const disconnected = { ...route, features: [{ ...route.features[0], geometry: { type: 'MultiLineString', coordinates: [
+        [[120.98, 14.59], [120.99, 14.58]], [[121.01, 14.56], [121.02, 14.55]],
+    ] } }] };
+    assert.throws(() => parseRoadRoute(disconnected), /disconnected/);
+    const joined = { ...route, features: [{ ...route.features[0], geometry: { type: 'MultiLineString', coordinates: [
+        [[120.98, 14.59], [121, 14.57]], [[121, 14.57], [121.02, 14.55]],
+    ] } }] };
+    assert.equal(parseRoadRoute(joined).length, 2);
 });
 
 test('routing request uses current endpoints, chosen mode and no ferry shortcut', async () => {

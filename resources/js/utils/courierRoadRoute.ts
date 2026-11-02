@@ -35,7 +35,7 @@ export function parseRoadRoute(value: unknown): RoadPoint[][] {
     const lines = geometry.type === 'LineString' ? [geometry.coordinates] : geometry.type === 'MultiLineString' ? geometry.coordinates : null;
     if (!Array.isArray(lines) || lines.length < 1 || lines.length > 100) throw new Error('Route geometry is unavailable.');
     let count = 0;
-    return lines.map(line => {
+    const parsed: RoadPoint[][] = lines.map(line => {
         if (!Array.isArray(line) || line.length < 2) throw new Error('Route geometry is unavailable.');
         return line.map(point => {
             if (++count > 10000 || !Array.isArray(point) || point.length < 2 || typeof point[0] !== 'number' || typeof point[1] !== 'number') throw new Error('Route geometry is unavailable.');
@@ -44,6 +44,12 @@ export function parseRoadRoute(value: unknown): RoadPoint[][] {
             return result;
         });
     });
+    for (let index = 1; index < parsed.length; index++) {
+        if (roadPointDistance(parsed[index - 1][parsed[index - 1].length - 1], parsed[index][0]) > 10) {
+            throw new Error('Route sections are disconnected.');
+        }
+    }
+    return parsed;
 }
 
 async function readLimited(response: Response): Promise<string> {
