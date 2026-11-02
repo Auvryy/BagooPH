@@ -187,6 +187,16 @@ disconnected geometry is not presented as continuous guidance. Sixteen focused
 frontend routing and lifecycle checks and the worktree build passed. Scoped
 road-line integrity: **5/10 → 6/10**, pending real provider validation.
 
+With the user's existing local Geoapify key, synthetic Manila routes returned
+successfully for drive, motorcycle and scooter modes and passed the web route
+parser and endpoint checks. Native-style and localhost-origin requests also
+returned a road route. The Rider Flutter routing client accepted live synthetic
+responses for the same three modes in a headless PC test. This confirms
+provider response compatibility on the PC; it does not verify a browser map,
+deployed origin, Android app or GPS. The
+existing key was put in ignored local configuration for both feature worktrees;
+separate, appropriately restricted keys remain recommended for release.
+
 The local Rider branch adds endpoint and continuity checks, a configured
 provider, and rendering on the assigned stop's map. Its focused PC tests and
 Android manifest merge passed; real provider, deployment and the user-deferred
