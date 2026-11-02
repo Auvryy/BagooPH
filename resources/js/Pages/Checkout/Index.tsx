@@ -761,13 +761,14 @@ export default function CheckoutIndex({
                                             onChange={point => { gps.cancel(); setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })); }}
                                         />
                                         {data.saved_address_id !== null && <p className="text-xs text-slate-600">Placing your order will save this pin to the selected address.</p>}
+                                        <p id="checkout-coordinate-help" className="text-xs text-slate-600">For manual entry, use decimal degrees: latitude -90 to 90, longitude -180 to 180, up to 7 decimal places. Enter both values.</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <label htmlFor="checkout-shipping_latitude" className="block text-[10px] text-slate-500 font-sans mb-0.5">Latitude</label>
                                                 <input
                                                     id="checkout-shipping_latitude"
                                                     aria-invalid={Boolean(errors.shipping_latitude)}
-                                                    aria-describedby={errors.shipping_latitude ? 'checkout-shipping_latitude-error' : undefined}
+                                                    aria-describedby={`checkout-coordinate-help${errors.shipping_latitude ? ' checkout-shipping_latitude-error' : ''}`}
                                                     type="number"
                                                     step="any"
                                                     min={-90}
@@ -784,7 +785,7 @@ export default function CheckoutIndex({
                                                 <input
                                                     id="checkout-shipping_longitude"
                                                     aria-invalid={Boolean(errors.shipping_longitude)}
-                                                    aria-describedby={errors.shipping_longitude ? 'checkout-shipping_longitude-error' : undefined}
+                                                    aria-describedby={`checkout-coordinate-help${errors.shipping_longitude ? ' checkout-shipping_longitude-error' : ''}`}
                                                     type="number"
                                                     step="any"
                                                     min={-180}

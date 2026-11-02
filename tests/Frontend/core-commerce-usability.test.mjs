@@ -157,7 +157,7 @@ test('final order confirmation accepts one pending write, retains safe details a
 });
 
 test('checkout fields expose server-matching limits, persistent labels and associated rejection text', () => {
-    const h = harness(); h.render(); h.errors = { destination_barangay: 'Choose a supported barangay.', shipping_province: 'Enter a province.', shipping_postal_code: 'Use four digits.' };
+    const h = harness(); h.render(); h.errors = { destination_barangay: 'Choose a supported barangay.', shipping_province: 'Enter a province.', shipping_postal_code: 'Use four digits.', shipping_latitude: 'Use up to seven decimal places.', shipping_longitude: 'Enter a valid longitude.' };
     const tree = h.render();
     for (const [name, minimum, maximum] of [['shipping_address', 5, 500], ['destination_barangay', 2, 100], ['shipping_city', 2, 100], ['shipping_province', 2, 100], ['shipping_postal_code', 4, 4], ['landmark', 5, 255]]) {
         const input = field(tree, `checkout-${name}`);
@@ -167,6 +167,14 @@ test('checkout fields expose server-matching limits, persistent labels and assoc
     for (const name of Object.keys(h.data).filter(name => ['destination_barangay', 'shipping_province', 'shipping_postal_code'].includes(name))) {
         const input = field(tree, `checkout-${name}`);
         assert.equal(input.props['aria-invalid'], true); assert.equal(text(field(tree, input.props['aria-describedby'])), ({ destination_barangay: 'Choose a supported barangay.', shipping_province: 'Enter a province.', shipping_postal_code: 'Use four digits.' })[name]);
+    }
+    const coordinateHelp = field(tree, 'checkout-coordinate-help');
+    assert.match(text(coordinateHelp), /decimal degrees: latitude -90 to 90, longitude -180 to 180, up to 7 decimal places\. Enter both values/);
+    for (const [axis, message] of [['latitude', 'Use up to seven decimal places.'], ['longitude', 'Enter a valid longitude.']]) {
+        const input = field(tree, `checkout-shipping_${axis}`);
+        const describedBy = input.props['aria-describedby'].split(' ');
+        assert.ok(describedBy.includes('checkout-coordinate-help'));
+        assert.equal(text(field(tree, describedBy.find(id => id.endsWith('-error')))), message);
     }
 });
 

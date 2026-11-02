@@ -114,6 +114,11 @@ cases, and 5 GPS cases. The broader checkout interaction suite passes 11 cases,
 including partial-pin feedback for manual coordinates or map selection. The
 Leaflet test also checks the existing OpenStreetMap tile URL, visible attribution,
 and disabled wheel zoom so page scrolling remains usable.
+Checkout now explains that manual coordinates use decimal degrees, must be a
+complete pair, allow latitude -90..90 and longitude -180..180, and accept up to
+7 decimal places. Both coordinate inputs expose this guidance and their own
+server error through `aria-describedby`. Scoped manual-coordinate guidance
+moved from **6/10 to 8/10** for a visible format and limits before submission.
 TypeScript and production Vite build passed using an isolated `/tmp` output
 directory; the default shared `public/build` location could not be cleared by
 the local user due to its existing permissions.
