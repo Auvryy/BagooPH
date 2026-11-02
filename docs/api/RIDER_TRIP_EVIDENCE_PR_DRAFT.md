@@ -41,4 +41,5 @@ deferred. Existing client write gates stay unchanged.
 The branch starts at `f001d39`. Code and regressions are in `15d7fc3`
 (`fix(api): retain Wallet trip proof and versioned delivery guidance`). Final
 documentation commit evidence is recorded in the handoff.
-This is a local PR draft; no GitHub PR or commits have been published.
+This is a local PR draft. The feature branch has been published; GitHub PR
+status has not been verified. The branch has not been merged into main.

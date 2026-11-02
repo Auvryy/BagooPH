@@ -64,8 +64,9 @@ checks and PostgreSQL concurrency need separate evidence. Phone testing is
 deferred. No production database or mobile operational write gate was changed.
 
 The [API contract](api/RIDER_OPERATIONS_API.md) records the retained sources. The
-[combined PR title/body](api/RIDER_TRIP_EVIDENCE_PR_DRAFT.md) is a local draft; no
-commits or pull request were published. Code and regression evidence are in
+[combined PR title/body](api/RIDER_TRIP_EVIDENCE_PR_DRAFT.md) remains a local
+draft. The feature branch is published; GitHub PR status has not been verified.
+Code and regression evidence are in
 local commit `15d7fc3` (`fix(api): retain Wallet trip proof and versioned delivery guidance`).
 
 ## Buyer mobile web connections: October 29, 2026
