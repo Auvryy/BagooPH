@@ -86,7 +86,12 @@ test('a tile failure keeps selected-pin feedback visible with retry', async t =>
     h.tileEvents.tileerror(); h.render();
     const status = nodes(h.tree).find(node => node.props?.role === 'status');
     assert.equal(text(status), 'Map tiles could not load. Your pin is still selected; retry to view the location.');
-    assert.ok(nodes(h.tree).some(node => node.type === 'button' && text(node) === 'Retry map'));
+    const retry = nodes(h.tree).find(node => node.type === 'button' && text(node) === 'Retry map');
+    assert.ok(retry);
+    retry.props.onClick(); h.render(); await tick(); h.render();
+    assert.equal(h.created, 2);
+    assert.deepEqual(h.marker.point, [14.5995123, 120.9842123]);
+    assert.equal(text(nodes(h.tree).find(node => node.props?.role === 'status')), 'Location pin selected.');
 });
 
 test('clearing a saved pin removes its marker and a new selection replaces it', async t => {

@@ -68,8 +68,9 @@ An additional 320px touch-emulation check confirmed map taps place a pin,
 dragging updates its coordinates, tapping zoom does not add another pin, and
 the 44px controls fit without horizontal overflow. With OSM tiles blocked, the
 retry state now tells buyers when their selected pin remains in the form; a
-regression test covers that state. Twenty-three focused frontend checks and an
-isolated production build passed. Scoped selected-pin offline feedback:
+regression test verifies retry remounts the map with the same saved coordinates.
+Twenty-three focused frontend checks and an isolated production build passed.
+Scoped selected-pin offline feedback:
 **5/10 → 8/10**, pending physical-device and deployed verification.
 The frontend accepts a complete seven-decimal pin, and the SQLite-backed
 address service preserves both coordinates through validation and storage. The
