@@ -29,7 +29,9 @@ the line unavailable, with address-based external directions as a fallback.
    select an existing address or save the new one. If the address book is
    full, choose an existing address or remove one before saving a new one.
    Hub self-pickup and exact retries of already placed orders remain supported.
-   The checkout page exposes the Boolean `doorstepPinRequired` for clients.
+   Web checkout already requires and saves doorstep pins even while the shared
+   server enforcement remains off for compatibility with older clients. The
+   checkout response exposes `doorstepPinRequired` to indicate the server rule.
 
 ## Buyer client contract
 

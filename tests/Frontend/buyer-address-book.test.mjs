@@ -120,9 +120,10 @@ test('checkout preselects the actual default recipient and permits delivery cont
  assert.match(html, /<option value="9" selected=""/);
  assert.match(html, /aria-label="Delivery location map"/);
 });
-test('checkout offers to save the first delivery address by default', async () => {
+test('checkout saves the first delivery address even when server enforcement is off', async () => {
  const html = await render(ui.Checkout, { cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user, kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [] });
- assert.match(html, /<input[^>]*type="checkbox"[^>]*checked=""[^>]*\/>\s*<span>Save this address to my address book<\/span>/);
+ const label = html.match(/<label[^>]*><input[^>]*type="checkbox"[^>]*>\s*<span>This delivery address and pin will be saved to your address book\.<\/span><\/label>/)?.[0];
+ assert.ok(label); assert.match(label, /disabled=""/); assert.match(label, /checked=""/);
 });
 test('required doorstep pin mode keeps a new delivery address saved', async () => {
  const html = await render(ui.Checkout, { cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user, kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [], doorstepPinRequired: true });
@@ -131,10 +132,9 @@ test('required doorstep pin mode keeps a new delivery address saved', async () =
 });
 test('switching back from hub pickup saves a new doorstep address when required', () => {
  const hub = { delivery_type: 'hub_self_pickup', saved_address_id: null, save_address: false };
- assert.equal(ui.withDoorstepDelivery(hub, true, true).save_address, true);
- assert.equal(ui.withDoorstepDelivery(hub, false, true).save_address, false);
- assert.equal(ui.withDoorstepDelivery(hub, true, false).save_address, false);
- assert.equal(ui.withDoorstepDelivery({ ...hub, saved_address_id: 7 }, true, true).save_address, false);
+ assert.equal(ui.withDoorstepDelivery(hub, true).save_address, true);
+ assert.equal(ui.withDoorstepDelivery(hub, false).save_address, false);
+ assert.equal(ui.withDoorstepDelivery({ ...hub, saved_address_id: 7 }, true).save_address, false);
 });
 test('waybill recipient uses the complete immutable order details and ignores current profile contact data', () => {
  const html = renderToStaticMarkup(createElement(ui.Recipient, { order: { recipient_name: 'Original Recipient', recipient_phone: '+639171234567', shipping_address: '84 Original Office Street', destination_barangay: 'San Antonio', shipping_city: 'City of Pasig', shipping_province: 'Metro Manila', shipping_postal_code: '1600', buyer: { name: 'Changed Account Name', phone: '+639181234567', address: '15 Future Street' } } }));

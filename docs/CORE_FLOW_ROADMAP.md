@@ -154,6 +154,11 @@ hub pickup retains its separate behavior. The SQLite replay suite passed
 assertions, and 20 frontend address/GPS checks passed. The worktree build
 passed. Scoped pin-saving rollout readiness: **3/10 → 6/10**, pending buyer
 mobile support and activation.
+Web checkout now requires saving a new doorstep address and pin regardless of
+the shared enforcement setting, while hub pickup retains its optional save.
+The 20 frontend address/GPS checks and worktree build passed. Scoped web pin
+continuity: **6/10 → 7/10**, pending deployed and interactive acceptance; other
+clients still need support before the shared server rule can be enabled.
 
 Rider web can now request an actual road line for an assigned stop after the
 rider selects a vehicle and starts navigation. The server rechecks assignment,

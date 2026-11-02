@@ -64,7 +64,6 @@ interface Props {
     addresses?: Address[];
     defaultAddressId?: number | null;
     addressBookLimit?: number;
-    doorstepPinRequired?: boolean;
     pickupHubs?: PickupHubItem[];
     checkoutToken: string;
     itemQuantities?: Record<number, number>;
@@ -83,7 +82,6 @@ export default function CheckoutIndex({
     addresses = [],
     defaultAddressId = null,
     addressBookLimit = 10,
-    doorstepPinRequired = false,
     pickupHubs = [],
     checkoutToken,
     itemQuantities = {},
@@ -351,7 +349,7 @@ export default function CheckoutIndex({
             setValidationError('Choose a valid delivery location on the map before placing your order.');
             return;
         }
-        if (doorstepPinRequired && data.delivery_type === 'doorstep' && data.saved_address_id === null && !data.save_address) {
+        if (data.delivery_type === 'doorstep' && data.saved_address_id === null && !data.save_address) {
             setValidationError(addresses.length >= addressBookLimit ? 'Choose a saved address, or remove one in your address book before saving a new delivery address.' : 'Save this delivery address, or choose an existing saved address.');
             return;
         }
@@ -468,7 +466,7 @@ export default function CheckoutIndex({
                                             : 'border-slate-200 bg-white hover:border-slate-300'
                                     }`}
                                 >
-                                    <input type="radio" name="delivery_type" value="doorstep" checked={data.delivery_type === 'doorstep'} onChange={() => setData(previous => withDoorstepDelivery(previous, doorstepPinRequired, addresses.length < addressBookLimit))} className="sr-only" />
+                                    <input type="radio" name="delivery_type" value="doorstep" checked={data.delivery_type === 'doorstep'} onChange={() => setData(previous => withDoorstepDelivery(previous, addresses.length < addressBookLimit))} className="sr-only" />
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-2.5">
                                             <div className={`p-2 rounded-lg ${data.delivery_type === 'doorstep' ? 'bg-[#E00D42] text-white' : 'bg-slate-100 text-slate-600'}`}>
@@ -828,11 +826,11 @@ export default function CheckoutIndex({
                                             <input
                                                 type="checkbox"
                                                 checked={data.save_address}
-                                                disabled={addresses.length >= addressBookLimit || (doorstepPinRequired && !isHubPickup)}
+                                                disabled={addresses.length >= addressBookLimit || !isHubPickup}
                                                 onChange={(e) => setData('save_address', e.target.checked)}
                                                 className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
                                             />
-                                            <span>{addresses.length >= addressBookLimit ? (doorstepPinRequired && !isHubPickup ? `Your address book has ${addressBookLimit} addresses. Choose one or remove an address before saving a new one.` : `Your address book has ${addressBookLimit} addresses. You can use this address for this order without saving it.`) : doorstepPinRequired && !isHubPickup ? 'This delivery address and pin will be saved to your address book.' : 'Save this address to my address book'}</span>
+                                            <span>{addresses.length >= addressBookLimit ? (!isHubPickup ? `Your address book has ${addressBookLimit} addresses. Choose one or remove an address before saving a new one.` : `Your address book has ${addressBookLimit} addresses. You can use this address for this order without saving it.`) : !isHubPickup ? 'This delivery address and pin will be saved to your address book.' : 'Save this address to my address book'}</span>
                                         </label>
                                     )}
                                 </div>
