@@ -62,7 +62,7 @@ class OrderLifecycleService
         return DB::transaction(function () use ($order, $shop, $seller, $targetStatus) {
             $lockedOrder = $this->lockSellerOrder($order->id);
 
-            $this->assertSellerOwnsCompleteOrder($lockedOrder, $shop, $seller);
+            $shop = $this->assertSellerOwnsCompleteOrder($lockedOrder, $shop, $seller);
             $this->applySellerTransition($lockedOrder, $shop, $seller, $targetStatus);
 
             return $lockedOrder->fresh(['delivery', 'items']);
@@ -74,7 +74,7 @@ class OrderLifecycleService
         return DB::transaction(function () use ($order, $shop, $seller) {
             $lockedOrder = $this->lockSellerOrder($order->id);
 
-            $this->assertSellerOwnsCompleteOrder($lockedOrder, $shop, $seller);
+            $shop = $this->assertSellerOwnsCompleteOrder($lockedOrder, $shop, $seller);
             if (! in_array($lockedOrder->status, ['placed', 'pending'], true)) {
                 throw new RuntimeException(
                     "Order is currently {$lockedOrder->status}; only a newly placed order can be confirmed and packed together."
@@ -188,7 +188,7 @@ class OrderLifecycleService
             $parcels = Delivery::whereIn('order_id', $orders->modelKeys())->orderBy('id')->lockForUpdate()->get()->keyBy('order_id');
             foreach ($orders as $order) {
                 $order->setRelation('delivery', $parcels->get($order->id));
-                $this->assertSellerOwnsCompleteOrder($order, $shop, $seller);
+                $shop = $this->assertSellerOwnsCompleteOrder($order, $shop, $seller);
                 $this->assertSellerTransition($order, 'ready_for_pickup');
             }
             foreach ($orders as $order) {
@@ -424,7 +424,7 @@ class OrderLifecycleService
         });
     }
 
-    private function assertSellerOwnsCompleteOrder(Order $order, Shop $shop, User $seller): void
+    private function assertSellerOwnsCompleteOrder(Order $order, Shop $shop, User $seller): Shop
     {
         $seller = User::whereKey($seller->id)->lockForUpdate()->first();
         if (! $seller?->isSeller() || ! $seller->canAccessPortal()) {
@@ -441,6 +441,8 @@ class OrderLifecycleService
         if ($shopIds->count() !== 1 || (int) $shopIds->first() !== $shop->id) {
             throw new AuthorizationException('This order does not belong to your shop.');
         }
+
+        return $shop;
     }
 
     private function hasCompleteRoute(Order $order): bool

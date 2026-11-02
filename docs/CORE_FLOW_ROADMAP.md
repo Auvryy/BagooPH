@@ -107,6 +107,12 @@ commerce frontend suite passed 25 checks, and the worktree build passed. Scoped
 seller pickup-pin continuity: **1/10 → 6/10**, pending deployed and live-device
 acceptance. Existing sellers must set their pin; historical parcels retain null
 coordinates where none were saved.
+Single and batch ready-for-pickup actions now copy the locked, current shop
+location rather than a shop object loaded before the transaction. A focused
+SQLite test passed 45 assertions across both actions with a stale shop object;
+the seller fulfillment and workspace suites passed 38 tests / 670 assertions.
+Scoped pickup-snapshot freshness: **4/10 → 7/10**, pending deployment and live
+acceptance.
 
 Seller signup also offers the pickup pin before approval, retaining it with
 the submitted shop and clearing it if the entered address changes. Omitting it

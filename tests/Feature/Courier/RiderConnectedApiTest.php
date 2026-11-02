@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Courier\RiderTaskService;
 use App\Services\Finance\CodCashService;
 use App\Services\Notifications\NotificationDeliveryService;
+use App\Services\Orders\OrderLifecycleService;
 use App\Services\RiderAccountService;
 use App\Services\SellerPickupPinService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,6 +95,25 @@ class RiderConnectedApiTest extends TestCase
         $shop->update(['city' => 'A different city']);
         $this->postJson($url, [...$data, 'location_token' => $oldToken])->assertUnprocessable()->assertJsonValidationErrors('location_token');
         $this->assertNull($shop->fresh()->pickup_latitude);
+    }
+
+    public function test_ready_orders_use_the_current_locked_shop_pin_for_single_and_batch_actions(): void
+    {
+        $seller = $this->createApprovedUser('seller');
+        $shop = $this->createE2EShop($seller);
+        $buyer = $this->createApprovedUser('buyer');
+        $first = $this->checkoutFlowOrder($buyer, $shop, stage: 'preparing');
+        $second = $this->checkoutFlowOrder($buyer, $shop, stage: 'preparing');
+        $stale = $shop->fresh();
+        $shop->fresh()->update(['pickup_latitude' => 14.56, 'pickup_longitude' => 121.06]);
+        $this->assertNull($stale->pickup_latitude);
+
+        $lifecycle = app(OrderLifecycleService::class);
+        $lifecycle->sellerTransition($first, $stale, $seller, 'ready_for_pickup');
+        $this->assertSame(14.56, $first->delivery()->firstOrFail()->pickup_latitude);
+        $this->assertSame(1, $lifecycle->sellerBatchReady(['order_ids' => [$second->id]], $stale, $seller));
+        $this->assertSame(14.56, $second->delivery()->firstOrFail()->pickup_latitude);
+        $this->assertSame(121.06, $second->delivery()->firstOrFail()->pickup_longitude);
     }
 
     public function test_assigned_rider_receives_the_current_hub_pin_for_navigation(): void
