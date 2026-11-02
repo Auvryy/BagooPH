@@ -81,6 +81,13 @@ seller pickup-pin continuity: **1/10 → 6/10**, pending deployed and live-devic
 acceptance. Existing sellers must set their pin; historical parcels retain null
 coordinates where none were saved.
 
+Seller signup also offers the pickup pin before approval, retaining it with
+the submitted shop and clearing it if the entered address changes. Omitting it
+remains supported. The SQLite seller category and registration suite passed
+35 tests / 312 assertions, the authentication frontend suite passed 35 checks,
+and the worktree build passed. Scoped signup pin continuity: **2/10 → 6/10**;
+live map and deployed acceptance are still needed.
+
 Server-side required pin enforcement across checkout clients and end-to-end
 routing verification remain in progress. Existing Rider Mobile road guidance depends on valid
 assigned-stop coordinates and configured map service access. Physical device and

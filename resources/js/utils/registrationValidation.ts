@@ -85,6 +85,9 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
     const locationStep = role === 'courier' ? 1 : role === 'logistics' ? 3 : 2;
     if (checking(locationStep)) {
         if (hasBuyerPin && !validDeliveryPin(latitude, longitude)) errors.delivery_latitude = 'Choose a complete, valid delivery map pin.';
+        const pickupLatitude = pinValue('pickup_latitude'), pickupLongitude = pinValue('pickup_longitude');
+        const hasSellerPin = role === 'seller' && ((pickupLatitude !== null && pickupLatitude !== '') || (pickupLongitude !== null && pickupLongitude !== ''));
+        if (hasSellerPin && !validDeliveryPin(pickupLatitude, pickupLongitude)) errors.pickup_latitude = 'Choose a complete, valid pickup map pin.';
         if (worker || !google || hasBuyerPin || ['region', 'province', 'city', 'barangay', 'address'].some(field => value(field).trim())) {
             for (const [field, label] of [['region', 'Region'], ['province', 'Province or area'], ['city', 'City or municipality'], ['barangay', 'Barangay']] as const) {
                 if (!value(field).trim()) errors[field] = 'Choose a ' + label.toLowerCase() + ' from the list.';

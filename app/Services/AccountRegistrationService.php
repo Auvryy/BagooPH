@@ -96,6 +96,10 @@ class AccountRegistrationService
         if ($role === 'buyer') {
             $rules = app(RegistrationDeliveryPinService::class)->addRules($rules);
         }
+        if ($role === 'seller') {
+            $rules['pickup_latitude'] = ['bail', 'nullable', 'required_with:pickup_longitude', 'numeric', 'regex:/\A-?[0-9]+(?:\.[0-9]{1,7})?\z/', 'between:-90,90'];
+            $rules['pickup_longitude'] = ['bail', 'nullable', 'required_with:pickup_latitude', 'numeric', 'regex:/\A-?[0-9]+(?:\.[0-9]{1,7})?\z/', 'between:-180,180'];
+        }
         if ($separatedName) {
             foreach (['first_name', 'last_name'] as $field) {
                 $rules[$field] = array_map(fn ($rule) => $rule === 'nullable' ? 'required' : $rule, $rules[$field]);
@@ -139,7 +143,7 @@ class AccountRegistrationService
             ],
             'seller' => [
                 [...$name, 'birthday', 'shop_name', 'root_category_id', 'email'],
-                ['phone', ...$location, 'shop_phone', 'shop_address', 'shop_city'],
+                ['phone', ...$location, 'shop_phone', 'shop_address', 'shop_city', 'pickup_latitude', 'pickup_longitude'],
                 [...$password, 'id_document', 'business_permit', ...$policies],
             ],
             'courier' => [

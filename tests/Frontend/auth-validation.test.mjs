@@ -538,6 +538,13 @@ test('first Google signup collects the same buyer details while relying on the v
     assert.ok(ui.registrationInputErrors({ ...values, postal_code: '12345' }, limits, undefined, true).postal_code);
 });
 
+test('seller registration checks a complete optional pickup pin', () => {
+    const seller = identity('seller');
+    assert.equal(ui.registrationInputErrors({ ...seller, pickup_latitude: 14.55, pickup_longitude: 121.05 }, limits, 2).pickup_latitude, undefined);
+    assert.ok(ui.registrationInputErrors({ ...seller, pickup_latitude: 14.55, pickup_longitude: null }, limits, 2).pickup_latitude);
+    assert.ok(ui.registrationInputErrors({ ...seller, pickup_latitude: 91, pickup_longitude: 121.05 }, limits, 2).pickup_latitude);
+});
+
 test('company TIN feedback accepts the two supported forms and rejects malformed or hidden input', () => {
     for (const value of ['900000001000', '900-000-001-000', ' 900-000-001-000 ']) assert.equal(ui.companyTinError(value), undefined);
     for (const value of ['', '90000000100', '9000000010000', 'ABC000001000', '９０００００００１０００', '900000001000\n', '900 000 001 000']) assert.ok(ui.companyTinError(value), value);

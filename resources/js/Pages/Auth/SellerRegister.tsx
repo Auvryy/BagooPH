@@ -29,6 +29,7 @@ import {
 import { getDomainUrl } from '@/utils/domain';
 import PhoneInput from '@/Components/PhoneInput';
 import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
+import LocationPinPicker from '@/Components/LocationPinPicker';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
 import { useRegistrationEmailAvailability } from '@/hooks/useRegistrationEmailAvailability';
@@ -70,6 +71,8 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
         province: string;
         municipality: string;
         barangay: string;
+        pickup_latitude: number | null;
+        pickup_longitude: number | null;
         role: 'seller';
         password: string;
         password_confirmation: string;
@@ -96,6 +99,8 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
         province: '',
         municipality: '',
         barangay: '',
+        pickup_latitude: null,
+        pickup_longitude: null,
         role: 'seller',
         password: '',
         password_confirmation: '',
@@ -429,7 +434,7 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
 
                         <PhilippineAddressSelector
                             onLoadingChange={setAddressLoading}
-                            postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData('postal_code', value)} error={stepErrors.postal_code || errors.postal_code} />}
+                            postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData(previous => previous.postal_code === value ? previous : { ...previous, postal_code: value, pickup_latitude: null, pickup_longitude: null })} error={stepErrors.postal_code || errors.postal_code} />}
                             values={{
                                 region: data.region,
                                 province: data.province,
@@ -439,15 +444,18 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                                 address: data.address,
                             }}
                             onChange={(addr) => {
-                                setData(prev => ({
-                                    ...prev,
+                                setData(prev => {
+                                    const changed = prev.region !== addr.region || prev.province !== addr.province || prev.city !== addr.city || prev.barangay !== addr.barangay || prev.address !== addr.address;
+                                    return { ...prev,
                                     region: addr.region,
                                     province: addr.province,
                                     city: addr.city,
                                     municipality: addr.municipality,
                                     barangay: addr.barangay,
                                     address: addr.address,
-                                }));
+                                    pickup_latitude: changed ? null : prev.pickup_latitude,
+                                    pickup_longitude: changed ? null : prev.pickup_longitude,
+                                }; });
                                 if (stepErrors.city) setStepErrors(prev => ({ ...prev, city: '' }));
                                 if (stepErrors.address) setStepErrors(prev => ({ ...prev, address: '' }));
                             }}
@@ -464,6 +472,15 @@ export default function SellerRegister({ birthDateLimits, masterCategories, poli
                                 address: stepErrors.address || errors.address,
                             }}
                         />
+
+                        <div className="space-y-2">
+                            <p className="text-sm font-semibold text-slate-800">Pickup map pin (optional)</p>
+                            <p className="text-xs text-slate-600">Place the pin at the pickup address above. You can also set it in shop settings after approval.</p>
+                            <LocationPinPicker label="Registration pickup location" value={data.pickup_latitude !== null && data.pickup_longitude !== null ? { latitude: data.pickup_latitude, longitude: data.pickup_longitude } : null}
+                                onChange={point => { setData(previous => ({ ...previous, pickup_latitude: point.latitude, pickup_longitude: point.longitude })); clearErrors('pickup_latitude', 'pickup_longitude'); setStepErrors(previous => ({ ...previous, pickup_latitude: '', pickup_longitude: '' })); }} />
+                            {(data.pickup_latitude !== null || data.pickup_longitude !== null) && <button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold" onClick={() => { setData(previous => ({ ...previous, pickup_latitude: null, pickup_longitude: null })); clearErrors('pickup_latitude', 'pickup_longitude'); setStepErrors(previous => ({ ...previous, pickup_latitude: '', pickup_longitude: '' })); }}>Clear pin</button>}
+                            {(stepErrors.pickup_latitude || stepErrors.pickup_longitude || errors.pickup_latitude || errors.pickup_longitude) && <p role="alert" className="text-xs text-rose-700">{stepErrors.pickup_latitude || stepErrors.pickup_longitude || errors.pickup_latitude || errors.pickup_longitude}</p>}
+                        </div>
 
 
                         <p className="text-xs text-slate-500 mt-1">
