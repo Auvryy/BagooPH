@@ -49,6 +49,7 @@ test('hub pin editor requires an actual selected point before saving', async () 
     assert.match(empty, /<button[^>]*disabled=""[^>]*>Save hub pin<\/button>/);
     const selected = await render(HubLocationEditor, 'Hub/Pin', { hub: { ...base, latitude: 14.16, longitude: 121.24 }, url: '/hub/location' });
     assert.match(selected, /Loading map… Your pin is still selected/);
+    assert.match(selected, /<button[^>]*!min-h-\[44px\][^>]*>Save hub pin<\/button>/);
     assert.doesNotMatch(selected, /<button[^>]*disabled=""[^>]*>Save hub pin<\/button>/);
 });
 

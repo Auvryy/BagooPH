@@ -110,18 +110,21 @@ scoped checkout GPS affordance moved from **6/10 to 8/10** for touch access,
 focus visibility, and accessible feedback; physical-device permission and
 location accuracy still need later confirmation.
 The focused frontend suites pass 21 address/checkout cases, 9 map interaction
-cases, and 5 GPS cases. The broader checkout interaction suite passes 11 cases,
-including partial-pin feedback for manual coordinates or map selection. The
-Leaflet test also checks the existing OpenStreetMap tile URL, visible attribution,
-and disabled wheel zoom so page scrolling remains usable.
+cases, and 5 GPS cases. The 11-case checkout interaction suite rejects a partial
+pair and verifies seven-decimal manual and map-selected coordinates reach the
+final checkout request intact. The Leaflet test also checks the existing
+OpenStreetMap tile URL, visible attribution and disabled wheel zoom so page
+scrolling remains usable. Seller and hub map
+save actions now retain 44px minimum targets, checked in their page regressions.
 Checkout now explains that manual coordinates use decimal degrees, must be a
 complete pair, allow latitude -90..90 and longitude -180..180, and accept up to
 7 decimal places. Both coordinate inputs expose this guidance and their own
 server error through `aria-describedby`. Scoped manual-coordinate guidance
 moved from **6/10 to 8/10** for a visible format and limits before submission.
-TypeScript and production Vite build passed using an isolated `/tmp` output
-directory; the default shared `public/build` location could not be cleared by
-the local user due to its existing permissions.
+TypeScript and the production Vite build passed after the map-save target change
+using isolated `/tmp/bagoo-map-touch-build` output; the default shared
+`public/build` location could not be cleared by the local user due to its existing
+permissions.
 Cross-form PC coverage passed 68 frontend registration, seller settings, and
 hub reliability checks plus 6 isolated SQLite pin-save cases / 90 assertions:
 buyer and Google registration, seller registration and pickup settings, hub

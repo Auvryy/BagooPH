@@ -116,7 +116,7 @@ export default function SellerSettings({ shop, shopReview, categories, pickupPin
                     <LocationPinPicker label="Seller pickup location" value={pin.data.latitude !== null && pin.data.longitude !== null ? { latitude: pin.data.latitude, longitude: pin.data.longitude } : null}
                         onChange={point => pin.setData(previous => ({ ...previous, ...point }))} />
                     {(pin.errors.latitude || pin.errors.longitude || pin.errors.location_token) && <p role="alert" className="text-sm text-rose-700">{pin.errors.latitude || pin.errors.longitude || pin.errors.location_token}</p>}
-                    <button disabled={pin.processing || pin.data.latitude === null || pin.data.longitude === null} className="rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{pin.processing ? 'Saving…' : 'Save pickup pin'}</button>
+                    <button disabled={pin.processing || pin.data.latitude === null || pin.data.longitude === null} className="min-h-[44px] rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{pin.processing ? 'Saving…' : 'Save pickup pin'}</button>
                     {pin.recentlySuccessful && <p role="status" className="text-sm text-emerald-700">Pickup pin saved.</p>}
                 </form>
                 <section className="rounded-lg border border-slate-300 bg-white p-5">
