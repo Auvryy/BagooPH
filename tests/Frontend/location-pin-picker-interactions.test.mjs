@@ -1,9 +1,10 @@
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
+import postcss from 'postcss';
 
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-pin-picker-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
@@ -48,8 +49,25 @@ test('a map click places a pin and dragging it reports the new coordinates', asy
     h.mapEvents.click({ latlng: { lat: 14.599512345, lng: 120.984212345 } }); h.render();
     assert.deepEqual(h.changed[0], { latitude: 14.5995123, longitude: 120.9842123 });
     assert.equal(h.marker.options.draggable, true);
+    assert.deepEqual(h.marker.options.icon.iconSize, [44, 44]);
     h.marker.point = [14.6, 120.99]; h.marker.events.dragend(); h.render();
     assert.deepEqual(h.changed[1], { latitude: 14.6, longitude: 120.99 });
+});
+
+test('zoom and pin controls retain touch-sized targets', () => {
+    const styles = postcss.parse(readFileSync(resolve(import.meta.dirname, '../../resources/css/app.css'), 'utf8'));
+    for (const control of ['in', 'out']) {
+        const suffix = `leaflet-control-zoom-${control}`;
+        const rule = [];
+        styles.walkRules(candidate => {
+            if (candidate.selector.includes('.location-pin-picker') && candidate.selector.includes(suffix)) rule.push(candidate);
+        });
+        const declarations = rule.flatMap(candidate => candidate.nodes ?? []);
+        for (const dimension of ['width', 'height']) {
+            assert.ok(declarations.some(node => node.type === 'decl' && node.prop === dimension && node.value === '44px'), `${control} zoom target needs 44px ${dimension}`);
+        }
+        assert.ok(rule.some(candidate => (candidate.selector.match(/\./g) ?? []).length >= 3), `${control} selector must override Leaflet's touch sizing`);
+    }
 });
 
 test('failed map tiles offer retry and release the old map', async t => {
