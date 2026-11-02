@@ -30,6 +30,45 @@ Buyer checkout
 
 The core flow is complete only when the entire chain passes cross-role tests without a portal inventing statuses, bypassing custody, settling COD early, or relying on sample success data.
 
+## Native rider Wallet trip evidence: November 1, 2026
+
+The local `fix/rider-wallet-trip-evidence` branch starts at merged main
+`f001d39`. Previously, a valid paid Wallet handoff advertised native private proof
+but returned 404 and omitted the original recipient because Trips looked only
+for a COD collection. Trips now use the immutable Wallet receipt matched to the
+original delivery, checkpoint and actor. Later contact edits and rider
+reassignment cannot replace that evidence. No COD account is created for Wallet.
+Changed or invalid replacement images return the existing evidence-conflict
+response; missing files, foreign ownership and unsafe paths remain unavailable.
+
+Native task guidance now follows the original order version and payment method:
+version-two evidence completes the order automatically, historical version-one
+orders retain buyer confirmation, and paid Wallet handoffs collect no cash.
+The formerly stale handover acceptance now verifies completed/paid version-two
+orders while COD remains held by the rider and delivery earnings await an actual
+hub receipt. Repeated buyer confirmation does not create a second completion.
+
+The final affected regression passed **452 tests / 16,115 assertions** in
+isolated SQLite memory using PHP 8.4 and separate private test storage. It covers
+native rider APIs and contracts, Wallet, historical COD cash custody, local
+version-two delivery and handover recovery. PHP formatting and Git whitespace
+checks passed. The sequential PHP verifier had a 512 MB limit and reported a
+127 MB peak. No frontend files changed. The missing original recipient and
+COD-only proof failure were reproduced before correction.
+
+Scoped retained Wallet trip-evidence assessment: **3/10 → 8/10**, an engineering
+judgment based on original recipient/private-proof access and the ownership,
+replay, assignment-window and integrity regressions. This does not change whole
+system readiness. Deployment, fresh deployed native acceptance, physical Android
+checks and PostgreSQL concurrency need separate evidence. Phone testing is
+deferred. No production database or mobile operational write gate was changed.
+
+The [API contract](api/RIDER_OPERATIONS_API.md) records the retained sources. The
+[combined PR title/body](api/RIDER_TRIP_EVIDENCE_PR_DRAFT.md) remains a local
+draft. The feature branch is published; GitHub PR status has not been verified.
+Code and regression evidence are in
+local commit `15d7fc3` (`fix(api): retain Wallet trip proof and versioned delivery guidance`).
+
 ## Buyer mobile web connections: October 29, 2026
 
 The web branch `feat/buyer-mobile-web-integration`, based on merged main

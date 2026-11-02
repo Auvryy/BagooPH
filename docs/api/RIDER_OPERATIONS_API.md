@@ -34,7 +34,7 @@ Every command revalidates the fresh account and bearer inside its transaction.
 | GET `rider/commands/{key}` | Actor-owned UUID | Committed original result, timestamps and retry-expired flag |
 | POST `rider/tasks/{task}/pickup` | JSON scan body; work ability | Committed seller handoff result |
 | POST `rider/tasks/{task}/depart` | JSON scan body; work ability | Committed destination-hub departure result |
-| POST `rider/tasks/{task}/deliver` | Multipart recipient/COD/proof body; work ability | Committed delivery/checkpoint result; buyer completion is separate |
+| POST `rider/tasks/{task}/deliver` | Multipart recipient/payment/proof body; work ability | Committed delivery/order result; completion follows the order's original logistics version |
 | POST `rider/tasks/{task}/fail` | Multipart failure/proof body; work ability | Committed failure result; recorded attempt and return instructions are in refreshed task/history |
 | GET `rider/trips` | Page/per_page, q, phase, payment, from_date, to_date | Retained assignment history, attribution/date basis and pagination |
 | GET `rider/trips/{trip}` | `trip-<assignment checkpoint ID>` | Owned original assignment, checkpoints and attempts |
@@ -179,6 +179,16 @@ child, actor and accepted file hash on every read; changed bytes return
 `EVIDENCE_CHANGED`, missing or foreign proof returns 404. Download relative proof
 URLs from the same origin with the bearer; do not follow cross-origin redirects.
 Proof responses carry the same privacy/correlation headers as JSON.
+
+For an original Wallet handoff, Trips resolve the recipient and proof hash from
+the immutable `WalletHandoverReceipt` for that delivery, checkpoint and original
+actor. COD continues to use its original collection event. Current order contact
+edits and later rider assignments do not replace either source. A Wallet trip's
+`collected_cents` remains null; reading proof never creates a cash account. A
+missing/mismatched receipt cannot authorize the download. Changed image bytes,
+including an invalid replacement image, return 409 `EVIDENCE_CHANGED`; a missing
+file or unsafe path returns 404. Assignment windows still isolate earlier failed
+attempts from a later rider's successful handoff.
 
 Older public POD files are not advertised as native proof. Moving new writes to
 private storage does not revoke an already published historical URL. Before a
