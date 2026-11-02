@@ -46,6 +46,7 @@ function harness(t) {
 test('a map click places a pin and dragging it reports the new coordinates', async t => {
     const h = harness(t); h.render(); await tick(); h.render();
     assert.equal(h.marker, undefined);
+    h.tileEvents.load(); h.render();
     h.mapEvents.click({ latlng: { lat: 14.599512345, lng: 120.984212345 } }); h.render();
     assert.deepEqual(h.changed[0], { latitude: 14.5995123, longitude: 120.9842123 });
     assert.equal(h.marker.options.draggable, true);
@@ -54,6 +55,26 @@ test('a map click places a pin and dragging it reports the new coordinates', asy
     assert.deepEqual(h.marker.options.icon.iconSize, [44, 44]);
     h.marker.point = [14.6, 120.99]; h.marker.events.dragend(); h.render();
     assert.deepEqual(h.changed[1], { latitude: 14.6, longitude: 120.99 });
+});
+
+test('map status explains initial tile loading and clears after the first tile batch', async t => {
+    const h = harness(t); h.render();
+    assert.equal(text(nodes(h.tree).find(node => node.props?.role === 'status')), 'Loading map…');
+    await tick(); h.render();
+    assert.equal(text(nodes(h.tree).find(node => node.props?.role === 'status')), 'Loading map…');
+    h.tileEvents.load(); h.render();
+    assert.equal(text(nodes(h.tree).find(node => node.props?.role === 'status')), 'No location pin selected yet.');
+});
+
+test('a stalled tile batch times out with recovery guidance and retains the pin', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const h = harness(t);
+    h.props.value = { latitude: 14.5995123, longitude: 120.9842123 };
+    h.render(); await tick(); h.render();
+    t.mock.timers.tick(15000); h.render();
+    assert.equal(text(nodes(h.tree).find(node => node.props?.role === 'status')), 'Map tiles could not load. Your pin is still selected; retry to view the location.');
+    assert.ok(nodes(h.tree).some(node => node.type === 'button' && text(node) === 'Retry map'));
+    assert.deepEqual(h.marker.point, [14.5995123, 120.9842123]);
 });
 
 test('zoom and pin controls retain touch-sized targets', () => {
@@ -85,6 +106,7 @@ test('a tile failure keeps selected-pin feedback visible with retry', async t =>
     h.props.value = { latitude: 14.5995123, longitude: 120.9842123 };
     h.render(); await tick(); h.render();
     assert.ok(h.marker);
+    assert.equal(text(nodes(h.tree).find(node => node.props?.role === 'status')), 'Loading map… Your pin is still selected.');
     h.tileEvents.tileerror(); h.render();
     const status = nodes(h.tree).find(node => node.props?.role === 'status');
     assert.equal(text(status), 'Map tiles could not load. Your pin is still selected; retry to view the location.');
@@ -93,6 +115,8 @@ test('a tile failure keeps selected-pin feedback visible with retry', async t =>
     retry.props.onClick(); h.render(); await tick(); h.render();
     assert.equal(h.created, 2);
     assert.deepEqual(h.marker.point, [14.5995123, 120.9842123]);
+    assert.equal(text(nodes(h.tree).find(node => node.props?.role === 'status')), 'Loading map… Your pin is still selected.');
+    h.tileEvents.load(); h.render();
     assert.equal(text(nodes(h.tree).find(node => node.props?.role === 'status')), 'Location pin selected.');
 });
 
@@ -102,6 +126,7 @@ test('clearing a saved pin removes its marker and a new selection replaces it', 
     h.render(); await tick(); h.render();
     const previousMarker = h.marker;
     assert.deepEqual(previousMarker.point, [14.5995123, 120.9842123]);
+    h.tileEvents.load(); h.render();
 
     h.props.value = null; h.render();
     assert.equal(previousMarker.removed, true);

@@ -69,7 +69,9 @@ dragging updates its coordinates, tapping zoom does not add another pin, and
 the 44px controls fit without horizontal overflow. With OSM tiles blocked, the
 retry state now tells buyers when their selected pin remains in the form; a
 regression test verifies retry remounts the map with the same saved coordinates.
-Twenty-three focused frontend checks and an isolated production build passed.
+The status explains initial tile loading and offers retry after a 15-second
+stall. Twenty-five focused frontend checks and an isolated production build
+passed.
 Scoped selected-pin offline feedback:
 **5/10 → 8/10**, pending physical-device and deployed verification.
 The frontend accepts a complete seven-decimal pin, and the SQLite-backed
@@ -77,7 +79,8 @@ address service preserves both coordinates through validation and storage. The
 map harness verifies that an address change removes the old marker and a new
 selection replaces it. This confirms application-layer precision and marker
 behavior, not live provider geocoding or routing. The marker interaction test
-also requires keyboard focus and an accessible title.
+also requires keyboard focus and an accessible title. The initial status keeps
+the saved pin explicit while map tiles load.
 The latest PC-only regression pass also passed 159 buyer input-validation
 tests / 985 assertions, 60 web courier/map tests, and 125 Rider map/routing
 tests. On 2026-11-03, live Geoapify motorcycle route requests with synthetic

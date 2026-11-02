@@ -53,10 +53,10 @@ function button(html, label) { return [...html.matchAll(/<button\b[^>]*>[\s\S]*?
 test('location picker distinguishes an empty address from a saved pin', () => {
  const empty = renderToStaticMarkup(createElement(ui.LocationPinPicker, { value: null, onChange() {} }));
  const saved = renderToStaticMarkup(createElement(ui.LocationPinPicker, { value: { latitude: 14.5995, longitude: 120.9842 }, onChange() {} }));
- assert.match(empty, /No location pin selected yet/);
+ assert.match(empty, /Loading map…/);
  assert.doesNotMatch(empty, /Location pin selected\./);
  assert.match(empty, /Click or tap the map to place a pin/);
- assert.match(saved, /Location pin selected\./);
+ assert.match(saved, /Loading map… Your pin is still selected/);
  assert.match(saved, /aria-label="Delivery location map"/);
 });
 
@@ -108,7 +108,7 @@ test('address editor uses the stored recipient, bounded fields and the existing 
  assert.match(html, /id="address-postal-code"[^>]*maxLength="4"/i);
  assert.match(html, /does not change your account name/);
  assert.match(html, /aria-label="Delivery location map"/);
- assert.match(html, /No location pin selected yet/);
+ assert.match(html, /Loading map…/);
  for (const field of ['region', 'province', 'city', 'barangay']) assert.match(html, new RegExp(`id="address-${field}"[^>]*required=""`));
 });
 const quote = { items: [{id:10, quantity:1, unit_price:250, subtotal:250}], subtotal: 250, shipping_fee: 50, doorstep_shipping_fee: 50, discount: 0, total: 300, voucher: null, redemptions: [],
