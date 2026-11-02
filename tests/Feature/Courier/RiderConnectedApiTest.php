@@ -46,6 +46,29 @@ class RiderConnectedApiTest extends TestCase
         return [$parcel, $rider];
     }
 
+    public function test_assigned_rider_receives_the_current_hub_pin_for_navigation(): void
+    {
+        $pickup = $this->flowDelivery($this->newFlowOrder(), 'picked_up');
+        $pickup->originBayanHub->update(['latitude' => 14.5995, 'longitude' => 120.9842]);
+        $this->native(User::findOrFail($pickup->courier_id));
+        $this->getJson('/api/v1/rider/tasks/pickup-'.$pickup->id)->assertOk()
+            ->assertJsonPath('data.stop.kind', 'origin_hub')
+            ->assertJsonPath('data.stop.latitude', 14.5995)
+            ->assertJsonPath('data.stop.longitude', 120.9842);
+
+        [$delivery] = $this->finalParcel('assigned_to_rider');
+        $delivery->destinationBayanHub->update(['latitude' => 14.5547, 'longitude' => 121.0244]);
+        $this->getJson('/api/v1/rider/tasks/final_mile-'.$delivery->id)->assertOk()
+            ->assertJsonPath('data.stop.kind', 'destination_hub')
+            ->assertJsonPath('data.stop.latitude', 14.5547)
+            ->assertJsonPath('data.stop.longitude', 121.0244);
+
+        $delivery->destinationBayanHub->update(['latitude' => null, 'longitude' => null]);
+        $this->getJson('/api/v1/rider/tasks/final_mile-'.$delivery->id)->assertOk()
+            ->assertJsonPath('data.stop.latitude', null)
+            ->assertJsonPath('data.stop.longitude', null);
+    }
+
     public function test_history_filters_use_manila_assignment_days_and_keep_stable_pagination(): void
     {
         $this->travelTo(Carbon::parse('2026-10-08 23:59:59', 'Asia/Manila'));

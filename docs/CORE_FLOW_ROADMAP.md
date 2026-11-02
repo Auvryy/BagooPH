@@ -30,6 +30,20 @@ Buyer checkout
 
 The core flow is complete only when the entire chain passes cross-role tests without a portal inventing statuses, bypassing custody, settling COD early, or relying on sample success data.
 
+## Saved pins and Rider routing: in progress
+
+The Rider task API now supplies the saved origin or destination hub coordinates
+to the assigned rider when that hub is the current stop. Missing coordinates
+remain null and available pickup previews do not expose a stop pin. The focused
+SQLite-memory API test exercises pickup and final-mile hub stops and missing
+coordinates. Scoped hub-stop location availability: **2/10 → 5/10**; this is
+an engineering assessment of the API contract, not end-to-end navigation proof.
+
+Buyer, seller and hub map-pin selection, buyer checkout persistence, web road
+guidance, and end-to-end routing verification remain in progress. Existing Rider
+Mobile road guidance depends on valid assigned-stop coordinates and configured
+map service access. Physical device and deployed-service acceptance remain open.
+
 ## Native rider Wallet trip evidence: November 1-2, 2026
 
 The implementation branch `fix/rider-wallet-trip-evidence` started at main

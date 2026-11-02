@@ -134,8 +134,12 @@ class RiderTaskService
             'stop' => ['kind' => $stop, 'name' => match ($stop) {
                 'seller' => $parcel->pickup_store_name, 'buyer' => $parcel->order->recipient_name, default => $hub?->name
             },
-                'address' => $address, 'latitude' => ! $preview && $stop === 'buyer' ? $parcel->order->destination_latitude : null,
-                'longitude' => ! $preview && $stop === 'buyer' ? $parcel->order->destination_longitude : null,
+                'address' => $address, 'latitude' => $preview ? null : match ($stop) {
+                    'buyer' => $parcel->order->destination_latitude, 'origin_hub', 'destination_hub' => $hub?->latitude, default => null,
+                },
+                'longitude' => $preview ? null : match ($stop) {
+                    'buyer' => $parcel->order->destination_longitude, 'origin_hub', 'destination_hub' => $hub?->longitude, default => null,
+                },
                 'phone' => $preview ? null : match ($stop) {
                     'seller' => $parcel->pickup_contact_phone, 'buyer' => $parcel->order->recipient_phone, default => null
                 },
