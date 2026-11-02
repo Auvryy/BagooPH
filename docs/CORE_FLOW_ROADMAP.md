@@ -103,10 +103,10 @@ and the worktree build passed. Scoped signup pin continuity: **2/10 → 6/10**;
 live map and deployed acceptance are still needed.
 
 Server-side required pin enforcement across checkout clients and end-to-end
-routing verification remain in progress. Current Rider Mobile defaults to an
-unavailable in-app routing provider and shows a saved stop or sample line, so
-real mobile road guidance still requires implementation as well as valid stops
-and configured map service access. Physical device and deployed-service
+routing verification remain in progress. Rider Mobile main still defaults to
+an unavailable in-app routing provider. The separate local Rider branch
+`feat/rider-road-routing` adds configured road guidance and Stop Mode rendering;
+it is not yet merged or deployed. Physical device and deployed-service
 acceptance remain open.
 
 Rider web can now request an actual road line for an assigned stop after the
@@ -136,11 +136,10 @@ disconnected geometry is not presented as continuous guidance. Sixteen focused
 frontend routing and lifecycle checks and the worktree build passed. Scoped
 road-line integrity: **5/10 → 6/10**, pending real provider validation.
 
-Rider mobile source currently parses road geometry and rejects reported
-ferries, but its route-result path does not check that the first and last
-points match the requested origin and stop, or that separate sections join.
-Those mobile checks and their PC tests remain open, in addition to the
-user-deferred device acceptance. The buyer mobile checkout currently treats
+The local Rider branch adds endpoint and continuity checks, a configured
+provider, and rendering on the assigned stop's map. Its focused PC tests and
+Android manifest merge passed; real provider, deployment and the user-deferred
+device acceptance remain open. The buyer mobile checkout currently treats
 coordinates as optional, so server-wide mandatory pins must be coordinated
 with that client before activation.
 
