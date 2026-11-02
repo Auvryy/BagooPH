@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\User;
 use App\Services\BuyerAccessService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class BuyerAddressService
@@ -50,6 +51,14 @@ class BuyerAddressService
     {
         $this->mutate($actor, $address, function ($addresses, Address $owned) use ($input) {
             $data = app(CommerceInputService::class)->address($input);
+            $confirmation = Validator::make($input, ['pin_confirmed' => ['sometimes', 'boolean']])->validate();
+            foreach (['region', 'province', 'city', 'barangay', 'street', 'postal_code'] as $field) {
+                if ((string) ($owned->$field ?? '') !== (string) ($data[$field] ?? '') && ! ($confirmation['pin_confirmed'] ?? false)) {
+                    $data['latitude'] = null;
+                    $data['longitude'] = null;
+                    break;
+                }
+            }
             // Keeping the current default avoids leaving the address book without one.
             $data['is_default'] = $owned->is_default || $data['is_default'];
             if ($data['is_default']) {

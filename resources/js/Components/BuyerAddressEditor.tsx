@@ -13,14 +13,14 @@ export default function BuyerAddressEditor({ user, address, count, limit, onClos
         recipient_name: address?.recipient_name ?? user.name, phone: address?.phone ?? user.phone ?? '',
         region: address?.region ?? '', province: address?.province ?? '', city: address?.city ?? '', barangay: address?.barangay ?? '',
         street: address?.street ?? '', postal_code: address?.postal_code ?? '', type: address?.type ?? 'Home',
-        is_default: address?.is_default ?? count === 0, latitude: address?.latitude ?? null, longitude: address?.longitude ?? null, landmark: address?.landmark ?? '',
+        is_default: address?.is_default ?? count === 0, latitude: address?.latitude ?? null, longitude: address?.longitude ?? null, landmark: address?.landmark ?? '', pin_confirmed: false,
     });
     const [locationsLoading, setLocationsLoading] = useState(true);
     const pending = useRef(false);
     const limited = !address && count >= limit;
     const update = (field: 'recipient_name' | 'phone' | 'street' | 'postal_code', value: string) => {
         const next = { ...form.data, [field]: value };
-        form.setData(field === 'street' || field === 'postal_code' ? { ...next, latitude: null, longitude: null } : next);
+        form.setData(field === 'street' || field === 'postal_code' ? { ...next, latitude: null, longitude: null, pin_confirmed: false } : next);
         const error = buyerAddressErrors(next)[field];
         if (error) form.setError(field, error); else form.clearErrors(field);
     };
@@ -59,7 +59,7 @@ export default function BuyerAddressEditor({ user, address, count, limit, onClos
                     </div>
                     <BuyerAddressLocationFields values={form.data} onLoadingChange={setLocationsLoading}
                         onChange={(next, userChange) => {
-                            form.setData({ ...form.data, ...next, ...(userChange ? { postal_code: '', latitude: null, longitude: null } : {}) });
+                            form.setData({ ...form.data, ...next, ...(userChange ? { postal_code: '', latitude: null, longitude: null, pin_confirmed: false } : {}) });
                             form.clearErrors('region', 'province', 'city', 'barangay');
                         }} errors={form.errors} />
                     <div>
@@ -73,7 +73,7 @@ export default function BuyerAddressEditor({ user, address, count, limit, onClos
                         <div><label htmlFor="address-type" className="mb-1 block font-bold text-slate-700">Address label</label><select id="address-type" name="type" value={form.data.type} onChange={event => form.setData('type', event.target.value)} className={inputClass}><option>Home</option><option>Office</option><option>Other</option></select>{form.errors.type && <p role="alert" className="mt-1 text-rose-700">{form.errors.type}</p>}</div>
                     </div>
                     <LocationPinPicker value={form.data.latitude != null && form.data.longitude != null ? { latitude: form.data.latitude, longitude: form.data.longitude } : null}
-                        onChange={point => form.setData({ ...form.data, latitude: point.latitude, longitude: point.longitude })} />
+                        onChange={point => form.setData({ ...form.data, latitude: point.latitude, longitude: point.longitude, pin_confirmed: true })} />
                     <div className="space-y-3 border-t border-slate-100 pt-3">
                         <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" checked={form.data.is_default} disabled={Boolean(address?.is_default) || count === 0} onChange={event => form.setData('is_default', event.target.checked)} className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" />Use as my default delivery address</label>
                         {(address?.is_default || count === 0) && <p className="text-xs text-slate-500">Your address book needs one default. To change it, choose another saved address as default.</p>}

@@ -6,6 +6,7 @@ use App\Models\CodAccount;
 use App\Models\DeliveryAttempt;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\Commerce\PhilippineAddressCatalog;
 use App\Services\Courier\RiderTaskService;
 use App\Services\Finance\CodCashService;
 use App\Services\Notifications\NotificationDeliveryService;
@@ -153,6 +154,29 @@ class RiderConnectedApiTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.kind', 'buyer')->assertJsonPath('data.latitude', 14.56)
             ->assertJsonPath('data.longitude', 121.03);
+    }
+
+    public function test_saved_buyer_pin_reaches_both_rider_interfaces_and_survives_later_address_edits(): void
+    {
+        $buyer = $this->createApprovedUser('buyer');
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'));
+        $address = $buyer->addresses()->create(['recipient_name' => $buyer->name, 'phone' => '09171234567',
+            'region' => app(PhilippineAddressCatalog::class)->regionFor('Laguna', 'Santa Cruz'),
+            'province' => 'Laguna', 'city' => 'Santa Cruz', 'barangay' => 'Poblacion III',
+            'street' => '100 Market Road', 'postal_code' => '4009', 'type' => 'Home', 'is_default' => true,
+            'latitude' => 14.281, 'longitude' => 121.417]);
+        $order = $this->checkoutFlowOrder($buyer, $shop, shipping: ['saved_address_id' => $address->id,
+            'shipping_latitude' => '14.281', 'shipping_longitude' => '121.417']);
+        $address->update(['latitude' => 14.282, 'longitude' => 121.418]);
+        $parcel = $this->flowDelivery($order, 'out_for_delivery');
+        $rider = User::findOrFail($parcel->assigned_rider_id);
+        $this->native($rider);
+        $this->getJson('/api/v1/rider/tasks/final_mile-'.$parcel->id)->assertOk()
+            ->assertJsonPath('data.stop.kind', 'buyer')->assertJsonPath('data.stop.latitude', 14.281)
+            ->assertJsonPath('data.stop.longitude', 121.417);
+        $this->actingAs($rider)->getJson('/courier/navigation/final_mile-'.$parcel->id)->assertOk()
+            ->assertJsonPath('data.kind', 'buyer')->assertJsonPath('data.latitude', 14.281)
+            ->assertJsonPath('data.longitude', 121.417);
     }
 
     public function test_history_filters_use_manila_assignment_days_and_keep_stable_pagination(): void

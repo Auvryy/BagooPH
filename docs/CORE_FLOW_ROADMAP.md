@@ -58,6 +58,18 @@ The checkout replay suite also passed 51 tests / 469 assertions. The frontend
 build passed in an isolated output directory. Two headless map interaction
 checks cover placing and dragging a pin and retrying failed map tiles. Scoped
 buyer pin entry: **2/10 → 6/10**, pending live map and deployment verification.
+When a saved address's physical fields change, the server now clears any pin
+unless the buyer explicitly confirmed a new selection; contact-only edits retain
+the pin. This protects older clients that might otherwise resend stale
+coordinates. The SQLite address-book suite passed 40 tests / 339 assertions,
+the address frontend suite passed 16 checks, and the worktree build passed.
+Scoped address-change pin safety: **4/10 → 7/10**, pending deployed acceptance.
+
+A full SQLite checkout-to-custody test passed 82 assertions showing that the
+saved buyer pin reaches both assigned Rider API and web navigation after
+collection. Changing the address book afterwards does not move the existing
+order's destination. This checks application endpoints, not a live route
+provider or Android device.
 
 Buyer email and Google registration can also save a selected delivery pin as a
 default address when the buyer supplies a complete location and phone number.
