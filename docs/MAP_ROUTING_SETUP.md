@@ -25,9 +25,11 @@ the line unavailable, with address-based external directions as a fallback.
 4. `CHECKOUT_REQUIRE_DOORSTEP_PIN` defaults to `false` while buyer mobile is
    being updated. Enable it only after every supported checkout can choose a
    pin, save it for future use and handle validation feedback. When enabled,
-   new doorstep orders without coordinates are rejected; hub self-pickup and
-   exact retries of already placed orders remain supported. The checkout page
-   also exposes the Boolean `doorstepPinRequired` for client coordination.
+   new doorstep orders without coordinates or a saved address are rejected;
+   select an existing address or save the new one. If the address book is
+   full, choose an existing address or remove one before saving a new one.
+   Hub self-pickup and exact retries of already placed orders remain supported.
+   The checkout page exposes the Boolean `doorstepPinRequired` for clients.
 
 ## Buyer client contract
 

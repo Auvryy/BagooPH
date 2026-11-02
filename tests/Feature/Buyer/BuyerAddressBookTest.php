@@ -43,7 +43,7 @@ class BuyerAddressBookTest extends TestCase
 
     private function cart(User $buyer, Address $address): array
     {
-        $shop = Shop::factory()->approved()->create();
+        $shop = Shop::factory()->approved()->create(['city' => 'Manila']);
         $product = Product::factory()->create(['shop_id' => $shop->id, 'stock' => 20, 'price' => 250]);
         $cart = Cart::create(['user_id' => $buyer->id]);
         $line = $cart->items()->create(['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 250]);
@@ -192,6 +192,26 @@ class BuyerAddressBookTest extends TestCase
         $this->post('/checkout', $payload + ['save_address' => false])->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertSame(10, $buyer->addresses()->count());
         $this->assertDatabaseCount('orders', 1);
+    }
+
+    public function test_required_pins_at_address_limit_allow_selecting_an_existing_address(): void
+    {
+        $buyer = User::factory()->create();
+        $first = $this->add($buyer);
+        foreach (range(2, 10) as $number) {
+            $this->add($buyer, ['street' => $number.' Garden Street']);
+        }
+        [$shop, $product, $cart, $payload] = $this->cart($buyer, $first);
+        $payload += ['shipping_latitude' => '14.55', 'shipping_longitude' => '121.05'];
+        config(['checkout.require_doorstep_pin' => true]);
+        $this->actingAs($buyer)->post('/checkout', [...$payload, 'save_address' => true])->assertSessionHasErrors('address_book');
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertSame(20, $product->fresh()->stock);
+        $this->post('/checkout', [...$payload, 'save_address' => false, 'saved_address_id' => $first->id,
+            'saved_address_location_token' => app(BuyerAddressService::class)->locationToken($first)])
+            ->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertEquals(14.55, $first->fresh()->latitude);
+        $this->assertSame(10, $buyer->addresses()->count());
     }
 
     public function test_address_edits_and_deletion_leave_buyer_seller_and_parcel_delivery_snapshots_unchanged(): void

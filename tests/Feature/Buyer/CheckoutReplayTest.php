@@ -46,9 +46,13 @@ class CheckoutReplayTest extends TestCase
         $this->assertDatabaseCount('checkout_submissions', 0);
         $this->assertSame(10, $product->fresh()->stock);
         $this->assertSame(1, $cart->items()->count());
-        $this->post('/checkout', [...$payload, 'shipping_latitude' => '14.55', 'shipping_longitude' => '121.05'])
+        $pinned = [...$payload, 'shipping_latitude' => '14.55', 'shipping_longitude' => '121.05'];
+        $this->postJson('/checkout', $pinned)->assertUnprocessable()->assertJsonValidationErrors('save_address');
+        $this->assertDatabaseCount('orders', 0);
+        $this->post('/checkout', [...$pinned, 'save_address' => true])
             ->assertRedirect(route('buyer.orders.index'))->assertSessionHas('success');
         $this->assertEquals(14.55, Order::sole()->destination_latitude);
+        $this->assertEquals(14.55, $buyer->addresses()->sole()->latitude);
     }
 
     public function test_enabling_pin_requirement_preserves_an_exact_retry_of_an_older_unpinned_order(): void

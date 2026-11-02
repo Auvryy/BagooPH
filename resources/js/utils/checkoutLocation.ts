@@ -10,6 +10,10 @@ export function validDeliveryPin(latitude: string | number | null, longitude: st
 
 export type CheckoutAddressField = 'shipping_address' | 'shipping_city' | 'shipping_province' | 'destination_barangay' | 'shipping_postal_code';
 
+export function withDoorstepDelivery<T extends { delivery_type: 'doorstep' | 'hub_self_pickup'; saved_address_id: number | null; save_address: boolean }>(previous: T, requireSavedPin: boolean, canSave: boolean): T {
+    return { ...previous, delivery_type: 'doorstep', save_address: requireSavedPin && previous.saved_address_id === null && canSave ? true : previous.save_address };
+}
+
 export function changedDeliveryAddress<T extends Record<CheckoutAddressField, string> & {
     shipping_latitude: string | number; shipping_longitude: string | number; saved_address_id: number | null; save_address: boolean; saved_address_location_token?: string | null;
 }>(previous: T, field: CheckoutAddressField, value: string, canSave: boolean): T {

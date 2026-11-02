@@ -91,6 +91,10 @@ class CheckoutOrderService
                     'shipping_longitude' => 'Choose a delivery location on the map before placing your order.',
                 ]);
             }
+            if (config('checkout.require_doorstep_pin') && $data['delivery_type'] === 'doorstep'
+                && ! isset($data['saved_address_id']) && ! $data['save_address']) {
+                throw ValidationException::withMessages(['save_address' => 'Save this delivery address, or select an existing saved address.']);
+            }
             $savedAddress = null;
             if (isset($data['saved_address_id'])) {
                 $savedAddress = $buyer->addresses()->whereKey($data['saved_address_id'])->lockForUpdate()->first();

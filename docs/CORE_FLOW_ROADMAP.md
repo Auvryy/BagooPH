@@ -147,6 +147,13 @@ deployed acceptance remain open.
 An additional SQLite integration check passed 16 assertions with the setting
 enabled: a selected address receives the confirmed pin, and an exact order
 retry cannot overwrite a later address edit.
+When the setting is enabled, new doorstep addresses must also be saved for
+future use. A full address book can still use an existing saved address, and
+hub pickup retains its separate behavior. The SQLite replay suite passed
+55 tests / 527 assertions, the address-book suite passed 41 tests / 347
+assertions, and 20 frontend address/GPS checks passed. The worktree build
+passed. Scoped pin-saving rollout readiness: **3/10 → 6/10**, pending buyer
+mobile support and activation.
 
 Rider web can now request an actual road line for an assigned stop after the
 rider selects a vehicle and starts navigation. The server rechecks assignment,
