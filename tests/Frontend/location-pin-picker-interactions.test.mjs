@@ -64,6 +64,7 @@ test('keyboard Enter places a pin at the focused map center only', async t => {
     const mapRegion = nodes(h.tree).find(node => node.props?.role === 'region');
     const instructions = nodes(h.tree).find(node => node.props?.id === 'pin-picker-help');
     assert.equal(mapRegion.props['aria-describedby'], instructions.props.id);
+    assert.match(text(instructions), /cannot verify that it matches your written address/);
     assert.match(text(instructions), /Keyboard: focus the map and use arrow keys to pan; press Enter to pin its center\. Press Tab to reach the zoom controls\./);
     h.mapEvents.keypress({ originalEvent: { key: 'ArrowRight', target: h.container } });
     h.mapEvents.keypress({ originalEvent: { key: 'Enter', target: {} } });

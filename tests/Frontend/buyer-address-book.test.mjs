@@ -65,7 +65,7 @@ test('doorstep pin validation accepts bounded signed coordinates through seven d
   ['-14.5995123', '-120.9842123'], ['90', '180'], ['-90', '-180']]) {
   assert.equal(ui.validDeliveryPin(lat, lng), true, `${lat}, ${lng} is a valid coordinate pair`);
  }
- for (const [lat, lng] of [['', ''], ['14.5', ''], ['NaN', '121'], ['91', '121'], ['14', '181'], ['1e1', '121'], ['14.12345678', '121']]) {
+ for (const [lat, lng] of [['', ''], ['14.5', ''], ['', '121'], ['NaN', '121'], ['91', '121'], ['14', '181'], ['1e1', '121'], ['14.12345678', '121']]) {
   assert.equal(ui.validDeliveryPin(lat, lng), false);
  }
 });
@@ -128,6 +128,15 @@ test('optional buyer and seller registration pin-clear controls use touch-sized 
   assert.ok(clear, `${page} exposes Clear pin`);
   assert.match(clear, /min-h-\[44px\]/, `${page} Clear pin target is at least 44px tall`);
  }
+});
+
+test('checkout GPS action has a touch-sized keyboard focus target and announced feedback', () => {
+ const source = readFileSync(resolve(root, 'resources/js/Pages/Checkout/Index.tsx'), 'utf8');
+ const gpsButton = (source.match(/<button\b[\s\S]*?<\/button>/g) ?? []).find(element => element.includes('onClick={gps.capture}'));
+ assert.ok(gpsButton);
+ assert.match(gpsButton, /min-h-\[44px\]/);
+ assert.match(gpsButton, /focus-visible:outline-2/);
+ assert.match(source, /\{gps\.status && \(\s*<p role="status"/);
 });
 const quote = { items: [{id:10, quantity:1, unit_price:250, subtotal:250}], subtotal: 250, shipping_fee: 50, doorstep_shipping_fee: 50, discount: 0, total: 300, voucher: null, redemptions: [],
  shops: [{ shop_id: 1, shop_name: 'Bagoo Store', subtotal: 250, shipping: 50, doorstep_shipping: 50, discount: 0, total: 300 }] };

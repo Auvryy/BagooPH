@@ -133,6 +133,7 @@ class CommerceInputValidationTest extends TestCase
             'latitude hidden' => ['shipping_latitude', "14.5\u{200B}"],
             'latitude precision' => ['shipping_latitude', '14.12345678'],
             'missing coordinate pair' => ['shipping_latitude', '14.5', 'shipping_longitude'],
+            'missing latitude pair' => ['shipping_longitude', '121.05', 'shipping_latitude'],
             'notes length' => ['notes', str_repeat('a', 501)],
             'unknown delivery type' => ['delivery_type', 'direct'],
             'unknown payment method' => ['payment_method', 'free'],

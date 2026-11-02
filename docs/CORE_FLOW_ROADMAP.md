@@ -98,8 +98,23 @@ the saved pin explicit while map tiles load. Checkout pin validation now also
 asserts zero, signed, world-boundary, and seven-decimal inputs on both frontend
 and backend; the Leaflet interaction harness confirms negative points retain
 their sign and seven-decimal precision.
-The latest PC-only regression pass also passed 160 buyer input-validation
-tests / 995 assertions, 60 web courier/map tests, and 125 Rider map/routing
+The pin instructions now state that the map cannot verify a match with the
+written address. The pinned PSGC address data contains names and parent
+relationships, not boundary coordinates, so this remains a user-confirmed
+match; the written address and assigned hub remain authoritative. Checkout's
+GPS action now has a 44px target and visible keyboard focus, and its result or
+failure is announced through a status region. Five isolated GPS checks cover
+stale/inaccurate results, cancellation, supported and unsupported browsers,
+signed/boundary coordinates, rounding, and rejected out-of-range fixes. The
+scoped checkout GPS affordance moved from **6/10 to 8/10** for touch access,
+focus visibility, and accessible feedback; physical-device permission and
+location accuracy still need later confirmation.
+The expanded frontend checks pass 21 address/checkout cases, 8 map interaction
+cases, and 5 GPS cases. The TypeScript and production Vite build passed using
+an isolated `/tmp` output directory; the default shared `public/build` location
+could not be cleared by the local user due to its existing permissions.
+The latest PC-only regression pass also passed 162 buyer input-validation
+tests / 1,009 assertions, 60 web courier/map tests, and 125 Rider map/routing
 tests. On 2026-11-03, live Geoapify motorcycle route requests with synthetic
 Manila-area points returned a road MultiLineString with 286 coordinates and an
 endpoint within 500 metres of the requested stop. A headless Chrome request
