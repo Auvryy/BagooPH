@@ -15,6 +15,7 @@ use App\Services\Courier\CourierOperationsService;
 use App\Services\Courier\CourierOutcomeService;
 use App\Services\Courier\CourierProofService;
 use App\Services\Courier\RiderShiftService;
+use App\Services\Courier\RiderTaskService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\CodMoney;
 use App\Services\Finance\LogisticsEarningsService;
@@ -65,6 +66,21 @@ class CourierDeliveryController extends Controller
             'stats' => fn () => $workPayload()['stats'],
             'queues' => fn () => $workPayload()['queues'],
         ]);
+    }
+
+    public function navigationStop(Request $request, string $reference, RiderTaskService $tasks): JsonResponse
+    {
+        [$parcel, $phase] = $tasks->task($request->user(), $reference);
+        $task = $tasks->resource($parcel, $phase, $request->user());
+        abort_if($task['handover_hold'], 409, 'Follow the current handover recovery instruction.');
+        $stop = $task['stop'];
+        if (in_array($stop['kind'], ['origin_hub', 'buyer'], true) || $parcel->status === 'delivery_failed') {
+            abort_unless($task['custody']['held_by_me'], 409, 'Refresh this task before navigating.');
+        }
+        abort_if($stop['latitude'] === null || $stop['longitude'] === null, 422, 'This stop has no saved map pin.');
+
+        return response()->json(['data' => ['task_id' => $task['id'], 'kind' => $stop['kind'],
+            'latitude' => $stop['latitude'], 'longitude' => $stop['longitude']]])->header('Cache-Control', 'private, no-store');
     }
 
     private function dashboardPayload(User $user): array

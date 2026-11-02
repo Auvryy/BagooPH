@@ -60,10 +60,32 @@ checks cover placing and dragging a pin and retrying failed map tiles. Scoped
 buyer pin entry: **2/10 → 6/10**, pending live map and deployment verification.
 
 Seller map-pin selection, server-side required pin enforcement across
-checkout clients, web road guidance, and end-to-end routing verification remain
-in progress. Existing Rider Mobile road guidance depends on valid assigned-stop
-coordinates and configured map service access. Physical device and deployed-service
-acceptance remain open.
+checkout clients, seller pickup snapshots, and end-to-end routing verification
+remain in progress. Existing Rider Mobile road guidance depends on valid
+assigned-stop coordinates and configured map service access. Physical device and
+deployed-service acceptance remain open.
+
+Rider web can now request an actual road line for an assigned stop after the
+rider selects a vehicle and starts navigation. The server rechecks assignment,
+current stop and custody; the client rejects missing pins, stale or inaccurate
+location fixes, missing route details and reported ferry segments. Tracking and
+in-flight requests stop when the page is hidden or navigation ends. A road route
+is never replaced with an invented straight line. The browser discloses that the
+rider's location and stop are sent to Geoapify. The browser key is supplied at
+build time as `VITE_GEOAPIFY_API_KEY` and must be restricted to approved origins;
+without it, external directions remain available. See the provider's
+[routing documentation](https://apidocs.geoapify.com/docs/routing/) for supported
+travel modes, route details and usage costs.
+
+The complete isolated SQLite Rider API suite passed 10 tests / 792 assertions,
+including pickup hub, destination hub and buyer stops and access boundaries.
+The host PHP run lacked the GD image extension; the wider suite passed in the
+existing PHP container with separate temporary storage and an 89 MB peak.
+Sixteen headless frontend tests cover road geometry, permission, changing stops
+and tracking cleanup. The frontend build
+passed in an isolated output directory. Scoped Rider web road-line support:
+**2/10 → 6/10**, pending a configured key, live provider validation and seller
+pickup pins. The checks do not prove Android or deployment acceptance.
 
 ## Native rider Wallet trip evidence: November 1-2, 2026
 
@@ -7998,6 +8020,10 @@ Verification: **50 focused frontend checks** passed across rider pages, duty/sid
 Scoped web surface consistency assessment: **7/10 to 8/10**, based on coherent shared controls, quieter visual hierarchy and retained interaction checks. This does not increase overall operational readiness. Task tracking remains unavailable because its existing login expired; no saved task or time update is claimed. The branch PR description remains a local draft.
 
 ### Leaflet parity and sample delivery line — October 25, 2026
+
+This section records the October 25 behavior. The current Rider web road-line
+work and its remaining checks are described in “Saved pins and Rider routing”
+near the top of this roadmap.
 
 The user's revised map direction supersedes the earlier provider-backed road preview. Web and native mobile now use Leaflet 1.9.4 with the same unfiltered standard OpenStreetMap light tiles and the same public sample rider-to-delivery path. The dashed red line and two labelled endpoints are explicitly an illustration, without live position, parcel identity or logistics hub routes. The web map offers sample/saved-stop switching and an independent sample panel for an empty workspace. Mobile uses locally bundled Leaflet through the system web view and a neutral header, navigation and task-control treatment.
 

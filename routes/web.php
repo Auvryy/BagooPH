@@ -337,6 +337,7 @@ $registerCourierRoutes = function () use ($registerCodRoutes) {
     Route::middleware(['auth', 'subdomain.role:courier', 'courier.approved'])->group(function () use ($registerCodRoutes) {
         $registerCodRoutes();
         Route::get('/deliveries', [CourierDeliveryController::class, 'index']);
+        Route::get('/navigation/{reference}', [CourierDeliveryController::class, 'navigationStop'])->middleware('throttle:60,1');
         Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim']);
         Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus']);
         Route::get('/earnings', [CourierDeliveryController::class, 'earnings']);
@@ -763,6 +764,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
 Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courier.')->group(function () use ($registerCodRoutes) {
     $registerCodRoutes(true);
     Route::get('/deliveries', [CourierDeliveryController::class, 'index'])->name('deliveries');
+    Route::get('/navigation/{reference}', [CourierDeliveryController::class, 'navigationStop'])->middleware('throttle:60,1')->name('navigation-stop');
     Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim'])->name('claim');
     Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus'])->name('updateStatus');
     Route::get('/earnings', [CourierDeliveryController::class, 'earnings'])->name('earnings');

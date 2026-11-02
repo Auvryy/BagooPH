@@ -69,6 +69,43 @@ class RiderConnectedApiTest extends TestCase
             ->assertJsonPath('data.stop.longitude', null);
     }
 
+    public function test_web_navigation_stop_rechecks_assignment_custody_and_saved_pin(): void
+    {
+        $parcel = $this->flowDelivery($this->newFlowOrder(), 'picked_up');
+        $rider = User::findOrFail($parcel->courier_id);
+        $hub = $parcel->originBayanHub;
+        $hub->update(['latitude' => 14.5995, 'longitude' => 120.9842]);
+        $url = '/courier/navigation/pickup-'.$parcel->id;
+        $this->actingAs($rider)->getJson($url)->assertOk()->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJsonPath('data.kind', 'origin_hub')->assertJsonPath('data.latitude', 14.5995);
+        $other = $this->flowRider($hub, $this->createApprovedUser('courier'));
+        $this->actingAs($other)->getJson($url)->assertNotFound();
+        $this->actingAs($rider)->getJson('/courier/navigation/available-'.$parcel->id)->assertNotFound();
+        $hub->update(['latitude' => null, 'longitude' => null]);
+        $this->getJson($url)->assertUnprocessable();
+    }
+
+    public function test_web_navigation_uses_destination_hub_pin_before_collection(): void
+    {
+        $atHub = $this->flowDelivery($this->newFlowOrder(), 'assigned_to_rider');
+        $atHub->destinationBayanHub->update(['latitude' => 14.55, 'longitude' => 121.02]);
+        $response = $this->actingAs(User::findOrFail($atHub->assigned_rider_id))->getJson('/courier/navigation/final_mile-'.$atHub->id);
+        $this->assertSame(200, $response->status(), $response->getContent());
+        $response->assertOk()
+            ->assertJsonPath('data.kind', 'destination_hub')->assertJsonPath('data.latitude', 14.55);
+    }
+
+    public function test_web_navigation_uses_the_buyer_pin_after_collection(): void
+    {
+        $outbound = $this->flowDelivery($this->newFlowOrder(), 'out_for_delivery');
+        $outbound->order->update(['destination_latitude' => 14.56, 'destination_longitude' => 121.03]);
+        $response = $this->actingAs(User::findOrFail($outbound->assigned_rider_id))->getJson('/courier/navigation/final_mile-'.$outbound->id);
+        $this->assertSame(200, $response->status(), $response->getContent());
+        $response->assertOk()
+            ->assertJsonPath('data.kind', 'buyer')->assertJsonPath('data.latitude', 14.56)
+            ->assertJsonPath('data.longitude', 121.03);
+    }
+
     public function test_history_filters_use_manila_assignment_days_and_keep_stable_pagination(): void
     {
         $this->travelTo(Carbon::parse('2026-10-08 23:59:59', 'Asia/Manila'));

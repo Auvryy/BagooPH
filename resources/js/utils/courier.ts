@@ -24,6 +24,7 @@ export interface CourierMapJob {
     trackingNumber: string;
     stage: string;
     stopLabel: string;
+    stopKind?: 'seller' | 'origin_hub' | 'destination_hub' | 'buyer';
     place: CourierPlace;
     instruction: string;
     preview: boolean;
