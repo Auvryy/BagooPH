@@ -84,6 +84,13 @@ class CheckoutOrderService
             if ($original = $submissions->replay($buyer, $cart, $tokenHash, $requestHash, $data)) {
                 return $original;
             }
+            if (config('checkout.require_doorstep_pin') && $data['delivery_type'] === 'doorstep'
+                && ($data['shipping_latitude'] === null || $data['shipping_longitude'] === null)) {
+                throw ValidationException::withMessages([
+                    'shipping_latitude' => 'Choose a delivery location on the map before placing your order.',
+                    'shipping_longitude' => 'Choose a delivery location on the map before placing your order.',
+                ]);
+            }
             $savedAddress = null;
             if (isset($data['saved_address_id'])) {
                 $savedAddress = $buyer->addresses()->whereKey($data['saved_address_id'])->lockForUpdate()->first();

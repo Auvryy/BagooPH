@@ -108,6 +108,7 @@ class CheckoutController extends Controller
             'addresses' => $addresses,
             'defaultAddressId' => $defaultAddress?->id,
             'addressBookLimit' => BuyerAddressService::LIMIT,
+            'doorstepPinRequired' => (bool) config('checkout.require_doorstep_pin'),
             'pickupHubs' => $pickupHubs,
             'logisticsCompanies' => app(LogisticsCheckoutService::class)->choices(),
             'checkoutToken' => app(CheckoutSubmissionService::class)->issue($user, $cart, $checkoutItems),

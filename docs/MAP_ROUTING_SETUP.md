@@ -22,6 +22,27 @@ the line unavailable, with address-based external directions as a fallback.
 3. Apply the reviewed database migration in the intended environment as part of
    the normal deployment process. Existing sellers and hubs must save their own
    pins; earlier parcels can legitimately lack saved coordinates.
+4. `CHECKOUT_REQUIRE_DOORSTEP_PIN` defaults to `false` while buyer mobile is
+   being updated. Enable it only after every supported checkout can choose a
+   pin, save it for future use and handle validation feedback. When enabled,
+   new doorstep orders without coordinates are rejected; hub self-pickup and
+   exact retries of already placed orders remain supported. The checkout page
+   also exposes the Boolean `doorstepPinRequired` for client coordination.
+
+## Buyer client contract
+
+The checkout page's saved addresses include an optional `location_token`.
+Clients that select an existing address can submit its ID as
+`saved_address_id`, the token as `saved_address_location_token`, and the
+chosen coordinates as `shipping_latitude` and `shipping_longitude`. A changed
+address or pin returns a `saved_address_id` validation error; reload and review
+the current address before trying again. Older clients may omit both ID and
+token, but do not receive saved-pin update and stale-selection protection.
+
+When an address-book edit changes the physical address, coordinates are cleared
+unless the buyer places or confirms the pin and the client submits
+`pin_confirmed: true`. Clients should clear an old selection on address edits
+and ignore any location response that arrives after the address or pin changes.
 
 See [Geoapify Routing API](https://apidocs.geoapify.com/docs/routing/) and its
 [mobile key guidance](https://apidocs.geoapify.com/how-to/maps/react-native-maplibre-map)

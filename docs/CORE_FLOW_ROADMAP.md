@@ -135,6 +135,16 @@ an unavailable in-app routing provider. The separate local Rider branch
 it is not yet merged or deployed. Physical device and deployed-service
 acceptance remain open.
 
+Server-side doorstep pin enforcement is implemented behind
+`CHECKOUT_REQUIRE_DOORSTEP_PIN`, defaulting to off until buyer mobile can choose
+and save a pin. When enabled, new pinless doorstep orders are rejected without
+changing stock or creating an order, existing exact retries still succeed, and
+hub self-pickup remains available. The checkout page exposes
+`doorstepPinRequired` for client coordination. The SQLite replay suite passed
+54 tests / 506 assertions and the address suite passed 12 tests / 97 assertions.
+Scoped rollout readiness: **2/10 → 5/10**; cross-client UI, activation and
+deployed acceptance remain open.
+
 Rider web can now request an actual road line for an assigned stop after the
 rider selects a vehicle and starts navigation. The server rechecks assignment,
 current stop and custody; the client rejects missing pins, stale or inaccurate

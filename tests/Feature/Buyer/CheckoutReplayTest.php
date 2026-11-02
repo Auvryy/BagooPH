@@ -32,6 +32,48 @@ class CheckoutReplayTest extends TestCase
     use InteractsWithCheckoutNetwork;
     use RefreshDatabase;
 
+    public function test_enabling_doorstep_pin_requirement_rejects_new_unpinned_orders_without_side_effects(): void
+    {
+        [$buyer, $cart, $product, $payload] = $this->checkout();
+        config(['checkout.require_doorstep_pin' => true]);
+        $this->actingAs($buyer)->get('/checkout')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('doorstepPinRequired', true));
+        $this->actingAs($buyer)->postJson('/checkout', $payload)->assertUnprocessable()
+            ->assertJsonValidationErrors(['shipping_latitude', 'shipping_longitude']);
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('deliveries', 0);
+        $this->assertDatabaseCount('checkout_submissions', 0);
+        $this->assertSame(10, $product->fresh()->stock);
+        $this->assertSame(1, $cart->items()->count());
+        $this->post('/checkout', [...$payload, 'shipping_latitude' => '14.55', 'shipping_longitude' => '121.05'])
+            ->assertRedirect(route('buyer.orders.index'))->assertSessionHas('success');
+        $this->assertEquals(14.55, Order::sole()->destination_latitude);
+    }
+
+    public function test_enabling_pin_requirement_preserves_an_exact_retry_of_an_older_unpinned_order(): void
+    {
+        [$buyer, $cart, $product, $payload] = $this->checkout();
+        $this->actingAs($buyer)->post('/checkout', $payload)->assertSessionHas('success');
+        $this->assertNull(Order::sole()->destination_latitude);
+        config(['checkout.require_doorstep_pin' => true]);
+        $this->post('/checkout', $payload)->assertRedirect(route('buyer.orders.index'))->assertSessionHas('success');
+        $this->assertDatabaseCount('orders', 1);
+        $this->assertSame(8, $product->fresh()->stock);
+    }
+
+    public function test_enabling_pin_requirement_does_not_require_a_buyer_pin_for_hub_collection(): void
+    {
+        [$buyer, $cart, $product, $payload] = $this->checkout();
+        $hub = LogisticsHub::where('city_municipality', 'Pasig')->where('tier', 'local_bayan_hub')->firstOrFail();
+        $hub->update(['allows_self_pickup' => true, 'operating_hours' => '08:00 to 17:00']);
+        $payload['delivery_type'] = 'hub_self_pickup';
+        $payload['pickup_hub_id'] = $hub->id;
+        $payload['checkout_token'] = app(CheckoutSubmissionService::class)->issue($buyer, $cart);
+        config(['checkout.require_doorstep_pin' => true]);
+        $this->actingAs($buyer)->post('/checkout', $payload)->assertRedirect(route('buyer.orders.index'))->assertSessionHas('success');
+        $this->assertNull(Order::sole()->destination_latitude);
+    }
+
     private function checkout(bool $withToken = true): array
     {
         $buyer = User::factory()->create(['name' => 'Maria Santos']);
@@ -72,7 +114,8 @@ class CheckoutReplayTest extends TestCase
         [$buyer, $cart, $product] = $this->checkout(false);
         $before = $buyer->fresh()->getRawOriginal();
         $this->actingAs($buyer)->get('/checkout')->assertInertia(fn (Assert $page) => $page
-            ->component('Checkout/Index')->where('checkoutToken', fn ($token) => is_string($token) && strlen($token) > 100));
+            ->component('Checkout/Index')->where('doorstepPinRequired', false)
+            ->where('checkoutToken', fn ($token) => is_string($token) && strlen($token) > 100));
         $this->assertDatabaseCount('checkout_submissions', 0);
         $this->assertDatabaseCount('addresses', 0);
         $this->assertDatabaseCount('orders', 0);
