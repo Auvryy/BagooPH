@@ -32,6 +32,8 @@ The core flow is complete only when the entire chain passes cross-role tests wit
 
 ## Saved pins and Rider routing: in progress
 
+Configuration and acceptance instructions: [Map and road-routing setup](MAP_ROUTING_SETUP.md).
+
 The Rider task API now supplies the saved origin or destination hub coordinates
 to the assigned rider when that hub is the current stop. Missing coordinates
 remain null and available pickup previews do not expose a stop pin. The focused
