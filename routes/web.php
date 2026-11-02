@@ -306,6 +306,7 @@ $registerSellerRoutes = function () {
         Route::post('/profile', [SellerDashboardController::class, 'updateProfile']);
         Route::get('/shops', [SellerShopController::class, 'index']);
         Route::post('/shops/{shop}/resubmit', [SellerShopController::class, 'resubmit']);
+        Route::post('/shops/{shop}/pickup-location', [SellerShopController::class, 'pickupLocation'])->middleware('throttle:10,1');
         Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 
         Route::get('/seller/dashboard', function (Request $request) {
@@ -753,6 +754,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/profile', [SellerDashboardController::class, 'updateProfile'])->name('profile.update');
     Route::get('/shops', [SellerShopController::class, 'index'])->name('shops.index');
     Route::post('/shops/{shop}/resubmit', [SellerShopController::class, 'resubmit'])->name('shops.resubmit');
+    Route::post('/shops/{shop}/pickup-location', [SellerShopController::class, 'pickupLocation'])->middleware('throttle:10,1')->name('shops.pickup-location');
     Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 });
 

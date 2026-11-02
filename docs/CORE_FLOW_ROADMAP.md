@@ -68,9 +68,21 @@ authentication and address frontend suites passed 50 checks. The worktree
 frontend build passed. Scoped signup-to-address continuity: **2/10 → 6/10**;
 live map interaction and deployed acceptance remain unverified.
 
-Seller map-pin selection, server-side required pin enforcement across
-checkout clients, seller pickup snapshots, and end-to-end routing verification
-remain in progress. Existing Rider Mobile road guidance depends on valid
+Sellers with portal access can place a pickup pin for their current shop
+address in settings. The owner-only update checks a location token, and a shop
+address change clears the old pin, including when the model was loaded before
+another pin update. Checkout and the ready-for-pickup transition snapshot the
+current pin with the pickup address; assigned Rider web and mobile tasks receive
+that snapshot, while pickup previews do not expose it. Two focused SQLite tests
+passed 58 assertions across ownership, stale input, pickup snapshots and rider
+access. The seller ownership suite passed 6 tests / 191 assertions, the
+commerce frontend suite passed 25 checks, and the worktree build passed. Scoped
+seller pickup-pin continuity: **1/10 → 6/10**, pending deployed and live-device
+acceptance. Existing sellers must set their pin; historical parcels retain null
+coordinates where none were saved.
+
+Server-side required pin enforcement across checkout clients and end-to-end
+routing verification remain in progress. Existing Rider Mobile road guidance depends on valid
 assigned-stop coordinates and configured map service access. Physical device and
 deployed-service acceptance remain open.
 

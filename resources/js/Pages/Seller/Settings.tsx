@@ -1,4 +1,5 @@
 import UploadHint from '@/Components/UploadHint';
+import LocationPinPicker from '@/Components/LocationPinPicker';
 import React, { useState } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
@@ -20,10 +21,12 @@ interface Props {
     shop: Shop;
     shopReview: ReviewedShop;
     categories: Category[];
+    pickupPin: { latitude: number | null; longitude: number | null; location_token: string };
 }
 
-export default function SellerSettings({ shop, shopReview, categories }: Props) {
+export default function SellerSettings({ shop, shopReview, categories, pickupPin }: Props) {
     const [fileVersion, setFileVersion] = useState(0);
+    const pin = useForm({ ...pickupPin });
     const { data, setData, post, processing, recentlySuccessful, errors, setDefaults } = useForm({
         name: shop.name || '',
         vacation_mode: shop.vacation_mode ?? false,
@@ -100,6 +103,22 @@ export default function SellerSettings({ shop, shopReview, categories }: Props) 
                 </div>
                 
                 <SellerShopReview shop={shopReview} categories={categories} />
+                <form className="space-y-3 rounded-lg border border-slate-300 bg-white p-5" onSubmit={event => {
+                    event.preventDefault();
+                    pin.post(route('seller.shops.pickup-location', shop.id), { preserveScroll: true, onSuccess: page => {
+                        const saved = page.props.pickupPin as Props['pickupPin'];
+                        pin.setData(saved);
+                        pin.setDefaults(saved);
+                    } });
+                }}>
+                    <h2 className="font-bold text-slate-900">Pickup map pin</h2>
+                    <p className="text-sm text-slate-600">Place the pin at your current pickup address: {shop.address}, {shop.city}. Address changes still require review.</p>
+                    <LocationPinPicker label="Seller pickup location" value={pin.data.latitude !== null && pin.data.longitude !== null ? { latitude: pin.data.latitude, longitude: pin.data.longitude } : null}
+                        onChange={point => pin.setData(previous => ({ ...previous, ...point }))} />
+                    {(pin.errors.latitude || pin.errors.longitude || pin.errors.location_token) && <p role="alert" className="text-sm text-rose-700">{pin.errors.latitude || pin.errors.longitude || pin.errors.location_token}</p>}
+                    <button disabled={pin.processing || pin.data.latitude === null || pin.data.longitude === null} className="rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{pin.processing ? 'Saving…' : 'Save pickup pin'}</button>
+                    {pin.recentlySuccessful && <p role="status" className="text-sm text-emerald-700">Pickup pin saved.</p>}
+                </form>
                 <section className="rounded-lg border border-slate-300 bg-white p-5">
                     <label className="flex items-start gap-3">
                         <input type="checkbox" checked={data.vacation_mode} onChange={event => setData('vacation_mode', event.target.checked)} className="mt-1 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" />

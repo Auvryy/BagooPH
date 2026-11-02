@@ -221,6 +221,8 @@ class CheckoutOrderService
                     'status' => 'unassigned',
                     'pickup_store_name' => $shop->name,
                     'pickup_address' => "{$shop->address}, {$shop->city}",
+                    'pickup_latitude' => $shop->pickup_latitude,
+                    'pickup_longitude' => $shop->pickup_longitude,
                     'pickup_phone' => $shop->phone,
                     'delivery_recipient_name' => $data['recipient_name'],
                     'delivery_address' => $this->deliveryAddress($data),

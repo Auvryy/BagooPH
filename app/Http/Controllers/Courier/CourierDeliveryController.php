@@ -490,6 +490,8 @@ class CourierDeliveryController extends Controller
             'merchant' => [
                 'name' => $delivery->pickup_store_name,
                 'address' => $delivery->pickup_address,
+                'latitude' => $isAvailable ? null : $delivery->pickup_latitude,
+                'longitude' => $isAvailable ? null : $delivery->pickup_longitude,
                 'phone' => $delivery->pickup_phone,
             ],
             'originHub' => $this->hubPayload($delivery->originBayanHub),
