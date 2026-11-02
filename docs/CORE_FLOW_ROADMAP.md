@@ -55,8 +55,9 @@ address edit. New addresses can be saved for later. The frontend address suite
 passes 16 checks and the isolated SQLite buyer-address suite passes 12 tests / 76
 assertions, including ownership, stale addresses, order snapshots and replay.
 The checkout replay suite also passed 51 tests / 469 assertions. The frontend
-build passed in an isolated output directory. Scoped buyer pin
-entry: **2/10 → 6/10**, pending interactive map and deployment verification.
+build passed in an isolated output directory. Two headless map interaction
+checks cover placing and dragging a pin and retrying failed map tiles. Scoped
+buyer pin entry: **2/10 → 6/10**, pending live map and deployment verification.
 
 Seller map-pin selection, server-side required pin enforcement across
 checkout clients, web road guidance, and end-to-end routing verification remain

@@ -15,12 +15,14 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
     const current = useRef(value);
     const notify = useRef(onChange);
     const [failed, setFailed] = useState(false);
+    const [attempt, setAttempt] = useState(0);
     current.current = value;
     notify.current = onChange;
 
     useEffect(() => {
         let cancelled = false;
         let observer: ResizeObserver | undefined;
+        setFailed(false);
         void Promise.all([import('leaflet'), import('leaflet/dist/leaflet.css')]).then(([L]) => {
             if (cancelled || !container.current) return;
             const instance = L.map(container.current, { scrollWheelZoom: false });
@@ -51,7 +53,7 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
             }
         }).catch(() => { if (!cancelled) setFailed(true); });
         return () => { cancelled = true; observer?.disconnect(); setPoint.current = null; marker.current = null; map.current?.remove(); map.current = null; };
-    }, [label]);
+    }, [label, attempt]);
 
     useEffect(() => {
         setPoint.current?.(value);
@@ -62,5 +64,6 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
         <p className="text-xs text-slate-700">Tap the map to place a pin, then drag it to the exact location.</p>
         <div ref={container} role="region" aria-label={`${label} map`} className="h-64 w-full rounded-lg border border-slate-300" />
         <p className="text-xs text-slate-600" role="status">{failed ? 'Map tiles could not load. Check your connection and try again.' : value ? 'Location pin selected.' : 'No location pin selected yet.'}</p>
+        {failed && <button type="button" onClick={() => setAttempt(previous => previous + 1)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Retry map</button>}
     </div>;
 }
