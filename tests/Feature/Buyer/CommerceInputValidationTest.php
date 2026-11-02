@@ -206,7 +206,7 @@ class CommerceInputValidationTest extends TestCase
         $address = app(BuyerAddressService::class)->create($buyer, ['region' => '1300000000', 'recipient_name' => 'Delivery Recipient', 'barangay' => 'San Antonio',
             'phone' => ' 63 (917) 123-4567 ', 'street' => ' '.str_repeat('Ａ', 500).' ',
             'city' => ' Ｐａｓｉｇ ', 'province' => ' Metro Manila ', 'postal_code' => ' 1600 ',
-            'latitude' => '14.5000000', 'longitude' => '121.0000000', 'type' => 'Office']);
+            'latitude' => '14.5995123', 'longitude' => '120.9842123', 'type' => 'Office']);
 
         $this->assertSame('Delivery Recipient', $address->recipient_name);
         $this->assertSame('Maria Santos', $buyer->fresh()->name);
@@ -214,7 +214,8 @@ class CommerceInputValidationTest extends TestCase
         $this->assertSame(str_repeat('A', 500), $address->fresh()->street);
         $this->assertSame('City of Pasig', $address->city);
         $this->assertSame('1600', $address->postal_code);
-        $this->assertSame(14.5, $address->latitude);
+        $this->assertSame(14.5995123, $address->latitude);
+        $this->assertSame(120.9842123, $address->longitude);
         $this->assertTrue($address->is_default);
     }
 

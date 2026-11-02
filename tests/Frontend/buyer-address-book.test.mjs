@@ -61,6 +61,7 @@ test('location picker distinguishes an empty address from a saved pin', () => {
 
 test('doorstep pin validation rejects absent, partial and invalid coordinates', () => {
  assert.equal(ui.validDeliveryPin(14.5995, 120.9842), true);
+ assert.equal(ui.validDeliveryPin('14.5995123', '120.9842123'), true);
  for (const [lat, lng] of [['', ''], ['14.5', ''], ['NaN', '121'], ['91', '121'], ['14', '181'], ['1e1', '121'], ['14.12345678', '121']]) {
   assert.equal(ui.validDeliveryPin(lat, lng), false);
  }

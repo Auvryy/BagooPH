@@ -69,6 +69,11 @@ retry state now tells buyers when their selected pin remains in the form; a
 regression test covers that state. Twenty-two focused frontend checks and an
 isolated production build passed. Scoped selected-pin offline feedback:
 **5/10 → 8/10**, pending physical-device and deployed verification.
+The frontend also accepts a complete seven-decimal pin, and the SQLite-backed
+address service preserves both coordinates through validation and storage.
+Those acceptance checks passed alongside the same 22 focused frontend tests;
+this verifies coordinate precision in the application layer, not live provider
+geocoding or routing.
 When a saved address's physical fields change, the server now clears any pin
 unless the buyer explicitly confirmed a new selection; contact-only edits retain
 the pin. This protects older clients that might otherwise resend stale
