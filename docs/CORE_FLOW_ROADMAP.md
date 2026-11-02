@@ -192,8 +192,10 @@ successfully for drive, motorcycle and scooter modes and passed the web route
 parser and endpoint checks. Native-style and localhost-origin requests also
 returned a road route. The Rider Flutter routing client accepted live synthetic
 responses for the same three modes in a headless PC test. This confirms
-provider response compatibility on the PC; it does not verify a browser map,
-deployed origin, Android app or GPS. The
+provider response compatibility on the PC. A later headless Chrome check loaded the
+actual Leaflet component and reached “Road route ready” using a live Geoapify
+route, synthetic GPS and a mocked assignment response. It does not establish
+deployed authentication or physical-device behavior. The
 existing key was put in ignored local configuration for both feature worktrees;
 separate, appropriately restricted keys remain recommended for release.
 
