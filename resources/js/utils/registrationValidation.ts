@@ -2,6 +2,7 @@ import type { BirthDateLimits } from '@/Components/BirthDateInput';
 import { mobileNumberError } from '@/Components/PhoneInput';
 import { AuthRequestError, authRequest, registrationFormData, validEmailFormat } from '@/utils/authRequests';
 import { passwordError } from '@/utils/passwordPolicy';
+import { validDeliveryPin } from '@/utils/checkoutLocation';
 import { companyInitialsError, companyTinError, documentError, licenseNumberError, plateNumberError, registrationTextError } from '@/utils/registrationFields';
 
 export type PersonalNameField = 'first_name' | 'middle_initial' | 'last_name';
@@ -56,6 +57,9 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
     const value = (field: string) => typeof data[field] === 'string' ? data[field] as string : '';
     const checking = (fieldStep: number) => step === undefined || step === fieldStep;
     const role = String(data.role);
+    const pinValue = (field: string): string | number | null => typeof data[field] === 'string' || typeof data[field] === 'number' ? data[field] as string | number : null;
+    const latitude = pinValue('delivery_latitude'), longitude = pinValue('delivery_longitude');
+    const hasBuyerPin = role === 'buyer' && ((latitude !== null && latitude !== '') || (longitude !== null && longitude !== ''));
     const add = (field: string, error: string | undefined) => { if (error) errors[field] = error; };
     if (checking(1)) {
         for (const [field, label] of [['first_name', 'First name'], ['middle_initial', 'Middle initial'], ['last_name', 'Last name']] as const) {
@@ -80,13 +84,17 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
     }
     const locationStep = role === 'courier' ? 1 : role === 'logistics' ? 3 : 2;
     if (checking(locationStep)) {
-        if (worker || !google || ['region', 'province', 'city', 'barangay', 'address'].some(field => value(field).trim())) {
+        if (hasBuyerPin && !validDeliveryPin(latitude, longitude)) errors.delivery_latitude = 'Choose a complete, valid delivery map pin.';
+        const pickupLatitude = pinValue('pickup_latitude'), pickupLongitude = pinValue('pickup_longitude');
+        const hasSellerPin = role === 'seller' && ((pickupLatitude !== null && pickupLatitude !== '') || (pickupLongitude !== null && pickupLongitude !== ''));
+        if (hasSellerPin && !validDeliveryPin(pickupLatitude, pickupLongitude)) errors.pickup_latitude = 'Choose a complete, valid pickup map pin.';
+        if (worker || !google || hasBuyerPin || ['region', 'province', 'city', 'barangay', 'address'].some(field => value(field).trim())) {
             for (const [field, label] of [['region', 'Region'], ['province', 'Province or area'], ['city', 'City or municipality'], ['barangay', 'Barangay']] as const) {
                 if (!value(field).trim()) errors[field] = 'Choose a ' + label.toLowerCase() + ' from the list.';
             }
         }
         for (const [field, label] of [['city', 'City or municipality'], ['address', 'Street address']] as const) {
-            const required = worker || (role === 'buyer' && !google);
+            const required = worker || (role === 'buyer' && (!google || hasBuyerPin));
             add(field, !value(field).trim() && required ? label + ' is required.' : registrationTextError(value(field), field === 'address' ? 5 : 2, field === 'address' ? 500 : 255, required));
         }
         for (const field of ['province', 'municipality', 'barangay']) add(field, registrationTextError(value(field), 2, 255));
@@ -94,7 +102,7 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
     }
     const phoneStep = role === 'courier' || role === 'logistics' ? 1 : 2;
     if (checking(phoneStep)) {
-        add('phone', mobileNumberError(value('phone'), worker));
+        add('phone', mobileNumberError(value('phone'), worker || hasBuyerPin));
     }
     const passwordStep = role === 'buyer' || role === 'logistics' ? 1 : 3;
     if (!google && checking(passwordStep)) {

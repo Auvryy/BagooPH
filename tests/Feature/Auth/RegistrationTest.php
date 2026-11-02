@@ -33,6 +33,34 @@ class RegistrationTest extends TestCase
         $response->assertSessionHas('status');
     }
 
+    public function test_buyer_registration_can_save_a_confirmed_delivery_pin_for_checkout(): void
+    {
+        $input = [...$this->registrationPolicies(), 'role' => 'buyer', 'sex' => 'Female', 'birthday' => '1995-05-15',
+            'name' => 'Map Buyer', 'email' => 'map-buyer@example.test', 'password' => 'Password1234!',
+            'password_confirmation' => 'Password1234!', 'phone' => '09171234567', 'region' => '1300000000',
+            'province' => 'Metro Manila', 'city' => 'Taguig City', 'barangay' => 'Fort Bonifacio',
+            'address' => '123 Test Street', 'postal_code' => '1634',
+            'delivery_latitude' => '14.5500000', 'delivery_longitude' => '121.0500000'];
+        $this->postJson('/register/validate', [...$input, 'step' => 2, 'delivery_longitude' => null])
+            ->assertUnprocessable()->assertJsonValidationErrors('delivery_longitude');
+        $this->postJson('/register/validate', [...$input, 'step' => 2, 'phone' => null])
+            ->assertUnprocessable()->assertJsonValidationErrors('phone');
+        $this->postJson('/register/validate', [...$input, 'step' => 2, 'delivery_latitude' => '91'])
+            ->assertUnprocessable()->assertJsonValidationErrors('delivery_latitude');
+        $this->postJson('/register/validate', [...$input, 'step' => 2, 'region' => null, 'address' => null])
+            ->assertUnprocessable()->assertJsonValidationErrors(['region', 'address']);
+        $this->post('/register', $input)->assertSessionHasNoErrors()->assertRedirect(route('login'));
+
+        $buyer = User::where('email', 'map-buyer@example.test')->sole();
+        $address = $buyer->addresses()->sole();
+        $this->assertSame('Map Buyer', $address->recipient_name);
+        $this->assertSame('+639171234567', $address->phone);
+        $this->assertSame('City of Taguig', $address->city);
+        $this->assertTrue($address->is_default);
+        $this->assertEquals(14.55, $address->latitude);
+        $this->assertEquals(121.05, $address->longitude);
+    }
+
     public function test_buyer_registration_with_demographic_fields(): void
     {
         $response = $this->post('/register', [...$this->registrationPolicies(),

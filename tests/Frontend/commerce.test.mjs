@@ -70,12 +70,14 @@ test('shop settings present real review feedback instead of an unconditional ver
     const reviewed = { ...shop, status: 'suspended', eligible: false, review_status: 'rejected',
         review_feedback: 'Please provide the current permit.', review_issues: [], owner_birthday: '1990-01-01',
         can_submit: true, documents: {}, decision_history: [], review_token: 'retained-review-token' };
-    const html = await render(ui.SellerSettings, 'Seller/Settings', { shop, shopReview: reviewed, categories: [] }, 'seller');
+    const html = await render(ui.SellerSettings, 'Seller/Settings', { shop, shopReview: reviewed, categories: [], pickupPin: { latitude: null, longitude: null, location_token: 'token' } }, 'seller');
     assert.match(html, /Shop approval/);
     assert.match(html, /Please provide the current permit\./);
     assert.match(html, /rejected[\s\S]*?suspended/);
     assert.match(html, /Update submission/);
     assert.match(html, /Review history/);
+    assert.match(html, /Pickup map pin/);
+    assert.match(html, /Seller pickup location map/);
     assert.doesNotMatch(html, /PREFERRED MALL|Auto-dispatch enabled|Active Store|Open dashboard/);
 });
 

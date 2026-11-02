@@ -3,20 +3,21 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { buildSync } from 'esbuild';
+import { build } from 'esbuild';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createInertiaApp } from '@inertiajs/react';
 
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-logistics-pages-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
-const bundle = buildSync({
-    stdin: { contents: `export { default as Overview } from '@/Pages/Hub/Dashboard'; export { default as ErrorPage } from '@/Pages/Hub/Error';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+const bundle = await build({
+    stdin: { contents: `export { default as Overview } from '@/Pages/Hub/Dashboard'; export { default as ErrorPage } from '@/Pages/Hub/Error'; export { default as HubLocationEditor } from '@/Components/Logistics/HubLocationEditor'; export { default as CompanySetup } from '@/Pages/Hub/CompanySetup';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', loader: { '.css': 'empty' }, write: false,
+    plugins: [{ name: 'test-css', setup(builder) { builder.onResolve({ filter: /\.css$/ }, () => ({ path: 'style', namespace: 'test-css' })); builder.onLoad({ filter: /.*/, namespace: 'test-css' }, () => ({ contents: '', loader: 'js' })); } }],
 });
 const bundlePath = join(temporary, 'pages.mjs');
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { Overview, ErrorPage } = await import(pathToFileURL(bundlePath).href);
+const { Overview, ErrorPage, HubLocationEditor, CompanySetup } = await import(pathToFileURL(bundlePath).href);
 const paths = { 'hub.dashboard': '/hub/dashboard', 'hub.scan.station': '/hub/scan', 'hub.deliveries': '/hub/deliveries', 'hub.network': '/hub/network', 'hub.fleet': '/hub/fleet', 'hub.counter': '/hub/counter', 'hub.manifests.index': '/hub/manifests', 'hub.recovery.index': '/hub/delivery-recovery', 'hub.parcel-recovery.index': '/hub/parcel-recovery', 'hub.cod.index': '/hub/cod' };
 globalThis.route = name => name ? paths[name] ?? `/${name.replaceAll('.', '/')}` : { current: () => false, has: () => true };
 after(() => delete globalThis.route);
@@ -39,6 +40,26 @@ function overview(canScan) {
         attentionQueue: [{ key: 'next_scan', label: 'Awaiting next hub scan', count: 1, href: canScan ? '/hub/scan' : '/hub/deliveries', tone: 'neutral' }],
         movement: [], parcelFlow: { origin_hub: 0, mother_hub_transit: 0, destination_hub: 0, final_mile: 0, counter_pickup: 0 }, facilities: [], recentActivity: [] };
 }
+
+test('hub pin editor requires an actual selected point before saving', async () => {
+    const base = { name: 'Test Hub', latitude: null, longitude: null, location_token: 'a'.repeat(64) };
+    const empty = await render(HubLocationEditor, 'Hub/Pin', { hub: base, url: '/hub/location' });
+    assert.match(empty, /No location pin selected yet/);
+    assert.match(empty, /<button[^>]*disabled=""[^>]*>Save hub pin<\/button>/);
+    const selected = await render(HubLocationEditor, 'Hub/Pin', { hub: { ...base, latitude: 14.16, longitude: 121.24 }, url: '/hub/location' });
+    assert.match(selected, /Location pin selected/);
+    assert.doesNotMatch(selected, /<button[^>]*disabled=""[^>]*>Save hub pin<\/button>/);
+});
+
+test('company owners can find the pin editor even when a hub has no saved coordinates', async () => {
+    const company = { id: 1, name: 'Test Company', base_shipping_cents: 6000, included_weight_grams: 1000, additional_kg_cents: 2000, shipping_earnings_model: 'standard', tariff_version: 1 };
+    const hub = { id: 2, name: 'Test Hub', code: 'TEST-HUB', tier: 'local_bayan_hub', city_municipality: 'Calamba', province: 'Laguna', parent_hub_id: null, postal_codes: [], is_active: true, latitude: null, longitude: null, address: 'Test Address', coverage_token: 'a'.repeat(64), location_token: 'b'.repeat(64) };
+    const props = { ...overview(false), company, companies: [company], hubs: [hub], staff: [], basePath: '/hub/company-setup', canProvision: true };
+    const owner = await render(CompanySetup, 'Hub/CompanySetup', props);
+    assert.match(owner, /Edit map pin/);
+    const viewer = await render(CompanySetup, 'Hub/CompanySetup', { ...props, canProvision: false });
+    assert.doesNotMatch(viewer, /Edit map pin/);
+});
 
 test('company navigation and overview open permitted parcel pages without offering a forbidden scanner', async () => {
     const html = await render(Overview, 'Hub/Dashboard', overview(false));

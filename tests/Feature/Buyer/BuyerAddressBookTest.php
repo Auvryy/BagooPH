@@ -43,7 +43,7 @@ class BuyerAddressBookTest extends TestCase
 
     private function cart(User $buyer, Address $address): array
     {
-        $shop = Shop::factory()->approved()->create();
+        $shop = Shop::factory()->approved()->create(['city' => 'Manila']);
         $product = Product::factory()->create(['shop_id' => $shop->id, 'stock' => 20, 'price' => 250]);
         $cart = Cart::create(['user_id' => $buyer->id]);
         $line = $cart->items()->create(['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 250]);
@@ -194,6 +194,26 @@ class BuyerAddressBookTest extends TestCase
         $this->assertDatabaseCount('orders', 1);
     }
 
+    public function test_required_pins_at_address_limit_allow_selecting_an_existing_address(): void
+    {
+        $buyer = User::factory()->create();
+        $first = $this->add($buyer);
+        foreach (range(2, 10) as $number) {
+            $this->add($buyer, ['street' => $number.' Garden Street']);
+        }
+        [$shop, $product, $cart, $payload] = $this->cart($buyer, $first);
+        $payload += ['shipping_latitude' => '14.55', 'shipping_longitude' => '121.05'];
+        config(['checkout.require_doorstep_pin' => true]);
+        $this->actingAs($buyer)->post('/checkout', [...$payload, 'save_address' => true])->assertSessionHasErrors('address_book');
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertSame(20, $product->fresh()->stock);
+        $this->post('/checkout', [...$payload, 'save_address' => false, 'saved_address_id' => $first->id,
+            'saved_address_location_token' => app(BuyerAddressService::class)->locationToken($first)])
+            ->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertEquals(14.55, $first->fresh()->latitude);
+        $this->assertSame(10, $buyer->addresses()->count());
+    }
+
     public function test_address_edits_and_deletion_leave_buyer_seller_and_parcel_delivery_snapshots_unchanged(): void
     {
         $buyer = User::factory()->create();
@@ -216,6 +236,24 @@ class BuyerAddressBookTest extends TestCase
         $this->actingAs($shop->user)->get('/seller/orders')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('orders.data.0.recipient_name', 'Original Recipient')->where('orders.data.0.shipping_address', '84 Original Office Street')
             ->where('orders.data.0.destination_barangay', 'San Antonio')->where('orders.data.0.shipping_postal_code', '1600')->where('orders.data.0.can_print_waybill', true));
+    }
+
+    public function test_address_changes_require_a_confirmed_pin_before_saving_coordinates(): void
+    {
+        $buyer = User::factory()->create();
+        $address = $this->add($buyer, ['latitude' => '14.55', 'longitude' => '121.05']);
+        $originalPin = ['latitude' => '14.55', 'longitude' => '121.05'];
+        $this->actingAs($buyer)->patch('/buyer/addresses/'.$address->id, $this->data([...$originalPin, 'recipient_name' => 'Another Recipient']))->assertSessionHasNoErrors();
+        $this->assertSame(14.55, $address->fresh()->latitude);
+        $this->patch('/buyer/addresses/'.$address->id, $this->data([...$originalPin, 'street' => '25 Mabini Street']))->assertSessionHasNoErrors();
+        $this->assertNull($address->fresh()->latitude);
+        $this->assertNull($address->fresh()->longitude);
+        $this->patch('/buyer/addresses/'.$address->id, $this->data([...$originalPin, 'street' => '26 Mabini Street', 'pin_confirmed' => true]))->assertSessionHasNoErrors();
+        $this->assertSame(14.55, $address->fresh()->latitude);
+        $this->assertSame(121.05, $address->fresh()->longitude);
+        $this->patchJson('/buyer/addresses/'.$address->id, $this->data([...$originalPin, 'pin_confirmed' => 'invalid']))
+            ->assertUnprocessable()->assertJsonValidationErrors('pin_confirmed');
+        $this->assertSame('26 Mabini Street', $address->fresh()->street);
     }
 
     public function test_checkout_address_save_errors_point_to_visible_shipping_fields_and_roll_back(): void

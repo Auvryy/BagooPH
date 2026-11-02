@@ -60,6 +60,7 @@ class Delivery extends Model
         'failure_attempts',
         'pickup_store_name',
         'pickup_address',
+        'pickup_latitude', 'pickup_longitude',
         'pickup_phone',
         'delivery_address',
         'delivery_recipient_name',
@@ -77,6 +78,7 @@ class Delivery extends Model
     ];
 
     protected $casts = [
+        'pickup_latitude' => 'float', 'pickup_longitude' => 'float',
         'route_hub_ids' => 'array', 'same_hub_bypass' => 'boolean',
         'estimated_delivery_at' => 'datetime',
         'assigned_at' => 'datetime',

@@ -87,6 +87,7 @@ class CheckoutController extends Controller
         $kycStatus = $user->isKycApproved() ? 'approved' : ($user->kyc_status ?? 'none');
 
         $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
+        $addresses->each(fn ($address) => $address->setAttribute('location_token', app(BuyerAddressService::class)->locationToken($address)));
         $defaultAddress = $user->defaultAddress();
 
         $pickupHubs = LogisticsHub::readyForSelfPickup()
@@ -107,6 +108,7 @@ class CheckoutController extends Controller
             'addresses' => $addresses,
             'defaultAddressId' => $defaultAddress?->id,
             'addressBookLimit' => BuyerAddressService::LIMIT,
+            'doorstepPinRequired' => (bool) config('checkout.require_doorstep_pin'),
             'pickupHubs' => $pickupHubs,
             'logisticsCompanies' => app(LogisticsCheckoutService::class)->choices(),
             'checkoutToken' => app(CheckoutSubmissionService::class)->issue($user, $cart, $checkoutItems),

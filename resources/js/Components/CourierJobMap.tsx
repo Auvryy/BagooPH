@@ -3,6 +3,8 @@ import { MapPin, Minus, Plus, RotateCcw, Route } from 'lucide-react';
 import type { Map as LeafletMap } from 'leaflet';
 import { CourierPanel, courierButton, courierClasses } from '@/Components/CourierUI';
 import { courierMapCoordinates, directionsUrl, type CourierMapJob } from '@/utils/courier';
+import useCourierRoadRoute from '@/hooks/useCourierRoadRoute';
+import type { RoadMode } from '@/utils/courierRoadRoute';
 import sample from '@/data/riderDeliverySample.json';
 
 export default function CourierJobMap({ job, embedded = false }: { job?: CourierMapJob; embedded?: boolean }) {
@@ -17,6 +19,7 @@ export default function CourierJobMap({ job, embedded = false }: { job?: Courier
     const longitude = coordinates?.[1];
     const directions = job ? directionsUrl(job.place) : null;
     const title = sampleMode ? sample.label : job?.stopLabel ?? 'Delivery map';
+    const road = useCourierRoadRoute(job, coordinates, import.meta.env?.VITE_GEOAPIFY_API_KEY ?? '', sampleMode);
 
     useEffect(() => { setSampleMode(!job); }, [job?.key, job?.status, latitude, longitude]);
 
@@ -75,8 +78,26 @@ export default function CourierJobMap({ job, embedded = false }: { job?: Courier
         };
     }, [job?.key, job?.status, job?.place.name, title, latitude, longitude, sampleMode, attempt]);
 
+    useEffect(() => {
+        if (!mapReady || sampleMode || !road.lines || !road.origin || !map.current) return;
+        let cancelled = false;
+        let layer: import('leaflet').LayerGroup | undefined;
+        void import('leaflet').then(L => {
+            if (cancelled || !map.current || !road.lines || !road.origin) return;
+            layer = L.layerGroup().addTo(map.current);
+            for (const line of road.lines) {
+                L.polyline(line, { color: '#FFFFFF', weight: 8, interactive: false }).addTo(layer);
+                L.polyline(line, { color: '#E00D42', weight: 5, interactive: false }).addTo(layer);
+            }
+            L.circleMarker(road.origin, { radius: 8, color: '#FFFFFF', weight: 3, fillColor: '#18181B', fillOpacity: 1 }).addTo(layer).bindTooltip('Route start');
+            map.current.fitBounds(L.latLngBounds(road.lines.flat()), { padding: [48, 64], maxZoom: 16, animate: false });
+        });
+        return () => { cancelled = true; layer?.remove(); };
+    }, [mapReady, sampleMode, road.lines, road.origin]);
+
     const fit = () => {
         if (sampleMode) map.current?.fitBounds(sample.coordinates.map(p => [p[0], p[1]]), { padding: [48, 64], maxZoom: 16, animate: false });
+        else if (road.lines) map.current?.fitBounds(road.lines.flat(), { padding: [48, 64], maxZoom: 16, animate: false });
         else if (coordinates) map.current?.setView(coordinates, 16, { animate: false });
     };
     const content = <>
@@ -92,6 +113,12 @@ export default function CourierJobMap({ job, embedded = false }: { job?: Courier
         </div> : <div className="mx-4 rounded-[8px] border border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">No usable saved pin for this stop. {directions ? 'Use address-based directions for this stop.' : 'Ask your logistics team for the destination.'}</div>}
         <div className={courierClasses('space-y-3 pt-3', !embedded && 'px-4 pb-4 sm:px-5')}>
             {sampleMode ? <div className="space-y-2"><p className="text-xs leading-relaxed text-slate-600">{sample.notice}</p><div className="flex flex-wrap gap-4 text-xs text-slate-700"><span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#18181B]" />{sample.riderLabel}</span><span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#E00D42]" />{sample.deliveryLabel}</span><span>{sample.distanceMeters.toLocaleString()} m along mapped streets</span></div></div> : job && <p className="text-sm leading-relaxed text-slate-600">{job.place.address || 'Address not provided'}</p>}
+            {!sampleMode && job && !job.preview && coordinates && <div className="space-y-2 rounded-[8px] border border-slate-300 p-3">
+                <p className="text-xs text-slate-600">Starting navigation shares your current location and this stop with Geoapify while this page is open. The dark marker shows the location used to calculate the route.</p>
+                {road.configured ? <div className="flex flex-wrap items-end gap-2"><label className="text-xs font-semibold">Vehicle<select aria-label="Navigation vehicle" disabled={road.active} value={road.mode} onChange={event => road.setMode(event.target.value as RoadMode | '')} className="ml-2 rounded-[8px] border-slate-300 text-sm"><option value="">Choose vehicle</option><option value="motorcycle">Motorcycle</option><option value="scooter">Scooter</option><option value="drive">Car or van</option></select></label>{road.active ? <button type="button" className={courierButton} onClick={road.stop}>Stop navigation</button> : <button type="button" className={courierButton} onClick={road.start}>Start navigation</button>}</div>
+                    : <p className="text-xs text-amber-800">In-app road routing is not configured. Use external directions for this stop.</p>}
+                {road.message && <p role="status" className="text-xs text-slate-700">{road.message}</p>}
+            </div>}
             {job && <button type="button" className={courierButton} onClick={() => setSampleMode(v => !v)}>{sampleMode ? 'Show saved stop' : 'Try sample route'}</button>}
             <p role="status" className={status === 'error' ? 'text-sm text-amber-800' : 'sr-only'}>{status === 'loading' ? 'Loading the street map…' : status === 'error' ? 'Street tiles could not load. The route illustration and saved addresses remain available.' : 'Street map loaded.'}</p>
             {status === 'error' && <button type="button" onClick={() => setAttempt(v => v + 1)} className={courierButton}><RotateCcw className="h-4 w-4" aria-hidden="true" />Retry map</button>}

@@ -42,6 +42,7 @@ class CompanySetupService
             'city_municipality' => ['required', 'string', new ApplicationText('location', 2, 100)],
             'barangay' => ['nullable', 'string', new ApplicationText('location', 2, 100)],
             'address' => ['required', 'string', new ApplicationText('address', 5, 500)],
+            'latitude' => $this->coordinateRules(90), 'longitude' => $this->coordinateRules(180),
             'postal_codes' => 'required_if:tier,local_bayan_hub|array|max:100', 'postal_codes.*' => 'required|string|regex:/\A[0-9]{4}\z/|distinct',
             'coverage_barangays' => 'nullable|array|max:300', 'coverage_barangays.*' => ['required', 'string', new ApplicationText('location', 2, 100)],
             'capacity' => 'required|integer|between:1,1000000', 'allows_self_pickup' => 'required|boolean',
@@ -162,6 +163,33 @@ class CompanySetupService
     public function coverageToken(LogisticsHub $hub): string
     {
         return hash('sha256', json_encode($hub->only(['id', 'logistics_company_id', 'parent_hub_id', 'postal_codes', 'coverage_barangays']), JSON_THROW_ON_ERROR));
+    }
+
+    public function locationToken(LogisticsHub $hub): string
+    {
+        return hash('sha256', json_encode($hub->only(['id', 'logistics_company_id', 'address', 'barangay', 'city_municipality', 'province', 'latitude', 'longitude']), JSON_THROW_ON_ERROR));
+    }
+
+    public function location(User $actor, int $companyId, LogisticsHub $snapshot, array $input): void
+    {
+        $data = Validator::make($input, [
+            'latitude' => $this->coordinateRules(90), 'longitude' => $this->coordinateRules(180),
+            'location_token' => ['required', 'string', 'size:64', 'regex:/\A[a-f0-9]{64}\z/'],
+        ])->validate();
+        DB::transaction(function () use ($actor, $companyId, $snapshot, $data) {
+            $company = $this->owner($actor, $companyId);
+            app(LogisticsEligibilityService::class)->lockNetwork($company->id, [$actor->id], [$snapshot->id]);
+            $hub = LogisticsHub::whereKey($snapshot->id)->where('logistics_company_id', $company->id)->lockForUpdate()->firstOrFail();
+            if (! hash_equals($this->locationToken($hub), $data['location_token'])) {
+                throw new DomainException('This hub location changed. Reload before saving your changes.');
+            }
+            $hub->update(['latitude' => $data['latitude'], 'longitude' => $data['longitude']]);
+        });
+    }
+
+    private function coordinateRules(int $maximum): array
+    {
+        return ['bail', 'required', 'numeric', 'regex:/\A-?[0-9]+(?:\.[0-9]{1,7})?\z/', "between:-{$maximum},{$maximum}"];
     }
 
     public function coverage(User $actor, int $companyId, LogisticsHub $snapshot, array $input): void

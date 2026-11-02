@@ -22,7 +22,7 @@ class Shop extends Model
     use RetainsRestrictionHistory;
 
     protected $fillable = [
-        'pickup_province', 'pickup_postal_code',
+        'pickup_province', 'pickup_postal_code', 'pickup_latitude', 'pickup_longitude',
         'user_id',
         'root_category_id',
         'is_default',
@@ -41,11 +41,20 @@ class Shop extends Model
         'business_permit_path', 'review_decision_id', 'review_version',
     ];
 
-    protected $hidden = ['business_permit_path', 'review_decision_id', 'review_version', 'verified_rating', 'name_key'];
+    protected $hidden = ['business_permit_path', 'review_decision_id', 'review_version', 'verified_rating', 'name_key', 'pickup_latitude', 'pickup_longitude'];
 
     protected static function booted(): void
     {
         static::saving(function (Shop $shop): void {
+            if ($shop->exists && $shop->isDirty(['address', 'city', 'pickup_province', 'pickup_postal_code'])) {
+                // Force both columns into the same UPDATE even if this model was
+                // loaded before another request saved a pin.
+                foreach (['pickup_latitude', 'pickup_longitude'] as $coordinate) {
+                    $shop->$coordinate = 999;
+                    $shop->syncOriginalAttribute($coordinate);
+                    $shop->$coordinate = null;
+                }
+            }
             if (! $shop->exists || $shop->isDirty('name')) {
                 Validator::make(['shop_name' => $shop->name], ['shop_name' => ['bail', 'required', 'string', new UniqueShopName($shop->exists ? $shop->id : null)]])->validate();
             }
@@ -54,6 +63,7 @@ class Shop extends Model
     }
 
     protected $casts = [
+        'pickup_latitude' => 'float', 'pickup_longitude' => 'float',
         'is_default' => 'boolean',
         'vacation_mode' => 'boolean',
         'rating' => 'float',

@@ -16,6 +16,29 @@ class GoogleRegistrationPolicyTest extends TestCase
 {
     use RefreshDatabase, WithRegistrationPolicies;
 
+    public function test_google_buyer_can_save_a_delivery_pin_with_a_complete_address(): void
+    {
+        $this->provider();
+        $this->get(route('auth.google.callback'));
+        $data = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'),
+            'birthday' => '1995-05-15', 'first_name' => 'Ana', 'last_name' => 'Santos', 'sex' => 'Female',
+            'phone' => '09171234567', 'region' => '1300000000', 'province' => 'Metro Manila',
+            'city' => 'Taguig City', 'barangay' => 'Fort Bonifacio', 'address' => '123 Test Street',
+            'postal_code' => '1634', 'delivery_latitude' => '14.55', 'delivery_longitude' => '121.05'];
+
+        $this->postJson(route('auth.google.registration.store'), array_replace($data, ['phone' => null, 'address' => null]))
+            ->assertUnprocessable()->assertJsonValidationErrors(['phone', 'address']);
+        $this->assertDatabaseCount('users', 0);
+        $this->post(route('auth.google.registration.store'), $data)->assertSessionHasNoErrors();
+
+        $address = User::sole()->addresses()->sole();
+        $this->assertSame('+639171234567', $address->phone);
+        $this->assertSame('City of Taguig', $address->city);
+        $this->assertTrue($address->is_default);
+        $this->assertEquals(14.55, $address->latitude);
+        $this->assertEquals(121.05, $address->longitude);
+    }
+
     public function test_google_signup_uses_the_shared_catalogue_and_saves_two_letter_initials_with_one_period(): void
     {
         $this->provider();

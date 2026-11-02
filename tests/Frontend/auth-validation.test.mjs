@@ -216,6 +216,19 @@ const identity = role => ({ role, first_name: 'Ana-María', middle_initial: 'J.'
     password: 'BagooPassword2026!', password_confirmation: 'BagooPassword2026!', shop_name: 'Bagoo Shop', root_category_id: '1', company_name: 'Bagoo Logistics', company_code: 'BGL', tin: '900000001000', service_areas: ['NCR', 'Region III', 'Region IV-A'], fleet_size: '1', vehicle_types: ['motorcycle'], vehicle_type: 'Motorcycle', plate_number: 'AB-12345', license_number: 'N01-12-345678', policy_accepted: true,
     id_document: new File(['%PDF-1.4'], 'id.pdf', { type: 'application/pdf' }), business_permit: new File(['%PDF-1.4'], 'permit.pdf', { type: 'application/pdf' }), driver_license: new File(['%PDF-1.4'], 'license.pdf', { type: 'application/pdf' }), or_cr_document: new File(['%PDF-1.4'], 'registration.pdf', { type: 'application/pdf' }) });
 
+test('registration pin remains optional but a selected pin needs valid coordinates and a mobile number', () => {
+    const base = { ...identity('buyer'), phone: '', delivery_latitude: null, delivery_longitude: null };
+    assert.equal(ui.registrationInputErrors(base, limits, 2).phone, undefined);
+    const selected = { ...base, delivery_latitude: 14.55, delivery_longitude: 121.05 };
+    assert.ok(ui.registrationInputErrors(selected, limits, 2).phone);
+    assert.equal(ui.registrationInputErrors({ ...selected, phone: '09171234567' }, limits, 2).phone, undefined);
+    assert.ok(ui.registrationInputErrors({ ...selected, delivery_longitude: null }, limits, 2).delivery_latitude);
+    assert.ok(ui.registrationInputErrors({ ...selected, delivery_latitude: 91 }, limits, 2).delivery_latitude);
+    const form = ui.registrationFormData(selected, 2);
+    assert.equal(form.get('delivery_latitude'), '14.55');
+    assert.equal(form.get('delivery_longitude'), '121.05');
+});
+
 test('each personal name immediately rejects digits and hidden or unsupported characters while allowing real punctuation', () => {
     for (const label of ['First name', 'Last name']) {
         for (const value of ['Ana-María', 'José', 'Peña', 'Muñoz', 'Peña-O’Connor', 'Pen\u0303a-Santos', "O'Hara", 'O’Connor', 'Anne-Marie', 'Santos Jr.', 'Dela Cruz', '  Jose\u0301  ']) {
@@ -519,8 +532,17 @@ test('first Google signup collects the same buyer details while relying on the v
     assert.doesNotMatch(result.body, /<input[^>]*name="email"|<input[^>]*name="password"/);
     const values = { ...identity('buyer'), email: '', password: '', password_confirmation: '', birthday: '2008-10-12', phone: '', region: '', province: '', city: '', barangay: '', address: '' };
     assert.deepEqual(ui.registrationInputErrors(values, limits, undefined, true), {});
+    const pinned = ui.registrationInputErrors({ ...values, delivery_latitude: 14.55, delivery_longitude: 121.05 }, limits, undefined, true);
+    for (const field of ['phone', 'region', 'province', 'city', 'barangay', 'address']) assert.ok(pinned[field], field);
     assert.ok(ui.registrationInputErrors({ ...values, birthday: '' }, limits, undefined, true).birthday);
     assert.ok(ui.registrationInputErrors({ ...values, postal_code: '12345' }, limits, undefined, true).postal_code);
+});
+
+test('seller registration checks a complete optional pickup pin', () => {
+    const seller = identity('seller');
+    assert.equal(ui.registrationInputErrors({ ...seller, pickup_latitude: 14.55, pickup_longitude: 121.05 }, limits, 2).pickup_latitude, undefined);
+    assert.ok(ui.registrationInputErrors({ ...seller, pickup_latitude: 14.55, pickup_longitude: null }, limits, 2).pickup_latitude);
+    assert.ok(ui.registrationInputErrors({ ...seller, pickup_latitude: 91, pickup_longitude: 121.05 }, limits, 2).pickup_latitude);
 });
 
 test('company TIN feedback accepts the two supported forms and rejects malformed or hidden input', () => {

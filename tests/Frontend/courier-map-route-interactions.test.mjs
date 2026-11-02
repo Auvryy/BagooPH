@@ -8,6 +8,7 @@ const dir=mkdtempSync(join(import.meta.dirname,'.tmp-map-route-'));after(()=>rmS
 const bundle=await build({stdin:{contents:"export {default} from '@/Components/CourierJobMap';",resolveDir:resolve(import.meta.dirname,'../..'),loader:'tsx'},bundle:true,packages:'external',platform:'node',format:'esm',jsx:'automatic',write:false,
  plugins:[{name:'map-route-harness',setup(b){
  b.onResolve({filter:/^react$/},()=>({path:'react',namespace:'hooks'}));b.onLoad({filter:/.*/,namespace:'hooks'},()=>({contents:`export const useState=v=>globalThis.mapRoute.state(v);export const useRef=v=>globalThis.mapRoute.ref(v);export const useEffect=(f,d)=>globalThis.mapRoute.effect(f,d);`}));
+ b.onResolve({filter:/hooks\/useCourierRoadRoute$/},()=>({path:'route',namespace:'route'}));b.onLoad({filter:/.*/,namespace:'route'},()=>({contents:`export default ()=>globalThis.mapRoute.road || {active:false,lines:null,origin:null,mode:'',message:'',configured:false,start(){},stop(){},setMode(){}};`}));
  b.onResolve({filter:/Components\/CourierUI$/},()=>({path:'ui',namespace:'ui'}));b.onLoad({filter:/.*/,namespace:'ui'},()=>({contents:`export const CourierBadge='span',CourierPanel='section',courierButton='',courierClasses=(...v)=>v.filter(Boolean).join(' ');`}));
  b.onResolve({filter:/^leaflet$/},()=>({path:'leaflet',namespace:'leaflet'}));b.onLoad({filter:/.*/,namespace:'leaflet'},()=>({contents:`export const map=()=>globalThis.mapRoute.instance;export const tileLayer=()=>globalThis.mapRoute.tiles;export const marker=()=>globalThis.mapRoute.marker;export const divIcon=v=>v;export const layerGroup=()=>globalThis.mapRoute.layer;export const polyline=(points,options)=>{globalThis.mapRoute.lines.push({points,options});return {addTo(){return this}}};export const circleMarker=()=>({addTo(){return this},bindTooltip(){return this}});export const latLngBounds=p=>p;`}));
  }}]});const file=join(dir,'map.mjs');writeFileSync(file,bundle.outputFiles[0].text);const MapView=(await import(pathToFileURL(file).href)).default;
@@ -44,4 +45,9 @@ test('switching between a saved stop and the sample replaces and releases its ma
  h.button('Show saved stop').props.onClick();h.render();await tick();h.render();
  assert.equal(h.lines.length,0);assert.equal(removed,2);assert.equal(h.locate,undefined);
  h.close();assert.equal(removed,3);
+});
+test('verified road geometry is drawn for the assigned stop',async t=>{
+ const h=harness(t);h.road={active:true,lines:[[[14.15,121.2],[14.17,121.24]]],origin:[14.15,121.2],mode:'drive',message:'Road route ready.',configured:true,start(){},stop(){},setMode(){}};
+ h.render();await tick();h.render();await tick();
+ assert.equal(h.lines.length,2);assert.deepEqual(h.lines[1].points,[[14.15,121.2],[14.17,121.24]]);assert.equal(h.lines[1].options.color,'#E00D42');
 });

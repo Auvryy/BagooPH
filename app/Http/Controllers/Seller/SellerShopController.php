@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Models\Shop;
+use App\Services\SellerPickupPinService;
 use App\Services\ShopReviewService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,13 @@ use Inertia\Response;
 
 class SellerShopController extends Controller
 {
+    public function pickupLocation(Request $request, Shop $shop, SellerPickupPinService $pins): RedirectResponse
+    {
+        $pins->update($request->user(), $shop, $request->all());
+
+        return back()->with('success', 'Pickup map pin saved.');
+    }
+
     public function index(Request $request): Response|RedirectResponse
     {
         $shops = Shop::with('rootCategory')->where('user_id', $request->user()->id)->limit(2)->get();

@@ -19,10 +19,17 @@ class ApplicationRegistrationService
             $franchisePath = $account['_franchise_path'] ?? null;
             unset($account['_franchise_path']);
             if ($account['role'] === 'seller') {
-                return app(SellerApplicationService::class)->register($account, $details['shop_name'], (int) $details['root_category_id']);
+                $seller = app(SellerApplicationService::class)->register($account, $details['shop_name'], (int) $details['root_category_id']);
+                if (isset($details['pickup_latitude'], $details['pickup_longitude'])) {
+                    $seller->shop()->firstOrFail()->update(['pickup_latitude' => $details['pickup_latitude'], 'pickup_longitude' => $details['pickup_longitude']]);
+                }
+
+                return $seller;
             }
             $user = User::create($account);
-            if ($user->isCourier()) {
+            if ($user->isBuyer()) {
+                app(RegistrationDeliveryPinService::class)->save($user, $details);
+            } elseif ($user->isCourier()) {
                 CourierProfile::create(['user_id' => $user->id, ...array_intersect_key($details, array_flip(['vehicle_type', 'plate_number', 'license_number'])), 'or_cr_status' => 'Pending Verification', 'is_available' => false]);
             } elseif ($user->isLogistics()) {
                 LogisticsCompany::create([

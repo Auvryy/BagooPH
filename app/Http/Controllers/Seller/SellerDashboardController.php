@@ -17,6 +17,7 @@ use App\Services\IdentityCorrectionService;
 use App\Services\MasterCategoryService;
 use App\Services\Orders\OrderWorkspaceService;
 use App\Services\ProfileInputService;
+use App\Services\SellerPickupPinService;
 use App\Services\ShopEligibilityService;
 use App\Services\ShopReviewService;
 use Carbon\CarbonImmutable;
@@ -144,6 +145,8 @@ class SellerDashboardController extends Controller
         return Inertia::render('Seller/Settings', [
             'shop' => $shop,
             'shopReview' => $reviews->presentation($shop),
+            'pickupPin' => ['latitude' => $shop->pickup_latitude, 'longitude' => $shop->pickup_longitude,
+                'location_token' => app(SellerPickupPinService::class)->token($shop)],
             'categories' => app(MasterCategoryService::class)->choices(),
         ]);
     }

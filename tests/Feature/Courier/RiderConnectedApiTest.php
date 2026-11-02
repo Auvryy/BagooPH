@@ -6,14 +6,18 @@ use App\Models\CodAccount;
 use App\Models\DeliveryAttempt;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\Courier\RiderTaskService;
 use App\Services\Finance\CodCashService;
 use App\Services\Notifications\NotificationDeliveryService;
+use App\Services\Orders\OrderLifecycleService;
 use App\Services\RiderAccountService;
+use App\Services\SellerPickupPinService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Tests\Concerns\WithRegistrationPolicies;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithOrderActions;
@@ -22,7 +26,7 @@ use Tests\TestCase;
 
 class RiderConnectedApiTest extends TestCase
 {
-    use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
+    use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase, WithRegistrationPolicies;
 
     private function native(User $rider): void
     {
@@ -44,6 +48,162 @@ class RiderConnectedApiTest extends TestCase
         $this->native($rider);
 
         return [$parcel, $rider];
+    }
+
+    public function test_seller_pin_is_snapshotted_for_assigned_rider_and_cleared_when_the_shop_address_changes(): void
+    {
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'));
+        $shop->update(['pickup_latitude' => 14.55, 'pickup_longitude' => 121.05]);
+        $order = $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop);
+        $this->assertSame(14.55, $order->delivery->pickup_latitude);
+        $shop->update(['pickup_latitude' => 14.56, 'pickup_longitude' => 121.06]);
+        $parcel = $this->flowDelivery($order, 'assigned_pickup');
+        $this->assertSame(14.56, $parcel->pickup_latitude);
+        $rider = User::findOrFail($parcel->courier_id);
+        $shop->update(['address' => 'A different pickup street']);
+        $this->assertNull($shop->fresh()->pickup_latitude);
+        $this->assertNull($shop->fresh()->pickup_longitude);
+        $this->assertSame(14.56, $parcel->fresh()->pickup_latitude);
+        $this->native($rider);
+        $this->getJson('/api/v1/rider/tasks/pickup-'.$parcel->id)->assertOk()
+            ->assertJsonPath('data.stop.kind', 'seller')->assertJsonPath('data.stop.latitude', 14.56)
+            ->assertJsonPath('data.stop.longitude', 121.06);
+        $preview = app(RiderTaskService::class)->resource($parcel, 'available', $rider);
+        $this->assertNull($preview['stop']['latitude']);
+        $this->assertNull($preview['stop']['longitude']);
+        $this->actingAs($rider)->getJson('/courier/navigation/pickup-'.$parcel->id)->assertOk()
+            ->assertJsonPath('data.kind', 'seller')->assertJsonPath('data.latitude', 14.56);
+    }
+
+    public function test_seller_pickup_pin_is_owned_validated_and_bound_to_the_current_address(): void
+    {
+        $seller = $this->createApprovedUser('seller');
+        $shop = $this->createE2EShop($seller);
+        $url = route('seller.shops.pickup-location', $shop);
+        $token = app(SellerPickupPinService::class)->token($shop);
+        $data = ['latitude' => '14.5500000', 'longitude' => '121.0500000', 'location_token' => $token];
+        $this->actingAs($seller)->postJson($url, [...$data, 'latitude' => '91'])->assertUnprocessable()->assertJsonValidationErrors('latitude');
+        $this->actingAs($this->createApprovedUser('seller'))->postJson($url, $data)->assertNotFound();
+        $this->actingAs($seller)->post($url, $data)->assertSessionHasNoErrors();
+        $this->assertSame(14.55, $shop->fresh()->pickup_latitude);
+        $this->assertArrayNotHasKey('pickup_latitude', $shop->fresh()->toArray());
+        $shop->fresh()->update(['description' => 'Updated shop description']);
+        $this->assertSame(14.55, $shop->fresh()->pickup_latitude);
+        $this->postJson($url, $data)->assertUnprocessable()->assertJsonValidationErrors('location_token');
+        $this->assertSame(121.05, $shop->fresh()->pickup_longitude);
+        $oldToken = app(SellerPickupPinService::class)->token($shop->fresh());
+        $shop->update(['city' => 'A different city']);
+        $this->postJson($url, [...$data, 'location_token' => $oldToken])->assertUnprocessable()->assertJsonValidationErrors('location_token');
+        $this->assertNull($shop->fresh()->pickup_latitude);
+    }
+
+    public function test_ready_orders_use_the_current_locked_shop_pin_for_single_and_batch_actions(): void
+    {
+        $seller = $this->createApprovedUser('seller');
+        $shop = $this->createE2EShop($seller);
+        $buyer = $this->createApprovedUser('buyer');
+        $first = $this->checkoutFlowOrder($buyer, $shop, stage: 'preparing');
+        $second = $this->checkoutFlowOrder($buyer, $shop, stage: 'preparing');
+        $stale = $shop->fresh();
+        $shop->fresh()->update(['pickup_latitude' => 14.56, 'pickup_longitude' => 121.06]);
+        $this->assertNull($stale->pickup_latitude);
+
+        $lifecycle = app(OrderLifecycleService::class);
+        $lifecycle->sellerTransition($first, $stale, $seller, 'ready_for_pickup');
+        $this->assertSame(14.56, $first->delivery()->firstOrFail()->pickup_latitude);
+        $this->assertSame(1, $lifecycle->sellerBatchReady(['order_ids' => [$second->id]], $stale, $seller));
+        $this->assertSame(14.56, $second->delivery()->firstOrFail()->pickup_latitude);
+        $this->assertSame(121.06, $second->delivery()->firstOrFail()->pickup_longitude);
+    }
+
+    public function test_assigned_rider_receives_the_current_hub_pin_for_navigation(): void
+    {
+        $pickup = $this->flowDelivery($this->newFlowOrder(), 'picked_up');
+        $pickup->originBayanHub->update(['latitude' => 14.5995, 'longitude' => 120.9842]);
+        $this->native(User::findOrFail($pickup->courier_id));
+        $this->getJson('/api/v1/rider/tasks/pickup-'.$pickup->id)->assertOk()
+            ->assertJsonPath('data.stop.kind', 'origin_hub')
+            ->assertJsonPath('data.stop.latitude', 14.5995)
+            ->assertJsonPath('data.stop.longitude', 120.9842);
+
+        [$delivery] = $this->finalParcel('assigned_to_rider');
+        $delivery->destinationBayanHub->update(['latitude' => 14.5547, 'longitude' => 121.0244]);
+        $this->getJson('/api/v1/rider/tasks/final_mile-'.$delivery->id)->assertOk()
+            ->assertJsonPath('data.stop.kind', 'destination_hub')
+            ->assertJsonPath('data.stop.latitude', 14.5547)
+            ->assertJsonPath('data.stop.longitude', 121.0244);
+
+        $delivery->destinationBayanHub->update(['latitude' => null, 'longitude' => null]);
+        $this->getJson('/api/v1/rider/tasks/final_mile-'.$delivery->id)->assertOk()
+            ->assertJsonPath('data.stop.latitude', null)
+            ->assertJsonPath('data.stop.longitude', null);
+    }
+
+    public function test_web_navigation_stop_rechecks_assignment_custody_and_saved_pin(): void
+    {
+        $parcel = $this->flowDelivery($this->newFlowOrder(), 'picked_up');
+        $rider = User::findOrFail($parcel->courier_id);
+        $hub = $parcel->originBayanHub;
+        $hub->update(['latitude' => 14.5995, 'longitude' => 120.9842]);
+        $url = '/courier/navigation/pickup-'.$parcel->id;
+        $this->actingAs($rider)->getJson($url)->assertOk()->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJsonPath('data.kind', 'origin_hub')->assertJsonPath('data.latitude', 14.5995);
+        $other = $this->flowRider($hub, $this->createApprovedUser('courier'));
+        $this->actingAs($other)->getJson($url)->assertNotFound();
+        $this->actingAs($rider)->getJson('/courier/navigation/available-'.$parcel->id)->assertNotFound();
+        $hub->update(['latitude' => null, 'longitude' => null]);
+        $this->getJson($url)->assertUnprocessable();
+    }
+
+    public function test_web_navigation_uses_destination_hub_pin_before_collection(): void
+    {
+        $atHub = $this->flowDelivery($this->newFlowOrder(), 'assigned_to_rider');
+        $atHub->destinationBayanHub->update(['latitude' => 14.55, 'longitude' => 121.02]);
+        $response = $this->actingAs(User::findOrFail($atHub->assigned_rider_id))->getJson('/courier/navigation/final_mile-'.$atHub->id);
+        $this->assertSame(200, $response->status(), $response->getContent());
+        $response->assertOk()
+            ->assertJsonPath('data.kind', 'destination_hub')->assertJsonPath('data.latitude', 14.55);
+    }
+
+    public function test_web_navigation_uses_the_buyer_pin_after_collection(): void
+    {
+        $outbound = $this->flowDelivery($this->newFlowOrder(), 'out_for_delivery');
+        $outbound->order->update(['destination_latitude' => 14.56, 'destination_longitude' => 121.03]);
+        $response = $this->actingAs(User::findOrFail($outbound->assigned_rider_id))->getJson('/courier/navigation/final_mile-'.$outbound->id);
+        $this->assertSame(200, $response->status(), $response->getContent());
+        $response->assertOk()
+            ->assertJsonPath('data.kind', 'buyer')->assertJsonPath('data.latitude', 14.56)
+            ->assertJsonPath('data.longitude', 121.03);
+    }
+
+    public function test_saved_buyer_pin_reaches_both_rider_interfaces_and_survives_later_address_edits(): void
+    {
+        $this->post('/register', [...$this->registrationPolicies(), 'role' => 'buyer', 'name' => 'Map Route Buyer',
+            'email' => 'route-buyer@example.test', 'password' => 'Password1234!', 'password_confirmation' => 'Password1234!',
+            'sex' => 'Female', 'birthday' => '1995-05-15', 'phone' => '09171234567', 'region' => '0400000000',
+            'province' => 'Laguna', 'city' => 'Nagcarlan', 'barangay' => 'Poblacion III', 'address' => '100 Market Road',
+            'postal_code' => '4002', 'delivery_latitude' => '14.281', 'delivery_longitude' => '121.417'])
+            ->assertSessionHasNoErrors();
+        $buyer = User::where('email', 'route-buyer@example.test')->sole();
+        $address = $buyer->addresses()->sole();
+        // Fixture approval represents the separate buyer review, not the subject of this route test.
+        $buyer->update(['kyc_status' => 'approved', 'kyc_reviewed_at' => now()]);
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'));
+        $order = $this->checkoutFlowOrder($buyer, $shop, shipping: ['saved_address_id' => $address->id,
+            'recipient_name' => $address->recipient_name, 'recipient_phone' => $address->phone,
+            'shipping_address' => $address->street, 'shipping_city' => $address->city, 'shipping_province' => $address->province,
+            'destination_barangay' => $address->barangay, 'shipping_postal_code' => $address->postal_code,
+            'shipping_latitude' => '14.281', 'shipping_longitude' => '121.417']);
+        $address->update(['latitude' => 14.282, 'longitude' => 121.418]);
+        $parcel = $this->flowDelivery($order, 'out_for_delivery');
+        $rider = User::findOrFail($parcel->assigned_rider_id);
+        $this->native($rider);
+        $this->getJson('/api/v1/rider/tasks/final_mile-'.$parcel->id)->assertOk()
+            ->assertJsonPath('data.stop.kind', 'buyer')->assertJsonPath('data.stop.latitude', 14.281)
+            ->assertJsonPath('data.stop.longitude', 121.417);
+        $this->actingAs($rider)->getJson('/courier/navigation/final_mile-'.$parcel->id)->assertOk()
+            ->assertJsonPath('data.kind', 'buyer')->assertJsonPath('data.latitude', 14.281)
+            ->assertJsonPath('data.longitude', 121.417);
     }
 
     public function test_history_filters_use_manila_assignment_days_and_keep_stable_pagination(): void

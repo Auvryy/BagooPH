@@ -84,6 +84,33 @@ class CheckoutOrderService
             if ($original = $submissions->replay($buyer, $cart, $tokenHash, $requestHash, $data)) {
                 return $original;
             }
+            if (config('checkout.require_doorstep_pin') && $data['delivery_type'] === 'doorstep'
+                && ($data['shipping_latitude'] === null || $data['shipping_longitude'] === null)) {
+                throw ValidationException::withMessages([
+                    'shipping_latitude' => 'Choose a delivery location on the map before placing your order.',
+                    'shipping_longitude' => 'Choose a delivery location on the map before placing your order.',
+                ]);
+            }
+            if (config('checkout.require_doorstep_pin') && $data['delivery_type'] === 'doorstep'
+                && ! isset($data['saved_address_id']) && ! $data['save_address']) {
+                throw ValidationException::withMessages(['save_address' => 'Save this delivery address, or select an existing saved address.']);
+            }
+            $savedAddress = null;
+            if (isset($data['saved_address_id'])) {
+                $savedAddress = $buyer->addresses()->whereKey($data['saved_address_id'])->lockForUpdate()->first();
+                if (! $savedAddress) {
+                    throw ValidationException::withMessages(['saved_address_id' => 'Select an address saved to your account.']);
+                }
+                if (isset($data['saved_address_location_token']) && ! hash_equals(app(BuyerAddressService::class)->locationToken($savedAddress), $data['saved_address_location_token'])) {
+                    throw ValidationException::withMessages(['saved_address_id' => 'This saved address or pin changed. Reload checkout to review its current location.']);
+                }
+                foreach (['street' => 'shipping_address', 'city' => 'shipping_city', 'province' => 'shipping_province',
+                    'barangay' => 'destination_barangay', 'postal_code' => 'shipping_postal_code'] as $field => $input) {
+                    if ((string) ($savedAddress->{$field} ?? '') !== (string) ($data[$input] ?? '')) {
+                        throw ValidationException::withMessages(['saved_address_id' => 'This saved address changed. Select it again or save a new address.']);
+                    }
+                }
+            }
             if (! $this->routingEngine->isContiguousRoadServiceable($data['shipping_province'], $data['shipping_city'])) {
                 throw new CheckoutException('Delivery address is outside contiguous road freight boundaries. Maritime shipping is excluded.');
             }
@@ -208,6 +235,8 @@ class CheckoutOrderService
                     'status' => 'unassigned',
                     'pickup_store_name' => $shop->name,
                     'pickup_address' => "{$shop->address}, {$shop->city}",
+                    'pickup_latitude' => $shop->pickup_latitude,
+                    'pickup_longitude' => $shop->pickup_longitude,
                     'pickup_phone' => $shop->phone,
                     'delivery_recipient_name' => $data['recipient_name'],
                     'delivery_address' => $this->deliveryAddress($data),
@@ -224,6 +253,9 @@ class CheckoutOrderService
                 $orders->push($order->load('delivery', 'items'));
             }
 
+            if ($savedAddress && $data['shipping_latitude'] !== null && $data['shipping_longitude'] !== null) {
+                $savedAddress->update(['latitude' => $data['shipping_latitude'], 'longitude' => $data['shipping_longitude']]);
+            }
             if ($data['save_address']) {
                 try {
                     app(BuyerAddressService::class)->create($buyer, [

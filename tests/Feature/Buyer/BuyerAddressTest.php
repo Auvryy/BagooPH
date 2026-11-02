@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\Commerce\BuyerAddressService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Concerns\InteractsWithCheckoutNetwork;
@@ -21,7 +22,7 @@ class BuyerAddressTest extends TestCase
     use InteractsWithCheckoutSubmission;
     use RefreshDatabase;
 
-    private function createBuyerWithCart(): array
+    private function createBuyerWithCart(array $shopOverrides = []): array
     {
         $seller = User::factory()->create([
             'role' => 'seller',
@@ -34,6 +35,8 @@ class BuyerAddressTest extends TestCase
             'name' => 'Sample Store',
             'slug' => 'sample-store',
             'status' => 'active',
+            'city' => 'Manila',
+            ...$shopOverrides,
         ]);
 
         $category = Category::create([
@@ -326,7 +329,8 @@ class BuyerAddressTest extends TestCase
             'payment_method' => 'cod',
         ]);
 
-        $response->assertRedirect(route('buyer.orders.index'));
+        $this->assertNull(session('error'), (string) session('error'));
+        $response->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
 
         $order = Order::latest()->first();
         $this->assertNotNull($order);
@@ -334,6 +338,56 @@ class BuyerAddressTest extends TestCase
         $this->assertEquals('+639183334444', $order->recipient_phone);
         $this->assertEquals('Unit 701, Tower 2, Ayala Ave', $order->shipping_address);
         $this->assertEquals('Makati City', $order->shipping_city);
+    }
+
+    public function test_checkout_saves_pin_only_to_the_matching_owned_address(): void
+    {
+        [$buyer, $shop] = $this->createBuyerWithCart(['city' => 'Manila']);
+        $this->createCheckoutNetwork($shop, ['Makati City' => 'Metro Manila']);
+        $fields = ['recipient_name' => 'Selected Recipient', 'phone' => '+639183334444',
+            'street' => 'Unit 701 Ayala Avenue', 'city' => 'Makati City', 'province' => 'Metro Manila',
+            'barangay' => 'San Lorenzo', 'postal_code' => '1226', 'is_default' => true];
+        $address = Address::create(['user_id' => $buyer->id, ...$fields]);
+        $other = User::factory()->create(['role' => 'buyer']);
+        $foreign = Address::create(['user_id' => $other->id, ...$fields]);
+        $payload = ['checkout_token' => $this->checkoutToken($buyer), 'recipient_name' => 'Selected Recipient',
+            'recipient_phone' => '+639183334444', 'shipping_address' => $fields['street'], 'shipping_city' => $fields['city'],
+            'shipping_province' => $fields['province'], 'destination_barangay' => $fields['barangay'],
+            'shipping_postal_code' => $fields['postal_code'], 'shipping_latitude' => '14.5547000',
+            'shipping_longitude' => '121.0244000', 'item_ids' => $buyer->cart->items()->pluck('id')->all(),
+            'payment_method' => 'cod', 'saved_address_id' => $foreign->id];
+
+        $this->actingAs($buyer)->post('/checkout', $payload)->assertSessionHasErrors('saved_address_id');
+        $this->assertNull($foreign->fresh()->latitude);
+        $this->assertDatabaseCount('orders', 0);
+        $this->post('/checkout', [...$payload, 'saved_address_id' => $address->id, 'shipping_address' => 'A different street 123'])
+            ->assertSessionHasErrors('saved_address_id');
+        $this->assertNull($address->fresh()->latitude);
+        $this->assertDatabaseCount('orders', 0);
+
+        $token = app(BuyerAddressService::class)->locationToken($address);
+        $this->get('/checkout')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('addresses.0.location_token', $token));
+        $this->postJson('/checkout', [...$payload, 'saved_address_location_token' => $token])
+            ->assertUnprocessable()->assertJsonValidationErrors('saved_address_id');
+        $address->fresh()->update(['latitude' => 14.6, 'longitude' => 121.1]);
+        $this->post('/checkout', [...$payload, 'saved_address_id' => $address->id, 'saved_address_location_token' => $token])
+            ->assertSessionHasErrors('saved_address_id');
+        $this->assertEquals(14.6, $address->fresh()->latitude);
+        $this->assertDatabaseCount('orders', 0);
+        $token = app(BuyerAddressService::class)->locationToken($address->fresh());
+        $request = [...$payload, 'saved_address_id' => $address->id, 'saved_address_location_token' => $token];
+        $this->post('/checkout', $request)->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
+        $this->assertEquals(14.5547, $address->fresh()->latitude);
+        $this->assertEquals(121.0244, $address->fresh()->longitude);
+        $order = Order::where('buyer_id', $buyer->id)->sole();
+        $this->assertEquals(14.5547, $order->destination_latitude);
+        $this->assertEquals(121.0244, $order->destination_longitude);
+        $address->fresh()->update(['latitude' => 14.6, 'longitude' => 121.1]);
+        $this->post('/checkout', $request)->assertRedirect(route('buyer.orders.index'));
+        $this->assertEquals(14.6, $address->fresh()->latitude);
+        $this->assertEquals(121.1, $address->fresh()->longitude);
+        $this->assertDatabaseCount('orders', 1);
     }
 
     public function test_checkout_can_save_new_address_to_address_book(): void
@@ -357,6 +411,7 @@ class BuyerAddressTest extends TestCase
             'save_address' => true,
         ]);
 
+        $this->assertNull(session('error'), (string) session('error'));
         $response->assertRedirect(route('buyer.orders.index'));
 
         $savedAddress = Address::where('user_id', $buyer->id)->first();

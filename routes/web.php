@@ -306,6 +306,7 @@ $registerSellerRoutes = function () {
         Route::post('/profile', [SellerDashboardController::class, 'updateProfile']);
         Route::get('/shops', [SellerShopController::class, 'index']);
         Route::post('/shops/{shop}/resubmit', [SellerShopController::class, 'resubmit']);
+        Route::post('/shops/{shop}/pickup-location', [SellerShopController::class, 'pickupLocation'])->middleware('throttle:10,1');
         Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 
         Route::get('/seller/dashboard', function (Request $request) {
@@ -337,6 +338,7 @@ $registerCourierRoutes = function () use ($registerCodRoutes) {
     Route::middleware(['auth', 'subdomain.role:courier', 'courier.approved'])->group(function () use ($registerCodRoutes) {
         $registerCodRoutes();
         Route::get('/deliveries', [CourierDeliveryController::class, 'index']);
+        Route::get('/navigation/{reference}', [CourierDeliveryController::class, 'navigationStop'])->middleware('throttle:60,1');
         Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim']);
         Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus']);
         Route::get('/earnings', [CourierDeliveryController::class, 'earnings']);
@@ -385,6 +387,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::post('/company-setup/{company}/tariff', [CompanySetupController::class, 'tariff'])->middleware('throttle:10,1');
         Route::post('/company-setup/{company}/staff/{staff}/temporary-password', [CompanySetupController::class, 'temporaryPassword'])->middleware('throttle:5,1');
         Route::post('/company-setup/{company}/hubs/{hub}/coverage', [CompanySetupController::class, 'coverage'])->middleware('throttle:10,1');
+        Route::post('/company-setup/{company}/hubs/{hub}/location', [CompanySetupController::class, 'location'])->middleware('throttle:10,1');
         Route::put('/rider-request-intake', [RiderCompanyIntakeController::class, 'update'])->middleware('throttle:10,1');
         Route::post('/rider-company-requests/{companyRequest}/offers', [RiderCompanyOfferController::class, 'store'])->middleware('throttle:10,1');
         Route::post('/rider-company-requests/{companyRequest}/reject', [RiderCompanyOfferController::class, 'reject'])->middleware('throttle:10,1');
@@ -751,6 +754,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/profile', [SellerDashboardController::class, 'updateProfile'])->name('profile.update');
     Route::get('/shops', [SellerShopController::class, 'index'])->name('shops.index');
     Route::post('/shops/{shop}/resubmit', [SellerShopController::class, 'resubmit'])->name('shops.resubmit');
+    Route::post('/shops/{shop}/pickup-location', [SellerShopController::class, 'pickupLocation'])->middleware('throttle:10,1')->name('shops.pickup-location');
     Route::get('/preview', [SellerDashboardController::class, 'previewStorefront'])->name('preview');
 });
 
@@ -762,6 +766,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
 Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courier.')->group(function () use ($registerCodRoutes) {
     $registerCodRoutes(true);
     Route::get('/deliveries', [CourierDeliveryController::class, 'index'])->name('deliveries');
+    Route::get('/navigation/{reference}', [CourierDeliveryController::class, 'navigationStop'])->middleware('throttle:60,1')->name('navigation-stop');
     Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim'])->name('claim');
     Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus'])->name('updateStatus');
     Route::get('/earnings', [CourierDeliveryController::class, 'earnings'])->name('earnings');
@@ -861,6 +866,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/company-setup/{company}/tariff', [CompanySetupController::class, 'tariff'])->middleware('throttle:10,1')->name('company-setup.tariff');
         Route::post('/company-setup/{company}/staff/{staff}/temporary-password', [CompanySetupController::class, 'temporaryPassword'])->middleware('throttle:5,1')->name('company-setup.temporary-password');
         Route::post('/company-setup/{company}/hubs/{hub}/coverage', [CompanySetupController::class, 'coverage'])->middleware('throttle:10,1')->name('company-setup.coverage');
+        Route::post('/company-setup/{company}/hubs/{hub}/location', [CompanySetupController::class, 'location'])->middleware('throttle:10,1')->name('company-setup.location');
         Route::put('/rider-request-intake', [RiderCompanyIntakeController::class, 'update'])->middleware('throttle:10,1')->name('rider-request-intake');
         Route::post('/rider-company-requests/{companyRequest}/offers', [RiderCompanyOfferController::class, 'store'])->middleware('throttle:10,1')->name('rider-company-requests.offers');
         Route::post('/rider-company-requests/{companyRequest}/reject', [RiderCompanyOfferController::class, 'reject'])->middleware('throttle:10,1')->name('rider-company-requests.reject');

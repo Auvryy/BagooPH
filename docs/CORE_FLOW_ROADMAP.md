@@ -30,6 +30,182 @@ Buyer checkout
 
 The core flow is complete only when the entire chain passes cross-role tests without a portal inventing statuses, bypassing custody, settling COD early, or relying on sample success data.
 
+## Saved pins and Rider routing: in progress
+
+Configuration and acceptance instructions: [Map and road-routing setup](MAP_ROUTING_SETUP.md).
+
+The Rider task API now supplies the saved origin or destination hub coordinates
+to the assigned rider when that hub is the current stop. Missing coordinates
+remain null and available pickup previews do not expose a stop pin. The focused
+SQLite-memory API test exercises pickup and final-mile hub stops and missing
+coordinates. Scoped hub-stop location availability: **2/10 → 5/10**; this is
+an engineering assessment of the API contract, not end-to-end navigation proof.
+
+Company owners can now place a hub pin during creation and edit an existing
+hub's pin from company setup. Creation requires both coordinates; updates check
+company ownership and reject a stale location token. The SQLite company-setup
+suite passed 7 tests / 110 assertions, and 8 logistics frontend checks passed.
+The frontend build passed in an isolated output directory. Scoped hub pin
+management: **2/10 → 6/10**, pending interactive and deployment verification.
+The stale-location token also covers the hub's barangay; after that change the
+SQLite company-setup suite passed 7 tests / 113 assertions.
+
+Buyer address editing and checkout now expose a draggable map pin, with no pin
+invented for an address without coordinates. Web doorstep checkout asks for a
+valid pin, and changing physical address fields clears the old pin. Successful
+checkout saves a changed pin to the selected address only after checking its
+owner and physical address; a repeated confirmation cannot overwrite a later
+address edit. New addresses can be saved for later. The frontend address suite
+passes 16 checks and the isolated SQLite buyer-address suite passes 12 tests / 76
+assertions, including ownership, stale addresses, order snapshots and replay.
+The checkout replay suite also passed 51 tests / 469 assertions. The frontend
+build passed in an isolated output directory. Two headless map interaction
+checks cover placing and dragging a pin and retrying failed map tiles. Scoped
+buyer pin entry: **2/10 → 6/10**, pending live map and deployment verification.
+When a saved address's physical fields change, the server now clears any pin
+unless the buyer explicitly confirmed a new selection; contact-only edits retain
+the pin. This protects older clients that might otherwise resend stale
+coordinates. The SQLite address-book suite passed 40 tests / 339 assertions,
+the address frontend suite passed 16 checks, and the worktree build passed.
+Scoped address-change pin safety: **4/10 → 7/10**, pending deployed acceptance.
+
+Checkout GPS requests are now invalidated when the buyer changes the address,
+chooses another saved address, or places a pin manually. Late callbacks cannot
+replace that newer choice, and stale or inaccurate fixes ask the buyer to place
+the pin instead. Eighteen frontend address/GPS checks and the worktree build
+passed. Scoped checkout location-request safety: **3/10 → 7/10**, pending live
+browser and deployment acceptance.
+
+Web checkout now carries a signed snapshot of the selected saved address and
+pin. Under the address lock, a changed snapshot rejects the stale submission
+and asks the buyer to reload; an exact replay still returns the original order
+without overwriting a newer pin. The token remains optional for older clients,
+which do not receive this particular stale-pin protection. The SQLite buyer
+address suite passed 12 tests / 97 assertions and the checkout replay suite
+passed 51 tests / 469 assertions; 16 address frontend checks and the worktree
+build passed. Scoped web stale-checkout protection: **3/10 → 7/10**, pending
+deployed acceptance and updated client support.
+
+A SQLite registration-to-custody test passed 83 assertions showing that a
+buyer pin saved at signup reaches both assigned Rider API and web navigation
+after checkout and collection. The test uses a fixture for the separate buyer
+approval. Changing the address book afterwards does not move the existing
+order's destination. This checks application endpoints, not a live route
+provider or Android device.
+
+Buyer email and Google registration can also save a selected delivery pin as a
+default address when the buyer supplies a complete location and phone number.
+The pin is optional during registration and is requested at web checkout if
+needed. Changing address details clears a previously selected pin. The two
+SQLite registration suites passed 14 tests / 224 assertions, and the combined
+authentication and address frontend suites passed 50 checks. The worktree
+frontend build passed. Scoped signup-to-address continuity: **2/10 → 6/10**;
+live map interaction and deployed acceptance remain unverified.
+
+Sellers with portal access can place a pickup pin for their current shop
+address in settings. The owner-only update checks a location token, and a shop
+address change clears the old pin, including when the model was loaded before
+another pin update. Checkout and the ready-for-pickup transition snapshot the
+current pin with the pickup address; assigned Rider web and mobile tasks receive
+that snapshot, while pickup previews do not expose it. Two focused SQLite tests
+passed 58 assertions across ownership, stale input, pickup snapshots and rider
+access. The seller ownership suite passed 6 tests / 191 assertions, the
+commerce frontend suite passed 25 checks, and the worktree build passed. Scoped
+seller pickup-pin continuity: **1/10 → 6/10**, pending deployed and live-device
+acceptance. Existing sellers must set their pin; historical parcels retain null
+coordinates where none were saved.
+Single and batch ready-for-pickup actions now copy the locked, current shop
+location rather than a shop object loaded before the transaction. A focused
+SQLite test passed 45 assertions across both actions with a stale shop object;
+the seller fulfillment and workspace suites passed 38 tests / 670 assertions.
+Scoped pickup-snapshot freshness: **4/10 → 7/10**, pending deployment and live
+acceptance.
+
+Seller signup also offers the pickup pin before approval, retaining it with
+the submitted shop and clearing it if the entered address changes. Omitting it
+remains supported. The SQLite seller category and registration suite passed
+35 tests / 312 assertions, the authentication frontend suite passed 35 checks,
+and the worktree build passed. Scoped signup pin continuity: **2/10 → 6/10**;
+live map and deployed acceptance are still needed.
+
+Server-side required pin enforcement across checkout clients and end-to-end
+routing verification remain in progress. Rider Mobile main still defaults to
+an unavailable in-app routing provider. The separate local Rider branch
+`feat/rider-road-routing` adds configured road guidance and Stop Mode rendering;
+it is not yet merged or deployed. Physical device and deployed-service
+acceptance remain open.
+
+Server-side doorstep pin enforcement is implemented behind
+`CHECKOUT_REQUIRE_DOORSTEP_PIN`, defaulting to off until buyer mobile can choose
+and save a pin. When enabled, new pinless doorstep orders are rejected without
+changing stock or creating an order, existing exact retries still succeed, and
+hub self-pickup remains available. The checkout page exposes
+`doorstepPinRequired` for client coordination. The SQLite replay suite passed
+54 tests / 506 assertions and the address suite passed 12 tests / 97 assertions.
+Scoped rollout readiness: **2/10 → 5/10**; cross-client UI, activation and
+deployed acceptance remain open.
+An additional SQLite integration check passed 16 assertions with the setting
+enabled: a selected address receives the confirmed pin, and an exact order
+retry cannot overwrite a later address edit.
+When the setting is enabled, new doorstep addresses must also be saved for
+future use. A full address book can still use an existing saved address, and
+hub pickup retains its separate behavior. The SQLite replay suite passed
+55 tests / 527 assertions, the address-book suite passed 41 tests / 347
+assertions, and 20 frontend address/GPS checks passed. The worktree build
+passed. Scoped pin-saving rollout readiness: **3/10 → 6/10**, pending buyer
+mobile support and activation.
+Web checkout now requires saving a new doorstep address and pin regardless of
+the shared enforcement setting, while hub pickup retains its optional save.
+The 20 frontend address/GPS checks and worktree build passed. Scoped web pin
+continuity: **6/10 → 7/10**, pending deployed and interactive acceptance; other
+clients still need support before the shared server rule can be enabled.
+
+Rider web can now request an actual road line for an assigned stop after the
+rider selects a vehicle and starts navigation. The server rechecks assignment,
+current stop and custody; the client rejects missing pins, stale or inaccurate
+location fixes, missing route details and reported ferry segments. Tracking and
+in-flight requests stop when the page is hidden or navigation ends. A road route
+is never replaced with an invented straight line. The browser discloses that the
+rider's location and stop are sent to Geoapify. The browser key is supplied at
+build time as `VITE_GEOAPIFY_API_KEY` and must be restricted to approved origins;
+without it, external directions remain available. See the provider's
+[routing documentation](https://apidocs.geoapify.com/docs/routing/) for supported
+travel modes, route details and usage costs.
+
+The complete isolated SQLite Rider API suite passed 10 tests / 792 assertions,
+including pickup hub, destination hub and buyer stops and access boundaries.
+The host PHP run lacked the GD image extension; the wider suite passed in the
+existing PHP container with separate temporary storage and an 89 MB peak.
+Sixteen headless frontend tests cover road geometry, permission, changing stops
+and tracking cleanup. The frontend build
+passed in an isolated output directory. Scoped Rider web road-line support:
+**2/10 → 6/10**, pending a configured key and live provider validation. The
+checks do not prove Android or deployment acceptance.
+
+The web parser now rejects road sections separated by more than 10 metres, so
+disconnected geometry is not presented as continuous guidance. Sixteen focused
+frontend routing and lifecycle checks and the worktree build passed. Scoped
+road-line integrity: **5/10 → 6/10**, pending real provider validation.
+
+With the user's existing local Geoapify key, synthetic Manila routes returned
+successfully for drive, motorcycle and scooter modes and passed the web route
+parser and endpoint checks. Native-style and localhost-origin requests also
+returned a road route. The Rider Flutter routing client accepted live synthetic
+responses for the same three modes in a headless PC test. This confirms
+provider response compatibility on the PC. A later headless Chrome check loaded the
+actual Leaflet component and reached “Road route ready” using a live Geoapify
+route, synthetic GPS and a mocked assignment response. It does not establish
+deployed authentication or physical-device behavior. The
+existing key was put in ignored local configuration for both feature worktrees;
+separate, appropriately restricted keys remain recommended for release.
+
+The local Rider branch adds endpoint and continuity checks, a configured
+provider, and rendering on the assigned stop's map. Its focused PC tests and
+Android manifest merge passed; real provider, deployment and the user-deferred
+device acceptance remain open. The buyer mobile checkout currently treats
+coordinates as optional, so server-wide mandatory pins must be coordinated
+with that client before activation.
+
 ## Native rider Wallet trip evidence: November 1-2, 2026
 
 The implementation branch `fix/rider-wallet-trip-evidence` started at main
@@ -7963,6 +8139,10 @@ Verification: **50 focused frontend checks** passed across rider pages, duty/sid
 Scoped web surface consistency assessment: **7/10 to 8/10**, based on coherent shared controls, quieter visual hierarchy and retained interaction checks. This does not increase overall operational readiness. Task tracking remains unavailable because its existing login expired; no saved task or time update is claimed. The branch PR description remains a local draft.
 
 ### Leaflet parity and sample delivery line — October 25, 2026
+
+This section records the October 25 behavior. The current Rider web road-line
+work and its remaining checks are described in “Saved pins and Rider routing”
+near the top of this roadmap.
 
 The user's revised map direction supersedes the earlier provider-backed road preview. Web and native mobile now use Leaflet 1.9.4 with the same unfiltered standard OpenStreetMap light tiles and the same public sample rider-to-delivery path. The dashed red line and two labelled endpoints are explicitly an illustration, without live position, parcel identity or logistics hub routes. The web map offers sample/saved-stop switching and an independent sample panel for an empty workspace. Mobile uses locally bundled Leaflet through the system web view and a neutral header, navigation and task-control treatment.
 
