@@ -69,11 +69,12 @@ test('doorstep pin validation rejects absent, partial and invalid coordinates', 
 test('editing a saved delivery address removes its old pin and makes a new address', () => {
  const saved = { shipping_address: 'Old street', shipping_city: 'Makati', shipping_province: 'Metro Manila',
   destination_barangay: 'San Lorenzo', shipping_postal_code: '1226', shipping_latitude: 14.55,
-  shipping_longitude: 121.02, saved_address_id: 7, save_address: false };
+  shipping_longitude: 121.02, saved_address_id: 7, saved_address_location_token: 'old-token', save_address: false };
  assert.equal(ui.changedDeliveryAddress(saved, 'shipping_address', 'Old street', true), saved);
  const changed = ui.changedDeliveryAddress(saved, 'shipping_address', 'New street', true);
  assert.equal(changed.shipping_address, 'New street');
  assert.equal(changed.shipping_latitude, ''); assert.equal(changed.shipping_longitude, '');
+ assert.equal(changed.saved_address_location_token, null);
  assert.equal(changed.saved_address_id, null); assert.equal(changed.save_address, true);
  assert.equal(ui.changedDeliveryAddress(saved, 'shipping_city', 'Pasig', false).save_address, false);
 });

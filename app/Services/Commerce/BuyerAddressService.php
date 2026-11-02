@@ -13,6 +13,11 @@ class BuyerAddressService
 {
     public const LIMIT = 10;
 
+    public function locationToken(Address $address): string
+    {
+        return hash_hmac('sha256', json_encode($address->only(['id', 'user_id', 'region', 'province', 'city', 'barangay', 'street', 'postal_code', 'latitude', 'longitude']), JSON_THROW_ON_ERROR), config('app.key'));
+    }
+
     public function create(User $actor, array $input): Address
     {
         app(BuyerAccessService::class)->requirePortal($actor);

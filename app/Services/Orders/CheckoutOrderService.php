@@ -90,6 +90,9 @@ class CheckoutOrderService
                 if (! $savedAddress) {
                     throw ValidationException::withMessages(['saved_address_id' => 'Select an address saved to your account.']);
                 }
+                if (isset($data['saved_address_location_token']) && ! hash_equals(app(BuyerAddressService::class)->locationToken($savedAddress), $data['saved_address_location_token'])) {
+                    throw ValidationException::withMessages(['saved_address_id' => 'This saved address or pin changed. Reload checkout to review its current location.']);
+                }
                 foreach (['street' => 'shipping_address', 'city' => 'shipping_city', 'province' => 'shipping_province',
                     'barangay' => 'destination_barangay', 'postal_code' => 'shipping_postal_code'] as $field => $input) {
                     if ((string) ($savedAddress->{$field} ?? '') !== (string) ($data[$input] ?? '')) {

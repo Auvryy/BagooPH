@@ -43,7 +43,8 @@ class CommerceInputService
             'logistics_company_id' => ['nullable', $this->identifier(), 'integer'],
             'voucher_code' => ['bail', 'nullable', 'string', 'max:50', 'regex:/\A[A-Z0-9_-]+\z/'],
             'save_address' => ['nullable', 'boolean'],
-            'saved_address_id' => ['nullable', $this->identifier(), 'integer'],
+            'saved_address_id' => ['nullable', 'required_with:saved_address_location_token', $this->identifier(), 'integer'],
+            'saved_address_location_token' => ['nullable', 'string', 'regex:/\A[a-f0-9]{64}\z/'],
             'item_ids' => ['required', 'array', 'list', 'min:1'],
             'item_ids.*' => ['bail', 'required', $this->identifier(), 'integer', 'distinct'],
         ], ['payment_method.in' => 'Choose cash on delivery or Bagoo Wallet. External online payments are not available.',
@@ -69,6 +70,9 @@ class CommerceInputService
             unset($data['saved_address_id']);
         } elseif ($data['save_address']) {
             throw ValidationException::withMessages(['saved_address_id' => 'Choose an existing address or save a new one.']);
+        }
+        if (($data['saved_address_location_token'] ?? null) === null) {
+            unset($data['saved_address_location_token']);
         }
         $data['item_ids'] = array_map('intval', $data['item_ids']);
         sort($data['item_ids'], SORT_NUMERIC);

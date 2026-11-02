@@ -11,10 +11,10 @@ export function validDeliveryPin(latitude: string | number | null, longitude: st
 export type CheckoutAddressField = 'shipping_address' | 'shipping_city' | 'shipping_province' | 'destination_barangay' | 'shipping_postal_code';
 
 export function changedDeliveryAddress<T extends Record<CheckoutAddressField, string> & {
-    shipping_latitude: string | number; shipping_longitude: string | number; saved_address_id: number | null; save_address: boolean;
+    shipping_latitude: string | number; shipping_longitude: string | number; saved_address_id: number | null; save_address: boolean; saved_address_location_token?: string | null;
 }>(previous: T, field: CheckoutAddressField, value: string, canSave: boolean): T {
     if (previous[field] === value) return previous;
     return { ...previous, [field]: value, shipping_latitude: '', shipping_longitude: '',
         save_address: previous.saved_address_id !== null ? canSave : previous.save_address,
-        saved_address_id: null };
+        saved_address_id: null, saved_address_location_token: null };
 }

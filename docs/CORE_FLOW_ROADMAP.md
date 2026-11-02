@@ -67,6 +67,16 @@ coordinates. The SQLite address-book suite passed 40 tests / 339 assertions,
 the address frontend suite passed 16 checks, and the worktree build passed.
 Scoped address-change pin safety: **4/10 → 7/10**, pending deployed acceptance.
 
+Web checkout now carries a signed snapshot of the selected saved address and
+pin. Under the address lock, a changed snapshot rejects the stale submission
+and asks the buyer to reload; an exact replay still returns the original order
+without overwriting a newer pin. The token remains optional for older clients,
+which do not receive this particular stale-pin protection. The SQLite buyer
+address suite passed 12 tests / 97 assertions and the checkout replay suite
+passed 51 tests / 469 assertions; 16 address frontend checks and the worktree
+build passed. Scoped web stale-checkout protection: **3/10 → 7/10**, pending
+deployed acceptance and updated client support.
+
 A SQLite registration-to-custody test passed 83 assertions showing that a
 buyer pin saved at signup reaches both assigned Rider API and web navigation
 after checkout and collection. The test uses a fixture for the separate buyer

@@ -30,6 +30,7 @@ export interface Address {
     postal_code?: string | null;
     latitude?: number | null;
     longitude?: number | null;
+    location_token?: string;
     landmark?: string | null;
     type?: string | null;
     is_default: boolean;

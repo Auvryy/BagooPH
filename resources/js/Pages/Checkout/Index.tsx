@@ -187,6 +187,7 @@ export default function CheckoutIndex({
         shop_voucher_revision_ids: {} as Record<number, number | null>,
         save_address: !initialAddress && addresses.length < addressBookLimit,
         saved_address_id: (initialAddress?.id ?? null) as number | null,
+        saved_address_location_token: (initialAddress?.location_token ?? null) as string | null,
     });
 
     const handleAddressChange = (addressId: string) => {
@@ -206,6 +207,7 @@ export default function CheckoutIndex({
                 landmark: '',
                 save_address: addresses.length < addressBookLimit,
                 saved_address_id: null,
+                saved_address_location_token: null,
             }));
         } else {
             const found = addresses.find(a => String(a.id) === addressId);
@@ -224,6 +226,7 @@ export default function CheckoutIndex({
                     landmark: found.landmark || '',
                     save_address: false,
                     saved_address_id: found.id,
+                    saved_address_location_token: found.location_token ?? null,
                 }));
             }
         }
