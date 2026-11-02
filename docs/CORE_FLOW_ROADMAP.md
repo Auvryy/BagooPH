@@ -62,8 +62,8 @@ The checkout replay suite also passed 51 tests / 469 assertions. The frontend
 build passed in an isolated output directory. Two headless map interaction
 checks cover placing and dragging a pin and retrying failed map tiles. The
 picker tells mouse and touch users how to place a pin, with a static copy test.
-Scoped buyer pin entry: **2/10 → 6/10**, pending live map and deployment
-verification.
+Scoped buyer pin entry: **2/10 → 6/10**, with live tiles confirmed locally;
+deployed verification remains pending.
 Headless Chrome rendered the real React/Leaflet picker at 320px with OSM tile
 requests blocked. A touch tap placed a seven-decimal pin, dragging moved it,
 zoom controls did not create another pin, both controls measured 44×44px,
@@ -76,6 +76,9 @@ it. With tile requests blocked, Retry measured 44px high. The map links its
 keyboard instructions to the region for screen readers. Twenty-six focused
 frontend address/map checks and the TypeScript check passed. The status explains
 initial tile loading and offers retry after a 15-second stall.
+With tiles allowed, a local 320px headless browser also loaded four OpenStreetMap
+tiles around a synthetic Philippines center; the status settled and attribution
+remained visible. This does not verify the deployed production origin.
 Scoped selected-pin offline feedback:
 **5/10 → 8/10**, pending physical-device and deployed verification.
 The frontend accepts a complete seven-decimal pin, and the SQLite-backed
