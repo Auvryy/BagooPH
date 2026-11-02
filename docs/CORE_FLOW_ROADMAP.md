@@ -76,7 +76,8 @@ The frontend accepts a complete seven-decimal pin, and the SQLite-backed
 address service preserves both coordinates through validation and storage. The
 map harness verifies that an address change removes the old marker and a new
 selection replaces it. This confirms application-layer precision and marker
-behavior, not live provider geocoding or routing.
+behavior, not live provider geocoding or routing. The marker interaction test
+also requires keyboard focus and an accessible title.
 The latest PC-only regression pass also passed 159 buyer input-validation
 tests / 985 assertions, 60 web courier/map tests, and 125 Rider map/routing
 tests. On 2026-11-03, live Geoapify motorcycle route requests with synthetic
