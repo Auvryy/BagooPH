@@ -9,6 +9,7 @@ use App\Models\LogisticsHub;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\PhilippineContact;
+use App\Rules\UniqueAccountEmail;
 use App\Services\AccountSessions\AccountSessionService;
 use App\Services\BirthDateEligibility;
 use App\Services\Finance\CodMoney;
@@ -80,15 +81,15 @@ class CompanySetupService
             'last_name' => ['required', 'string', new ApplicationText('name', 2, 100)],
             'birthday' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.app(BirthDateEligibility::class)->limits()['adult_maximum']],
             'email' => 'required|string|email:rfc|max:255', 'phone' => ['required', 'string', new PhilippineContact],
-            'password' => ['required', 'string', 'max:128', Password::min(12)->mixedCase()->numbers()->symbols()],
+            'password' => ['required', 'string', 'max:128', Password::min(12)->mixedCase()->numbers()->symbols()->rules(['regex:/[\p{S}\p{P}]/u', 'not_regex:/\p{C}/u'])],
         ])->validate();
         $role = $data['kind'] === 'rider' ? 'courier' : 'logistics';
         $email = strtolower(trim($data['email']));
-        Validator::make(['email' => $email], ['email' => [Rule::unique('users', 'email')->where('role', $role)]])->validate();
 
         return DB::transaction(function () use ($actor, $companyId, $data, $role, $email) {
             $company = $this->owner($actor, $companyId);
             app(LogisticsEligibilityService::class)->lockNetwork($company->id, [$actor->id], [$data['hub_id']]);
+            Validator::make(['email' => $email], ['email' => [new UniqueAccountEmail(role: $role)]])->validate();
             $hub = LogisticsHub::eligible()->where('logistics_company_id', $company->id)->findOrFail($data['hub_id']);
             if ($role === 'courier' && ! $hub->isBayanHub()) {
                 throw new DomainException('Assign a pickup or delivery rider to an active child hub.');
@@ -141,7 +142,7 @@ class CompanySetupService
     public function resetTemporaryPassword(User $actor, int $companyId, User $staff, array $input): void
     {
         $data = Validator::make($input, ['current_password' => 'required|string|max:128',
-            'password' => ['required', 'string', 'max:128', Password::min(12)->mixedCase()->numbers()->symbols()]])->validate();
+            'password' => ['required', 'string', 'max:128', Password::min(12)->mixedCase()->numbers()->symbols()->rules(['regex:/[\p{S}\p{P}]/u', 'not_regex:/\p{C}/u'])]])->validate();
         DB::transaction(function () use ($actor, $companyId, $staff, $data) {
             $company = $this->owner($actor, $companyId);
             User::whereIn('id', [$actor->id, $staff->id])->orderBy('id')->lockForUpdate()->get();
