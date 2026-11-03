@@ -3,18 +3,27 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class AccountEmailMigrationTest extends TestCase
 {
-    use RefreshDatabase;
+    private function legacySchema(): void
+    {
+        $this->assertSame('sqlite', DB::getDriverName());
+        $this->assertSame(':memory:', config('database.connections.sqlite.database'));
+        foreach (glob(database_path('migrations/*.php')) as $path) {
+            if (basename($path) >= '2026_10_08_000001_create_account_emails_table.php') {
+                break;
+            }
+            (require $path)->up();
+        }
+    }
 
     public function test_upgrade_preserves_original_identity_verification_and_existing_expression_indexes(): void
     {
         $migration = require database_path('migrations/2026_10_08_000001_create_account_emails_table.php');
-        $migration->down();
+        $this->legacySchema();
         $user = User::factory()->buyer()->create(['email' => 'Buyer@BAGOO.TEST']);
         $before = $user->fresh()->getRawOriginal();
         $index = DB::selectOne("SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'users_email_case_insensitive_unique'")->sql;
@@ -31,7 +40,7 @@ class AccountEmailMigrationTest extends TestCase
     public function test_upgrade_refuses_ambiguous_legacy_accounts_without_rewriting_them(): void
     {
         $migration = require database_path('migrations/2026_10_08_000001_create_account_emails_table.php');
-        $migration->down();
+        $this->legacySchema();
         DB::statement('DROP INDEX users_email_case_insensitive_unique');
         $first = User::factory()->create(['email' => 'duplicate@bagoo.test']);
         $second = User::factory()->create(['email' => 'DUPLICATE@bagoo.test']);
