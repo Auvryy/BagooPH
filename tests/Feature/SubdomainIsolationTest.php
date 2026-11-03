@@ -79,7 +79,7 @@ class SubdomainIsolationTest extends TestCase
 
         $this->assertGuest();
         $response->assertSessionHasErrors([
-            'email' => 'Role mismatch: Non-seller accounts cannot access the Seller Merchant Cockpit.',
+            'email' => 'Email or password is incorrect for your seller account.',
         ]);
 
         // JSON post: 422 Unprocessable Entity
@@ -91,7 +91,7 @@ class SubdomainIsolationTest extends TestCase
         $this->assertGuest();
         $jsonResponse->assertStatus(422);
         $jsonResponse->assertJsonValidationErrors([
-            'email' => 'Role mismatch: Non-seller accounts cannot access the Seller Merchant Cockpit.',
+            'email' => 'Email or password is incorrect for your seller account.',
         ]);
     }
 
@@ -112,7 +112,7 @@ class SubdomainIsolationTest extends TestCase
         $this->assertGuest();
         $response->assertStatus(422);
         $response->assertJsonValidationErrors([
-            'email' => 'Role mismatch: Non-seller accounts cannot access the Seller Merchant Cockpit.',
+            'email' => 'Email or password is incorrect for your seller account.',
         ]);
     }
 
@@ -134,7 +134,7 @@ class SubdomainIsolationTest extends TestCase
         $this->assertGuest();
         $response->assertStatus(422);
         $response->assertJsonValidationErrors([
-            'email' => 'Role mismatch: Non-seller accounts cannot access the Seller Merchant Cockpit.',
+            'email' => 'Email or password is incorrect for your seller account.',
         ]);
     }
 
@@ -156,7 +156,7 @@ class SubdomainIsolationTest extends TestCase
         $this->assertGuest();
         $response->assertStatus(422);
         $response->assertJsonValidationErrors([
-            'email' => 'Role mismatch: Non-courier accounts cannot access the Courier Fleet Dispatch portal.',
+            'email' => 'Email or password is incorrect for your rider account.',
         ]);
     }
 
@@ -178,7 +178,7 @@ class SubdomainIsolationTest extends TestCase
         $this->assertGuest();
         $response->assertStatus(422);
         $response->assertJsonValidationErrors([
-            'email' => 'Role mismatch: Non-admin accounts cannot access the Platform Governance portal.',
+            'email' => 'Email or password is incorrect for your admin account.',
         ]);
     }
 
@@ -199,7 +199,7 @@ class SubdomainIsolationTest extends TestCase
         $this->assertGuest();
         $response->assertStatus(422);
         $response->assertJsonValidationErrors([
-            'email' => 'Role mismatch: Non-logistics accounts cannot access the Logistics Sorting Center.',
+            'email' => 'Email or password is incorrect. Please try again.',
         ]);
     }
 
@@ -261,8 +261,18 @@ class SubdomainIsolationTest extends TestCase
         $this->assertGuest();
         $response->assertStatus(422);
         $response->assertJsonValidationErrors([
-            'email' => trans('auth.failed'),
+            'email' => 'Email or password is incorrect for your seller account.',
         ]);
+
+        $otherRole = User::factory()->create(['role' => 'admin', 'password' => 'correct-password']);
+        foreach (['missing@bagoo.test', $otherRole->email] as $email) {
+            $this->postJson('http://seller.bagooph.shop/login', [
+                'email' => $email, 'password' => 'correct-password',
+            ])->assertUnprocessable()->assertJsonValidationErrors([
+                'email' => 'Email or password is incorrect for your seller account.',
+            ]);
+            $this->assertGuest();
+        }
     }
 
     /*
@@ -733,6 +743,8 @@ class SubdomainIsolationTest extends TestCase
             'sex' => 'Male',
             'company_name' => 'FastLog Freight',
             'company_code' => 'FLF',
+            'tin' => '900000001000',
+            'service_areas' => ['Region IV-A'],
             'email' => 'fastlog@hub.test',
             'phone' => '+63 917 123 4567',
             'address' => '123 Logistics St',
@@ -746,6 +758,7 @@ class SubdomainIsolationTest extends TestCase
             'franchise_document' => $franchise,
         ]);
 
+        $response->assertSessionHasNoErrors();
         $this->assertAuthenticated();
         $response->assertRedirect('/pending-approval');
 
