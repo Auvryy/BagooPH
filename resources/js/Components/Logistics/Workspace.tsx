@@ -22,7 +22,7 @@ export function HubButton({ children, primary = false, className = '', ...props 
 
 export function HubPageHeader({ title, description, icon: Icon, actions }: { title: string; description: ReactNode; icon: LucideIcon; actions?: ReactNode }) {
     return <div className="hub-page-heading flex flex-wrap items-center justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3.5"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-rose-100 bg-rose-50 text-[#E00D42]"><Icon className="h-5 w-5" /></div><div><h1 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">{title}</h1><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">{description}</p></div></div>
+        <div className="flex min-w-0 items-start gap-3.5"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-rose-100 bg-rose-50 text-[#E00D42]"><Icon className="h-5 w-5" /></div><div><h1 className="text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">{title}</h1><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">{description}</p></div></div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>;
 }

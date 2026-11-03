@@ -97,6 +97,13 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
     const [submitting, setSubmitting] = useState(false);
     const [currentTime, setCurrentTime] = useState(Date.now);
     useEffect(() => {
+        setHours(activeHub?.operating_hours ?? '');
+    }, [activeHub?.id, activeHub?.operating_hours]);
+    useEffect(() => {
+        setSelectedParcel(null);
+        setErrors({});
+    }, [activeHub?.id]);
+    useEffect(() => {
         const now = Date.now();
         const boundaries = pageParcels.flatMap(parcel => [parcel.claim?.expires_at, parcel.claim?.locked_until])
             .filter((value): value is string => Boolean(value)).map(value => new Date(value).getTime()).filter(value => value > now);
@@ -194,7 +201,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             <div className="mt-2">
                                 <p className="text-2xl sm:text-3xl font-black text-slate-900 font-sans tracking-tight">
                                     {readyNow}{' '}
-                                    <span className="text-xs font-bold text-slate-400">ready</span>
+                                    <span className="text-xs font-bold text-slate-600">ready</span>
                                 </p>
                             </div>
                         </div>
