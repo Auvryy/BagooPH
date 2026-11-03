@@ -60,3 +60,29 @@ test('inaccurate, stale and unavailable fixes leave the pin unchanged', t => {
     assert.doesNotMatch(h.view.status, /private browser detail/);
     assert.deepEqual(h.pins, []);
 });
+
+test('fresh signed boundary coordinates are accepted and rounded to six decimals', t => {
+    const h = harness(t);
+    h.view.capture(); h.requests[0].success(fix({ latitude: -14.5995126, longitude: -120.9842126, accuracy: 100 }));
+    assert.deepEqual(h.pins[0], { latitude: -14.599513, longitude: -120.984213 });
+    assert.match(h.render().status, /accuracy ±100 m/);
+
+    h.view.capture(); h.requests[1].success(fix({ latitude: -90, longitude: 180 }));
+    assert.deepEqual(h.pins[1], { latitude: -90, longitude: 180 });
+});
+
+test('out-of-range GPS fixes never replace the selected location', t => {
+    const h = harness(t);
+    h.view.capture(); h.requests[0].success(fix({ latitude: 90.000001 }));
+    assert.match(h.render().status, /fresh, accurate location was not available/);
+    h.view.capture(); h.requests[1].success(fix({ longitude: -180.000001 }));
+    assert.match(h.render().status, /fresh, accurate location was not available/);
+    assert.deepEqual(h.pins, []);
+});
+
+test('unsupported browser geolocation gives the user a map fallback', t => {
+    const h = harness(t);
+    navigator.geolocation = undefined;
+    h.view.capture();
+    assert.match(h.render().status, /not supported by your browser/);
+});

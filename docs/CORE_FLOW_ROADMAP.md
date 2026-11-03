@@ -60,8 +60,100 @@ passes 16 checks and the isolated SQLite buyer-address suite passes 12 tests / 7
 assertions, including ownership, stale addresses, order snapshots and replay.
 The checkout replay suite also passed 51 tests / 469 assertions. The frontend
 build passed in an isolated output directory. Two headless map interaction
-checks cover placing and dragging a pin and retrying failed map tiles. Scoped
-buyer pin entry: **2/10 → 6/10**, pending live map and deployment verification.
+checks cover placing and dragging a pin and retrying failed map tiles. The
+picker tells mouse and touch users how to place a pin, with a static copy test.
+Scoped buyer pin entry: **2/10 → 6/10**, with live tiles confirmed locally;
+deployed verification remains pending.
+Headless Chrome rendered the real React/Leaflet picker at 320px with OSM tile
+requests blocked. A touch tap placed a seven-decimal pin, dragging moved it,
+zoom controls did not create another pin, both controls measured 44×44px,
+attribution stayed visible, and the 296px map caused no horizontal overflow.
+Retry remounted the map with the same selected coordinates. Keyboard-only
+headless Chrome testing confirmed keyboard Tab focus, a visible 2px focus ring,
+arrow-key panning, and Enter placing a pin at the map center. Enter on the
+marker left the pin unchanged; Enter on a zoom control zoomed without changing
+it. With tile requests blocked, Retry measured 44px high. The map links its
+keyboard instructions to the region for screen readers. Twenty-eight focused
+frontend address/map checks and the TypeScript check passed. The buyer address
+editor now has a 44px Clear pin action for optional saved pins, including
+zero-valued coordinates; clearing it removes both coordinates without changing
+the street. Registration buyer and seller clear-pin actions also use 44px
+targets. The frontend address/map suite now passes 28 checks, the SQLite buyer
+address-book suite passes 42 tests / 351 assertions, and TypeScript passes. The
+status explains initial tile loading and offers retry after a 15-second stall.
+Targeted buyer, seller, and Google registration pin-save tests plus checkout
+pin persistence/replay passed four tests / 56 assertions.
+With tiles allowed, a local 320px headless browser also loaded four OpenStreetMap
+tiles around a synthetic Philippines center; the status settled and attribution
+remained visible. This does not verify the deployed production origin.
+An isolated desktop Chrome render at a 1366×813 viewport measured the actual
+React/Leaflet picker at 712×256 inside a 760px column, with no horizontal
+overflow, a keyboard-focusable map region, visible OpenStreetMap attribution,
+44×44px zoom controls, and tile-failure retry feedback. OSM requests were
+intentionally host-blocked for this check; it verifies the component shell and
+desktop layout, not the deployed checkout page or live tile availability.
+Scoped selected-pin offline feedback:
+**5/10 → 8/10**, pending physical-device and deployed verification.
+The frontend accepts a complete seven-decimal pin, and the SQLite-backed
+address service preserves both coordinates through validation and storage. The
+map harness verifies that an address change removes the old marker and a new
+selection replaces it. This confirms application-layer precision and marker
+behavior, not live provider geocoding or routing. The marker interaction test
+also requires keyboard focus and an accessible title. The initial status keeps
+the saved pin explicit while map tiles load. Checkout pin validation now also
+asserts zero, signed, world-boundary, and seven-decimal inputs on both frontend
+and backend; the Leaflet interaction harness confirms negative points retain
+their sign and seven-decimal precision.
+The pin instructions now state that the map cannot verify a match with the
+written address. The pinned PSGC address data contains names and parent
+relationships, not boundary coordinates, so this remains a user-confirmed
+match; the written address and assigned hub remain authoritative. Checkout's
+GPS action now has a 44px target and visible keyboard focus, and its result or
+failure is announced through a status region. Five isolated GPS checks cover
+stale/inaccurate results, cancellation, supported and unsupported browsers,
+signed/boundary coordinates, rounding, and rejected out-of-range fixes. The
+scoped checkout GPS affordance moved from **6/10 to 8/10** for touch access,
+focus visibility, and accessible feedback; physical-device permission and
+location accuracy still need later confirmation.
+The focused frontend suites pass 21 address/checkout cases, 9 map interaction
+cases, and 5 GPS cases. The 11-case checkout interaction suite rejects a partial
+pair and verifies seven-decimal manual and map-selected coordinates reach the
+final checkout request intact. The Leaflet test also checks the existing
+OpenStreetMap tile URL, visible attribution and disabled wheel zoom so page
+scrolling remains usable. Seller and hub map
+save actions now retain 44px minimum targets, checked in their page regressions.
+Checkout now explains that manual coordinates use decimal degrees, must be a
+complete pair, allow latitude -90..90 and longitude -180..180, and accept up to
+7 decimal places. Both coordinate inputs expose this guidance and their own
+server error through `aria-describedby`. Scoped manual-coordinate guidance
+moved from **6/10 to 8/10** for a visible format and limits before submission.
+TypeScript and the production Vite build passed after the map-save target change
+using isolated `/tmp/bagoo-map-touch-build` output; the default shared
+`public/build` location could not be cleared by the local user due to its existing
+permissions.
+Cross-form PC coverage passed 68 frontend registration, seller settings, and
+hub reliability checks plus 6 isolated SQLite pin-save cases / 90 assertions:
+buyer and Google registration, seller registration and pickup settings, hub
+creation, and hub-pin updates. The hub's server-rendered test now checks the
+initial tile-loading status while requiring a saved point before enabling Save.
+The expanded precision-persistence regression passed 10 focused SQLite cases /
+228 assertions. Non-rounded seven-decimal latitude and longitude now survive
+buyer, Google-buyer, and seller registration; buyer checkout address and order
+snapshots; seller pickup save and delivery snapshots; and hub creation and pin
+updates. These cases establish SQLite persistence and rider API snapshots, not
+hosted PostgreSQL or deployed-site behavior.
+The latest PC-only regression pass also passed 166 buyer input-validation
+tests / 1,039 assertions, 60 web courier/map tests, and 125 Rider map/routing
+tests. On 2026-11-03, live Geoapify motorcycle route requests with synthetic
+Manila-area points returned a road MultiLineString with 286 coordinates and an
+endpoint within 500 metres of the requested stop. A headless Chrome request
+from a local web origin also returned HTTP 200, confirming local browser CORS.
+These checks did not cover production-domain restrictions, assigned-stop
+authorization, or phone GPS. Standard OpenStreetMap tiles are best-effort with
+no SLA, so live map availability must be checked before a demonstration.
+Six focused SQLite navigation/pin authorization tests also passed 403
+assertions. A broader courier API run had three unrelated proof-image errors
+because this local PHP runtime lacks GD; the focused navigation tests passed.
 When a saved address's physical fields change, the server now clears any pin
 unless the buyer explicitly confirmed a new selection; contact-only edits retain
 the pin. This protects older clients that might otherwise resend stale

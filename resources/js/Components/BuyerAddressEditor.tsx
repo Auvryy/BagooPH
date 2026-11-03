@@ -74,6 +74,9 @@ export default function BuyerAddressEditor({ user, address, count, limit, onClos
                     </div>
                     <LocationPinPicker value={form.data.latitude != null && form.data.longitude != null ? { latitude: form.data.latitude, longitude: form.data.longitude } : null}
                         onChange={point => form.setData({ ...form.data, latitude: point.latitude, longitude: point.longitude, pin_confirmed: true })} />
+                    {(form.data.latitude !== null || form.data.longitude !== null) && <button type="button" disabled={form.processing}
+                        onClick={() => form.setData(previous => ({ ...previous, latitude: null, longitude: null, pin_confirmed: false }))}
+                        className="min-h-[44px] rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold disabled:opacity-50">Clear pin</button>}
                     <div className="space-y-3 border-t border-slate-100 pt-3">
                         <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" checked={form.data.is_default} disabled={Boolean(address?.is_default) || count === 0} onChange={event => form.setData('is_default', event.target.checked)} className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" />Use as my default delivery address</label>
                         {(address?.is_default || count === 0) && <p className="text-xs text-slate-500">Your address book needs one default. To change it, choose another saved address as default.</p>}

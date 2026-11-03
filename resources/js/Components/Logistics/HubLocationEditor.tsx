@@ -16,6 +16,6 @@ export default function HubLocationEditor({ hub, url }: {
         <h4 className="text-sm font-semibold">Map pin for {hub.name}</h4>
         <LocationPinPicker label="Hub location" value={point} onChange={value => form.setData(previous => ({ ...previous, ...value }))} />
         {Object.values(form.errors).map(message => <p key={message} role="alert" className="text-xs text-rose-700">{message}</p>)}
-        <HubButton primary disabled={!point || form.processing}>Save hub pin</HubButton>
+        <HubButton primary className="!min-h-[44px]" disabled={!point || form.processing}>Save hub pin</HubButton>
     </form>;
 }

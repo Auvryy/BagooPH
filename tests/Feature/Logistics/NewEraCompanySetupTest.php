@@ -127,10 +127,12 @@ class NewEraCompanySetupTest extends TestCase
             'allows_self_pickup' => true, 'operating_hours' => 'Monday to Saturday, 8 AM to 5 PM'];
         $this->actingAs($owner)->postJson('/hub/company-setup/'.$company->id.'/hubs', $input)
             ->assertUnprocessable()->assertJsonValidationErrors(['latitude', 'longitude']);
-        $input += ['latitude' => '14.2730000', 'longitude' => '121.4550000'];
+        $input += ['latitude' => '14.2734567', 'longitude' => '121.4551234'];
         $this->actingAs($owner)->post('/hub/company-setup/'.$company->id.'/hubs', $input)->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertDatabaseHas('logistics_hubs', ['code' => 'QA-CH-PAGS', 'parent_hub_id' => $mother->id, 'logistics_company_id' => $company->id]);
-        $this->assertEquals(14.273, LogisticsHub::where('code', 'QA-CH-PAGS')->sole()->latitude);
+        $hub = LogisticsHub::where('code', 'QA-CH-PAGS')->sole();
+        $this->assertSame(14.2734567, $hub->latitude);
+        $this->assertSame(121.4551234, $hub->longitude);
         $this->post('/hub/company-setup/'.$company->id.'/hubs', [...$input, 'code' => 'QA-CH-DUP'])
             ->assertSessionHasErrors('setup');
         $tariff = ['version' => 1, 'base_fee' => '60.00', 'additional_kg_fee' => '20.00', 'included_weight_grams' => 1000, 'shipping_earnings_model' => 'standard'];
@@ -192,7 +194,7 @@ class NewEraCompanySetupTest extends TestCase
         $service = app(CompanySetupService::class);
         $token = $service->locationToken($hub);
         $url = '/hub/company-setup/'.$company->id.'/hubs/'.$hub->id.'/location';
-        $pin = ['latitude' => '14.1600000', 'longitude' => '121.2400000', 'location_token' => $token];
+        $pin = ['latitude' => '14.1601234', 'longitude' => '121.2409876', 'location_token' => $token];
         $other = User::factory()->create(['role' => 'logistics', 'status' => 'active', 'kyc_status' => 'approved']);
         $this->actingAs($other)->postJson($url, $pin)->assertForbidden();
         $foreignCompany = LogisticsCompany::create(['user_id' => $other->id, 'name' => 'Separate Pin Company',
@@ -205,13 +207,13 @@ class NewEraCompanySetupTest extends TestCase
         $this->assertNull($foreign->fresh()->latitude);
         $this->actingAs($company->user)->postJson($url, [...$pin, 'latitude' => '91'])->assertUnprocessable()->assertJsonValidationErrors('latitude');
         $this->post($url, $pin)->assertSessionHasNoErrors()->assertSessionHas('success');
-        $this->assertEquals(14.16, $hub->fresh()->latitude);
-        $this->assertEquals(121.24, $hub->fresh()->longitude);
+        $this->assertSame(14.1601234, $hub->fresh()->latitude);
+        $this->assertSame(121.2409876, $hub->fresh()->longitude);
         $this->post($url, [...$pin, 'latitude' => '14.17'])->assertSessionHasErrors('location_token');
-        $this->assertEquals(14.16, $hub->fresh()->latitude);
+        $this->assertSame(14.1601234, $hub->fresh()->latitude);
         $previousLocation = $service->locationToken($hub->fresh());
         $hub->update(['barangay' => 'A different barangay']);
         $this->post($url, [...$pin, 'latitude' => '14.18', 'location_token' => $previousLocation])->assertSessionHasErrors('location_token');
-        $this->assertEquals(14.16, $hub->fresh()->latitude);
+        $this->assertSame(14.1601234, $hub->fresh()->latitude);
     }
 }

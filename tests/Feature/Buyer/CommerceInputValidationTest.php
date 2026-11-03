@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\Commerce\BuyerAddressService;
+use App\Services\Commerce\CommerceInputService;
 use App\Services\Orders\CheckoutOrderService;
 use App\Services\Orders\CheckoutSubmissionService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -51,6 +52,27 @@ class CommerceInputValidationTest extends TestCase
             'destination_barangay' => 'San Antonio', 'delivery_type' => 'doorstep',
             'payment_method' => 'cod', 'item_ids' => [$line->id],
         ]];
+    }
+
+    public function test_checkout_accepts_bounded_signed_pin_coordinates_through_seven_decimals(): void
+    {
+        [, , , $payload] = $this->checkout();
+        foreach ([
+            ['0', '0', '0', '0'],
+            ['-0', '-0', '0', '0'],
+            ['-14.5995123', '-120.9842123', '-14.5995123', '-120.9842123'],
+            ['14.1234567', '120.1234567', '14.1234567', '120.1234567'],
+            ['90', '180', '90', '180'],
+            ['-90', '-180', '-90', '-180'],
+        ] as [$latitude, $longitude, $expectedLatitude, $expectedLongitude]) {
+            $validated = app(CommerceInputService::class)->checkout(
+                [...$payload, 'shipping_latitude' => $latitude, 'shipping_longitude' => $longitude],
+                $payload['item_ids'],
+            );
+
+            $this->assertSame($expectedLatitude, $validated['shipping_latitude']);
+            $this->assertSame($expectedLongitude, $validated['shipping_longitude']);
+        }
     }
 
     #[DataProvider('invalidCheckoutFields')]
@@ -108,10 +130,13 @@ class CommerceInputValidationTest extends TestCase
             'street control before trim' => ['shipping_address', "\n123 Mabini Street"],
             'landmark short' => ['landmark', 'Gate'],
             'latitude too large' => ['shipping_latitude', '90.1'],
+            'latitude negative too large' => ['shipping_latitude', '-90.1'],
+            'longitude negative too large' => ['shipping_longitude', '-180.1'],
             'latitude scientific notation' => ['shipping_latitude', '1e1'],
             'latitude hidden' => ['shipping_latitude', "14.5\u{200B}"],
             'latitude precision' => ['shipping_latitude', '14.12345678'],
             'missing coordinate pair' => ['shipping_latitude', '14.5', 'shipping_longitude'],
+            'missing latitude pair' => ['shipping_longitude', '121.05', 'shipping_latitude'],
             'notes length' => ['notes', str_repeat('a', 501)],
             'unknown delivery type' => ['delivery_type', 'direct'],
             'unknown payment method' => ['payment_method', 'free'],
@@ -206,7 +231,7 @@ class CommerceInputValidationTest extends TestCase
         $address = app(BuyerAddressService::class)->create($buyer, ['region' => '1300000000', 'recipient_name' => 'Delivery Recipient', 'barangay' => 'San Antonio',
             'phone' => ' 63 (917) 123-4567 ', 'street' => ' '.str_repeat('Ａ', 500).' ',
             'city' => ' Ｐａｓｉｇ ', 'province' => ' Metro Manila ', 'postal_code' => ' 1600 ',
-            'latitude' => '14.5000000', 'longitude' => '121.0000000', 'type' => 'Office']);
+            'latitude' => '14.5995123', 'longitude' => '120.9842123', 'type' => 'Office']);
 
         $this->assertSame('Delivery Recipient', $address->recipient_name);
         $this->assertSame('Maria Santos', $buyer->fresh()->name);
@@ -214,7 +239,8 @@ class CommerceInputValidationTest extends TestCase
         $this->assertSame(str_repeat('A', 500), $address->fresh()->street);
         $this->assertSame('City of Pasig', $address->city);
         $this->assertSame('1600', $address->postal_code);
-        $this->assertSame(14.5, $address->latitude);
+        $this->assertSame(14.5995123, $address->latitude);
+        $this->assertSame(120.9842123, $address->longitude);
         $this->assertTrue($address->is_default);
     }
 

@@ -1,6 +1,6 @@
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
@@ -53,15 +53,19 @@ function button(html, label) { return [...html.matchAll(/<button\b[^>]*>[\s\S]*?
 test('location picker distinguishes an empty address from a saved pin', () => {
  const empty = renderToStaticMarkup(createElement(ui.LocationPinPicker, { value: null, onChange() {} }));
  const saved = renderToStaticMarkup(createElement(ui.LocationPinPicker, { value: { latitude: 14.5995, longitude: 120.9842 }, onChange() {} }));
- assert.match(empty, /No location pin selected yet/);
+ assert.match(empty, /Loading map…/);
  assert.doesNotMatch(empty, /Location pin selected\./);
- assert.match(saved, /Location pin selected\./);
+ assert.match(empty, /Click or tap the map to place a pin/);
+ assert.match(saved, /Loading map… Your pin is still selected/);
  assert.match(saved, /aria-label="Delivery location map"/);
 });
 
-test('doorstep pin validation rejects absent, partial and invalid coordinates', () => {
- assert.equal(ui.validDeliveryPin(14.5995, 120.9842), true);
- for (const [lat, lng] of [['', ''], ['14.5', ''], ['NaN', '121'], ['91', '121'], ['14', '181'], ['1e1', '121'], ['14.12345678', '121']]) {
+test('doorstep pin validation accepts bounded signed coordinates through seven decimals', () => {
+ for (const [lat, lng] of [[14.5995, 120.9842], ['14.5995123', '120.9842123'], [0, 0], ['-0', '-0'],
+  ['-14.5995123', '-120.9842123'], ['90', '180'], ['-90', '-180']]) {
+  assert.equal(ui.validDeliveryPin(lat, lng), true, `${lat}, ${lng} is a valid coordinate pair`);
+ }
+ for (const [lat, lng] of [['', ''], ['14.5', ''], ['', '121'], ['NaN', '121'], ['91', '121'], ['-91', '121'], ['14', '181'], ['14', '-181'], ['1e1', '121'], ['14.12345678', '121']]) {
   assert.equal(ui.validDeliveryPin(lat, lng), false);
  }
 });
@@ -106,8 +110,33 @@ test('address editor uses the stored recipient, bounded fields and the existing 
  assert.match(html, /id="address-postal-code"[^>]*maxLength="4"/i);
  assert.match(html, /does not change your account name/);
  assert.match(html, /aria-label="Delivery location map"/);
- assert.match(html, /No location pin selected yet/);
+ assert.match(html, /Loading map…/);
+ const removablePin = button(html, 'Clear pin');
+ assert.equal(removablePin, undefined);
  for (const field of ['region', 'province', 'city', 'barangay']) assert.match(html, new RegExp(`id="address-${field}"[^>]*required=""`));
+});
+test('a saved optional buyer pin has a 44px clear control, including zero-valued coordinates', async () => {
+ const html = await render(ui.Editor, { user, address: { ...address, latitude: 0, longitude: 121.05 }, count: 1, limit: 10, onClose() {} });
+ const clear = button(html, 'Clear pin');
+ assert.ok(clear);
+ assert.match(clear, /min-h-\[44px\]/);
+});
+test('optional buyer and seller registration pin-clear controls use touch-sized targets', () => {
+ for (const page of ['Register.tsx', 'GoogleRegistration.tsx', 'SellerRegister.tsx']) {
+  const source = readFileSync(resolve(root, `resources/js/Pages/Auth/${page}`), 'utf8');
+  const clear = (source.match(/<button\b[\s\S]*?<\/button>/g) ?? []).find(element => element.includes('Clear pin'));
+  assert.ok(clear, `${page} exposes Clear pin`);
+  assert.match(clear, /min-h-\[44px\]/, `${page} Clear pin target is at least 44px tall`);
+ }
+});
+
+test('checkout GPS action has a touch-sized keyboard focus target and announced feedback', () => {
+ const source = readFileSync(resolve(root, 'resources/js/Pages/Checkout/Index.tsx'), 'utf8');
+ const gpsButton = (source.match(/<button\b[\s\S]*?<\/button>/g) ?? []).find(element => element.includes('onClick={gps.capture}'));
+ assert.ok(gpsButton);
+ assert.match(gpsButton, /min-h-\[44px\]/);
+ assert.match(gpsButton, /focus-visible:outline-2/);
+ assert.match(source, /\{gps\.status && \(\s*<p role="status"/);
 });
 const quote = { items: [{id:10, quantity:1, unit_price:250, subtotal:250}], subtotal: 250, shipping_fee: 50, doorstep_shipping_fee: 50, discount: 0, total: 300, voucher: null, redemptions: [],
  shops: [{ shop_id: 1, shop_name: 'Bagoo Store', subtotal: 250, shipping: 50, doorstep_shipping: 50, discount: 0, total: 300 }] };

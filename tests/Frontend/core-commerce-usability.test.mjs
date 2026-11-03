@@ -8,7 +8,7 @@ import { build } from 'esbuild';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-core-commerce-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.coreCommerceHarness; delete globalThis.route; });
 const result = await build({
-    stdin: { contents: `export { default as Checkout } from '@/Pages/Checkout/Index'; export { default as Detail } from '@/Pages/Buyer/OrderDetail'; export { default as SellerOrders } from '@/Pages/Seller/Orders'; export { default as BuyAgain } from '@/Components/BuyAgainButton'; export { default as Bag } from '@/Pages/Cart/Index';`, loader: 'tsx', resolveDir: resolve(import.meta.dirname, '../..') },
+    stdin: { contents: `export { default as Checkout } from '@/Pages/Checkout/Index'; export { default as Detail } from '@/Pages/Buyer/OrderDetail'; export { default as SellerOrders } from '@/Pages/Seller/Orders'; export { default as BuyAgain } from '@/Components/BuyAgainButton'; export { default as Bag } from '@/Pages/Cart/Index'; export { default as LocationPinPicker } from '@/Components/LocationPinPicker';`, loader: 'tsx', resolveDir: resolve(import.meta.dirname, '../..') },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'controlled-page-hooks', setup(builder) {
         builder.onResolve({ filter: /^react-dom$/ }, () => ({ path: 'portal', namespace: 'page-portal' }));
@@ -21,6 +21,7 @@ const result = await build({
             export const useLayoutEffect = () => {};
             export const useCallback = value => value;
             export const useMemo = callback => callback();
+            export const useId = () => 'core-commerce-pin';
             export default {};
         ` }));
         builder.onResolve({ filter: /^@inertiajs\/react$/ }, () => ({ path: 'inertia', namespace: 'page-inertia' }));
@@ -41,7 +42,7 @@ const result = await build({
 });
 const bundlePath = join(temporary, 'checkout.mjs');
 writeFileSync(bundlePath, result.outputFiles[0].text);
-const { Checkout, Detail, SellerOrders, BuyAgain, Bag } = await import(pathToFileURL(bundlePath).href);
+const { Checkout, Detail, SellerOrders, BuyAgain, Bag, LocationPinPicker } = await import(pathToFileURL(bundlePath).href);
 globalThis.route = name => '/' + name.replaceAll('.', '/');
 const address = { id: 1, recipient_name: 'Ana Santos', phone: '+639171234567', street: '10 Mabini Street', city: 'Santa Cruz', province: 'Laguna', barangay: 'Poblacion', postal_code: '4009', latitude: 14.28, longitude: 121.42, landmark: 'Beside the municipal hall' };
 const props = { user: { name: 'Ana Santos', phone: '+639171234567' }, addresses: [address], cart: { id: 1 }, items: [{ id: 1, quantity: 1, product: { id: 1, name: 'Everyday Bag', price: 10 } }], checkoutToken: 'isolated-checkout', kycStatus: 'approved', pickupHubs: [{ id: 3, name: 'Santa Cruz Bayan Hub', code: 'BAYAN-3', address: '20 Hub Street', city_municipality: 'Santa Cruz', province: 'Laguna' }] };
@@ -156,7 +157,7 @@ test('final order confirmation accepts one pending write, retains safe details a
 });
 
 test('checkout fields expose server-matching limits, persistent labels and associated rejection text', () => {
-    const h = harness(); h.render(); h.errors = { destination_barangay: 'Choose a supported barangay.', shipping_province: 'Enter a province.', shipping_postal_code: 'Use four digits.' };
+    const h = harness(); h.render(); h.errors = { destination_barangay: 'Choose a supported barangay.', shipping_province: 'Enter a province.', shipping_postal_code: 'Use four digits.', shipping_latitude: 'Use up to seven decimal places.', shipping_longitude: 'Enter a valid longitude.' };
     const tree = h.render();
     for (const [name, minimum, maximum] of [['shipping_address', 5, 500], ['destination_barangay', 2, 100], ['shipping_city', 2, 100], ['shipping_province', 2, 100], ['shipping_postal_code', 4, 4], ['landmark', 5, 255]]) {
         const input = field(tree, `checkout-${name}`);
@@ -167,6 +168,52 @@ test('checkout fields expose server-matching limits, persistent labels and assoc
         const input = field(tree, `checkout-${name}`);
         assert.equal(input.props['aria-invalid'], true); assert.equal(text(field(tree, input.props['aria-describedby'])), ({ destination_barangay: 'Choose a supported barangay.', shipping_province: 'Enter a province.', shipping_postal_code: 'Use four digits.' })[name]);
     }
+    const coordinateHelp = field(tree, 'checkout-coordinate-help');
+    assert.match(text(coordinateHelp), /decimal degrees: latitude -90 to 90, longitude -180 to 180, up to 7 decimal places\. Enter both values/);
+    for (const [axis, message] of [['latitude', 'Use up to seven decimal places.'], ['longitude', 'Enter a valid longitude.']]) {
+        const input = field(tree, `checkout-shipping_${axis}`);
+        const describedBy = input.props['aria-describedby'].split(' ');
+        assert.ok(describedBy.includes('checkout-coordinate-help'));
+        assert.equal(text(field(tree, describedBy.find(id => id.endsWith('-error')))), message);
+    }
+});
+
+test('checkout rejects a partial pin and submits complete manual or map-selected precision', () => {
+    const partial = harness();
+    let tree = partial.render();
+    field(tree, 'checkout-shipping_latitude').props.onChange({ target: { value: '14.55' } });
+    field(tree, 'checkout-shipping_longitude').props.onChange({ target: { value: '' } });
+    tree = partial.render();
+    all(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+    tree = partial.render();
+    assert.match(text(all(tree, node => node.props?.role === 'alert')), /complete, valid latitude\/longitude pair or choose the delivery location on the map/i);
+    assert.equal(partial.requests.length, 0);
+
+    const manual = harness();
+    tree = manual.render();
+    field(tree, 'checkout-shipping_latitude').props.onChange({ target: { value: '14.5501234' } });
+    field(tree, 'checkout-shipping_longitude').props.onChange({ target: { value: '121.0509876' } });
+    tree = manual.render();
+    all(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+    tree = manual.render();
+    all(tree, node => node.type === 'input' && node.props.type === 'checkbox').at(-1).props.onChange({ target: { checked: true } });
+    tree = manual.render();
+    all(tree, node => node.type === 'button' && text(node) === 'Confirm & Place Order')[0].props.onClick();
+    assert.equal(manual.requests.length, 1);
+    assert.deepEqual([manual.requests[0].data.shipping_latitude, manual.requests[0].data.shipping_longitude], ['14.5501234', '121.0509876']);
+
+    const mapped = harness();
+    tree = mapped.render();
+    const picker = all(tree, node => node.type === LocationPinPicker)[0];
+    picker.props.onChange({ latitude: 14.5501234, longitude: 121.0509876 });
+    tree = mapped.render();
+    all(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+    tree = mapped.render();
+    all(tree, node => node.type === 'input' && node.props.type === 'checkbox').at(-1).props.onChange({ target: { checked: true } });
+    tree = mapped.render();
+    all(tree, node => node.type === 'button' && text(node) === 'Confirm & Place Order')[0].props.onClick();
+    assert.equal(mapped.requests.length, 1);
+    assert.deepEqual([mapped.requests[0].data.shipping_latitude, mapped.requests[0].data.shipping_longitude], [14.5501234, 121.0509876]);
 });
 
 

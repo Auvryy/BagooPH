@@ -78,6 +78,7 @@ test('shop settings present real review feedback instead of an unconditional ver
     assert.match(html, /Review history/);
     assert.match(html, /Pickup map pin/);
     assert.match(html, /Seller pickup location map/);
+    assert.match(html, /<button[^>]*min-h-\[44px\][^>]*>Save pickup pin<\/button>/);
     assert.doesNotMatch(html, /PREFERRED MALL|Auto-dispatch enabled|Active Store|Open dashboard/);
 });
 
