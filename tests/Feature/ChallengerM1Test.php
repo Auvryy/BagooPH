@@ -102,9 +102,11 @@ class ChallengerM1Test extends TestCase
         $this->assertNotNull($seller->kyc_reviewed_at);
         $this->assertEquals('pending', $shop->status);
 
-        // Verify rejected seller is still held at pending-approval and sees feedback
+        // Rejected accounts retain their feedback in the account-status holding view.
         $rejectedGateResponse = $this->actingAs($seller)->get('/seller/dashboard');
-        $rejectedGateResponse->assertRedirect(route('kyc.pending'));
+        $rejectedGateResponse->assertRedirect(route('account.status'));
+        $this->actingAs($seller)->get(route('account.status'))->assertOk()
+            ->assertInertia(fn ($page) => $page->where('auth.user.kyc_feedback', $rejectionReason));
 
         // Step 3: User Resubmission with New Documents
         $newPermitDoc = UploadedFile::fake()->createWithContent('renewed_dti_permit_2026.pdf', '%PDF-1.4 renewed permit');
