@@ -133,13 +133,13 @@ export default function SellerSettings({ shop, shopReview, categories, pickupPin
                     <p className="text-sm text-slate-600">Update contact numbers, description, logo and banner directly. Shop name, pickup address and category changes need an identity correction review in your account settings.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div className="sm:col-span-2">
-                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
+                            <label htmlFor="shop-brand-name" className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Storefront Brand Name:
                             </label>
                             <input
                                 type="text"
                                 readOnly
-                                value={data.name}
+                                id="shop-brand-name" value={data.name}
                                 onChange={(e) => setData('name', e.target.value)}
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
                                 required
@@ -148,11 +148,11 @@ export default function SellerSettings({ shop, shopReview, categories, pickupPin
                         </div>
 
                         <div className="sm:col-span-2">
-                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
+                            <label htmlFor="shop-description" className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Storefront Description & Brand Story:
                             </label>
                             <textarea
-                                value={data.description}
+                                id="shop-description" value={data.description}
                                 maxLength={500}
                                 onChange={(e) => setData('description', e.target.value)}
                                 rows={3}
@@ -163,20 +163,20 @@ export default function SellerSettings({ shop, shopReview, categories, pickupPin
                         </div>
 
                         <div>
-                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
+                            <label htmlFor="shop-contact-phone" className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Merchant Hotline / Mobile:
                             </label>
-                            <input type="tel" value={data.phone} onChange={event => setData('phone', event.target.value)} aria-label="Shop contact number" className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-xs" />
+                            <input type="tel" id="shop-contact-phone" value={data.phone} onChange={event => setData('phone', event.target.value)} aria-label="Shop contact number" className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-xs" />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
+                            <label htmlFor="shop-pickup-city" className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Hub City / Region:
                             </label>
                             <input
                                 type="text"
                                 readOnly
-                                value={data.city}
+                                id="shop-pickup-city" value={data.city}
                                 onChange={(e) => setData('city', e.target.value)}
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
                                 required
@@ -184,13 +184,13 @@ export default function SellerSettings({ shop, shopReview, categories, pickupPin
                         </div>
 
                         <div className="sm:col-span-2">
-                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
+                            <label htmlFor="shop-pickup-address" className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Courier Pickup Hub Address (Warehouse):
                             </label>
                             <input
                                 type="text"
                                 readOnly
-                                value={data.address}
+                                id="shop-pickup-address" value={data.address}
                                 onChange={(e) => setData('address', e.target.value)}
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
                                 required
@@ -199,12 +199,12 @@ export default function SellerSettings({ shop, shopReview, categories, pickupPin
                         </div>
 
                         <div>
-                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
+                            <label htmlFor="shop-logo-url" className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Store Logo Image URL or Uploaded Path:
                             </label>
                             <input
                                 type="text"
-                                value={data.logo}
+                                id="shop-logo-url" value={data.logo}
                                 onChange={(e) => setData('logo', e.target.value)}
                                 placeholder="https://..."
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
@@ -212,12 +212,12 @@ export default function SellerSettings({ shop, shopReview, categories, pickupPin
                         </div>
 
                         <div>
-                            <label className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
+                            <label htmlFor="shop-banner-url" className="block text-xs font-sans font-bold text-slate-700 uppercase mb-1">
                                 Store Banner Cover URL or Uploaded Path:
                             </label>
                             <input
                                 type="text"
-                                value={data.banner}
+                                id="shop-banner-url" value={data.banner}
                                 onChange={(e) => setData('banner', e.target.value)}
                                 placeholder="https://..."
                                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:bg-white focus:ring-1 focus:ring-[#E00D42]"

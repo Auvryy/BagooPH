@@ -110,14 +110,15 @@ class ChatController extends Controller
         // Group recent conversations
         $conversations = Message::where('receiver_id', $user->id)
             ->orWhere('sender_id', $user->id)
-            ->with(['sender', 'receiver', 'product'])
+            ->with(['sender:id,name,avatar', 'receiver:id,name,avatar', 'product:id,shop_id,name,slug,price,featured_image'])
             ->latest()
             ->get()
+            ->each(fn (Message $message) => $message->product?->setAppends([]))
             ->groupBy(function ($msg) use ($user) {
                 return $msg->sender_id === $user->id ? $msg->receiver_id : $msg->sender_id;
             })
             ->map(function ($msgs, $otherUserId) {
-                $otherUser = User::find($otherUserId);
+                $otherUser = User::select(['id', 'name', 'avatar', 'role'])->find($otherUserId);
                 $latest = $msgs->first();
                 $unread = $msgs->where('receiver_id', auth()->id())->where('is_read', false)->count();
 

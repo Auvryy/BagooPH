@@ -231,7 +231,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 type="search"
-                                value={search}
+                                aria-label="Search facilities" value={search}
                                 onChange={(event) => setSearch(event.target.value)}
                                 placeholder="Search facility, code, municipality, or province"
                                 className="w-full rounded-lg border-slate-300 bg-white py-2 pl-9 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#E00D42] focus:ring-[#E00D42]"
@@ -489,7 +489,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                                         <input
                                             type="search"
-                                            value={coverageSearch}
+                                            aria-label="Search assigned barangays" value={coverageSearch}
                                             onChange={(event) => setCoverageSearch(event.target.value)}
                                             placeholder="Search assigned barangay"
                                             className="w-full rounded-lg border-slate-300 py-2 pl-9 pr-3 text-xs focus:border-[#E00D42] focus:ring-[#E00D42]"

@@ -310,7 +310,14 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
     private function recordSeededManifest($delivery, LogisticsHub $hub, bool $departure, User $operator): void
     {
         if ($departure) {
-            $vehicle = LogisticsFleet::ready()->where('hub_id', $hub->id)->where('vehicle_type', 'l300_van')->sole();
+            [$driverEmail, $plate] = $hub->id === $delivery->origin_bayan_hub_id
+                ? ['origin.transport@bagoo.test', 'BG-LBN-201']
+                : ['mother.transport@bagoo.test', 'BG-LAG-201'];
+            $driver = User::where('email', $driverEmail)->where('role', 'courier')->sole();
+            $vehicle = LogisticsFleet::ready()->where('logistics_company_id', $hub->logistics_company_id)
+                ->where('hub_id', $hub->id)->where('vehicle_type', 'l300_van')
+                ->where('assigned_driver_id', $driver->id)->where('plate_number', $plate)->sole();
+            $this->assertSame($vehicle->id, $driver->courierProfile->vehicle_id);
             $this->actingAs($operator)->get(route('hub.manifests.index'))->assertOk()
                 ->assertInertia(fn (AssertableInertia $page) => $page
                     ->where('vehicles', fn ($vehicles) => collect($vehicles)->contains('id', $vehicle->id)));

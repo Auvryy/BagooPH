@@ -30,6 +30,30 @@ Buyer checkout
 
 The core flow is complete only when the entire chain passes cross-role tests without a portal inventing statuses, bypassing custody, settling COD early, or relying on sample success data.
 
+## November 3 logistics interaction check
+
+The pickup counter now replaces its hours draft with the selected hub's saved
+hours when a company owner switches facilities, and closes the previous parcel's
+release dialog and errors. This prevents accidentally saving one hub's hours
+against another. Scanner, parcel queue and counter guidance text is darker.
+Scoped counter facility-state safety: **5/10 → 8/10**, supported by two component
+regressions, 82 logistics and 60 courier frontend checks, and the production build.
+
+Fresh isolated checks also passed 170 backend tests / 9,551 assertions, 60 Rider
+tests and one native client-to-Laravel scenario covering COD delivery and
+failed-delivery hub receipt/retry. Owner/operator permissions, Mother Bags,
+receiving, COD remittance and duty closure remain enforced. No backend or Rider
+change was required. See [the focused check and local PR draft](audits/2026-11-03-logistics-check.md)
+for scope and evidence. Azure/device acceptance and six unaccepted mobile write
+gates remain separate; this does not raise overall production readiness.
+
+The separate Seller Messages cleanup now cancels both history reads and their
+unread-count refresh on responsive hiding or navigation. Ten Firefox resize and
+navigation cycles completed without browser exceptions after the fix; four
+focused seller interaction tests and the production build passed. Scoped chat
+request lifecycle safety: **5/10 → 8/10**; this does not certify every browser or
+network timing.
+
 ## Saved pins and Rider routing: in progress
 
 Configuration and acceptance instructions: [Map and road-routing setup](MAP_ROUTING_SETUP.md).

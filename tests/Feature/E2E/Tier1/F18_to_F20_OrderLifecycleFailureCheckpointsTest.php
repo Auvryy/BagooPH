@@ -163,8 +163,11 @@ class F18_to_F20_OrderLifecycleFailureCheckpointsTest extends TestCase
             'seller_pack', 'ready_for_pickup', 'assigned_pickup', 'picked_up', 'courier_pickup', 'arrived_at_origin_hub',
             'in_transit_to_mother_hub', 'arrived_at_mother_hub', 'sorted_to_line_haul',
             'in_transit_to_destination_hub', 'arrived_at_destination_hub', 'sorted_to_barangay_bin',
-            'assigned_to_rider', 'out_for_delivery', 'delivered', 'buyer_completed',
+            'assigned_to_rider', 'out_for_delivery', 'delivered', 'delivery_completed',
         ]);
+        $this->assertSame(2, $order->logistics_flow_version);
+        $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'delivery_completed')
+            ->where('scanned_by_id', $delivery->assigned_rider_id)->count());
     }
 
     public function test_t1_f20_02_checkpoint_metadata_integrity(): void

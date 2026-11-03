@@ -3,16 +3,20 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { buildSync } from 'esbuild';
+import { build } from 'esbuild';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createInertiaApp } from '@inertiajs/react';
 
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-recovery-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
-const bundle = buildSync({
+const bundle = await build({
     stdin: { contents: `export { default as Recovery } from '@/Pages/Hub/ParcelRecovery'; export { default as Manifests } from '@/Pages/Hub/Manifests';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', loader: { '.css': 'empty' }, write: false,
+    plugins: [{ name: 'ssr-styles', setup(builder) {
+        builder.onResolve({ filter: /\.css$/ }, () => ({ path: 'style', namespace: 'ssr-style' }));
+        builder.onLoad({ filter: /.*/, namespace: 'ssr-style' }, () => ({ contents: '', loader: 'js' }));
+    } }],
 });
 const path = join(temporary, 'recovery.mjs');
 writeFileSync(path, bundle.outputFiles[0].text);

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class NewEraCompanySetupTest extends TestCase
@@ -114,6 +115,52 @@ class NewEraCompanySetupTest extends TestCase
         $this->actingAs($operator)->post('/hub/company-setup/'.$company->id.'/staff', $this->person('operator'))
             ->assertForbidden();
         $this->assertSame($before, User::count());
+    }
+
+    public function test_staff_email_checks_include_owned_recovery_addresses_within_the_selected_role(): void
+    {
+        $company = $this->company();
+        $owner = $company->user;
+        $owner->accountEmails()->create(['email' => 'crew-qa@bagoo.test', 'role' => 'logistics',
+            'is_original' => false, 'verified_at' => now()]);
+        $before = User::count();
+        $url = '/hub/company-setup/'.$company->id.'/staff';
+
+        $this->actingAs($owner)->postJson($url, $this->person())
+            ->assertUnprocessable()->assertJsonValidationErrors('email');
+        $this->assertSame($before, User::count());
+        $this->assertDatabaseCount('company_staff_provisions', 0);
+        $this->assertDatabaseHas('account_emails', ['user_id' => $owner->id,
+            'email' => 'crew-qa@bagoo.test', 'role' => 'logistics', 'is_original' => false]);
+
+        $this->post($url, $this->person('rider'))->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertSame('courier', User::where('email', 'crew-qa@bagoo.test')->sole()->role);
+    }
+
+    public static function invalidTemporaryPasswords(): array
+    {
+        return [['Temporary QA4825'], ["Temporary-QA!4825\n"], ["Temporary-QA!4825\u{200b}"]];
+    }
+
+    #[DataProvider('invalidTemporaryPasswords')]
+    public function test_temporary_password_writers_reject_missing_symbols_and_hidden_controls(string $password): void
+    {
+        $company = $this->company();
+        $owner = $company->user;
+        $before = User::count();
+        $url = '/hub/company-setup/'.$company->id.'/staff';
+        $this->actingAs($owner)->postJson($url, [...$this->person(), 'password' => $password])
+            ->assertUnprocessable()->assertJsonValidationErrors('password');
+        $this->assertSame($before, User::count());
+        $this->assertDatabaseCount('company_staff_provisions', 0);
+
+        $staff = app(CompanySetupService::class)->staff($owner, $company->id, $this->person());
+        $originalHash = $staff->password;
+        $this->postJson($url.'/'.$staff->id.'/temporary-password', [
+            'current_password' => 'Password1234', 'password' => $password,
+        ])->assertUnprocessable()->assertJsonValidationErrors('password');
+        $this->assertSame($originalHash, $staff->fresh()->password);
+        $this->assertDatabaseCount('company_staff_login_resets', 0);
     }
 
     public function test_parent_hub_and_postal_coverage_are_owned_and_future_tariffs_are_versioned(): void

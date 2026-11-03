@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Notifications;
 
+use App\Models\CodAccount;
 use App\Models\DeliveryCheckpoint;
 use App\Models\NotificationDelivery;
 use App\Models\Order;
@@ -9,6 +10,7 @@ use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
@@ -18,15 +20,30 @@ class LifecycleNotificationTest extends TestCase
 {
     use CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
+    private int $contractVersion = 2;
+
+    protected function flowContractVersion(): int
+    {
+        return $this->contractVersion;
+    }
+
+    public static function contracts(): array
+    {
+        return ['historical buyer confirmation' => [1], 'verified delivery completion' => [2]];
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->withoutVite();
     }
 
-    public function test_real_checkout_preparation_custody_dispatch_delivery_and_completion_notify_correct_accounts(): void
+    #[DataProvider('contracts')]
+    public function test_real_checkout_preparation_custody_dispatch_delivery_and_completion_notify_correct_accounts(int $contractVersion): void
     {
+        $this->contractVersion = $contractVersion;
         $order = $this->newFlowOrder();
+        $this->assertSame($contractVersion, $order->logistics_flow_version);
         $seller = $order->shop->user;
         $buyer = $order->buyer;
         $this->assertSame(1, $seller->notifications()->where('source_key', 'order:'.$order->id.':placed')->count());
@@ -40,17 +57,31 @@ class LifecycleNotificationTest extends TestCase
         }
         $dispatch = $buyer->notifications()->where('data->milestone', 'out_for_delivery')->sole();
         $this->assertStringContainsString('PHP '.number_format((float) $order->total_amount, 2), $dispatch->data['body']);
-        $this->assertStringContainsString('Confirm receipt', $buyer->notifications()->where('data->milestone', 'delivered')->sole()->data['body']);
+        $deliveredBody = $buyer->notifications()->where('data->milestone', 'delivered')->sole()->data['body'];
+        $this->assertStringContainsString($contractVersion === 1 ? 'Confirm receipt' : 'completes this order automatically', $deliveredBody);
+        if ($contractVersion === 2) {
+            $this->assertStringNotContainsString('Confirm receipt', $deliveredBody);
+        }
+        $this->assertSame($contractVersion === 1 ? 'delivered' : 'completed', $order->fresh()->status);
         $this->assertSame(1, $seller->notifications()->where('data->milestone', 'assigned_pickup')->count());
         $checkpoint = DeliveryCheckpoint::where('delivery_id', $parcel->id)->where('checkpoint_type', 'picked_up')->sole();
         $before = NotificationDelivery::count();
         app(LifecycleNoticeService::class)->checkpoint($checkpoint);
         $this->assertSame($before, NotificationDelivery::count());
+        $cash = CodAccount::where('order_id', $order->id)->sole();
+        $cashBefore = $cash->getRawOriginal();
         app(OrderLifecycleService::class)->buyerComplete($order, $buyer);
         app(OrderLifecycleService::class)->buyerComplete($order, $buyer);
         $this->assertSame(1, $seller->notifications()->where('data->milestone', 'completed')->count());
-        $this->assertStringContainsString('separate steps', $seller->notifications()->where('data->milestone', 'completed')->sole()->data['body']);
-        $this->assertSame('pending', $order->fresh()->payment_status);
+        $this->assertStringContainsString($contractVersion === 1 ? 'separate steps' : 'Actual cash transfers retain their own receipts',
+            $seller->notifications()->where('data->milestone', 'completed')->sole()->data['body']);
+        $this->assertSame($contractVersion === 1 ? 'pending' : 'paid', $order->fresh()->payment_status);
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame(1, $parcel->checkpoints()->where('checkpoint_type', $contractVersion === 1 ? 'buyer_completed' : 'delivery_completed')
+            ->where('scanned_by_id', $contractVersion === 1 ? $buyer->id : $parcel->assigned_rider_id)->count());
+        $this->assertSame(0, $parcel->checkpoints()->where('checkpoint_type', $contractVersion === 1 ? 'delivery_completed' : 'buyer_completed')->count());
+        $this->assertNull($cash->fresh()->reconciled_at);
+        $this->assertSame($cashBefore, $cash->fresh()->getRawOriginal());
     }
 
     public function test_notice_outage_does_not_undo_a_real_seller_confirmation(): void

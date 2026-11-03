@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\E2E\Tier2;
 
+use App\Models\CodAccount;
 use App\Models\Delivery;
 use App\Models\LogisticsHub;
 use App\Models\Order;
@@ -10,6 +11,7 @@ use App\Services\AccountRestrictionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
@@ -24,6 +26,18 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
     use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
     use InteractsWithOrderActions;
     use RefreshDatabase;
+
+    private int $contractVersion = 2;
+
+    protected function flowContractVersion(): int
+    {
+        return $this->contractVersion;
+    }
+
+    public static function completionContracts(): array
+    {
+        return ['historical buyer confirmation' => [1], 'verified delivery completion' => [2]];
+    }
 
     // ==========================================
     // Boundary 12: Hub Intake Barcode Mismatch
@@ -312,7 +326,9 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $before = $this->snapshot($delivery);
         $this->assertStringStartsWith('delivery-proofs/', $delivery->proof_image);
         $this->assertTrue(Storage::disk('local')->exists($delivery->proof_image));
-        $this->assertSame('pending', $delivery->order->payment_status);
+        $this->assertSame(2, $delivery->order->logistics_flow_version);
+        $this->assertSame('paid', $delivery->order->payment_status);
+        $this->assertNull(CodAccount::where('delivery_id', $delivery->id)->sole()->reconciled_at);
     }
 
     // ==========================================
@@ -337,15 +353,20 @@ class B12_to_B17_LifecycleHubToCompletedBoundaryTest extends TestCase
         $this->assertSame($before, $this->snapshot($delivery));
     }
 
-    public function test_t2_b17_03_double_order_completion_idempotency(): void
+    #[DataProvider('completionContracts')]
+    public function test_t2_b17_03_double_order_completion_idempotency(int $contractVersion): void
     {
+        $this->contractVersion = $contractVersion;
         $delivery = $this->parcel('delivered');
+        $this->assertSame($contractVersion, $delivery->order->logistics_flow_version);
         $hub = LogisticsHub::findOrFail($delivery->destination_bayan_hub_id);
         $before = $this->snapshot($delivery);
         $this->completeFlowOrder($delivery->order);
         $before = $this->snapshot($delivery);
         $this->actingAs($delivery->order->buyer)->post(route('buyer.orders.confirm', $delivery->order))->assertSessionHas('success');
-        $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'buyer_completed')->count());
+        $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', $contractVersion === 1 ? 'buyer_completed' : 'delivery_completed')
+            ->where('scanned_by_id', $contractVersion === 1 ? $delivery->order->buyer_id : $delivery->assigned_rider_id)->count());
+        $this->assertSame(0, $delivery->checkpoints()->where('checkpoint_type', $contractVersion === 1 ? 'delivery_completed' : 'buyer_completed')->count());
         $this->assertSame($before, $this->snapshot($delivery));
     }
 
