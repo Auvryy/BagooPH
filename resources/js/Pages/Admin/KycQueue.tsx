@@ -388,6 +388,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         {/* Search & Role Filter */}
                         <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
                             <select
+                                aria-label="Filter applicants by role"
                                 value={selectedRole}
                                 onChange={(e) => handleFilterChange(undefined, e.target.value)}
                                 className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans font-bold text-slate-700 outline-hidden focus:border-slate-900"
@@ -402,7 +403,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                                 <input
                                     type="text"
-                                    value={search}
+                                    aria-label="Search applicants" value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     placeholder="Search applicant or email..."
                                     className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans text-slate-900 outline-hidden focus:border-slate-900"

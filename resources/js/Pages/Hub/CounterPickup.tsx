@@ -272,7 +272,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                         <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
                             type="text"
-                            value={searchTerm}
+                            aria-label="Search counter parcels" value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Tracking code, order number, buyer name or phone..."
                             className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-sans focus:bg-white focus:outline-hidden focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] transition"

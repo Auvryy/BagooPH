@@ -194,7 +194,7 @@ test('hub registry filters make one fresh coherent visit and retain useful input
     const h = harness(t,Registry,props);
     const all = tree => !tree || typeof tree !== 'object' ? [] : [tree,...[tree.props?.children].flat(Infinity).flatMap(all)];
     let tree=h.render(); const form=all(tree).find(n=>n.type==='form');
-    const input=all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Search parcels');
+    const input=all(tree).find(n=>n.type==='input'&&n.props.id==='parcel-search');
     assert.equal(input.props.maxLength,120); input.props.onChange({target:{value:'BGO-NEW'}}); tree=h.render();
     const submit=all(tree).find(n=>n.type==='form').props.onSubmit;
     submit({preventDefault(){}}); submit({preventDefault(){}});
@@ -206,7 +206,7 @@ test('hub registry filters make one fresh coherent visit and retain useful input
     for (const prop of ['auth','activeHub','deliveries','counts','filters','eligibleRiders','canScan']) assert.ok(visit.options.only.includes(prop));
     visit.options.onError({search:'Please correct this search.'}); visit.options.onFinish();
     tree=h.render(); assert.ok(all(tree).some(n=>n.props?.role==='alert'&&n.props.children==='Please correct this search.'));
-    assert.equal(all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Search parcels').props.value,'BGO-NEW');
+    assert.equal(all(tree).find(n=>n.type==='input'&&n.props.id==='parcel-search').props.value,'BGO-NEW');
     form.props.onSubmit({preventDefault(){}}); assert.equal(h.visits.length,2);
 });
 
