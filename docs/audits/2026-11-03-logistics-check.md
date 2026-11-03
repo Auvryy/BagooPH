@@ -50,8 +50,12 @@ they do not claim every project test or every rendered state passed.
 No deployment, Azure business writes, live database reset, or physical-phone
 checks were performed. Six unaccepted mobile write gates remain disabled.
 Local fixture/kernel success does not enable them or establish deployed/device
-acceptance. The existing pending Seller Messages cleanup was preserved separately
-from this logistics change. Earlier broad audit drafts remain historical work
+acceptance. Seller Messages request cleanup was verified and committed separately
+before branch publication: ten Firefox desktop-to-phone resize/navigation cycles
+completed without browser exceptions. The focused seller interaction tests and
+the production build also passed with this cleanup. It cancels both the history
+request and the unread-count refresh when the conversation is hidden or left.
+Earlier broad audit drafts remain historical work
 in progress and are not a fresh all-green report.
 
 ## Local pull request draft

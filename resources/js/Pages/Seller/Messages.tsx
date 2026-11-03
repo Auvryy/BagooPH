@@ -82,16 +82,28 @@ export default function SellerMessages({ conversations, shop }: Props) {
     useEffect(() => {
         setMessages(activeConversation?.messages || []); setHistoryError('');
         if (!activeUser || !(desktop || chatOpen) || !documentVisible) return;
+        let active = true;
         const controller = new AbortController();
+        let cancelUnreadRefresh: (() => void) | undefined;
         fetch(`/chat/messages/${activeUser.id}`, { signal: controller.signal, headers: { Accept: 'application/json' } })
             .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
             .then(data => {
-                if (controller.signal.aborted || !Array.isArray(data.messages)) return;
+                if (!active || controller.signal.aborted || !Array.isArray(data.messages)) return;
                 setMessages(data.messages);
-                router.reload({ only: ['unreadMessagesCount', 'sidebarAttention'] });
+                router.reload({
+                    only: ['unreadMessagesCount', 'sidebarAttention'],
+                    onCancelToken: token => {
+                        cancelUnreadRefresh = () => token.cancel();
+                        if (!active) cancelUnreadRefresh();
+                    },
+                });
             })
-            .catch(() => { if (!controller.signal.aborted) setHistoryError('Could not update this conversation. Try again.'); });
-        return () => controller.abort();
+            .catch(() => { if (active && !controller.signal.aborted) setHistoryError('Could not update this conversation. Try again.'); });
+        return () => {
+            active = false;
+            controller.abort();
+            cancelUnreadRefresh?.();
+        };
     }, [activeUser?.id, activeConversation?.messages, historyRetry, desktop, chatOpen, documentVisible]);
 
     useEffect(() => {
