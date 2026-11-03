@@ -76,7 +76,9 @@ test('seller chart renders actual sales and usable period choices instead of hid
 });
 test('delivered orders display their own dated activity and cannot be presented as completed income',async()=>{
  const html=await render(ui.Sales,{...props,stats:{...stats,completedGrossSales:0,completedOrderCount:0},dailySales:sales.map(x=>({...x,revenue:0,units:0})),dailyDeliveries:sales});
- assert.match(html,/Delivered order value/);assert.match(html,/They count as completed sales after the buyer confirms receipt/);
+ assert.match(html,/Delivered order value/);
+ assert.match(html,/New deliveries complete automatically after verified handover/);
+ assert.match(html,/These historical orders still need receipt confirmation/);
  assert.doesNotMatch(html,/No delivered orders awaiting confirmation/);
  assert.doesNotMatch(html,/Selected date completed sales/);
  assert.doesNotMatch(html,/Sales chart activity|aria-pressed=/);

@@ -27,6 +27,10 @@ if (args.includes('sh') && args.includes('-lc')) {
 if (args.includes('migrate:status') && args.includes('--pending=1')) {
     process.exit(Number(process.env.TASK_PENDING_EXIT || 0));
 }
+if (args.includes('ps') && args.includes('scheduler')) {
+    if (process.env.TASK_SCHEDULER_MISSING !== '1') process.stdout.write('qa-scheduler-container\\n');
+    process.exit(0);
+}
 `, { mode: 0o755 });
 
     try {
@@ -84,6 +88,15 @@ test('verify succeeds when the manifest exists and no migrations are pending', (
     const result = runHelper('verify');
     assert.equal(result.status, 0);
     assert.match(result.stdout, /Deployment verification passed/);
+    assert.ok(result.calls.some(args => args.includes('schedule:list')));
+});
+
+test('verify rejects an absent scheduler before checking its registered jobs', () => {
+    const result = runHelper('verify', { TASK_SCHEDULER_MISSING: '1' });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /scheduler is not running/);
+    assert.ok(!result.calls.some(args => args.includes('schedule:list')));
+    assert.ok(!result.stdout.includes('Deployment verification passed'));
 });
 
 test('verify fails before checking migrations if assets are missing', () => {
