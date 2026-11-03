@@ -32,6 +32,18 @@ class ExceptionOversightTest extends TestCase
 {
     use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
+    private int $contractVersion = 2;
+
+    protected function flowContractVersion(): int
+    {
+        return $this->contractVersion;
+    }
+
+    public static function logisticsVersions(): array
+    {
+        return [[1], [2]];
+    }
+
     private function parcel(): Delivery
     {
         return $this->flowDelivery($this->newFlowOrder('ready_for_pickup'), 'out_for_delivery');
@@ -209,8 +221,10 @@ class ExceptionOversightTest extends TestCase
         return $parcel->fresh();
     }
 
-    public function test_counter_oversight_never_reveals_codes_or_releases_and_keeps_recorded_cash_holder(): void
+    #[DataProvider('logisticsVersions')]
+    public function test_counter_oversight_never_reveals_codes_or_releases_and_keeps_recorded_cash_holder(int $version): void
     {
+        $this->contractVersion = $version;
         $parcel = $this->pickup();
         $claim = PickupClaim::sole();
         $code = $this->actingAs($parcel->order->buyer)->postJson('/buyer/orders/'.$parcel->order_id.'/pickup-code')->assertOk()->json('code');
@@ -232,8 +246,8 @@ class ExceptionOversightTest extends TestCase
         $before = $this->snapshot($parcel);
         $this->postJson('/exceptions/pickup/'.$claim->id, $this->command($detail))->assertOk();
         $this->assertSame($before, $this->snapshot($parcel));
-        $this->assertSame('delivered', $parcel->order->fresh()->status);
-        $this->assertSame('pending', $parcel->order->fresh()->payment_status);
+        $this->assertSame($version >= 2 ? 'completed' : 'delivered', $parcel->order->fresh()->status);
+        $this->assertSame($version >= 2 ? 'paid' : 'pending', $parcel->order->fresh()->payment_status);
     }
 
     public function test_expired_holding_and_stale_clock_require_actual_return_and_seller_receipt(): void
@@ -257,8 +271,10 @@ class ExceptionOversightTest extends TestCase
         $this->postJson('/exceptions/pickup/'.$claim->id, $this->command($detail))->assertOk();
     }
 
-    public function test_manifest_observation_requires_real_receipt_and_source_owned_resolution(): void
+    #[DataProvider('logisticsVersions')]
+    public function test_manifest_observation_requires_real_receipt_and_source_owned_resolution(int $version): void
     {
+        $this->contractVersion = $version;
         $parcel = $this->flowDelivery($this->newFlowOrder('ready_for_pickup'), 'in_transit_to_mother_hub');
         $manifest = LogisticsManifest::findOrFail(DeliveryCheckpoint::lastCustody($parcel)['manifest_id']);
         $handler = $this->flowHandler(LogisticsHub::findOrFail($manifest->destination_hub_id));
@@ -268,6 +284,10 @@ class ExceptionOversightTest extends TestCase
         $manager = $this->manager($parcel);
         $detail = $this->detail($manager, 'manifest', $source->id);
         $this->postJson('/exceptions/manifest/'.$source->id, $this->command($detail))->assertConflict();
+        if ($version >= 2) {
+            $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest, ['barcode' => $parcel->tracking_number]))->assertConflict();
+            $this->openFlowMotherBags($manifest, $handler);
+        }
         $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest, ['barcode' => $parcel->tracking_number]))->assertOk();
         $this->assertFalse($this->detail($manager, 'manifest', $source->id)['canResolve']);
         $this->postJson('/hub/manifests/'.$manifest->id.'/resolve-discrepancy', $this->flowManifestPayload($manifest, ['source_event_id' => $source->id, 'notes' => 'The expected parcel was found and actually scanned.']))->assertOk();
