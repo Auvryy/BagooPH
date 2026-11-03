@@ -126,8 +126,9 @@ class CrossFeatureCombinationsTest extends TestCase
         $order = $this->newFlowOrder('ready_for_pickup');
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->assertCheckpointLogged($delivery, 'delivered');
+        $this->assertSame(2, $order->logistics_flow_version);
         $this->actingAs($order->buyer)->get(route('buyer.orders.show', $order))->assertInertia(fn (Assert $page) => $page
-            ->where('order.status', 'delivered')->where('canConfirmReceipt', true));
+            ->where('order.status', 'completed')->where('canConfirmReceipt', false));
     }
 
     public function test_t3_12_cod_payment_settlement_automated_split(): void
@@ -332,7 +333,8 @@ class CrossFeatureCombinationsTest extends TestCase
         $order = $this->checkoutFlowOrders($buyer, [['product' => $product]], ['voucher_code' => $voucher->code])->first();
         $this->assertEquals(149.99, $order->subtotal);
         $this->assertEquals(50, $order->voucher_discount);
-        $this->assertEquals(149.99, $order->total_amount);
+        $this->assertSame('60.00', $order->shipping_fee);
+        $this->assertSame('159.99', $order->total_amount);
         $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
         $this->settleFlowOrder($order);
@@ -402,7 +404,8 @@ class CrossFeatureCombinationsTest extends TestCase
         $this->assertSame('completed', $order->fresh()->status);
         $this->assertSame('delivered', $delivery->fresh()->status);
         $this->assertCheckpointLogged($delivery, 'arrived_at_mother_hub');
-        $this->assertCheckpointLogged($delivery, 'buyer_completed');
+        $this->assertCheckpointLogged($delivery, 'delivery_completed');
+        $this->assertSame(0, $delivery->checkpoints()->where('checkpoint_type', 'buyer_completed')->count());
     }
 
     public function test_t3_34_double_delivery_attempt_immutable_ledger(): void

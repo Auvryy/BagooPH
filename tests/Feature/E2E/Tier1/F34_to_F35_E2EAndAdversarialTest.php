@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
@@ -21,6 +22,18 @@ class F34_to_F35_E2EAndAdversarialTest extends TestCase
     use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
     use InteractsWithOrderActions;
     use RefreshDatabase;
+
+    private int $contractVersion = 2;
+
+    protected function flowContractVersion(): int
+    {
+        return $this->contractVersion;
+    }
+
+    public static function completionContracts(): array
+    {
+        return ['historical buyer confirmation' => [1], 'verified delivery completion' => [2]];
+    }
 
     // ==========================================
     // Feature 34: E2E Testing Suite
@@ -48,12 +61,19 @@ class F34_to_F35_E2EAndAdversarialTest extends TestCase
         $this->assertNotNull($buyer->id);
     }
 
-    public function test_t1_f34_05_actual_lifecycle_records_buyer_completion(): void
+    #[DataProvider('completionContracts')]
+    public function test_t1_f34_05_actual_lifecycle_records_contract_owned_completion(int $contractVersion): void
     {
+        $this->contractVersion = $contractVersion;
         $order = $this->newFlowOrder();
         $delivery = $this->flowDelivery($order, 'delivered');
+        $this->assertSame($contractVersion, $order->logistics_flow_version);
+        $this->assertSame($contractVersion === 1 ? 'delivered' : 'completed', $order->fresh()->status);
         $this->completeFlowOrder($order);
-        $this->assertCheckpointLogged($delivery, 'buyer_completed');
+        $type = $contractVersion === 1 ? 'buyer_completed' : 'delivery_completed';
+        $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', $type)
+            ->where('scanned_by_id', $contractVersion === 1 ? $order->buyer_id : $delivery->assigned_rider_id)->count());
+        $this->assertSame(0, $delivery->checkpoints()->where('checkpoint_type', $contractVersion === 1 ? 'delivery_completed' : 'buyer_completed')->count());
         $this->assertSame('completed', $order->fresh()->status);
     }
 

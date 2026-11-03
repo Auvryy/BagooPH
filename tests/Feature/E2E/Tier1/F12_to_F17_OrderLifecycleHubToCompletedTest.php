@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\E2E\Tier1;
 
+use App\Models\CodAccount;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\User;
@@ -10,6 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
@@ -24,6 +26,18 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
     use AssertsCommissionLedgers, AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithPortals, InteractsWithRoles, SimulatesOrderLifecycle;
     use InteractsWithOrderActions;
     use RefreshDatabase;
+
+    private int $contractVersion = 2;
+
+    protected function flowContractVersion(): int
+    {
+        return $this->contractVersion;
+    }
+
+    public static function completionContracts(): array
+    {
+        return ['historical buyer confirmation' => [1], 'verified delivery completion' => [2]];
+    }
 
     // ==========================================
     // Feature 12: AT_SORTING_CENTER (Stage 6)
@@ -275,8 +289,10 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
             'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('handover.jpg'),
         ])->assertSessionHas('success');
         $this->assertSame('delivered', $delivery->fresh()->status);
-        $this->assertSame('delivered', $order->fresh()->status);
-        $this->assertSame('pending', $order->fresh()->payment_status);
+        $this->assertSame(2, $order->logistics_flow_version);
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        $this->assertNull(CodAccount::where('order_id', $order->id)->sole()->reconciled_at);
     }
 
     public function test_t1_f16_03_doorstep_handover_checkpoint(): void
@@ -348,13 +364,19 @@ class F12_to_F17_OrderLifecycleHubToCompletedTest extends TestCase
         $this->assertSame('delivered', $delivery->fresh()->status);
     }
 
-    public function test_t1_f17_03_buyer_confirmed_checkpoint(): void
+    #[DataProvider('completionContracts')]
+    public function test_t1_f17_03_contract_owned_completion_checkpoint(int $contractVersion): void
     {
+        $this->contractVersion = $contractVersion;
         $order = $this->readyOrder();
         $delivery = $this->flowDelivery($order, 'delivered');
+        $this->assertSame($contractVersion, $order->logistics_flow_version);
+        $this->assertSame($contractVersion === 1 ? 'delivered' : 'completed', $order->fresh()->status);
         $this->completeFlowOrder($order);
-        $this->assertCheckpointLogged($delivery, 'buyer_completed');
-        $this->assertDatabaseHas('delivery_checkpoints', ['delivery_id' => $delivery->id, 'checkpoint_type' => 'buyer_completed', 'scanned_by_id' => $order->buyer_id]);
+        $type = $contractVersion === 1 ? 'buyer_completed' : 'delivery_completed';
+        $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', $type)
+            ->where('scanned_by_id', $contractVersion === 1 ? $order->buyer_id : $delivery->assigned_rider_id)->count());
+        $this->assertSame(0, $delivery->checkpoints()->where('checkpoint_type', $contractVersion === 1 ? 'delivery_completed' : 'buyer_completed')->count());
     }
 
     public function test_t1_f17_04_seller_settlement_finalized(): void

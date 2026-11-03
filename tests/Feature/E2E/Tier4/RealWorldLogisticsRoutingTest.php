@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\E2E\Tier4;
 
+use App\Models\CodAccount;
 use App\Models\LogisticsHub;
 use App\Models\RestrictionAffectedWork;
 use App\Models\User;
@@ -42,7 +43,8 @@ class RealWorldLogisticsRoutingTest extends TestCase
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
         $this->settleFlowOrder($order);
-        $this->assertCheckpointLogged($delivery, 'buyer_completed');
+        $this->assertCheckpointLogged($delivery, 'delivery_completed');
+        $this->assertSame(0, $delivery->checkpoints()->where('checkpoint_type', 'buyer_completed')->count());
         $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
     }
 
@@ -51,12 +53,18 @@ class RealWorldLogisticsRoutingTest extends TestCase
         $shop = $this->createE2EShop($this->createApprovedUser('seller'));
         $product = $this->createE2EProduct($shop, ['price' => 2000]);
         $order = $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop, [['product' => $product]]);
-        $this->flowDelivery($order, 'delivered');
+        $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
-        $this->assertSame('pending', $order->fresh()->payment_status);
-        $this->settleFlowOrder($order);
         $this->assertSame('paid', $order->fresh()->payment_status);
-        // Cash and seller payment were recorded independently from buyer confirmation.
+        $this->assertSame('60.00', $order->shipping_fee);
+        $cash = CodAccount::where('order_id', $order->id)->sole();
+        $this->assertSame(206000, $cash->expected_cents);
+        $this->assertSame($delivery->assigned_rider_id, $cash->collector_id);
+        $this->assertNull($cash->reconciled_at);
+        $this->settleFlowOrder($order);
+        $this->assertNotNull($cash->fresh()->reconciled_at);
+        $this->assertSame('paid', $order->fresh()->payment_status);
+        // Cash reconciliation and seller payment remain separate from verified delivery.
         $this->assertCommissionSplit($order, 2000, (float) $order->shipping_fee);
         $this->assertSame('paid', $order->fresh()->payment_status);
     }
@@ -70,7 +78,8 @@ class RealWorldLogisticsRoutingTest extends TestCase
         $this->completeFlowOrder($order);
         $this->assertSame('completed', $order->fresh()->status);
         $this->assertCheckpointLogged($delivery, 'arrived_at_mother_hub');
-        $this->assertCheckpointLogged($delivery, 'buyer_completed');
+        $this->assertCheckpointLogged($delivery, 'delivery_completed');
+        $this->assertSame(0, $delivery->checkpoints()->where('checkpoint_type', 'buyer_completed')->count());
     }
 
     public function test_t4_10_post_delivery_dispute_and_admin_governance(): void
@@ -82,7 +91,8 @@ class RealWorldLogisticsRoutingTest extends TestCase
         $admin = $this->createApprovedUser('admin');
         $this->actingAs($admin)->get(route('admin.dashboard'))->assertOk();
         $this->actingAs($admin)->get(route('buyer.orders.show', $order))->assertOk();
-        $this->assertCheckpointLogged($delivery, 'buyer_completed');
+        $this->assertCheckpointLogged($delivery, 'delivery_completed');
+        $this->assertSame(0, $delivery->checkpoints()->where('checkpoint_type', 'buyer_completed')->count());
         // Dispute processing remains deferred; finance oversight still requires real settlement sources.
         $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
     }

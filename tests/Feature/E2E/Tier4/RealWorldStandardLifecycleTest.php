@@ -5,6 +5,7 @@ namespace Tests\Feature\E2E\Tier4;
 use App\Models\Delivery;
 use App\Models\LogisticsHub;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\E2E\Support\AssertsCommissionLedgers;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
@@ -20,14 +21,32 @@ class RealWorldStandardLifecycleTest extends TestCase
     use InteractsWithOrderActions;
     use RefreshDatabase;
 
-    public function test_t4_01_standard_delivery_through_mother_hub_and_buyer_confirmation(): void
+    private int $contractVersion = 2;
+
+    protected function flowContractVersion(): int
     {
+        return $this->contractVersion;
+    }
+
+    public static function completionContracts(): array
+    {
+        return ['historical buyer confirmation' => [1], 'verified delivery completion' => [2]];
+    }
+
+    #[DataProvider('completionContracts')]
+    public function test_t4_01_standard_delivery_through_mother_hub_and_contract_owned_completion(int $contractVersion): void
+    {
+        $this->contractVersion = $contractVersion;
         $order = $this->newFlowOrder();
         $delivery = $this->flowDelivery($order, 'delivered');
+        $this->assertSame($contractVersion, $order->logistics_flow_version);
+        $this->assertSame($contractVersion === 1 ? 'delivered' : 'completed', $order->fresh()->status);
         $this->completeFlowOrder($order);
         $this->settleFlowOrder($order);
         $this->assertCheckpointLogged($delivery, 'arrived_at_mother_hub');
-        $this->assertCheckpointLogged($delivery, 'buyer_completed');
+        $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', $contractVersion === 1 ? 'buyer_completed' : 'delivery_completed')
+            ->where('scanned_by_id', $contractVersion === 1 ? $order->buyer_id : $delivery->assigned_rider_id)->count());
+        $this->assertSame(0, $delivery->checkpoints()->where('checkpoint_type', $contractVersion === 1 ? 'delivery_completed' : 'buyer_completed')->count());
 
         $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
     }
@@ -59,7 +78,8 @@ class RealWorldStandardLifecycleTest extends TestCase
         $this->assertSame([$shop1->id, $shop2->id], $orders->map(fn ($order) => $order->items->first()->shop_id)->all());
         $this->assertCount(2, $orders->pluck('delivery.tracking_number')->unique());
         $this->assertSame([3, 4], [$product1->fresh()->stock, $product2->fresh()->stock]);
-        $this->assertSame(['50.00', '50.00'], $orders->pluck('shipping_fee')->all());
+        $this->assertSame([2, 2], $orders->pluck('logistics_flow_version')->all());
+        $this->assertSame(['60.00', '60.00'], $orders->pluck('shipping_fee')->all());
         $this->assertDatabaseCount('checkout_submissions', 1);
     }
 
@@ -73,7 +93,8 @@ class RealWorldStandardLifecycleTest extends TestCase
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
         $this->assertCheckpointLogged($delivery, 'arrived_at_mother_hub');
-        $this->assertCheckpointLogged($delivery, 'buyer_completed');
+        $this->assertCheckpointLogged($delivery, 'delivery_completed');
+        $this->assertSame(0, $delivery->checkpoints()->where('checkpoint_type', 'buyer_completed')->count());
         $this->assertSame(9, $product->fresh()->stock);
     }
 

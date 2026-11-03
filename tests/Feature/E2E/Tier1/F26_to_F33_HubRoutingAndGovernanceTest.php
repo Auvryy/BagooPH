@@ -310,14 +310,17 @@ class F26_to_F33_HubRoutingAndGovernanceTest extends TestCase
     {
         $rejectedCourier = $this->createRejectedUser('courier', 'Blurred license photo');
         $response = $this->actingAs($rejectedCourier)->get('/dashboard');
-        $this->assertTrue($response->isRedirect(route('kyc.pending')));
+        $response->assertRedirect(route('account.status'));
+        $this->get(route('account.status'))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/AccountStatus')->where('status.account.kyc_status', 'rejected')->where('status.can_open_portal', false));
     }
 
     public function test_t1_f31_04_action_barred(): void
     {
         $rejectedCourier = $this->createRejectedUser('courier');
         $response = $this->actingAs($rejectedCourier)->get(route('courier.deliveries'));
-        $this->assertTrue($response->isRedirect(route('kyc.pending')));
+        $response->assertRedirect(route('account.status'));
+        $this->assertSame('rejected', $rejectedCourier->fresh()->kyc_status);
     }
 
     public function test_t1_f31_05_resubmission_permitted(): void
