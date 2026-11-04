@@ -45,6 +45,17 @@ source review and the production build passed. A new rendered accessibility scan
 and actual keyboard interaction remain manual follow-up; overall readiness and
 native/deployed acceptance are unchanged. See [the evidence and local PR draft](audits/2026-11-04-essential-accessibility.md).
 
+The final follow-up also resets KYC acknowledgement/errors when a document chip
+opens a different applicant, adds managed nested review dialogs, and blocks
+same-tick duplicate/competing decisions or dismissal while pending. Client review
+state isolation: **5/10 → 8/10**, with six reproduced red/green regressions. The
+latest combined checks passed 119 frontend tests and 51 auth/KYC backend tests /
+261 assertions, plus the production build. Browser focus/scrolling remains a
+manual check. Four compatible locked dependency updates now yield zero reported
+Composer/npm findings; [dependency evidence](audits/2026-11-04-dependency-patches.md)
+records scope, upstream sources and offline probes. No deployment or mobile
+acceptance gate was changed.
+
 ## November 3 logistics interaction check
 
 The pickup counter now replaces its hours draft with the selected hub's saved
