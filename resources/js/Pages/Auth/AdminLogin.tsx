@@ -59,7 +59,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
 
             <form onSubmit={submit} className="space-y-4 font-sans">
                 <div>
-                    <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                    <label htmlFor="email" className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
                         Administrator Email Address
                     </label>
                     <div className="relative">
@@ -69,7 +69,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                             type="email"
                             name="email"
                             value={data.email}
-                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-hidden font-sans transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-hidden font-sans transition text-slate-900 placeholder-slate-500"
                             placeholder="admin@domain.com"
                             autoComplete="username"
                             autoFocus
@@ -82,7 +82,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
 
                 <div>
                     <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                        <label htmlFor="password" className="block text-[11px] font-bold text-slate-800 uppercase tracking-wider">
                             Administrator Security Key / Password
                         </label>
                         {canResetPassword && (
@@ -101,7 +101,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                             type={showPassword ? 'text' : 'password'}
                             name="password"
                             value={data.password}
-                            className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-hidden font-sans transition text-slate-900 placeholder-slate-400"
+                            className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-300 rounded-lg focus:border-amber-600 focus:ring-1 focus:ring-amber-600 outline-hidden font-sans transition text-slate-900 placeholder-slate-500"
                             placeholder="••••••••••••"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
@@ -110,7 +110,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-700 transition"
                             title={showPassword ? 'Hide password' : 'Show password'}
                         >
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -134,7 +134,7 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
                     <button
                         type="submit"
                         disabled={processing}
-                        className="w-full py-3 bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                        className="w-full py-3 bg-amber-700 hover:bg-amber-800 active:scale-[0.98] text-white font-bold text-xs rounded-lg shadow-xs transition uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                         <span>{processing ? 'Verifying Key...' : 'Authorize Admin Console'}</span>
                         <ArrowRight className="w-4 h-4" />
