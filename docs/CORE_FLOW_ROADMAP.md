@@ -30,6 +30,21 @@ Buyer checkout
 
 The core flow is complete only when the entire chain passes cross-role tests without a portal inventing statuses, bypassing custody, settling COD early, or relying on sample success data.
 
+## November 4 essential web accessibility fixes
+
+Fresh GitHub/local web main matched `2fd6486` before the final UI branch was
+created; Rider main matched `998cf0d`. Shared authentication and seller chat
+helper text, operational sign-in controls and KYC status/review text now have
+stronger contrast. Four sign-in pages associate their visible labels with the
+existing inputs. The KYC horizontal table region is named, tabbable and has an
+inset focus indicator without changing table or approval behaviour.
+
+Scoped readability/keyboard slice: **5/10 → 8/10**. Seventy-six focused existing
+frontend tests, eleven solid-colour calculations (minimum 4.70:1), independent
+source review and the production build passed. A new rendered accessibility scan
+and actual keyboard interaction remain manual follow-up; overall readiness and
+native/deployed acceptance are unchanged. See [the evidence and local PR draft](audits/2026-11-04-essential-accessibility.md).
+
 ## November 3 logistics interaction check
 
 The pickup counter now replaces its hours draft with the selected hub's saved
