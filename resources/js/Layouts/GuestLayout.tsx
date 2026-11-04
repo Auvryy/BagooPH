@@ -109,7 +109,7 @@ function AuthEcosystemFooter() {
                     <div className="flex flex-wrap gap-1.5 text-xs font-medium font-sans">
                         <span className="px-2 py-0.5 bg-slate-100 rounded-xs border border-slate-300 text-slate-700 font-bold">Cash on Delivery (COD)</span>
                     </div>
-                    <p className="text-slate-400 text-xs mt-3 leading-relaxed">
+                    <p className="text-slate-600 text-xs mt-3 leading-relaxed">
                         100% Escrow & Inspection Guarantee on all Doorstep Deliveries.
                     </p>
                 </div>
@@ -126,18 +126,18 @@ function AuthEcosystemFooter() {
                             </a>
                         </li>
                         <li>
-                            <span className="text-slate-400">Strict KYC Compliance Verified</span>
+                            <span className="text-slate-600">Strict KYC Compliance Verified</span>
                         </li>
                         <li><a href="/terms" className="hover:text-slate-900 underline-offset-4 hover:underline">Terms of Use</a></li>
                         <li><a href="/privacy" className="hover:text-slate-900 underline-offset-4 hover:underline">Privacy Notice</a></li>
                         <li>
-                            <span className="text-slate-400">10% Flat Platform Fee Standard</span>
+                            <span className="text-slate-600">10% Flat Platform Fee Standard</span>
                         </li>
                     </ul>
                 </div>
             </div>
 
-            <div className="border-t border-slate-200 py-6 text-center text-xs text-slate-400 font-sans flex flex-col sm:flex-row items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 gap-2">
+            <div className="border-t border-slate-200 py-6 text-center text-xs text-slate-600 font-sans flex flex-col sm:flex-row items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 gap-2">
                 <span>BagooPH // Next-Gen Multi-Role Commerce Ecosystem</span>
                 <span>&copy; {new Date().getFullYear()} BagooPH. All Rights Reserved.</span>
             </div>
@@ -235,7 +235,7 @@ export default function GuestLayout({
                             </div>
 
                             {/* Inner Column Sub-Footer */}
-                            <div className="pt-8 text-slate-400 font-sans text-[11px] flex items-center justify-between border-t border-slate-100 w-full">
+                            <div className="pt-8 text-slate-600 font-sans text-[11px] flex items-center justify-between border-t border-slate-100 w-full">
                                 <span>BagooPH // Secure Authentication</span>
                                 <span>&copy; {new Date().getFullYear()}</span>
                             </div>
@@ -368,7 +368,7 @@ export default function GuestLayout({
                     )}
                 </main>
 
-                <div className="w-full max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 font-sans text-[10px] text-slate-400 py-3 border-t border-slate-200">
+                <div className="w-full max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 font-sans text-[10px] text-slate-600 py-3 border-t border-slate-200">
                     <span>BAGOO SECURE GATEWAY // ENCRYPTED SESSION</span>
                     <span>METRO MANILA COD LOGISTICS // 10% FLAT PLATFORM STANDARD</span>
                 </div>

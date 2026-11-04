@@ -173,7 +173,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
 
                     <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-slate-100">
                         {filteredConversations.length === 0 ? (
-                            <p className="text-xs text-slate-400 py-12 text-center font-sans">No conversations found.</p>
+                            <p className="text-xs text-slate-600 py-12 text-center font-sans">No conversations found.</p>
                         ) : (
                             filteredConversations.map((c) => {
                                 const isSelected = activeUser?.id === c.user?.id;
@@ -195,7 +195,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between">
                                                 <h4 className="font-bold text-xs text-slate-900 truncate">{c.user?.name || 'Contact'}</h4>
-                                                <span className="text-[10px] font-sans text-slate-400">{c.last_time}</span>
+                                                <span className="text-[10px] font-sans text-slate-600">{c.last_time}</span>
                                             </div>
                                             <p className="text-xs text-slate-500 truncate mt-0.5">{c.last_message}</p>
                                         </div>
@@ -219,7 +219,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                                 </div>
                                 <div className="min-w-0">
                                     <h3 ref={conversationHeading} tabIndex={-1} className="break-words font-bold text-sm text-slate-900 outline-none">{activeUser.name}</h3>
-                                    <p className="text-[10px] font-sans text-slate-400">
+                                    <p className="text-[10px] font-sans text-slate-600">
                                         {activeUser.role === 'courier' ? 'Pickup rider' : 'Customer'}{activeUser.city ? ` · ${activeUser.city}` : ''}
                                     </p>
                                 </div>
@@ -278,7 +278,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                                             <ChatAttachment url={msg.attachment_url} />
                                                 <p className="leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.message}</p>
                                         </div>
-                                        <span className="text-[9px] font-sans text-slate-400 mt-1 px-1">
+                                        <span className="text-[9px] font-sans text-slate-600 mt-1 px-1">
                                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
@@ -317,7 +317,7 @@ export default function SellerMessages({ conversations, shop }: Props) {
                     <div className="hidden min-w-0 flex-1 flex-col items-center justify-center p-6 text-center text-slate-600 font-sans text-xs lg:flex">
                         <MessageSquare className="w-12 h-12 text-slate-300 mb-2" />
                         <p className="font-bold text-slate-700 text-sm font-sans">No Conversation Selected</p>
-                        <p className="text-slate-400">Choose a customer thread on the left to start messaging.</p>
+                        <p className="text-slate-600">Choose a customer thread on the left to start messaging.</p>
                     </div>
                 )}
 

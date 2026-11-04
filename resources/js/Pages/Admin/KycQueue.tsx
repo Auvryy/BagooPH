@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useRef, useState } from 'react';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { Head, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PaginatedData, User } from '@/types';
@@ -88,25 +88,29 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
     const [evidenceConfirmed, setEvidenceConfirmed] = useState(false);
     const [approvalProcessing, setApprovalProcessing] = useState(false);
     const [reviewError, setReviewError] = useState('');
+    const decisionPending = useRef(false);
 
     // Reject Modal State
     const [rejectingApplicant, setRejectingApplicant] = useState<KycApplicant | null>(null);
-    const { data: rejectData, setData: setRejectData, post: postReject, processing: rejectProcessing, reset: resetReject, errors: rejectErrors } = useForm({
+    const { data: rejectData, setData: setRejectData, post: postReject, processing: rejectProcessing, reset: resetReject, errors: rejectErrors, clearErrors: clearRejectErrors } = useForm({
         reason: '',
         review_token: '',
     });
 
-    // Scroll locking for open modals
-    useEffect(() => {
-        if (inspectingApplicant || rejectingApplicant) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-        return () => {
-            document.body.style.overflow = '';
-        };
-    }, [inspectingApplicant, rejectingApplicant]);
+    const decisionProcessing = approvalProcessing || rejectProcessing;
+    const closeInspector = () => {
+        if (!rejectingApplicant && !decisionPending.current && !decisionProcessing) setInspectingApplicant(null);
+    };
+    const closeRejection = () => {
+        if (!decisionPending.current && !decisionProcessing) setRejectingApplicant(null);
+    };
+    const openInspector = (applicant: KycApplicant, document: DocumentKind = applicant.required_documents[0] || 'id') => {
+        if (decisionPending.current || decisionProcessing) return;
+        setInspectingApplicant(applicant);
+        setActiveDocTab(document);
+        setEvidenceConfirmed(false);
+        setReviewError('');
+    };
 
     const handleFilterChange = (newStatus?: string, newRole?: string) => {
         const s = newStatus !== undefined ? newStatus : selectedStatus;
@@ -134,7 +138,8 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
     };
 
     const handleApprove = (applicant: KycApplicant) => {
-        if (approvalProcessing || !evidenceConfirmed) return;
+        if (decisionPending.current || decisionProcessing || !evidenceConfirmed || applicant.review_issues.length > 0) return;
+        decisionPending.current = true;
         setApprovalProcessing(true);
         setReviewError('');
         router.post(route('admin.kyc.approve', applicant.id), {
@@ -144,18 +149,23 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
             preserveScroll: true,
             onSuccess: () => setInspectingApplicant(null),
             onError: (errors) => setReviewError(Object.values(errors).join(' ')),
-            onFinish: () => setApprovalProcessing(false),
+            onFinish: () => { decisionPending.current = false; setApprovalProcessing(false); },
         });
     };
 
     const openRejectModal = (applicant: KycApplicant) => {
+        if (decisionPending.current || decisionProcessing) return;
+        setEvidenceConfirmed(false);
+        setReviewError('');
+        clearRejectErrors();
         setRejectingApplicant(applicant);
         setRejectData({ reason: '', review_token: applicant.review_token });
     };
 
     const handleRejectSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!rejectingApplicant) return;
+        if (!rejectingApplicant || decisionPending.current || decisionProcessing) return;
+        decisionPending.current = true;
 
         postReject(route('admin.kyc.reject', rejectingApplicant.id), {
             preserveScroll: true,
@@ -166,10 +176,12 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                     setInspectingApplicant(null);
                 }
             },
+            onFinish: () => { decisionPending.current = false; },
         });
     };
 
     const fillPresetReason = (preset: string) => {
+        if (decisionPending.current || decisionProcessing) return;
         setRejectData('reason', preset);
     };
 
@@ -197,7 +209,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
     const renderDocumentPreview = (path: string | null | undefined) => {
         if (!path) {
             return (
-                <div className="h-96 flex flex-col items-center justify-center text-slate-400 bg-slate-100 rounded-xl border border-dashed border-slate-300">
+                <div className="h-96 flex flex-col items-center justify-center text-slate-600 bg-slate-100 rounded-xl border border-dashed border-slate-300">
                     <FileText className="w-12 h-12 mb-2 text-slate-300" />
                     <p className="font-sans text-xs">No document file attached</p>
                 </div>
@@ -247,6 +259,104 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
         );
     };
 
+    const rejectionDialog = rejectingApplicant ? (
+        <Dialog open onClose={closeRejection} className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans">
+            <DialogPanel className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
+                            <AlertTriangle className="w-4 h-4" />
+                        </div>
+                        <DialogTitle as="h3" className="font-bold text-sm text-slate-900">
+                            Reject Application & Provide Feedback
+                        </DialogTitle>
+                    </div>
+                    <button
+                        onClick={closeRejection}
+                        disabled={decisionProcessing}
+                        type="button"
+                        aria-label="Close rejection feedback"
+                        className="text-slate-600 hover:text-slate-700 p-1"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed">
+                    Specify the reason why <strong>{rejectingApplicant.name}</strong>'s KYC application is rejected. The user will be prompted to resubmit corrected documents on their pending gate screen.
+                </p>
+
+                {/* Quick Presets */}
+                <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                        Quick Fill Presets:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                        {[
+                            "Blurry or unreadable document scan.",
+                            "Expired business permit or government ID.",
+                            "Name on ID does not match account applicant name.",
+                            "Vehicle OR/CR document is invalid or incomplete.",
+                            "Incomplete business address or store details.",
+                        ].map((preset, idx) => (
+                            <button
+                                key={idx}
+                                type="button"
+                                onClick={() => fillPresetReason(preset)}
+                                disabled={decisionProcessing}
+                                className="text-[11px] px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                + {preset}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <form onSubmit={handleRejectSubmit} className="space-y-3">
+                    {rejectErrors.review_token && <p role="alert" className="text-xs text-rose-700">{rejectErrors.review_token}</p>}
+                    <div>
+                        <label htmlFor="kyc-rejection-reason" className="block text-xs font-semibold text-slate-900 mb-1">
+                            Feedback & Instructions for Resubmission *
+                        </label>
+                        <textarea
+                            id="kyc-rejection-reason"
+                            disabled={decisionProcessing}
+                            value={rejectData.reason}
+                            onChange={(e) => setRejectData('reason', e.target.value)}
+                            rows={4}
+                            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 outline-hidden focus:border-rose-600 focus:bg-white transition"
+                            placeholder="Explain required corrections in detail..."
+                            required
+                        />
+                        {rejectErrors.reason && (
+                            <p className="text-[10px] text-rose-600 mt-1">{rejectErrors.reason}</p>
+                        )}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button
+                            type="button"
+                            onClick={closeRejection}
+                            disabled={decisionProcessing}
+                            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="submit"
+                            disabled={decisionProcessing || rejectData.reason.length < 5}
+                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                            <ShieldAlert className="w-3.5 h-3.5" />
+                            <span>{rejectProcessing ? 'Rejecting...' : 'Confirm Rejection'}</span>
+                        </button>
+                    </div>
+                </form>
+            </DialogPanel>
+        </Dialog>
+    ) : null;
+
     return (
         <DashboardLayout
             title="KYC Verification Queue"
@@ -261,18 +371,18 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         onClick={() => handleFilterChange('pending_approval', 'all')}
                         className={`p-4 rounded-xl border transition cursor-pointer shadow-xs ${
                             selectedStatus === 'pending_approval' 
-                                ? 'bg-amber-500 text-white border-amber-600 ring-2 ring-amber-500/20' 
+                                ? 'bg-amber-700 text-white border-amber-600 ring-2 ring-amber-500/20'
                                 : 'bg-white border-slate-200 hover:border-amber-400'
                         }`}
                     >
                         <div className="flex items-center justify-between">
-                            <span className={`text-[10px] font-sans font-bold uppercase tracking-wider ${selectedStatus === 'pending_approval' ? 'text-amber-100' : 'text-slate-500'}`}>
+                            <span className={`text-[10px] font-sans font-bold uppercase tracking-wider ${selectedStatus === 'pending_approval' ? 'text-white' : 'text-slate-500'}`}>
                                 Pending Review
                             </span>
                             <Clock className={`w-4 h-4 ${selectedStatus === 'pending_approval' ? 'text-white' : 'text-amber-500'}`} />
                         </div>
                         <p className="text-2xl font-black font-sans mt-1">{stats.pending_count}</p>
-                        <div className={`text-[10px] font-sans mt-1 ${selectedStatus === 'pending_approval' ? 'text-amber-100' : 'text-slate-400'}`}>
+                        <div className={`text-[10px] font-sans mt-1 ${selectedStatus === 'pending_approval' ? 'text-white' : 'text-slate-600'}`}>
                             {stats.pending_sellers} Sellers • {stats.pending_couriers} Couriers
                         </div>
                     </div>
@@ -281,18 +391,18 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         onClick={() => handleFilterChange('approved', 'all')}
                         className={`p-4 rounded-xl border transition cursor-pointer shadow-xs ${
                             selectedStatus === 'approved' 
-                                ? 'bg-emerald-600 text-white border-emerald-700 ring-2 ring-emerald-500/20' 
+                                ? 'bg-emerald-700 text-white border-emerald-700 ring-2 ring-emerald-500/20'
                                 : 'bg-white border-slate-200 hover:border-emerald-400'
                         }`}
                     >
                         <div className="flex items-center justify-between">
-                            <span className={`text-[10px] font-sans font-bold uppercase tracking-wider ${selectedStatus === 'approved' ? 'text-emerald-100' : 'text-slate-500'}`}>
+                            <span className={`text-[10px] font-sans font-bold uppercase tracking-wider ${selectedStatus === 'approved' ? 'text-white' : 'text-slate-500'}`}>
                                 Approved Accounts
                             </span>
                             <ShieldCheck className={`w-4 h-4 ${selectedStatus === 'approved' ? 'text-white' : 'text-emerald-600'}`} />
                         </div>
                         <p className="text-2xl font-black font-sans mt-1">{stats.approved_count}</p>
-                        <span className={`text-[10px] font-sans mt-1 block ${selectedStatus === 'approved' ? 'text-emerald-100' : 'text-slate-400'}`}>
+                        <span className={`text-[10px] font-sans mt-1 block ${selectedStatus === 'approved' ? 'text-white' : 'text-slate-600'}`}>
                             Active Platform Users
                         </span>
                     </div>
@@ -306,13 +416,13 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         }`}
                     >
                         <div className="flex items-center justify-between">
-                            <span className={`text-[10px] font-sans font-bold uppercase tracking-wider ${selectedStatus === 'rejected' ? 'text-rose-100' : 'text-slate-500'}`}>
+                            <span className={`text-[10px] font-sans font-bold uppercase tracking-wider ${selectedStatus === 'rejected' ? 'text-white' : 'text-slate-500'}`}>
                                 Rejected / Flagged
                             </span>
                             <ShieldAlert className={`w-4 h-4 ${selectedStatus === 'rejected' ? 'text-white' : 'text-rose-500'}`} />
                         </div>
                         <p className="text-2xl font-black font-sans mt-1">{stats.rejected_count}</p>
-                        <span className={`text-[10px] font-sans mt-1 block ${selectedStatus === 'rejected' ? 'text-rose-100' : 'text-slate-400'}`}>
+                        <span className={`text-[10px] font-sans mt-1 block ${selectedStatus === 'rejected' ? 'text-white' : 'text-slate-600'}`}>
                             Awaiting Resubmission
                         </span>
                     </div>
@@ -332,7 +442,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                             <Layers className={`w-4 h-4 ${selectedStatus === 'all' ? 'text-white' : 'text-slate-600'}`} />
                         </div>
                         <p className="text-2xl font-black font-sans mt-1">{stats.total_count}</p>
-                        <span className={`text-[10px] font-sans mt-1 block ${selectedStatus === 'all' ? 'text-slate-300' : 'text-slate-400'}`}>
+                        <span className={`text-[10px] font-sans mt-1 block ${selectedStatus === 'all' ? 'text-slate-300' : 'text-slate-600'}`}>
                             Across All Roles
                         </span>
                     </div>
@@ -347,7 +457,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 onClick={() => handleFilterChange('pending_approval')}
                                 className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap cursor-pointer ${
                                     selectedStatus === 'pending_approval'
-                                        ? 'bg-amber-500 text-white shadow-xs'
+                                        ? 'bg-amber-700 text-white shadow-xs'
                                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                                 }`}
                             >
@@ -357,7 +467,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 onClick={() => handleFilterChange('approved')}
                                 className={`px-3 py-1.5 rounded-lg font-bold transition whitespace-nowrap cursor-pointer ${
                                     selectedStatus === 'approved'
-                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        ? 'bg-emerald-700 text-white shadow-xs'
                                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                                 }`}
                             >
@@ -422,7 +532,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
 
                 {/* 3. Applicant Data Table */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-                    <div className="overflow-x-auto">
+                    <div role="region" aria-label="KYC application table" tabIndex={0} className="overflow-x-auto focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#E00D42]">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-sans font-bold uppercase tracking-wider text-slate-500">
@@ -436,7 +546,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                             <tbody className="divide-y divide-slate-100 text-xs font-sans">
                                 {applicants.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="py-12 text-center text-slate-400 font-sans">
+                                        <td colSpan={5} className="py-12 text-center text-slate-600 font-sans">
                                             <FileCheck className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                                             <p className="text-sm font-bold text-slate-600">No applicants matching criteria</p>
                                             <p className="text-xs">All applications in this filter have been processed.</p>
@@ -503,10 +613,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                                             <button
                                                                 key={doc.key}
                                                                 type="button"
-                                                                onClick={() => {
-                                                                    setInspectingApplicant(applicant);
-                                                                    setActiveDocTab(doc.key);
-                                                                }}
+                                                                onClick={() => openInspector(applicant, doc.key)}
                                                                 className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition ${
                                                                     doc.path 
                                                                         ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200' 
@@ -548,12 +655,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                                 <td className="py-3.5 px-4 text-right font-sans">
                                                     <div className="flex items-center justify-end gap-1.5">
                                                         <button
-                                                            onClick={() => {
-                                                                setInspectingApplicant(applicant);
-                                                                setActiveDocTab(applicant.required_documents[0] || 'id');
-                                                                setEvidenceConfirmed(false);
-                                                                setReviewError('');
-                                                            }}
+                                                            onClick={() => openInspector(applicant)}
                                                             className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md font-bold text-[11px] flex items-center gap-1 transition"
                                                             title="Inspect Submitted Documents"
                                                         >
@@ -610,9 +712,9 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
             </div>
 
             {/* 4. High-Resolution Document Inspection Modal (Portaled to root) */}
-            {typeof document !== 'undefined' && inspectingApplicant && createPortal(
-                <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-fade-in font-sans">
-                    <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+            {inspectingApplicant && (
+                <Dialog open onClose={closeInspector} className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-fade-in font-sans">
+                    <DialogPanel className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
                         {/* Modal Header */}
                         <div className="p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
                             <div className="flex items-center gap-2.5">
@@ -620,7 +722,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                     <Eye className="w-4 h-4" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-sm">KYC Document Inspector</h3>
+                                    <DialogTitle as="h3" className="font-bold text-sm">KYC Document Inspector</DialogTitle>
                                     <p className="text-xs text-slate-400">
                                         {inspectingApplicant.name} • {inspectingApplicant.email} ({inspectingApplicant.role.toUpperCase()})
                                     </p>
@@ -628,7 +730,10 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                             </div>
 
                             <button
-                                onClick={() => setInspectingApplicant(null)}
+                                onClick={closeInspector}
+                                disabled={decisionProcessing}
+                                type="button"
+                                aria-label="Close KYC document inspector"
                                 className="p-1.5 text-slate-400 hover:text-white rounded-lg transition"
                             >
                                 <X className="w-5 h-5" />
@@ -660,19 +765,19 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                             {/* Applicant Metadata Box */}
                             <div className="p-3 bg-white border border-slate-200 rounded-xl grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                                 <div>
-                                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Name</span>
+                                    <span className="text-[10px] text-slate-600 block uppercase font-medium">Name</span>
                                     <span className="font-semibold text-slate-900">{inspectingApplicant.name}</span>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Contact Phone</span>
+                                    <span className="text-[10px] text-slate-600 block uppercase font-medium">Contact Phone</span>
                                     <span className="font-semibold text-slate-900">{inspectingApplicant.phone || 'N/A'}</span>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Address / Hub</span>
+                                    <span className="text-[10px] text-slate-600 block uppercase font-medium">Address / Hub</span>
                                     <span className="font-semibold text-slate-900 truncate block">{inspectingApplicant.address || 'Not provided'}</span>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Current KYC Status</span>
+                                    <span className="text-[10px] text-slate-600 block uppercase font-medium">Current KYC Status</span>
                                     <span className="font-bold uppercase text-[#E00D42]">{inspectingApplicant.kyc_status}</span>
                                 </div>
                             </div>
@@ -747,7 +852,8 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                         <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-between gap-3 shrink-0">
                             <button
                                 type="button"
-                                onClick={() => setInspectingApplicant(null)}
+                                onClick={closeInspector}
+                                disabled={decisionProcessing}
                                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
                             >
                                 Close
@@ -757,6 +863,7 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 <button
                                     type="button"
                                     onClick={() => openRejectModal(inspectingApplicant)}
+                                    disabled={decisionProcessing}
                                     className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                                 >
                                     <X className="w-4 h-4" />
@@ -766,111 +873,19 @@ export default function KycQueue({ applicants, filters, stats }: KycQueueProps) 
                                 <button
                                     type="button"
                                     onClick={() => handleApprove(inspectingApplicant)}
-                                    disabled={approvalProcessing || !evidenceConfirmed || inspectingApplicant.review_issues.length > 0}
-                                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={decisionProcessing || !evidenceConfirmed || inspectingApplicant.review_issues.length > 0}
+                                    className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <Check className="w-4 h-4" />
                                     <span>{approvalProcessing ? 'Recording...' : 'Approve Submission'}</span>
                                 </button>
                             </div>}
                         </div>
-                    </div>
-                </div>,
-                document.body
+                    </DialogPanel>
+                    {rejectionDialog}
+                </Dialog>
             )}
-
-            {/* 5. Reject with Feedback Modal (Portaled to root) */}
-            {typeof document !== 'undefined' && rejectingApplicant && createPortal(
-                <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans">
-                    <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
-                                    <AlertTriangle className="w-4 h-4" />
-                                </div>
-                                <h3 className="font-bold text-sm text-slate-900">
-                                    Reject Application & Provide Feedback
-                                </h3>
-                            </div>
-                            <button
-                                onClick={() => setRejectingApplicant(null)}
-                                className="text-slate-400 hover:text-slate-700 p-1"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                            Specify the reason why <strong>{rejectingApplicant.name}</strong>'s KYC application is rejected. The user will be prompted to resubmit corrected documents on their pending gate screen.
-                        </p>
-
-                        {/* Quick Presets */}
-                        <div className="space-y-1.5">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                Quick Fill Presets:
-                            </span>
-                            <div className="flex flex-wrap gap-1">
-                                {[
-                                    "Blurry or unreadable document scan.",
-                                    "Expired business permit or government ID.",
-                                    "Name on ID does not match account applicant name.",
-                                    "Vehicle OR/CR document is invalid or incomplete.",
-                                    "Incomplete business address or store details.",
-                                ].map((preset, idx) => (
-                                    <button
-                                        key={idx}
-                                        type="button"
-                                        onClick={() => fillPresetReason(preset)}
-                                        className="text-[11px] px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition text-left cursor-pointer"
-                                    >
-                                        + {preset}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <form onSubmit={handleRejectSubmit} className="space-y-3">
-                            {rejectErrors.review_token && <p role="alert" className="text-xs text-rose-700">{rejectErrors.review_token}</p>}
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-900 mb-1">
-                                    Feedback & Instructions for Resubmission *
-                                </label>
-                                <textarea
-                                    value={rejectData.reason}
-                                    onChange={(e) => setRejectData('reason', e.target.value)}
-                                    rows={4}
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 outline-hidden focus:border-rose-600 focus:bg-white transition"
-                                    placeholder="Explain required corrections in detail..."
-                                    required
-                                />
-                                {rejectErrors.reason && (
-                                    <p className="text-[10px] text-rose-600 mt-1">{rejectErrors.reason}</p>
-                                )}
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setRejectingApplicant(null)}
-                                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition cursor-pointer"
-                                >
-                                    Cancel
-                                </button>
-
-                                <button
-                                    type="submit"
-                                    disabled={rejectProcessing || rejectData.reason.length < 5}
-                                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                                >
-                                    <ShieldAlert className="w-3.5 h-3.5" />
-                                    <span>{rejectProcessing ? 'Rejecting...' : 'Confirm Rejection'}</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>,
-                document.body
-            )}
+            {!inspectingApplicant && rejectionDialog}
         </DashboardLayout>
     );
 }
