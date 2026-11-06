@@ -59,10 +59,10 @@ interface Props {
 
 export default function BuyerMessages({ conversations }: Props) {
     const { auth } = usePage<PageProps>().props;
-    const [selectedConvIndex, setSelectedConvIndex] = useState(0);
+    const [selectedConvUserId, setSelectedConvUserId] = useState<number | null>(conversations[0]?.user.id ?? null);
     const [replyText, setReplyText] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [mobileChatOpen, setMobileChatOpen] = useState(true);
+    const [mobileChatOpen, setMobileChatOpen] = useState(conversations.length > 0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [historyError, setHistoryError] = useState('');
     const [historyRetry, setHistoryRetry] = useState(0);
@@ -78,7 +78,10 @@ export default function BuyerMessages({ conversations }: Props) {
         return name.includes(q) || shopName.includes(q) || lastMsg.includes(q);
     });
 
-    const currentConv = filteredConversations[selectedConvIndex] || displayConversations[0];
+    const currentConv = filteredConversations.find(conversation => conversation.user.id === selectedConvUserId)
+        ?? filteredConversations[0]
+        ?? null;
+    const unreadCount = displayConversations.reduce((total, conversation) => total + conversation.unread_count, 0);
 
     const [activeMessages, setActiveMessages] = useState<MessageItem[]>(
         currentConv?.messages || []
@@ -97,7 +100,13 @@ export default function BuyerMessages({ conversations }: Props) {
             .then(data => { if (!controller.signal.aborted && Array.isArray(data.messages)) setActiveMessages(data.messages); })
             .catch(() => { if (!controller.signal.aborted) setHistoryError('Could not update this conversation. Try again.'); });
         return () => controller.abort();
-    }, [selectedConvIndex, currentConv?.user?.id, currentConv?.messages, historyRetry]);
+    }, [currentConv?.user?.id, currentConv?.messages, historyRetry]);
+
+    useEffect(() => {
+        if (currentConv?.user.id && currentConv.user.id !== selectedConvUserId) {
+            setSelectedConvUserId(currentConv.user.id);
+        }
+    }, [currentConv?.user.id, selectedConvUserId]);
 
     useEffect(() => {
         scrollToBottom();
@@ -135,15 +144,17 @@ export default function BuyerMessages({ conversations }: Props) {
 
             <div className="h-full flex flex-col min-h-0">
                 {/* 1. COMPACT TOP HEADER */}
-                <div className="bg-white rounded-2xl px-4 py-2 sm:px-5 sm:py-2.5 border border-slate-200 shadow-2xs flex items-center justify-between font-sans shrink-0 mb-2 sm:mb-2.5">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-red-50 text-[#E00D42] flex items-center justify-center font-bold shrink-0">
-                            <MessageSquare className="w-4 h-4" />
+                <div className="mb-2.5 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-100 bg-gradient-to-r from-white via-white to-rose-50 px-4 py-3 shadow-sm sm:mb-3 sm:px-5">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E00D42] text-white shadow-sm"><MessageSquare className="h-5 w-5" aria-hidden="true" /></div>
+                        <div className="min-w-0">
+                            <h1 className="truncate text-sm font-black leading-tight text-slate-900 sm:text-base">In-App Chat &amp; Inquiries</h1>
+                            <p className="mt-0.5 hidden text-[11px] text-slate-500 sm:block">Product questions and marketplace conversations</p>
                         </div>
-                        <div>
-                            <h1 className="font-black text-sm text-slate-900 leading-none">In-App Chat & Inquiries</h1>
-                            <p className="text-[10px] text-slate-400 font-sans mt-0.5 hidden sm:block">Messages linked to your marketplace activity</p>
-                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] font-semibold">
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-slate-600">{displayConversations.length} {displayConversations.length === 1 ? 'conversation' : 'conversations'}</span>
+                        {unreadCount > 0 && <span className="rounded-full bg-rose-100 px-3 py-1.5 text-[#C20836]">{unreadCount} unread</span>}
                     </div>
                 </div>
 
@@ -152,7 +163,8 @@ export default function BuyerMessages({ conversations }: Props) {
                     
                     {/* LEFT PANEL: CONVERSATION LIST */}
                     <div className={`w-full md:w-80 lg:w-96 border-r border-slate-100 flex flex-col h-full min-h-0 font-sans shrink-0 ${mobileChatOpen ? 'hidden md:flex' : 'flex'}`}>
-                        <div className="p-3 border-b border-slate-100 bg-slate-50/60 shrink-0">
+                        <div className="shrink-0 border-b border-slate-100 bg-white p-3">
+                            <div className="mb-2 flex items-center justify-between gap-2 px-1"><h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Conversations</h2><span className="text-[10px] text-slate-400">{filteredConversations.length} shown</span></div>
                             <div className="relative">
                                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
                                 <input
@@ -173,20 +185,20 @@ export default function BuyerMessages({ conversations }: Props) {
                                 </div>
                             ) : (
                                 filteredConversations.map((conv, idx) => {
-                                    const isSelected = idx === selectedConvIndex;
+                                    const isSelected = conv.user.id === currentConv?.user.id;
                                     return (
                                         <button
                                             key={conv.user.id || idx}
                                             onClick={() => {
-                                                setSelectedConvIndex(idx);
+                                                setSelectedConvUserId(conv.user.id);
                                                 setMobileChatOpen(true);
                                             }}
                                             className={`w-full text-left p-3.5 sm:p-4 transition flex items-start gap-3 cursor-pointer ${
                                                 isSelected ? 'bg-rose-50/60 border-l-4 border-l-[#E00D42]' : 'hover:bg-slate-50'
                                             }`}
                                         >
-                                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 font-sans">
-                                                {conv.user.role === 'seller' ? <Store className="w-4 h-4 text-emerald-400" /> : <Truck className="w-4 h-4 text-amber-400" />}
+                                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl font-sans text-xs font-bold ${isSelected ? 'bg-white text-[#E00D42]' : 'bg-slate-900 text-white'}`}>
+                                                {conv.user.shop?.logo_url ? <img src={conv.user.shop.logo_url} alt="" className="h-full w-full object-cover" /> : conv.user.role === 'seller' ? <Store className="h-4 w-4 text-emerald-400" aria-hidden="true" /> : <Truck className="h-4 w-4 text-amber-400" aria-hidden="true" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between">
@@ -196,6 +208,7 @@ export default function BuyerMessages({ conversations }: Props) {
                                                     <span className="font-sans text-[10px] text-slate-400 shrink-0 ml-1">{conv.last_time}</span>
                                                 </div>
                                                 <p className="text-xs text-slate-500 truncate mt-0.5">{conv.last_message}</p>
+                                                {conv.unread_count > 0 && <span className="mt-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#E00D42] px-1.5 py-0.5 text-[9px] font-bold text-white">{conv.unread_count}</span>}
                                             </div>
                                         </button>
                                     );
@@ -218,23 +231,29 @@ export default function BuyerMessages({ conversations }: Props) {
                                 >
                                     <ChevronLeft className="w-5 h-5" />
                                 </button>
-                                <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                                    {currentConv?.user?.role === 'seller' ? <Store className="w-4 h-4 text-emerald-400" /> : <Truck className="w-4 h-4 text-amber-400" />}
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-900 text-xs font-bold text-white">
+                                    {currentConv?.user?.shop?.logo_url ? <img src={currentConv.user.shop.logo_url} alt="" className="h-full w-full object-cover" /> : currentConv?.user?.role === 'seller' ? <Store className="h-4 w-4 text-emerald-400" aria-hidden="true" /> : <Truck className="h-4 w-4 text-amber-400" aria-hidden="true" />}
                                 </div>
                                 <div className="min-w-0">
                                     <h3 className="font-bold text-slate-900 text-sm font-sans truncate">
-                                        {currentConv?.user?.shop ? currentConv.user.shop.name : currentConv?.user?.name}
+                                        {currentConv?.user?.shop ? currentConv.user.shop.name : currentConv?.user?.name ?? 'No conversation selected'}
                                     </h3>
-                                    <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
-                                        <span>Marketplace conversation</span>
-                                    </span>
+                                    <span className="flex items-center gap-1 text-[10px] font-medium text-slate-500">{currentConv ? <><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" /><span>{currentConv.user.role === 'seller' ? 'Shop conversation' : 'Marketplace support'}</span></> : <span>Choose a conversation from the list</span>}</span>
                                 </div>
                             </div>
+                            {currentConv?.order_id && <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-semibold text-slate-600 sm:inline-flex">Order conversation</span>}
                         </div>
 
                         {/* Message Stream: ONLY this scrolls */}
                         <div className="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto space-y-3 font-sans text-xs">
-                            {activeMessages.length === 0 ? (
+                            {!currentConv ? (
+                                <div className="flex h-full min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-slate-500">
+                                    <Search className="h-7 w-7 text-slate-300" aria-hidden="true" />
+                                    <p className="mt-3 text-sm font-semibold text-slate-700">No matching conversation</p>
+                                    <p className="mt-1 max-w-xs text-xs leading-5">Clear the search or choose another conversation to continue.</p>
+                                    {searchQuery && <button type="button" onClick={() => setSearchQuery('')} className="mt-3 rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Clear search</button>}
+                                </div>
+                            ) : activeMessages.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-2 font-sans">
                                     <MessageSquare className="w-8 h-8 text-slate-300" />
                                     <p className="text-xs">No messages yet in this conversation.</p>

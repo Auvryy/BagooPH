@@ -2,6 +2,7 @@ import useMarketplaceComposer from '@/hooks/useMarketplaceComposer';
 import ChatImageField from '@/Components/ChatImageField';
 import ChatAttachment from '@/Components/ChatAttachment';
 import React, { useState, useEffect, useRef } from 'react';
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import { usePage } from '@inertiajs/react';
 import { PageProps, Product, Shop } from '@/types';
 import { 
@@ -133,8 +134,10 @@ export default function ChatModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-xs animate-fade-in font-sans">
-            <div className="bg-white w-full sm:max-w-md h-[85vh] sm:h-[600px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
+        <Dialog open={isOpen} onClose={onClose} className="relative z-50 font-sans">
+            <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-xs animate-fade-in sm:bg-transparent sm:backdrop-blur-none" />
+            <div className="pointer-events-none fixed inset-0 flex items-end justify-end sm:p-4">
+            <DialogPanel className="pointer-events-auto flex h-[100dvh] w-full flex-col overflow-hidden border border-slate-200 bg-white shadow-2xl sm:h-[min(44rem,calc(100dvh-2rem))] sm:w-[min(26rem,calc(100vw-2rem))] sm:rounded-2xl">
                 
                 {/* Header */}
                 <div className="p-4 bg-slate-900 text-white flex items-center justify-between shadow-xs shrink-0">
@@ -144,7 +147,7 @@ export default function ChatModal({
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h3 className="font-bold text-sm text-white truncate max-w-[200px]">{shopName}</h3>
+                                <DialogTitle as="h3" className="font-bold text-sm text-white truncate max-w-[200px]">{shopName}</DialogTitle>
                                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                             </div>
                             <p className="text-[11px] text-slate-400 font-sans">Typically replies within 5 mins</p>
@@ -339,8 +342,9 @@ export default function ChatModal({
                     </>
                 )}
 
+            </DialogPanel>
             </div>
-        </div>
+        </Dialog>
     );
 }
 

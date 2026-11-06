@@ -2,17 +2,21 @@
 
 namespace Tests\Feature\Logistics;
 
+use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CheckoutSubmission;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Shop;
 use App\Models\User;
 use App\Services\Logistics\LogisticsCheckoutService;
 use App\Services\Orders\CheckoutQuoteService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia;
 use Tests\Concerns\InteractsWithCheckoutSubmission;
 use Tests\TestCase;
@@ -21,10 +25,23 @@ class NewEraCheckoutTest extends TestCase
 {
     use InteractsWithCheckoutSubmission, RefreshDatabase;
 
+    private ?string $testStoragePath = null;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->testStoragePath = sys_get_temp_dir().'/bagoo-new-era-tests-'.getmypid().'-'.bin2hex(random_bytes(5));
+        app()->useStoragePath($this->testStoragePath);
+        Storage::fake('local');
         $this->seed(DatabaseSeeder::class);
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->testStoragePath !== null) {
+            File::deleteDirectory($this->testStoragePath);
+        }
+        parent::tearDown();
     }
 
     private function purchase(): array
@@ -114,6 +131,56 @@ class NewEraCheckoutTest extends TestCase
         $this->actingAs($buyer)->postJson(route('buyer.vouchers.apply'), $input)->assertUnprocessable()->assertJsonPath('success', false);
         $this->assertSame(20, $product->fresh()->stock);
         $this->assertSame(0, Order::count());
+    }
+
+    public function test_doorstep_choices_remain_empty_until_the_destination_has_a_complete_postal_code(): void
+    {
+        [, , , , $line, $input] = $this->purchase();
+        $items = collect([$line->load('product.shop')]);
+        $incomplete = [...$input, 'shipping_postal_code' => ''];
+
+        $this->assertSame([], app(LogisticsCheckoutService::class)->choices($items, $incomplete));
+    }
+
+    public function test_multi_shop_checkout_only_offers_companies_that_serve_every_seller(): void
+    {
+        [, , , $cart, $line, $input] = $this->purchase();
+        $otherShop = Shop::factory()->approved()->create();
+        $otherProduct = Product::factory()->create(['shop_id' => $otherShop->id, 'stock' => 5]);
+        $otherLine = CartItem::create(['cart_id' => $cart->id, 'product_id' => $otherProduct->id, 'quantity' => 1, 'unit_price' => $otherProduct->price]);
+        $items = CartItem::query()->whereIn('id', [$line->id, $otherLine->id])->with('product.shop')->get();
+
+        $this->assertSame([], app(LogisticsCheckoutService::class)->choices($items, $input));
+    }
+
+    public function test_checkout_initial_carrier_choices_are_filtered_for_the_default_address_and_cart(): void
+    {
+        [$buyer, , , , $line] = $this->purchase();
+        $address = Address::create([
+            'user_id' => $buyer->id,
+            'recipient_name' => $buyer->name,
+            'phone' => '+639171234567',
+            'street' => '100 Test Recipient Road',
+            'province' => 'Laguna',
+            'city' => 'Santa Cruz',
+            'postal_code' => '4009',
+            'barangay' => 'Poblacion III',
+            'latitude' => 14.2815,
+            'longitude' => 121.4162,
+            'is_default' => true,
+        ]);
+        $items = collect([$line->load('product.shop')]);
+        $expected = app(LogisticsCheckoutService::class)->choices($items, [
+            'delivery_type' => 'doorstep',
+            'shipping_province' => $address->province,
+            'shipping_city' => $address->city,
+            'shipping_postal_code' => $address->postal_code,
+            'destination_barangay' => $address->barangay,
+        ]);
+
+        $this->assertNotEmpty($expected);
+        $this->actingAs($buyer)->get(route('checkout.index'))->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->component('Checkout/Index')->where('logisticsCompanies', $expected));
     }
 
     public function test_unconfigured_counter_is_not_offered_and_cannot_reserve_stock_or_a_checkout_submission(): void

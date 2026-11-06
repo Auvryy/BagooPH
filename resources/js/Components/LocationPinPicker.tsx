@@ -29,7 +29,15 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
         setLoading(true);
         void Promise.all([import('leaflet'), import('leaflet/dist/leaflet.css')]).then(([L]) => {
             if (cancelled || !container.current) return;
-            const instance = L.map(container.current, { scrollWheelZoom: false });
+            const instance = L.map(container.current, {
+                scrollWheelZoom: true,
+                wheelDebounceTime: 70,
+                wheelPxPerZoomLevel: 140,
+                zoomDelta: 0.5,
+                zoomSnap: 0.5,
+                zoomAnimation: true,
+                fadeAnimation: true,
+            });
             map.current = instance;
             instance.setView(current.current ? [current.current.latitude, current.current.longitude] : [12.8797, 121.774], current.current ? 16 : 5);
             const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {

@@ -64,6 +64,8 @@ async function render(Component, name, props = {}) {
 }
 const checkoutProps = { cart: { id: 1 }, items, subtotal: 1, shippingFee: 0, total: 1, quote, user: buyer,
     availableVouchers: [offer], kycStatus: 'approved', checkoutToken: 'test-confirmation',
+    logisticsCompanies: [{ id: 5, name: 'Bagoo Test Courier', logo: null, base_shipping_cents: 0,
+        included_weight_grams: 1000, additional_kg_cents: 0 }],
     addresses: [{ id: 2, recipient_name: buyer.name, phone: '09171234567', street: '123 Mabini Street',
         city: 'Pasig', province: 'Metro Manila', barangay: 'San Antonio', postal_code: '1600', is_default: true }] };
 
@@ -336,7 +338,10 @@ test('collection tabs use whole-query counts and retain an ended saved offer', a
     const ended = { ...offer, saved_id: 91, eligible: false, unavailable_reason: 'This campaign has ended. Your saved terms remain available.' };
     const html = await render(ui.Collection, 'Vouchers', { collection: { tab: 'saved', counts: { available: 18, saved: 1, used: 3, expired: 0 },
         offers: { data: [ended], current_page: 1, last_page: 1, per_page: 12, total: 1 } } });
-    for (const label of ['Available (18)', 'Saved (1)', 'Used (3)', 'Expired (0)']) assert.ok(html.includes(label));
+    for (const label of ['Available vouchers, 18', 'Saved vouchers, 1', 'Used vouchers, 3', 'Expired vouchers, 0']) {
+        assert.ok(html.includes(`aria-label="${label}"`));
+    }
+    assert.match(html, /rounded-full border px-3\.5 py-2 text-xs font-bold/);
     assert.match(html, /Your saved terms remain available/);
     assert.match(html, /Remove saved/);
     assert.doesNotMatch(html, />Use voucher</);

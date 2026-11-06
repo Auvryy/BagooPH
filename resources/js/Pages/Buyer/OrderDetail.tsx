@@ -4,6 +4,7 @@ import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
 import BuyerOrderPackage from '@/Components/BuyerOrderPackage';
 import BuyerCancelOrder from '@/Components/BuyerCancelOrder';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import BuyAgainButton from '@/Components/BuyAgainButton';
 import OrderTrackingPanel, { trackingDate } from '@/Components/OrderTrackingPanel';
 import { claimWindow, nextClaimBoundary } from '@/utils/orderTracking';
@@ -87,23 +88,13 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
         finally { codePending.current = false; setCodeBusy(false); }
     };
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
+    useBodyScrollLock(reviewModalOpen);
     const reviewableItems = (order.items ?? []).filter(item => !item.review);
     const [reviewSaved, setReviewSaved] = useState(false);
     const previewRef = useRef<string[]>([]);
     useEffect(() => () => previewRef.current.forEach(url => URL.revokeObjectURL(url)), []);
     const [previewImages, setPreviewImages] = useState<string[]>([]);
     const [photoError, setPhotoError] = useState('');
-
-    useEffect(() => {
-        if (reviewModalOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, [reviewModalOpen]);
 
     const { data, setData, post, processing, reset, recentlySuccessful, errors, clearErrors, setError } = useForm<{
         order_item_id: number | null;
@@ -265,7 +256,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
 
                 {/* Product review */}
                 {canUsePortal && reviewModalOpen && (
-                    <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
+                    <div className="fixed inset-0 z-50 overscroll-contain bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
                         <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 font-sans my-auto max-h-[92vh] overflow-y-auto">
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                                 <div className="flex items-center gap-2 text-slate-900 font-bold text-base">

@@ -73,6 +73,27 @@ class ProductShareAndSlugTest extends TestCase
         );
     }
 
+    public function test_public_product_html_contains_product_specific_share_metadata(): void
+    {
+        $product = Product::create([
+            'shop_id' => $this->shop->id,
+            'category_id' => $this->category->id,
+            'name' => 'Previewable Product',
+            'price' => 799.00,
+            'stock' => 50,
+            'status' => 'active',
+            'description' => 'A share card description for the product.',
+            'featured_image' => '/storage/products/preview-card.webp',
+        ]);
+
+        $response = $this->get(route('buyer.products.show', $product->slug))->assertOk();
+        $response->assertSee('property="og:title" content="Previewable Product — BagooPH"', false)
+            ->assertSee('property="og:description" content="A share card description for the product."', false)
+            ->assertSee('property="og:image" content="', false)
+            ->assertSee('property="og:image:alt" content="Previewable Product product image"', false)
+            ->assertSee('/storage/products/preview-card.webp', false);
+    }
+
     public function test_identical_product_names_generate_collision_free_unique_slugs(): void
     {
         $product1 = Product::create([

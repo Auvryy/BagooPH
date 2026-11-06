@@ -34,6 +34,7 @@ import PhilippineAddressSelector from '@/Components/PhilippineAddressSelector';
 import OtpModal from '@/Components/OtpModal';
 import { useRegistrationValidation } from '@/hooks/useRegistrationValidation';
 import { useRegistrationEmailAvailability } from '@/hooks/useRegistrationEmailAvailability';
+import { useRegistrationDraft } from '@/hooks/useRegistrationDraft';
 import RegistrationEmailFeedback from '@/Components/RegistrationEmailFeedback';
 import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
@@ -115,6 +116,11 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
         policy_accepted: false,
         terms_version: policies.terms_version,
         privacy_version: policies.privacy_version,
+    });
+
+    const { clearDraft } = useRegistrationDraft({
+        role: 'courier', data, setData, step: currentStep, setStep: setCurrentStep,
+        verificationOpen: showOtpModal, setVerificationOpen: setShowOtpModal,
     });
 
     const fieldFeedback = (event: React.FormEvent<HTMLFormElement>) => {
@@ -260,7 +266,10 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
         post(route('register'), {
             forceFormData: true,
             onError: handleRegistrationErrors,
-            onSuccess: () => reset('password', 'password_confirmation'),
+            onSuccess: () => {
+                clearDraft();
+                reset('password', 'password_confirmation');
+            },
             onFinish: () => transform(values => values),
         });
     };

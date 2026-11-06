@@ -8422,3 +8422,76 @@ an authenticated application audit feature or a tested hosted PostgreSQL
 operation. The tool is not in the GitHub branch, and the review remains visible;
 any live cleanup needs separate approval, an independent backup, a fresh read-only
 preview and review of the exact tool on the intended server.
+
+### PDF manual reporting fixes — November 6, 2026
+
+Scoped evidence assessment for checkout carrier choice and delivery-total
+clarity: **4/10 before → 8/10 after**. This rates the code path and isolated
+checks only; it does not rate live delivery coverage or overall marketplace
+readiness.
+
+The 23 buyer-facing notes in the manual report now have an item-by-item audit in
+`docs/audits/2026-11-06-manual-report-line-audit.md`. Registration middle names
+are limited to an initial with an optional period. Discovery search is
+case-insensitive, ranks all terms, recommends related products, and supports
+typo suggestions. Buyer sessions show five recent records before expanding.
+The notification page, voucher chips, messages page, product chat, wallet, and
+saved-product-to-Bag path were refined. Custom modal overlays lock background
+scrolling. Product sharing adds Messenger/native-share fallback and
+product-specific Open Graph metadata. A local/testing-only banner seeder uses a
+clearly labelled neutral demo creative; no configured database was seeded.
+
+Checkout hides manual coordinate inputs and wording while retaining map/GPS
+coordinates internally, adds editable landmark suggestions, and uses smooth
+half-step Leaflet wheel zoom. Eligible carriers remain selected when possible,
+otherwise the first eligible carrier is selected; carrier logo feedback has a
+truck fallback. Checkout payment/voucher/product areas have icons, and rapid
+quantity edits are debounced, serialized, and preserve page state. No
+seller-preference setting exists, so carrier defaulting is deterministic.
+
+Verification on the current branch: **222/222 focused frontend checks** and
+**165/165 focused SQLite `:memory:` PHP tests / 2,787 assertions** passed.
+TypeScript, scoped Pint, `git diff --check`, and the production Vite build to an
+out-of-tree `/tmp` directory (2,994 modules) passed. The local HTML response
+uses Vite at `127.0.0.1:5173`, and the PHP container sees `public/hot`. The
+root-owned `public/build` bundle remains unchanged and contains the older
+coordinate labels; a browser tab opened before Vite started needs a hard
+refresh (`Ctrl+Shift+R`) to load current source.
+
+Visual acceptance of the refreshed pages remains with the user. Actual
+Messenger crawler thumbnails still require a public product URL. After the
+user clarified the PDF's database note, the local Bagoo PostgreSQL data was
+reset transactionally: one existing active admin and 16 master categories were
+retained; all other mutable rows across 138 tables were cleared. There are no
+other accounts, shops, products, orders, vouchers, ads, sessions, or API
+tokens. The local public/private upload directories were emptied (836 files);
+the two pending migrations were applied. The separate Surios database and
+local QA/build-backup directories were left untouched. The retained admin must
+sign in again because sessions were cleared. The phone and visible browser
+were not used. The broad backend suite was not rerun; its prior local baseline
+still includes 61 assertion failures and 696 errors, largely related to
+missing PHP GD. Work remains uncommitted on
+`fix/web-checkout-carrier-selection`.
+
+### Registration draft recovery — November 6, 2026
+
+Scoped assessment for recovering registration progress after a page reload or
+component remount: **2/10 before → 8/10 after**. The seller report exposed that
+all four registration forms kept fields, current step, and verification-modal
+state only in component memory. A remount therefore returned the applicant to
+the beginning.
+
+Buyer, seller, courier, and logistics drafts now use separate, versioned
+`sessionStorage` entries. The allowlists retain ordinary text, address, contact,
+vehicle/business details, selected location coordinates, and the current step.
+Passwords, password confirmation, OTP values/tokens, uploaded documents, and
+policy-consent state are excluded; documents must be selected again after a
+reload, and policy acceptance is reconfirmed. The verification dialog intent is
+restored without restoring its code/token. Successful account submission clears
+the draft; validation errors and cancelled verification keep it available.
+
+Verification: **38 focused frontend authentication checks passed** across the
+four role schemas and secret/file exclusion; TypeScript passed; `git diff
+--check` passed. This is automated coverage and source review only. No live
+browser, mail delivery, phone, or new-account registration was used for this
+fix.

@@ -108,13 +108,14 @@ class BuyerDiscoveryService
     public function filter(Builder $products, array $filters): Builder
     {
         if ($filters['search'] !== '') {
-            $pattern = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($filters['search'])).'%';
-            $products->where(function (Builder $query) use ($pattern) {
-                $query->whereRaw("LOWER(products.name) LIKE ? ESCAPE '!'", [$pattern])
-                    ->orWhereRaw("LOWER(products.description) LIKE ? ESCAPE '!'", [$pattern])
-                    ->orWhereRaw("LOWER(products.sku) LIKE ? ESCAPE '!'", [$pattern])
-                    ->orWhereHas('category', fn (Builder $category) => $category->whereRaw("LOWER(categories.name) LIKE ? ESCAPE '!'", [$pattern]))
-                    ->orWhereHas('shop', fn (Builder $shop) => $shop->whereRaw("LOWER(shops.name) LIKE ? ESCAPE '!'", [$pattern]));
+            $terms = preg_split('/\s+/u', trim(mb_strtolower($filters['search'])), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $products->where(function (Builder $query) use ($terms) {
+                foreach ($terms as $term) {
+                    $pattern = $this->likePattern($term);
+                    $query->where(function (Builder $matches) use ($pattern) {
+                        $this->whereSearchTerm($matches, $pattern);
+                    });
+                }
             });
         }
         if ($filters['category'] !== 'all') {
@@ -150,8 +151,13 @@ class BuyerDiscoveryService
             'top_sales' => $products->orderByDesc('sales_count'),
             'top_rated' => $products->orderByRaw('verified_rating DESC NULLS LAST'),
             'newest' => $products->latest('products.created_at'),
-            default => $products->orderByDesc('sales_count')->orderByRaw('verified_rating DESC NULLS LAST'),
+            default => $filters['search'] !== ''
+                ? $this->orderBySearchRelevance($products, $filters['search'])
+                : $products->orderByDesc('sales_count')->orderByRaw('verified_rating DESC NULLS LAST'),
         };
+        if ($filters['sort'] === 'relevance' && $filters['search'] !== '') {
+            $products->orderByDesc('sales_count')->orderByRaw('verified_rating DESC NULLS LAST');
+        }
         $products->orderByDesc('products.id');
         $page = (clone $products)->paginate($perPage);
         if ($page->currentPage() > $page->lastPage()) {
@@ -160,5 +166,51 @@ class BuyerDiscoveryService
 
         return $page->withPath(request()->getPathInfo())
             ->appends(array_filter($filters, fn ($value) => $value !== '' && $value !== 'all' && $value !== false));
+    }
+
+    private function whereSearchTerm(Builder $query, string $pattern): void
+    {
+        $query->whereRaw("LOWER(products.name) LIKE ? ESCAPE '!'", [$pattern])
+            ->orWhereRaw("LOWER(products.description) LIKE ? ESCAPE '!'", [$pattern])
+            ->orWhereRaw("LOWER(products.sku) LIKE ? ESCAPE '!'", [$pattern])
+            ->orWhereHas('category', fn (Builder $category) => $category->whereRaw("LOWER(categories.name) LIKE ? ESCAPE '!'", [$pattern]))
+            ->orWhereHas('shop', fn (Builder $shop) => $shop->whereRaw("LOWER(shops.name) LIKE ? ESCAPE '!'", [$pattern]));
+    }
+
+    private function orderBySearchRelevance(Builder $products, string $search): Builder
+    {
+        $terms = preg_split('/\s+/u', trim(mb_strtolower($search)), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if ($terms === []) {
+            return $products->orderByDesc('sales_count');
+        }
+
+        $phrase = implode(' ', $terms);
+        $bindings = [$phrase, $this->likePattern($phrase, trailingWildcard: true), $this->likePattern($phrase)];
+        $case = "CASE WHEN LOWER(products.name) = ? THEN 0 WHEN LOWER(products.name) LIKE ? ESCAPE '!' THEN 1 WHEN LOWER(products.name) LIKE ? ESCAPE '!' THEN 2";
+
+        if (count($terms) > 1) {
+            $allNameTerms = implode(' AND ', array_fill(0, count($terms), "LOWER(products.name) LIKE ? ESCAPE '!'"));
+            $case .= " WHEN {$allNameTerms} THEN 3";
+            foreach ($terms as $term) {
+                $bindings[] = $this->likePattern($term);
+            }
+        }
+
+        $case .= " WHEN LOWER(products.sku) LIKE ? ESCAPE '!' THEN 4"
+            ." WHEN EXISTS (SELECT 1 FROM categories WHERE categories.id = products.category_id AND LOWER(categories.name) LIKE ? ESCAPE '!') THEN 5"
+            ." WHEN EXISTS (SELECT 1 FROM shops WHERE shops.id = products.shop_id AND LOWER(shops.name) LIKE ? ESCAPE '!') THEN 6"
+            ." WHEN LOWER(products.description) LIKE ? ESCAPE '!' THEN 7 ELSE 8 END";
+        $bindings[] = $this->likePattern($phrase);
+        $bindings[] = $this->likePattern($phrase);
+        $bindings[] = $this->likePattern($phrase);
+
+        return $products->orderByRaw($case, $bindings);
+    }
+
+    private function likePattern(string $value, bool $trailingWildcard = false): string
+    {
+        $literal = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($value));
+
+        return $trailingWildcard ? $literal.'%' : '%'.$literal.'%';
     }
 }

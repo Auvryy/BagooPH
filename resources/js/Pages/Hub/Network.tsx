@@ -18,6 +18,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import CompanyRiderIntake from '@/Components/CompanyRiderIntake';
 import HubMap from '@/Components/Logistics/HubMap';
 import { HubPageHeader, HubPanel } from '@/Components/Logistics/Workspace';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import type { CompanyRiderIntake as Intake } from '@/types/riderCompany';
 
 interface NetworkScope {
@@ -69,6 +70,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
     const [search, setSearch] = useState('');
     const [selectedHub, setSelectedHub] = useState<HubItem | null>(null);
     const [coverageSearch, setCoverageSearch] = useState('');
+    useBodyScrollLock(Boolean(selectedHub));
 
     useEffect(() => {
         if (!selectedHub) return undefined;
@@ -361,7 +363,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
             </div>
 
             {selectedHub && (
-                <div className="!mt-0 fixed inset-0 z-50 font-sans">
+                <div className="!mt-0 fixed inset-0 z-50 overscroll-contain font-sans">
                     <button
                         type="button"
                         aria-label="Close facility details"
@@ -373,7 +375,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="facility-details-title"
-                        className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col border-l border-slate-300 bg-white shadow-2xl"
+                        className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col overscroll-contain overflow-y-auto border-l border-slate-300 bg-white shadow-2xl"
                     >
                         <header className="border-b border-slate-300 border-t-4 border-t-[#E00D42] bg-white px-5 py-4 sm:px-6">
                             <div className="flex items-start justify-between gap-4">

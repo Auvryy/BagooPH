@@ -13,6 +13,7 @@ after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = buildSync({
     stdin: { contents: [
         "export * from '@/utils/authRequests';",
+        "export * from '@/utils/registrationDraft';",
         "export * from '@/utils/registrationValidation';",
         "export * from '@/utils/passwordPolicy';",
         "export * from '@/utils/registrationFields';",
@@ -44,6 +45,97 @@ after(() => delete globalThis.route);
 function reply(status, body, headers = {}) {
     return new Response(typeof body === 'string' ? body : JSON.stringify(body), { status, headers });
 }
+
+function useMemorySessionStorage() {
+    const originalWindow = globalThis.window;
+    const entries = new Map();
+    globalThis.window = {
+        sessionStorage: {
+            getItem: key => entries.get(key) ?? null,
+            setItem: (key, value) => entries.set(key, String(value)),
+            removeItem: key => entries.delete(key),
+        },
+    };
+    return {
+        entries,
+        restore() {
+            if (originalWindow === undefined) delete globalThis.window;
+            else globalThis.window = originalWindow;
+        },
+    };
+}
+
+test('registration drafts restore role-specific progress while excluding passwords, OTPs and documents', () => {
+    const storage = useMemorySessionStorage();
+    try {
+        ui.saveRegistrationDraft('seller', {
+            first_name: 'Sam', email: 'sam@example.test', shop_name: 'North Market', root_category_id: '12',
+            password: 'NeverStoreThisPassword!', password_confirmation: 'NeverStoreThisPassword!',
+            otp_token: 'NeverStoreThisOtpToken', id_document: { name: 'private-id.pdf' },
+        }, 3, true);
+
+        const raw = [...storage.entries.values()].join('\n');
+        for (const secret of ['NeverStoreThisPassword!', 'NeverStoreThisOtpToken', 'private-id.pdf', 'password', 'otp_token', 'id_document']) {
+            assert.equal(raw.includes(secret), false, secret);
+        }
+        assert.deepEqual(ui.loadRegistrationDraft('seller'), {
+            fields: { first_name: 'Sam', email: 'sam@example.test', shop_name: 'North Market', root_category_id: '12' },
+            step: 3,
+            verificationOpen: true,
+        });
+        assert.equal(ui.loadRegistrationDraft('buyer'), null, 'seller draft is isolated from buyer registration');
+    } finally {
+        storage.restore();
+    }
+});
+
+test('registration draft storage clamps steps, accepts only safe field shapes, and clears after success', () => {
+    const storage = useMemorySessionStorage();
+    try {
+        ui.saveRegistrationDraft('logistics', {
+            first_name: 'Lee', service_areas: ['north', 'central'], vehicle_types: ['motorcycle'],
+            password: 'DoNotStore!', policy_accepted: true, terms_version: 'old-contract',
+        }, 99, false);
+        assert.deepEqual(ui.loadRegistrationDraft('logistics'), {
+            fields: { first_name: 'Lee', service_areas: ['north', 'central'], vehicle_types: ['motorcycle'] },
+            step: 3,
+            verificationOpen: false,
+        });
+        ui.clearRegistrationDraft('logistics');
+        assert.equal(ui.loadRegistrationDraft('logistics'), null);
+    } finally {
+        storage.restore();
+    }
+});
+
+test('buyer and courier drafts keep their role-specific non-secret details', () => {
+    const storage = useMemorySessionStorage();
+    try {
+        ui.saveRegistrationDraft('buyer', {
+            first_name: 'Mia', email: 'mia@example.test', delivery_latitude: 14.6,
+            delivery_longitude: 121.0, password: 'DoNotStore!', otp_token: 'DoNotStoreEither!',
+        }, 2, false);
+        ui.saveRegistrationDraft('courier', {
+            first_name: 'Noah', email: 'noah@example.test', vehicle_type: 'Motorcycle',
+            plate_number: 'ABC1234', license_number: 'N01-23-456789', driver_license: { name: 'license.pdf' },
+        }, 3, true);
+
+        assert.deepEqual(ui.loadRegistrationDraft('buyer'), {
+            fields: { first_name: 'Mia', email: 'mia@example.test', delivery_latitude: 14.6, delivery_longitude: 121.0 },
+            step: 2,
+            verificationOpen: false,
+        });
+        assert.deepEqual(ui.loadRegistrationDraft('courier'), {
+            fields: { first_name: 'Noah', email: 'noah@example.test', vehicle_type: 'Motorcycle', plate_number: 'ABC1234', license_number: 'N01-23-456789' },
+            step: 3,
+            verificationOpen: true,
+        });
+        const raw = [...storage.entries.values()].join('\n');
+        for (const secret of ['DoNotStore!', 'DoNotStoreEither!', 'license.pdf', 'otp_token']) assert.equal(raw.includes(secret), false, secret);
+    } finally {
+        storage.restore();
+    }
+});
 
 test('email feedback checks the complete address and supports custom and demo domains', () => {
     for (const value of ['@example.com', 'name@example', 'name@bagoo', 'name @bagoo.test', 'name@@bagoo.test', 'name@bagoo..test', 'name@-bagoo.test', 'name@bagoo.test extra', 'buyer@bagoo.test\n', '\tbuyer@bagoo.test']) {

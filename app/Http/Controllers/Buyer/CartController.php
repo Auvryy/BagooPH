@@ -92,12 +92,22 @@ class CartController extends Controller
         })->values();
         $selectedIds = $request->session()->pull('buy_again_selection');
         $selectedIds = is_array($selectedIds) ? $items->where('available_for_purchase', true)->whereIn('id', $selectedIds)->pluck('id')->sort()->values()->all() : null;
+        $focusBagItemId = null;
+        if ($request->filled('focus')) {
+            $focus = $request->validate(['focus' => ['required', 'bail', new AsciiPositiveInteger, 'integer', 'min:1', 'max:2147483647']])['focus'];
+            $focusItem = $items->firstWhere('id', (int) $focus);
+            if ($focusItem) {
+                $focusBagItemId = (int) $focusItem->id;
+                $selectedIds = $focusItem->available_for_purchase ? [$focusItem->id] : [];
+            }
+        }
 
         return Inertia::render('Cart/Index', [
             'cart' => $cart,
             'items' => $items,
             'total' => $cart->total,
             'selectedBagItemIds' => $selectedIds,
+            'focusBagItemId' => $focusBagItemId,
             'quote' => app(CheckoutQuoteService::class)->quote($selectedIds !== null ? $items->whereIn('id', $selectedIds) : $items->where('available_for_purchase', true)->take(1)),
         ]);
     }

@@ -1,6 +1,7 @@
 import UploadHint from '@/Components/UploadHint';
 import React, { useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import { 
     ShieldCheck, 
     ShieldAlert, 
@@ -32,6 +33,7 @@ export default function BuyerIdVerificationModal({
     const [uploading, setUploading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    useBodyScrollLock(isOpen);
 
     if (!isOpen) return null;
 
@@ -105,7 +107,7 @@ export default function BuyerIdVerificationModal({
     const isRejected = user.kyc_status === 'rejected';
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-slate-950/60 backdrop-blur-xs animate-fade-in font-sans">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain p-4 overflow-y-auto bg-slate-950/60 backdrop-blur-xs animate-fade-in font-sans">
             <div className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 animate-scale-in max-h-[92vh] overflow-y-auto">
                 
                 {/* Close / Dismiss Button */}

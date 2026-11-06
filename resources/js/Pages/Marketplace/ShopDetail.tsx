@@ -5,6 +5,7 @@ import BuyerLayout from '@/Layouts/BuyerLayout';
 import ShopFollowButton from '@/Components/ShopFollowButton';
 import PortalLink from '@/Components/PortalLink';
 import ChatModal from '@/Components/ChatModal';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import CatalogueErrors from '@/Components/CatalogueErrors';
 import { CatalogueFilters, catalogueFilters } from '@/utils/catalogueNavigation';
 import { Category } from '@/types';
@@ -66,6 +67,7 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
     const logoFileRef = useRef<HTMLInputElement | null>(null);
 
     const [editModalOpen, setEditModalOpen] = useState(false);
+    useBodyScrollLock(editModalOpen);
     const [bannerPreview, setBannerPreview] = useState<string>(shop.banner || '');
     const [logoPreview, setLogoPreview] = useState<string>(shop.logo || '');
 
@@ -457,14 +459,14 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
 
             {/* Merchant Storefront Branding & Bio Edit Modal */}
             {canManageStore && editModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto animate-fade-in">
+                <div role="dialog" aria-modal="true" aria-labelledby="shop-branding-modal-title" className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain p-4 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto animate-fade-in">
                     <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden my-8">
                         {/* Header */}
                         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
                             <div>
                                 <h3 className="font-bold text-base font-sans uppercase tracking-wider flex items-center gap-2">
                                     <Edit className="w-4 h-4 text-[#E00D42]" />
-                                    <span>Edit Storefront Branding & Bio</span>
+                                    <span id="shop-branding-modal-title">Edit Storefront Branding & Bio</span>
                                 </h3>
                                 <p className="text-xs text-slate-400 font-sans mt-0.5">
                                     Update your store cover, logo avatar, and merchant biography visible to buyers.

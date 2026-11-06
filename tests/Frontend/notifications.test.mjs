@@ -75,7 +75,7 @@ for (const [kind, portal, shell] of roles) {
         assert.match(html, new RegExp(shell));
         assert.match(html, /aria-label="Notifications, 3 unread"/);
         assert.match(html, /aria-label="Unread"/);
-        assert.match(html, /border-rose-300 bg-rose-50/);
+        assert.match(html, /border-rose-200 bg-gradient-to-r from-rose-50\/90 to-white/);
         assert.match(html, /Notification filters/);
         assert.match(html, /href="\/notifications\?filter=unread&amp;page=2"/);
         assert.match(html, /Update owned/);

@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Buyer;
 
+use App\Models\Cart;
+use App\Models\CartItem;
+use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Review;
@@ -65,6 +68,49 @@ class BuyerDiscoveryAndSavedProductsTest extends TestCase
             $this->get($path.'?'.http_build_query(['search' => '  50%_!  ']))->assertOk()->assertInertia(fn (Assert $page) => $page
                 ->where('filters.search', '50%_!')->has($key.'.data', 1)->where($key.'.data.0.id', $literal->id));
         }
+    }
+
+    public function test_buyer_product_search_matches_case_insensitively(): void
+    {
+        $shop = Shop::factory()->approved()->create();
+        $product = Product::factory()->create(['shop_id' => $shop->id, 'name' => 'Warm Cotton Hoodie', 'description' => '']);
+
+        $this->get('/buyer/search?search=wARM%20cOTton')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Buyer/Search')
+                ->where('products.data.0.id', $product->id));
+    }
+
+    public function test_search_matches_all_terms_in_any_order_ranks_text_matches_and_recommends_related_products(): void
+    {
+        $shop = Shop::factory()->approved()->create();
+        $exactPhrase = Product::factory()->create(['shop_id' => $shop->id, 'name' => 'Bag Cotton', 'description' => '', 'sales_count' => 0]);
+        $sameTermsReversed = Product::factory()->create(['shop_id' => $shop->id, 'name' => 'Cotton Bag', 'description' => '', 'sales_count' => 1000]);
+        $related = Product::factory()->create(['shop_id' => $shop->id, 'name' => 'Travel Pouch', 'description' => 'An everyday organizer.', 'sales_count' => 20]);
+
+        $otherCategory = Category::factory()->create(['name' => 'Home Goods', 'slug' => 'home-goods-search-test']);
+        $otherShop = Shop::factory()->approved()->create(['root_category_id' => $otherCategory->id]);
+        $unrelated = Product::factory()->create(['shop_id' => $otherShop->id, 'category_id' => $otherCategory->id,
+            'name' => 'Popular Home Set', 'description' => '', 'sales_count' => 10000]);
+
+        $this->get('/buyer/search?search=BAG%20cOtToN')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('products.total', 2)
+            ->where('products.data.0.id', $exactPhrase->id)
+            ->where('products.data.1.id', $sameTermsReversed->id)
+            ->where('relatedProducts.0.id', $related->id)
+            ->missing('relatedProducts.1.id'));
+
+        $this->assertNotSame($unrelated->id, $related->id);
+    }
+
+    public function test_no_results_offer_a_relevant_spell_correction_and_matching_products(): void
+    {
+        $shop = Shop::factory()->approved()->create();
+        $product = Product::factory()->create(['shop_id' => $shop->id, 'name' => 'Warm Cotton Hoodie', 'description' => '']);
+
+        $this->get('/buyer/search?search=wARM%20cottn')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('products.total', 0)
+            ->where('suggestions.0', 'warm cotton')
+            ->where('relatedProducts.0.id', $product->id));
     }
 
     public function test_filters_survive_stable_tied_price_pagination_and_out_of_range_recovery(): void
@@ -221,6 +267,24 @@ class BuyerDiscoveryAndSavedProductsTest extends TestCase
         SavedProduct::create(['buyer_id' => $buyer->id, 'product_id' => $product->id]);
         $this->expectException(QueryException::class);
         SavedProduct::create(['buyer_id' => $buyer->id, 'product_id' => $product->id]);
+    }
+
+    public function test_saved_product_page_opens_and_selects_the_existing_bag_item(): void
+    {
+        $buyer = User::factory()->create(['role' => 'buyer', 'status' => 'active', 'kyc_status' => 'approved']);
+        $shop = Shop::factory()->approved()->create();
+        $product = Product::factory()->create(['shop_id' => $shop->id, 'stock' => 5]);
+        SavedProduct::create(['buyer_id' => $buyer->id, 'product_id' => $product->id]);
+        $cart = Cart::create(['user_id' => $buyer->id]);
+        $line = CartItem::create(['cart_id' => $cart->id, 'product_id' => $product->id, 'quantity' => 1, 'unit_price' => $product->price]);
+
+        $this->actingAs($buyer)->get(route('buyer.saved-products.index'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Buyer/SavedProducts')
+                ->where('cartItemIdsByProduct', fn ($ids) => (int) ($ids[$product->id] ?? 0) === $line->id));
+
+        $this->get(route('buyer.cart', ['focus' => $line->id]))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Cart/Index')
+                ->where('focusBagItemId', $line->id)->where('selectedBagItemIds', [$line->id]));
     }
 
     public static function blockedBuyers(): array

@@ -8,6 +8,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import PortalLink from '@/Components/PortalLink';
 import { visitPortal } from '@/utils/catalogueRuntime';
 import useResolvedPage from '@/hooks/useResolvedPage';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import ListingAssistantPanel from '@/Components/ListingAssistantPanel';
 import { Category, PaginatedData, Product, Shop, StoreCategory } from '@/types';
 import { newListingStatus, sellerInventoryQuery, sellerVariantStock, SellerInventoryFilters } from '@/utils/sellerInventory';
@@ -185,6 +186,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         isCreate: boolean;
         colorId: string; // color ID or 'draft'
     } | null>(null);
+    useBodyScrollLock(Boolean(isCreateOpen || editingProduct || stockProduct || productPendingRemoval || bulkAction || activePhotoPicker));
 
     // Draft Photo state for Create and Edit modals
     const [createDraftPhoto, setCreateDraftPhoto] = useState<{

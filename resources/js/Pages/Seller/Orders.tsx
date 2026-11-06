@@ -8,6 +8,7 @@ import OrderRecipientSummary from '@/Components/OrderRecipientSummary';
 import { Head, Link, router } from '@inertiajs/react';
 import PortalLink from '@/Components/PortalLink';
 import useResolvedPage from '@/hooks/useResolvedPage';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import OrderTrackingPanel, { OrderTrackingStatus } from '@/Components/OrderTrackingPanel';
 import { declaredParcelWeight } from '@/utils/declaredParcelWeight';
@@ -84,6 +85,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
     const [returnBarcode, setReturnBarcode] = useState('');
     const [returnNotes, setReturnNotes] = useState('');
     const [returnErrors, setReturnErrors] = useState<Record<string, string>>({});
+    useBodyScrollLock(Boolean(waybillSelection || qrSelection || packSelection || detailSelection || cancelSelection || chatOrder || returnSelection));
     const returnPending = useRef(false);
     const receiveReturn = (event: React.FormEvent) => {
         event.preventDefault();
@@ -671,7 +673,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                     </div>
                 )}
 
-                {returnOrder && <div role="dialog" aria-modal="true" aria-labelledby="return-receipt-title" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                {returnOrder && <div role="dialog" aria-modal="true" aria-labelledby="return-receipt-title" className="fixed inset-0 z-50 overscroll-contain flex items-center justify-center bg-black/40 p-4">
                     <form onSubmit={receiveReturn} className="max-h-[90dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-lg border border-slate-300 bg-white p-5">
                         <h2 id="return-receipt-title" className="text-lg font-bold text-slate-900">Receive your returned parcel</h2>
                         <p className="text-sm text-slate-700">Scan the original waybill after receiving the parcel from the origin hub. This confirms receipt and marks the order returned.</p>
@@ -693,7 +695,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
 
             {/* SELLER ACCEPT & REVIEW ORDER MODAL (THE BELOVED OLDER DESIGN) */}
             {typeof document !== 'undefined' && orderToAcceptAndPack && createPortal(
-                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
+                <div className="fixed inset-0 z-[9999] overscroll-contain bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl border border-slate-200 font-sans my-auto space-y-5 max-h-[92vh] overflow-y-auto">
                         
                         {/* Modal Header */}
@@ -804,7 +806,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
 
             {/* 1-CLICK CUSTOMER CHAT MODAL */}
             {typeof document !== 'undefined' && chatOrder && createPortal(
-                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
+                <div className="fixed inset-0 z-[9999] overscroll-contain bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans max-h-[92vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2 text-[#E00D42] text-xs font-bold font-sans">
@@ -911,7 +913,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
 
             {/* ORDER DETAILS & CHECKPOINT MODAL */}
             {typeof document !== 'undefined' && selectedOrderForDetails && createPortal(
-                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
+                <div className="fixed inset-0 z-[9999] overscroll-contain bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans max-h-[92vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2 text-slate-800 text-xs font-bold font-sans">
@@ -980,7 +982,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
 
             {/* CANCEL ORDER REASON MODAL */}
             {typeof document !== 'undefined' && orderToCancel && createPortal(
-                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
+                <div className="fixed inset-0 z-[9999] overscroll-contain bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <form onSubmit={handleConfirmCancel} className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans max-h-[92vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2 text-rose-600 text-xs font-bold font-sans">
@@ -1046,7 +1048,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
 
             {/* PRINTABLE THERMAL WAYBILL / SHIPPING LABEL MODAL */}
             {typeof document !== 'undefined' && selectedOrderForWaybill && createPortal(
-                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in print:p-0 print:bg-white overflow-y-auto font-sans">
+                <div className="fixed inset-0 z-[9999] overscroll-contain bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in print:p-0 print:bg-white overflow-y-auto font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-300 font-sans relative my-auto print:border-none print:shadow-none print:w-full print:max-w-none">
                         
                         {/* Modal Top Bar */}
@@ -1135,7 +1137,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
 
             {/* QUICK PARCEL QR CODE MODAL FOR COURIER / TRACKING */}
             {typeof document !== 'undefined' && selectedOrderForQr && createPortal(
-                <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
+                <div className="fixed inset-0 z-[9999] overscroll-contain bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
                     <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 my-auto space-y-5 text-center font-sans max-h-[92vh] overflow-y-auto">
                         
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">

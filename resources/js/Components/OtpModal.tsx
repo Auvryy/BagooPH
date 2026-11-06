@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Clock, ShieldCheck, AlertCircle, RefreshCw, X, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { AuthRequestError, AuthRequestScope, requestOtp } from '@/utils/authRequests';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 
 interface OtpModalProps {
     isOpen: boolean;
@@ -31,6 +32,7 @@ export default function OtpModal({
     const [codeSent, setCodeSent] = useState(false);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const scope = useRef(new AuthRequestScope());
+    useBodyScrollLock(isOpen);
     const context = JSON.stringify([isOpen, email, purpose, role]);
     const latestContext = useRef(context);
     latestContext.current = context;
@@ -152,7 +154,7 @@ export default function OtpModal({
     if (!isOpen || typeof document === 'undefined') return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
             <div role="dialog" aria-modal="true" aria-labelledby="otp-title" onKeyDown={event => { if (event.key === 'Escape') handleClose(); }} className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl relative font-sans max-h-[92vh] overflow-y-auto">
                 {/* Close Button */}
                 <button

@@ -70,7 +70,7 @@ export default function usePurchaseQuote(input: QuoteInput, initialQuote = empty
     });
     const [fetching, setFetching] = useState(false);
     const [failure, setFailure] = useState('');
-    const [companies, setCompanies] = useState<{ key: string; values: { id: number; name: string }[] } | null>(null);
+    const [companies, setCompanies] = useState<{ key: string; values: { id: number; name: string; logo?: string | null }[] } | null>(null);
 
     useEffect(() => {
         const { bag, revision, ...body } = JSON.parse(key) as QuoteInput;
@@ -102,7 +102,7 @@ export default function usePurchaseQuote(input: QuoteInput, initialQuote = empty
             const request = bag
                 ? axios.get(route('cart.index'), { ...options, params: { item_ids: body.item_ids } })
                 : axios.post(route('buyer.vouchers.apply'), body, options);
-            const acceptCompanies = (data: { logisticsCompanies?: { id: number; name: string }[] }) => {
+            const acceptCompanies = (data: { logisticsCompanies?: { id: number; name: string; logo?: string | null }[] }) => {
                 if (!controller.signal.aborted && Array.isArray(data?.logisticsCompanies)) setCompanies({ key, values: data.logisticsCompanies });
             };
             request.then(response => { acceptCompanies(response.data); accept(response.data); }).catch(error => {
