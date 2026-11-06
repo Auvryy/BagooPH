@@ -15,6 +15,7 @@ export function setupBuyerProfileWorkspace(workspace: HTMLElement) {
         });
     };
     const containWheel = (event: WheelEvent) => {
+        if (workspace.dataset.buyerProfilePageScroll === 'true') return;
         if (!desktop.matches || event.ctrlKey || event.defaultPrevented) return;
         const target = event.target instanceof Element ? event.target : null;
         const horizontal = target?.closest<HTMLElement>('[data-buyer-profile-horizontal]');

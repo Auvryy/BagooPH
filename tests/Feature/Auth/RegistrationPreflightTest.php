@@ -195,10 +195,12 @@ class RegistrationPreflightTest extends TestCase
             unset($invalid['step']);
             $this->post('/register', $invalid)->assertSessionHasErrors($field);
         }
-        foreach (['', 'M', str_repeat('M', 50)] as $middle) {
+        foreach (['', 'M', 'M.', 'MD.'] as $middle) {
             $this->postJson('/register/validate', array_replace($data, ['middle_name' => $middle]))->assertExactJson(['valid' => true]);
         }
-        $this->postJson('/register/validate', array_replace($data, ['middle_name' => str_repeat('M', 51)]))->assertJsonValidationErrors('middle_name');
+        foreach (['MMM', 'MDX.', 'Santos', str_repeat('M', 50)] as $middle) {
+            $this->postJson('/register/validate', array_replace($data, ['middle_name' => $middle]))->assertJsonValidationErrors('middle_name');
+        }
         $data = array_replace($data, ['first_name' => str_repeat('A', 49), 'last_name' => str_repeat('B', 50)]);
         $this->postJson('/register/validate', $data)->assertExactJson(['valid' => true]);
         $this->postJson('/register/validate', array_replace($data, ['first_name' => str_repeat('A', 50)]))->assertJsonValidationErrors('name');

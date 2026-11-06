@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cart;
 use App\Models\Product;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Commerce\SavedProductService;
@@ -18,7 +19,13 @@ class SavedProductController extends Controller
     {
         $request->validate(['page' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'max:1000000']]);
 
-        return Inertia::render('Buyer/SavedProducts', ['entries' => $saved->paginate($request->user())]);
+        $cart = Cart::query()->where('user_id', $request->user()->id)->with('items:id,cart_id,product_id')->first();
+        $cartItemIdsByProduct = $cart?->items->mapWithKeys(fn ($item) => [(int) $item->product_id => (int) $item->id])->all() ?? [];
+
+        return Inertia::render('Buyer/SavedProducts', [
+            'entries' => $saved->paginate($request->user()),
+            'cartItemIdsByProduct' => $cartItemIdsByProduct,
+        ]);
     }
 
     public function store(Request $request, Product $product, SavedProductService $saved): JsonResponse|RedirectResponse

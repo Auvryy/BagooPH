@@ -34,4 +34,19 @@
     .buyer-profile-scroll:not(.buyer-profile-card-scroll) {
         padding: 2px 4px 4px;
     }
+
+    .buyer-profile-workspace[data-buyer-profile-page-scroll="true"] {
+        height: auto;
+        min-height: 0;
+        align-items: start;
+    }
+
+    .buyer-profile-workspace[data-buyer-profile-page-scroll="true"] .buyer-profile-sidebar,
+    .buyer-profile-workspace[data-buyer-profile-page-scroll="true"] .buyer-profile-scroll {
+        height: auto;
+        max-height: none;
+        overflow: visible;
+        align-self: start;
+        flex: none;
+    }
 }

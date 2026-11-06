@@ -71,6 +71,8 @@ class AccountRegistrationService
         if ($hasInitial) {
             $initial = MiddleInitial::canonical($request->input('middle_initial'));
             $request->merge(['middle_initial' => $initial, 'middle_name' => $initial]);
+        } elseif ($request->exists('middle_name')) {
+            $request->merge(['middle_name' => MiddleInitial::canonical($request->input('middle_name'))]);
         }
 
         $applications = app(ApplicationValidationService::class);
@@ -92,6 +94,8 @@ class AccountRegistrationService
             'id_document' => ['bail', 'nullable', 'file', new RegistrationDocument],
             'middle_initial' => ['bail', 'nullable', 'string', new MiddleInitial],
         ];
+        // Registration accepts an initial only; post-registration identity correction keeps the full-name rule.
+        $rules['middle_name'] = ['bail', 'nullable', 'string', new MiddleInitial];
         $rules += app(RegistrationAddressService::class)->rules();
         if ($role === 'buyer') {
             $rules = app(RegistrationDeliveryPinService::class)->addRules($rules);

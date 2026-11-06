@@ -10,6 +10,12 @@ export function validDeliveryPin(latitude: string | number | null, longitude: st
 
 export type CheckoutAddressField = 'shipping_address' | 'shipping_city' | 'shipping_province' | 'destination_barangay' | 'shipping_postal_code';
 
+export function defaultLogisticsCompanyId<T extends { id: number | string }>(companies: T[], selectedId: number | string | null | undefined): number | string | '' {
+    if (selectedId !== null && selectedId !== undefined && selectedId !== ''
+        && companies.some(company => String(company.id) === String(selectedId))) return selectedId;
+    return companies[0]?.id ?? '';
+}
+
 export function withDoorstepDelivery<T extends { delivery_type: 'doorstep' | 'hub_self_pickup'; saved_address_id: number | null; save_address: boolean }>(previous: T, canSave: boolean): T {
     return { ...previous, delivery_type: 'doorstep', save_address: previous.saved_address_id === null && canSave ? true : previous.save_address };
 }

@@ -89,6 +89,14 @@ class CheckoutController extends Controller
         $addresses = $user->addresses()->orderByDesc('is_default')->oldest()->get();
         $addresses->each(fn ($address) => $address->setAttribute('location_token', app(BuyerAddressService::class)->locationToken($address)));
         $defaultAddress = $user->defaultAddress();
+        $initialAddress = $defaultAddress ?? $addresses->firstWhere('is_default') ?? $addresses->first();
+        $initialLogisticsChoices = app(LogisticsCheckoutService::class)->choices($checkoutItems, [
+            'delivery_type' => 'doorstep',
+            'shipping_province' => $initialAddress?->province,
+            'shipping_city' => $initialAddress?->city,
+            'shipping_postal_code' => $initialAddress?->postal_code,
+            'destination_barangay' => $initialAddress?->barangay,
+        ]);
 
         $pickupHubs = LogisticsHub::readyForSelfPickup()
             ->get(['id', 'name', 'code', 'city_municipality', 'address', 'province', 'logistics_company_id']);
@@ -110,7 +118,7 @@ class CheckoutController extends Controller
             'addressBookLimit' => BuyerAddressService::LIMIT,
             'doorstepPinRequired' => (bool) config('checkout.require_doorstep_pin'),
             'pickupHubs' => $pickupHubs,
-            'logisticsCompanies' => app(LogisticsCheckoutService::class)->choices(),
+            'logisticsCompanies' => $initialLogisticsChoices,
             'checkoutToken' => app(CheckoutSubmissionService::class)->issue($user, $cart, $checkoutItems),
             'walletBalanceCents' => app(WalletLedger::class)->balance($user),
         ]);

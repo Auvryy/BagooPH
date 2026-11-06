@@ -26,16 +26,41 @@ class BuyerProductController extends Controller
         $discovery = app(BuyerDiscoveryService::class);
         $filters = $discovery->selection($request);
         $products = $discovery->paginate($discovery->filter($discovery->catalogue(), $filters), $filters);
-        $related = $discovery->filter($discovery->catalogue(), [...$filters, 'search' => ''])
-            ->whereNotIn('products.id', $products->pluck('id'));
+        $pageProducts = $products->getCollection();
+        $suggestions = $products->total() === 0 ? $discovery->suggestions($filters) : [];
+        $related = $discovery->filter($discovery->catalogue(), [...$filters, 'search' => '']);
+        if ($filters['search'] !== '' && $pageProducts->isNotEmpty()) {
+            $categoryIds = $pageProducts->pluck('category_id')->filter()->unique()->values()->all();
+            $shopIds = $pageProducts->pluck('shop_id')->filter()->unique()->values()->all();
+            $related->where(function ($query) use ($categoryIds, $shopIds) {
+                if ($categoryIds) {
+                    $query->whereIn('products.category_id', $categoryIds);
+                }
+                if ($shopIds) {
+                    $query->when($categoryIds, fn ($scope) => $scope->orWhereIn('products.shop_id', $shopIds),
+                        fn ($scope) => $scope->whereIn('products.shop_id', $shopIds));
+                }
+            });
+            $matches = $discovery->filter($discovery->catalogue(), $filters)->reorder()->select('products.id');
+            $related->whereNotIn('products.id', $matches);
+            if ($categoryIds) {
+                $related->orderByRaw('CASE WHEN products.category_id IN ('.implode(',', array_fill(0, count($categoryIds), '?')).') THEN 0 ELSE 1 END', $categoryIds);
+            }
+            if ($shopIds) {
+                $related->orderByRaw('CASE WHEN products.shop_id IN ('.implode(',', array_fill(0, count($shopIds), '?')).') THEN 0 ELSE 1 END', $shopIds);
+            }
+        } elseif ($filters['search'] !== '' && $suggestions) {
+            $related = $discovery->filter($discovery->catalogue(), [...$filters, 'search' => $suggestions[0]]);
+        }
+        $related->orderByDesc('sales_count')->orderByDesc('products.id')->limit(6);
 
         return Inertia::render('Buyer/Search', [
             'products' => $products,
             'categories' => fn () => $discovery->categories(),
             'locations' => fn () => app(CatalogueLocationService::class)->areas(),
-            'relatedProducts' => fn () => $related->orderByDesc('sales_count')->orderByDesc('products.id')->limit(6)->get(),
+            'relatedProducts' => fn () => $related->get(),
             'filters' => $filters,
-            'suggestions' => fn () => $products->total() === 0 ? $discovery->suggestions($filters) : [],
+            'suggestions' => fn () => $suggestions,
         ]);
     }
 

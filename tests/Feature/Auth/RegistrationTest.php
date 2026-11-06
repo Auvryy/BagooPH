@@ -65,7 +65,7 @@ class RegistrationTest extends TestCase
     {
         $response = $this->post('/register', [...$this->registrationPolicies(),
             'first_name' => 'Maria',
-            'middle_name' => 'Santos',
+            'middle_name' => 'S.',
             'last_name' => 'Dela Cruz',
             'email' => 'maria.delacruz@example.com',
             'password' => 'Password1234!',
@@ -82,9 +82,9 @@ class RegistrationTest extends TestCase
 
         $user = User::where('email', 'maria.delacruz@example.com')->first();
         $this->assertNotNull($user);
-        $this->assertEquals('Maria Santos Dela Cruz', $user->name);
+        $this->assertEquals('Maria S. Dela Cruz', $user->name);
         $this->assertEquals('Maria', $user->first_name);
-        $this->assertEquals('Santos', $user->middle_name);
+        $this->assertEquals('S.', $user->middle_name);
         $this->assertEquals('Dela Cruz', $user->last_name);
         $this->assertEquals('Female', $user->sex);
         $this->assertEquals('2000-05-15', $user->birthday->format('Y-m-d'));

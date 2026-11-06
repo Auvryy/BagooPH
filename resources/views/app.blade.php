@@ -19,20 +19,33 @@
         <meta name="google-site-verification" content="{{ config('services.google.site_verification') }}">
         @endif
 
+        @php
+            $previewProduct = data_get($page ?? [], 'props.product');
+            $previewProductName = data_get($previewProduct, 'name');
+            $previewProductDescription = trim(strip_tags((string) data_get($previewProduct, 'description', '')));
+            $previewTitle = $previewProductName ? $previewProductName.' — BagooPH' : 'BagooPH — Philippine E-Commerce & On-Demand Logistics';
+            $previewDescription = $previewProduct && $previewProductDescription !== ''
+                ? \Illuminate\Support\Str::limit($previewProductDescription, 240)
+                : 'Shop verified merchants with nationwide Cash on Delivery (COD) and real-time order tracking on BagooPH.';
+            $previewImage = data_get($previewProduct, 'featured_image') ?: asset('bagoo.svg');
+            $previewImageUrl = \Illuminate\Support\Str::startsWith($previewImage, ['http://', 'https://']) ? $previewImage : asset($previewImage);
+        @endphp
+
         <!-- Open Graph / Facebook / Messenger / Viber Previews -->
-        <meta property="og:type" content="website">
+        <meta property="og:type" content="{{ $previewProduct ? 'product' : 'website' }}">
         <meta property="og:site_name" content="BagooPH">
         <meta property="og:url" content="{{ url()->current() }}">
-        <meta property="og:title" content="BagooPH — Philippine E-Commerce & On-Demand Logistics">
-        <meta property="og:description" content="Shop verified merchants with nationwide Cash on Delivery (COD) and real-time order tracking on BagooPH.">
-        <meta property="og:image" content="{{ asset('bagoo.svg') }}">
+        <meta property="og:title" content="{{ $previewTitle }}">
+        <meta property="og:description" content="{{ $previewDescription }}">
+        <meta property="og:image" content="{{ $previewImageUrl }}">
+        <meta property="og:image:alt" content="{{ $previewProductName ? $previewProductName.' product image' : 'BagooPH marketplace' }}">
         <meta property="og:locale" content="en_PH">
 
         <!-- Twitter Card -->
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="BagooPH — Philippine E-Commerce & On-Demand Logistics">
-        <meta name="twitter:description" content="Shop verified merchants with nationwide Cash on Delivery (COD) and real-time order tracking.">
-        <meta name="twitter:image" content="{{ asset('bagoo.svg') }}">
+        <meta name="twitter:title" content="{{ $previewTitle }}">
+        <meta name="twitter:description" content="{{ $previewDescription }}">
+        <meta name="twitter:image" content="{{ $previewImageUrl }}">
 
         <!-- JSON-LD Schema.org Structured Data for Google Rich Snippets -->
         <script type="application/ld+json">

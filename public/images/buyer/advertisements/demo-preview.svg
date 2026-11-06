@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1880" height="880" viewBox="0 0 1880 880" role="img" aria-labelledby="title desc">
+  <title id="title">BagooPH local demo collection</title>
+  <desc id="desc">Neutral sample artwork for local preview, without prices, discounts or delivery claims.</desc>
+  <defs>
+    <linearGradient id="backdrop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff9fa"/>
+      <stop offset="0.56" stop-color="#f5e1e6"/>
+      <stop offset="1" stop-color="#e8bfc9"/>
+    </linearGradient>
+    <linearGradient id="bag" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b80a3b"/>
+      <stop offset="1" stop-color="#680a2c"/>
+    </linearGradient>
+    <linearGradient id="box" x1="0" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#f9dba0"/>
+      <stop offset="1" stop-color="#d6a663"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="18"/>
+      <feOffset dy="18"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.2"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1880" height="880" fill="url(#backdrop)"/>
+  <circle cx="1715" cy="85" r="255" fill="#fff" opacity="0.28"/>
+  <circle cx="1130" cy="835" r="400" fill="#d83462" opacity="0.08"/>
+  <path d="M0 742 C280 620 420 706 650 880 H0Z" fill="#d83462" opacity="0.08"/>
+  <path d="M0 0 H1880 V15 H0Z" fill="#b90c3f" opacity="0.8"/>
+
+  <g font-family="DejaVu Sans, Arial, sans-serif" fill="#68102f">
+    <text x="132" y="172" font-size="35" font-weight="700" letter-spacing="1">BAGOO PH</text>
+    <rect x="132" y="209" width="296" height="45" rx="22" fill="#fff" opacity="0.82"/>
+    <text x="156" y="239" font-size="17" font-weight="700" letter-spacing="1.2" fill="#9b1741">LOCAL DEMO CREATIVE</text>
+    <text x="128" y="390" font-size="76" font-weight="700" letter-spacing="-2">Everyday Finds</text>
+    <text x="132" y="455" font-size="29" font-weight="400" fill="#8c3550">A neutral sample banner for local preview.</text>
+    <text x="132" y="810" font-size="17" font-weight="500" fill="#8c5263">Sample artwork only. No sale, price, shipping or voucher offer is advertised.</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <!-- Simple unbranded commuter bag illustration. -->
+    <path d="M1190 354 C1190 264 1268 194 1364 194 C1460 194 1538 264 1538 354" fill="none" stroke="#68102f" stroke-width="33" stroke-linecap="round"/>
+    <path d="M1112 365 Q1112 330 1148 330 H1580 Q1616 330 1616 366 L1586 739 Q1582 786 1535 786 H1193 Q1146 786 1142 739Z" fill="url(#bag)"/>
+    <path d="M1187 393 Q1187 377 1203 377 H1525 Q1541 377 1541 393 V718 Q1541 734 1525 734 H1203 Q1187 734 1187 718Z" fill="#8f1238" stroke="#d8788e" stroke-width="3"/>
+    <path d="M1364 393 V734" stroke="#d8788e" stroke-width="3" opacity="0.65"/>
+    <path d="M1256 421 V693 M1472 421 V693" stroke="#f7d6dd" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+    <path d="M1256 456 V532 M1472 456 V532" stroke="#f7d6dd" stroke-width="12" stroke-linecap="round"/>
+    <rect x="1301" y="558" width="126" height="109" rx="14" fill="#f1c4cf" opacity="0.88"/>
+    <path d="M1338 558 V542 Q1338 519 1364 519 Q1390 519 1390 542 V558" fill="none" stroke="#68102f" stroke-width="10"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <path d="M1544 661 L1702 600 L1791 659 V773 L1634 827 L1544 765Z" fill="url(#box)"/>
+    <path d="M1544 661 L1633 718 L1791 659" fill="none" stroke="#b47a40" stroke-width="5"/>
+    <path d="M1633 718 V827" stroke="#b47a40" stroke-width="5"/>
+    <path d="M1580 613 L1700 568 L1762 608 L1644 654Z" fill="#fff5df" opacity="0.9"/>
+  </g>
+
+  <g fill="#b90c3f" opacity="0.6">
+    <circle cx="1058" cy="263" r="9"/><circle cx="1688" cy="282" r="7"/><circle cx="1083" cy="718" r="6"/>
+    <path d="M1632 183 l8 22 22 8 -22 8 -8 22 -8 -22 -22 -8 22 -8z"/>
+    <path d="M1058 520 l6 17 17 6 -17 6 -6 17 -6 -17 -17 -6 17 -6z"/>
+  </g>
+</svg>

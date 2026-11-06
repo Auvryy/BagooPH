@@ -12,6 +12,7 @@ import '../../css/logistics-workspace.css';
 import { HubPageHeader } from '@/Components/Logistics/Workspace';
 import NavigationAttentionDot from '@/Components/NavigationAttentionDot';
 import { getDomainUrl } from '@/utils/domain';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import { 
     ShoppingBag, 
     LayoutDashboard, Layers,
@@ -72,6 +73,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
     const user = auth.user;
     const role = user?.role || 'buyer';
+    useBodyScrollLock(sidebarOpen && role !== 'logistics');
     const currentShop = user?.shop;
     const activeHub = (user as any)?.activeHub;
     const allHubs = (user as any)?.allHubs || [];
@@ -281,7 +283,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             {/* Sidebar (Permanently Fixed on Desktop) */}
             <LogisticsNavigationDrawer enabled={role === 'logistics'} open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
             <aside id="portal-navigation" className={`
-                fixed inset-y-0 left-0 z-50 w-64 bg-white text-slate-700 border-r border-slate-200 
+                fixed inset-y-0 left-0 z-50 w-64 overscroll-contain bg-white text-slate-700 border-r border-slate-200
                 flex flex-col transition-transform duration-200 ease-in-out
                 ${sidebarOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'}
                 lg:visible lg:static lg:translate-x-0 lg:h-full lg:shrink-0 lg:z-30

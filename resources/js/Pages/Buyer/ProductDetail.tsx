@@ -6,6 +6,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import VoucherOfferList from '@/Components/VoucherOfferList';
 import SavedProductButton from '@/Components/SavedProductButton';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import { productQuantityError } from '@/utils/productQuantity';
 import RatingStars, { ratingLabel } from '@/Components/RatingStars';
 import { PageProps, Product, Review } from '@/types';
@@ -109,7 +110,10 @@ export default function BuyerProductDetail({
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [copiedShareLink, setCopiedShareLink] = useState(false);
+    const [shareLinkStatus, setShareLinkStatus] = useState('');
+    const [shareLinkError, setShareLinkError] = useState('');
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    useBodyScrollLock(Boolean(lightboxImage) || isShareModalOpen);
     const [purchaseGateMessage, setPurchaseGateMessage] = useState<string | null>(null);
     const [cartFeedback, setCartFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const { auth } = usePage<PageProps>().props;
@@ -123,10 +127,39 @@ export default function BuyerProductDetail({
 
     const handleCopyShareLink = async () => {
         const shareUrl = getShareUrl();
-        if (typeof navigator !== 'undefined' && navigator.clipboard) {
-            await navigator.clipboard.writeText(shareUrl);
+        setShareLinkStatus('');
+        setShareLinkError('');
+        try {
+            let copied = false;
+            if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                try {
+                    await navigator.clipboard.writeText(shareUrl);
+                    copied = true;
+                } catch {
+                    // Fall back to document copy when clipboard permission is unavailable.
+                }
+            }
+            if (!copied && typeof document !== 'undefined') {
+                const input = document.createElement('textarea');
+                input.value = shareUrl;
+                input.setAttribute('readonly', '');
+                input.style.position = 'fixed';
+                input.style.opacity = '0';
+                document.body.appendChild(input);
+                try {
+                    input.select();
+                    copied = document.execCommand('copy');
+                } finally {
+                    input.remove();
+                }
+            }
+            if (!copied) throw new Error('Clipboard copy is unavailable.');
             setCopiedShareLink(true);
+            setShareLinkStatus('Product link copied. Paste it into Messenger to share the product preview.');
             setTimeout(() => setCopiedShareLink(false), 2500);
+        } catch {
+            setCopiedShareLink(false);
+            setShareLinkError('Could not copy the product link. Select the link above and copy it manually.');
         }
     };
 
@@ -144,6 +177,19 @@ export default function BuyerProductDetail({
                 if (err?.name === 'AbortError') return;
             }
         }
+    };
+
+    const handleMessengerShare = async () => {
+        if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+            try {
+                await navigator.share({ title: `${product.name} | BagooPH`, text: `Check out ${product.name} on BagooPH`, url: getShareUrl() });
+                setIsShareModalOpen(false);
+                return;
+            } catch (err: any) {
+                if (err?.name === 'AbortError') return;
+            }
+        }
+        await handleCopyShareLink();
     };
 
     const openSocialShare = (platform: 'facebook' | 'twitter' | 'whatsapp' | 'telegram') => {
@@ -327,7 +373,7 @@ export default function BuyerProductDetail({
             {/* Lightbox Modal for Customer Photo Zoom */}
             {lightboxImage && (
                 <div 
-                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"
+                    className="fixed inset-0 z-50 overscroll-contain bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"
                     onClick={() => setLightboxImage(null)}
                 >
                     <div className="relative max-w-3xl max-h-[85vh] overflow-hidden rounded-2xl bg-black">
@@ -878,7 +924,7 @@ export default function BuyerProductDetail({
             {/* Dedicated Unified Share Modal */}
             {isShareModalOpen && (
                 <div 
-                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans"
+                    className="fixed inset-0 z-50 overscroll-contain bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in font-sans"
                     onClick={() => setIsShareModalOpen(false)}
                 >
                     <div 
@@ -891,9 +937,9 @@ export default function BuyerProductDetail({
                                 <div className="w-8 h-8 rounded-lg bg-red-50 text-[#E00D42] flex items-center justify-center">
                                     <Share2 className="w-4 h-4" />
                                 </div>
-                                <div>
+                                <div className="min-w-0">
                                     <h3 className="font-bold text-sm text-slate-900 leading-tight">Share this Product</h3>
-                                    <p className="text-[11px] text-slate-400 font-sans">Send to friends or share across social media</p>
+                                    <p className="text-[11px] text-slate-500 font-sans">Share the product page and its preview image</p>
                                 </div>
                             </div>
                             <button
@@ -904,6 +950,8 @@ export default function BuyerProductDetail({
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
+                        {shareLinkStatus && <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-800">{shareLinkStatus}</p>}
+                        {shareLinkError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-800">{shareLinkError}</p>}
 
                         {/* Product Summary Snapshot */}
                         <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70 flex items-center gap-3">
@@ -962,7 +1010,18 @@ export default function BuyerProductDetail({
                             <label className="text-[11px] font-sans font-bold uppercase tracking-wider text-slate-500">
                                 Share to Socials
                             </label>
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-5 gap-2">
+                                {/* The native share sheet exposes Messenger where the browser/device provides it; otherwise the link is copied for pasting into a chat. */}
+                                <button
+                                    type="button"
+                                    onClick={handleMessengerShare}
+                                    className="flex flex-col items-center justify-center rounded-xl border border-slate-200/80 p-2.5 transition hover:border-blue-500 hover:bg-blue-50/50 group"
+                                >
+                                    <div className="mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#0866FF] text-white transition-transform group-hover:scale-105">
+                                        <MessageSquare className="h-4 w-4" aria-hidden="true" />
+                                    </div>
+                                    <span className="text-[10px] font-sans font-bold text-slate-700 group-hover:text-blue-600">Messenger</span>
+                                </button>
                                 {/* Facebook */}
                                 <button
                                     type="button"

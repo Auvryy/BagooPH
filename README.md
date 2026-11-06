@@ -140,6 +140,23 @@ Seeding is a deliberate demo-data operation, not part of an ordinary deployment.
 | `./bagoo.sh deploy` | Install dependencies, build assets, start services, migrate and warm Laravel caches. |
 | `./bagoo.sh verify` | Check the compiled asset manifest and pending migrations. |
 
+### Preview uncommitted frontend changes
+
+When reviewing frontend edits in the current worktree, keep the local PHP/web
+stack running and start Vite from a host terminal at the repository root:
+
+```bash
+npm run dev -- --host 127.0.0.1
+```
+
+Leave Vite running while browsing the app at `http://localhost:8000` (or the
+configured `APP_PORT`). Laravel reads Vite's `public/hot` marker and serves the
+current source files from the dev server; without that marker, it uses the
+compiled files referenced by `public/build/manifest.json`, which may be stale.
+If the app was already open before Vite started, hard-refresh the tab once
+(`Ctrl+Shift+R`) so it switches from the previously loaded compiled assets.
+This preview path does not overwrite `public/build`.
+
 ## Deployment and verification
 
 After reviewed changes have been published and pulled into the server repository:

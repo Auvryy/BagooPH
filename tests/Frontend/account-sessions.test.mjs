@@ -109,6 +109,29 @@ test('legacy and empty histories explain unknown dates without inventing activit
     } finally { h.close(); }
 });
 
+test('sessions and recent sign-ins show five entries first and both expand controls work', () => {
+    const h = harness();
+    try {
+        h.props.sessions = page(Array.from({ length: 7 }, (_, index) => session(`session-${index + 1}`, index === 0)));
+        h.props.signIns = page(Array.from({ length: 8 }, (_, index) => session(`signin-${index + 1}`, index === 0)));
+        const sections = () => nodes(h.render(), node => node.type === 'section' && node.props?.['aria-labelledby']);
+        const rows = (section, expected) => assert.equal(nodes(section, node => node.type === 'li').length, expected);
+        const byTitle = title => sections().find(section => section.props['aria-labelledby'] === title);
+
+        rows(byTitle('sessions-title'), 5);
+        button(byTitle('sessions-title'), 'Show all 7 sessions on this page').props.onClick();
+        rows(byTitle('sessions-title'), 7);
+        button(byTitle('sessions-title'), 'Show the first five sessions on this page').props.onClick();
+        rows(byTitle('sessions-title'), 5);
+
+        rows(byTitle('history-title'), 5);
+        button(byTitle('history-title'), 'Show all 8 sign-ins on this page').props.onClick();
+        rows(byTitle('history-title'), 8);
+        button(byTitle('history-title'), 'Show the first five sign-ins on this page').props.onClick();
+        rows(byTitle('history-title'), 5);
+    } finally { h.close(); }
+});
+
 test('current sign-out uses the existing logout action and remote selection requires confirmation', () => {
     const h = harness();
     try {

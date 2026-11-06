@@ -456,7 +456,11 @@ export default function BuyerProfile({
                 />
 
                 {/* 2. TWO-COLUMN WORKSPACE: LEFT SIDEBAR + RIGHT WORKSPACE */}
-                <div ref={workspaceRef} className="buyer-profile-workspace grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div
+                    ref={workspaceRef}
+                    data-buyer-profile-page-scroll={activeTab === 'wallet' ? 'true' : undefined}
+                    className="buyer-profile-workspace grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
+                >
                     <h1 className="sr-only">{activeTab === 'orders' ? (showingOrderIssues ? 'Order issues' : 'My Purchases & Order Tracking') : 'Account Settings & Credentials'}</h1>
                     
                     {/* LEFT SIDEBAR NAVIGATION */}

@@ -1,5 +1,5 @@
 import { Head, usePage } from '@inertiajs/react';
-import { Heart, ShoppingBag } from 'lucide-react';
+import { ChevronRight, Heart, ShoppingBag } from 'lucide-react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import ProductCard from '@/Components/ProductCard';
 import PortalLink from '@/Components/PortalLink';
@@ -15,7 +15,10 @@ interface Entry {
     unavailable_reason: string;
 }
 
-export default function SavedProducts({ entries }: { entries: PaginatedData<Entry> }) {
+export default function SavedProducts({ entries, cartItemIdsByProduct = {} }: {
+    entries: PaginatedData<Entry>;
+    cartItemIdsByProduct?: Record<number, number>;
+}) {
     useResolvedPage(entries.current_page);
     const { flash } = usePage<PageProps>().props;
     return <BuyerLayout>
@@ -29,11 +32,24 @@ export default function SavedProducts({ entries }: { entries: PaginatedData<Entr
             {entries.data.length === 0 ? <div className="rounded-2xl border border-slate-300 bg-white p-10 text-center">
                 <Heart className="mx-auto mb-3 h-8 w-8 text-[#E00D42]" /><h2 className="font-bold text-slate-900">No saved products yet</h2><p className="mt-2 text-sm text-slate-500">Use Save product when browsing the catalogue.</p>
             </div> : <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {entries.data.map(entry => entry.product ? <ProductCard key={entry.id} product={entry.product} href={route('buyer.products.show', entry.product.slug)} saveControl={<SavedProductButton productId={entry.product_id} />} /> :
-                    <article key={entry.id} className="flex flex-col justify-between rounded-lg border border-slate-300 bg-white p-4">
+                {entries.data.map(entry => {
+                    const cartItemId = cartItemIdsByProduct[entry.product_id];
+                    const inBagAction = cartItemId ? <PortalLink href={route('buyer.cart', { focus: cartItemId })}
+                        aria-label="Already in your Bag. Open the Bag and focus this item"
+                        className="inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">
+                        <span className="inline-flex items-center gap-2"><ShoppingBag className="h-4 w-4" aria-hidden="true" />Already in your Bag · View item</span>
+                        <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    </PortalLink> : null;
+
+                    return entry.product ? <div key={entry.id} className="space-y-2">
+                        {inBagAction}
+                        <ProductCard product={entry.product} href={route('buyer.products.show', entry.product.slug)} saveControl={<SavedProductButton productId={entry.product_id} />} />
+                    </div> : <article key={entry.id} className="flex flex-col justify-between rounded-lg border border-slate-300 bg-white p-4">
                         <div className="py-6 text-center"><ShoppingBag className="mx-auto mb-3 h-8 w-8 text-slate-400" /><h2 className="text-sm font-bold text-slate-800">Saved product unavailable</h2><p className="mt-2 text-xs text-slate-500">{entry.unavailable_reason}</p><button type="button" disabled className="mt-3 rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-400">Unavailable for purchase</button></div>
+                        {inBagAction}
                         <SavedProductButton productId={entry.product_id} />
-                    </article>)}
+                    </article>;
+                })}
             </div>}
             <nav aria-label="Saved product pages" className="flex items-center justify-center gap-4 text-sm">
                 {entries.prev_page_url && <PortalLink href={entries.prev_page_url} className="rounded-lg border border-slate-300 bg-white px-3 py-2">Previous</PortalLink>}

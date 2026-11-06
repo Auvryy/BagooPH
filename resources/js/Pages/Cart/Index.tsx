@@ -6,6 +6,7 @@ import BuyerLayout from '@/Layouts/BuyerLayout';
 import VoucherOfferList from '@/Components/VoucherOfferList';
 import usePurchaseQuote, { PurchaseQuote } from '@/hooks/usePurchaseQuote';
 import { Cart, CartItem, PageProps } from '@/types';
+import { createCartQuantityUpdateQueue } from '@/utils/cartQuantityUpdateQueue';
 import { 
     ShoppingBag, 
     Trash2, 
@@ -31,9 +32,12 @@ interface Props {
     total: number;
     quote?: PurchaseQuote;
     selectedBagItemIds?: number[] | null;
+    focusBagItemId?: number | null;
 }
 
-export default function CartIndex({ cart, items, quote: initialQuote, selectedBagItemIds }: Props) {
+type CartQuantityQueue = ReturnType<typeof createCartQuantityUpdateQueue<CartItem>>;
+
+export default function CartIndex({ cart, items, quote: initialQuote, selectedBagItemIds, focusBagItemId = null }: Props) {
     // Determine the most recently added or updated product in the bag
     const getMostRecentItemId = (itemList: CartItem[]): number | null => {
         if (!itemList || itemList.length === 0) return null;
@@ -62,6 +66,16 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
         }
     }, [selectedBagItemIds]);
 
+    useEffect(() => {
+        if (!focusBagItemId) return;
+        const frame = window.requestAnimationFrame(() => {
+            const target = document.getElementById(`bag-item-${focusBagItemId}`);
+            target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target?.focus({ preventScroll: true });
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [focusBagItemId, items]);
+
     type SortOption = 'recent' | 'oldest' | 'price_low' | 'price_high' | 'name_asc';
     type FilterOption = 'all' | 'selected' | 'unselected';
 
@@ -72,12 +86,79 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
     const [quantityDrafts, setQuantityDrafts] = useState<Record<number, string>>(() =>
         Object.fromEntries(items.map((item) => [item.id, String(item.quantity)]))
     );
+    const quantityDraftsRef = useRef(quantityDrafts);
     const [quantityErrors, setQuantityErrors] = useState<Record<number, string>>({});
     const [quantityUpdates, setQuantityUpdates] = useState(0);
+    const pendingQuantityIds = useRef(new Set<number>());
+    const serverQuantities = useRef<Record<number, number>>(Object.fromEntries(items.map(item => [item.id, item.quantity])));
+    const quantityQueue = useRef<CartQuantityQueue | null>(null);
     const removalPending = useRef<number | null>(null);
     const [removingId, setRemovingId] = useState<number | null>(null);
     const [removalErrors, setRemovalErrors] = useState<Record<number, string>>({});
     const { auth } = usePage<PageProps>().props;
+
+    quantityDraftsRef.current = quantityDrafts;
+
+    const setQuantityDraft = (itemId: number, value: string) => {
+        const next = { ...quantityDraftsRef.current, [itemId]: value };
+        quantityDraftsRef.current = next;
+        setQuantityDrafts(next);
+    };
+
+    const markQuantityPending = (itemId: number, pending: boolean) => {
+        const ids = pendingQuantityIds.current;
+        if (pending && !ids.has(itemId)) {
+            ids.add(itemId);
+            setQuantityUpdates(ids.size);
+        } else if (!pending && ids.has(itemId)) {
+            ids.delete(itemId);
+            setQuantityUpdates(ids.size);
+        }
+    };
+
+    if (!quantityQueue.current) {
+        quantityQueue.current = createCartQuantityUpdateQueue<CartItem>(change => new Promise(resolve => {
+            const itemId = change.item.id;
+            const currentServerQuantity = serverQuantities.current[itemId] ?? change.item.quantity;
+            try {
+                router.patch(route('cart.update', itemId), { quantity: change.quantity }, {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onSuccess: page => {
+                        const updatedItems = (page.props as { items?: CartItem[] }).items;
+                        const updatedItem = updatedItems?.find(item => item.id === itemId);
+                        serverQuantities.current[itemId] = updatedItem?.quantity ?? change.quantity;
+                    },
+                    onError: errors => {
+                        if (!quantityQueue.current?.hasQueued(itemId)) {
+                            setQuantityErrors(current => ({
+                                ...current,
+                                [itemId]: String(errors.quantity || 'The quantity could not be updated.'),
+                            }));
+                        }
+                    },
+                    onCancel: () => {
+                        if (!quantityQueue.current?.hasQueued(itemId)) {
+                            setQuantityErrors(current => ({ ...current, [itemId]: 'The update was interrupted. Check the quantity and try again.' }));
+                        }
+                    },
+                    onFinish: () => {
+                        if (!quantityQueue.current?.hasQueued(itemId)) {
+                            const serverQuantity = serverQuantities.current[itemId] ?? currentServerQuantity;
+                            setQuantityDraft(itemId, String(serverQuantity));
+                            markQuantityPending(itemId, false);
+                        }
+                        resolve();
+                    },
+                });
+            } catch {
+                setQuantityErrors(current => ({ ...current, [itemId]: 'The quantity could not be updated.' }));
+                setQuantityDraft(itemId, String(currentServerQuantity));
+                markQuantityPending(itemId, false);
+                resolve();
+            }
+        }));
+    }
 
     const removalFailed = useCallback((message: string) => {
         const id = removalPending.current;
@@ -106,11 +187,16 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
 
     useEffect(() => {
         setSelectedIds(current => current.filter(id => items.some(item => item.id === id && item.available_for_purchase === true)));
-        setQuantityDrafts((current) => ({
-            ...current,
-            ...Object.fromEntries(items.map((item) => [item.id, String(item.quantity)])),
-        }));
+        const nextDrafts = { ...quantityDraftsRef.current };
+        for (const item of items) {
+            serverQuantities.current[item.id] = item.quantity;
+            if (!pendingQuantityIds.current.has(item.id)) nextDrafts[item.id] = String(item.quantity);
+        }
+        quantityDraftsRef.current = nextDrafts;
+        setQuantityDrafts(nextDrafts);
     }, [items]);
+
+    useEffect(() => () => quantityQueue.current?.dispose(), []);
 
     // Process displayed items according to search, filter and sort options
     const displayedItems = useMemo(() => {
@@ -204,7 +290,7 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
         const maximum = maximumQuantityForItem(item);
         if (newQty < 1 || maximum < 1) return;
         if (newQty > maximum) {
-            setQuantityDrafts((current) => ({ ...current, [item.id]: String(maximum) }));
+            setQuantityDraft(item.id, String(maximum));
             setQuantityErrors((current) => ({
                 ...current,
                 [item.id]: `Only ${maximum} units are available for this selection.`,
@@ -212,27 +298,29 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
             return;
         }
 
-        setQuantityDrafts((current) => ({ ...current, [item.id]: String(newQty) }));
+        setQuantityDraft(item.id, String(newQty));
         setQuantityErrors((current) => ({ ...current, [item.id]: '' }));
-        if (newQty === item.quantity) return;
+        const currentServerQuantity = serverQuantities.current[item.id] ?? item.quantity;
+        const sameItemInFlight = quantityQueue.current?.isSending(item.id) ?? false;
+        if (newQty === currentServerQuantity && !sameItemInFlight) {
+            quantityQueue.current?.cancel(item.id);
+            setQuantityDraft(item.id, String(currentServerQuantity));
+            markQuantityPending(item.id, false);
+            return;
+        }
 
-        setQuantityUpdates(current => current + 1);
-        router.patch(route('cart.update', item.id), { quantity: newQty }, {
-            preserveScroll: true,
-            onFinish: () => setQuantityUpdates(current => Math.max(0, current - 1)),
-            onError: (errors) => {
-                setQuantityDrafts((current) => ({ ...current, [item.id]: String(item.quantity) }));
-                setQuantityErrors((current) => ({
-                    ...current,
-                    [item.id]: String(errors.quantity || 'The quantity could not be updated.'),
-                }));
-            },
-        });
+        markQuantityPending(item.id, true);
+        quantityQueue.current?.enqueue({ item, quantity: newQty });
+    };
+
+    const changeQuantityBy = (item: CartItem, amount: number) => {
+        const draft = Number(quantityDraftsRef.current[item.id] ?? item.quantity);
+        updateQuantity(item, (Number.isInteger(draft) && draft >= 1 ? draft : item.quantity) + amount);
     };
 
     const handleQuantityInput = (item: CartItem, value: string) => {
         if (value === '') {
-            setQuantityDrafts((current) => ({ ...current, [item.id]: '' }));
+            setQuantityDraft(item.id, '');
             return;
         }
         if (!/^\d+$/.test(value)) return;
@@ -240,7 +328,7 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
         const maximum = maximumQuantityForItem(item);
         const parsed = Number(value);
         if (parsed > maximum) {
-            setQuantityDrafts((current) => ({ ...current, [item.id]: String(Math.max(1, maximum)) }));
+            setQuantityDraft(item.id, String(Math.max(1, maximum)));
             setQuantityErrors((current) => ({
                 ...current,
                 [item.id]: maximum > 0
@@ -250,12 +338,12 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
             return;
         }
 
-        setQuantityDrafts((current) => ({ ...current, [item.id]: String(Math.max(1, parsed)) }));
+        setQuantityDraft(item.id, String(Math.max(1, parsed)));
         setQuantityErrors((current) => ({ ...current, [item.id]: '' }));
     };
 
     const commitQuantityInput = (item: CartItem) => {
-        const parsed = Number(quantityDrafts[item.id]);
+        const parsed = Number(quantityDraftsRef.current[item.id]);
         updateQuantity(item, Number.isInteger(parsed) && parsed >= 1 ? parsed : item.quantity);
     };
 
@@ -277,7 +365,7 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
     const pricing = usePurchaseQuote({
         item_ids: selectedIds,
         bag: true,
-        revision: JSON.stringify([quantityUpdates, items.map(item => [item.id, item.quantity, item.product?.price, item.available_for_purchase])]),
+        revision: JSON.stringify(items.map(item => [item.id, item.quantity, item.product?.price, item.available_for_purchase])),
     }, initialQuote);
     const subtotal = pricing.quote.subtotal;
     const quotedItems = new Map(pricing.quote.items.map(item => [item.id, item]));
@@ -465,7 +553,7 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
                                 ) : (
                                     <div className="divide-y divide-slate-100">
                                         {displayedItems.map((item) => (
-                                            <div key={item.id} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                            <div id={`bag-item-${item.id}`} key={item.id} tabIndex={-1} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#E00D42]">
                                                 
                                                 {/* Product Info with Checkbox */}
                                                 <div className="flex items-center gap-3.5 min-w-0 flex-1 w-full sm:w-auto">
@@ -516,8 +604,8 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
                                                         <div className="flex items-center border border-slate-300 rounded-sm overflow-hidden">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => updateQuantity(item, item.quantity - 1)}
-                                                                disabled={item.quantity <= 1 || maximumQuantityForItem(item) < 1}
+                                                                onClick={() => changeQuantityBy(item, -1)}
+                                                                disabled={Number(quantityDrafts[item.id] ?? item.quantity) <= 1 || maximumQuantityForItem(item) < 1}
                                                                 className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
                                                                 aria-label={`Decrease ${item.product?.name || 'product'} quantity`}
                                                             >
@@ -541,8 +629,8 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
                                                             />
                                                             <button
                                                                 type="button"
-                                                                onClick={() => updateQuantity(item, item.quantity + 1)}
-                                                                disabled={item.quantity >= maximumQuantityForItem(item) || maximumQuantityForItem(item) < 1}
+                                                                onClick={() => changeQuantityBy(item, 1)}
+                                                                disabled={Number(quantityDrafts[item.id] ?? item.quantity) >= maximumQuantityForItem(item) || maximumQuantityForItem(item) < 1}
                                                                 className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 disabled:opacity-40"
                                                                 aria-label={`Increase ${item.product?.name || 'product'} quantity`}
                                                             >

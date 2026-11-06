@@ -9,7 +9,8 @@ import PhoneInput from '@/Components/PhoneInput';
 import ShippingCalculation from '@/Components/ShippingCalculation';
 import LocationPinPicker from '@/Components/LocationPinPicker';
 import useCheckoutGps from '@/hooks/useCheckoutGps';
-import { changedDeliveryAddress, withDoorstepDelivery, validDeliveryPin, type CheckoutAddressField } from '@/utils/checkoutLocation';
+import { changedDeliveryAddress, withDoorstepDelivery, validDeliveryPin, defaultLogisticsCompanyId, type CheckoutAddressField } from '@/utils/checkoutLocation';
+import { checkoutErrorMessages, deliveryLocationErrorMessage } from '@/utils/checkoutErrorMessages';
 import BuyerVoucherPicker from '@/Components/Vouchers/BuyerVoucherPicker';
 import CheckoutVoucherBreakdown from '@/Components/Vouchers/CheckoutVoucherBreakdown';
 import axios from 'axios';
@@ -37,7 +38,8 @@ import {
     Store,
     Crosshair,
     Navigation,
-    Building2
+    Building2,
+    Package
 } from 'lucide-react';
 
 export interface PickupHubItem {
@@ -68,7 +70,7 @@ interface Props {
     checkoutToken: string;
     itemQuantities?: Record<number, number>;
     walletBalanceCents?: number | null;
-    logisticsCompanies?: { id: number; name: string; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number }[];
+    logisticsCompanies?: { id: number; name: string; logo?: string | null; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number }[];
 }
 
 export default function CheckoutIndex({ 
@@ -179,6 +181,8 @@ export default function CheckoutIndex({
                 save_address: addresses.length < addressBookLimit,
                 saved_address_id: null,
                 saved_address_location_token: null,
+                logistics_company_id: '',
+                pickup_hub_id: '',
             }));
         } else {
             const found = addresses.find(a => String(a.id) === addressId);
@@ -198,6 +202,8 @@ export default function CheckoutIndex({
                     save_address: false,
                     saved_address_id: found.id,
                     saved_address_location_token: found.location_token ?? null,
+                    logistics_company_id: '',
+                    pickup_hub_id: '',
                 }));
             }
         }
@@ -207,7 +213,11 @@ export default function CheckoutIndex({
         if (data[field] === value) return;
         gps.cancel();
         if (data.saved_address_id !== null) setSelectedAddressId('new');
-        setData(previous => changedDeliveryAddress(previous, field, value, addresses.length < addressBookLimit));
+        setData(previous => ({
+            ...changedDeliveryAddress(previous, field, value, addresses.length < addressBookLimit),
+            logistics_company_id: '',
+            pickup_hub_id: '',
+        }));
     };
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -236,10 +246,28 @@ export default function CheckoutIndex({
     const pricing = usePurchaseQuote(quoteInput, initialQuote, availableVouchers);
     const quote = pricing.quote;
     const servingCompanies = pricing.companies ?? logisticsCompanies;
+    const completeDoorstepDestination = Boolean(data.shipping_province.trim() && data.shipping_city.trim()
+        && /^[0-9]{4}$/.test(data.shipping_postal_code));
+    const noServingCompany = data.delivery_type === 'doorstep' && completeDoorstepDestination
+        && pricing.current && pricing.companies !== undefined && pricing.companies.length === 0;
+    const selectedCompany = servingCompanies.find(company => String(company.id) === String(data.logistics_company_id));
+    const hasInvalidDeliveryLocation = Boolean(errors.shipping_latitude || errors.shipping_longitude);
+    const visibleCheckoutErrors = checkoutErrorMessages(errors);
+    const routeDetailsReady = completeDoorstepDestination
+        && (data.delivery_type === 'doorstep' || Boolean(data.pickup_hub_id));
+    const canShowQuote = pricing.ready && routeDetailsReady && Boolean(selectedCompany);
+    const quoteStatus = pricing.pending ? 'Updating prices, delivery fees and voucher eligibility…'
+        : pricing.failure ? pricing.failure
+            : noServingCompany ? 'No eligible logistics company serves this address and every seller in your Bag. Try another address.'
+                : !completeDoorstepDestination ? 'Enter a province, city and four-digit postal code to check delivery coverage.'
+                    : data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id ? 'Choose a Bayan Hub to check collection coverage.'
+                    : !selectedCompany ? 'Choose an eligible logistics company to confirm your delivery total.'
+                        : 'Current prices and delivery fees checked.';
     useEffect(() => {
-        if (pricing.companies && data.logistics_company_id && data.shipping_postal_code.length === 4
-            && !pricing.companies.some(company => String(company.id) === String(data.logistics_company_id))) {
-            setData({ ...data, logistics_company_id: '', pickup_hub_id: '' });
+        if (!pricing.companies) return;
+        const defaultCompanyId = defaultLogisticsCompanyId(pricing.companies, data.logistics_company_id);
+        if (String(defaultCompanyId) !== String(data.logistics_company_id)) {
+            setData(previous => ({ ...previous, logistics_company_id: defaultCompanyId, pickup_hub_id: '' }));
         }
     }, [pricing.companies, data.logistics_company_id]);
     const [pickerSlot, setPickerSlot] = useState<number | null | undefined>(undefined);
@@ -339,6 +367,13 @@ export default function CheckoutIndex({
             return;
         }
 
+        if (noServingCompany || !data.logistics_company_id || !selectedCompany) {
+            setValidationError(noServingCompany
+                ? 'No eligible logistics company currently serves this address and every seller in your Bag. Try another address.'
+                : 'Choose a logistics company that serves this delivery route.');
+            return;
+        }
+
         if (!data.recipient_name.trim() || !data.recipient_phone.trim() || !data.shipping_address.trim()
             || !data.shipping_city.trim() || !data.shipping_province.trim() || !data.destination_barangay.trim() || !data.shipping_postal_code.trim()) {
             setValidationError('Please complete all required recipient and address fields.');
@@ -346,7 +381,7 @@ export default function CheckoutIndex({
         }
 
         if (data.delivery_type === 'doorstep' && !validDeliveryPin(data.shipping_latitude, data.shipping_longitude)) {
-            setValidationError('Enter a complete, valid latitude/longitude pair or choose the delivery location on the map.');
+            setValidationError(deliveryLocationErrorMessage);
             return;
         }
         if (data.delivery_type === 'doorstep' && data.saved_address_id === null && !data.save_address) {
@@ -360,7 +395,7 @@ export default function CheckoutIndex({
 
     const submitFinalOrder = () => {
         if (orderPending.current || processing) return;
-        if (!pricing.ready || bestBusy || !hasConfirmedAgreement || kycStatus !== 'approved') {
+        if (!canShowQuote || !pricing.ready || bestBusy || !hasConfirmedAgreement || kycStatus !== 'approved') {
             setShowConfirmModal(false);
             return;
         }
@@ -381,7 +416,8 @@ export default function CheckoutIndex({
         }).format(numeric);
     };
 
-    const quotePrice = (amount: number) => pricing.pending ? 'Updating…' : pricing.failure ? 'Unavailable' : formatPrice(amount);
+    const quotePrice = (amount: number) => pricing.pending ? 'Updating…' : pricing.failure || noServingCompany ? 'Unavailable'
+        : !routeDetailsReady ? 'Add delivery details' : !selectedCompany ? 'Choose a company' : formatPrice(amount);
 
     return (
         <BuyerLayout>
@@ -422,7 +458,7 @@ export default function CheckoutIndex({
                     <div ref={errorSummaryRef} role="alert" tabIndex={-1} className="p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-sans space-y-2">
                         <p className="font-semibold">Please check your checkout details.</p>
                         <ul className="list-disc pl-4 space-y-1">
-                            {Array.from(new Set(Object.values(errors))).map(error => <li key={error}>{error}</li>)}
+                            {visibleCheckoutErrors.map(error => <li key={error}>{error}</li>)}
                         </ul>
                         {errors.checkout_token && <Link href={route('checkout.index', { items: data.item_ids.join(','), ...(Object.keys(data.item_quantities).length === 1 ? { quantity: Object.values(data.item_quantities)[0] } : {}) })} className="font-semibold underline">Reload checkout</Link>}
                     </div>
@@ -453,7 +489,21 @@ export default function CheckoutIndex({
                                     <option value="">Choose a logistics company</option>
                                     {servingCompanies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
                                 </select>
-                                <span className="mt-1.5 block text-xs font-normal text-slate-500">{servingCompanies.length === 0 ? 'No company currently serves both addresses. Review the address or return to your Bag.' : 'Only companies serving both addresses are offered when the postal address is complete.'}</span><span className="mt-1.5 block text-xs font-normal text-slate-500">Shipping uses the greater of actual and volumetric weight. The selected company must serve both addresses.</span>
+                                <span className="mt-1.5 block text-xs font-normal text-slate-600">{noServingCompany
+                                    ? 'No approved logistics company currently serves this address and every seller in your Bag. Try another address or ask the seller to confirm coverage.'
+                                    : data.delivery_type === 'doorstep' && !completeDoorstepDestination
+                                        ? 'Enter your province, city and four-digit postal code to check which companies can serve this route.'
+                                        : servingCompanies.length === 0
+                                            ? 'No eligible company is available for this delivery method. Review your address or collection hub.'
+                                            : 'Only eligible companies for the current delivery route are offered.'}</span>
+                                {selectedCompany && <span className="mt-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800">
+                                    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white text-[#C20836]">
+                                        <Truck className="h-4 w-4" aria-hidden="true" />
+                                        {selectedCompany.logo && <img src={selectedCompany.logo} alt="" loading="lazy" className="absolute inset-0 h-full w-full bg-white object-contain" onError={event => event.currentTarget.remove()} />}
+                                    </span>
+                                    <span>Selected carrier: {selectedCompany.name}</span>
+                                </span>}
+                                <span className="mt-1.5 block text-xs font-normal text-slate-500">Shipping uses the greater of actual and volumetric weight. The selected company must serve every seller and your delivery destination.</span>
                                 {errors.logistics_company_id && <span className="mt-1 block text-xs text-rose-700">{errors.logistics_company_id}</span>}
                             </label>
                             <fieldset className="min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -731,7 +781,7 @@ export default function CheckoutIndex({
                                         {errors.shipping_postal_code && <p id="checkout-shipping_postal_code-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_postal_code}</p>}
                                     </div>
 
-                                    {/* Geolocation Pin Coordinates & Landmark Block */}
+                                    {/* Delivery pin and landmark block */}
                                     <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 sm:col-span-2 space-y-2.5">
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                             <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -761,43 +811,8 @@ export default function CheckoutIndex({
                                             onChange={point => { gps.cancel(); setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })); }}
                                         />
                                         {data.saved_address_id !== null && <p className="text-xs text-slate-600">Placing your order will save this pin to the selected address.</p>}
-                                        <p id="checkout-coordinate-help" className="text-xs text-slate-600">For manual entry, use decimal degrees: latitude -90 to 90, longitude -180 to 180, up to 7 decimal places. Enter both values.</p>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label htmlFor="checkout-shipping_latitude" className="block text-[10px] text-slate-500 font-sans mb-0.5">Latitude</label>
-                                                <input
-                                                    id="checkout-shipping_latitude"
-                                                    aria-invalid={Boolean(errors.shipping_latitude)}
-                                                    aria-describedby={`checkout-coordinate-help${errors.shipping_latitude ? ' checkout-shipping_latitude-error' : ''}`}
-                                                    type="number"
-                                                    step="any"
-                                                    min={-90}
-                                                    max={90}
-                                                    placeholder="e.g. 14.0682"
-                                                    value={data.shipping_latitude}
-                                                    onChange={(e) => { gps.cancel(); setData('shipping_latitude', e.target.value); }}
-                                                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-sans"
-                                                />
-                                                {errors.shipping_latitude && <p id="checkout-shipping_latitude-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_latitude}</p>}
-                                            </div>
-                                            <div>
-                                                <label htmlFor="checkout-shipping_longitude" className="block text-[10px] text-slate-500 font-sans mb-0.5">Longitude</label>
-                                                <input
-                                                    id="checkout-shipping_longitude"
-                                                    aria-invalid={Boolean(errors.shipping_longitude)}
-                                                    aria-describedby={`checkout-coordinate-help${errors.shipping_longitude ? ' checkout-shipping_longitude-error' : ''}`}
-                                                    type="number"
-                                                    step="any"
-                                                    min={-180}
-                                                    max={180}
-                                                    placeholder="e.g. 121.3256"
-                                                    value={data.shipping_longitude}
-                                                    onChange={(e) => { gps.cancel(); setData('shipping_longitude', e.target.value); }}
-                                                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-sans"
-                                                />
-                                                {errors.shipping_longitude && <p id="checkout-shipping_longitude-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_longitude}</p>}
-                                            </div>
-                                        </div>
+                                        <p id="checkout-location-help" className="text-xs text-slate-600">Move the map pin or use GPS. Your delivery point is saved automatically.</p>
+                                        {hasInvalidDeliveryLocation && <p role="alert" className="text-xs text-rose-700">{deliveryLocationErrorMessage}</p>}
 
                                         <div>
                                             <label htmlFor="checkout-landmark" className="block text-[10px] text-slate-600 font-bold mb-0.5">
@@ -808,6 +823,7 @@ export default function CheckoutIndex({
                                                 aria-invalid={Boolean(errors.landmark)}
                                                 aria-describedby={errors.landmark ? 'checkout-landmark-error' : undefined}
                                                 type="text"
+                                                list="checkout-landmark-suggestions"
                                                 placeholder="e.g. Tapat ng Barangay Hall, Dilaw na Gate na may black fence, tabi ng tindahan"
                                                 maxLength={255}
                                                 minLength={5}
@@ -815,6 +831,14 @@ export default function CheckoutIndex({
                                                 onChange={(e) => setData('landmark', e.target.value)}
                                                 className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
                                             />
+                                            <datalist id="checkout-landmark-suggestions">
+                                                <option value="Near the barangay hall" />
+                                                <option value="Near the public market" />
+                                                <option value="Near the school" />
+                                                <option value="Near the church" />
+                                                <option value="Near the health center" />
+                                                <option value="At the building gate" />
+                                            </datalist>
                                             {errors.landmark && <p id="checkout-landmark-error" className="text-rose-700 text-[11px] mt-1">{errors.landmark}</p>}
                                             <p className="text-[10px] text-slate-400 mt-0.5">
                                                 Add a useful landmark or location to help the rider find your address. Check the pin before placing your order.
@@ -844,7 +868,8 @@ export default function CheckoutIndex({
                                 <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
                                     02
                                 </div>
-                                <h2 className="font-bold text-sm text-slate-900">
+                                <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900">
+                                    <Package className="h-4 w-4 text-[#C20836]" aria-hidden="true" />
                                     Items In Your Shopping Bag ({items.length})
                                 </h2>
                             </div>
@@ -855,11 +880,16 @@ export default function CheckoutIndex({
                                     {items.filter(item => item.product?.shop?.id === shop.shop_id).map((item) => (
                                     <div key={item.id} className="py-3.5 flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-3.5 min-w-0">
-                                            <img
-                                                src={(item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image || ''}
-                                                alt=""
-                                                className="w-14 h-14 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
-                                            />
+                                            <span className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-slate-400">
+                                                <Package className="h-5 w-5" aria-hidden="true" />
+                                                {((item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image) && <img
+                                                    src={(item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image || ''}
+                                                    alt=""
+                                                    loading="lazy"
+                                                    onError={event => event.currentTarget.remove()}
+                                                    className="absolute inset-0 h-full w-full bg-white object-cover"
+                                                />}
+                                            </span>
                                             <div className="truncate space-y-0.5">
                                                 <p className="font-bold text-slate-900 truncate text-xs">{item.product?.name}</p>
                                                 <p className="text-slate-500 text-[11px]">
@@ -884,8 +914,8 @@ export default function CheckoutIndex({
                                     </div>
                                 ))}
                                     <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-300 p-3">
-                                        <span className="text-xs text-slate-600">Shop voucher · {appliedVouchers.find(offer => offer.shop_id === shop.shop_id)?.code ?? 'No voucher'}</span>
-                                        <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(shop.shop_id)} className="min-h-11 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50">Choose voucher</button>
+                                        <span className="flex items-center gap-1.5 text-xs text-slate-600"><Tag className="h-3.5 w-3.5 text-[#C20836]" aria-hidden="true" />Shop voucher · {appliedVouchers.find(offer => offer.shop_id === shop.shop_id)?.code ?? 'No voucher'}</span>
+                                        <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(shop.shop_id)} className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50"><Tag className="h-3.5 w-3.5" aria-hidden="true" />Choose voucher</button>
                                     </div>
                                     <CheckoutVoucherBreakdown quote={quote} shopId={shop.shop_id} price={quotePrice} />
                                 </section>)}
@@ -964,8 +994,8 @@ export default function CheckoutIndex({
                         
                         <div className="space-y-3 rounded-2xl border border-slate-300 bg-white p-5 shadow-2xs">
                             <div className="flex items-center justify-between gap-3">
-                                <div><h3 className="font-bold text-slate-900">Bagoo voucher</h3><p className="mt-1 text-xs text-slate-600">{appliedVouchers.find(offer => offer.issuer === 'platform')?.code ?? 'No voucher'}</p></div>
-                                <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(null)} className="min-h-11 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50">Choose voucher</button>
+                                <div><h3 className="flex items-center gap-2 font-bold text-slate-900"><Gift className="h-4 w-4 text-[#C20836]" aria-hidden="true" />Bagoo voucher</h3><p className="mt-1 text-xs text-slate-600">{appliedVouchers.find(offer => offer.issuer === 'platform')?.code ?? 'No voucher'}</p></div>
+                                <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(null)} className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50"><Tag className="h-3.5 w-3.5" aria-hidden="true" />Choose voucher</button>
                             </div>
                             <button type="button" onClick={useBestVouchers} disabled={!pricing.ready || bestBusy} className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{bestBusy ? 'Comparing offers…' : 'Use best vouchers'}</button>
                             <p className="text-xs leading-5 text-slate-600">One offer per shop and one Bagoo product or shipping offer. Manual choices and No voucher stay selected until you change them or they become unavailable.</p>
@@ -989,9 +1019,7 @@ export default function CheckoutIndex({
                                 </span>
                             </div>
 
-                            <p role="status" aria-live="polite" className="text-xs text-slate-600">
-                                {pricing.pending ? 'Updating prices, delivery fees and voucher eligibility…' : pricing.failure || 'Current prices and delivery fees checked.'}
-                            </p>
+                            <p role="status" aria-live="polite" className="text-xs text-slate-600">{quoteStatus}</p>
                             {quote.shops.length > 1 && <div className="space-y-2 border-t border-slate-200 pt-3">
                                 {quote.shops.map(shop => <div key={shop.shop_id} className="flex justify-between gap-3 text-xs text-slate-600">
                                     <span>{shop.shop_name}</span><span className="font-semibold">{quotePrice(shop.total)}</span>
@@ -1073,7 +1101,7 @@ export default function CheckoutIndex({
 
                             <button
                                 type="submit"
-                                disabled={processing || bestBusy || !pricing.ready || kycStatus !== 'approved'}
+                                disabled={processing || bestBusy || !canShowQuote || !pricing.ready || kycStatus !== 'approved'}
                                 className={`w-full py-3.5 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-xs ${
                                     kycStatus !== 'approved'
                                         ? 'bg-slate-400 cursor-not-allowed opacity-80'
@@ -1204,7 +1232,7 @@ export default function CheckoutIndex({
                                 </button>
                                 <button
                                     type="button"
-                                    disabled={!hasConfirmedAgreement || processing || bestBusy || !pricing.ready}
+                                    disabled={!hasConfirmedAgreement || processing || bestBusy || !canShowQuote || !pricing.ready}
                                     onClick={submitFinalOrder}
                                     className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer"
                                 >

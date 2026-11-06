@@ -49,21 +49,46 @@ class LogisticsCheckoutService
     public function choices(?Collection $items = null, array $address = []): array
     {
         $companies = LogisticsCompany::eligible()->orderBy('name')->get();
-        if ($items && ! empty($address['shipping_province']) && ! empty($address['shipping_city']) && strlen($address['shipping_postal_code'] ?? '') === 4) {
-            $companies = $companies->filter(function ($company) use ($items, $address) {
-                try {
-                    return $items->pluck('product.shop')->unique('id')->every(fn ($shop) => app(LogisticsRoutingEngine::class)->serves($company, $shop, $address));
-                } catch (DomainException) {
-                    return false;
-                }
-            });
+        if ($items) {
+            $destinationReady = ! empty($address['shipping_province'])
+                && ! empty($address['shipping_city'])
+                && preg_match('/\A[0-9]{4}\z/', (string) ($address['shipping_postal_code'] ?? '')) === 1;
+            $doorstep = ($address['delivery_type'] ?? 'doorstep') === 'doorstep';
+
+            if ($doorstep && ! $destinationReady) {
+                $companies = collect();
+            } elseif ($destinationReady) {
+                $companies = $companies->filter(function (LogisticsCompany $company) use ($items, $address) {
+                    try {
+                        return $items->pluck('product.shop')->unique('id')->every(fn ($shop) => app(LogisticsRoutingEngine::class)->serves($company, $shop, $address));
+                    } catch (DomainException) {
+                        return false;
+                    }
+                });
+            }
+
+            if (($address['delivery_type'] ?? 'doorstep') === 'hub_self_pickup' && ! empty($address['pickup_hub_id'])) {
+                $hub = LogisticsHub::readyForSelfPickup()->find($address['pickup_hub_id']);
+                $companies = $hub ? $companies->where('id', $hub->logistics_company_id) : collect();
+            }
         }
 
         return $companies->map(fn ($company) => [
-            'id' => $company->id, 'name' => $company->name,
+            'id' => $company->id, 'name' => $company->name, 'logo' => $this->logoUrl($company),
             'base_shipping_cents' => $company->base_shipping_cents,
             'included_weight_grams' => $company->included_weight_grams,
             'additional_kg_cents' => $company->additional_kg_cents,
         ])->values()->all();
+    }
+
+    private function logoUrl(LogisticsCompany $company): ?string
+    {
+        $logo = $company->logo;
+        if (! is_string($logo) || preg_match('/(?:kyc_documents|delivery-proofs|settlement-receipts|verification-document|\.\.|[\p{C}])/iu', $logo)
+            || ! preg_match('~\A(?:/(?:images|storage)/[A-Za-z0-9_./-]+|https?://[^/?#\s@]+/[A-Za-z0-9_./-]+)\z~', $logo)) {
+            return null;
+        }
+
+        return $logo;
     }
 }

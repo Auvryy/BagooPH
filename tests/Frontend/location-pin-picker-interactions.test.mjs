@@ -59,9 +59,14 @@ test('a map click places a pin and dragging it reports the new coordinates', asy
     assert.deepEqual(h.changed[2], { latitude: -14.5995123, longitude: -120.9842123 });
 });
 
-test('map keeps the existing Leaflet OpenStreetMap tiles, attribution, and page scrolling', async t => {
+test('map keeps Leaflet OpenStreetMap tiles and enables smooth wheel zoom over the map', async t => {
     const h = harness(t); h.render(); await tick();
-    assert.equal(h.mapOptions.scrollWheelZoom, false);
+    assert.equal(h.mapOptions.scrollWheelZoom, true);
+    assert.equal(h.mapOptions.wheelDebounceTime, 70);
+    assert.equal(h.mapOptions.wheelPxPerZoomLevel, 140);
+    assert.equal(h.mapOptions.zoomDelta, 0.5);
+    assert.equal(h.mapOptions.zoomSnap, 0.5);
+    assert.equal(h.mapOptions.zoomAnimation, true);
     assert.equal(h.tileConfig.url, 'https://tile.openstreetmap.org/{z}/{x}/{y}.png');
     assert.equal(h.tileConfig.options.maxZoom, 19);
     assert.match(h.tileConfig.options.attribution, /openstreetmap\.org\/copyright/);

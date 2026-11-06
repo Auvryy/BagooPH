@@ -3,6 +3,7 @@ import React, { FormEvent, useState } from 'react';
 import { Link, useForm } from '@inertiajs/react';
 import ShopReviewHistory, { ShopDecision } from '@/Components/ShopReviewHistory';
 import { Category, Shop } from '@/types';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 
 export interface ReviewedShop extends Shop {
     review_token: string;
@@ -16,6 +17,7 @@ export interface ReviewedShop extends Shop {
 export default function SellerShopReview({ shop, categories }: { shop: ReviewedShop; categories: Category[] }) {
     const [showForm, setShowForm] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+    useBodyScrollLock(showForm);
     const form = useForm({ name: '', phone: '', address: '', city: '', root_category_id: '', description: '', business_permit: null as File | null, review_token: '' });
     const errors = form.errors as Record<string, string>;
 
@@ -51,7 +53,7 @@ export default function SellerShopReview({ shop, categories }: { shop: ReviewedS
             {!shop.eligible && <p className="mt-3 text-sm text-slate-600">Your existing orders remain available while shop approval or activity is reviewed.</p>}
             {showHistory && <div className="mt-4"><ShopReviewHistory decisions={shop.decision_history} /></div>}
         </section>
-        {showForm && shop && <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="shop-form-title">
+        {showForm && shop && <div className="fixed inset-0 z-50 overscroll-contain overflow-y-auto bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="shop-form-title">
             <form onSubmit={submit} className="mx-auto my-6 max-w-xl space-y-4 rounded-lg border border-slate-300 bg-white p-6 shadow-lg">
                 <h2 id="shop-form-title" className="text-xl font-bold">Update shop submission</h2>
                 <p className="text-sm text-slate-600">Update your existing shop's actual details and permit. An admin must review the submission before it can accept new work.</p>

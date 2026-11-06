@@ -5,6 +5,7 @@ import ProductCard from '@/Components/ProductCard';
 import CatalogueErrors from '@/Components/CatalogueErrors';
 import CatalogueLocationFilter from '@/Components/CatalogueLocationFilter';
 import SavedProductButton from '@/Components/SavedProductButton';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import CataloguePagination from '@/Components/CataloguePagination';
 import CatalogueLink from '@/Components/CatalogueLink';
 import { catalogueFilters, catalogueUrl } from '@/utils/catalogueNavigation';
@@ -54,6 +55,7 @@ export default function SearchPage({
     const [minPrice, setMinPrice] = useState(filters.min_price || '');
     const [maxPrice, setMaxPrice] = useState(filters.max_price || '');
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+    useBodyScrollLock(mobileFilterOpen);
     useEffect(() => {
         setMinPrice(filters.min_price || '');
         setMaxPrice(filters.max_price || '');
@@ -512,7 +514,7 @@ export default function SearchPage({
 
                 {/* MOBILE SLIDE-OVER FILTER DRAWER */}
                 {mobileFilterOpen && (
-                    <div className="fixed inset-0 z-50 lg:hidden flex">
+                    <div className="fixed inset-0 z-50 overscroll-contain lg:hidden flex">
                         {/* Backdrop */}
                         <div 
                             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"

@@ -15,7 +15,8 @@ globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: (
 const bundle = await build({ stdin: { contents: `export { default as Profile } from '@/Pages/Buyer/Profile';
  export { default as Editor } from '@/Components/BuyerAddressEditor'; export { default as Checkout } from '@/Pages/Checkout/Index';
  export { default as LocationPinPicker } from '@/Components/LocationPinPicker';
- export { validDeliveryPin, changedDeliveryAddress, withDoorstepDelivery } from '@/utils/checkoutLocation';
+ export { validDeliveryPin, changedDeliveryAddress, withDoorstepDelivery, defaultLogisticsCompanyId } from '@/utils/checkoutLocation';
+ export * from '@/utils/checkoutErrorMessages';
  export { default as Recipient } from '@/Components/OrderRecipientSummary'; export * from '@/utils/buyerAddresses'; export * from '@/utils/addressLocations';
  export { personalNameError } from '@/utils/registrationValidation';`, resolveDir: root, loader: 'tsx' },
  bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false, loader: { '.css': 'empty' },
@@ -138,6 +139,21 @@ test('checkout GPS action has a touch-sized keyboard focus target and announced 
  assert.match(gpsButton, /focus-visible:outline-2/);
  assert.match(source, /\{gps\.status && \(\s*<p role="status"/);
 });
+test('address map uses smooth half-step wheel zoom', () => {
+ const source = readFileSync(resolve(root, 'resources/js/Components/LocationPinPicker.tsx'), 'utf8');
+ assert.match(source, /scrollWheelZoom:\s*true/);
+ assert.match(source, /zoomDelta:\s*0\.5/);
+ assert.match(source, /zoomSnap:\s*0\.5/);
+ assert.match(source, /zoomAnimation:\s*true/);
+});
+test('checkout landmark remains editable and offers common nearby places', () => {
+ const source = readFileSync(resolve(root, 'resources/js/Pages/Checkout/Index.tsx'), 'utf8');
+ assert.match(source, /type="text"\s+list="checkout-landmark-suggestions"/);
+ assert.match(source, /value=\{data\.landmark\}/);
+ for (const landmark of ['Near the barangay hall', 'Near the public market', 'Near the school', 'Near the church', 'Near the health center', 'At the building gate']) {
+  assert.ok(source.includes(`<option value="${landmark}" />`), `missing landmark suggestion: ${landmark}`);
+ }
+});
 const quote = { items: [{id:10, quantity:1, unit_price:250, subtotal:250}], subtotal: 250, shipping_fee: 50, doorstep_shipping_fee: 50, discount: 0, total: 300, voucher: null, redemptions: [],
  shops: [{ shop_id: 1, shop_name: 'Bagoo Store', subtotal: 250, shipping: 50, doorstep_shipping: 50, discount: 0, total: 300 }] };
 const items = [{ id: 10, quantity: 1, unit_price: 250, available_for_purchase: true, product: { id: 5, name: 'Everyday Bag', price: 250, stock: 10, images: [], shop: { id: 1, name: 'Bagoo Store' } } }];
@@ -148,6 +164,47 @@ test('checkout preselects the actual default recipient and permits delivery cont
  assert.doesNotMatch(html, /id="checkout-recipient-name"[^>]*(?:readonly|disabled)/i);
  assert.match(html, /<option value="9" selected=""/);
  assert.match(html, /aria-label="Delivery location map"/);
+});
+test('checkout keeps coordinate fields and terminology out of buyer-visible markup', async () => {
+ const html = await render(ui.Checkout, {
+  cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user,
+  kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [{ ...address, latitude: 14.5995, longitude: 120.9842 }],
+ });
+ assert.doesNotMatch(html, /(?:name|id)="checkout-shipping_(?:latitude|longitude)"/i);
+ assert.doesNotMatch(html, />\s*(?:Latitude|Longitude)\s*</i);
+ assert.doesNotMatch(html, /latitude|longitude/i);
+});
+test('checkout payment, voucher and product areas provide clear icons and first eligible carrier feedback', async () => {
+ const html = await render(ui.Checkout, {
+  cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user,
+  kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [address],
+  logisticsCompanies: [{ id: 8, name: 'A Logistics', logo: '/storage/a-logistics.svg' }, { id: 12, name: 'B Logistics', logo: null }],
+ });
+ assert.match(html, /lucide-banknote/);
+ assert.match(html, /lucide-wallet/);
+ assert.match(html, /lucide-tag/);
+ assert.match(html, /lucide-gift/);
+ assert.match(html, /lucide-package/);
+ assert.match(html, /<option value="8" selected=""/);
+ assert.match(html, /src="\/storage\/a-logistics\.svg"/);
+ assert.match(html, /Selected carrier: A Logistics/);
+});
+test('coordinate validation details are replaced with actionable map/GPS guidance', () => {
+ const messages = ui.checkoutErrorMessages({
+  shipping_latitude: 'The shipping latitude field must be a number.',
+  shipping_longitude: 'The shipping longitude field must be a number.',
+ });
+ assert.deepEqual(messages, ['Choose a valid delivery location on the map or use GPS.']);
+ assert.doesNotMatch(messages.join(' '), /latitude|longitude/i);
+ assert.deepEqual(ui.checkoutErrorMessages({ shipping_address: 'Enter a street address.' }), ['Enter a street address.']);
+});
+test('checkout displays map/GPS guidance when a delivery pin is missing', async () => {
+ const source = readFileSync(resolve(root, 'resources/js/Pages/Checkout/Index.tsx'), 'utf8');
+ assert.match(source, /setValidationError\(deliveryLocationErrorMessage\)/);
+ assert.match(source, /hasInvalidDeliveryLocation && <p role="alert"[^>]*>\{deliveryLocationErrorMessage\}<\/p>/);
+ assert.match(source, /checkoutErrorMessages\(errors\)/);
+ assert.match(source, /visibleCheckoutErrors\.map/);
+ assert.equal(ui.deliveryLocationErrorMessage, 'Choose a valid delivery location on the map or use GPS.');
 });
 test('checkout saves the first delivery address even when server enforcement is off', async () => {
  const html = await render(ui.Checkout, { cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user, kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [] });
@@ -164,6 +221,13 @@ test('switching back from hub pickup saves a new doorstep address when required'
  assert.equal(ui.withDoorstepDelivery(hub, true).save_address, true);
  assert.equal(ui.withDoorstepDelivery(hub, false).save_address, false);
  assert.equal(ui.withDoorstepDelivery({ ...hub, saved_address_id: 7 }, true).save_address, false);
+});
+test('carrier choice keeps an eligible selection and defaults to the first eligible company otherwise', () => {
+ const companies = [{ id: 8, name: 'A Logistics' }, { id: 12, name: 'B Logistics' }];
+ assert.equal(ui.defaultLogisticsCompanyId(companies, 12), 12);
+ assert.equal(ui.defaultLogisticsCompanyId(companies, ''), 8);
+ assert.equal(ui.defaultLogisticsCompanyId(companies, 999), 8);
+ assert.equal(ui.defaultLogisticsCompanyId([], 12), '');
 });
 test('waybill recipient uses the complete immutable order details and ignores current profile contact data', () => {
  const html = renderToStaticMarkup(createElement(ui.Recipient, { order: { recipient_name: 'Original Recipient', recipient_phone: '+639171234567', shipping_address: '84 Original Office Street', destination_barangay: 'San Antonio', shipping_city: 'City of Pasig', shipping_province: 'Metro Manila', shipping_postal_code: '1600', buyer: { name: 'Changed Account Name', phone: '+639181234567', address: '15 Future Street' } } }));

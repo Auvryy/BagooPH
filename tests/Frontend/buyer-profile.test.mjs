@@ -271,7 +271,7 @@ function environment() {
     const frames = new Map(); const properties = new Map(); let frameId = 0; let observer;
     const main = {}; const desktop = { matches: true };
     class Element { closest(selector) { return selector === '[data-buyer-profile-horizontal]' ? this.horizontal : this.region; } }
-    const workspace = { top: 240, getBoundingClientRect() { return { top: this.top }; }, closest: () => main,
+    const workspace = { top: 240, dataset: {}, getBoundingClientRect() { return { top: this.top }; }, closest: () => main,
         style: { setProperty: (key, value) => properties.set(key, value) },
         addEventListener: (type, listener, options) => { assert.equal(options.passive, false); wheelListeners.set(type, listener); },
         removeEventListener: type => wheelListeners.delete(type) };
@@ -298,6 +298,9 @@ test('desktop wheel input over stationary or empty panels stays contained, while
             env.wheelListeners.get('wheel')({ target, deltaX: 0, deltaY: 30, shiftKey: false, ctrlKey: false, defaultPrevented: false, preventDefault: () => { prevented = true; }, ...extra });
             return prevented;
         };
+        env.workspace.dataset.buyerProfilePageScroll = 'true';
+        assert.equal(wheel(null), false);
+        delete env.workspace.dataset.buyerProfilePageScroll;
         assert.equal(wheel(null), true);
         assert.equal(wheel({ scrollHeight: 320, clientHeight: 320 }), true);
         assert.equal(wheel({ scrollHeight: 1200, clientHeight: 320 }), false);
