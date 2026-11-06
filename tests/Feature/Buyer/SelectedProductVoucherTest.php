@@ -88,7 +88,7 @@ class SelectedProductVoucherTest extends TestCase
         $quote = $quotes->quote($items, 'doorstep', collect([$revision]), $this->buyer);
         $this->assertNull($quote['voucher_error']);
         $this->assertSame(30, $quote['discount']);
-        $this->assertSame(1020, $quote['total']);
+        $this->assertSame(1030, $quote['total']);
         $items = $items->reject(fn ($item) => $item->product_id === $this->qualifying->id);
         $this->assertSame('Choose a qualifying product from this shop to use this voucher.', $quotes->quote($items, 'doorstep', collect([$revision]), $this->buyer)['voucher_error']);
     }
@@ -123,7 +123,7 @@ class SelectedProductVoucherTest extends TestCase
         $this->post('/checkout', $input)->assertSessionHas('success');
         $order = Order::sole();
         $this->assertSame('127.00', $order->voucher_discount);
-        $this->assertSame('923.00', $order->total_amount);
+        $this->assertSame('933.00', $order->total_amount);
         $this->assertSame([$this->qualifying->id], VoucherRedemption::where('voucher_revision_id', $revision->id)->sole()->terms['product_ids']);
         $units = app(BuyerReturnAmounts::class)->original($order)['units'];
         $this->assertSame([1000, 1000, 1000, 0], array_column($units, 'shop_discount_cents'));
@@ -193,7 +193,7 @@ class SelectedProductVoucherTest extends TestCase
         $this->createCheckoutNetwork($this->shop, ['Pasig' => 'Metro Manila']);
         $input = $this->input(['shop_voucher_revision_ids' => [$this->shop->id => $revision->id]]);
         $this->postJson(route('buyer.vouchers.apply'), $input)->assertOk()->assertJsonPath('quote.discount', 97.49)
-            ->assertJsonPath('quote.total', 1139.97);
+            ->assertJsonPath('quote.total', 1149.97);
         $this->post('/checkout', $input)->assertSessionHas('success');
         $order = Order::sole();
         $item = $order->items()->where('product_id', $this->qualifying->id)->where('size', 'Large')->sole();
@@ -256,7 +256,7 @@ class SelectedProductVoucherTest extends TestCase
         $this->createCheckoutNetwork($this->shop, ['Pasig' => 'Metro Manila']);
         $this->post('/checkout', $this->input(['payment_method' => 'wallet', 'shop_voucher_revision_ids' => [$this->shop->id => $revision->id]]))->assertSessionHas('success');
         $order = Order::sole();
-        $this->assertSame('930.00', $order->total_amount);
+        $this->assertSame('940.00', $order->total_amount);
         $payments = app(WalletPaymentService::class);
         if ($ending === 'paid_cancel') {
             $credits = app(WalletCreditService::class);

@@ -29,6 +29,11 @@ class VoucherCampaignController extends Controller
     public function store(Request $request, VoucherCampaignService $campaigns): RedirectResponse
     {
         return $this->campaignWrite($request, function () use ($request, $campaigns) {
+            if ($request->boolean('publish_after_save')) {
+                $campaigns->saveDraftAndPublish($request->user(), $request->all());
+
+                return back()->with('success', 'Bagoo voucher published with its terms, funding and history recorded.');
+            }
             $campaigns->saveDraft($request->user(), $request->all());
 
             return back()->with('success', 'Bagoo-funded draft saved. Review its spending ceiling before publishing.');
@@ -38,6 +43,11 @@ class VoucherCampaignController extends Controller
     public function update(Request $request, Voucher $voucher, VoucherCampaignService $campaigns): RedirectResponse
     {
         return $this->campaignWrite($request, function () use ($request, $voucher, $campaigns) {
+            if ($request->boolean('publish_after_save')) {
+                $campaigns->saveDraftAndPublish($request->user(), $request->all(), $voucher);
+
+                return back()->with('success', 'Revised Bagoo voucher terms are published with their full history retained.');
+            }
             $campaigns->saveDraft($request->user(), $request->all(), $voucher);
 
             return back()->with('success', 'New Bagoo draft terms saved; previous terms stay recorded.');

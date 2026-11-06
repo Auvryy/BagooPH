@@ -219,7 +219,7 @@ class BuyerVoucherQuoteTest extends TestCase
         $this->preview([$line->id], ['delivery_type' => 'hub_self_pickup', 'pickup_hub_id' => 999999])->assertUnprocessable();
         $this->createCheckoutNetwork($line->product->shop, ['Pasig' => 'Metro Manila']);
         $hub = LogisticsHub::where('city_municipality', 'Pasig')->where('tier', 'local_bayan_hub')->firstOrFail();
-        $hub->update(['allows_self_pickup' => true]);
+        $hub->update(['allows_self_pickup' => true, 'operating_hours' => '08:00 to 17:00']);
         $this->preview([$line->id], ['delivery_type' => 'hub_self_pickup', 'pickup_hub_id' => $hub->id])->assertOk()->assertJsonPath('quote.shipping_fee', 0);
     }
 

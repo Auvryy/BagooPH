@@ -15,6 +15,11 @@ class VoucherOrderAllocation extends VoucherEvidence
         return $this->belongsTo(VoucherRedemption::class, 'voucher_redemption_id');
     }
 
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
+
     public function fundingEntries(): HasMany
     {
         return $this->hasMany(VoucherFundingEntry::class);

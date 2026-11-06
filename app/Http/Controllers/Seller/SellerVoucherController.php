@@ -41,7 +41,13 @@ class SellerVoucherController extends Controller
     public function store(Request $request, VoucherCampaignService $campaigns): RedirectResponse
     {
         return $this->campaignWrite($request, fn () => app(ShopEligibilityService::class)->mutate($request, function () use ($request, $campaigns) {
-            $campaigns->saveDraft($request->user(), $request->all(), shop: $this->getActiveShop($request));
+            $shop = $this->getActiveShop($request);
+            if ($request->boolean('publish_after_save')) {
+                $campaigns->saveDraftAndPublish($request->user(), $request->all(), shop: $shop);
+
+                return back()->with('success', 'Voucher published with its terms, funding and history recorded.');
+            }
+            $campaigns->saveDraft($request->user(), $request->all(), shop: $shop);
 
             return back()->with('success', 'Voucher draft saved. Review the terms before publishing.');
         }));
@@ -50,7 +56,13 @@ class SellerVoucherController extends Controller
     public function update(Request $request, Voucher $voucher, VoucherCampaignService $campaigns): RedirectResponse
     {
         return $this->campaignWrite($request, fn () => app(ShopEligibilityService::class)->mutate($request, function () use ($request, $voucher, $campaigns) {
-            $campaigns->saveDraft($request->user(), $request->all(), $voucher, $this->getActiveShop($request));
+            $shop = $this->getActiveShop($request);
+            if ($request->boolean('publish_after_save')) {
+                $campaigns->saveDraftAndPublish($request->user(), $request->all(), $voucher, $shop);
+
+                return back()->with('success', 'Revised voucher terms are published with their full history retained.');
+            }
+            $campaigns->saveDraft($request->user(), $request->all(), $voucher, $shop);
 
             return back()->with('success', 'Revised draft saved. Published terms and placed orders keep their history.');
         }));

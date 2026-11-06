@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Voucher;
 use App\Models\VoucherCampaignAction;
 use App\Models\VoucherCampaignDraft;
+use App\Models\VoucherRedemption;
 use App\Models\VoucherRevision;
 use App\Models\VoucherRevisionBalance;
 use App\Services\AccountRestrictionService;
@@ -70,8 +71,33 @@ class VoucherCampaignService
     public function detail(User $actor, Voucher $voucher, ?Shop $shop = null): array
     {
         $voucher = $this->authorizedQuery($actor, $shop)->with(self::RELATIONS)->findOrFail($voucher->id);
+        $redemptions = VoucherRedemption::query()
+            ->whereIn('voucher_revision_id', $voucher->revisions()->select('id'))
+            ->with(['allocations' => function ($query) use ($shop) {
+                if ($shop) {
+                    $query->whereHas('order.items', fn ($items) => $items->where('shop_id', $shop->id));
+                }
+            }, 'allocations.order.items' => function ($items) use ($shop) {
+                if ($shop) {
+                    $items->where('shop_id', $shop->id);
+                }
+            }, 'allocations.order.items.product.images'])
+            ->latest('id')->paginate(10, ['*'], 'redemptions_page')->withQueryString()
+            ->through(fn (VoucherRedemption $redemption) => [
+                'id' => $redemption->id,
+                'created_at' => $redemption->created_at?->toIso8601String(),
+                'discount_cents' => $redemption->discount_cents,
+                'products' => $redemption->allocations->flatMap(fn ($allocation) => $allocation->order?->items ?? [])
+                    ->map(fn ($item) => [
+                        'id' => $item->id,
+                        'name' => $item->product?->name ?? 'Unavailable product',
+                        'quantity' => $item->quantity,
+                        'image' => $item->product?->images->sortByDesc('is_primary')->first()?->image_url,
+                    ])->values()->all(),
+            ]);
 
-        return ['campaign' => $this->present($voucher), 'history' => $voucher->campaignActions()->latest('id')->paginate(15)->withQueryString()
+        return ['campaign' => $this->present($voucher), 'redemptions' => $redemptions,
+            'history' => $voucher->campaignActions()->latest('id')->paginate(15, ['*'], 'history_page')->withQueryString()
             ->through(fn ($event) => $event->only(['id', 'action', 'actor_name', 'reason', 'voucher_revision_id', 'budget_increase_cents', 'before_state', 'after_state', 'created_at']))];
     }
 
@@ -86,6 +112,8 @@ class VoucherCampaignService
                 $voucher = Voucher::whereKey($voucher->id)->lockForUpdate()->firstOrFail();
                 $this->assertWriter($voucher, $issuer, $shop);
             }
+            $input['reason'] = is_string($input['reason'] ?? null) ? trim($input['reason']) : $input['reason'] ?? null;
+            $reason = Validator::make($input, ['reason' => [$voucher ? 'required' : 'nullable', 'string', 'min:5', 'max:1000']])->validate()['reason'] ?? null;
             // Check the retained request before uniqueness and current-version validation.
             $fingerprint = $this->fingerprint(['action' => 'draft_saved', 'voucher_id' => $voucher?->id, 'input' => $input]);
             if ($event = $this->retry($actor, $meta['request_key'], $fingerprint)) {
@@ -114,14 +142,38 @@ class VoucherCampaignService
             VoucherCampaignDraft::updateOrCreate(['voucher_id' => $voucher->id], ['terms' => $terms,
                 'saved_by_id' => $actor->id, 'based_on_revision_id' => $voucher->current_revision_id]);
             $voucher->update(['campaign_version' => $voucher->campaign_version + 1]);
-            $this->record($actor, $voucher, 'draft_saved', $meta, $fingerprint, $before);
+            $this->record($actor, $voucher, 'draft_saved', $meta, $fingerprint, $before, $reason);
 
             return $voucher;
         }, 3);
     }
 
+    public function saveDraftAndPublish(User $actor, array $input, ?Voucher $voucher = null, ?Shop $shop = null): Voucher
+    {
+        $keys = Validator::make($input, ['request_key' => 'required|uuid', 'publish_request_key' => 'required|uuid',
+            'source_version' => 'required|integer|min:0'])->validate();
+        if ($keys['request_key'] === $keys['publish_request_key']) {
+            throw ValidationException::withMessages(['publish_request_key' => 'Save and publish use separate request identifiers. Reload the form and try again.']);
+        }
+        $baseVersion = (int) $keys['source_version'];
+        unset($input['publish_after_save'], $input['publish_request_key']);
+
+        return DB::transaction(function () use ($actor, $input, $voucher, $shop, $keys, $baseVersion): Voucher {
+            $saved = $this->saveDraft($actor, $input, $voucher, $shop);
+            $action = ['action' => 'publish', 'request_key' => $keys['publish_request_key'], 'source_version' => $baseVersion + 1];
+            if (is_string($input['reason'] ?? null)) {
+                $action['reason'] = $input['reason'];
+            }
+
+            return $this->act($actor, $saved, $action, $shop);
+        }, 3);
+    }
+
     public function act(User $actor, Voucher $voucher, array $input, ?Shop $shop = null): Voucher
     {
+        if (is_string($input['reason'] ?? null)) {
+            $input['reason'] = trim($input['reason']);
+        }
         $data = Validator::make($input, ['action' => 'required|in:publish,pause,resume,archive,increase_budget,suspend,reinstate',
             'reason' => 'nullable|string|min:5|max:1000', 'budget_increase' => ['nullable', 'regex:'.CodMoney::RULE],
             'shop_id' => 'prohibited', 'issuer_type' => 'prohibited', 'funding_party' => 'prohibited', 'actor_id' => 'prohibited'])->validate();
@@ -240,6 +292,9 @@ class VoucherCampaignService
         $revision = $voucher->currentRevision;
         $draft = $voucher->draft?->terms;
         $terms = $draft ?? $revision?->terms();
+        $remainingUses = $revision && $revision->balance
+            ? max(0, $revision->global_limit - $revision->balance->redemption_count)
+            : null;
 
         return ['id' => $voucher->id, 'code' => $voucher->code, 'name' => $revision?->name ?? $draft['name'] ?? $voucher->name,
             'issuer_type' => $voucher->issuer_type, 'shop_name' => $voucher->shop?->name,
@@ -248,6 +303,7 @@ class VoucherCampaignService
             'selected_products' => app(VoucherProductScopeService::class)->sellerRows($voucher->shop_id, $draft ?? $revision?->terms() ?? []),
             'terms' => $terms, 'published_terms' => $revision?->terms(),
             'approved_budget_cents' => $revision?->approvedBudget(), 'balance' => $revision?->balance?->only(['redemption_count', 'committed_cents', 'spent_cents', 'released_cents']),
+            'remaining_uses' => $remainingUses,
             'legacy_used_count' => $revision ? null : $voucher->used_count, 'suspended_at' => $voucher->suspended_at?->toIso8601String()];
     }
 
@@ -286,6 +342,7 @@ class VoucherCampaignService
 
     private function terms(array $input, string $issuer, ?Voucher $voucher, string $key): array
     {
+        $input['discount_value'] = $this->normalizePercent($input['discount_type'] ?? null, $input['discount_value'] ?? null);
         $input['code'] = is_string($input['code'] ?? null) && trim($input['code'], ' ') !== ''
             ? strtoupper(trim($input['code'], ' ')) : ($voucher?->code ?? 'BGO'.strtoupper(substr(hash('sha256', $key), 0, 9)));
         $data = Validator::make($input, [
@@ -304,6 +361,7 @@ class VoucherCampaignService
         if ($voucher && $data['code'] !== $voucher->code) {
             throw ValidationException::withMessages(['code' => 'Keep the original campaign code. Create a separate campaign for another code.']);
         }
+        $this->validateCampaignDates($data, $voucher);
         $value = CodMoney::cents((string) $data['discount_value']);
         $minimum = CodMoney::cents((string) $data['min_spend']);
         $maximum = CodMoney::cents((string) $data['max_discount']);
@@ -330,6 +388,32 @@ class VoucherCampaignService
             'global_limit' => (int) $data['usage_limit'], 'per_buyer_limit' => (int) $data['per_buyer_limit'],
             'starts_at' => CarbonImmutable::parse($data['starts_at'], 'Asia/Manila')->utc()->toIso8601String(),
             'ends_at' => CarbonImmutable::parse($data['ends_at'], 'Asia/Manila')->utc()->toIso8601String()];
+    }
+
+    private function normalizePercent(mixed $type, mixed $value): mixed
+    {
+        if ($type !== 'percent' || ! is_string($value) || ! str_ends_with($value, '%')) {
+            return $value;
+        }
+
+        return substr($value, 0, -1);
+    }
+
+    private function validateCampaignDates(array $data, ?Voucher $voucher): void
+    {
+        $baseline = $voucher?->draft?->terms ?? $voucher?->currentRevision?->terms() ?? [];
+        $now = CarbonImmutable::now('Asia/Manila')->startOfMinute();
+        $errors = [];
+        foreach (['starts_at', 'ends_at'] as $field) {
+            $candidate = CarbonImmutable::parse($data[$field], 'Asia/Manila')->utc()->startOfMinute();
+            $previous = isset($baseline[$field]) ? CarbonImmutable::parse($baseline[$field], 'UTC')->utc()->startOfMinute() : null;
+            if ($candidate->lessThan($now) && (! $previous || ! $candidate->equalTo($previous))) {
+                $errors[$field] = 'Choose today or a future date. Existing historical dates can stay unchanged while you review an offer.';
+            }
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     private function requireVersion(Voucher $voucher, int $version): void

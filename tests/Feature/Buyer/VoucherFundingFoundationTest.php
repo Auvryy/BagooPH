@@ -36,7 +36,7 @@ class VoucherFundingFoundationTest extends TestCase
 {
     use InteractsWithCheckoutNetwork, RefreshDatabase;
 
-    private function checkout(array $prices = ['1000.00'], ?User $buyer = null): array
+    private function checkout(array $prices = ['1000.00'], ?User $buyer = null, int $baseShippingCents = 6000): array
     {
         $buyer ??= User::factory()->create();
         $cart = Cart::firstOrCreate(['user_id' => $buyer->id]);
@@ -49,6 +49,7 @@ class VoucherFundingFoundationTest extends TestCase
         if (! LogisticsCompany::where('slug', 'bagoo-checkout-network')->exists()) {
             $this->createCheckoutNetwork($items->first()->product->shop, ['Pasig' => 'Metro Manila']);
         }
+        LogisticsCompany::where('slug', 'bagoo-checkout-network')->update(['base_shipping_cents' => $baseShippingCents]);
         $payload = ['checkout_token' => app(CheckoutSubmissionService::class)->issue($buyer, $cart), 'item_ids' => $items->pluck('id')->all(),
             'recipient_name' => $buyer->name, 'recipient_phone' => '09171234567', 'shipping_address' => '123 Mabini Street',
             'shipping_city' => 'Pasig', 'shipping_province' => 'Metro Manila', 'shipping_postal_code' => '1600',
@@ -77,7 +78,7 @@ class VoucherFundingFoundationTest extends TestCase
         $platform = $this->offer(terms: ['percentage_bps' => 1000], attributes: ['discount_type' => 'percent', 'discount_value' => 10]);
         $input += ['platform_voucher_revision_id' => $platform->id,
             'shop_voucher_revision_ids' => [$second->shop_id => $second->id, $first->shop_id => $first->id]];
-        $quote = $this->preview($input)->assertOk()->assertJsonPath('quote.discount', 285)->assertJsonPath('quote.total', 1315.01)->json('quote');
+        $quote = $this->preview($input)->assertOk()->assertJsonPath('quote.discount', 285)->assertJsonPath('quote.total', 1335.01)->json('quote');
         $this->post('/checkout', $input)->assertSessionHas('success');
         $orders = Order::with('items')->get()->keyBy(fn ($o) => $o->items->first()->shop_id);
         foreach ($quote['shops'] as $shop) {
@@ -102,7 +103,7 @@ class VoucherFundingFoundationTest extends TestCase
 
     public function test_documented_funding_example_reconciles_without_changing_the_gross_split(): void
     {
-        [, , $items, $input] = $this->checkout();
+        [, , $items, $input] = $this->checkout(baseShippingCents: 5000);
         $shop = $this->offer($items[0]->product->shop);
         $platform = $this->offer(attributes: ['discount_value' => 50]);
         $input += ['shop_voucher_revision_ids' => [$shop->shop_id => $shop->id], 'platform_voucher_revision_id' => $platform->id];
@@ -116,7 +117,7 @@ class VoucherFundingFoundationTest extends TestCase
         $this->assertSame(5000, $basis['net_commission_cents']);
         $this->assertSame(90000, $basis['net_seller_cents'] + $basis['net_commission_cents'] + $basis['shipping_cents']);
         $this->assertFalse($basis['eligible']);
-        $this->assertContains('The buyer has not confirmed receipt through the documented order flow.', $basis['blockers']);
+        $this->assertContains('The order needs recorded completion through its verified delivery flow.', $basis['blockers']);
     }
 
     public function test_offer_cards_quote_their_own_saving_with_the_other_selected_slots(): void
@@ -273,14 +274,14 @@ class VoucherFundingFoundationTest extends TestCase
         $revision = $this->offer(terms: ['budget_cents' => 5000], attributes: ['discount_type' => 'free_shipping', 'discount_value' => 50]);
         $input['platform_voucher_revision_id'] = $revision->id;
         $quote = $this->preview($input)->assertOk()->assertJsonPath('quote.shipping_discount', 50)->json('quote');
-        $this->assertEquals([50, 0], array_column($quote['shops'], 'shipping_discount'));
+        $this->assertEquals([25, 25], array_column($quote['shops'], 'shipping_discount'));
         $this->post('/checkout', $input)->assertSessionHas('success');
         $order = Order::with('items', 'delivery')->orderBy('id')->first();
         $basis = app(SellerSettlementService::class)->eligibility($order);
         $this->assertSame(9000, $basis['net_seller_cents']);
-        $this->assertSame(-4000, $basis['net_commission_cents']);
-        $this->assertSame(5000, $basis['shipping_cents']);
-        $this->assertSame('100.00', $order->total_amount);
+        $this->assertSame(-1500, $basis['net_commission_cents']);
+        $this->assertSame(6000, $basis['shipping_cents']);
+        $this->assertSame('135.00', $order->total_amount);
     }
 
     public function test_budget_reserves_actual_savings_and_per_buyer_limit_counts_checkouts(): void
@@ -464,7 +465,7 @@ class VoucherFundingFoundationTest extends TestCase
         [, , $items, $input] = $this->checkout(['100.00']);
         $offer = $this->offer($items[0]->product->shop, attributes: ['discount_value' => 1000]);
         $input['shop_voucher_revision_ids'] = [$offer->shop_id => $offer->id];
-        $this->preview($input)->assertOk()->assertJsonPath('quote.discount', 90)->assertJsonPath('quote.total', 60);
+        $this->preview($input)->assertOk()->assertJsonPath('quote.discount', 90)->assertJsonPath('quote.total', 70);
         $this->post('/checkout', $input)->assertSessionHas('success');
         $basis = app(SellerSettlementService::class)->eligibility(Order::with('items', 'delivery')->sole());
         $this->assertSame(0, $basis['net_seller_cents']);

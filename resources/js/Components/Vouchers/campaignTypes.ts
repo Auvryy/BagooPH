@@ -12,6 +12,7 @@ export interface Campaign {
     shop_name: string | null; state: string; version: number; has_draft: boolean;
     current_revision_id: number | null; draft_terms: CampaignTerms | null; terms: CampaignTerms | null;
     published_terms: CampaignTerms | null; approved_budget_cents: number | null; suspended_at: string | null;
+    remaining_uses: number | null;
     balance: { redemption_count: number; committed_cents: number; spent_cents: number; released_cents: number } | null;
     legacy_used_count: number | null;
     selected_products?: import('./VoucherProductSelection').VoucherProduct[];
@@ -35,9 +36,11 @@ export function manilaInput(value: string): string {
     return new Date(date.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 16);
 }
 export function previewPromotion(terms: { discount_type: string; discount_value: string; max_discount: string }, purchase: string) {
-    const basis = Math.max(0, Math.round(Number(purchase || 0) * 100));
-    const value = Math.round(Number(terms.discount_value || 0) * 100);
-    const cap = Math.round(Number(terms.max_discount || 0) * 100);
+    const money = (value: string) => Number.isFinite(Number(value)) ? Math.round(Number(value || 0) * 100) : 0;
+    const basis = Math.max(0, money(purchase));
+    const percentage = terms.discount_type === 'percent' ? terms.discount_value.replace(/%$/, '') : terms.discount_value;
+    const value = money(percentage);
+    const cap = money(terms.max_discount);
     const sellerShare = basis - Math.round(basis / 10);
     const reduction = terms.discount_type === 'percent' ? Math.round(basis * value / 10000) : value;
     const discount = terms.discount_type === 'free_shipping' ? Math.min(5000, value || 5000, cap) : Math.min(basis, reduction, cap);

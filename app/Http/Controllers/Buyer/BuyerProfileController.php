@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Rules\ApplicationText;
 use App\Rules\BirthDate;
 use App\Services\AccountSettingsService;
+use App\Services\AccountReviewService;
 use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyAgainService;
@@ -64,6 +65,7 @@ class BuyerProfileController extends Controller
             'identityCorrection' => fn () => $accountSettings()['identityCorrection'],
             'emailSettings' => fn () => $accountSettings()['emailSettings'],
             'user' => [...$user->toArray(), ...app(VerificationDocumentService::class)->links($user)],
+            'accountCenterStatus' => fn () => app(AccountReviewService::class)->centerPresentation($user),
             'addresses' => fn () => $user->addresses()->orderByDesc('is_default')->oldest()->get(),
             'editingAddressId' => $editingAddress instanceof Address ? $editingAddress->id : null,
             'addressBookLimit' => BuyerAddressService::LIMIT,

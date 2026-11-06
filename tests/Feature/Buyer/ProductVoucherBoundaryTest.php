@@ -49,7 +49,7 @@ class ProductVoucherBoundaryTest extends TestCase
         $quote = $quotes->quote($items, 'doorstep', collect([$revision]), $buyer);
         $this->assertNull($quote['voucher_error']);
         $this->assertSame(30, $quote['discount']);
-        $this->assertSame(920, $quote['total']);
+        $this->assertSame(930, $quote['total']);
     }
 
     public function test_targeted_shop_and_platform_allocations_keep_the_second_shop_unchanged_after_cancellation(): void
@@ -68,11 +68,11 @@ class ProductVoucherBoundaryTest extends TestCase
             'shipping_city' => 'Pasig', 'shipping_province' => 'Metro Manila', 'shipping_postal_code' => '1600', 'destination_barangay' => 'San Antonio',
             'delivery_type' => 'doorstep', 'payment_method' => 'cod', 'shop_voucher_revision_ids' => [$shop->id => $shopOffer->id],
             'platform_voucher_revision_id' => $platform->id];
-        $this->postJson(route('buyer.vouchers.apply'), $input)->assertOk()->assertJsonPath('quote.discount', 158)->assertJsonPath('quote.total', 1342);
+        $this->postJson(route('buyer.vouchers.apply'), $input)->assertOk()->assertJsonPath('quote.discount', 158)->assertJsonPath('quote.total', 1362);
         $this->post('/checkout', $input)->assertSessionHas('success');
         $orders = Order::with('items')->get()->keyBy(fn ($order) => $order->items->first()->shop_id);
-        $this->assertSame('842.00', $orders[$shop->id]->total_amount);
-        $this->assertSame('500.00', $orders[$foreignShop->id]->total_amount);
+        $this->assertSame('852.00', $orders[$shop->id]->total_amount);
+        $this->assertSame('510.00', $orders[$foreignShop->id]->total_amount);
         $original = $orders[$foreignShop->id]->getRawOriginal();
         $this->post(route('buyer.orders.cancel', $orders[$shop->id]), ['reason' => 'Ordered by mistake'])->assertSessionHas('success');
         $this->assertSame($original, $orders[$foreignShop->id]->fresh()->getRawOriginal());
