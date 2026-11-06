@@ -9,6 +9,7 @@ use App\Models\AdvertisementPublication;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\Advertisements\AdvertisementManager;
+use App\Services\Advertisements\AdvertisementAssetService;
 use App\Services\Advertisements\AdvertisementReader;
 use App\Services\Vouchers\VoucherCampaignService;
 use Illuminate\Database\QueryException;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -314,7 +316,7 @@ class AdvertisementManagementTest extends TestCase
         $service = app(VoucherCampaignService::class);
         $terms = ['code' => 'BAGOOSHIP', 'name' => 'Bagoo delivery savings', 'description' => 'A capped shipping discount.',
             'discount_type' => 'free_shipping', 'discount_value' => '50.00', 'min_spend' => '100.00', 'max_discount' => '30.00',
-            'budget' => '5000.00', 'usage_limit' => 100, 'per_buyer_limit' => 2, 'starts_at' => now()->subDay()->toIso8601String(),
+            'budget' => '5000.00', 'usage_limit' => 100, 'per_buyer_limit' => 2, 'starts_at' => now()->toIso8601String(),
             'ends_at' => now()->addDays(2)->toIso8601String(), 'source_version' => 0, 'request_key' => (string) Str::uuid()];
         $offer = $service->saveDraft($this->admin, $terms);
         $service->act($this->admin, $offer, ['action' => 'publish', 'source_version' => $offer->fresh()->campaign_version, 'request_key' => (string) Str::uuid()]);
@@ -328,7 +330,8 @@ class AdvertisementManagementTest extends TestCase
         $offer->currentRevision->balance->update(['redemption_count' => 100]);
         $this->assertSame([], app(AdvertisementReader::class)->homepage());
         $offer->currentRevision->balance->update(['redemption_count' => 0]);
-        $service->saveDraft($this->admin, [...$terms, 'name' => 'Revised delivery savings', 'request_key' => (string) Str::uuid(), 'source_version' => $offer->campaign_version], $offer);
+        $service->saveDraft($this->admin, [...$terms, 'name' => 'Revised delivery savings', 'reason' => 'Align the linked voucher offer terms.',
+            'request_key' => (string) Str::uuid(), 'source_version' => $offer->campaign_version], $offer);
         $service->act($this->admin, $offer, ['action' => 'publish', 'source_version' => $offer->fresh()->campaign_version, 'request_key' => (string) Str::uuid()]);
         $this->assertSame([], app(AdvertisementReader::class)->homepage());
         $this->get('/promotions/'.$ad->slug)->assertInertia(fn (Assert $page) => $page->where('promotion.available', false)->where('promotion.offer', null));
@@ -399,6 +402,32 @@ class AdvertisementManagementTest extends TestCase
         $this->assertSame(5242880, $ad->latestRevision->asset->source_bytes);
         $this->postJson('/admin/advertisements', $this->payload(['image' => UploadedFile::fake()->createWithContent('limit.jpg', $exact."\0")]))
             ->assertUnprocessable()->assertJsonValidationErrors('image');
+    }
+
+    public function test_artwork_maximum_edge_is_inclusive_and_the_next_pixel_and_over_limit_megapixels_are_rejected(): void
+    {
+        $source = UploadedFile::fake()->image('edge.png', 940, 440);
+        $png = file_get_contents($source->getRealPath());
+        $service = app(AdvertisementAssetService::class);
+        $atMaximumEdge = UploadedFile::fake()->createWithContent('edge.png', substr_replace($png, pack('NN', 4096, 1915), 16, 8));
+        $this->assertSame(4096, $service->inspect($atMaximumEdge)['width']);
+        $this->assertSame(1915, $service->inspect($atMaximumEdge)['height']);
+
+        $overEdge = UploadedFile::fake()->createWithContent('edge.png', substr_replace($png, pack('NN', 4097, 1915), 16, 8));
+        try {
+            $service->inspect($overEdge);
+            $this->fail('An image over the 4096-pixel edge limit must be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('4096 pixels', $exception->errors()['image'][0]);
+        }
+
+        $overPixels = UploadedFile::fake()->createWithContent('pixels.png', substr_replace($png, pack('NN', 4000, 4001), 16, 8));
+        try {
+            $service->inspect($overPixels);
+            $this->fail('An image over the 16-megapixel limit must be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('16 megapixels', $exception->errors()['image'][0]);
+        }
     }
 
     public function test_disguised_unsupported_and_corrupt_files_and_wrong_dimensions_never_create_assets(): void

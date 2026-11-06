@@ -44,7 +44,7 @@ class AdvertisementReader
         return ['state' => $future ? 'scheduled' : 'live', 'reason' => null];
     }
 
-    public function homepage(bool $measure = true): array
+    public function homepage(bool $measure = true, array $recentProductViews = []): array
     {
         if (! config('advertisements.enabled') || ! app(AdvertisementManager::class)->installed()) {
             return [];
@@ -65,10 +65,10 @@ class AdvertisementReader
             if ($page && ($measurement = app(AdvertisementMeasurementService::class)->issue($publication, $page))) {
                 $banner['measurement'] = $measurement;
             }
-            $banners[$publication->slot] = $banner;
+            $banners[$publication->slot] = ['banner' => $banner, 'publication' => $publication];
         }
 
-        return array_values($banners);
+        return app(AdvertisementRecommendationService::class)->rank(array_values($banners), $recentProductViews);
     }
 
     public function publication(string $slug, ?int $publicationId = null): AdvertisementPublication

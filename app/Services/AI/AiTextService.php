@@ -2,6 +2,7 @@
 
 namespace App\Services\AI;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -14,6 +15,20 @@ class AiTextService
      */
     public function generateJson(string $systemPrompt, string $userPrompt): array
     {
+        return $this->generateJsonParts($systemPrompt, [['text' => $userPrompt]]);
+    }
+
+    public function generateJsonWithImage(string $systemPrompt, string $userPrompt, string $mimeType, string $imageBase64): array
+    {
+        abort_unless(in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp'], true), 422);
+
+        return $this->generateJsonParts($systemPrompt, [['text' => $userPrompt], [
+            'inline_data' => ['mime_type' => $mimeType, 'data' => $imageBase64],
+        ]]);
+    }
+
+    private function generateJsonParts(string $systemPrompt, array $parts): array
+    {
         $apiKey = (string) config('ai.api_key');
         $model = (string) config('ai.model');
 
@@ -23,22 +38,26 @@ class AiTextService
 
         $endpoint = rtrim((string) config('ai.base_url'), '/') . '/models/' . rawurlencode($model) . ':generateContent';
 
-        $response = Http::timeout((int) config('ai.timeout', 20))
-            ->retry(1, 250)
-            ->acceptJson()
-            ->post($endpoint . '?key=' . rawurlencode($apiKey), [
-                'systemInstruction' => [
-                    'parts' => [['text' => $systemPrompt]],
-                ],
-                'contents' => [[
-                    'role' => 'user',
-                    'parts' => [['text' => $userPrompt]],
-                ]],
-                'generationConfig' => [
-                    'temperature' => 0.2,
-                    'responseMimeType' => 'application/json',
-                ],
-            ]);
+        try {
+            $response = Http::timeout((int) config('ai.timeout', 20))
+                ->retry(1, 250)
+                ->acceptJson()
+                ->post($endpoint . '?key=' . rawurlencode($apiKey), [
+                    'systemInstruction' => [
+                        'parts' => [['text' => $systemPrompt]],
+                    ],
+                    'contents' => [[
+                        'role' => 'user',
+                        'parts' => $parts,
+                    ]],
+                    'generationConfig' => [
+                        'temperature' => 0.2,
+                        'responseMimeType' => 'application/json',
+                    ],
+                ]);
+        } catch (ConnectionException $exception) {
+            throw new RuntimeException('The assistant could not respond right now.', 0, $exception);
+        }
 
         if ($response->failed()) {
             throw new RuntimeException('The assistant could not respond right now.');

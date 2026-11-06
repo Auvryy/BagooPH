@@ -4,6 +4,7 @@ namespace Tests\Feature\Advertisements;
 
 use App\Models\Advertisement;
 use App\Models\AdvertisementPublication;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
@@ -14,6 +15,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -69,7 +71,7 @@ class AdvertisementReleaseJourneyTest extends TestCase
         $service = app(VoucherCampaignService::class);
         $voucher = $service->saveDraft($this->admin, ['code' => 'BGOESSENTIAL', 'name' => 'Everyday savings', 'description' => 'Save PHP 100 on eligible purchases of PHP 500 or more.',
             'discount_type' => 'fixed', 'discount_value' => '100.00', 'min_spend' => '500.00', 'max_discount' => '100.00', 'budget' => '5000.00',
-            'usage_limit' => 50, 'per_buyer_limit' => 2, 'starts_at' => now()->subDay()->toIso8601String(), 'ends_at' => now()->addDay()->toIso8601String(),
+            'usage_limit' => 50, 'per_buyer_limit' => 2, 'starts_at' => now()->toIso8601String(), 'ends_at' => now()->addDay()->toIso8601String(),
             'source_version' => 0, 'request_key' => (string) Str::uuid()]);
         $service->act($this->admin, $voucher, ['action' => 'publish', 'source_version' => $voucher->fresh()->campaign_version, 'request_key' => (string) Str::uuid()]);
         $offer = $this->platform(['title' => 'PHP 100 off eligible essentials', 'purpose' => 'offer', 'slot' => 'main_2', 'destination_type' => 'offer', 'destination_id' => null,
@@ -146,5 +148,72 @@ class AdvertisementReleaseJourneyTest extends TestCase
         $this->assertSame('withdrawn', $submission->fresh()->state());
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('voucher_redemptions', 0);
+    }
+
+    public function test_recent_product_views_personalize_homepage_promotions_and_are_bounded_in_session(): void
+    {
+        $second = Product::factory()->create([
+            'shop_id' => $this->shop->id,
+            'category_id' => $this->shop->root_category_id,
+            'sales_count' => 0,
+        ]);
+        $this->product->update(['sales_count' => 100]);
+        $popular = $this->platform(['title' => 'Popular product offer', 'destination_id' => $this->product->id]);
+        $recent = $this->platform(['title' => 'Recently viewed product offer', 'destination_id' => $second->id, 'slot' => 'main_2']);
+
+        $reader = app(AdvertisementReader::class);
+        $this->assertSame($popular->id, $reader->homepage(false)[0]['id']);
+        $this->assertSame($recent->id, $reader->homepage(false, [$second->id])[0]['id']);
+
+        $this->get('/product/'.$second->slug)->assertOk();
+        $this->assertSame([$second->id], session('buyer.recent_product_views'));
+        $this->assertDatabaseHas('product_daily_views', ['product_id' => $second->id, 'views' => 1]);
+        $this->get('/product/'.$second->slug)->assertOk();
+        $this->assertDatabaseHas('product_daily_views', ['product_id' => $second->id, 'views' => 1]);
+        $this->get('/')->assertInertia(fn (Assert $page) => $page->where('banners.0.id', $recent->id));
+
+        $day = CarbonImmutable::now('Asia/Manila')->toDateString();
+        DB::table('product_daily_views')->where('product_id', $second->id)->where('day', $day)->update(['views' => 100]);
+        $this->assertSame($recent->id, $reader->homepage(false, [])[0]['id']);
+
+        $otherShop = Shop::factory()->approved()->create();
+        $apparel = Category::firstOrCreate(['name' => "Women's Apparel", 'parent_id' => null], ['slug' => 'womens-apparel', 'is_active' => true]);
+        $otherShop->update(['root_category_id' => $apparel->id]);
+        \Database\Factories\ShopFactory::recordApprovalFixture($otherShop);
+        $categoryDestination = Product::factory()->create(['shop_id' => $otherShop->id, 'category_id' => $otherShop->root_category_id]);
+        $popularInCategory = Product::factory()->create(['shop_id' => $otherShop->id, 'category_id' => $otherShop->root_category_id]);
+        $categoryPromotion = $this->platform(['title' => 'Popular category offer', 'destination_id' => $categoryDestination->id, 'slot' => 'main_3']);
+        DB::table('product_daily_views')->insert(['product_id' => $popularInCategory->id, 'day' => $day, 'views' => 1000000]);
+        $this->assertSame($categoryPromotion->id, $reader->homepage(false, [])[0]['id']);
+
+        $expiredDay = CarbonImmutable::now('Asia/Manila')->subDays(15)->toDateString();
+        DB::table('product_daily_views')->insert(['product_id' => $this->product->id, 'day' => $expiredDay, 'views' => 4]);
+        $this->artisan('products:prune-daily-views')->assertExitCode(0);
+        $this->assertDatabaseMissing('product_daily_views', ['product_id' => $this->product->id, 'day' => $expiredDay]);
+        $this->assertGreaterThanOrEqual(100, (int) DB::table('product_daily_views')->where('product_id', $second->id)->where('day', $day)->value('views'));
+
+        $boundedViews = app(\App\Services\Advertisements\AdvertisementRecommendationService::class)
+            ->rememberRecentProductView([...range(1001, 1050), 1001, 'invalid', 0], $second->id);
+        $this->assertCount(50, $boundedViews);
+        $this->assertSame($second->id, $boundedViews[0]);
+    }
+
+    public function test_recent_ad_clicks_reorder_only_already_published_promotions(): void
+    {
+        $first = $this->platform(['title' => 'First eligible promotion', 'slot' => 'main_1']);
+        $clicked = $this->platform(['title' => 'Clicked eligible promotion', 'slot' => 'main_2']);
+        $reader = app(AdvertisementReader::class);
+
+        $this->assertSame($first->id, $reader->homepage(false)[0]['id']);
+
+        DB::table('advertisement_daily_statistics')->insert([
+            'publication_id' => $clicked->id,
+            'day' => CarbonImmutable::now('Asia/Manila')->toDateString(),
+            'clicks' => 1,
+            'impressions' => 1,
+        ]);
+
+        $this->assertSame($clicked->id, $reader->homepage(false)[0]['id']);
+        $this->assertCount(2, $reader->homepage(false));
     }
 }

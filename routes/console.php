@@ -3,6 +3,7 @@
 use App\Services\AccountSessions\AccountSessionService;
 use App\Services\Advertisements\AdvertisementMeasurementService;
 use App\Services\Commerce\SaleReminderService;
+use App\Services\Commerce\BuyerProductViewTracker;
 use App\Services\Logistics\RiderCompanyOfferService;
 use App\Services\Wallet\WalletPaymentService;
 use App\Services\Wallet\WalletSettlementService;
@@ -23,6 +24,13 @@ Artisan::command('advertisements:prune-events', function () {
 })->purpose('Remove anonymous advertisement event records after seven days');
 
 Schedule::command('advertisements:prune-events')->daily()->withoutOverlapping();
+
+Artisan::command('products:prune-daily-views', function () {
+    $count = app(BuyerProductViewTracker::class)->prune();
+    $this->info("Removed {$count} product view totals older than 14 days.");
+})->purpose('Retain only recent anonymous product view totals for marketplace discovery');
+
+Schedule::command('products:prune-daily-views')->daily()->withoutOverlapping();
 
 Artisan::command('rider-companies:expire-offers {--limit=100}', function () {
     $limit = $this->option('limit');

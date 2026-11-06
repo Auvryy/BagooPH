@@ -18,7 +18,7 @@ class AdvertisementTransaction
                 $actor = User::whereKey($actor->id)->lockForUpdate()->firstOrFail();
                 $authorize($actor);
                 // Admin placements and seller/reviewer changes share this lock order.
-                abort_unless(DB::table('advertisement_schedule_locks')->where('id', 1)->lockForUpdate()->first(), 503, 'The advertisement calendar needs to be installed.');
+                abort_unless(app(AdvertisementScheduleLock::class)->lock(), 503, 'The advertisement calendar needs to be installed.');
 
                 return $work($actor, $paths);
             }, 3);

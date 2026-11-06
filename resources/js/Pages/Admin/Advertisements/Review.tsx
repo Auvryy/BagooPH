@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import AdvertisementOfferTerms from '@/Components/AdvertisementOfferTerms';
 import PromotionHistory from '@/Components/PromotionHistory';
+import PromotionAiTools from '@/Components/PromotionAiTools';
 import { PromotionDetail, PromotionSubmission, dateLabel, displayLabel, manilaInput, reviewLabel, slotLabel } from '@/types/advertisements';
 
 interface Props { advertisement: PromotionDetail; slots: string[]; displayEnabled: boolean; baseUrl: string }
@@ -65,6 +66,7 @@ function Review({ advertisement: ad, slots, displayEnabled, baseUrl }: Props) {
                     {!!selected.products?.length && <section className="space-y-2"><h3 className="text-sm font-bold">Currently available products</h3><ul className="space-y-2">{selected.products.map((product) => <li key={product.id} className="flex flex-wrap justify-between gap-2 text-sm"><Link href={product.url} target="_blank" rel="noopener noreferrer" className="text-[#E00D42] underline">{product.name}</Link><span>{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(product.price))}</span></li>)}</ul></section>}
                     <dl className="space-y-3 text-sm"><div><dt className="text-slate-500">Selected destination</dt><dd className="font-semibold">{selected.revision.target.label ?? 'Unavailable destination'}</dd></div><div><dt className="text-slate-500">Requested period (Asia/Manila)</dt><dd>{dateLabel(selected.revision.starts_at ? `${selected.revision.starts_at}+08:00` : null)} – {dateLabel(selected.revision.ends_at ? `${selected.revision.ends_at}+08:00` : null)}</dd></div></dl>
                     <Link href={`${baseUrl}/${ad.id}/preview?revision=${selected.revision_id}&slot=${slot}`} className="inline-block text-sm font-bold text-[#E00D42] underline">Preview this submitted version at the selected position</Link>
+                    <PromotionAiTools endpoint={`${baseUrl}/${ad.id}/assist`} title={selected.revision.title} altText={selected.revision.alt_text} summary={selected.revision.summary ?? ''} purpose={selected.revision.purpose} image={null} disabled={disabled || selected.state !== 'pending'} submissionId={selected.id} checkOnly onUseCopy={() => {}} />
                     <p className="text-xs leading-relaxed text-slate-500">Artwork, destination, linked offer and requested dates belong to the seller's retained version. Request changes when any of these need editing.</p>
                     {selected.revision.offer && <AdvertisementOfferTerms offer={selected.revision.offer} />}
                 </section>
