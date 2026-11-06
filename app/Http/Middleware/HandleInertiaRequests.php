@@ -9,6 +9,7 @@ use App\Models\LogisticsCompany;
 use App\Models\Message;
 use App\Models\SavedProduct;
 use App\Models\Shop;
+use App\Models\User;
 use App\Services\BuyerAccessService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Notifications\NotificationCenterService;
@@ -110,6 +111,8 @@ class HandleInertiaRequests extends Middleware
                     'name' => $user->name,
                     'email' => $user->email,
                     'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+                    'has_google_identity' => is_string($user->google_id) && $user->google_id !== '',
+                    'needs_password_setup' => is_string($user->google_id) && $user->google_id !== '' && ! $user->password_login_enabled,
                     'role' => $user->role,
                     'avatar' => $user->avatar,
                     'phone' => $user->phone,
@@ -142,6 +145,7 @@ class HandleInertiaRequests extends Middleware
             'buyerApplication' => fn () => app(BuyerAccessService::class)->applicationPresentation($user),
             'savedProductIds' => fn () => $user && $user->isBuyer() && $user->canAccessPortal()
                 ? SavedProduct::where('buyer_id', $user->id)->pluck('product_id') : [],
+            'cartItemIdsByProduct' => fn () => $this->cartItemIdsByProduct($request, $user),
             'unreadMessagesCount' => $unreadMessagesCount,
             'sidebarAttention' => fn () => app(SidebarAttentionService::class)->for($user, $unreadMessagesCount),
             'notificationSummary' => app(NotificationCenterService::class)->summary($user),
@@ -151,5 +155,30 @@ class HandleInertiaRequests extends Middleware
                 'message' => fn () => $request->session()->get('message'),
             ],
         ];
+    }
+
+    private function cartItemIdsByProduct(Request $request, ?User $user): array
+    {
+        if ($user && ! $user->isBuyer()) {
+            return [];
+        }
+        if (! in_array($request->route()?->getName(), [
+            'marketplace', 'buyer.index', 'buyer.search', 'buyer.catalog', 'buyer.products.show',
+            'products.index', 'catalog.index', 'products.show', 'shop.show', 'shop.categories.show',
+            'saved-products.index', 'promotions.show',
+        ], true)) {
+            return [];
+        }
+
+        $cart = Cart::query()
+            ->when($user, fn ($query) => $query->where('user_id', $user->id),
+                fn ($query) => $query->whereNull('user_id')->where('session_id', $request->session()->getId()))
+            ->first();
+        if (! $cart) {
+            return [];
+        }
+
+        return $cart->items()->orderByDesc('id')->get(['id', 'product_id'])
+            ->unique('product_id')->mapWithKeys(fn ($item) => [(int) $item->product_id => (int) $item->id])->all();
     }
 }

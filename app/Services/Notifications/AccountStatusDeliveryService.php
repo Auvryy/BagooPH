@@ -33,8 +33,9 @@ class AccountStatusDeliveryService
                 }
                 $recipient = User::findOrFail($delivery->recipient_id);
                 app(SecretMailService::class)->assertSafeTransport();
+                $appUrl = rtrim((string) config('app.url'), '/');
                 $mail = new AccountStatusMail($recipient->name, AccountIdentityService::label($recipient->role),
-                    $delivery->data['title'], $delivery->data['body']);
+                    $delivery->data['title'], $delivery->data['body'], $appUrl, $appUrl.'/account/status');
                 Mail::to($recipient->routeNotificationForMail($mail))->send($mail);
                 $delivery->forceFill(['email_delivered_at' => now(), 'email_last_attempt_at' => now(),
                     'email_attempts' => $delivery->email_attempts + 1, 'email_available_at' => null])->save();

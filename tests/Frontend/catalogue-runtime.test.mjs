@@ -73,6 +73,18 @@ test('the runtime bridges cached and fresh visits, cancellation and session boun
         assert.deepEqual(components, ['Buyer/ProductDetail']);
         assert.equal(ui.cataloguePrefetch.allowed(), true, 'cached callback releases the request budget');
     });
+    await t.test('an explicit search submit flushes a prepared result and requests fresh server props', async () => {
+        ui.cataloguePrefetch.clear();
+        const searchUrl = '/buyer/search?search=brief';
+        const prepared = ui.cataloguePrefetch.prepare(searchUrl); await tick();
+        requests.at(-1).complete({ ...page, component: 'Buyer/Search' }); await prepared;
+        const before = visits.length;
+        await ui.visitCatalogue(searchUrl, { fresh: true });
+        assert.equal(visits.length, before + 1);
+        assert.equal(visits.at(-1).options.fresh, true);
+        assert.ok(flushed.some(row => row.url === searchUrl));
+        visits.at(-1).options.onFinish({});
+    });
     await t.test('rejected/redirected or changed-account responses fall back to an actual fresh visit', async () => {
         for (const response of [{ ...page, component: 'Auth/Login' }, { ...page, props: { ...page.props, auth: { user: { id: 8, role: 'buyer' } } } }]) {
             ui.cataloguePrefetch.clear();

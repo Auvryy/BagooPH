@@ -18,6 +18,7 @@ use App\Services\Vouchers\VoucherCampaignService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -138,6 +139,131 @@ class SellerPromotionPortalTest extends TestCase
         $this->post('http://seller.localhost/promotions/'.$ad->id.'/actions', $this->command($ad, ['action' => 'submit', 'revision_id' => $ad->latestRevision->id]))->assertRedirect('/promotions/'.$ad->id);
     }
 
+    public function test_seller_promotion_writer_repairs_a_missing_calendar_mutex_row_without_a_503(): void
+    {
+        DB::table('advertisement_schedule_locks')->where('id', 1)->delete();
+
+        $this->actingAs($this->seller)->post('/seller/promotions', $this->data())
+            ->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $this->assertDatabaseHas('advertisement_schedule_locks', ['id' => 1]);
+        $this->assertDatabaseCount('advertisements', 1);
+        $this->assertDatabaseCount('advertisement_revisions', 1);
+    }
+
+    public function test_gemini_can_generate_promotion_copy_and_unavailable_assistance_does_not_block_saving(): void
+    {
+        config(['ai.api_key' => 'test-assistant-key', 'ai.model' => 'gemini-test', 'ai.base_url' => 'https://assistant.invalid/v1beta']);
+        Http::fake(['*' => Http::response(['candidates' => [['content' => ['parts' => [['text' => json_encode([
+            'title' => 'Everyday woven carryall', 'alt_text' => 'Natural woven carryall with a roomy shape',
+            'summary' => 'A practical carryall for everyday errands.',
+        ])]]]]]], 200)]);
+
+        $this->actingAs($this->seller)->postJson('/seller/promotions/assist', ['action' => 'generate', 'title' => 'Woven carryall',
+            'alt_text' => '', 'summary' => 'Roomy woven bag for everyday errands.', 'purpose' => 'feature'])
+            ->assertOk()->assertJsonPath('content.title', 'Everyday woven carryall')
+            ->assertJsonPath('content.alt_text', 'Natural woven carryall with a roomy shape');
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'gemini-test:generateContent')
+            && $request['generationConfig']['responseMimeType'] === 'application/json');
+
+        config(['ai.api_key' => null]);
+        $this->postJson('/seller/promotions/assist', ['action' => 'improve', 'title' => 'Woven carryall', 'summary' => 'Roomy woven bag.'])
+            ->assertStatus(503)->assertJsonPath('message', 'Gemini is unavailable right now. Your promotion draft is still available to save manually.');
+        $this->post('/seller/promotions', $this->data())->assertSessionHasNoErrors()->assertSessionHas('success');
+    }
+
+    public function test_gemini_can_improve_seller_copy_and_flag_mismatched_promotion_text(): void
+    {
+        config(['ai.api_key' => 'test-assistant-key', 'ai.model' => 'gemini-test', 'ai.base_url' => 'https://assistant.invalid/v1beta']);
+        Http::fake(['*' => Http::sequence()
+            ->push(['candidates' => [['content' => ['parts' => [['text' => json_encode([
+                'title' => 'Everyday woven carryall', 'alt_text' => 'Natural woven carryall for daily use',
+                'summary' => 'A practical carryall made for everyday errands.',
+            ])]]]]]], 200)
+            ->push(['candidates' => [['content' => ['parts' => [['text' => json_encode([
+                'valid' => false, 'findings' => ['The discount claim is not supported by the supplied offer.'],
+                'advice' => 'Remove the discount claim or provide the matching offer terms.',
+            ])]]]]]], 200)]);
+
+        $this->actingAs($this->seller)->postJson('/seller/promotions/assist', [
+            'action' => 'improve', 'title' => 'Woven carryall', 'alt_text' => 'A woven bag',
+            'summary' => 'Roomy woven bag for everyday errands.', 'purpose' => 'feature',
+        ])->assertOk()->assertJsonPath('content.title', 'Everyday woven carryall');
+
+        $this->postJson('/seller/promotions/assist', [
+            'action' => 'check', 'title' => '90% off every item', 'alt_text' => 'Woven carryall',
+            'summary' => 'A woven bag for everyday errands.', 'purpose' => 'offer',
+        ])->assertOk()->assertJsonPath('review.valid', false)
+            ->assertJsonPath('review.findings.0', 'The discount claim is not supported by the supplied offer.')
+            ->assertJsonPath('review.artwork_checked', false);
+    }
+
+    public function test_admin_can_generate_and_improve_platform_promotion_copy_without_changing_the_saved_revision(): void
+    {
+        config(['ai.api_key' => 'test-assistant-key', 'ai.model' => 'gemini-test', 'ai.base_url' => 'https://assistant.invalid/v1beta']);
+        Http::fake(['*' => Http::sequence()
+            ->push(['candidates' => [['content' => ['parts' => [['text' => json_encode([
+                'title' => 'Bagoo seasonal collection', 'alt_text' => 'Seasonal products available on Bagoo',
+                'summary' => 'Explore products selected for the season.',
+            ])]]]]]], 200)
+            ->push(['candidates' => [['content' => ['parts' => [['text' => json_encode([
+                'title' => 'Thoughtful seasonal finds', 'alt_text' => 'A selection of seasonal Bagoo products',
+                'summary' => 'Browse useful products chosen for the season.',
+            ])]]]]]], 200)]);
+
+        $this->actingAs($this->admin)->postJson('/admin/advertisements/assist', [
+            'action' => 'generate', 'title' => 'Seasonal products', 'summary' => 'Explore our collection.',
+        ])->assertOk()->assertJsonPath('content.title', 'Bagoo seasonal collection');
+
+        $ad = app(AdvertisementManager::class)->saveDraft($this->admin, $this->data(['title' => 'Admin platform promotion', 'slot' => 'main_1']));
+        $revisionBefore = $ad->latestRevision->getRawOriginal();
+        $this->postJson('/admin/advertisements/'.$ad->id.'/assist', [
+            'action' => 'improve', 'title' => 'Admin platform promotion',
+            'alt_text' => 'Selected products from our shop', 'summary' => 'Explore selected products.',
+        ])->assertOk()->assertJsonPath('content.title', 'Thoughtful seasonal finds');
+
+        $this->assertSame($revisionBefore, $ad->fresh()->latestRevision->getRawOriginal());
+    }
+
+    public function test_gemini_connection_failure_returns_the_manual_save_503_feedback(): void
+    {
+        config(['ai.api_key' => 'test-assistant-key', 'ai.model' => 'gemini-test', 'ai.base_url' => 'https://assistant.invalid/v1beta']);
+        Http::fake(['*' => Http::failedConnection('Simulated Gemini timeout')]);
+
+        $this->actingAs($this->seller)->postJson('/seller/promotions/assist', [
+            'action' => 'improve', 'title' => 'Woven carryall', 'alt_text' => 'Woven carryall for everyday errands',
+            'summary' => 'Roomy bag for everyday errands.', 'purpose' => 'feature',
+        ])->assertStatus(503)
+            ->assertJsonPath('message', 'Gemini is unavailable right now. Your promotion draft is still available to save manually.');
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'gemini-test:generateContent'));
+    }
+
+    public function test_gemini_promotion_check_validates_uploaded_artwork_and_admin_checks_the_exact_submission(): void
+    {
+        config(['ai.api_key' => 'test-assistant-key', 'ai.model' => 'gemini-test', 'ai.base_url' => 'https://assistant.invalid/v1beta']);
+        Http::fake(['*' => Http::response(['candidates' => [['content' => ['parts' => [['text' => json_encode([
+            'valid' => true, 'findings' => [], 'advice' => 'The supplied text and artwork appear consistent.',
+        ])]]]]]], 200)]);
+
+        $image = new UploadedFile(public_path('images/buyer/advertisements/collection.webp'), 'collection.webp', 'image/webp', null, true);
+        $this->actingAs($this->seller)->post('/seller/promotions/assist', ['action' => 'check', 'title' => 'Our shop promotion',
+            'alt_text' => 'Selected products from our shop', 'summary' => 'Selected shop products.', 'image' => $image], ['Accept' => 'application/json'])
+            ->assertOk()->assertJsonPath('review.valid', true)->assertJsonPath('review.artwork_checked', true);
+        Http::assertSent(fn ($request) => isset($request['contents'][0]['parts'][1]['inline_data']['mime_type'])
+            && $request['contents'][0]['parts'][1]['inline_data']['mime_type'] === 'image/webp');
+
+        $ad = $this->submitted();
+        $submission = $ad->submissions()->sole();
+        $this->actingAs($this->admin)->postJson('/admin/advertisements/'.$ad->id.'/assist', ['action' => 'check',
+            'submission_id' => $submission->id, 'title' => 'Tampered title', 'alt_text' => 'Tampered text'])
+            ->assertOk()->assertJsonPath('review.artwork_checked', true);
+        $this->assertSame('pending', $submission->fresh()->state());
+        Http::assertSent(fn ($request) => str_contains($request['contents'][0]['parts'][0]['text'], 'Selected products from our shop')
+            && ! str_contains($request['contents'][0]['parts'][0]['text'], 'Tampered title'));
+        $this->assertDatabaseCount('advertisement_reviews', 0);
+    }
+
     public function test_other_roles_and_currently_ineligible_accounts_cannot_create_or_review_requests(): void
     {
         foreach (['buyer', 'courier', 'logistics', 'admin'] as $role) {
@@ -208,7 +334,7 @@ class SellerPromotionPortalTest extends TestCase
         $actor = $shop?->user ?? $this->admin;
         $voucher = $service->saveDraft($actor, ['code' => ($shop ? 'SHOP' : 'BGO').strtoupper(Str::random(8)), 'name' => 'Published Bagoo savings', 'description' => 'Savings from the published issuer.',
             'discount_type' => 'fixed', 'discount_value' => '100.00', 'min_spend' => '500.00', 'max_discount' => '100.00', 'budget' => '5000.00',
-            'usage_limit' => 50, 'per_buyer_limit' => 2, 'starts_at' => now()->subDay()->toIso8601String(), 'ends_at' => now()->addDays(3)->toIso8601String(),
+            'usage_limit' => 50, 'per_buyer_limit' => 2, 'starts_at' => now()->toIso8601String(), 'ends_at' => now()->addDays(3)->toIso8601String(),
             'source_version' => 0, 'request_key' => (string) Str::uuid()], shop: $shop);
         $service->act($actor, $voucher, ['action' => 'publish', 'source_version' => $voucher->fresh()->campaign_version, 'request_key' => (string) Str::uuid()], $shop);
 

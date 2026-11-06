@@ -36,6 +36,12 @@ class SellerListingMigrationTest extends TestCase
         $item = OrderItem::factory()->create(['product_id' => $product->id, 'shop_id' => $product->shop_id]);
         $guards = DB::table('sqlite_master')->where('type', 'trigger')->whereIn('tbl_name', ['products', 'order_items'])->orderBy('name')->pluck('sql', 'name')->all();
         $this->assertNotEmpty($guards);
+        $this->assertArrayHasKey('referenced_products_retained', $guards);
+        $tagMigration = require database_path('migrations/2026_11_06_010000_create_store_tags_and_preserve_legacy_product_departments.php');
+        $tagMigration->down();
+        $this->assertSame($guards, DB::table('sqlite_master')->where('type', 'trigger')->whereIn('tbl_name', ['products', 'order_items'])->orderBy('name')->pluck('sql', 'name')->all());
+        $tagMigration->up();
+        $this->assertSame($guards, DB::table('sqlite_master')->where('type', 'trigger')->whereIn('tbl_name', ['products', 'order_items'])->orderBy('name')->pluck('sql', 'name')->all());
         $migration = require database_path('migrations/2026_10_20_020000_add_seller_listing_details.php');
         $migration->down();
         $this->assertFalse(Schema::hasColumn('products', 'brand'));

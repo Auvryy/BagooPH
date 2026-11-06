@@ -75,7 +75,7 @@ test('complete buyer notifications keep the marketplace shell and highlight unre
     assert.match(html, /Shopping Bag/);
     assert.match(html, /Application approved/);
     assert.match(html, /aria-label="Unread"/);
-    assert.match(html, /border-rose-300 bg-rose-50/);
+    assert.match(html, /border-rose-200 bg-gradient-to-r from-rose-50\/90 to-white/);
     assert.match(html, /View update/);
     assert.doesNotMatch(html, />My account<|min-h-screen bg-\[#FFFAFB\]/);
 });

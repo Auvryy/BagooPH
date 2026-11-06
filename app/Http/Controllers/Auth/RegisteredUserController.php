@@ -9,6 +9,7 @@ use App\Services\AccountRegistrationService;
 use App\Services\ApplicationValidationService;
 use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
+use App\Services\AccountReviewService;
 use App\Services\KycSubmissionService;
 use App\Services\MasterCategoryService;
 use App\Services\RegistrationPolicyService;
@@ -123,6 +124,7 @@ class RegisteredUserController extends Controller
 
         $shop = $user->isSeller() ? $user->shop()->orderBy('id')->with('rootCategory')->first() : $user->shop;
         $category = app(MasterCategoryService::class)->snapshot($shop?->root_category_id);
+        $accountStatus = app(AccountReviewService::class)->centerPresentation($user);
         $user->setRelation('shop', $shop);
 
         return Inertia::render('Auth/PendingApproval', [
@@ -143,6 +145,7 @@ class RegisteredUserController extends Controller
                 ...app(VerificationDocumentService::class)->links($user),
             ],
             'shop' => $shop,
+            'accountCenterStatus' => $accountStatus,
             'application' => app(ApplicationValidationService::class)->form($user),
             'sellerCategory' => $user->isSeller() ? [
                 'value' => $shop?->root_category_id,

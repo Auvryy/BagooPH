@@ -154,8 +154,10 @@ Choose an advertisement, published revision or placement and an inclusive
 **Asia/Manila** date window of at most 90 days within the last year. Results are
 paged by placement and retain the original title, revision, position and period,
 including earlier replacements. Open the matching management page to review,
-pause or replace content; reporting does not automatically change ranking or
-spend money.
+pause or replace content; reporting does not edit placements or spend money.
+Separately, already approved and live banners may be reordered at read time
+within their main/side groups using bounded buyer-interest and activity signals,
+as specified in the [display plan](advertisement-plan/README.md).
 
 **Recorded views** require the selected image to load and stay at least half
 visible for one continuous second while the tab is visible. Hidden carousel

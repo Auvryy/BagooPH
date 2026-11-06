@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import MarketplaceLayout from '@/Layouts/MarketplaceLayout';
 import GrainOverlay from '@/Components/GrainOverlay';
 import ProductCard from '@/Components/ProductCard';
+import BagHeartButton from '@/Components/BagHeartButton';
 import { Category, PaginatedData, Product, Shop } from '@/types';
 import { 
     Search, 
@@ -460,6 +461,7 @@ export default function Catalog({ products, categories, activeShipment, filters 
                                     key={product.id}
                                     product={product}
                                     href={route('products.show', product.slug)}
+                                    heartControl={<BagHeartButton product={product} />}
                                 />
                             ))}
                         </div>

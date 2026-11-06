@@ -4,7 +4,7 @@ import BuyerLayout from '@/Layouts/BuyerLayout';
 import BuyerAdvertisements, { Advertisement } from '@/Components/BuyerAdvertisements';
 import ProductCard from '@/Components/ProductCard';
 import CatalogueErrors from '@/Components/CatalogueErrors';
-import SavedProductButton from '@/Components/SavedProductButton';
+import BagHeartButton from '@/Components/BagHeartButton';
 import CataloguePagination from '@/Components/CataloguePagination';
 import { catalogueFilters } from '@/utils/catalogueNavigation';
 import { Category, PaginatedData, Product } from '@/types';
@@ -519,7 +519,7 @@ export default function BuyerHome({
                                         {relatedProducts.map((product) => (
                                             <ProductCard
                                                 key={product.id}
-                                                product={product} saveControl={<SavedProductButton productId={product.id} />}
+                                                product={product} heartControl={<BagHeartButton product={product} />}
                                                 href={route('buyer.products.show', product.slug)}
                                             />
                                         ))}
@@ -532,7 +532,7 @@ export default function BuyerHome({
                             {feedProducts.data.map((product) => (
                                 <ProductCard
                                     key={product.id}
-                                    product={product} saveControl={<SavedProductButton productId={product.id} />}
+                                    product={product} heartControl={<BagHeartButton product={product} />}
                                     href={route('buyer.products.show', product.slug)}
                                 />
                             ))}
@@ -550,7 +550,7 @@ export default function BuyerHome({
                                 {relatedProducts.map((p) => (
                                     <ProductCard
                                         key={p.id}
-                                        product={p} saveControl={<SavedProductButton productId={p.id} />}
+                                        product={p} heartControl={<BagHeartButton product={p} />}
                                         href={route('buyer.products.show', p.slug)}
                                     />
                                 ))}

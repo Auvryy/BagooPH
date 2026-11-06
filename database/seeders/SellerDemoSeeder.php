@@ -55,27 +55,17 @@ class SellerDemoSeeder extends Seeder
                 if (! $eligibility->isEligible($shop->fresh())) {
                     throw new RuntimeException('The demo shop needs its existing approval or restriction resolved. The seeder does not replace real review history.');
                 }
-                $category = Category::firstOrCreate([
-                    'slug' => 'bagoo-demo-accessories-'.$shop->root_category_id,
-                ], [
-                    'name' => 'Bags & Everyday Accessories', 'parent_id' => $shop->root_category_id,
-                    'icon' => 'ShoppingBag', 'is_active' => true,
-                    'image' => '/images/products/vanguard_commuter_front.jpg',
-                ]);
-                if (! in_array($category->id, $eligibility->categoryIds($shop), true)) {
-                    throw new RuntimeException('The demo accessory category has a conflicting scope or restriction. Existing categories were preserved.');
-                }
                 foreach ($this->catalogue() as $data) {
                     $images = $data['images'];
                     unset($data['images'], $data['category']);
                     $product = Product::firstOrCreate(['shop_id' => $shop->id, 'sku' => $data['sku']], $data + [
-                        'category_id' => $category->id, 'featured_image' => $images[0]['url'],
+                        'category_id' => $shop->root_category_id, 'featured_image' => $images[0]['url'],
                         'status' => 'active', 'rating' => 0, 'sales_count' => 0,
                     ]);
-                    // Repair only known fixture products in the old uncategorized demo collection.
-                    if (! $product->wasRecentlyCreated && $product->category?->is_active && $product->category->slug === 'backpacks-and-bags'
-                        && $product->category->parent_id === null) {
-                        $product->update(['category_id' => $category->id]);
+                    // Fixture products keep their old department as audit history while current
+                    // product discovery is locked to the approved signup/root department.
+                    if (! $product->wasRecentlyCreated && (int) $product->category_id !== (int) $shop->root_category_id) {
+                        $product->forceFill(['legacy_category_id' => $product->category_id, 'category_id' => $shop->root_category_id])->save();
                     }
                     if (! $product->images()->exists()) {
                         foreach ($images as $index => $image) {

@@ -19,22 +19,15 @@ class AdvertisementAssetService
         if (! function_exists('imagewebp') || ! (gd_info()['WebP Support'] ?? false)) {
             $this->invalid('Image uploads need WebP support on the server. Rebuild the application image before uploading artwork.');
         }
-        if (! $file->isValid() || $file->getSize() < 1 || $file->getSize() > self::MAX_BYTES) {
-            $this->invalid('Choose a JPEG, PNG or WebP image no larger than 5 MiB.');
-        }
+        $inspection = $this->inspect($file);
         $bytes = file_get_contents($file->getRealPath());
-        $info = @getimagesizefromstring($bytes);
+        if (! is_string($bytes)) {
+            $this->invalid('We could not read this image. Your previous artwork is unchanged.');
+        }
         $formats = [IMAGETYPE_JPEG => 'jpeg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'];
-        if (! $info || ! isset($formats[$info[2]])) {
-            $this->invalid('The file must be a real, readable JPEG, PNG or WebP image. Videos, GIF, PDF and SVG are not supported.');
-        }
-        [$width, $height] = $info;
-        if ($width < 940 || $height < 440 || $width > 4096 || $height > 4096 || $width * $height > 16000000) {
-            $this->invalid('Use an image at least 940 x 440 pixels, no more than 4096 pixels on either edge and no more than 16 megapixels.');
-        }
-        if (abs(($width / $height) / (47 / 22) - 1) > 0.01) {
-            $this->invalid('Use the 47:22 banner shape, such as 1880 x 880 pixels. The image will not be cropped automatically.');
-        }
+        $format = $formats[$inspection['type']];
+        $width = $inspection['width'];
+        $height = $inspection['height'];
         $source = @imagecreatefromstring($bytes);
         if (! $source) {
             $this->invalid('We could not read this image. Choose a different image and try again.');
@@ -59,7 +52,7 @@ class AdvertisementAssetService
             imagedestroy($output);
         }
         $token = (string) Str::uuid();
-        $sourcePath = "advertisements/{$token}/source.".$formats[$info[2]];
+        $sourcePath = "advertisements/{$token}/source.".$formats[$inspection['type']];
         $imagePath = "advertisements/{$token}/image.webp";
         foreach ([$sourcePath => $bytes, $imagePath => $optimized] as $path => $contents) {
             $createdPaths[] = $path;
@@ -70,8 +63,34 @@ class AdvertisementAssetService
 
         return AdvertisementAsset::create(['token' => $token, 'uploaded_by_id' => $actor->id,
             'checksum' => hash('sha256', $bytes), 'source_path' => $sourcePath, 'image_path' => $imagePath,
-            'mime' => $info['mime'], 'source_bytes' => strlen($bytes), 'image_bytes' => strlen($optimized),
+            'mime' => $inspection['mime'], 'source_bytes' => strlen($bytes), 'image_bytes' => strlen($optimized),
             'width' => $outputWidth, 'height' => $outputHeight]);
+    }
+
+    public function inspect(UploadedFile $file): array
+    {
+        if (! $file->isValid() || $file->getSize() < 1 || $file->getSize() > self::MAX_BYTES) {
+            $this->invalid('Choose a JPEG, PNG or WebP image no larger than 5 MiB.');
+        }
+        $bytes = file_get_contents($file->getRealPath());
+        if (! is_string($bytes)) {
+            $this->invalid('We could not read this image. Choose a different image and try again.');
+        }
+        $info = @getimagesizefromstring($bytes);
+        $formats = [IMAGETYPE_JPEG => 'jpeg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'];
+        if (! $info || ! isset($formats[$info[2]])) {
+            $this->invalid('The file must be a real, readable JPEG, PNG or WebP image. Videos, GIF, PDF and SVG are not supported.');
+        }
+        [$width, $height] = $info;
+        if ($width < 940 || $height < 440 || $width > 4096 || $height > 4096 || $width * $height > 16000000) {
+            $this->invalid('Use an image at least 940 x 440 pixels, no more than 4096 pixels on either edge and no more than 16 megapixels.');
+        }
+        if (abs(($width / $height) / (47 / 22) - 1) > 0.01) {
+            $this->invalid('Use the 47:22 banner shape, such as 1880 x 880 pixels. The image will not be cropped automatically.');
+        }
+
+        return ['mime' => $info['mime'], 'type' => $info[2], 'width' => $width, 'height' => $height,
+            'bytes' => $file->getSize(), 'max_bytes' => self::MAX_BYTES];
     }
 
     public function cleanUnreferenced(array $paths): void

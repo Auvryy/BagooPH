@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, CalendarDays, ShoppingBag } from 'lucide-react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import ProductCard from '@/Components/ProductCard';
+import BagHeartButton from '@/Components/BagHeartButton';
 import AdvertisementOfferTerms from '@/Components/AdvertisementOfferTerms';
 import { Category, PageProps, Product } from '@/types';
 import { Destination, OfferTerms, dateLabel } from '@/types/advertisements';
@@ -23,7 +24,7 @@ export default function Promotion({ promotion, products, categories }: Props) {
                 {promotion.image && <img src={promotion.image} alt={promotion.alt_text} width={promotion.width} height={promotion.height} className="h-auto w-full max-w-3xl" />}
                 {promotion.offer && <div className="max-w-3xl space-y-4"><AdvertisementOfferTerms offer={promotion.offer} /><Link href={route('buyer.profile', { tab: 'vouchers' })} className="inline-flex rounded-lg bg-[#E00D42] px-5 py-3 text-sm font-bold text-white">{user ? 'View my vouchers' : 'Sign in to save a voucher'}</Link></div>}
                 {promotion.target?.url && <Link href={promotion.target.url} className="inline-block text-sm font-bold text-[#E00D42] underline">Explore {promotion.target.label}</Link>}
-                <section className="space-y-4"><h2 className="text-lg font-bold text-slate-900">Products in this promotion</h2>{products.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{products.map((product) => <ProductCard key={product.id} product={product} href={route('products.show', product.slug)} showDeliveryBadge={false} />)}</div> : <div className="flex min-h-48 items-center justify-center rounded-lg border border-slate-300 bg-white p-6 text-center text-sm text-slate-500">No products are currently available in this collection. Continue shopping for more choices.</div>}</section>
+                <section className="space-y-4"><h2 className="text-lg font-bold text-slate-900">Products in this promotion</h2>{products.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{products.map((product) => <ProductCard key={product.id} product={product} href={route('products.show', product.slug)} heartControl={<BagHeartButton product={product} />} showDeliveryBadge={false} />)}</div> : <div className="flex min-h-48 items-center justify-center rounded-lg border border-slate-300 bg-white p-6 text-center text-sm text-slate-500">No products are currently available in this collection. Continue shopping for more choices.</div>}</section>
             </>}
         </div>
     </BuyerLayout>;

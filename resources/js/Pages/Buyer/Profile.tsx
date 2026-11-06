@@ -5,6 +5,7 @@ import AccountEmailSettings from '@/Components/AccountEmailSettings';
 import AccountSectionHeading from '@/Components/AccountSectionHeading';
 import AccountIdentitySettings from '@/Components/AccountIdentitySettings';
 import AccountSessionSettings from '@/Components/AccountSessionSettings';
+import AccountCenterEntry, { type AccountCenterStatus } from '@/Components/AccountCenterEntry';
 import BuyerAccountNavigation from '@/Components/BuyerAccountNavigation';
 import BuyerOrderFilters from '@/Components/BuyerOrderFilters';
 import BuyerPurchaseNavigation from '@/Components/BuyerPurchaseNavigation';
@@ -62,6 +63,7 @@ import {
 
 interface Props {
     user: User;
+    accountCenterStatus?: AccountCenterStatus;
     addresses: Address[];
     editingAddressId?: number | null;
     addressBookLimit?: number;
@@ -88,7 +90,8 @@ interface ProfileFormData {
 }
 
 export default function BuyerProfile({ 
-    user, 
+    user,
+    accountCenterStatus,
     addresses: initialAddresses,
     editingAddressId = null,
     addressBookLimit = 10,
@@ -107,6 +110,11 @@ export default function BuyerProfile({
     const url = page.url;
 
     const isKycApproved = user.kyc_status === 'approved' || user.kyc_status === 'verified';
+    const accountStatusLabel = user.status === 'suspended' ? 'Account status: SUSPENDED'
+        : user.status === 'inactive' ? 'Account status: DEACTIVATED'
+            : user.kyc_status === 'rejected' ? 'Application status: REJECTED'
+                : user.kyc_status === 'pending_approval' ? 'Application status: IN REVIEW'
+                    : user.kyc_status === 'none' ? 'Identity status: NOT VERIFIED' : 'Account status: APPROVED';
 
     // Helper to extract tab from any URL string or fallback
     const getTabFromUrl = (targetUrl?: string): TabType | null => {
@@ -514,6 +522,12 @@ export default function BuyerProfile({
                                 )}
                             </div>
                         </div>
+
+                        {accountCenterStatus && <AccountCenterEntry
+                            statusLabel={accountStatusLabel}
+                            statusDescription="Review your identity status, sign-in security and account updates."
+                            statusDetails={accountCenterStatus}
+                        />}
 
                         {/* Navigation Links */}
                         <nav aria-label="Buyer profile" className="space-y-1.5 font-sans text-xs">

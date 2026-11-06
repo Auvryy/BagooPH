@@ -36,7 +36,9 @@ unique people, attributed orders or advertising revenue.
 Use simple admin filters and an owned seller summary, not a new analytics portal
 or external tracking service. Allow the platform team to pause an ineffective
 or misleading image, replace it through a new revision and compare actual dates.
-Do not automatically change catalogue ranking or spend money based on clicks.
+Measured ad clicks may contribute to the bounded order of already approved live
+promotions, as described in [the display plan](README.md); this does not change
+product catalogue ranking or campaign spend.
 
 The content owner maintains a short calendar: campaign purpose, artwork owner,
 placement, exact period, linked products/offers and review status. Check upcoming

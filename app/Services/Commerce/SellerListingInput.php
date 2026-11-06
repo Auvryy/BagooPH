@@ -17,16 +17,16 @@ class SellerListingInput
         $presence = $publishing ? 'required' : 'nullable';
         $values = $request->validate([
             'name' => ['required', 'string', 'min:5', 'max:120'],
-            'category_id' => [$presence, 'exists:categories,id'],
+            'category_id' => [$product ? 'nullable' : $presence, 'exists:categories,id'],
             'weight_kg' => [$presence, 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0.01,50000'],
             'brand' => ['nullable', 'string', 'max:100', 'not_regex:/[<>\p{C}]/u'],
             'condition' => ['nullable', Rule::in(['new', 'used'])],
             'length_cm' => ['nullable', 'required_with:width_cm,height_cm', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0.01,10000'],
             'width_cm' => ['nullable', 'required_with:length_cm,height_cm', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0.01,10000'],
             'height_cm' => ['nullable', 'required_with:length_cm,width_cm', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0.01,10000'],
-            'price' => [$presence, 'numeric', 'between:1,1000000', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
-            'compare_at_price' => ['nullable', 'numeric', 'gt:price', 'max:99999999.99', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/'],
-            'stock' => [$presence, 'integer', 'between:0,99999'],
+            'price' => [$presence, 'numeric', 'between:1,1000000', 'regex:/\A(?:0|[1-9][0-9]*)(?:\.[0-9]{1,2})?\z/'],
+            'compare_at_price' => ['nullable', 'numeric', 'gt:price', 'max:99999999.99', 'regex:/\A(?:0|[1-9][0-9]*)(?:\.[0-9]{1,2})?\z/'],
+            'stock' => [$presence, 'regex:/\A(?:0|[1-9][0-9]*)\z/', 'integer', 'between:0,99999'],
             'purchase_limit' => ['nullable', new AsciiPositiveInteger, 'integer', 'between:1,1000000'],
             'sku' => ['nullable', 'string', 'max:50', Rule::unique(Product::class, 'sku')->ignore($product?->id)],
             'description' => [$presence, 'string', 'min:20', 'max:3000'],
@@ -47,7 +47,7 @@ class SellerListingInput
             'weight_kg.required' => 'Enter the declared product weight in kilograms before publishing.',
         ]);
         app(ProductGalleryInput::class)->validate($request, $values['status'] ?? 'active', $product);
-        $values['category_id'] = app(ShopEligibilityService::class)->categoryFor($shop, $values['category_id'] ?? $product?->category_id);
+        $values['category_id'] = app(ShopEligibilityService::class)->categoryFor($shop, $values['category_id'] ?? $shop->root_category_id);
         $values['price'] ??= $product?->price ?? '0.00';
         $values['stock'] ??= $product?->stock ?? 0;
         $values['description'] ??= $product?->description ?? '';

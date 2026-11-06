@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\Advertisements\AdvertisementReader;
+use App\Services\Advertisements\AdvertisementRecommendationService;
 use App\Services\Commerce\BuyerDiscoveryService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -50,7 +51,11 @@ class BuyerHomeController extends Controller
             return app(AuthenticatedSessionController::class)->createAdmin();
         }
 
-        $banners = app(AdvertisementReader::class)->homepage();
+        $banners = app(AdvertisementReader::class)->homepage(true, array_slice(
+            (array) $request->session()->get('buyer.recent_product_views', []),
+            0,
+            AdvertisementRecommendationService::MAX_RECENT_PRODUCT_VIEWS,
+        ));
 
         $categories = app(BuyerDiscoveryService::class)->categories();
 

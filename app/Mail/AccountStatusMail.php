@@ -8,7 +8,14 @@ use Illuminate\Mail\Mailables\Envelope;
 
 class AccountStatusMail extends Mailable
 {
-    public function __construct(public string $accountName, public string $accountRole, public string $title, public string $messageBody) {}
+    public function __construct(
+        public string $accountName,
+        public string $accountRole,
+        public string $title,
+        public string $messageBody,
+        public string $homeUrl,
+        public string $statusUrl,
+    ) {}
 
     public function envelope(): Envelope
     {

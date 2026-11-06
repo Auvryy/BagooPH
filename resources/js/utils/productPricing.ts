@@ -21,3 +21,34 @@ export function saleUnitPrice(product: Product, regular: number): number {
     const reduction = Math.max(0, Math.round(minimum * 100) - Math.round(Number(sale.price) * 100));
     return Math.max(1, cents - reduction) / 100;
 }
+
+export interface VariantSelection { color: string | null; size: string | null }
+
+export function firstAvailableVariantSelection(product: Product): VariantSelection | null {
+    const combinations = product.variants?.combinations ?? [];
+    const row = combinations.find(combination => Number(combination.stock) > 0) ?? combinations[0];
+    if (row) return { color: row.color, size: row.size };
+
+    const colors = product.variants?.colors ?? [];
+    const sizes = product.variants?.sizes ?? [];
+    if (!colors.length && !sizes.length) return null;
+    const color = colors.find(option => option.in_stock !== false) ?? colors[0];
+    const size = sizes.find(option => Number(option.stock ?? product.stock) > 0) ?? sizes[0];
+    return { color: color?.name ?? null, size: size?.name ?? null };
+}
+
+export function defaultVariantRegularPrice(product: Product): number {
+    const combinations = product.variants?.combinations ?? [];
+    if (!combinations.length) return Number(product.price_range?.regular_min ?? product.price);
+
+    const selection = firstAvailableVariantSelection(product)!;
+    const price = selectedRegularPrice(product, selection.color, selection.size);
+    return Number.isFinite(price) ? price : Number(product.price_range?.regular_min ?? product.price);
+}
+
+export function defaultVariantDisplayPrice(product: Product): number {
+    if (!product.variants?.combinations?.length) {
+        return Number(product.price_range?.min ?? product.sale_offer?.effective_price ?? product.price);
+    }
+    return saleUnitPrice(product, defaultVariantRegularPrice(product));
+}

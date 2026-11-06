@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 
 class VariantMatrixService
 {
-    public function validate(array $input, array $colors, array $sizes): ?array
+    public function validate(array $input, array $colors, array $sizes, string|int|float|null $basePrice = null): ?array
     {
         if (! array_key_exists('combinations', $input) || $input['combinations'] === null) {
             return null;
@@ -21,9 +21,9 @@ class VariantMatrixService
             'combinations' => ['required', 'array', 'list', 'min:1', 'max:400'],
             'combinations.*.color' => ['nullable', 'string', 'max:100'],
             'combinations.*.size' => ['nullable', 'string', 'max:100'],
-            'combinations.*.stock' => ['bail', 'required', 'regex:/\A[0-9]+\z/', 'integer', 'between:0,99999'],
-            'combinations.*.extra_price' => [$independent ? 'exclude' : 'required', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0,99999999.99'],
-            'combinations.*.price' => [$independent ? 'required' : 'exclude', 'bail', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:1,1000000'],
+            'combinations.*.stock' => ['bail', 'required', 'regex:/\A(?:0|[1-9][0-9]*)\z/', 'integer', 'between:0,99999'],
+            'combinations.*.extra_price' => [$independent ? 'exclude' : 'required', 'numeric', 'regex:/\A(?:0|[1-9][0-9]*)(?:\.[0-9]{1,2})?\z/', 'between:0,99999999.99'],
+            'combinations.*.price' => [$independent ? 'required' : 'exclude', 'bail', 'numeric', 'regex:/\A(?:0|[1-9][0-9]*)(?:\.[0-9]{1,2})?\z/', 'between:1,1000000'],
             'combinations.*.sku' => [$independent ? 'required' : 'exclude', 'bail', 'string', 'max:50', 'regex:/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/', 'distinct:ignore_case'],
         ], [
             'combinations.*.price.required' => 'Enter the full selling price for this option.',
@@ -54,6 +54,9 @@ class VariantMatrixService
                 throw ValidationException::withMessages(['combinations.'.$index.'.color' => 'Each option combination must appear exactly once. Remove duplicate or unknown options.']);
             }
             unset($expected[$key]);
+            if (! $independent && $basePrice !== null && (float) $basePrice + (float) ($row['extra_price'] ?? 0) > 1000000) {
+                throw ValidationException::withMessages(['combinations.'.$index.'.extra_price' => 'The selling price for this combination cannot exceed ₱1,000,000.00.']);
+            }
             $rows[] = ['color' => $color, 'size' => $size, 'stock' => (int) $row['stock'],
                 ...($independent ? ['price' => number_format((float) $row['price'], 2, '.', ''), 'sku' => Str::upper(trim($row['sku']))]
                     : ['extra_price' => number_format((float) $row['extra_price'], 2, '.', '')])];

@@ -177,35 +177,38 @@ Frontend restrictions improve usability but never replace server validation. Cli
 - Registration creates one shop per seller account with one active master root category from the 14 documented choices. A database uniqueness constraint enforces the ownership limit, including direct inserts and owner updates. Existing duplicate ownership blocks installation for reviewed resolution; records are not deleted or merged automatically.
 - Seller actions use the account's sole owned shop and require current account/shop approval and activity. Extra-shop creation and switching routes are unavailable. Old selection sessions cannot choose another shop; supplied foreign or malformed shop IDs deny access. A missing shop never creates an active fallback.
 - The initial seller application review records its registered shop's approval together. Legacy resubmission and later reviewed scope corrections retain current evidence, versions, restrictions and history. Existing owned orders remain readable under the documented shop restriction policy.
-- Product category must remain under the shop's approved root category.
+- Every product's master category must equal the shop's approved signup root; do not accept a child, another root, or a seller-created category tree.
+- Product tags are flat, shop-owned plain text: 1–50 characters per tag, at most 20 distinct tags per product, unique within the shop after case/spacing normalization. Reject markup/control characters and reject newly added tags unless the existing Gemini integration accepts them for the product and approved department. Suggestions do not create or attach tags until selected. Buyer search and relevance include tags.
 - Product price is at least PHP 0.01, stock is a non-negative integer, variants have unique valid combinations/SKUs, and client totals are ignored.
 - Product and voucher mutations verify shop ownership on every request, including bulk actions and direct URLs.
 - Voucher dates, limits, percentage range, fixed discount, maximum discount, and minimum spend must be internally consistent.
 - Products referenced by carts, orders, reviews, or ledgers are archived/deactivated rather than hard-deleted. Historical order-item snapshots survive later product, shop, category, or account changes.
 
-### Seller listing and store grouping inputs
+### Seller listing and product-tag inputs
 
 Private drafts may omit publication details; every supplied value still needs
-its normal validation. Publication requires an explicit eligible platform
-category and declared weight in addition to the existing required listing
+its normal validation. Publication requires the exact approved signup root as
+its master category and declared weight in addition to the existing required listing
 fields. Declared weight is 0.01–50,000 kg with at most two decimals. Optional
 length/width/height are supplied together, each 0.01–10,000 cm with at most two
 decimals. Brand is optional plain text up to 100 characters; condition uses the
 supported New/Used choices.
 
-Store category names are trimmed, collapse ordinary spacing, use 1–50
-characters, and reserve a case-normalized name within one store. Reject
-foreign parents, self/cyclic parenting and a third level. Validate at most
-three distinct owned memberships before changing any product. Empty selections
-must clear memberships even through multipart forms.
+Tag names are trimmed, collapse ordinary spacing, use 1–50 characters, and
+reserve a case-normalized name within one shop. Reject markup/control
+characters, more than 20 distinct tags, and tags that fail Gemini relevance
+checking. Empty selections clear product tag memberships even through
+multipart forms. The old store-category mutation routes and storefront
+hierarchy are unavailable; retained legacy rows are not deleted by this change.
 
 Hold the existing seller/shop locks for catalogue writes. A supplied listing
 request key retains its original result; a changed payload or removed original
 result cannot create another product under the same key. Rollback removes only
 newly uploaded gallery files and retains original records/assets. Delete with
 unfinished orders rejects without archiving; explicit archive remains separate.
-Category deletion uses a current affected-record preview and removes only the
-category tree and its memberships.
+Product or shop category changes require the existing review process. Historical
+store-category data is retained; tag edits change only shop tag records and
+product-tag memberships.
 
 Complete variant rows require their own selling price, stock and SKU. Reject
 missing, zero, excessive-precision or out-of-range prices on the affected row;

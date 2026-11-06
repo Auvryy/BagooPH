@@ -123,6 +123,16 @@ test('foreground work pauses speculation, takes priority over other work and inv
     assert.ok(flushed.some(row => row.url === '/product/another'));
 });
 
+test('explicit invalidation flushes one prepared route without disturbing unrelated catalogue data', async () => {
+    const { policy, requests, flushed } = fixture();
+    const first = policy.prepare('/buyer/search?search=brief'); requests.at(-1).finish(true); await first;
+    const second = policy.prepare('/product/bag'); requests.at(-1).finish(true); await second;
+    policy.invalidate('/buyer/search?search=brief');
+    assert.equal(await policy.ready('/buyer/search?search=brief'), false);
+    assert.equal(await policy.ready('/product/bag'), true);
+    assert.ok(flushed.some(row => row.url === '/buyer/search?search=brief'));
+});
+
 test('failed responses are not ready or automatically retried within their short cooldown', async () => {
     const { policy, requests, advance } = fixture();
     const failed = policy.prepare('/product/bag'); requests.at(-1).finish(false);
@@ -189,6 +199,7 @@ test('Enter flushes the debounce and keeps matching preparation alive for one fo
     assert.equal(f.prepared.length, 1); assert.equal(f.visits.length, 1); assert.equal(f.cancelled.length, 0);
     assert.equal(f.visits[0].url, f.prepared[0].url);
     assert.equal(f.visits[0].options.replace, false);
+    assert.equal(f.visits[0].options.fresh, true);
 });
 
 test('1/2/100/101-character boundaries and literal punctuation retain the existing server contract', t => {

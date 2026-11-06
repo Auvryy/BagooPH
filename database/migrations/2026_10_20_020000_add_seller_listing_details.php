@@ -46,14 +46,21 @@ return new class extends Migration
     private function retentionTriggers(): array
     {
         return DB::getDriverName() === 'sqlite'
-            ? DB::select("SELECT name, sql FROM sqlite_master WHERE type = 'trigger' AND tbl_name IN ('products', 'order_items')") : [];
+            ? DB::select("SELECT name, tbl_name, sql FROM sqlite_master WHERE type = 'trigger' AND tbl_name IN ('products', 'order_items')") : [];
     }
 
     private function restoreTriggers(array $triggers): void
     {
         // SQLite may rebuild altered tables; preserve existing retention guards verbatim.
         foreach ($triggers as $trigger) {
-            if (! DB::table('sqlite_master')->where('type', 'trigger')->where('name', $trigger->name)->exists()) {
+            $existing = DB::table('sqlite_master')->select('tbl_name', 'sql')
+                ->where('type', 'trigger')->where('name', $trigger->name)->first();
+            if ($existing && ($existing->tbl_name !== $trigger->tbl_name || $existing->sql !== $trigger->sql)) {
+                $quotedName = '"'.str_replace('"', '""', $trigger->name).'"';
+                DB::unprepared("DROP TRIGGER IF EXISTS {$quotedName}");
+                $existing = null;
+            }
+            if (! $existing) {
                 DB::unprepared($trigger->sql);
             }
         }

@@ -8,10 +8,10 @@ import ChatModal from '@/Components/ChatModal';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import CatalogueErrors from '@/Components/CatalogueErrors';
 import { CatalogueFilters, catalogueFilters } from '@/utils/catalogueNavigation';
-import { Category } from '@/types';
 import RatingStars, { ratingLabel, recordedRating } from '@/Components/RatingStars';
-import { PaginatedData, Product, Shop, StoreCategory } from '@/types';
+import { PaginatedData, Product, Shop, StoreTag } from '@/types';
 import { getDomainUrl } from '@/utils/domain';
+import { defaultVariantDisplayPrice, defaultVariantRegularPrice } from '@/utils/productPricing';
 import { 
     Store, 
     Star, 
@@ -52,13 +52,12 @@ interface Props {
     isOwner?: boolean;
     isPreview?: boolean;
     filters: CatalogueFilters;
-    categories: Category[];
-    storeCategories?: StoreCategory[];
+    storeTags?: StoreTag[];
     isFollowing: boolean;
     followerCount: number;
 }
 
-export default function ShopDetail({ shop, products, shopStats, isOwner = false, isPreview = false, shopOffers = [], filters = {}, categories = [], isFollowing = false, followerCount = 0, storeCategories = [] }: Props) {
+export default function ShopDetail({ shop, products, shopStats, isOwner = false, isPreview = false, shopOffers = [], filters = {}, isFollowing = false, followerCount = 0, storeTags = [] }: Props) {
     const isPreviewMode = Boolean(isOwner && isPreview);
     const canManageStore = isOwner;
     const [chatOpen, setChatOpen] = useState(false);
@@ -366,8 +365,7 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                     </div>
 
                     <div className="flex flex-wrap gap-3">
-                        <label className="text-xs text-slate-600">Store category<select value={filters.store_category || 'all'} onChange={event => applyFilters({ store_category: event.target.value })} className="ml-2 rounded-lg border-slate-300 text-xs"><option value="all">All products</option><option value="uncategorized">Uncategorized</option>{storeCategories.filter(row => !row.parent_id).flatMap(root => [root, ...storeCategories.filter(row => row.parent_id === root.id)]).map(category => <option key={category.id} value={category.id}>{category.parent_id ? '— ' : ''}{category.name}</option>)}</select></label>
-                        <label className="text-xs text-slate-600">Department<select value={filters.category || 'all'} onChange={event => applyFilters({ category: event.target.value })} className="ml-2 rounded-lg border-slate-300 text-xs"><option value="all">All shop categories</option>{categories.map(category => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></label>
+                        <label className="text-xs text-slate-600">Product tag<select value={filters.tag || 'all'} onChange={event => applyFilters({ tag: event.target.value })} className="ml-2 rounded-lg border-slate-300 text-xs"><option value="all">All products</option><option value="untagged">Untagged</option>{storeTags.map(tag => <option key={tag.id} value={tag.id}>{tag.name} ({tag.products_count ?? 0})</option>)}</select></label>
                         <label className="text-xs text-slate-600">Sort<select value={filters.sort || 'relevance'} onChange={event => applyFilters({ sort: event.target.value })} className="ml-2 rounded-lg border-slate-300 text-xs"><option value="relevance">Recommended</option><option value="newest">Newest</option><option value="price_asc">Price: low to high</option><option value="price_desc">Price: high to low</option><option value="top_sales">Best selling</option><option value="top_rated">Highest rated</option></select></label>
                         <PortalLink href={route('shop.show', shop.slug)} className="self-center text-xs font-semibold text-[#E00D42]">Reset filters</PortalLink>
                     </div>
@@ -382,10 +380,10 @@ export default function ShopDetail({ shop, products, shopStats, isOwner = false,
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
                             {products.data.map((product) => {
-                                const priceNum = Number(product.sale_offer?.effective_price ?? product.price);
-                                const regularMin = Number(product.price_range?.regular_min ?? product.price);
-                                const compareNum = product.sale_offer?.active && priceNum < regularMin ? regularMin
-                                    : product.compare_at_price ? regularMin + Number(product.compare_at_price) - Number(product.price) : null;
+                                const priceNum = defaultVariantDisplayPrice(product);
+                                const regularPrice = defaultVariantRegularPrice(product);
+                                const compareNum = product.sale_offer?.active && priceNum < regularPrice ? regularPrice
+                                    : product.compare_at_price ? regularPrice + Number(product.compare_at_price) - Number(product.price) : null;
                                 const discountPct = compareNum && compareNum > priceNum 
                                     ? Math.round(((compareNum - priceNum) / compareNum) * 100)
                                     : null;

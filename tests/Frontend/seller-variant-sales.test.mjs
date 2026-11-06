@@ -8,7 +8,7 @@ import { build } from 'esbuild';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-seller-worklists-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.sellerWorklistHarness; delete globalThis.route; delete globalThis.window; });
 const result = await build({
-    stdin: { contents: "export { default as Orders } from '@/Pages/Seller/Orders'; export { default as Reviews } from '@/Pages/Seller/Reviews'; export { default as Categories } from '@/Pages/Seller/StoreCategories'; export { default as Listings } from '@/Pages/Seller/Products'; export { default as ProductCard } from '@/Components/ProductCard'; export { default as Detail } from '@/Pages/Buyer/ProductDetail'; export { default as ListingDetails, emptyListingDetails } from '@/Components/SellerListingDetails'; export { declaredParcelWeight } from '@/utils/declaredParcelWeight'; export { default as Matrix } from '@/Components/VariantStockMatrix'; export { default as Sales } from '@/Pages/Seller/ProductSales'; export { default as Specifications, ProductFactsSummary, productFacts } from '@/Components/ProductSpecifications'; export { selectedRegularPrice, saleUnitPrice, percentagePrice } from '@/utils/productPricing';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: "export { default as Orders } from '@/Pages/Seller/Orders'; export { default as Reviews } from '@/Pages/Seller/Reviews'; export { default as Listings } from '@/Pages/Seller/Products'; export { default as ProductCard } from '@/Components/ProductCard'; export { default as Detail } from '@/Pages/Buyer/ProductDetail'; export { default as ListingDetails, emptyListingDetails } from '@/Components/SellerListingDetails'; export { declaredParcelWeight } from '@/utils/declaredParcelWeight'; export { default as Matrix } from '@/Components/VariantStockMatrix'; export { default as Sales } from '@/Pages/Seller/ProductSales'; export { default as Specifications, ProductFactsSummary, productFacts } from '@/Components/ProductSpecifications'; export { selectedRegularPrice, saleUnitPrice, percentagePrice, firstAvailableVariantSelection, defaultVariantRegularPrice, defaultVariantDisplayPrice } from '@/utils/productPricing';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'seller-worklist-hooks', setup(builder) {
         builder.onResolve({ filter: /^react-dom$/ }, () => ({ path: 'portal', namespace: 'seller-portal' }));
@@ -32,7 +32,7 @@ const result = await build({
     } }],
 });
 const file = join(temporary, 'worklists.mjs'); writeFileSync(file, result.outputFiles[0].text);
-const { Orders, Reviews, Categories, Listings, ProductCard, Detail, ListingDetails, emptyListingDetails, declaredParcelWeight, Matrix, Sales, Specifications, ProductFactsSummary, productFacts, selectedRegularPrice, saleUnitPrice, percentagePrice } = await import(pathToFileURL(file).href);
+const { Orders, Reviews, Listings, ProductCard, Detail, ListingDetails, emptyListingDetails, declaredParcelWeight, Matrix, Sales, Specifications, ProductFactsSummary, productFacts, selectedRegularPrice, saleUnitPrice, percentagePrice, firstAvailableVariantSelection, defaultVariantRegularPrice, defaultVariantDisplayPrice } = await import(pathToFileURL(file).href);
 globalThis.route = name => '/' + name.replaceAll('.', '/');
 globalThis.window = { location: new URL('https://bagoo.test/seller/orders?status=to_pack&page=2') };
 function harness(Component, props) {
@@ -43,7 +43,7 @@ function harness(Component, props) {
             const i = formCursor++; forms[i] ??= { data: structuredClone(initial), errors: {}, processing: false };
             const value = forms[i];
             return { ...value, setData(key, next) { value.data = typeof key === 'function' ? key(value.data) : typeof key === 'object' ? key : { ...value.data, [key]: next }; },
-                clearErrors() { value.errors = {}; }, reset() { value.data = structuredClone(initial); }, setError(key, next) { value.errors[key] = next; },
+                clearErrors() { value.errors = {}; }, reset() { value.data = structuredClone(initial); }, setError(key, next) { value.errors[key] = next; }, setDefaults() {},
                 transform(callback) { value.transform = callback; },
                 ...Object.fromEntries(['post', 'put'].map(method => [method, (url, options) => { h.methods.push(method); h.requests.push([url, value.transform ? value.transform(value.data) : structuredClone(value.data), options]); }])) };
         },
@@ -82,6 +82,35 @@ test('independent option fields retain blank input and highlight only the invali
     assert.match(text(tree), /Two option groups maximum/);
 });
 
+test('variant stock and prices use strict numeric controls and visibly mark the default combination', () => {
+    const props = { colors: [{ name: 'Natural' }], sizes: [{ name: 'Compact', extra_price: 0 }], pricingMode: 'independent',
+        basePrice: '500.00', value: [{ color: 'Natural', size: 'Compact', stock: '2', price: '500.00', sku: 'BGO-NATURAL' }],
+        onChange: rows => { props.value = rows; } };
+    const h = harness(Matrix, props); let tree = h.render();
+    const stock = nodes(tree, node => node.props?.['aria-label'] === 'Stock for Natural / Compact')[0];
+    const price = nodes(tree, node => node.props?.['aria-label'] === 'Selling price for Natural / Compact')[0];
+    assert.equal(stock.props.type, 'text'); assert.equal(stock.props.inputMode, 'numeric'); assert.equal(stock.props.maxLength, 5);
+    assert.equal(price.props.type, 'text'); assert.equal(price.props.inputMode, 'decimal'); assert.equal(price.props.maxLength, 10);
+    const defaultRow = nodes(tree, node => node.type === 'tr' && node.props?.className?.includes('bg-rose-50/70'))[0];
+    assert.match(text(defaultRow), /Default/); assert.match(text(defaultRow), /Natural \/ Compact/);
+    stock.props.onChange({ target: { value: '09999' } }); tree = h.render();
+    nodes(tree, node => node.props?.['aria-label'] === 'Selling price for Natural / Compact')[0].props.onChange({ target: { value: '0234' } }); tree = h.render();
+    assert.equal(props.value[0].stock, '2'); assert.equal(props.value[0].price, '500.00');
+    nodes(tree, node => node.props?.['aria-label'] === 'Stock for Natural / Compact')[0].props.onChange({ target: { value: '99999' } }); tree = h.render();
+    nodes(tree, node => node.props?.['aria-label'] === 'Selling price for Natural / Compact')[0].props.onChange({ target: { value: '1000000.00' } }); tree = h.render();
+    assert.equal(props.value[0].stock, '99999'); assert.equal(props.value[0].price, '1000000.00');
+});
+
+test('new variant combination numeric fields start blank', () => {
+    const props = { colors: [], sizes: [{ name: 'Large', extra_price: 0 }], pricingMode: 'independent', basePrice: '', value: undefined,
+        onChange: rows => { props.value = rows; } };
+    const h = harness(Matrix, props); let tree = h.render();
+    nodes(tree, node => node.type === 'input' && node.props.type === 'checkbox')[0].props.onChange({ target: { checked: true } });
+    tree = h.render();
+    assert.equal(nodes(tree, node => node.props?.['aria-label'] === 'Stock for Large')[0].props.value, '');
+    assert.equal(nodes(tree, node => node.props?.['aria-label'] === 'Selling price for Large')[0].props.value, '');
+});
+
 test('server row errors stay beside the matching option field', () => {
     const props = { colors: [], sizes: [{ name: 'Compact', extra_price: 0 }, { name: 'Large', extra_price: 0 }],
         pricingMode: 'independent', value: [{ color: null, size: 'Compact', stock: 2, price: '100.00', sku: 'BGO-C' }, { color: null, size: 'Large', stock: 1, price: '200.00', sku: 'BGO-L' }],
@@ -94,7 +123,7 @@ test('server row errors stay beside the matching option field', () => {
 
 test('buyer specification and summary components render saved condition, dimensions and public groups', () => {
     const product = { condition: 'used', brand: 'Bagoo Studio', weight_kg: '0.80', length_cm: '30.00', width_cm: '20.00', height_cm: '5.00',
-        stock: 3, category: { name: 'Travel essentials' }, store_categories: [{ name: 'Weekend bags' }], shop: { city: 'Taguig City' } };
+        stock: 3, category: { name: 'Travel essentials' }, store_tags: [{ name: 'Weekend bags' }], shop: { city: 'Taguig City' } };
     const summary = text(ProductFactsSummary({ product }));
     assert.match(summary, /Condition: Used/); assert.match(summary, /Weight: 0.8 kg/); assert.match(summary, /30 × 20 × 5 cm/);
     const specs = text(Specifications({ product }));
@@ -133,6 +162,55 @@ test('buyer selection shows its full discounted price and original row SKU', () 
     const h = harness(Detail, { product, variations, relatedProducts: [], shopStats: { products_count: 1, review_count: 0 } });
     let tree = h.render(); nodes(tree, node => node.type === 'button' && text(node).startsWith('Large'))[0].props.onClick(); tree = h.render();
     assert.match(text(tree), /382.50/); assert.match(text(tree), /SKU: BGO-LARGE/);
+});
+
+test('first available combination opens and defaults the seller matrix and buyer price and bag selection', () => {
+    const variations = { pricing_mode: 'independent',
+        colors: [{ id: 'b', name: 'Black', hex: '#111111', in_stock: true }, { id: 'n', name: 'Natural', hex: '#eeeeee', in_stock: true }],
+        sizes: [{ id: 's', name: 'Small', extra_price: 0, stock: 0 }, { id: 'm', name: 'Medium', extra_price: 0, stock: 5 }],
+        combinations: [
+            { color: 'Black', size: 'Small', stock: 0, price: '199.95', sku: 'BGO-B-S' },
+            { color: 'Black', size: 'Medium', stock: 2, price: '250.00', sku: 'BGO-B-M' },
+            { color: 'Natural', size: 'Small', stock: 0, price: '300.00', sku: 'BGO-N-S' },
+            { color: 'Natural', size: 'Medium', stock: 3, price: '450.00', sku: 'BGO-N-M' },
+        ] };
+    const product = { id: 1, name: 'Canvas bag', slug: 'canvas-bag', price: '500.00', stock: 5, variants: variations,
+        price_range: { min: '199.95', max: '450.00', regular_min: '199.95', regular_max: '450.00' } };
+
+    assert.deepEqual(firstAvailableVariantSelection(product), { color: 'Black', size: 'Medium' });
+    assert.equal(defaultVariantRegularPrice(product), 250);
+    assert.equal(defaultVariantDisplayPrice(product), 250);
+    assert.match(text(ProductCard({ product })), /250\.00/);
+    assert.doesNotMatch(text(ProductCard({ product })), /199\.95.*450\.00/);
+
+    const matrixProps = { colors: variations.colors, sizes: variations.sizes, pricingMode: 'independent', basePrice: '500.00', value: variations.combinations, onChange() {} };
+    const autoOpenedMatrix = harness(Matrix, { ...matrixProps, value: [] }).render();
+    assert.equal(nodes(autoOpenedMatrix, node => node.type === 'input' && node.props.type === 'checkbox')[0].props.checked, true);
+    const matrix = harness(Matrix, matrixProps).render();
+    assert.equal(nodes(matrix, node => node.type === 'input' && node.props.type === 'checkbox')[0].props.checked, true);
+    const defaultRow = nodes(matrix, node => node.type === 'tr' && node.props.className?.includes('bg-rose-50/70'))[0];
+    assert.match(text(defaultRow), /Default.*Black \/ Medium/);
+
+    const h = harness(Detail, { product, variations, relatedProducts: [], shopStats: { products_count: 1, review_count: 0 } });
+    let tree = h.render();
+    assert.match(text(tree), /250\.00/);
+    assert.match(nodes(tree, node => node.type === 'button' && text(node) === 'Black')[0].props.className, /border-\[#E00D42\]/);
+    nodes(tree, node => node.type === 'button' && text(node) === 'Natural')[0].props.onClick();
+    tree = h.render();
+    assert.match(text(tree), /450\.00/);
+    nodes(tree, node => node.type === 'button' && text(node).includes('Add to Bag'))[0].props.onClick();
+    assert.deepEqual(h.requests[0][1], { product_id: 1, quantity: 1, color: 'Natural', size: 'Medium', buy_now: false });
+
+    const legacyVariations = { colors: [{ id: 'r', name: 'Red', hex: '#ff0000', in_stock: false }, { id: 'b', name: 'Blue', hex: '#0000ff', in_stock: true }],
+        sizes: [{ id: 's', name: 'Small', extra_price: 0, stock: 0 }, { id: 'm', name: 'Medium', extra_price: 25, stock: 4 }], combinations: [] };
+    const legacyProduct = { id: 2, name: 'Legacy tote', slug: 'legacy-tote', price: '100.00', stock: 4, variants: legacyVariations,
+        price_range: { min: '90.00', max: '125.00', regular_min: '100.00', regular_max: '125.00' } };
+    assert.deepEqual(firstAvailableVariantSelection(legacyProduct), { color: 'Blue', size: 'Medium' });
+    const legacyHarness = harness(Detail, { product: legacyProduct, variations: legacyVariations, relatedProducts: [], shopStats: { products_count: 1, review_count: 0 } });
+    const legacyTree = legacyHarness.render();
+    assert.match(text(legacyTree), /90\.00.*125\.00/);
+    assert.equal(nodes(legacyTree, node => node.type === 'button' && text(node).startsWith('Small'))[0].props.disabled, true);
+    assert.equal(nodes(legacyTree, node => node.type === 'button' && text(node).startsWith('Medium'))[0].props.disabled, false);
 });
 
 test('both linked option images update the buyer main image through the actual selection handlers', () => {

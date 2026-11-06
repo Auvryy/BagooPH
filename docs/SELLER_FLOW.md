@@ -6,18 +6,17 @@ This document defines seller actions. Parcel custody and settlement follow `docs
 
 One seller account owns one shop. Registration creates that shop together with the account and requires a choice from the 14 master root categories. The seller submits birth date, identity and business requirements; Platform Admin reviews the account and its registered shop together before transactional portal access. Pending/rejected applicants use their own review/resubmission holding screen.
 
-The seller opens their sole shop automatically after approval. There is no extra-shop creation or shop switcher. Products, stock, variants, prices, images and vouchers stay within the approved root category and its active descendants. A reviewed category change requires the existing identity/scope correction process. Legacy shops without recorded approval use the existing shop review path; approval is never inferred from an active flag.
+The seller opens their sole shop automatically after approval. There is no extra-shop creation or shop switcher. Every product uses exactly the master root category approved at seller signup. A reviewed shop-category change requires the existing identity/scope correction process. Legacy shops without recorded approval use the existing shop review path; approval is never inferred from an active flag.
 
-Sellers may organize their own products into optional store categories, separate
-from the platform taxonomy. Names contain 1–50 characters and are unique within
-the store after case/spacing normalization. Categories support two levels,
-manual ordering and visibility; each product may belong to at most three.
-Hiding a group hides its public category destination and children, while the
-products retain their independent eligibility. Deleting a group previews its
-children and distinct affected products, requires the current preview, and
-removes memberships without deleting products. Products without any remaining
-store category are Uncategorized. These controls never change the shop's
-approved master root or a product's platform category.
+Sellers organize products with flat, shop-owned tags. Each tag contains 1–50
+plain-text characters; product tags are unique after case/spacing
+normalization, with at most 20 tags per product. The existing Gemini
+integration checks newly added tags against the product name and approved shop
+department. Suggestions are read-only until the seller selects them, and
+accepted tags participate in buyer search and relevance. Tags have no parent
+or child categories. Historical store-category records remain available for
+existing references but have no active seller mutation or storefront-filter
+flow.
 
 An approved seller may save a private draft with only a valid title. Supplied
 values still need valid formats and limits. Publishing requires complete title,

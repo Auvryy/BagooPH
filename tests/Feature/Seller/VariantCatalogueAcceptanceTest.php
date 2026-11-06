@@ -5,6 +5,7 @@ namespace Tests\Feature\Seller;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\StoreCategory;
+use App\Models\StoreTag;
 use App\Models\User;
 use App\Services\Commerce\InventoryService;
 use App\Services\Commerce\ProductSkuService;
@@ -73,6 +74,8 @@ class VariantCatalogueAcceptanceTest extends TestCase
         $visible = StoreCategory::create(['shop_id' => $this->shop->id, 'name' => 'Travel bags', 'normalized_name' => 'travel bags', 'position' => 0, 'is_visible' => true]);
         $hidden = StoreCategory::create(['shop_id' => $this->shop->id, 'name' => 'Private collection', 'normalized_name' => 'private collection', 'position' => 1, 'is_visible' => false]);
         $product->storeCategories()->sync([$visible->id, $hidden->id]);
+        $tag = StoreTag::create(['shop_id' => $this->shop->id, 'name' => 'Travel bags', 'normalized_name' => 'travel bags']);
+        $product->storeTags()->sync([$tag->id]);
         foreach ([null, User::factory()->buyer()->create()] as $buyer) {
             if ($buyer) {
                 $this->actingAs($buyer);
@@ -85,7 +88,7 @@ class VariantCatalogueAcceptanceTest extends TestCase
                 ->where('product.weight_kg', '0.80')->where('product.length_cm', '30.00')->where('product.width_cm', '20.00')->where('product.height_cm', '5.00')
                 ->where('product.price_range.min', '199.95')->where('product.price_range.max', '450.00')
                 ->where('variations.pricing_mode', 'independent')->where('variations.combinations.3.sku', 'BGO-BLK-L')
-                ->has('product.store_categories', 1)->where('product.store_categories.0.name', 'Travel bags'));
+                ->has('product.store_tags', 1)->where('product.store_tags.0.name', 'Travel bags')->missing('product.store_categories'));
         }
     }
 

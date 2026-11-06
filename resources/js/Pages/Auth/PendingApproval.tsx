@@ -1,10 +1,10 @@
 import UploadHint from '@/Components/UploadHint';
 import React, { FormEventHandler, useRef, useState } from 'react';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
-import NotificationLink from '@/Components/NotificationLink';
 import ApplicationFields, { ApplicationDetails, ApplicationValues } from '@/Components/ApplicationFields';
+import AccountCenterEntry, { type AccountCenterStatus } from '@/Components/AccountCenterEntry';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 import MasterCategorySelect, { MasterCategoryChoice } from '@/Components/MasterCategorySelect';
 import { CourierProfile, Shop, User } from '@/types';
@@ -47,9 +47,10 @@ interface PendingApprovalProps {
         status: string;
         address?: string;
     } | null;
+    accountCenterStatus: AccountCenterStatus;
 }
 
-export default function PendingApproval({ user, shop, courierProfile, logisticsCompany, birthDate, sellerCategory, application }: PendingApprovalProps) {
+export default function PendingApproval({ user, shop, courierProfile, logisticsCompany, birthDate, sellerCategory, application, accountCenterStatus }: PendingApprovalProps) {
     const isRejected = user.kyc_status === 'rejected';
     const isRestricted = ['suspended', 'inactive'].includes(user.status ?? '');
 
@@ -110,6 +111,37 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
         router.post(route('logout'));
     };
 
+    const statusLabel = isRestricted
+        ? user.status === 'suspended' ? 'Account status: SUSPENDED' : 'Account status: DEACTIVATED'
+        : isRejected ? 'Application status: REJECTED'
+            : user.kyc_status === 'approved' || user.kyc_status === 'verified' ? 'Application status: APPROVED' : 'Application status: IN REVIEW';
+    const statusHero = isRestricted ? (
+        <section className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-rose-900" aria-labelledby="application-status-title">
+            <div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-700 text-white"><ShieldAlert className="h-4 w-4" aria-hidden="true" /></span>
+                <div><h2 id="application-status-title" className="text-sm font-bold">{statusLabel}</h2><p className="text-xs text-rose-800">Open Account status for the current reason and review options.</p></div>
+            </div>
+        </section>
+    ) : isRejected ? (
+        <section className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900" aria-labelledby="application-status-title">
+            <div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white"><ShieldAlert className="h-4 w-4" aria-hidden="true" /></span>
+                <div><h2 id="application-status-title" className="text-sm font-bold">{statusLabel}</h2><p className="text-[10px] text-rose-700">Action required: correct your application or request another review.</p></div>
+            </div>
+            {user.kyc_feedback && <div className="rounded-lg border border-rose-200 bg-white p-3 text-xs"><span className="block text-[10px] font-bold uppercase tracking-wider text-rose-800">Review feedback</span><p className="mt-1 leading-relaxed text-black">{user.kyc_feedback}</p></div>}
+        </section>
+    ) : (
+        <section className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900" aria-labelledby="application-status-title">
+            <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white"><Clock className="h-4 w-4" aria-hidden="true" /></span>
+                    <div><h2 id="application-status-title" className="text-sm font-bold">{statusLabel}</h2><p className="text-xs text-amber-700">You will receive an update after the review.</p></div>
+                </div><button type="button" onClick={() => router.reload()} className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-amber-100 px-2.5 py-1.5 text-[10px] font-bold uppercase hover:bg-amber-200"><RefreshCw className="h-3 w-3" aria-hidden="true" />Check status</button>
+            </div>
+            <p className="text-[11px] leading-relaxed text-amber-800">Your submitted account details are being reviewed by Bagoo’s trust and safety team.</p>
+        </section>
+    );
+
+    const statusDescription = isRestricted ? 'Read the review reason and available account actions.'
+        : isRejected ? 'Review the feedback and correct or appeal your application.'
+            : user.kyc_status === 'approved' || user.kyc_status === 'verified' ? 'Your identity review is approved.' : 'Your application is waiting for review.';
+
     return (
         <GuestLayout
             title={isRestricted ? (user.status === 'suspended' ? 'Your account is suspended' : 'Your account is deactivated') : isRejected ? 'Your application was rejected' : 'Your application is under review'}
@@ -123,9 +155,8 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
             <Head title="Account Verification Status — BagooPH" />
 
             <div className="space-y-6 font-sans text-xs">
-                <Link href={route('account.status')} className="inline-block text-sm font-semibold text-[#E00D42] underline underline-offset-2">Account status and review requests</Link>
-                <Link href="/account/security" className="block text-sm font-semibold text-[#E00D42] underline underline-offset-2">Login activity and devices</Link>
-                <div className="flex items-center justify-between gap-3"><Link href="/notifications" className="font-semibold text-[#E00D42]">View your account updates</Link><NotificationLink /></div>
+                {statusHero}
+                <AccountCenterEntry statusLabel={statusLabel} statusDescription={statusDescription} statusDetails={accountCenterStatus} />
                 {user.kyc_status === 'pending_approval' && (birthDate.needs_correction || application.can_correct) && (
                     <form onSubmit={handleResubmit} className="space-y-3 rounded-xl border border-amber-300 bg-white p-4">
                         <p className="font-semibold text-slate-900">Correct your application before review</p>
@@ -143,58 +174,6 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                 {!isRejected && user.kyc_status !== 'pending_approval' && birthDate.needs_correction && (
                     <p className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">Your reviewed account needs an administrator check of its birth date. A completed review cannot be changed from this form.</p>
                 )}
-                {/* Status Hero Card */}
-                {isRejected ? (
-                    <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-3">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center shrink-0">
-                                <ShieldAlert className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <span className="font-bold text-sm block">Application Status: REJECTED</span>
-                                <span className="text-[10px] text-rose-700">Action Required: Resubmit Corrected Documents</span>
-                            </div>
-                        </div>
-
-                        {user.kyc_feedback && (
-                            <div className="p-3 bg-white border border-rose-200 rounded-lg text-xs space-y-1">
-                                <span className="font-bold uppercase tracking-wider text-[10px] text-rose-800 block">
-                                    Compliance Officer Feedback:
-                                </span>
-                                <p className="text-black font-sans leading-relaxed">
-                                    {user.kyc_feedback}
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-3">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 animate-pulse">
-                                    <Clock className="w-4 h-4" />
-                                </div>
-                                <div>
-                                    <span className="font-bold text-sm block">Application Status: IN REVIEW</span>
-                                    <span className="text-xs text-amber-700">You will receive an update after the review.</span>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => router.reload()}
-                                className="px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-md font-bold text-[10px] uppercase flex items-center gap-1.5 transition cursor-pointer"
-                            >
-                                <RefreshCw className="w-3 h-3" />
-                                <span>Check Status</span>
-                            </button>
-                        </div>
-
-                        <p className="text-[11px] text-amber-800/90 font-sans">
-                            Thank you for registering with BagooPH. Your submitted identity and business credentials are being inspected by our trust and safety team.
-                        </p>
-                    </div>
-                )}
-
                 {/* Applicant Summary */}
                 <div className="p-3.5 bg-white border border-black/10 rounded-xl space-y-2">
                     <div className="flex items-center justify-between border-b border-black/10 pb-2">
@@ -542,17 +521,8 @@ export default function PendingApproval({ user, shop, courierProfile, logisticsC
                     </form>
                 )}
 
-                {/* Footer Controls: Refresh & Logout */}
+                {/* Footer Controls: Sign out */}
                 <div className="pt-2 flex items-center justify-between gap-3 border-t border-black/10">
-                    <button
-                        type="button"
-                        onClick={() => router.reload()}
-                        className="px-3 py-2 bg-white border border-black/20 hover:border-black text-black font-bold rounded-lg text-[11px] uppercase flex items-center gap-1.5 transition cursor-pointer"
-                    >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>Refresh Status</span>
-                    </button>
-
                     <button
                         type="button"
                         onClick={handleLogout}

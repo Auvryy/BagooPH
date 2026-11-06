@@ -67,9 +67,12 @@ test('buyer identity shows recorded name components with a smaller middle field 
 
 test('an unapproved buyer with no purchases sees an honest empty history', async () => {
     const pending = { ...user, status: 'pending_approval', kyc_status: 'pending_approval' };
-    const html = await render({ auth: { user: pending }, user: pending, canUsePortal: false, ordersCount: 0, orderCounts: Object.fromEntries(Object.keys(counts).map(key => [key, 0])) });
+    const html = await render({ auth: { user: pending }, user: pending, canUsePortal: false,
+        accountCenterStatus: { title: 'Your application is under review', message: 'Your application has not been approved yet.', sources: [], requests: [] },
+        ordersCount: 0, orderCounts: Object.fromEntries(Object.keys(counts).map(key => [key, 0])) });
     assert.match(html, /No orders yet/);
     assert.match(html, /Your orders will appear here/);
+    assert.match(html, /Account status, security &amp; updates/);
     assert.doesNotMatch(html, /No orders found in this status|403|Verified Buyer/);
 });
 function nodes(node, predicate) {

@@ -232,7 +232,7 @@ class BuyerVoucherSelectionTest extends TestCase
         $service = app(VoucherCampaignService::class);
         $voucher = $service->saveDraft($shop->user, ['code' => 'SHOPRECORDED', 'name' => 'Recorded offer', 'discount_type' => 'fixed',
             'discount_value' => '100.00', 'min_spend' => '500.00', 'max_discount' => '100.00', 'budget' => '1000.00',
-            'usage_limit' => 10, 'per_buyer_limit' => 1, 'starts_at' => now()->subMinute()->toIso8601String(),
+            'usage_limit' => 10, 'per_buyer_limit' => 1, 'starts_at' => now()->toIso8601String(),
             'ends_at' => now()->addDay()->toIso8601String(), 'request_key' => (string) Str::uuid(), 'source_version' => 0], shop: $shop);
         $voucher = $service->act($shop->user, $voucher, ['action' => 'publish', 'request_key' => (string) Str::uuid(), 'source_version' => $voucher->campaign_version], $shop);
         $payload['shop_voucher_revision_ids'] = [$shop->id => $voucher->current_revision_id];
@@ -240,9 +240,9 @@ class BuyerVoucherSelectionTest extends TestCase
         $this->post('/checkout', $payload)->assertSessionHas('success');
         $order = Order::sole();
         $service->act($shop->user, $voucher, ['action' => 'pause', 'request_key' => (string) Str::uuid(), 'source_version' => $voucher->fresh()->campaign_version], $shop);
-        $voucher = $service->saveDraft($shop->user, ['code' => 'SHOPRECORDED', 'name' => 'New campaign terms', 'discount_type' => 'fixed',
+        $voucher = $service->saveDraft($shop->user, ['code' => 'SHOPRECORDED', 'name' => 'New campaign terms', 'reason' => 'Update the offer terms after the first redemption.', 'discount_type' => 'fixed',
             'discount_value' => '50.00', 'min_spend' => '500.00', 'max_discount' => '50.00', 'budget' => '1000.00',
-            'usage_limit' => 10, 'per_buyer_limit' => 1, 'starts_at' => now()->subMinute()->toIso8601String(),
+            'usage_limit' => 10, 'per_buyer_limit' => 1, 'starts_at' => now()->toIso8601String(),
             'ends_at' => now()->addDay()->toIso8601String(), 'request_key' => (string) Str::uuid(),
             'source_version' => $voucher->fresh()->campaign_version], $voucher, $shop);
         $service->act($shop->user, $voucher, ['action' => 'publish', 'request_key' => (string) Str::uuid(), 'source_version' => $voucher->campaign_version], $shop);

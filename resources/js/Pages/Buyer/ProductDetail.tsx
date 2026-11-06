@@ -1,6 +1,6 @@
 import ProductSaleOffer, { type SaleReminderState } from '@/Components/ProductSaleOffer';
 import ProductSpecifications, { ProductFactsSummary } from '@/Components/ProductSpecifications';
-import { selectedRegularPrice, saleUnitPrice } from '@/utils/productPricing';
+import { defaultVariantRegularPrice, firstAvailableVariantSelection, selectedRegularPrice, saleUnitPrice } from '@/utils/productPricing';
 import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
@@ -100,8 +100,10 @@ export default function BuyerProductDetail({
 }: Props) {
     const colorsList = variations?.colors || [];
     const sizesList = variations?.sizes || [];
-    const [selectedColor, setSelectedColor] = useState<VariationColor | null>(null);
-    const [selectedSize, setSelectedSize] = useState<VariationSize | null>(null);
+    const initialVariantSelection = firstAvailableVariantSelection({ ...product, variants: variations });
+    const [selectedColor, setSelectedColor] = useState<VariationColor | null>(() => colorsList.find(color => color.name === initialVariantSelection?.color) ?? null);
+    const [selectedSize, setSelectedSize] = useState<VariationSize | null>(() => sizesList.find(size => size.name === initialVariantSelection?.size) ?? null);
+    const [hasChosenVariant, setHasChosenVariant] = useState(false);
     const [quantityInput, setQuantityInput] = useState('1');
     const [selectedImage, setSelectedImage] = useState(product.featured_image || '');
     const [isAdding, setIsAdding] = useState(false);
@@ -227,21 +229,29 @@ export default function BuyerProductDetail({
     // Dynamic price calculation based on selected size/variation
     const completeSelection = (!colorsList.length || selectedColor !== null) && (!sizesList.length || selectedSize !== null);
     const selectedCombination = variations.combinations?.find(row => row.color === (selectedColor?.name ?? null) && row.size === (selectedSize?.name ?? null));
-    const regularPrice = completeSelection ? selectedRegularPrice({ ...product, variants: variations }, selectedColor?.name ?? null, selectedSize?.name ?? null)
-        : Number(product.price_range?.regular_min ?? product.price);
-    const currentPrice = !completeSelection && product.price_range ? Number(product.price_range.min) : saleUnitPrice(product, regularPrice);
+    const hasDefaultCombinations = Boolean(variations.combinations?.length);
+    const hasVariantOptions = colorsList.length > 0 || sizesList.length > 0;
+    const hasResolvedVariantPrice = hasDefaultCombinations || hasChosenVariant || !hasVariantOptions;
+    const defaultRegularPrice = defaultVariantRegularPrice({ ...product, variants: variations });
+    const regularPrice = hasResolvedVariantPrice && completeSelection ? selectedRegularPrice({ ...product, variants: variations }, selectedColor?.name ?? null, selectedSize?.name ?? null)
+        : hasDefaultCombinations ? defaultRegularPrice : Number(product.price_range?.regular_min ?? product.price);
+    const currentPrice = !hasResolvedVariantPrice && product.price_range
+        ? Number(product.price_range.min)
+        : saleUnitPrice(product, regularPrice);
     
     const currentComparePrice = product.sale_offer?.active && currentPrice < regularPrice ? regularPrice
         : product.compare_at_price && Number(product.compare_at_price) > Number(product.price) ? regularPrice + Number(product.compare_at_price) - Number(product.price) : 0;
     const discountPct = currentComparePrice > currentPrice ? Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100) : 0;
 
-    const showPriceRange = !completeSelection && product.price_range && Number(product.price_range.max) > Number(product.price_range.min);
-    const selectionStock = variations.combinations ? Number(selectedCombination?.stock ?? (completeSelection ? 0 : product.stock)) : Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
-    const sizeAvailable = (size: VariationSize) => !variations.combinations || variations.combinations.some(row => row.size === size.name && (!selectedColor || row.color === selectedColor.name) && Number(row.stock) > 0);
+    const showPriceRange = !hasResolvedVariantPrice && product.price_range && Number(product.price_range.max) > Number(product.price_range.min);
+    const selectionStock = hasDefaultCombinations ? Number(selectedCombination?.stock ?? (completeSelection ? 0 : product.stock)) : Math.min(product.stock, selectedSize ? selectedSize.stock : product.stock);
+    const sizeAvailable = (size: VariationSize) => hasDefaultCombinations
+        ? (variations.combinations ?? []).some(row => row.size === size.name && (!selectedColor || row.color === selectedColor.name) && Number(row.stock) > 0)
+        : Number(product.stock) > 0 && Number(size.stock ?? product.stock) > 0;
     const isProductOutOfStock = Number(product.stock) <= 0;
     const isSelectionOutOfStock = selectedColor?.in_stock === false || selectionStock <= 0;
     const totalProductInCart = cartQuantities.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-    const selectedSizeInCart = variations.combinations
+    const selectedSizeInCart = hasDefaultCombinations
         ? cartQuantities.filter(item => (item.color ?? null) === (selectedColor?.name ?? null) && (item.size ?? null) === (selectedSize?.name ?? null)).reduce((sum, item) => sum + Number(item.quantity || 0), 0)
         : selectedSize
         ? cartQuantities
@@ -559,7 +569,15 @@ export default function BuyerProductDetail({
                                             key={color.id}
                                             type="button"
                                             onClick={() => {
+                                                setHasChosenVariant(true);
                                                 setSelectedColor(color);
+                                                if (variations.combinations?.length) {
+                                                    const matchingRows = variations.combinations.filter(row => row.color === color.name);
+                                                    const combination = matchingRows.find(row => Number(row.stock) > 0 && row.size === (selectedSize?.name ?? null))
+                                                        ?? matchingRows.find(row => Number(row.stock) > 0)
+                                                        ?? matchingRows[0];
+                                                    setSelectedSize(sizesList.find(size => size.name === combination?.size) ?? null);
+                                                }
                                                 if (color.image_url) {
                                                     setSelectedImage(color.image_url);
                                                 }
@@ -604,7 +622,7 @@ export default function BuyerProductDetail({
                                         <button
                                             key={size.id}
                                             type="button"
-                                            onClick={() => setSelectedSize(size)}
+                                            onClick={() => { setHasChosenVariant(true); setSelectedSize(size); }}
                                             disabled={!sizeAvailable(size)}
                                             className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
                                                 selectedSize?.id === size.id
@@ -613,7 +631,7 @@ export default function BuyerProductDetail({
                                             }`}
                                         >
                                             <span>{size.name}</span>
-                                            {!variations.combinations && size.extra_price > 0 && (
+                                            {!hasDefaultCombinations && size.extra_price > 0 && (
                                                 <span className="text-[10px] text-slate-400 ml-1">
                                                     (+{formatPrice(size.extra_price)})
                                                 </span>

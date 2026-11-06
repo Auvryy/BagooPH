@@ -49,6 +49,8 @@ export interface User {
     sex?: string | null;
     role: Role;
     google_id?: string | null;
+    has_google_identity?: boolean;
+    needs_password_setup?: boolean;
     phone?: string | null;
     avatar?: string | null;
     address?: string | null;
@@ -135,6 +137,13 @@ export interface StoreCategory {
     products_count?: number;
 }
 
+export interface StoreTag {
+    id: number;
+    shop_id: number;
+    name: string;
+    products_count?: number;
+}
+
 export interface Product {
     price_range?: { min: string; max: string; regular_min?: string; regular_max?: string };
     sale_offer?: { server_now?: string; effective_price: number; active: SaleSummary | null; upcoming: SaleSummary | null };
@@ -173,6 +182,7 @@ export interface Product {
     width_cm?: string | number | null;
     height_cm?: string | number | null;
     store_categories?: StoreCategory[];
+    store_tags?: StoreTag[];
     status: 'active' | 'draft' | 'archived';
     rating: string | number | null;
     verified_review_count?: number;
@@ -378,6 +388,7 @@ export type PageProps<
     };
     categories?: Category[];
     cartCount: number;
+    cartItemIdsByProduct?: Record<number, number>;
     savedProductIds?: number[];
     unreadMessagesCount?: number;
     notificationSummary?: { available: boolean; unread: number | null };

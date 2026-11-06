@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import PromotionAiTools from '@/Components/PromotionAiTools';
 import { AdvertisementDetail, Options, dateLabel, slotLabel, stateLabel } from '@/types/advertisements';
 
 interface Props { advertisement: AdvertisementDetail | null; options: Options; slots: string[]; displayEnabled: boolean; baseUrl: string }
@@ -11,13 +12,12 @@ interface AdForm {
 }
 const fieldClass = 'mt-1 block w-full rounded-lg border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]';
 const buttonClass = 'rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50';
-const localTime = (offset: number) => new Date(Date.now() + offset + 8 * 3600000).toISOString().slice(0, 16);
 const initial = (ad: AdvertisementDetail | null): AdForm => ({
     title: ad?.draft.title ?? '', alt_text: ad?.draft.alt_text ?? '', summary: ad?.draft.summary ?? '',
     purpose: ad?.draft.purpose ?? 'feature', destination_type: ad?.draft.destination_type ?? 'product',
     destination_id: ad?.draft.destination_id?.toString() ?? '', product_ids: ad?.draft.product_ids ?? [],
     offer_revision_id: ad?.draft.offer_revision_id?.toString() ?? '', slot: ad?.draft.slot ?? 'main_1',
-    starts_at: ad?.draft.starts_at ?? localTime(300000), ends_at: ad?.draft.ends_at ?? localTime(7 * 86400000),
+    starts_at: ad?.draft.starts_at ?? '', ends_at: ad?.draft.ends_at ?? '',
     image: null, request_key: typeof crypto !== 'undefined' ? crypto.randomUUID() : '', source_version: ad?.version ?? 0,
 });
 
@@ -94,9 +94,10 @@ function Editor({ advertisement: ad, options, slots, displayEnabled, baseUrl }: 
                         <label className="block text-sm font-semibold">Title *<input className={fieldClass} value={form.data.title} required maxLength={80} onChange={(e) => form.setData('title', e.target.value)} aria-invalid={Boolean(errors.title)} /></label>
                         <label className="block text-sm font-semibold">Image description *<input className={fieldClass} value={form.data.alt_text} required maxLength={180} onChange={(e) => form.setData('alt_text', e.target.value)} aria-invalid={Boolean(errors.alt_text)} /><span className="mt-1 block text-xs font-normal text-slate-500">Describe the artwork for people using a screen reader. Maximum 180 characters.</span></label>
                         <label className="block text-sm font-semibold">Terms or collection summary<textarea className={fieldClass} value={form.data.summary} maxLength={600} rows={3} onChange={(e) => form.setData('summary', e.target.value)} aria-invalid={Boolean(errors.summary)} /></label>
-                        <label className="block text-sm font-semibold">Artwork {ad ? '(optional replacement)' : '*'}<input type="file" accept="image/jpeg,image/png,image/webp" required={!ad} onChange={(e) => chooseImage(e.target.files?.[0])} className="mt-2 block w-full text-sm" aria-describedby="artwork-hint" aria-invalid={Boolean(errors.image)} />
+                    <label className="block text-sm font-semibold">Artwork {ad ? '(optional replacement)' : '*'}<input type="file" accept="image/jpeg,image/png,image/webp" required={!ad} onChange={(e) => chooseImage(e.target.files?.[0])} className="mt-2 block w-full text-sm" aria-describedby="artwork-hint" aria-invalid={Boolean(errors.image)} />
                             <span id="artwork-hint" className="mt-2 block text-xs font-normal leading-relaxed text-slate-500">JPEG, PNG or WebP only. Maximum 5 MiB (5,242,880 bytes). Recommended 1880 × 880; minimum 940 × 440, with the same 47:22 shape. Maximum 4096 pixels per edge and 16 megapixels. Artwork is not cropped.</span>
                         </label>
+                    <PromotionAiTools endpoint={`${baseUrl}${ad ? `/${ad.id}` : ''}/assist`} title={form.data.title} altText={form.data.alt_text} summary={form.data.summary} purpose={form.data.purpose} image={form.data.image} disabled={disabled} onUseCopy={(copy) => form.setData(data => ({ ...data, ...copy }))} />
                         <div className="grid gap-4 sm:grid-cols-2">
                             <label className="text-sm font-semibold">Purpose *<select className={fieldClass} value={form.data.purpose} onChange={(e) => form.setData('purpose', e.target.value)}><option value="feature">Product or shop feature</option><option value="event">Event or collection</option><option value="offer">Offer or saving</option></select></label>
                             <label className="text-sm font-semibold">Click destination *<select className={fieldClass} value={form.data.destination_type} onChange={(e) => form.setData({ ...form.data, destination_type: e.target.value, destination_id: '', product_ids: [] })}>{['product', 'shop', 'category', 'collection', 'offer'].map((type) => <option value={type} key={type}>{stateLabel(type)}</option>)}</select></label>

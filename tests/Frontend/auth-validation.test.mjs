@@ -1,6 +1,6 @@
 import { after, afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildSync } from 'esbuild';
@@ -30,6 +30,8 @@ const bundle = buildSync({
         "export { default as Courier } from '@/Pages/Auth/CourierRegister';",
         "export { default as Logistics } from '@/Pages/Auth/LogisticsRegister';",
         "export { default as Google } from '@/Pages/Auth/GoogleRegistration';",
+        "export { default as UpdatePassword } from '@/Pages/Profile/Partials/UpdatePasswordForm';",
+        "export * from '@/utils/accountCenter';",
     ].join('\n'), resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false,
     loader: { '.css': 'empty' },
@@ -378,7 +380,8 @@ test('invalid typed and pasted names display accessible inline feedback and pres
     const empty = renderToStaticMarkup(createElement(ui.PersonalNames, { values: { first_name: '', middle_initial: '', last_name: '' }, onChange() {} }));
     assert.doesNotMatch(empty, /is required|aria-invalid="true"/);
     assert.doesNotMatch(empty, /personal-name-help|First and last names:|Total limit:/);
-    assert.match(empty, /sm:col-span-3[^>]*><label[^>]*for="middle_initial"/);
+    for (const field of ['first_name', 'middle_initial', 'last_name']) assert.match(empty, new RegExp('sm:col-span-4[^>]*><label[^>]*for="' + field + '"'));
+    assert.doesNotMatch(empty, /1–2 letters|A period is added/);
     const longName = 'A'.repeat(51);
     const overlong = renderToStaticMarkup(createElement(ui.PersonalNames, { values: { first_name: longName, middle_initial: '', last_name: 'Santos' }, onChange() {} }));
     assert.match(overlong, new RegExp('value="' + longName + '"'));
@@ -620,6 +623,8 @@ test('first Google signup collects the same buyer details while relying on the v
     assert.ok(result.body.indexOf('name="barangay"') < result.body.indexOf('name="postal_code"'));
     assert.ok(result.body.indexOf('name="postal_code"') < result.body.indexOf('name="address"'));
     assert.doesNotMatch(result.body, /personal-name-help|First and last names:|Total limit:/);
+    for (const field of ['first_name', 'middle_initial', 'last_name']) assert.match(result.body, new RegExp('sm:col-span-4[^>]*><label[^>]*for="' + field + '"'));
+    assert.doesNotMatch(result.body, /1–2 letters|A period is added/);
     assert.match(result.body, /verified@bagoo.test/);
     assert.doesNotMatch(result.body, /<input[^>]*name="email"|<input[^>]*name="password"/);
     const values = { ...identity('buyer'), email: '', password: '', password_confirmation: '', birthday: '2008-10-12', phone: '', region: '', province: '', city: '', barangay: '', address: '' };
@@ -628,6 +633,37 @@ test('first Google signup collects the same buyer details while relying on the v
     for (const field of ['phone', 'region', 'province', 'city', 'barangay', 'address']) assert.ok(pinned[field], field);
     assert.ok(ui.registrationInputErrors({ ...values, birthday: '' }, limits, undefined, true).birthday);
     assert.ok(ui.registrationInputErrors({ ...values, postal_code: '12345' }, limits, undefined, true).postal_code);
+});
+
+test('Google-linked accounts get the verified-code password setup while other accounts retain current-password confirmation', async () => {
+    async function renderPasswordForm(user) {
+        let view;
+        const result = await createInertiaApp({ page: { component: 'Profile/Edit', props: { auth: { user }, flash: {} }, url: '/profile', version: null },
+            resolve: () => ui.UpdatePassword, setup: ({ App, props }) => { view = createElement(App, props); return view; }, render: () => renderToStaticMarkup(view) });
+        return result.body;
+    }
+    const linked = await renderPasswordForm({ id: 7, email: 'google@bagoo.test', email_verified_at: '2026-10-01T00:00:00Z', has_google_identity: true, needs_password_setup: true, role: 'buyer' });
+    assert.match(linked, /first verify your Bagoo email with a fresh code/);
+    assert.match(linked, /Send a fresh code/);
+    assert.match(linked, /id="google-password-code"[^>]*maxlength="6"/i);
+    assert.match(linked, /id="google-new-password"[^>]*maxlength="128"/i);
+    assert.doesNotMatch(linked, /id="current_password"/);
+    const linkedWithPassword = await renderPasswordForm({ id: 8, email: 'google-password@bagoo.test', email_verified_at: '2026-10-01T00:00:00Z', has_google_identity: true, needs_password_setup: false, role: 'buyer' });
+    assert.match(linkedWithPassword, /id="current_password"/);
+    assert.match(linkedWithPassword, /Google sign-in remains available/);
+    assert.doesNotMatch(linkedWithPassword, /Send a fresh code/);
+    const regular = await renderPasswordForm({ id: 9, email: 'password@bagoo.test', email_verified_at: '2026-10-01T00:00:00Z', has_google_identity: false, needs_password_setup: false, role: 'buyer' });
+    assert.match(regular, /id="current_password"/);
+    assert.doesNotMatch(regular, /Send a fresh code/);
+    const source = readFileSync(resolve(import.meta.dirname, '../..', 'resources/js/Pages/Profile/Partials/UpdatePasswordForm.tsx'), 'utf8');
+    assert.match(source, /setNeedsGooglePasswordSetup\(false\)/);
+});
+
+test('account center chooses the full status page on mobile and a side panel on desktop', () => {
+    const calls = [];
+    ui.openAccountCenter(true, () => calls.push('panel'), () => calls.push('page'));
+    ui.openAccountCenter(false, () => calls.push('panel'), () => calls.push('page'));
+    assert.deepEqual(calls, ['page', 'panel']);
 });
 
 test('seller registration checks a complete optional pickup pin', () => {

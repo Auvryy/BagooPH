@@ -41,6 +41,7 @@ import {
     Building2,
     Banknote,
     AlertTriangle, RotateCcw,
+    Hash,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -148,7 +149,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     icon: Package, 
                     current: component.startsWith('Seller/Product') || route().current('seller.products.*') || url.startsWith('/seller/products') 
                 },
-                { name: 'Store categories', href: route('seller.store-categories.index'), icon: Layers, current: component === 'Seller/StoreCategories' || route().current('seller.store-categories.*') || url.startsWith('/seller/store-categories') },
+                { name: 'Product tags', href: route('seller.store-tags.index'), icon: Hash, current: component === 'Seller/StoreTags' || route().current('seller.store-tags.*') || url.startsWith('/seller/store-tags') || url.startsWith('/store-tags') },
                 { 
                     name: 'Orders', 
                     href: route('seller.orders.index'), 

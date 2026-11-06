@@ -63,10 +63,12 @@ function harness(Component, props) {
         },
         form(initial) {
             form ??= { data: initial, processing: false,
+                transformer: data => data,
                 setData(key, value) { form.data = typeof key === 'function' ? key(form.data) : { ...form.data, [key]: value }; },
                 clearErrors(...keys) { for (const key of keys) delete h.errors[key]; },
-                post(url) { submitted.push({ method: 'post', url, data: structuredClone(form.data) }); },
-                patch(url) { submitted.push({ method: 'patch', url, data: structuredClone(form.data) }); },
+                transform(callback) { form.transformer = callback; },
+                post(url) { submitted.push({ method: 'post', url, data: structuredClone(form.transformer(form.data)) }); },
+                patch(url) { submitted.push({ method: 'patch', url, data: structuredClone(form.transformer(form.data)) }); },
             };
             form.errors = h.errors; return form;
         },
@@ -175,12 +177,12 @@ test('seller form submits the selected scope and exact IDs and requires an expli
     const p = { campaign: { id: 4, code: terms.code, version: 2, current_revision_id: 1, published_terms: terms, selected_products: [product(1)] }, platform: false, onClose() {} };
     const h = harness(ui.Form, p);
     try {
-        let tree = h.render(); nodes(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
-        assert.equal(h.submitted[0].method, 'patch'); assert.equal(h.submitted[0].data.product_scope, 'selected'); assert.deepEqual(h.submitted[0].data.product_ids, [1]);
+        let tree = h.render(); nodes(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {}, nativeEvent: { submitter: { value: 'draft' } } });
+        assert.equal(h.submitted[0].method, 'patch'); assert.equal(h.submitted[0].data.product_scope, 'selected'); assert.deepEqual(h.submitted[0].data.product_ids, [1]); assert.equal(h.submitted[0].data.publish_after_save, false);
         nodes(tree, node => node.type === ui.Selection)[0].props.onChange([]); tree = h.render(); assert.equal(button(tree, 'Save draft').props.disabled, true);
         nodes(tree, node => node.type === ui.Selection)[0].props.onScope('all'); tree = h.render(); assert.equal(button(tree, 'Save draft').props.disabled, false);
-        nodes(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
-        assert.equal(h.submitted[1].data.product_scope, 'all'); assert.deepEqual(h.submitted[1].data.product_ids, []);
+        nodes(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {}, nativeEvent: { submitter: { value: 'publish' } } });
+        assert.equal(h.submitted[1].data.product_scope, 'all'); assert.deepEqual(h.submitted[1].data.product_ids, []); assert.equal(h.submitted[1].data.publish_after_save, true);
     } finally { h.close(); }
 });
 

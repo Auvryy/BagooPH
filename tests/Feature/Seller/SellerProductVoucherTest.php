@@ -40,7 +40,7 @@ class SellerProductVoucherTest extends TestCase
     {
         return [...['code' => 'STUDIOSAVE', 'name' => 'Selected studio savings', 'discount_type' => 'percent',
             'discount_value' => '10', 'min_spend' => '100.00', 'max_discount' => '100.00', 'budget' => '5000.00',
-            'usage_limit' => 50, 'per_buyer_limit' => 2, 'starts_at' => now()->subMinute()->toIso8601String(),
+            'usage_limit' => 50, 'per_buyer_limit' => 2, 'starts_at' => now()->toIso8601String(),
             'ends_at' => now()->addDay()->toIso8601String(), 'source_version' => 0, 'request_key' => (string) Str::uuid(),
             'product_scope' => 'selected', 'product_ids' => [$this->product->id]], ...$changes];
     }
@@ -79,6 +79,7 @@ class SellerProductVoucherTest extends TestCase
             ->component('Seller/VoucherHistory')->where('campaign.published_terms.product_ids', [$this->product->id, $second->id]));
         $before = $revision->getRawOriginal();
         $this->patch($base.'/vouchers/'.$voucher->id, $this->input(['product_scope' => 'all', 'product_ids' => [],
+            'reason' => 'Expand the reviewed offer to the whole shop.',
             'source_version' => $voucher->fresh()->campaign_version]))->assertSessionHas('success');
         $this->assertSame($before, $revision->fresh()->getRawOriginal());
         $this->post($base.'/vouchers/'.$voucher->id.'/actions', $this->action($voucher))->assertSessionHas('success');
@@ -171,7 +172,8 @@ class SellerProductVoucherTest extends TestCase
         $this->post('/seller/vouchers', $this->input())->assertSessionHas('success');
         $voucher = Voucher::sole();
         $this->post('/seller/vouchers/'.$voucher->id.'/actions', $this->action($voucher))->assertSessionHas('success');
-        $input = $this->input(['source_version' => $voucher->fresh()->campaign_version]);
+        $input = $this->input(['reason' => 'Keep the previous product selection during this revision.',
+            'source_version' => $voucher->fresh()->campaign_version]);
         unset($input['product_scope'], $input['product_ids']);
         $this->patch('/seller/vouchers/'.$voucher->id, $input)->assertSessionHas('success');
         $this->assertSame('selected', $voucher->fresh()->draft->terms['product_scope']);

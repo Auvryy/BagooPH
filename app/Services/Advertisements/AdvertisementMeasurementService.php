@@ -79,7 +79,7 @@ class AdvertisementMeasurementService
 
         return DB::transaction(function () use ($token, $data) {
             // Use the same calendar boundary as pause, withdrawal and publication.
-            if (! DB::table('advertisement_schedule_locks')->where('id', 1)->lockForUpdate()->first()) {
+            if (! app(AdvertisementScheduleLock::class)->lock()) {
                 return false;
             }
             $now = CarbonImmutable::now('UTC');

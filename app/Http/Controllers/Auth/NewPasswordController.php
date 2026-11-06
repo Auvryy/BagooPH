@@ -49,10 +49,14 @@ class NewPasswordController extends Controller
         $status = ! $owner || $owner->closed_at !== null ? Password::INVALID_USER : Password::reset(
             $request->only('password', 'password_confirmation', 'token') + ['id' => $owner->id, 'email' => $owner->email, 'role' => $owner->role],
             function ($user) use ($request) {
-                $user->forceFill([
+                $updates = [
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),
-                ])->save();
+                ];
+                if ($user->google_id) {
+                    $updates['password_login_enabled'] = true;
+                }
+                $user->forceFill($updates)->save();
 
                 event(new PasswordReset($user));
             }

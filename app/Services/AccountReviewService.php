@@ -36,6 +36,7 @@ class AccountReviewService
             $user->status === 'suspended' => ['title' => 'Your account is suspended', 'message' => 'You can request a review below. New purchases and portal work are unavailable until an admin restores access.'],
             $user->status === 'inactive' => ['title' => 'Your account is deactivated', 'message' => 'You can request a review below. An admin must reactivate your account before you can place orders or use your work portal.'],
             $user->kyc_status === 'rejected' => ['title' => 'Your application was rejected', 'message' => 'Read the feedback below. You can correct your application or request another review.'],
+            $user->isBuyer() && $user->kyc_status === 'none' => ['title' => 'Identity verification required', 'message' => 'You can browse and manage your Bag while verification is incomplete. Verify your identity before placing an order.'],
             $user->canAccessPortal() => ['title' => 'Your account is approved', 'message' => 'Your account is approved. Any separate shop or company restriction is shown below.'],
             default => ['title' => 'Your application is under review', 'message' => 'Your application has not been approved yet. You can check its details and any requested corrections.'],
         };
@@ -119,6 +120,25 @@ class AccountReviewService
             'can_correct_application' => in_array($user->kyc_status, ['none', 'rejected', 'pending_approval'], true) && ! $user->isAdmin(),
             'can_correct_identity' => $user->isKycApproved(), 'can_open_portal' => $user->canAccessPortal() && $sources === [],
             'email_update' => $email ? ['pending' => $email->email_delivered_at === null, 'attempts' => $email->email_attempts] : null,
+        ];
+    }
+
+    public function centerPresentation(User $user): array
+    {
+        $status = $this->presentation($user);
+
+        return [
+            'title' => $status['title'],
+            'message' => $status['message'],
+            'sources' => array_map(static fn (array $source): array => [
+                'type' => $source['type'],
+                'id' => $source['id'],
+                'name' => $source['name'],
+                'status' => $source['status'],
+                'reason' => $source['reason'],
+                'pending_request_id' => $source['pending_request_id'],
+            ], $status['sources']),
+            'requests' => $status['requests'],
         ];
     }
 

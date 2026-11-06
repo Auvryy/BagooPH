@@ -1,7 +1,7 @@
 import VariantStockMatrix, { type StockCombination } from '@/Components/VariantStockMatrix';
 import UploadHint from '@/Components/UploadHint';
 import SellerListingDetails, { emptyListingDetails, type ListingDetails } from '@/Components/SellerListingDetails';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
@@ -10,9 +10,10 @@ import { visitPortal } from '@/utils/catalogueRuntime';
 import useResolvedPage from '@/hooks/useResolvedPage';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import ListingAssistantPanel from '@/Components/ListingAssistantPanel';
-import { Category, PaginatedData, Product, Shop, StoreCategory } from '@/types';
+import { Category, PaginatedData, Product, Shop, StoreTag } from '@/types';
 import { newListingStatus, sellerInventoryQuery, sellerVariantStock, SellerInventoryFilters } from '@/utils/sellerInventory';
-import { listingHints, sellerListingError, type ListingField } from '@/utils/sellerListingValidation';
+import { acceptPriceDraft, acceptStockDraft, listingHints, sellerListingError, type ListingField } from '@/utils/sellerListingValidation';
+import { clearSellerListingDraft, clearSellerListingDraftImages, indexedDbSellerListingDraftImageStore, loadSellerListingDraft, restoreSellerListingDraftImages, saveSellerListingDraft, saveSellerListingDraftImages, scheduleSellerListingDraftSave, registerSellerListingDraftExitFlush, type SellerListingDraft } from '@/utils/sellerListingDraft';
 import { 
     Package, 
     Plus, 
@@ -44,6 +45,10 @@ const ALLOWED_MIME_TYPES = [
     'image/gif'
 ];
 
+function localDraftStorage(): Storage | undefined {
+    try { return typeof window === 'undefined' ? undefined : window.localStorage; } catch { return undefined; }
+}
+
 interface GalleryItem {
     id: string;
     type: 'file' | 'existing' | 'url';
@@ -51,6 +56,54 @@ interface GalleryItem {
     url: string;
     name?: string;
     size?: number;
+    mimeType?: string;
+    lastModified?: number;
+    recoveryMissing?: boolean;
+}
+
+function restoreDraftGallery(draft: SellerListingDraft, files: Map<string, File>): { gallery: GalleryItem[]; missingIds: string[] } {
+    const missingIds: string[] = [];
+    const gallery = draft.gallery.map((item): GalleryItem => {
+        if (item.type !== 'file') return { ...item };
+        const file = files.get(item.id);
+        if (!file) {
+            missingIds.push(item.id);
+            return { ...item, url: '', mimeType: item.mimeType, lastModified: item.lastModified, recoveryMissing: true };
+        }
+        return { id: item.id, type: 'file', file, url: URL.createObjectURL(file), name: item.name, size: item.size,
+            mimeType: item.mimeType, lastModified: item.lastModified };
+    });
+    return { gallery, missingIds };
+}
+
+function revokeGalleryFilePreviews(gallery: GalleryItem[]): void {
+    gallery.forEach(item => {
+        if (item.type === 'file' && item.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
+    });
+}
+
+function restoreVariantImageReferences(state: Record<string, unknown>, gallery: GalleryItem[]): Record<string, unknown> {
+    const variants = state.variants && typeof state.variants === 'object' ? state.variants as ProductVariants : undefined;
+    const restoredVariants = variants ? {
+        ...variants,
+        colors: variants.colors.map(color => {
+            const item = color.gallery_item_id ? gallery.find(candidate => candidate.id === color.gallery_item_id) : undefined;
+            const indexed = !item && typeof color.gallery_index === 'number' ? gallery[color.gallery_index] : undefined;
+            const match = item ?? indexed;
+            return { ...color, image_url: match?.url || color.image_url || null,
+                gallery_index: match ? gallery.indexOf(match) : color.gallery_index };
+        }),
+    } : undefined;
+    const photo = state.draftPhoto && typeof state.draftPhoto === 'object'
+        ? state.draftPhoto as { image_url?: string; gallery_item_id?: string | null; gallery_index?: number | null }
+        : null;
+    const photoItem = photo?.gallery_item_id ? gallery.find(item => item.id === photo.gallery_item_id)
+        : photo && typeof photo.gallery_index === 'number' ? gallery[photo.gallery_index] : undefined;
+    return {
+        ...state,
+        ...(restoredVariants ? { variants: restoredVariants } : {}),
+        draftPhoto: photo ? (photoItem?.url || photo.image_url ? { ...photo, image_url: photoItem?.url || photo.image_url || '' } : null) : null,
+    };
 }
 
 interface VariantColor {
@@ -82,16 +135,24 @@ interface ProductVariants {
 interface Props {
     products: PaginatedData<Product>;
     categories: Category[];
-    storeCategories?: StoreCategory[];
+    storeTags?: StoreTag[];
     shop: Shop;
     filters?: SellerInventoryFilters;
     bulkResults?: { id: number; name: string; result: string; reason: string }[];
 }
 
-export default function SellerProducts({ products, categories, shop, filters = {}, bulkResults = [], storeCategories = [] }: Props) {
+export default function SellerProducts({ products, categories, shop, filters = {}, bulkResults = [], storeTags = [] }: Props) {
     useResolvedPage(products.current_page);
+    const createDraftKey = `bagoo:seller-product-draft:v1:${shop.id}:create`;
+    const editDraftKey = (productId: number) => `bagoo:seller-product-draft:v1:${shop.id}:product:${productId}`;
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [createDraftAuxDirty, setCreateDraftAuxDirty] = useState(false);
+    const [editDraftAuxDirty, setEditDraftAuxDirty] = useState(false);
+    const [createDraftSaved, setCreateDraftSaved] = useState(false);
+    const [editDraftSaved, setEditDraftSaved] = useState(false);
+    const [createDraftNotice, setCreateDraftNotice] = useState('');
+    const [editDraftNotice, setEditDraftNotice] = useState('');
     const [stockProduct, setStockProduct] = useState<Product | null>(null);
     const [productPendingRemoval, setProductPendingRemoval] = useState<Product | null>(null);
     const [isRemovingProduct, setIsRemovingProduct] = useState(false);
@@ -102,8 +163,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const [filtering, setFiltering] = useState(false);
     const filteringGuard = useRef(false);
     const [filterError, setFilterError] = useState('');
-    const listProps = ['copiedProduct', 'storeCategories', 'bulkResults', 'products', 'filters', 'shop', 'categories', 'auth', 'flash', 'errors'];
+    const listProps = ['copiedProduct', 'storeTags', 'bulkResults', 'products', 'filters', 'shop', 'categories', 'auth', 'flash', 'errors'];
     const createSubmitting = useRef(false);
+    const draftRestoreSequence = useRef({ create: 0, edit: 0 });
+    const discardingDraft = useRef({ create: false, editProductIds: new Set<number>() });
+    const cancelDraftAutosave = useRef<{ create?: () => void; edit?: () => void }>({});
     const [selectedListings, setSelectedListings] = useState<number[]>([]);
     const [bulkAction, setBulkAction] = useState<'deactivate' | 'delete' | null>(null);
     const [actionPending, setActionPending] = useState(false);
@@ -168,7 +232,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const [optionDraftErrors, setOptionDraftErrors] = useState<Record<string, string>>({});
     const [newCreateColorHex, setNewCreateColorHex] = useState('#111111');
     const [newCreateSizeName, setNewCreateSizeName] = useState('');
-    const [newCreateSizePrice, setNewCreateSizePrice] = useState('0');
+    const [newCreateSizePrice, setNewCreateSizePrice] = useState('');
 
     // Edit Modal Variants State
     const [editHasOption1, setEditHasOption1] = useState(false);
@@ -179,7 +243,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const [newEditColorName, setNewEditColorName] = useState('');
     const [newEditColorHex, setNewEditColorHex] = useState('#111111');
     const [newEditSizeName, setNewEditSizeName] = useState('');
-    const [newEditSizePrice, setNewEditSizePrice] = useState('0');
+    const [newEditSizePrice, setNewEditSizePrice] = useState('');
 
     // Variant Photo Picker Modal State
     const [activePhotoPicker, setActivePhotoPicker] = useState<{
@@ -200,6 +264,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
         gallery_item_id?: string | null;
         gallery_index?: number | null;
     } | null>(null);
+
+    const markDraftAuxDirty = (isCreate: boolean) => isCreate ? setCreateDraftAuxDirty(true) : setEditDraftAuxDirty(true);
 
     const formatPrice = (val: string | number | undefined | null) => {
         const num = Number(val || 0);
@@ -238,10 +304,10 @@ export default function SellerProducts({ products, categories, shop, filters = {
     } & ListingDetails>({
         ...emptyListingDetails,
         name: '',
-        category_id: '',
+        category_id: String(shop.root_category_id ?? ''),
         price: '',
         compare_at_price: '',
-        stock: '25',
+        stock: '',
         purchase_limit: '',
         sku: '',
         variants: '',
@@ -271,7 +337,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
     } & ListingDetails>({
         ...emptyListingDetails,
         name: '',
-        category_id: '',
+        category_id: String(shop.root_category_id ?? ''),
         price: '',
         compare_at_price: '',
         stock: '0',
@@ -294,6 +360,109 @@ export default function SellerProducts({ products, categories, shop, filters = {
         quantity: '0',
     });
 
+    const createDraftPayload = () => ({
+        form: createForm.data, gallery: createGallery,
+        variantState: { hasOption1: createHasOption1, option1Name: createOption1Name, hasOption2: createHasOption2,
+            option2Name: createOption2Name, variants: createVariants, newColorName: newCreateColorName,
+            newColorHex: newCreateColorHex, newSizeName: newCreateSizeName, newSizePrice: newCreateSizePrice,
+            draftPhoto: createDraftPhoto, imageMode: createImageMode, urlInput: createUrlInput },
+    });
+    const editDraftPayload = () => ({
+        form: editForm.data, gallery: editGallery,
+        variantState: { hasOption1: editHasOption1, option1Name: editOption1Name, hasOption2: editHasOption2,
+            option2Name: editOption2Name, variants: editVariants, newColorName: newEditColorName,
+            newColorHex: newEditColorHex, newSizeName: newEditSizeName, newSizePrice: newEditSizePrice,
+            draftPhoto: editDraftPhoto, imageMode: editImageMode, urlInput: editUrlInput },
+    });
+    const draftLifecycle = useRef<{
+        createOpen: boolean; createDirty: boolean; createPayload: ReturnType<typeof createDraftPayload>;
+        editProductId: number | null; editDirty: boolean; editPayload: ReturnType<typeof editDraftPayload>;
+    }>({ createOpen: false, createDirty: false, createPayload: createDraftPayload(), editProductId: null, editDirty: false, editPayload: editDraftPayload() });
+    draftLifecycle.current = {
+        createOpen: isCreateOpen, createDirty: createForm.isDirty || createDraftAuxDirty, createPayload: createDraftPayload(),
+        editProductId: editingProduct?.id ?? null, editDirty: editForm.isDirty || editDraftAuxDirty, editPayload: editDraftPayload(),
+    };
+    const persistCreateDraft = useCallback(async () => {
+        const current = draftLifecycle.current;
+        if (discardingDraft.current.create || !current.createDirty) return true;
+        const textSaved = saveSellerListingDraft(localDraftStorage(), createDraftKey, current.createPayload);
+        const imagesSaved = textSaved && await saveSellerListingDraftImages(indexedDbSellerListingDraftImageStore, shop.id, 'create', current.createPayload.gallery);
+        if (discardingDraft.current.create) return false;
+        const saved = textSaved && imagesSaved;
+        setCreateDraftSaved(saved);
+        setCreateDraftNotice(!textSaved ? 'This browser could not save the listing details. Keep this page open while you finish.'
+            : !imagesSaved ? 'Listing details were saved, but browser storage could not keep the selected images. Remove any unavailable image and re-select it before publishing.'
+                : current => current.startsWith('This browser could not save') || current.startsWith('Listing details were saved, but browser storage') ? '' : current);
+        return saved;
+    }, [createDraftKey, shop.id]);
+    const persistEditDraft = useCallback(async () => {
+        const current = draftLifecycle.current;
+        if (current.editProductId === null || discardingDraft.current.editProductIds.has(current.editProductId) || !current.editDirty) return true;
+        const key = `bagoo:seller-product-draft:v1:${shop.id}:product:${current.editProductId}`;
+        const draftId = `product:${current.editProductId}`;
+        const textSaved = saveSellerListingDraft(localDraftStorage(), key, current.editPayload);
+        const imagesSaved = textSaved && await saveSellerListingDraftImages(indexedDbSellerListingDraftImageStore, shop.id, draftId, current.editPayload.gallery);
+        if (discardingDraft.current.editProductIds.has(current.editProductId)) return false;
+        const saved = textSaved && imagesSaved;
+        setEditDraftSaved(saved);
+        setEditDraftNotice(!textSaved ? 'This browser could not save the listing details. Keep this page open while you finish.'
+            : !imagesSaved ? 'Listing details were saved, but browser storage could not keep the selected images. Remove any unavailable image and re-select it before publishing.'
+                : current => current.startsWith('This browser could not save') || current.startsWith('Listing details were saved, but browser storage') ? '' : current);
+        return saved;
+    }, [shop.id]);
+    const closeCreate = () => { draftRestoreSequence.current.create += 1; void persistCreateDraft(); setIsCreateOpen(false); };
+    const closeEdit = () => { draftRestoreSequence.current.edit += 1; void persistEditDraft(); setEditingProduct(null); };
+    const discardCreateDraft = async () => {
+        if (!window.confirm('Discard this listing and its locally saved recovery data?')) return;
+        discardingDraft.current.create = true;
+        cancelDraftAutosave.current.create?.();
+        cancelDraftAutosave.current.create = undefined;
+        draftRestoreSequence.current.create += 1;
+        clearSellerListingDraft(localDraftStorage(), createDraftKey);
+        revokeGalleryFilePreviews(createGallery);
+        setCreateGallery([]);
+        setCreateDraftSaved(false);
+        setCreateDraftAuxDirty(false);
+        setCreateDraftNotice('');
+        setIsCreateOpen(false);
+        await clearSellerListingDraftImages(indexedDbSellerListingDraftImageStore, shop.id, 'create');
+        clearSellerListingDraft(localDraftStorage(), createDraftKey);
+        discardingDraft.current.create = false;
+    };
+    const discardEditDraft = async () => {
+        if (!editingProduct || !window.confirm('Discard these listing edits and their locally saved recovery data?')) return;
+        const productId = editingProduct.id;
+        discardingDraft.current.editProductIds.add(productId);
+        cancelDraftAutosave.current.edit?.();
+        cancelDraftAutosave.current.edit = undefined;
+        draftRestoreSequence.current.edit += 1;
+        clearSellerListingDraft(localDraftStorage(), editDraftKey(productId));
+        revokeGalleryFilePreviews(editGallery);
+        setEditGallery([]);
+        setEditDraftSaved(false);
+        setEditDraftAuxDirty(false);
+        setEditDraftNotice('');
+        setEditingProduct(null);
+        await clearSellerListingDraftImages(indexedDbSellerListingDraftImageStore, shop.id, `product:${productId}`);
+        clearSellerListingDraft(localDraftStorage(), editDraftKey(productId));
+        discardingDraft.current.editProductIds.delete(productId);
+    };
+
+    useEffect(() => {
+        const flushOpenDrafts = () => {
+            const current = draftLifecycle.current;
+            if (!discardingDraft.current.create && current.createOpen && current.createDirty) {
+                const textSaved = saveSellerListingDraft(localDraftStorage(), createDraftKey, current.createPayload);
+                if (textSaved) void saveSellerListingDraftImages(indexedDbSellerListingDraftImageStore, shop.id, 'create', current.createPayload.gallery);
+            }
+            if (current.editProductId !== null && !discardingDraft.current.editProductIds.has(current.editProductId) && current.editDirty) {
+                const textSaved = saveSellerListingDraft(localDraftStorage(), editDraftKey(current.editProductId), current.editPayload);
+                if (textSaved) void saveSellerListingDraftImages(indexedDbSellerListingDraftImageStore, shop.id, `product:${current.editProductId}`, current.editPayload.gallery);
+            }
+        };
+        return registerSellerListingDraftExitFlush(window, flushOpenDrafts);
+    }, [createDraftKey, shop.id]);
+
     useEffect(() => {
         resizeDescription(createDescriptionRef.current);
     }, [createForm.data.description]);
@@ -301,6 +470,40 @@ export default function SellerProducts({ products, categories, shop, filters = {
     useEffect(() => {
         resizeDescription(editDescriptionRef.current);
     }, [editForm.data.description]);
+
+    useEffect(() => {
+        if (!isCreateOpen || (!createForm.isDirty && !createDraftAuxDirty)) return;
+        setCreateDraftSaved(false);
+        const cancel = scheduleSellerListingDraftSave(
+            (callback, delay) => window.setTimeout(callback, delay),
+            handle => window.clearTimeout(handle),
+            persistCreateDraft,
+        );
+        cancelDraftAutosave.current.create = cancel;
+        return () => {
+            cancel();
+            if (cancelDraftAutosave.current.create === cancel) cancelDraftAutosave.current.create = undefined;
+        };
+    }, [isCreateOpen, createForm.isDirty, createForm.data, createDraftAuxDirty, createGallery, createHasOption1,
+        createOption1Name, createHasOption2, createOption2Name, createVariants, newCreateColorName, newCreateColorHex,
+        newCreateSizeName, newCreateSizePrice, createDraftPhoto, createImageMode, createUrlInput, createDraftKey, persistCreateDraft]);
+
+    useEffect(() => {
+        if (!editingProduct || (!editForm.isDirty && !editDraftAuxDirty)) return;
+        setEditDraftSaved(false);
+        const cancel = scheduleSellerListingDraftSave(
+            (callback, delay) => window.setTimeout(callback, delay),
+            handle => window.clearTimeout(handle),
+            persistEditDraft,
+        );
+        cancelDraftAutosave.current.edit = cancel;
+        return () => {
+            cancel();
+            if (cancelDraftAutosave.current.edit === cancel) cancelDraftAutosave.current.edit = undefined;
+        };
+    }, [editingProduct, editForm.isDirty, editForm.data, editDraftAuxDirty, editGallery, editHasOption1,
+        editOption1Name, editHasOption2, editOption2Name, editVariants, newEditColorName, newEditColorHex,
+        newEditSizeName, newEditSizePrice, editDraftPhoto, editImageMode, editUrlInput, persistEditDraft]);
 
     // Real-time slashed price validation: compare_at_price must be strictly greater than price
     const isSlashedPriceInvalid = (priceVal: string | number, compareVal: string | number | undefined | null) => {
@@ -373,6 +576,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         }
 
         if (newItems.length > 0) {
+            markDraftAuxDirty(isCreate);
             if (isCreate) {
                 setCreateGallery((prev) => [...prev, ...newItems]);
             } else {
@@ -390,6 +594,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         }
         if (isCreate) createForm.clearErrors('gallery_manifest');
         else editForm.clearErrors('gallery_manifest');
+        markDraftAuxDirty(isCreate);
         const item: GalleryItem = {
             id: `url_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             type: 'url',
@@ -405,6 +610,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
     };
 
     const moveGalleryItem = (index: number, direction: 'left' | 'right' | 'top', isCreate: boolean) => {
+        markDraftAuxDirty(isCreate);
         const setGallery = isCreate ? setCreateGallery : setEditGallery;
         setGallery((prev) => {
             if (direction === 'top') {
@@ -421,6 +627,9 @@ export default function SellerProducts({ products, categories, shop, filters = {
     };
 
     const removeGalleryItem = (index: number, isCreate: boolean) => {
+        markDraftAuxDirty(isCreate);
+        const removed = (isCreate ? createGallery : editGallery)[index];
+        if (removed?.type === 'file' && removed.url.startsWith('blob:')) URL.revokeObjectURL(removed.url);
         const setGallery = isCreate ? setCreateGallery : setEditGallery;
         setGallery((prev) => prev.filter((_, i) => i !== index));
     };
@@ -439,12 +648,14 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const handleDrop = (index: number, isCreate: boolean) => {
         if (isCreate) {
             if (createDragIndex !== null && createDragIndex !== index) {
+                markDraftAuxDirty(true);
                 setCreateGallery((prev) => reorderList(prev, createDragIndex, index));
             }
             setCreateDragIndex(null);
             setCreateDragOverIndex(null);
         } else {
             if (editDragIndex !== null && editDragIndex !== index) {
+                markDraftAuxDirty(false);
                 setEditGallery((prev) => reorderList(prev, editDragIndex, index));
             }
             setEditDragIndex(null);
@@ -462,17 +673,24 @@ export default function SellerProducts({ products, categories, shop, filters = {
         }
     };
 
-    const openCreate = () => {
+    const openCreate = async () => {
+        if (discardingDraft.current.create) return;
+        discardingDraft.current.create = false;
+        const restoreSequence = ++draftRestoreSequence.current.create;
+        revokeGalleryFilePreviews(createGallery);
         setOptionDraftErrors({});
         setCreateFileError(null);
-        setCreateImageMode('file');
-        setCreateGallery([]);
-        setCreateUrlInput('');
         if (createFileInputRef.current) {
             createFileInputRef.current.value = '';
         }
         createForm.reset();
-        createForm.setData('request_token', newToken());
+        const requestToken = newToken();
+        createForm.setData('request_token', requestToken);
+        createForm.setDefaults('request_token', requestToken);
+        const draft = loadSellerListingDraft(localDraftStorage(), createDraftKey);
+        setCreateImageMode('file');
+        setCreateGallery([]);
+        setCreateUrlInput('');
         setCreateHasOption1(false);
         setCreateOption1Name('Color / Edition');
         setCreateHasOption2(false);
@@ -481,15 +699,50 @@ export default function SellerProducts({ products, categories, shop, filters = {
         setNewCreateColorName('');
         setNewCreateColorHex('#111111');
         setNewCreateSizeName('');
-        setNewCreateSizePrice('0');
+        setNewCreateSizePrice('');
         setCreateDraftPhoto(null);
+        setCreateDraftAuxDirty(false);
+        setCreateDraftSaved(false);
+        setCreateDraftNotice('');
+        if (draft) {
+            const restoredImages = await restoreSellerListingDraftImages(indexedDbSellerListingDraftImageStore, shop.id, 'create', draft.gallery);
+            if (draftRestoreSequence.current.create !== restoreSequence) return;
+            const recovered = restoreDraftGallery(draft, restoredImages.files);
+            const state = restoreVariantImageReferences(draft.variantState, recovered.gallery);
+            createForm.setData(current => ({ ...current, ...(draft.form as Partial<typeof current>), request_token: requestToken, image_files: [], gallery_manifest: '' }));
+            setCreateImageMode(state.imageMode === 'url' ? 'url' : 'file');
+            setCreateGallery(recovered.gallery);
+            setCreateUrlInput(String(state.urlInput ?? ''));
+            setCreateHasOption1(Boolean(state.hasOption1));
+            setCreateOption1Name(String(state.option1Name ?? 'Color / Edition'));
+            setCreateHasOption2(Boolean(state.hasOption2));
+            setCreateOption2Name(String(state.option2Name ?? 'Size / Specification'));
+            if (state.variants && typeof state.variants === 'object') setCreateVariants(state.variants as ProductVariants);
+            setNewCreateColorName(String(state.newColorName ?? ''));
+            setNewCreateColorHex(String(state.newColorHex ?? '#111111'));
+            setNewCreateSizeName(String(state.newSizeName ?? ''));
+            setNewCreateSizePrice(String(state.newSizePrice ?? ''));
+            setCreateDraftPhoto(state.draftPhoto && typeof state.draftPhoto === 'object' ? state.draftPhoto as { image_url: string; gallery_item_id?: string | null; gallery_index?: number | null } : null);
+            setCreateDraftAuxDirty(true);
+            setCreateDraftSaved(recovered.missingIds.length === 0);
+            setCreateDraftNotice(recovered.missingIds.length
+                ? `Recovered listing details, but ${recovered.missingIds.length} image${recovered.missingIds.length === 1 ? '' : 's'} could not be restored. Remove the unavailable image tiles and select those files again.`
+                : `Recovered an unsaved draft from this device${recovered.gallery.some(item => item.type === 'file') ? ', including its selected images' : ''}.`);
+        }
+        if (draftRestoreSequence.current.create !== restoreSequence) return;
         setActivePhotoPicker(null);
         setIsCreateOpen(true);
     };
 
-    const openEdit = (product: Product) => {
+    const openEdit = async (product: Product) => {
+        if (discardingDraft.current.editProductIds.has(product.id)) return;
+        discardingDraft.current.editProductIds.delete(product.id);
+        const restoreSequence = ++draftRestoreSequence.current.edit;
+        revokeGalleryFilePreviews(editGallery);
         setOptionDraftErrors({});
-        setEditingProduct(product);
+        setEditDraftAuxDirty(false);
+        setEditDraftSaved(false);
+        setEditDraftNotice('');
         setEditImageMode('file');
         setEditFileError(null);
         setEditUrlInput('');
@@ -555,14 +808,15 @@ export default function SellerProducts({ products, categories, shop, filters = {
         setNewEditColorName('');
         setNewEditColorHex('#111111');
         setNewEditSizeName('');
-        setNewEditSizePrice('0');
+        setNewEditSizePrice('');
         setEditDraftPhoto(null);
         setActivePhotoPicker(null);
 
-        editForm.setData({
+        const editInitialData = {
             brand: product.brand ?? '', condition: product.condition ?? '', weight_kg: String(product.weight_kg ?? ''),
             length_cm: String(product.length_cm ?? ''), width_cm: String(product.width_cm ?? ''), height_cm: String(product.height_cm ?? ''),
-            store_category_ids: (product.store_categories ?? []).map(category => category.id),
+            tag_names: (product.store_tags ?? []).map(tag => tag.name),
+            tag_draft: '',
             name: product.name,
             category_id: String(product.category_id || ''),
             price: product.status === 'draft' && Number(product.price) === 0 ? '' : String(product.price),
@@ -577,7 +831,37 @@ export default function SellerProducts({ products, categories, shop, filters = {
             description: product.description,
             status: product.status as any,
             _method: 'PUT',
-        });
+        };
+        editForm.setData(editInitialData);
+        editForm.setDefaults(editInitialData);
+        const draft = loadSellerListingDraft(localDraftStorage(), editDraftKey(product.id));
+        if (draft) {
+            const restoredImages = await restoreSellerListingDraftImages(indexedDbSellerListingDraftImageStore, shop.id, `product:${product.id}`, draft.gallery);
+            if (draftRestoreSequence.current.edit !== restoreSequence) return;
+            const recovered = restoreDraftGallery(draft, restoredImages.files);
+            const state = restoreVariantImageReferences(draft.variantState, recovered.gallery);
+            editForm.setData(current => ({ ...current, ...(draft.form as Partial<typeof current>), image_files: [], gallery_manifest: '', _method: 'PUT' }));
+            setEditImageMode(state.imageMode === 'url' ? 'url' : 'file');
+            setEditGallery(recovered.gallery);
+            setEditUrlInput(String(state.urlInput ?? ''));
+            setEditHasOption1(Boolean(state.hasOption1));
+            setEditOption1Name(String(state.option1Name ?? 'Color / Edition'));
+            setEditHasOption2(Boolean(state.hasOption2));
+            setEditOption2Name(String(state.option2Name ?? 'Size / Specification'));
+            if (state.variants && typeof state.variants === 'object') setEditVariants(state.variants as ProductVariants);
+            setNewEditColorName(String(state.newColorName ?? ''));
+            setNewEditColorHex(String(state.newColorHex ?? '#111111'));
+            setNewEditSizeName(String(state.newSizeName ?? ''));
+            setNewEditSizePrice(String(state.newSizePrice ?? ''));
+            setEditDraftPhoto(state.draftPhoto && typeof state.draftPhoto === 'object' ? state.draftPhoto as { image_url: string; gallery_item_id?: string | null; gallery_index?: number | null } : null);
+            setEditDraftAuxDirty(true);
+            setEditDraftSaved(recovered.missingIds.length === 0);
+            setEditDraftNotice(recovered.missingIds.length
+                ? `Recovered listing details, but ${recovered.missingIds.length} image${recovered.missingIds.length === 1 ? '' : 's'} could not be restored. Remove the unavailable image tiles and select those files again.`
+                : `Recovered unsaved edits from this device${recovered.gallery.some(item => item.type === 'file') ? ', including its selected images' : ''}.`);
+        }
+        if (draftRestoreSequence.current.edit !== restoreSequence) return;
+        setEditingProduct(product);
     };
 
     const handleCreate = (e: React.FormEvent) => {
@@ -587,6 +871,10 @@ export default function SellerProducts({ products, categories, shop, filters = {
         }
         const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
         const status = newListingStatus(submitter?.value);
+        if (createGallery.some(item => item.type === 'file' && !item.file)) {
+            createForm.setError('gallery_manifest', 'Remove unavailable image tiles and select those files again before saving.');
+            return;
+        }
         if (createGallery.length > 9 || (status === 'active' && createGallery.length === 0)) {
             createForm.setError('gallery_manifest', 'Use 1–9 product images before publishing.');
             return;
@@ -629,22 +917,32 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
         const submissionToken = createForm.data.request_token || newToken();
         if (!createForm.data.request_token) createForm.setData('request_token', submissionToken);
-        createForm.transform((data) => ({
-            ...data,
-            store_category_ids: JSON.stringify(data.store_category_ids),
-            request_token: submissionToken,
-            status,
-            gallery_manifest: JSON.stringify(manifest),
-            image_files: filesToUpload,
-            featured_image: createGallery[0]?.url || '',
-            variants: syncedVariants ? JSON.stringify(syncedVariants) : '',
-        }));
+        createForm.transform((data) => {
+            const { tag_draft: tagDraft, ...formData } = data;
+            const tagNames = [...data.tag_names, ...(tagDraft.trim() ? [tagDraft.trim()] : [])];
+            return {
+                ...formData,
+                tag_names: JSON.stringify(tagNames),
+                request_token: submissionToken,
+                status,
+                gallery_manifest: JSON.stringify(manifest),
+                image_files: filesToUpload,
+                featured_image: createGallery[0]?.url || '',
+                variants: syncedVariants ? JSON.stringify(syncedVariants) : '',
+            };
+        });
 
         createSubmitting.current = true;
         createForm.post(route('seller.products.store'), {
             forceFormData: true,
             onFinish: () => { createSubmitting.current = false; },
             onSuccess: () => {
+                clearSellerListingDraft(localDraftStorage(), createDraftKey);
+                void clearSellerListingDraftImages(indexedDbSellerListingDraftImageStore, shop.id, 'create');
+                revokeGalleryFilePreviews(createGallery);
+                setCreateDraftSaved(false);
+                setCreateDraftAuxDirty(false);
+                setCreateDraftNotice('');
                 setIsCreateOpen(false);
                 createForm.reset();
                 createForm.setData('request_token', newToken());
@@ -669,7 +967,15 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingProduct) return;
-        if (editGallery.length > 9 || (editForm.data.status === 'active' && editGallery.length === 0)) {
+        const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+        const status = editingProduct.status === 'draft'
+            ? (submitter?.value === 'publish' ? 'active' : 'draft')
+            : editForm.data.status;
+        if (editGallery.some(item => item.type === 'file' && !item.file)) {
+            editForm.setError('gallery_manifest', 'Remove unavailable image tiles and select those files again before saving.');
+            return;
+        }
+        if (editGallery.length > 9 || (status === 'active' && editGallery.length === 0)) {
             editForm.setError('gallery_manifest', 'Use 1–9 product images before publishing.');
             return;
         }
@@ -712,19 +1018,30 @@ export default function SellerProducts({ products, categories, shop, filters = {
             pricing_mode: editVariants.pricing_mode ?? 'surcharge',
         } : null;
 
-        editForm.transform((data) => ({
-            ...data,
-            store_category_ids: JSON.stringify(data.store_category_ids),
-            gallery_manifest: JSON.stringify(manifest),
-            image_files: filesToUpload,
-            featured_image: editGallery[0]?.url || '',
-            variants: syncedVariants ? JSON.stringify(syncedVariants) : '',
-            _method: 'PUT',
-        }));
+        editForm.transform((data) => {
+            const { tag_draft: tagDraft, ...formData } = data;
+            const tagNames = [...data.tag_names, ...(tagDraft.trim() ? [tagDraft.trim()] : [])];
+            return {
+                ...formData,
+                tag_names: JSON.stringify(tagNames),
+                gallery_manifest: JSON.stringify(manifest),
+                image_files: filesToUpload,
+                featured_image: editGallery[0]?.url || '',
+                variants: syncedVariants ? JSON.stringify(syncedVariants) : '',
+                status,
+                _method: 'PUT',
+            };
+        });
 
         editForm.post(route('seller.products.update', editingProduct.id), {
             forceFormData: true,
             onSuccess: () => {
+                clearSellerListingDraft(localDraftStorage(), editDraftKey(editingProduct.id));
+                void clearSellerListingDraftImages(indexedDbSellerListingDraftImageStore, shop.id, `product:${editingProduct.id}`);
+                revokeGalleryFilePreviews(editGallery);
+                setEditDraftSaved(false);
+                setEditDraftAuxDirty(false);
+                setEditDraftNotice('');
                 setEditingProduct(null);
                 setEditGallery([]);
                 setEditHasOption1(false);
@@ -783,6 +1100,16 @@ export default function SellerProducts({ products, categories, shop, filters = {
         galleryItemId?: string | null,
         galleryIndex?: number | null
     ) => {
+        const variants = isCreate ? createVariants : editVariants;
+        const alreadyAssigned = imageUrl && variants.colors.find((color) => color.id !== colorId && (
+            (galleryItemId && color.gallery_item_id === galleryItemId) || color.image_url === imageUrl
+        ));
+        if (alreadyAssigned) {
+            if (isCreate) setCreateFileError(`That photo is already assigned to ${alreadyAssigned.name}. Choose an unassigned photo.`);
+            else setEditFileError(`That photo is already assigned to ${alreadyAssigned.name}. Choose an unassigned photo.`);
+            return;
+        }
+        markDraftAuxDirty(isCreate);
         if (colorId === 'draft') {
             const setDraft = isCreate ? setCreateDraftPhoto : setEditDraftPhoto;
             if (imageUrl) {
@@ -814,94 +1141,8 @@ export default function SellerProducts({ products, categories, shop, filters = {
         setActivePhotoPicker(null);
     };
 
-    const CATEGORY_PRESETS = [
-        {
-            id: 'apparel',
-            name: 'Apparel (Color + Size)',
-            opt1: 'Color',
-            opt2: 'Size',
-            colors: [
-                { name: 'Stealth Black', hex: '#111111' },
-                { name: 'Chalk White', hex: '#F9FAFB' },
-                { name: 'Navy Blue', hex: '#1E3A8A' },
-            ],
-            sizes: [
-                { name: 'Small', extra_price: 0 },
-                { name: 'Medium', extra_price: 0 },
-                { name: 'Large', extra_price: 0 },
-                { name: 'XL', extra_price: 50 },
-            ],
-        },
-        {
-            id: 'electronics',
-            name: 'Electronics (Model + Storage)',
-            opt1: 'Model / Finish',
-            opt2: 'Storage Capacity',
-            colors: [
-                { name: 'Space Gray', hex: '#374151' },
-                { name: 'Silver', hex: '#E5E7EB' },
-                { name: 'Midnight', hex: '#0F172A' },
-            ],
-            sizes: [
-                { name: '128GB', extra_price: 0 },
-                { name: '256GB', extra_price: 3000 },
-                { name: '512GB', extra_price: 7000 },
-            ],
-        },
-        {
-            id: 'food_pet',
-            name: 'Food & Pet (Flavor + Pack Size)',
-            opt1: 'Flavor / Recipe',
-            opt2: 'Pack Size',
-            colors: [
-                { name: 'Original Savory', hex: '#D97706' },
-                { name: 'Salmon & Tuna', hex: '#F43F5E' },
-                { name: 'Chicken & Veggie', hex: '#10B981' },
-            ],
-            sizes: [
-                { name: '500g Pouch', extra_price: 0 },
-                { name: '1kg Bag', extra_price: 250 },
-                { name: '2.5kg Value Pack', extra_price: 600 },
-            ],
-        },
-        {
-            id: 'beauty',
-            name: 'Beauty (Shade + Volume)',
-            opt1: 'Shade / Tone',
-            opt2: 'Volume',
-            colors: [
-                { name: '01 Fair Ivory', hex: '#FCE7F3' },
-                { name: '02 Natural Beige', hex: '#FDE68A' },
-                { name: '03 Warm Honey', hex: '#D97706' },
-            ],
-            sizes: [
-                { name: '30ml Travel', extra_price: 0 },
-                { name: '50ml Standard', extra_price: 350 },
-                { name: '100ml Jumbo', extra_price: 800 },
-            ],
-        },
-        {
-            id: 'home_furniture',
-            name: 'Home & Office (Finish + Dimensions)',
-            opt1: 'Material & Finish',
-            opt2: 'Dimensions',
-            colors: [
-                { name: 'Natural Oak', hex: '#D4A373' },
-                { name: 'Walnut Wood', hex: '#582F0E' },
-                { name: 'Matte Industrial Black', hex: '#18181B' },
-            ],
-            sizes: [
-                { name: '120 x 60 cm', extra_price: 0 },
-                { name: '140 x 70 cm', extra_price: 1200 },
-                { name: '160 x 80 cm', extra_price: 2500 },
-            ],
-        },
-    ];
-
-    const OPTION1_NAME_PRESETS = ['Color', 'Model', 'Flavor', 'Shade', 'Material', 'Edition', 'Pattern'];
-    const OPTION2_NAME_PRESETS = ['Size', 'Storage', 'Pack Size', 'Volume', 'Dimensions', 'Weight'];
-
     const enableOptionGroup = (groupNum: 1 | 2, isCreate: boolean, defaultName?: string) => {
+        markDraftAuxDirty(isCreate);
         if (groupNum === 1) {
             if (isCreate) {
                 setCreateHasOption1(true);
@@ -919,76 +1160,30 @@ export default function SellerProducts({ products, categories, shop, filters = {
                 if (defaultName) setEditOption2Name(defaultName);
             }
         }
+        const setVariants = isCreate ? setCreateVariants : setEditVariants;
+        setVariants((previous) => ({ ...previous, combinations: previous.combinations ?? [] }));
     };
 
     const disableOptionGroup = (groupNum: 1 | 2, isCreate: boolean) => {
+        markDraftAuxDirty(isCreate);
         if (groupNum === 1) {
             if (isCreate) {
                 setCreateHasOption1(false);
-                setCreateVariants((prev) => ({ ...prev, colors: [] }));
+                setCreateVariants((prev) => ({ ...prev, colors: [], combinations: createHasOption2 ? [] : undefined }));
                 setCreateDraftPhoto(null);
             } else {
                 setEditHasOption1(false);
-                setEditVariants((prev) => ({ ...prev, colors: [] }));
+                setEditVariants((prev) => ({ ...prev, colors: [], combinations: editHasOption2 ? [] : undefined }));
                 setEditDraftPhoto(null);
             }
         } else {
             if (isCreate) {
                 setCreateHasOption2(false);
-                setCreateVariants((prev) => ({ ...prev, sizes: [] }));
+                setCreateVariants((prev) => ({ ...prev, sizes: [], combinations: createHasOption1 ? [] : undefined }));
             } else {
                 setEditHasOption2(false);
-                setEditVariants((prev) => ({ ...prev, sizes: [] }));
+                setEditVariants((prev) => ({ ...prev, sizes: [], combinations: editHasOption1 ? [] : undefined }));
             }
-        }
-    };
-
-    const applyCategoryPreset = (presetId: string, isCreate: boolean) => {
-        const preset = CATEGORY_PRESETS.find(p => p.id === presetId);
-        if (!preset) return;
-
-        if (isCreate) {
-            setCreateHasOption1(true);
-            setCreateOption1Name(preset.opt1);
-            setCreateHasOption2(true);
-            setCreateOption2Name(preset.opt2);
-            setCreateVariants({
-                option1_name: preset.opt1,
-                option2_name: preset.opt2,
-                colors: preset.colors.map((c, idx) => ({
-                    id: `c_${Date.now()}_${idx}`,
-                    name: c.name,
-                    hex: c.hex,
-                    in_stock: true,
-                })),
-                sizes: preset.sizes.map((s, idx) => ({
-                    id: `s_${Date.now()}_${idx}`,
-                    name: s.name,
-                    extra_price: s.extra_price,
-                    stock: 25,
-                })),
-            });
-        } else {
-            setEditHasOption1(true);
-            setEditOption1Name(preset.opt1);
-            setEditHasOption2(true);
-            setEditOption2Name(preset.opt2);
-            setEditVariants({
-                option1_name: preset.opt1,
-                option2_name: preset.opt2,
-                colors: preset.colors.map((c, idx) => ({
-                    id: `c_${Date.now()}_${idx}`,
-                    name: c.name,
-                    hex: c.hex,
-                    in_stock: true,
-                })),
-                sizes: preset.sizes.map((s, idx) => ({
-                    id: `s_${Date.now()}_${idx}`,
-                    name: s.name,
-                    extra_price: s.extra_price,
-                    stock: 25,
-                })),
-            });
         }
     };
 
@@ -1009,6 +1204,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         const message = optionNameError(name, (isCreate ? createVariants : editVariants).colors);
         setOptionError(isCreate, 'colors', message);
         if (message) return;
+        markDraftAuxDirty(isCreate);
 
         const draft = isCreate ? createDraftPhoto : editDraftPhoto;
 
@@ -1023,7 +1219,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         };
 
         const setVariants = isCreate ? setCreateVariants : setEditVariants;
-        setVariants((prev) => ({ ...prev, colors: [...prev.colors, newColor] }));
+        setVariants((prev) => ({ ...prev, colors: [...prev.colors, newColor], combinations: prev.combinations ?? [] }));
 
         if (isCreate) {
             setNewCreateColorName('');
@@ -1037,6 +1233,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
     };
 
     const removeColor = (id: string, isCreate: boolean) => {
+        markDraftAuxDirty(isCreate);
         const setVariants = isCreate ? setCreateVariants : setEditVariants;
         setVariants((prev) => ({ ...prev, colors: prev.colors.filter(c => c.id !== id) }));
     };
@@ -1047,27 +1244,29 @@ export default function SellerProducts({ products, categories, shop, filters = {
         const message = optionNameError(name, (isCreate ? createVariants : editVariants).sizes);
         setOptionError(isCreate, 'sizes', message);
         if (message) return;
+        markDraftAuxDirty(isCreate);
 
         const newSize: VariantSize = {
             id: `s_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
             name,
             extra_price: extraPrice,
-            stock: 25,
+            stock: 0,
         };
 
         const setVariants = isCreate ? setCreateVariants : setEditVariants;
-        setVariants((prev) => ({ ...prev, sizes: [...prev.sizes, newSize] }));
+        setVariants((prev) => ({ ...prev, sizes: [...prev.sizes, newSize], combinations: prev.combinations ?? [] }));
 
         if (isCreate) {
             setNewCreateSizeName('');
-            setNewCreateSizePrice('0');
+            setNewCreateSizePrice('');
         } else {
             setNewEditSizeName('');
-            setNewEditSizePrice('0');
+            setNewEditSizePrice('');
         }
     };
 
     const removeSize = (id: string, isCreate: boolean) => {
+        markDraftAuxDirty(isCreate);
         const setVariants = isCreate ? setCreateVariants : setEditVariants;
         setVariants((prev) => ({ ...prev, sizes: prev.sizes.filter(s => s.id !== id) }));
     };
@@ -1075,22 +1274,22 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const renderVariantManager = (isCreate: boolean) => {
         const hasOption1 = isCreate ? createHasOption1 : editHasOption1;
         const option1Name = isCreate ? createOption1Name : editOption1Name;
-        const setOption1Name = isCreate ? setCreateOption1Name : setEditOption1Name;
+        const setOption1Name = (value: string) => { markDraftAuxDirty(isCreate); (isCreate ? setCreateOption1Name : setEditOption1Name)(value); };
 
         const hasOption2 = isCreate ? createHasOption2 : editHasOption2;
         const option2Name = isCreate ? createOption2Name : editOption2Name;
-        const setOption2Name = isCreate ? setCreateOption2Name : setEditOption2Name;
+        const setOption2Name = (value: string) => { markDraftAuxDirty(isCreate); (isCreate ? setCreateOption2Name : setEditOption2Name)(value); };
 
         const variants = isCreate ? createVariants : editVariants;
         const colorName = isCreate ? newCreateColorName : newEditColorName;
-        const setColorName = isCreate ? setNewCreateColorName : setNewEditColorName;
+        const setColorName = (value: string) => { markDraftAuxDirty(isCreate); (isCreate ? setNewCreateColorName : setNewEditColorName)(value); };
         const colorHex = isCreate ? newCreateColorHex : newEditColorHex;
-        const setColorHex = isCreate ? setNewCreateColorHex : setNewEditColorHex;
+        const setColorHex = (value: string) => { markDraftAuxDirty(isCreate); (isCreate ? setNewCreateColorHex : setNewEditColorHex)(value); };
         const draftPhoto = isCreate ? createDraftPhoto : editDraftPhoto;
         const sizeName = isCreate ? newCreateSizeName : newEditSizeName;
-        const setSizeName = isCreate ? setNewCreateSizeName : setNewEditSizeName;
+        const setSizeName = (value: string) => { markDraftAuxDirty(isCreate); (isCreate ? setNewCreateSizeName : setNewEditSizeName)(value); };
         const sizePrice = isCreate ? newCreateSizePrice : newEditSizePrice;
-        const setSizePrice = isCreate ? setNewCreateSizePrice : setNewEditSizePrice;
+        const setSizePrice = (value: string) => { markDraftAuxDirty(isCreate); (isCreate ? setNewCreateSizePrice : setNewEditSizePrice)(value); };
 
         const colorFeedback = optionDraftErrors[`${isCreate ? 'create' : 'edit'}.colors`] || (colorName ? optionNameError(colorName, variants.colors) : '');
         const sizeFeedback = optionDraftErrors[`${isCreate ? 'create' : 'edit'}.sizes`] || (sizeName ? optionNameError(sizeName, variants.sizes) : '');
@@ -1130,23 +1329,6 @@ export default function SellerProducts({ products, categories, shop, filters = {
                         </button>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-200/80 space-y-2">
-                        <p className="text-[11px] font-sans text-slate-400 font-bold uppercase tracking-wider">
-                            Quick Category Starter Presets:
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                            {CATEGORY_PRESETS.map((preset) => (
-                                <button
-                                    key={preset.id}
-                                    type="button"
-                                    onClick={() => applyCategoryPreset(preset.id, isCreate)}
-                                    className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:border-[#E00D42] hover:text-[#E00D42] text-slate-700 text-xs font-medium font-sans shadow-2xs transition flex items-center gap-1.5"
-                                >
-                                    <span>{preset.name}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
                 </div>
             );
         }
@@ -1154,26 +1336,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
         // 2. Active Variations UI
         return (
             <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-5 font-sans">
-                {/* Top Header & Presets Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
                     <div className="flex items-center gap-2">
                         <Layers className="w-4 h-4 text-[#E00D42]" />
                         <span className="font-bold text-xs uppercase tracking-wider text-slate-800 font-sans">
                             Product Variations & Options
                         </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-[11px] flex-wrap">
-                        <span className="text-slate-400 font-sans">Presets:</span>
-                        {CATEGORY_PRESETS.map((preset) => (
-                            <button
-                                key={preset.id}
-                                type="button"
-                                onClick={() => applyCategoryPreset(preset.id, isCreate)}
-                                className="px-2 py-0.5 rounded-lg bg-white border border-slate-200 hover:border-[#E00D42] hover:text-[#E00D42] text-slate-600 transition font-sans text-[10px]"
-                            >
-                                {preset.name.split(' (')[0]}
-                            </button>
-                        ))}
                     </div>
                 </div>
 
@@ -1195,24 +1363,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     <input
                                         type="text"
                                         value={option1Name}
+                                        maxLength={100}
                                         onChange={(e) => setOption1Name(e.target.value)}
                                         placeholder="e.g. Color, Model, Flavor, Shade..."
                                         className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:bg-white focus:ring-1 focus:ring-[#E00D42] w-full"
                                         title="Rename Option 1"
                                     />
-                                </div>
-                                <div className="flex items-center gap-1 flex-wrap text-[10px] font-sans text-slate-400">
-                                    <span>Suggestions:</span>
-                                    {OPTION1_NAME_PRESETS.map((name) => (
-                                        <button
-                                            key={name}
-                                            type="button"
-                                            onClick={() => setOption1Name(name)}
-                                            className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
-                                        >
-                                            {name}
-                                        </button>
-                                    ))}
                                 </div>
                             </div>
 
@@ -1384,24 +1540,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     <input
                                         type="text"
                                         value={option2Name}
+                                        maxLength={100}
                                         onChange={(e) => setOption2Name(e.target.value)}
                                         placeholder="e.g. Size, Storage, Pack Size, Volume..."
                                         className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:bg-white focus:ring-1 focus:ring-[#E00D42] w-full"
                                         title="Rename Option 2"
                                     />
-                                </div>
-                                <div className="flex items-center gap-1 flex-wrap text-[10px] font-sans text-slate-400">
-                                    <span>Suggestions:</span>
-                                    {OPTION2_NAME_PRESETS.map((name) => (
-                                        <button
-                                            key={name}
-                                            type="button"
-                                            onClick={() => setOption2Name(name)}
-                                            className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
-                                        >
-                                            {name}
-                                        </button>
-                                    ))}
                                 </div>
                             </div>
 
@@ -1457,11 +1601,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
                             <div className="w-32 relative">
                                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₱+</span>
                                 <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
+                                    type="text"
+                                    inputMode="decimal"
+                                    maxLength={11}
                                     value={sizePrice}
-                                    onChange={(e) => setSizePrice(e.target.value)}
+                                    onChange={(e) => { const value = acceptPriceDraft(e.target.value, 99999999.99); if (value !== null) setSizePrice(value); }}
                                     placeholder="Extra ₱"
                                     className="w-full pl-7 pr-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42]"
                                     title="Extra price modifier for this spec"
@@ -1487,34 +1631,13 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                 Add a secondary specification with optional price modifiers (e.g. Size, Storage, Pack Size, Volume).
                             </p>
                         </div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                            <button
-                                type="button"
-                                onClick={() => enableOptionGroup(2, isCreate, 'Size')}
-                                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-sans font-bold transition"
-                            >
-                                + Size
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => enableOptionGroup(2, isCreate, 'Storage')}
-                                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-sans font-bold transition"
-                            >
-                                + Storage
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => enableOptionGroup(2, isCreate, 'Pack Size')}
-                                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-sans font-bold transition"
-                            >
-                                + Pack Size
-                            </button>
+                        <div>
                             <button
                                 type="button"
                                 onClick={() => enableOptionGroup(2, isCreate, 'Specification / Size')}
                                 className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-[#E00D42] text-white text-xs font-sans font-bold uppercase transition"
                             >
-                                + Custom Option 2
+                                + Add option group
                             </button>
                         </div>
                     </div>
@@ -1525,12 +1648,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
     const renderGalleryManager = (isCreate: boolean) => {
         const imageMode = isCreate ? createImageMode : editImageMode;
-        const setImageMode = isCreate ? setCreateImageMode : setEditImageMode;
+        const setImageMode = (value: 'file' | 'url') => { markDraftAuxDirty(isCreate); (isCreate ? setCreateImageMode : setEditImageMode)(value); };
         const gallery = isCreate ? createGallery : editGallery;
         const fileError = isCreate ? createFileError : editFileError;
         const fileInputRef = isCreate ? createFileInputRef : editFileInputRef;
         const urlInput = isCreate ? createUrlInput : editUrlInput;
-        const setUrlInput = isCreate ? setCreateUrlInput : setEditUrlInput;
+        const setUrlInput = (value: string) => { markDraftAuxDirty(isCreate); (isCreate ? setCreateUrlInput : setEditUrlInput)(value); };
         const dragIndex = isCreate ? createDragIndex : editDragIndex;
         const dragOverIndex = isCreate ? createDragOverIndex : editDragOverIndex;
         const galleryErrors = (isCreate ? createForm : editForm).errors;
@@ -1681,11 +1804,14 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         }`}
                                     >
                                         <div className="relative w-full h-24 bg-slate-100 cursor-grab active:cursor-grabbing">
-                                            <img
+                                            {item.url ? <img
                                                 src={item.url}
                                                 alt={item.name || `Image ${index + 1}`}
                                                 className="w-full h-full object-cover"
-                                            />
+                                            /> : <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-rose-700 text-[10px] font-medium">
+                                                <ImageIcon className="w-5 h-5" />
+                                                <span>Unavailable; remove and upload again</span>
+                                            </div>}
                                             <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
                                                 {isPrimary ? (
                                                     <span className="bg-emerald-600 text-white font-bold text-[9px] font-sans uppercase px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5">
@@ -1745,6 +1871,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         const isCreate = activePhotoPicker.isCreate;
         const colorId = activePhotoPicker.colorId;
         const gallery = isCreate ? createGallery : editGallery;
+        const variants = isCreate ? createVariants : editVariants;
         const setGallery = isCreate ? setCreateGallery : setEditGallery;
         const fileError = isCreate ? createFileError : editFileError;
         const setFileError = isCreate ? setCreateFileError : setEditFileError;
@@ -1760,7 +1887,6 @@ export default function SellerProducts({ products, categories, shop, filters = {
             currentUrl = isCreate ? createDraftPhoto?.image_url || null : editDraftPhoto?.image_url || null;
             currentGalleryItemId = isCreate ? createDraftPhoto?.gallery_item_id || null : editDraftPhoto?.gallery_item_id || null;
         } else {
-            const variants = isCreate ? createVariants : editVariants;
             const targetColor = variants.colors.find((c) => c.id === colorId);
             targetName = targetColor?.name || 'Color Edition';
             targetHex = targetColor?.hex || '#111111';
@@ -1857,27 +1983,38 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
                                     {gallery.map((item, idx) => {
                                         const isSelected = currentUrl === item.url || currentGalleryItemId === item.id;
+                                        const assignedTo = variants.colors.find((color) => color.id !== colorId && (
+                                            color.gallery_item_id === item.id || color.image_url === item.url
+                                        ));
                                         return (
                                             <button
                                                 key={item.id || idx}
                                                 type="button"
+                                                disabled={!!assignedTo || !item.url}
                                                 onClick={() => assignColorPhoto(isCreate, colorId, item.url, item.id, idx)}
-                                                className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition group flex flex-col items-center justify-center ${
+                                                title={assignedTo ? `Already assigned to ${assignedTo.name}` : item.url ? 'Select this photo' : 'Remove this unavailable image and upload it again'}
+                                                className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition group flex flex-col items-center justify-center disabled:cursor-not-allowed disabled:opacity-50 ${
                                                     isSelected
                                                         ? 'border-[#E00D42] ring-3 ring-[#E00D42]/20 shadow-md'
                                                         : 'border-slate-200 hover:border-slate-400 hover:shadow-xs bg-slate-50'
                                                 }`}
                                             >
-                                                <img
+                                                {item.url ? <img
                                                     src={item.url}
                                                     alt={`Gallery item ${idx + 1}`}
                                                     className="w-full h-full object-cover"
-                                                />
+                                                /> : <span className="px-2 text-center text-rose-700 text-[10px]">Unavailable image</span>}
                                                 <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/60 text-white font-sans text-[9px] font-bold">
                                                     #{idx + 1}
                                                 </span>
 
-                                                {isSelected ? (
+                                                {assignedTo ? (
+                                                    <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center">
+                                                        <span className="px-2 py-1 rounded-full bg-slate-900 text-white font-bold text-[10px] shadow-sm font-sans">
+                                                            Assigned: {assignedTo.name}
+                                                        </span>
+                                                    </div>
+                                                ) : isSelected ? (
                                                     <div className="absolute inset-0 bg-[#E00D42]/20 flex items-center justify-center">
                                                         <span className="px-2 py-1 rounded-full bg-[#E00D42] text-white font-bold text-[10px] flex items-center gap-1 shadow-md font-sans">
                                                             <Check className="w-3 h-3" /> Selected
@@ -1912,7 +2049,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     onChange={(e) => {
                                         const file = e.target.files?.[0];
                                         if (!file) return;
-                                        if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+                                        if (gallery.length >= 9) {
+                                            setFileError('Use no more than 9 product images. Remove an image before adding another.');
+                                            e.target.value = '';
+                                            return;
+                                        }
+                                        if (!ALLOWED_MIME_TYPES.includes(file.type.toLowerCase())) {
                                             setFileError('Invalid format. Please upload JPG, PNG, WEBP, or GIF.');
                                             e.target.value = '';
                                             return;
@@ -1963,6 +2105,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                             e.preventDefault();
                                             const val = (e.currentTarget as HTMLInputElement).value.trim();
                                             if (!val) return;
+                                            if (gallery.length >= 9) { setFileError('Use no more than 9 product images. Remove an image before adding another.'); return; }
                                             const newItem: GalleryItem = {
                                                 id: `var_url_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
                                                 type: 'url',
@@ -1980,6 +2123,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         const input = document.getElementById('variantPhotoUrlInput') as HTMLInputElement | null;
                                         const val = input?.value.trim();
                                         if (!val) return;
+                                        if (gallery.length >= 9) { setFileError('Use no more than 9 product images. Remove an image before adding another.'); return; }
                                         const newItem: GalleryItem = {
                                             id: `var_url_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
                                             type: 'url',
@@ -2067,20 +2211,25 @@ export default function SellerProducts({ products, categories, shop, filters = {
         <DashboardLayout
             title="Products"
             subtitle={`Catalog and inventory for ${shop.name}`}
-            actions={
-                <button
-                    onClick={openCreate}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-sans rounded-xl shadow-xs transition uppercase"
-                >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>List New Product</span>
-                </button>
-            }
         >
             <Head title="Products — BagooPH Seller" />
 
             <div className="space-y-6 font-sans">
                 {filterError && <p role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">{filterError}</p>}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white p-4 shadow-2xs">
+                    <div>
+                        <h2 className="text-sm font-bold text-slate-900">Your product catalog</h2>
+                        <p className="mt-1 text-xs text-slate-500">Create a draft or publish a product listing.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={openCreate}
+                        className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-[#E00D42] px-4 py-2 text-xs font-bold uppercase text-white shadow-xs transition hover:bg-[#C20836]"
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                        <span>List New Product</span>
+                    </button>
+                </div>
                 
                 {/* Search and Stats Filter */}
                 <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-300 shadow-2xs space-y-4">
@@ -2505,7 +2654,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                     {/* Backdrop */}
                     <div 
                         className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-fade-in transition-opacity cursor-pointer"
-                        onClick={() => setIsCreateOpen(false)}
+                        onClick={closeCreate}
                     />
 
                     {/* Right Drawer Panel: Full Screen on Small Devices, Right Slide-Over on Desktop */}
@@ -2527,7 +2676,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                             </div>
                             <button 
                                 type="button"
-                                onClick={() => setIsCreateOpen(false)} 
+                                onClick={closeCreate}
                                 className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0"
                                 title="Close sidebar"
                             >
@@ -2538,6 +2687,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                         {/* Scrollable Form & Sticky Footer */}
                         <form onSubmit={handleCreate} className="flex-1 flex flex-col min-h-0">
                             <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-7 sm:py-9 space-y-7 sm:space-y-8 text-xs font-sans">
+                                {createDraftNotice && <p role="status" className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">{createDraftNotice}</p>}
                                 {/* Top Section: Catalog Details & Pricing */}
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/80">
@@ -2570,17 +2720,10 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                                         <div>
                                             <label className="block font-bold text-slate-700 uppercase mb-2">
-                                                Department Category <span className="text-[#E00D42]">*</span>
+                                                Approved Department
                                             </label>
-                                            <select
-                                                value={createForm.data.category_id}
-                                                onChange={(e) => createForm.setData('category_id', e.target.value)}
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
-                                            >
-                                                {categories.map((c) => (
-                                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                                ))}
-                                            </select>
+                                            <input type="hidden" name="category_id" value={shop.root_category_id ?? ''} />
+                                            <div className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800" aria-label="Approved department, fixed for this shop">{shop.root_category?.name ?? categories[0]?.name ?? 'Department unavailable'}</div>
                                         </div>
                                         <div>
                                             <div className="flex items-center justify-between mb-2">
@@ -2603,12 +2746,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 Price (₱) <span className="text-[#E00D42]">*</span>
                                             </label>
                                             <input
-                                                type="number"
-                                                step="0.01"
+                                                type="text"
+                                                inputMode="decimal"
+                                                maxLength={10}
                                                 value={createForm.data.price}
-                                                min={1}
-                                                max={1000000}
-                                                onChange={(e) => createForm.setData('price', e.target.value)}
+                                                onChange={(e) => { const value = acceptPriceDraft(e.target.value); if (value !== null) createForm.setData('price', value); }}
                                                 required
                                                 placeholder="1299.00"
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
@@ -2620,10 +2762,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 Slashed Price (₱)
                                             </label>
                                             <input
-                                                type="number"
-                                                step="0.01"
+                                                type="text"
+                                                inputMode="decimal"
+                                                maxLength={11}
                                                 value={createForm.data.compare_at_price}
-                                                onChange={(e) => createForm.setData('compare_at_price', e.target.value)}
+                                                onChange={(e) => { const value = acceptPriceDraft(e.target.value, 99999999.99); if (value !== null) createForm.setData('compare_at_price', value); }}
                                                 placeholder="1799.00"
                                                 className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:ring-1 transition font-sans text-xs ${
                                                     createSlashedPriceError
@@ -2646,13 +2789,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 Warehouse Stock <span className="text-[#E00D42]">*</span>
                                             </label>
                                             <input
-                                                type="number"
+                                                type="text"
+                                                inputMode="numeric"
                                                 disabled={createVariants.combinations !== undefined}
-                                                min={0}
-                                                max={99999}
-                                                step={1}
+                                                maxLength={5}
                                                 value={createVariants.combinations ? createVariants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0) : createForm.data.stock}
-                                                onChange={(e) => createForm.setData('stock', e.target.value)}
+                                                onChange={(e) => { const value = acceptStockDraft(e.target.value); if (value !== null) createForm.setData('stock', value); }}
                                                 required
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                             />
@@ -2663,7 +2805,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(true)}
-                                <VariantStockMatrix colors={createHasOption1 ? createVariants.colors : []} sizes={createHasOption2 ? createVariants.sizes : []} value={createVariants.combinations} pricingMode={createVariants.pricing_mode ?? 'independent'} onPricingModeChange={pricing_mode => setCreateVariants(previous => ({ ...previous, pricing_mode }))} basePrice={createForm.data.price} listingSku={createForm.data.sku} errors={createForm.errors} onChange={combinations => setCreateVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(true)} />
+                                <VariantStockMatrix colors={createHasOption1 ? createVariants.colors : []} sizes={createHasOption2 ? createVariants.sizes : []} value={createVariants.combinations} pricingMode={createVariants.pricing_mode ?? 'independent'} onPricingModeChange={pricing_mode => { markDraftAuxDirty(true); setCreateVariants(previous => ({ ...previous, pricing_mode })); }} basePrice={createForm.data.price} listingSku={createForm.data.sku} errors={createForm.errors} onChange={combinations => { markDraftAuxDirty(true); setCreateVariants(previous => ({ ...previous, combinations })); }} error={variantFeedback(true)} />
                                 <div className="rounded-lg border border-slate-300 p-4">
                                     <label className="block text-sm font-bold text-slate-900" htmlFor="createForm-purchase-limit">Purchase limit per buyer</label>
                                     <input id="createForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={createForm.data.purchase_limit} onChange={event => createForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
@@ -2696,7 +2838,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     />
                                 </div>
                                 {createForm.errors.request_token && <p role="alert" className="text-sm text-rose-700">{createForm.errors.request_token}</p>}
-                                <SellerListingDetails data={createForm.data} errors={createForm.errors} categories={storeCategories} onChange={(key, value) => createForm.setData(current => ({ ...current, [key]: value }))} />
+                                <SellerListingDetails data={createForm.data} errors={createForm.errors} tags={storeTags} departmentName={shop.root_category?.name ?? categories[0]?.name ?? ''} productName={createForm.data.name} onChange={(key, value) => createForm.setData(current => ({ ...current, [key]: value }))} />
 
                             </div>
 
@@ -2710,14 +2852,22 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     ) : (
                                         <span>Complete required details to save or publish.</span>
                                     )}
+                                    <span className="mt-1 block text-[10px] text-slate-500">{createDraftSaved ? 'Saved on this device.' : 'Saved automatically after 3 seconds idle.'}</span>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2.5">
                                     <button
                                         type="button"
-                                        onClick={() => setIsCreateOpen(false)}
+                                        onClick={closeCreate}
                                         className="px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-sans font-bold rounded-xl uppercase transition text-xs shadow-2xs"
                                     >
                                         Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={discardCreateDraft}
+                                        className="px-3 py-2.5 bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 font-sans font-bold rounded-xl transition text-xs"
+                                    >
+                                        Discard local recovery
                                     </button>
                                     <button
                                         type="submit"
@@ -2753,7 +2903,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                     {/* Backdrop */}
                     <div 
                         className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-fade-in transition-opacity cursor-pointer"
-                        onClick={() => setEditingProduct(null)}
+                        onClick={closeEdit}
                     />
 
                     {/* Right Drawer Panel: Full Screen on Small Devices, Right Slide-Over on Desktop */}
@@ -2775,7 +2925,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                             </div>
                             <button 
                                 type="button"
-                                onClick={() => setEditingProduct(null)} 
+                                onClick={closeEdit}
                                 className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0"
                                 title="Close sidebar"
                             >
@@ -2786,6 +2936,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
                         {/* Scrollable Form & Sticky Footer */}
                         <form onSubmit={handleUpdate} className="flex-1 flex flex-col min-h-0">
                             <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-7 sm:py-9 space-y-7 sm:space-y-8 text-xs font-sans">
+                                {editDraftNotice && <p role="status" className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">{editDraftNotice}</p>}
                                 {/* Top Section: Catalog Details & Pricing */}
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/80">
@@ -2817,28 +2968,33 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                                         <div>
                                             <label className="block font-bold text-slate-700 uppercase mb-2">Status</label>
-                                            <select
-                                                value={editForm.data.status}
-                                                onChange={(e) => editForm.setData('status', e.target.value as any)}
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
-                                            >
-                                                <option value="active">Active Listing</option>
-                                                <option value="draft">Draft Mode</option>
-                                                <option value="archived">Archived</option>
-                                            </select>
+                                            {editingProduct.status === 'draft' ? (
+                                                <div role="status" className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
+                                                    Draft · Update keeps this private. Use Publish when it is ready for buyers.
+                                                </div>
+                                            ) : (
+                                                <select
+                                                    value={editForm.data.status}
+                                                    onChange={(e) => editForm.setData('status', e.target.value as any)}
+                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
+                                                >
+                                                    <option value="active">Active Listing</option>
+                                                    <option value="draft">Draft Mode</option>
+                                                    <option value="archived">Archived</option>
+                                                </select>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="block font-bold text-slate-700 uppercase mb-2">
                                                 Warehouse Stock <span className="text-[#E00D42]">*</span>
                                             </label>
                                             <input
-                                                type="number"
+                                                type="text"
+                                                inputMode="numeric"
                                                 disabled={editVariants.combinations !== undefined}
-                                                min={0}
-                                                max={99999}
-                                                step={1}
+                                                maxLength={5}
                                                 value={editVariants.combinations ? editVariants.combinations.reduce((total, row) => total + Number(row.stock || 0), 0) : editForm.data.stock}
-                                                onChange={(e) => editForm.setData('stock', e.target.value)}
+                                                onChange={(e) => { const value = acceptStockDraft(e.target.value); if (value !== null) editForm.setData('stock', value); }}
                                                 required
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                             />
@@ -2852,12 +3008,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 Price (₱) <span className="text-[#E00D42]">*</span>
                                             </label>
                                             <input
-                                                type="number"
-                                                step="0.01"
+                                                type="text"
+                                                inputMode="decimal"
+                                                maxLength={10}
                                                 value={editForm.data.price}
-                                                min={1}
-                                                max={1000000}
-                                                onChange={(e) => editForm.setData('price', e.target.value)}
+                                                onChange={(e) => { const value = acceptPriceDraft(e.target.value); if (value !== null) editForm.setData('price', value); }}
                                                 required
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
                                             />
@@ -2868,10 +3023,11 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 Slashed Price (₱)
                                             </label>
                                             <input
-                                                type="number"
-                                                step="0.01"
+                                                type="text"
+                                                inputMode="decimal"
+                                                maxLength={11}
                                                 value={editForm.data.compare_at_price}
-                                                onChange={(e) => editForm.setData('compare_at_price', e.target.value)}
+                                                onChange={(e) => { const value = acceptPriceDraft(e.target.value, 99999999.99); if (value !== null) editForm.setData('compare_at_price', value); }}
                                                 placeholder="1799.00"
                                                 className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-slate-900 focus:bg-white focus:ring-1 transition font-sans text-xs ${
                                                     editSlashedPriceError
@@ -2893,16 +3049,9 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                                         <div>
-                                            <label className="block font-bold text-slate-700 uppercase mb-2">Department Category</label>
-                                            <select
-                                                value={editForm.data.category_id}
-                                                onChange={(e) => editForm.setData('category_id', e.target.value)}
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] font-sans text-xs transition"
-                                            >
-                                                {categories.map((c) => (
-                                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                                ))}
-                                            </select>
+                                            <label className="block font-bold text-slate-700 uppercase mb-2">Approved Department</label>
+                                            <input type="hidden" name="category_id" value={shop.root_category_id ?? ''} />
+                                            <div className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800" aria-label="Approved department, fixed for this shop">{shop.root_category?.name ?? categories[0]?.name ?? 'Department unavailable'}</div>
                                         </div>
                                         <div>
                                             <div className="flex items-center justify-between mb-2">
@@ -2922,7 +3071,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                 {/* Dynamic Product Variant & Options Builder */}
                                 {renderVariantManager(false)}
-                                <VariantStockMatrix colors={editHasOption1 ? editVariants.colors : []} sizes={editHasOption2 ? editVariants.sizes : []} value={editVariants.combinations} pricingMode={editVariants.pricing_mode ?? 'surcharge'} onPricingModeChange={pricing_mode => setEditVariants(previous => ({ ...previous, pricing_mode }))} basePrice={editForm.data.price} listingSku={editForm.data.sku} errors={editForm.errors} onChange={combinations => setEditVariants(previous => ({ ...previous, combinations }))} error={variantFeedback(false)} />
+                                <VariantStockMatrix colors={editHasOption1 ? editVariants.colors : []} sizes={editHasOption2 ? editVariants.sizes : []} value={editVariants.combinations} pricingMode={editVariants.pricing_mode ?? 'surcharge'} onPricingModeChange={pricing_mode => { markDraftAuxDirty(false); setEditVariants(previous => ({ ...previous, pricing_mode })); }} basePrice={editForm.data.price} listingSku={editForm.data.sku} errors={editForm.errors} onChange={combinations => { markDraftAuxDirty(false); setEditVariants(previous => ({ ...previous, combinations })); }} error={variantFeedback(false)} />
                                 <div className="rounded-lg border border-slate-300 p-4">
                                     <label className="block text-sm font-bold text-slate-900" htmlFor="editForm-purchase-limit">Purchase limit per buyer</label>
                                     <input id="editForm-purchase-limit" type="number" min="1" max="1000000" step="1" value={editForm.data.purchase_limit} onChange={event => editForm.setData('purchase_limit', event.target.value)} placeholder="No limit" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
@@ -2953,28 +3102,46 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         onUseDescription={description => editForm.setData('description', description)}
                                     />
                                 </div>
-                                <SellerListingDetails data={editForm.data} errors={editForm.errors} categories={storeCategories} onChange={(key, value) => editForm.setData(current => ({ ...current, [key]: value }))} />
+                                <SellerListingDetails data={editForm.data} errors={editForm.errors} tags={storeTags} departmentName={shop.root_category?.name ?? categories[0]?.name ?? ''} productName={editForm.data.name} onChange={(key, value) => editForm.setData(current => ({ ...current, [key]: value }))} />
 
                             </div>
 
                             {/* Sticky Action Footer */}
-                            <div className="px-6 sm:px-8 py-4 sm:py-5 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-between shrink-0 sticky bottom-0 z-20">
-                                <div className="text-xs text-slate-500 font-sans">
+                            <div className="px-6 sm:px-8 py-4 sm:py-5 bg-slate-50/95 backdrop-blur-md border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0 sticky bottom-0 z-20">
+                                <div className="text-xs text-slate-500 font-sans min-w-0">
                                     <span>Status: <strong className="capitalize text-slate-800">{editForm.data.status}</strong></span>
+                                    <span className="mt-1 block text-[10px] text-slate-500">{editDraftSaved ? 'Saved on this device.' : 'Saved automatically after 3 seconds idle.'}</span>
                                 </div>
-                                <div className="flex items-center gap-2.5">
+                                <div className="flex flex-wrap items-center justify-end gap-2.5">
                                     <button
                                         type="button"
-                                        onClick={() => setEditingProduct(null)}
+                                        onClick={closeEdit}
                                         className="px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-sans font-bold rounded-xl uppercase transition text-xs shadow-2xs"
                                     >
                                         Cancel
                                     </button>
                                     <button
+                                        type="button"
+                                        onClick={discardEditDraft}
+                                        className="px-3 py-2.5 bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 font-sans font-bold rounded-xl transition text-xs"
+                                    >
+                                        Discard local recovery
+                                    </button>
+                                    {editingProduct.status === 'draft' && <button
                                         type="submit"
-                                        formNoValidate={editForm.data.status !== 'active'}
+                                        value="publish"
                                         disabled={editForm.processing || editSlashedPriceError}
                                         className="px-6 py-2.5 bg-[#E00D42] hover:bg-[#C20836] text-white font-sans font-bold rounded-xl uppercase shadow-sm transition disabled:opacity-50 text-xs flex items-center gap-1.5"
+                                    >
+                                        <Check className="w-4 h-4" />
+                                        <span>Publish</span>
+                                    </button>}
+                                    <button
+                                        type="submit"
+                                        value="update"
+                                        formNoValidate={editingProduct.status === 'draft' || editForm.data.status !== 'active'}
+                                        disabled={editForm.processing || editSlashedPriceError}
+                                        className={`px-6 py-2.5 font-sans font-bold rounded-xl uppercase shadow-sm transition disabled:opacity-50 text-xs flex items-center gap-1.5 ${editingProduct.status === 'draft' ? 'border border-slate-300 bg-white text-slate-800 hover:bg-slate-100' : 'bg-[#E00D42] text-white hover:bg-[#C20836]'}`}
                                     >
                                         <Check className="w-4 h-4" />
                                         <span>Update Listing</span>

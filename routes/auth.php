@@ -128,6 +128,10 @@ Route::middleware('auth')->group(function () {
     Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
 
     Route::put('password', [PasswordController::class, 'update'])->name('password.update');
+    Route::post('password/google/code', [PasswordController::class, 'sendGoogleCode'])
+        ->middleware('throttle:web-otp-send')->name('password.google.code');
+    Route::put('password/google', [PasswordController::class, 'setGooglePassword'])
+        ->middleware('throttle:web-otp-verify')->name('password.google.update');
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');

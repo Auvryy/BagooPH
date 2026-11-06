@@ -61,6 +61,7 @@ use App\Http\Controllers\LogisticsEarningsController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PromotionContentAssistantController;
 use App\Http\Controllers\PublicTrackingController;
 /*
 |--------------------------------------------------------------------------
@@ -77,7 +78,6 @@ use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerShopController;
-use App\Http\Controllers\Seller\SellerStoreCategoryController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\SellerSettlementController;
 use App\Http\Controllers\ShopVerificationDocumentController;
@@ -248,12 +248,11 @@ $registerSellerRoutes = function () {
 
     Route::middleware(['auth', 'subdomain.role:seller'])->group(function () {
         Route::get('/dashboard', [SellerDashboardController::class, 'index']);
-        Route::get('/store-categories', [SellerStoreCategoryController::class, 'index']);
-        Route::post('/store-categories', [SellerStoreCategoryController::class, 'store']);
-        Route::post('/store-categories/reorder', [SellerStoreCategoryController::class, 'reorder']);
-        Route::get('/store-categories/{storeCategory}/preview', [SellerStoreCategoryController::class, 'preview']);
-        Route::put('/store-categories/{storeCategory}', [SellerStoreCategoryController::class, 'update']);
-        Route::delete('/store-categories/{storeCategory}', [SellerStoreCategoryController::class, 'destroy']);
+        Route::get('/store-categories', fn () => redirect('/store-tags'));
+        Route::get('/store-tags', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'index']);
+        Route::post('/store-tags', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'store']);
+        Route::put('/store-tags/{storeTag}', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'update'])->whereNumber('storeTag');
+        Route::delete('/store-tags/{storeTag}', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'destroy'])->whereNumber('storeTag');
         Route::get('/products', [SellerProductController::class, 'index']);
         Route::get('/products/{product}/sales', [ProductSaleController::class, 'index'])->where(['product' => '[1-9][0-9]{0,17}']);
         Route::post('/products/{product}/sales', [ProductSaleController::class, 'store'])->where(['product' => '[1-9][0-9]{0,17}']);
@@ -262,6 +261,7 @@ $registerSellerRoutes = function () {
         Route::post('/products', [SellerProductController::class, 'store']);
         Route::post('/products/bulk', [SellerProductController::class, 'bulk']);
         Route::post('/products/{product}/duplicate', [SellerProductController::class, 'duplicate']);
+        Route::post('/products/assist-tags', [\App\Http\Controllers\Seller\SellerTagAssistantController::class, 'assist'])->middleware('throttle:20,1');
         Route::patch('/products/{product}/stock', [SellerProductController::class, 'updateStock']);
         Route::match(['put', 'post'], '/products/{product}', [SellerProductController::class, 'update']);
         Route::delete('/products/{product}', [SellerProductController::class, 'destroy']);
@@ -287,8 +287,10 @@ $registerSellerRoutes = function () {
             Route::get('/', [SellerPromotionController::class, 'index']);
             Route::get('/create', [SellerPromotionController::class, 'create']);
             Route::post('/', [SellerPromotionController::class, 'store']);
+            Route::post('/assist', [PromotionContentAssistantController::class, 'seller'])->middleware('throttle:12,1');
             Route::get('/artwork/{asset}', [SellerPromotionController::class, 'artwork'])->whereNumber('asset');
             Route::get('/{advertisement}', [SellerPromotionController::class, 'show'])->whereNumber('advertisement');
+            Route::post('/{advertisement}/assist', [PromotionContentAssistantController::class, 'seller'])->whereNumber('advertisement')->middleware('throttle:12,1');
             Route::post('/{advertisement}/draft', [SellerPromotionController::class, 'update'])->whereNumber('advertisement');
             Route::post('/{advertisement}/actions', [SellerPromotionController::class, 'action'])->whereNumber('advertisement');
             Route::get('/{advertisement}/preview', [SellerPromotionController::class, 'preview'])->whereNumber('advertisement');
@@ -635,7 +637,7 @@ Route::middleware('auth')->group(function () {
 Route::get('/products', [BuyerProductController::class, 'search'])->name('products.index');
 Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog.index');
 Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
-Route::get('/shop/{slug}/categories/{storeCategory}', [MarketplaceController::class, 'shop'])->whereNumber('storeCategory')->name('shop.categories.show');
+Route::get('/shop/{slug}/categories/{storeCategory}', fn (string $slug) => redirect()->route('shop.show', $slug))->whereNumber('storeCategory')->name('shop.categories.show');
 Route::get('/shop/{slug}', [MarketplaceController::class, 'shop'])->name('shop.show');
 Route::post('/shop/{slug}/update-branding', [MarketplaceController::class, 'updateBranding'])->middleware(['auth', 'role:seller'])->name('shop.updateBranding');
 
@@ -695,12 +697,11 @@ Route::middleware('auth')->group(function () {
 */
 Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->group(function () {
     Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/store-categories', [SellerStoreCategoryController::class, 'index'])->name('store-categories.index');
-    Route::post('/store-categories', [SellerStoreCategoryController::class, 'store'])->name('store-categories.store');
-    Route::post('/store-categories/reorder', [SellerStoreCategoryController::class, 'reorder'])->name('store-categories.reorder');
-    Route::get('/store-categories/{storeCategory}/preview', [SellerStoreCategoryController::class, 'preview'])->name('store-categories.preview');
-    Route::put('/store-categories/{storeCategory}', [SellerStoreCategoryController::class, 'update'])->name('store-categories.update');
-    Route::delete('/store-categories/{storeCategory}', [SellerStoreCategoryController::class, 'destroy'])->name('store-categories.destroy');
+    Route::get('/store-categories', fn () => redirect()->route('seller.store-tags.index'))->name('store-categories.index');
+    Route::get('/store-tags', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'index'])->name('store-tags.index');
+    Route::post('/store-tags', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'store'])->name('store-tags.store');
+    Route::put('/store-tags/{storeTag}', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'update'])->whereNumber('storeTag')->name('store-tags.update');
+    Route::delete('/store-tags/{storeTag}', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'destroy'])->whereNumber('storeTag')->name('store-tags.destroy');
     Route::get('/products', [SellerProductController::class, 'index'])->name('products.index');
     Route::get('/products/{product}/sales', [ProductSaleController::class, 'index'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.index');
     Route::post('/products/{product}/sales', [ProductSaleController::class, 'store'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.store');
@@ -712,6 +713,9 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/products/assist-description', [SellerAiAssistantController::class, 'generateDescription'])
         ->middleware('throttle:20,1')
         ->name('products.assist-description');
+    Route::post('/products/assist-tags', [\App\Http\Controllers\Seller\SellerTagAssistantController::class, 'assist'])
+        ->middleware('throttle:20,1')
+        ->name('products.assist-tags');
     Route::patch('/products/{product}/stock', [SellerProductController::class, 'updateStock'])->name('products.stock.update');
     Route::match(['put', 'post'], '/products/{product}', [SellerProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{product}', [SellerProductController::class, 'destroy'])->name('products.destroy');
@@ -737,8 +741,10 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
         Route::get('/', [SellerPromotionController::class, 'index'])->name('index');
         Route::get('/create', [SellerPromotionController::class, 'create'])->name('create');
         Route::post('/', [SellerPromotionController::class, 'store'])->name('store');
+        Route::post('/assist', [PromotionContentAssistantController::class, 'seller'])->middleware('throttle:12,1')->name('assist');
         Route::get('/artwork/{asset}', [SellerPromotionController::class, 'artwork'])->whereNumber('asset')->name('artwork');
         Route::get('/{advertisement}', [SellerPromotionController::class, 'show'])->whereNumber('advertisement')->name('show');
+        Route::post('/{advertisement}/assist', [PromotionContentAssistantController::class, 'seller'])->whereNumber('advertisement')->middleware('throttle:12,1')->name('assist.existing');
         Route::post('/{advertisement}/draft', [SellerPromotionController::class, 'update'])->whereNumber('advertisement')->name('update');
         Route::post('/{advertisement}/actions', [SellerPromotionController::class, 'action'])->whereNumber('advertisement')->name('action');
         Route::get('/{advertisement}/preview', [SellerPromotionController::class, 'preview'])->whereNumber('advertisement')->name('preview');
@@ -823,8 +829,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/create', [AdminAdvertisementController::class, 'create'])->name('create');
         Route::post('/', [AdminAdvertisementController::class, 'store'])->name('store');
         Route::post('/import', [AdminAdvertisementController::class, 'import'])->name('import');
+        Route::post('/assist', [PromotionContentAssistantController::class, 'admin'])->middleware('throttle:12,1')->name('assist');
         Route::get('/artwork/{asset}', [AdminAdvertisementController::class, 'artwork'])->whereNumber('asset')->name('artwork');
         Route::get('/{advertisement}', [AdminAdvertisementController::class, 'show'])->whereNumber('advertisement')->name('show');
+        Route::post('/{advertisement}/assist', [PromotionContentAssistantController::class, 'admin'])->whereNumber('advertisement')->middleware('throttle:12,1')->name('assist.existing');
         Route::post('/{advertisement}/draft', [AdminAdvertisementController::class, 'update'])->whereNumber('advertisement')->name('update');
         Route::post('/{advertisement}/actions', [AdminAdvertisementController::class, 'action'])->whereNumber('advertisement')->name('action');
         Route::post('/{advertisement}/review', [AdminAdvertisementController::class, 'review'])->whereNumber('advertisement')->name('review');

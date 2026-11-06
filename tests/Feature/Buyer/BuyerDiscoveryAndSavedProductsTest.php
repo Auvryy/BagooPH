@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Review;
 use App\Models\SavedProduct;
 use App\Models\Shop;
+use App\Models\StoreTag;
 use App\Models\User;
 use App\Services\Commerce\SavedProductService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -78,6 +79,20 @@ class BuyerDiscoveryAndSavedProductsTest extends TestCase
         $this->get('/buyer/search?search=wARM%20cOTton')->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Buyer/Search')
                 ->where('products.data.0.id', $product->id));
+    }
+
+    public function test_search_matches_and_ranks_a_flat_tag_only_match_above_a_description_match(): void
+    {
+        $shop = Shop::factory()->approved()->create();
+        $tagOnly = Product::factory()->create(['shop_id' => $shop->id, 'name' => 'Weekend Carryall', 'description' => 'Canvas handles for daily use.']);
+        $description = Product::factory()->create(['shop_id' => $shop->id, 'name' => 'Everyday Pouch', 'description' => 'A small travel tote for essentials.']);
+        $tag = StoreTag::create(['shop_id' => $shop->id, 'name' => 'Travel Tote', 'normalized_name' => 'travel tote']);
+        $tagOnly->storeTags()->sync([$tag->id]);
+
+        $this->get('/buyer/search?search=travel%20tote')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('products.total', 2)
+            ->where('products.data.0.id', $tagOnly->id)
+            ->where('products.data.1.id', $description->id));
     }
 
     public function test_search_matches_all_terms_in_any_order_ranks_text_matches_and_recommends_related_products(): void
@@ -277,6 +292,9 @@ class BuyerDiscoveryAndSavedProductsTest extends TestCase
         SavedProduct::create(['buyer_id' => $buyer->id, 'product_id' => $product->id]);
         $cart = Cart::create(['user_id' => $buyer->id]);
         $line = CartItem::create(['cart_id' => $cart->id, 'product_id' => $product->id, 'quantity' => 1, 'unit_price' => $product->price]);
+
+        $this->actingAs($buyer)->get('/buyer/search')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('cartItemIdsByProduct.'.$product->id, $line->id));
 
         $this->actingAs($buyer)->get(route('buyer.saved-products.index'))->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Buyer/SavedProducts')

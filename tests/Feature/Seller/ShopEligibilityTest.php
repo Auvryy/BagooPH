@@ -121,7 +121,7 @@ class ShopEligibilityTest extends TestCase
             ['approved', 'pending'], ['approved', 'suspended'], ['approved', 'inactive'], ['approved', 'unknown']];
     }
 
-    public function test_an_eligible_shop_accepts_only_active_categories_in_its_reviewed_tree(): void
+    public function test_an_eligible_shop_locks_every_product_to_its_exact_approved_signup_root(): void
     {
         $seller = User::factory()->seller()->create();
         $shop = Shop::factory()->approved()->create(['user_id' => $seller->id]);
@@ -131,15 +131,12 @@ class ShopEligibilityTest extends TestCase
         $this->actingAs($seller)->withSession(['active_seller_shop_id' => $shop->id]);
         $data = ['weight_kg' => '0.50', 'name' => 'Pet Blanket', 'price' => 150, 'stock' => 10, 'description' => 'A soft pet blanket for everyday comfort.',
             'featured_image' => '/storage/products/blanket.jpg'];
-        foreach ([$shop->root_category_id, $child->id, $grandchild->id] as $categoryId) {
-            $this->post('/seller/products', $data + ['category_id' => $categoryId])->assertRedirect()->assertSessionHasNoErrors();
+        $this->post('/seller/products', $data + ['category_id' => $shop->root_category_id])->assertRedirect()->assertSessionHasNoErrors();
+        foreach ([$child->id, $grandchild->id, $foreign->id, null] as $categoryId) {
+            $this->post('/seller/products', $data + ['category_id' => $categoryId])->assertSessionHasErrors('category_id');
         }
-        $this->assertSame($grandchild->id, Product::latest('id')->first()->category_id);
-        $this->post('/seller/products', $data + ['category_id' => null])->assertSessionHasErrors('category_id');
-        $this->post('/seller/products', $data + ['category_id' => $foreign->id])->assertSessionHasErrors('category_id');
-        $child->update(['is_active' => false]);
-        $this->post('/seller/products', $data + ['category_id' => $grandchild->id])->assertSessionHasErrors('category_id');
-        $this->assertDatabaseCount('products', 3);
+        $this->assertSame($shop->root_category_id, Product::sole()->category_id);
+        $this->assertDatabaseCount('products', 1);
     }
 
     public function test_foreign_products_cannot_be_claimed_through_direct_updates(): void

@@ -153,6 +153,11 @@ class Product extends Model
         return $this->belongsToMany(StoreCategory::class);
     }
 
+    public function storeTags(): BelongsToMany
+    {
+        return $this->belongsToMany(StoreTag::class, 'product_store_tag')->withTimestamps();
+    }
+
     public function sales(): HasMany
     {
         return $this->hasMany(ProductSale::class);
@@ -168,7 +173,7 @@ class Product extends Model
         return app(SalePriceService::class)->range($this);
     }
 
-    protected $hidden = ['verified_rating', 'sales', 'low_stock_active', 'low_stock_cycle'];
+    protected $hidden = ['verified_rating', 'sales', 'low_stock_active', 'low_stock_cycle', 'legacy_category_id'];
 
     public function moderationDecisions(): HasMany
     {

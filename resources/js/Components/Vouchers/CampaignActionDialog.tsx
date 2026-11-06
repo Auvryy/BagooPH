@@ -33,7 +33,7 @@ export default function CampaignActionDialog({ campaign, action, platform, onClo
             {Object.entries(form.errors).map(([key, message]) => <p key={key} role="alert" className="text-sm text-rose-700">{message}</p>)}
             <div className="flex justify-end gap-3 border-t border-slate-300 pt-4">
                 <button type="button" onClick={onClose} disabled={form.processing} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold">Cancel</button>
-                <button disabled={form.processing} className="rounded-xl bg-[#E00D42] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{form.processing ? 'Saving…' : 'Confirm'}</button>
+                <button disabled={form.processing} className="rounded-xl bg-[#E00D42] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{form.processing ? 'Saving…' : action === 'publish' ? 'Publish voucher' : 'Confirm'}</button>
             </div>
         </form>
     </Modal>;

@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Bell, Check, RefreshCw, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import useNotificationAction from '@/hooks/useNotificationAction';
+import AccountStatusNotificationDialog from '@/Components/AccountStatusNotificationDialog';
 import type { PageProps } from '@/types';
 
 export interface Notice {
@@ -19,6 +20,7 @@ export const noticeDate = (value: string) => new Date(value).toLocaleString('en-
 export { openNotice } from '@/hooks/useNotificationAction';
 type Summary = NonNullable<PageProps['notificationSummary']>;
 type ReadSnapshot = { id: string; count: number; expires_at: string };
+const accountStatusNotice = (notice: Notice) => notice.type === 'governance-event' && notice.href === '/account/status';
 
 function NotificationPreview({ open, close }: { open: boolean; close: () => void }) {
     const { auth, notificationSummary } = usePage<PageProps>().props;
@@ -33,6 +35,7 @@ function NotificationPreview({ open, close }: { open: boolean; close: () => void
     const [readSnapshot, setReadSnapshot] = useState<ReadSnapshot | null>(null);
     const [markingAll, setMarkingAll] = useState(false);
     const [acknowledging, setAcknowledging] = useState(false);
+    const [statusNotice, setStatusNotice] = useState<Notice | null>(null);
     const [saved, setSaved] = useState('');
     const bulkPending = useRef(false);
     const displayPending = useRef(false);
@@ -54,6 +57,7 @@ function NotificationPreview({ open, close }: { open: boolean; close: () => void
         setLoading(true);
         setError('');
         setNotices([]);
+        setStatusNotice(null);
         setReadSnapshot(null);
         (async () => {
             try {
@@ -73,7 +77,7 @@ function NotificationPreview({ open, close }: { open: boolean; close: () => void
     }, [open, retry, auth.user?.id, component]);
     useEffect(() => {
         if (!open || loading || !loaded.current) return;
-        const unread = notices.filter(notice => !notice.read_at).map(notice => notice.id);
+        const unread = notices.filter(notice => !notice.read_at && !accountStatusNotice(notice)).map(notice => notice.id);
         if (!unread.length) return;
         const controller = new AbortController();
         displayPending.current = true; setAcknowledging(true);
@@ -117,6 +121,15 @@ function NotificationPreview({ open, close }: { open: boolean; close: () => void
         }
     };
 
+    const openNotice = (notice: Notice) => {
+        if (accountStatusNotice(notice)) {
+            setStatusNotice(notice);
+
+            return;
+        }
+        action.open(notice.id);
+    };
+
     const label = !countAvailable ? 'Notifications temporarily unavailable' : `Notifications${count ? `, ${count} unread` : ''}`;
     return <>
         <PopoverButton aria-label={label} title={label} className={`relative inline-flex h-10 w-10 shrink-0 items-center justify-center ${radius} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]`}>
@@ -144,7 +157,7 @@ function NotificationPreview({ open, close }: { open: boolean; close: () => void
                 </div>}
                 {!loading && !error && notices.length === 0 && <p className="p-6 text-center text-sm text-slate-600">No notifications yet. {buyer ? 'Your order and account updates will appear here.' : 'Your account and work updates will appear here.'}</p>}
                 <ul className="divide-y divide-slate-200">{notices.map(notice => <li key={notice.id}>
-                    <button type="button" disabled={markingAll || action.reading !== null} onClick={() => action.open(notice.id)} className={`w-full break-words p-4 text-left transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#E00D42] disabled:opacity-50 ${!notice.read_at ? 'bg-rose-50/70' : 'bg-white'}`}>
+                    <button type="button" disabled={markingAll || action.reading !== null} onClick={() => openNotice(notice)} className={`w-full break-words p-4 text-left transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#E00D42] disabled:opacity-50 ${!notice.read_at ? 'bg-rose-50/70' : 'bg-white'}`}>
                         <span className="block text-sm font-bold">{!notice.read_at && <span aria-label="New update" className="mr-2 inline-block h-2 w-2 rounded-full bg-[#E00D42]" />}{notice.data.title ?? 'Account update'}</span>
                         <span className="mt-1 block text-xs leading-relaxed text-slate-600">{notice.data.body}</span>
                         <time dateTime={notice.created_at} className="mt-2 block text-[11px] text-slate-500">{noticeDate(notice.created_at)}</time>
@@ -153,6 +166,13 @@ function NotificationPreview({ open, close }: { open: boolean; close: () => void
             </div>
             <Link href="/notifications" onClick={() => close()} className="block shrink-0 border-t border-slate-300 p-4 text-center text-sm font-bold text-[#C20836] hover:bg-rose-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#E00D42]">View all notifications</Link>
         </PopoverPanel>
+        {statusNotice && <AccountStatusNotificationDialog notice={statusNotice} onClose={() => setStatusNotice(null)} onMarkedRead={readAt => {
+            const owner = auth.user?.id;
+            if (!mounted.current || accountId.current !== owner) return;
+            setNotices(current => current.map(notice => notice.id === statusNotice.id ? { ...notice, read_at: readAt } : notice));
+            setSummary(current => ({ ...current, unread: current.unread === null ? null : Math.max(0, current.unread - 1) }));
+            setSaved('Your account update is marked as read.');
+        }} />}
     </>;
 }
 
