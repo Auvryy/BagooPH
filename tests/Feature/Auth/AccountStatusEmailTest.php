@@ -154,7 +154,13 @@ class AccountStatusEmailTest extends TestCase
         $mail = Mail::sent(AccountStatusMail::class)->sole();
         $html = $mail->render();
         $this->assertStringContainsString('buyer account', $html);
-        $this->assertStringContainsString('Plus Jakarta Sans', $html);
+        $this->assertStringContainsString("font-family:'Plus Jakarta Sans',sans-serif", $html);
+        $this->assertStringContainsString('View account status', $html);
+        $this->assertStringContainsString('BagooPH', $html);
+        $baseUrl = rtrim((string) config('app.url'), '/');
+        $this->assertStringContainsString('href="'.$baseUrl.'/account/status"', $html);
+        $this->assertStringContainsString('href="'.$baseUrl.'"', $html);
+        $this->assertStringNotContainsString('/verification-documents/', $html);
         $this->assertStringNotContainsString('900000001000', $html);
     }
 }

@@ -13,6 +13,7 @@ const overlayHandling = new Map([
     ['resources/js/Components/BuyerCancelOrder.tsx', 'headless-dialog'],
     ['resources/js/Components/BuyerIdVerificationModal.tsx', 'custom-dialog'],
     ['resources/js/Components/BuyerSavedReview.tsx', 'headless-dialog'],
+    ['resources/js/Components/AccountCenterEntry.tsx', 'headless-dialog'],
     ['resources/js/Components/ChatModal.tsx', 'headless-dialog'],
     ['resources/js/Components/CourierSidebar.tsx', 'headless-dialog'],
     ['resources/js/Components/CourierUI.tsx', 'headless-dialog'],

@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -66,6 +67,28 @@ class PasswordResetTest extends TestCase
             $response
                 ->assertSessionHasNoErrors()
                 ->assertRedirect(route('login'));
+
+            return true;
+        });
+    }
+
+    public function test_verified_reset_link_enables_password_login_for_google_accounts(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['google_id' => 'google-reset-account', 'password_login_enabled' => false]);
+
+        $this->post('/forgot-password', ['email' => $user->email]);
+
+        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+            $this->post('/reset-password', [
+                'token' => $notification->token,
+                'email' => $user->email,
+                'password' => 'Password2026!',
+                'password_confirmation' => 'Password2026!',
+            ])->assertSessionHasNoErrors()->assertRedirect(route('login'));
+
+            $this->assertTrue(Hash::check('Password2026!', $user->fresh()->password));
+            $this->assertTrue($user->fresh()->password_login_enabled);
 
             return true;
         });

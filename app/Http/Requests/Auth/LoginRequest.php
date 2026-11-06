@@ -51,7 +51,7 @@ class LoginRequest extends FormRequest
         $identity = $identities->signInAccount($this, $credentials['email']);
         $credentials['email'] = $identity?->email ?? $credentials['email'];
         $credentials['id'] = $identity?->id ?? 0;
-        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
+        if (! $identity?->password_login_enabled || ! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

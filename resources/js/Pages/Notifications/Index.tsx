@@ -1,8 +1,10 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import { Bell, Check } from 'lucide-react';
 import NotificationLayout, { type NotificationPortal } from '@/Layouts/NotificationLayout';
 import { noticeDate, type Notice } from '@/Components/NotificationMenu';
 import useNotificationAction from '@/hooks/useNotificationAction';
+import AccountStatusNotificationDialog from '@/Components/AccountStatusNotificationDialog';
 import { HubPageHeader } from '@/Components/Logistics/Workspace';
 import { PageProps } from '@/types';
 
@@ -19,6 +21,8 @@ export default function Notifications({ available, filter, notices, readSnapshot
     const logistics = auth.user?.role === 'logistics';
     const Heading = portal.portal === 'dashboard' ? 'h2' : 'h1';
     const { reading, error, success, open, markRead, markAll } = useNotificationAction();
+    const [statusNotice, setStatusNotice] = useState<Notice | null>(null);
+    const [locallyRead, setLocallyRead] = useState<Record<string, string>>({});
     const button = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-[8px] border border-slate-300 px-3 py-2 text-sm font-semibold hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]';
     return (
         <NotificationLayout {...portal}><div className="font-sans text-slate-900">
@@ -47,22 +51,25 @@ export default function Notifications({ available, filter, notices, readSnapshot
                 ) : notices?.data.length === 0 ? (
                     <div className={`flex min-h-60 flex-col items-center justify-center border border-slate-200 bg-white p-8 text-center shadow-sm ${buyer ? 'rounded-3xl' : 'rounded-[8px]'}`}><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-[#E00D42]"><Bell className="h-6 w-6" aria-hidden="true" /></span><h2 className="mt-3 font-semibold">{filter === 'unread' ? 'You have no unread updates' : 'You have no notifications yet'}</h2><p className="mt-2 max-w-md text-sm text-slate-600">{buyer ? 'Your order and account updates will appear here. You can return to shopping while you wait.' : 'Your account and work updates will appear here.'}</p>{buyer && <Link href={route('buyer.search')} className="mt-4 inline-flex min-h-10 items-center rounded-full bg-[#E00D42] px-4 text-sm font-semibold text-white hover:bg-[#C20836]">Browse products</Link>}</div>
                 ) : (
-                    <ul className="space-y-3">{notices?.data.map(notice => <li key={notice.id} className={`relative overflow-hidden border p-4 transition sm:p-5 ${buyer ? 'rounded-2xl shadow-sm hover:shadow-md' : 'rounded-[8px] shadow-sm'} ${notice.read_at ? 'border-slate-200 bg-white' : 'border-rose-200 bg-gradient-to-r from-rose-50/90 to-white'}`}>
-                        {!notice.read_at && <span className="absolute inset-y-0 left-0 w-1 bg-[#E00D42]" aria-hidden="true" />}
+                    <ul className="space-y-3">{notices?.data.map(notice => { const readAt = locallyRead[notice.id] ?? notice.read_at; return <li key={notice.id} className={`relative overflow-hidden border p-4 transition sm:p-5 ${buyer ? 'rounded-2xl shadow-sm hover:shadow-md' : 'rounded-[8px] shadow-sm'} ${readAt ? 'border-slate-200 bg-white' : 'border-rose-200 bg-gradient-to-r from-rose-50/90 to-white'}`}>
+                        {!readAt && <span className="absolute inset-y-0 left-0 w-1 bg-[#E00D42]" aria-hidden="true" />}
                         <div className="flex gap-3 sm:gap-4">
-                            {buyer && <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${notice.read_at ? 'bg-slate-100 text-slate-500' : 'bg-rose-100 text-[#E00D42]'}`}><Bell className="h-5 w-5" aria-hidden="true" /></span>}
+                            {buyer && <span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${readAt ? 'bg-slate-100 text-slate-500' : 'bg-rose-100 text-[#E00D42]'}`}><Bell className="h-5 w-5" aria-hidden="true" /></span>}
                             <div className="min-w-0 flex-1">
                                 <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:gap-4"><h2 className="min-w-0 break-words font-semibold">{notice.data.title ?? 'Account update'}</h2><time dateTime={notice.created_at} className="shrink-0 text-xs text-slate-500">{noticeDate(notice.created_at)}</time></div>
                                 {notice.data.order_number && <p className="mt-1 text-xs font-medium text-slate-500">Order {notice.data.order_number}</p>}
                                 {notice.data.body && <p className="mt-2 break-words text-sm leading-6 text-slate-700">{notice.data.body}</p>}
                                 {notice.data.hub_name && <div className="mt-3 space-y-1 rounded-xl border border-slate-200 bg-white/80 p-3 text-sm"><p className="font-semibold">{notice.data.hub_name}</p><p>{notice.data.hub_address}</p><p>{notice.data.operating_hours}</p>{notice.data.expires_at && <p>Holding period ends {noticeDate(notice.data.expires_at)}</p>}</div>}
-                                <div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" disabled={reading !== null} onClick={() => open(notice.id)} className={`${button} ${buyer ? 'rounded-full bg-white text-[#E00D42]' : 'text-[#E00D42]'} disabled:opacity-50`}>View update</button>{!notice.read_at ? <button type="button" disabled={reading !== null} onClick={() => markRead(notice.id)} className={`${button} ${buyer ? 'rounded-full bg-white' : ''} disabled:opacity-50`}><Check className="h-4 w-4" aria-hidden="true" />{reading === notice.id ? 'Saving...' : 'Mark read'}</button> : <span className="text-xs text-slate-500">Read {noticeDate(notice.read_at)}</span>}</div>
+                                <div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" disabled={reading !== null} onClick={() => notice.type === 'governance-event' && notice.href === '/account/status' ? setStatusNotice(notice) : open(notice.id)} className={`${button} ${buyer ? 'rounded-full bg-white text-[#E00D42]' : 'text-[#E00D42]'} disabled:opacity-50`}>View update</button>{!readAt ? <button type="button" disabled={reading !== null} onClick={() => markRead(notice.id)} className={`${button} ${buyer ? 'rounded-full bg-white' : ''} disabled:opacity-50`}><Check className="h-4 w-4" aria-hidden="true" />{reading === notice.id ? 'Saving...' : 'Mark read'}</button> : <span className="text-xs text-slate-500">Read {noticeDate(readAt)}</span>}</div>
                             </div>
                         </div>
-                    </li>)}</ul>
+                    </li>; })}</ul>
                 )}
                 {available && notices && notices.last_page > 1 && <nav aria-label="Notification pages" className="mt-5 flex items-center justify-between gap-3">{notices.prev_page_url ? <Link href={notices.prev_page_url} className={`${button} bg-white`}>Previous</Link> : <span />}<span className="text-sm text-slate-600">Page {notices.current_page} of {notices.last_page}</span>{notices.next_page_url ? <Link href={notices.next_page_url} className={`${button} bg-white`}>Next</Link> : <span />}</nav>}
             </section>
-        </div></NotificationLayout>
+        </div>{statusNotice && <AccountStatusNotificationDialog notice={statusNotice} onClose={() => setStatusNotice(null)} onMarkedRead={readAt => {
+            setLocallyRead(current => ({ ...current, [statusNotice.id]: readAt }));
+            router.reload({ only: ['notificationSummary', 'sidebarAttention'] });
+        }} />}</NotificationLayout>
     );
 }

@@ -281,7 +281,11 @@ class SharedPortalAccessTest extends TestCase
             $applicant = User::factory()->create(['role' => $role, 'status' => 'pending_approval', 'kyc_status' => 'rejected']);
             $prefix = self::portalPrefixes($role)[1];
             $this->actingAs($applicant)->get($prefix.'/pending-approval')->assertOk()->assertInertia(fn (Assert $page) => $page
-                ->component('Auth/PendingApproval')->where('user.id', $applicant->id));
+                ->component('Auth/PendingApproval')->where('user.id', $applicant->id)
+                ->where('accountCenterStatus.title', 'Your application was rejected')
+                ->has('accountCenterStatus.sources', 1)
+                ->where('accountCenterStatus.sources.0.reason', 'Your application needs another review.')
+                ->has('accountCenterStatus.requests', 0));
         }
     }
 

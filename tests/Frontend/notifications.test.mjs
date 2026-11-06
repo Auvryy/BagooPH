@@ -19,7 +19,7 @@ const bundle = await build({
         export { default as useAction } from '@/hooks/useNotificationAction';`, resolveDir: root, loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false, loader: { '.css': 'empty' },
     plugins: [{ name: 'notification-state-probes', setup(builder) {
-        builder.onResolve({ filter: /^react$/ }, args => /\/(?:NotificationMenu\.tsx|useNotificationAction\.ts)$/.test(args.importer)
+        builder.onResolve({ filter: /^react$/ }, args => /\/(?:NotificationMenu\.tsx|Notifications\/Index\.tsx|AccountStatusNotificationDialog\.tsx|useNotificationAction\.ts)$/.test(args.importer)
             ? { path: 'hooks', namespace: 'notification-hooks' } : undefined);
         builder.onLoad({ filter: /.*/, namespace: 'notification-hooks' }, () => ({ contents: `import React from 'react'; export * from 'react';
             export const useState = initial => globalThis.notificationHarness ? globalThis.notificationHarness.state(initial) : React.useState(initial);
@@ -32,7 +32,15 @@ const bundle = await build({
             export const Popover = props => { const h = globalThis.notificationHarness; return h ? createElement('div', { className: props.className }, props.children({ open: h.open, close: h.close })) : createElement(RealPopover, props); };
             export const PopoverButton = props => { const h = globalThis.notificationHarness; if (!h) return createElement(RealButton, props); h.trigger = { ...props, onClick: () => { h.open = !h.open; } }; return createElement('button', { ...props, 'aria-expanded': h.open }); };
             export const PopoverPanel = props => { const h = globalThis.notificationHarness; if (!h) return createElement(RealPanel, props); h.panel = props; return h.open ? createElement('section', { className: props.className, 'aria-labelledby': props['aria-labelledby'] }, props.children) : null; };`, resolveDir: root }));
-        builder.onResolve({ filter: /^react\/jsx-runtime$/ }, args => /\/(?:NotificationMenu|Notifications\/Index)\.tsx$/.test(args.importer)
+        builder.onResolve({ filter: /^@\/Components\/Modal$/ }, args => args.importer.endsWith('/AccountStatusNotificationDialog.tsx')
+            ? { path: 'modal', namespace: 'notification-status-modal' } : undefined);
+        builder.onLoad({ filter: /.*/, namespace: 'notification-status-modal' }, () => ({ contents: `import { createElement } from 'react';
+            export default function Modal({ show, children }) { return show ? createElement('div', { role: 'dialog', 'aria-modal': 'true' }, children) : null; }`, resolveDir: root }));
+        builder.onResolve({ filter: /^@headlessui\/react$/ }, args => args.importer.endsWith('/AccountStatusNotificationDialog.tsx')
+            ? { path: 'dialog-title', namespace: 'notification-dialog-title' } : undefined);
+        builder.onLoad({ filter: /.*/, namespace: 'notification-dialog-title' }, () => ({ contents: `import { createElement } from 'react';
+            export const DialogTitle = props => createElement('h2', props, props.children);`, resolveDir: root }));
+        builder.onResolve({ filter: /^react\/jsx-runtime$/ }, args => /\/(?:NotificationMenu|Notifications\/Index|AccountStatusNotificationDialog)\.tsx$/.test(args.importer)
             ? { path: 'jsx', namespace: 'notification-jsx' } : undefined);
         builder.onLoad({ filter: /.*/, namespace: 'notification-jsx' }, () => ({ contents: `import { jsx as realJsx, jsxs as realJsxs, Fragment } from 'react/jsx-runtime'; export { Fragment };
             const track = (fn, type, props, key) => { if (globalThis.notificationHarness && props.onClick) globalThis.notificationHarness.handlers.push({ type, props }); return fn(type, props, key); };
@@ -48,6 +56,8 @@ after(() => delete globalThis.route);
 
 const notice = (id, read_at = null) => ({ id, type: 'governance-event', data: { title: `Update ${id}`, body: 'Your saved account update.' },
     created_at: '2026-10-16T00:00:00Z', read_at, href: '/pending-approval' });
+const accountStatusNotice = (id, read_at = null) => ({ id, type: 'governance-event', data: { title: 'Application approved', body: 'Your account is approved. You can now use your Bagoo account.' },
+    created_at: '2026-10-16T00:00:00Z', read_at, href: '/account/status' });
 const page = (data = []) => ({ data, current_page: 1, last_page: 1, prev_page_url: null, next_page_url: null });
 const actor = role => ({ id: 7, name: 'Ana Santos', email: `${role}@bagoo.test`, role, status: 'active', kyc_status: 'approved', courier_profile: { is_available: true },
     activeHub: { name: 'Assigned Bayan Hub', code: 'BGO-HUB' }, allHubs: [], logisticsCompany: { name: 'Bagoo Fleet' } });
@@ -203,6 +213,57 @@ test('every role loads the compact preview on opening and acknowledges only the 
         assert.match(h.panel.className, kind === 'buyer' ? /rounded-2xl/ : /rounded-\[8px\]/);
         h.click('View all notifications');
         assert.equal(h.open, false);
+    });
+});
+
+test('account approval updates open in an in-app status modal and are marked read only when chosen across all roles', async () => {
+    for (const [kind] of roles) await withHarness(async ({ h, acks, visits }) => {
+        axios.get = async () => ({ data: { notices: [accountStatusNotice('approved')], summary: { available: true, unread: 1 } } });
+        axios.patch = async (...args) => {
+            acks.push(args);
+            return { data: { read_at: '2026-10-16T00:02:00Z', summary: { available: true, unread: 0 } } };
+        };
+        const user = actor(['company', 'handler'].includes(kind) ? 'logistics' : kind);
+        h.open = true;
+        let html = await h.render(ui.Menu, {}, user);
+        assert.match(html, /Application approved/);
+        assert.equal(acks.length, 0, `${kind} status update must not be acknowledged just by previewing it`);
+        h.click('Application approved');
+        html = await h.render(ui.Menu, {}, user);
+        assert.match(html, /role="dialog"/);
+        assert.match(html, /Your account is approved/);
+        assert.match(html, /Mark as read/);
+        assert.equal(visits.length, 0, `${kind} status update must not navigate on open`);
+        h.click('Mark as read');
+        await tick();
+        html = await h.render(ui.Menu, {}, user);
+        assert.equal(acks[0][0], '/notifications/approved/read');
+        assert.deepEqual(acks[0][1], {});
+        assert.doesNotMatch(html, /role="dialog"/);
+        assert.match(html, /Your account update is marked as read/);
+        assert.match(html, /0 unread/);
+        assert.equal(visits.length, 0);
+    });
+});
+
+test('approval notices on the full notifications page also open status details without navigating away', async () => {
+    await withHarness(async ({ h, acks, visits, reloads }) => {
+        const props = { portal: 'account', accountUrl: '/pending-approval', available: true, filter: 'all', notices: page([accountStatusNotice('approval-page')]) };
+        await h.render(ui.Notifications, props, actor('seller'));
+        h.click('View update');
+        let html = await h.render(ui.Notifications, props, actor('seller'));
+        assert.match(html, /role="dialog"/);
+        assert.match(html, /Application approved/);
+        assert.equal(visits.length, 0);
+        axios.patch = async (...args) => { acks.push(args); return { data: { read_at: '2026-10-16T00:02:00Z' } }; };
+        h.click('Mark as read');
+        await tick();
+        html = await h.render(ui.Notifications, props, actor('seller'));
+        assert.equal(acks[0][0], '/notifications/approval-page/read');
+        assert.match(html, /Read Oct 16/);
+        assert.doesNotMatch(html, /role="dialog"/);
+        assert.equal(visits.length, 0);
+        assert.ok(reloads.some(options => options.only?.includes('notificationSummary')));
     });
 });
 

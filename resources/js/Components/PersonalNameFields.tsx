@@ -19,8 +19,8 @@ export default function PersonalNameFields({ values, onChange, errors = {}, acce
         {context && <p className="text-xs font-semibold text-slate-800">{context}</p>}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-12">
             {([
-                ['first_name', 'First name', 'given-name', true, 'sm:col-span-5'],
-                ['middle_initial', 'Middle initial', 'additional-name', false, 'sm:col-span-3'],
+                ['first_name', 'First name', 'given-name', true, 'sm:col-span-4'],
+                ['middle_initial', 'Middle initial', 'additional-name', false, 'sm:col-span-4'],
                 ['last_name', 'Last name', 'family-name', true, 'sm:col-span-4'],
             ] as const).map(([field, label, autoComplete, required, width]) => {
                 const maximum = field === 'middle_initial' ? 3 : 50;
@@ -57,7 +57,6 @@ export default function PersonalNameFields({ values, onChange, errors = {}, acce
                         }}
                         className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-slate-900 outline-hidden transition focus:ring-1 ${focus} ${error || combinedError ? 'border-red-600' : 'border-slate-300'}`} />
                     <InputError id={field + '-error'} role="status" aria-live="polite" message={error} className="mt-1 text-xs" />
-                    {field === 'middle_initial' && <p className="mt-1 text-xs text-slate-500">1–2 letters. A period is added when you leave this field.</p>}
                 </div>;
             })}
         </div>

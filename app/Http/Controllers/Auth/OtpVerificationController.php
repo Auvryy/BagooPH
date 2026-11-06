@@ -158,7 +158,11 @@ class OtpVerificationController extends Controller
             if (! $user || $user->id !== $owner->id || ! $this->otpService->validateAndBurnToken($email, $token, 'password_reset', $user->id)) {
                 throw ValidationException::withMessages(['code' => 'Invalid or expired verification session. Request a new code.']);
             }
-            $user->forceFill(['password' => $validated['password'], 'remember_token' => Str::random(60)])->save();
+            $updates = ['password' => $validated['password'], 'remember_token' => Str::random(60)];
+            if ($user->google_id) {
+                $updates['password_login_enabled'] = true;
+            }
+            $user->forceFill($updates)->save();
             event(new PasswordReset($user));
         }, 3);
 

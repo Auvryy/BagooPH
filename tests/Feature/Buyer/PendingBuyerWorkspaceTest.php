@@ -37,6 +37,11 @@ class PendingBuyerWorkspaceTest extends TestCase
     public function test_applicant_can_use_owned_profile_and_bag_but_cannot_checkout(string $status, string $kyc): void
     {
         $buyer = User::factory()->create(['status' => $status, 'kyc_status' => $kyc]);
+        $expectedStatusTitle = match ($kyc) {
+            'none' => 'Identity verification required',
+            'rejected' => 'Your application was rejected',
+            default => 'Your application is under review',
+        };
         $other = User::factory()->create();
         Order::factory()->create(['buyer_id' => $other->id]);
         $product = Product::factory()->create(['stock' => 10]);
@@ -45,6 +50,7 @@ class PendingBuyerWorkspaceTest extends TestCase
             foreach (['/buyer/profile', '/buyer/orders', '/my-orders', '/profile', '/account/settings'] as $path) {
                 $this->get($host.$path)->assertOk()->assertInertia(fn (Assert $page) => $page->component('Buyer/Profile')
                     ->where('user.id', $buyer->id)->where('orders.total', 0)->where('canUsePortal', false)
+                    ->where('accountCenterStatus.title', $expectedStatusTitle)
                     ->where('buyerApplication.user.kyc_status', $kyc));
             }
             $this->post($host.'/cart', ['product_id' => $product->id, 'quantity' => 1])->assertSessionHas('success');

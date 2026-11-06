@@ -31,7 +31,9 @@ class GoogleRegistrationPolicyTest extends TestCase
         $this->assertDatabaseCount('users', 0);
         $this->post(route('auth.google.registration.store'), $data)->assertSessionHasNoErrors();
 
-        $address = User::sole()->addresses()->sole();
+        $user = User::sole();
+        $this->assertFalse($user->password_login_enabled);
+        $address = $user->addresses()->sole();
         $this->assertSame('+639171234567', $address->phone);
         $this->assertSame('City of Taguig', $address->city);
         $this->assertTrue($address->is_default);

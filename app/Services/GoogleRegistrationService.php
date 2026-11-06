@@ -56,7 +56,7 @@ class GoogleRegistrationService
                 $user = User::create($account + [
                     'google_id' => $pending['google_id'], 'avatar' => $pending['avatar'],
                     'role' => 'buyer', 'status' => 'active', 'kyc_status' => 'none',
-                    'password' => Str::password(40), 'email_verified_at' => now(),
+                    'password' => Str::password(40), 'password_login_enabled' => false, 'email_verified_at' => now(),
                 ]);
                 app(RegistrationDeliveryPinService::class)->save($user, $validated);
                 $policies->record($user, 'google');
