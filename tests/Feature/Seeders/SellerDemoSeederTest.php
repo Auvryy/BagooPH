@@ -88,12 +88,13 @@ class SellerDemoSeederTest extends TestCase
         $this->assertTrue(Hash::check('ChangedPassword1234', $seller->fresh()->password));
     }
 
-    public function test_seeded_child_category_products_are_visible_in_the_parent_department_on_both_buyer_pages(): void
+    public function test_seeded_products_are_locked_to_the_approved_root_department(): void
     {
         $this->seed(SellerDemoSeeder::class);
         $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
         $count = $shop->products()->count();
         $root = $shop->rootCategory;
+        $this->assertSame([$root->id], $shop->products()->pluck('category_id')->unique()->all());
         foreach (['/', '/products'] as $url) {
             $key = $url === '/' ? 'feedProducts' : 'products';
             $this->get($url.'?category='.$root->slug)->assertInertia(fn (Assert $page) => $page
@@ -102,25 +103,30 @@ class SellerDemoSeederTest extends TestCase
         }
     }
 
-    public function test_department_browsing_includes_deeper_active_categories_and_preserves_restrictions(): void
+    public function test_department_browsing_uses_the_exact_root_and_excludes_products_in_legacy_subcategories(): void
     {
         $this->seed(SellerDemoSeeder::class);
         $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
         $root = $shop->rootCategory;
-        $child = $shop->products()->first()->category;
+        $child = Category::factory()->create(['parent_id' => $root->id]);
         $grandchild = Category::factory()->create(['parent_id' => $child->id]);
         $deep = Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $grandchild->id]);
         $direct = Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $root->id]);
-        $before = $shop->products()->count();
+        $before = Product::availableForSale()->where('products.shop_id', $shop->id)->count();
         foreach (['/', '/products'] as $url) {
             $key = $url === '/' ? 'feedProducts' : 'products';
-            $this->get($url.'?category='.$root->slug)->assertInertia(fn (Assert $page) => $page->where($key.'.total', $before));
+            $this->get($url.'?category='.$root->slug)->assertInertia(fn (Assert $page) => $page
+                ->where($key.'.total', $before)
+                ->where($key.'.data', fn ($products) => collect($products)->contains('id', $direct->id)
+                    && ! collect($products)->contains('id', $deep->id)));
         }
         $child->update(['is_active' => false]);
         foreach (['/', '/products'] as $url) {
             $key = $url === '/' ? 'feedProducts' : 'products';
             $this->get($url.'?category='.$root->slug)->assertInertia(fn (Assert $page) => $page
-                ->where($key.'.total', 1)->where($key.'.data.0.id', $direct->id));
+                ->where($key.'.total', $before)
+                ->where($key.'.data', fn ($products) => collect($products)->contains('id', $direct->id)
+                    && ! collect($products)->contains('id', $deep->id)));
         }
         $this->assertSame($grandchild->id, $deep->fresh()->category_id);
         $this->assertFalse(app(ShopEligibilityService::class)->productIsEligible($deep->fresh()));
@@ -163,18 +169,21 @@ class SellerDemoSeederTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
-    public function test_an_inactive_legacy_product_category_is_preserved_instead_of_bypassing_its_restriction(): void
+    public function test_an_inactive_legacy_category_is_retained_privately_while_product_uses_the_approved_root(): void
     {
         $this->seed(SellerDemoSeeder::class);
         $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
         $legacy = Category::factory()->create(['slug' => 'backpacks-and-bags', 'is_active' => false]);
         $product = $shop->products()->where('sku', 'APX-VNG-001')->sole();
         $product->update(['category_id' => $legacy->id]);
-        $before = $product->fresh()->getAttributes();
         $this->seed(SellerDemoSeeder::class);
-        $this->assertSame($before, $product->fresh()->getAttributes());
+        $repaired = $product->fresh();
+        $this->assertSame($shop->root_category_id, $repaired->category_id);
+        $this->assertSame($legacy->id, $repaired->legacy_category_id);
         $this->assertFalse($legacy->fresh()->is_active);
-        $this->assertFalse(app(ShopEligibilityService::class)->productIsEligible($product->fresh()));
+        $this->assertTrue(app(ShopEligibilityService::class)->productIsEligible($repaired));
+        $this->assertTrue(Product::availableForSale()->whereKey($product->id)->exists());
+        $this->assertArrayNotHasKey('legacy_category_id', $repaired->toArray());
     }
 
     public function test_seeded_seller_is_a_separate_account_when_an_existing_buyer_uses_the_same_email(): void

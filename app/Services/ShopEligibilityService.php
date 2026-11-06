@@ -106,7 +106,11 @@ class ShopEligibilityService
 
     public function categoryIds(Shop $shop): array
     {
-        return $this->categoryScopes()[(int) $shop->root_category_id] ?? [];
+        $rootId = (int) $shop->root_category_id;
+
+        return $rootId > 0 && app(MasterCategoryService::class)->activeRoots()->whereKey($rootId)->exists()
+            ? [$rootId]
+            : [];
     }
 
     public function categoryTreeIds(Category $category, ?Collection $categories = null): array
@@ -117,10 +121,11 @@ class ShopEligibilityService
 
     private function categoryScopes(): array
     {
-        $categories = Category::where('is_active', true)->get(['id', 'parent_id']);
         $scopes = [];
         foreach (app(MasterCategoryService::class)->activeRoots()->pluck('id') as $rootId) {
-            $scopes[$rootId] = $this->descendants($rootId, $categories);
+            // Current products are locked to the seller's approved signup root.
+            // Child category rows remain available for historical/admin records.
+            $scopes[$rootId] = [(int) $rootId];
         }
 
         return $scopes;
@@ -144,8 +149,9 @@ class ShopEligibilityService
     public function categoryFor(Shop $shop, mixed $categoryId): int
     {
         $id = (int) ($categoryId ?? $shop->root_category_id);
-        if (! in_array($id, $this->categoryIds($shop), true)) {
-            throw ValidationException::withMessages(['category_id' => 'Choose an active category within this shop\'s approved master category.']);
+        $rootId = (int) $shop->root_category_id;
+        if ($id !== $rootId || ! in_array($rootId, $this->categoryIds($shop), true)) {
+            throw ValidationException::withMessages(['category_id' => 'Products use the exact department approved for this shop.']);
         }
 
         return $id;

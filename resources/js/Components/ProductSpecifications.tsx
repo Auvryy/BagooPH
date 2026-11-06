@@ -24,7 +24,7 @@ export default function ProductSpecifications({ product }: { product: Product })
     const facts = productFacts(product);
     const rows = [
         ['Department', product.category?.name || 'Not provided'],
-        ['Store categories', product.store_categories?.map(category => category.name).join(', ') || 'Not listed'],
+        ['Product tags', product.store_tags?.map(tag => tag.name).join(', ') || 'None added'],
         ['Brand', product.brand || 'Not provided'], ['Condition', facts.condition || 'Not provided'],
         ['Declared weight', facts.weight || 'Not provided'], ['Dimensions (L × W × H)', facts.dimensions || 'Not provided'],
         ['Available stock', product.stock > 0 ? `${product.stock} units` : 'Out of stock'],

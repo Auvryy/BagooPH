@@ -102,6 +102,11 @@ class Shop extends Model
         return $this->hasMany(Product::class);
     }
 
+    public function storeTags(): HasMany
+    {
+        return $this->hasMany(StoreTag::class)->orderBy('name');
+    }
+
     public function reviews(): HasManyThrough
     {
         return $this->hasManyThrough(Review::class, Product::class);
