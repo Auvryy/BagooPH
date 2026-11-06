@@ -10,7 +10,8 @@ use App\Services\Commerce\CatalogueLocationService;
 use App\Services\Commerce\PurchasePolicyService;
 use App\Services\Commerce\ReviewService;
 use App\Services\Commerce\SaleReminderService;
-use App\Services\Commerce\StoreCategoryService;
+use App\Services\Commerce\BuyerProductViewTracker;
+use App\Services\Advertisements\AdvertisementRecommendationService;
 use App\Services\Vouchers\VoucherCollectionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -87,8 +88,14 @@ class BuyerProductController extends Controller
         if (! $product) {
             abort(404, 'Product not found.');
         }
-        $visibleGroups = app(StoreCategoryService::class)->publicRows($product->shop)->pluck('id');
-        $product->load(['storeCategories' => fn ($query) => $query->whereIn('store_categories.id', $visibleGroups)]);
+
+        if (! $request->prefetch()) {
+            $request->session()->put('buyer.recent_product_views', app(AdvertisementRecommendationService::class)
+                ->rememberRecentProductView($request->session()->get('buyer.recent_product_views', []), $product->id));
+            app(BuyerProductViewTracker::class)->record($product, $request);
+        }
+
+        $product->load(['storeTags' => fn ($query) => $query->where('store_tags.shop_id', $product->shop_id)]);
 
         $relatedProducts = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
             ->where('category_id', $product->category_id)

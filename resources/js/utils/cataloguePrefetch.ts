@@ -178,6 +178,17 @@ export class CataloguePrefetch {
     cancel(href: string) {
         if (this.active?.url === canonicalCatalogueUrl(href, this.environment().origin)) this.cancelActive();
     }
+    invalidate(href: string) {
+        const url = canonicalCatalogueUrl(href, this.environment().origin);
+        if (!url) return;
+        const entry = this.entries.get(url);
+        if (entry) {
+            this.transport.flush(entry.url, entry.headers);
+            this.entries.delete(url);
+        }
+        if (this.active?.url === url) this.cancelActive();
+        this.failures.delete(url);
+    }
     prioritize(href?: string) {
         if (!href || this.active?.url !== canonicalCatalogueUrl(href, this.environment().origin)) this.cancelActive();
     }

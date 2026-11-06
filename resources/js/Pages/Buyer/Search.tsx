@@ -4,7 +4,7 @@ import BuyerLayout from '@/Layouts/BuyerLayout';
 import ProductCard from '@/Components/ProductCard';
 import CatalogueErrors from '@/Components/CatalogueErrors';
 import CatalogueLocationFilter from '@/Components/CatalogueLocationFilter';
-import SavedProductButton from '@/Components/SavedProductButton';
+import BagHeartButton from '@/Components/BagHeartButton';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import CataloguePagination from '@/Components/CataloguePagination';
 import CatalogueLink from '@/Components/CatalogueLink';
@@ -469,7 +469,7 @@ export default function SearchPage({
                                             {relatedProducts.map((product) => (
                                                 <ProductCard
                                                     key={product.id}
-                                                    product={product} saveControl={<SavedProductButton productId={product.id} />}
+                                                    product={product} heartControl={<BagHeartButton product={product} />}
                                                     href={route('buyer.products.show', product.slug)}
                                                 />
                                             ))}
@@ -482,7 +482,7 @@ export default function SearchPage({
                                 {products.data.map((product) => (
                                     <ProductCard
                                         key={product.id}
-                                        product={product} saveControl={<SavedProductButton productId={product.id} />}
+                                        product={product} heartControl={<BagHeartButton product={product} />}
                                         href={route('buyer.products.show', product.slug)}
                                     />
                                 ))}
@@ -500,7 +500,7 @@ export default function SearchPage({
                                     {relatedProducts.map((p) => (
                                         <ProductCard
                                             key={p.id}
-                                            product={p} saveControl={<SavedProductButton productId={p.id} />}
+                                            product={p} heartControl={<BagHeartButton product={p} />}
                                             href={route('buyer.products.show', p.slug)}
                                         />
                                     ))}

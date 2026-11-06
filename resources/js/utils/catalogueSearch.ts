@@ -79,7 +79,7 @@ export class CatalogueSearch {
         this.target = url;
         this.options.notify({ status: 'loading', message: 'Loading search results.' });
         this.options.visit(url, {
-            preserveState: true, preserveScroll: live, replace: live,
+            preserveState: true, preserveScroll: live, replace: live, fresh: !live,
             ...(live ? { only: ['products', 'relatedProducts', 'filters', 'suggestions'] } : {}),
             onCancelToken: token => { if (sequence === this.sequence) this.cancelVisit = token.cancel; else token.cancel(); },
             onBeforeUpdate: () => {

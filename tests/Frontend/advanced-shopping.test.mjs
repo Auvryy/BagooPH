@@ -82,10 +82,12 @@ test('seller sale page provides real settings and an honest empty state', async 
     assert.match(html, /Existing orders keep their original price/); assert.match(html, /Asia\/Manila/);
 });
 
-test('unselected matrix options prompt for a choice without pretending the listing is sold out', async () => {
+test('the first available matrix combination is selected without inheriting stale option stock or price', async () => {
     const variations = { colors: [{ id: 'red', name: 'Red', in_stock: true, hex: '#ff0000' }], sizes: [{ id: 'large', name: 'Large', stock: 0, extra_price: 999 }], combinations: [{ color: 'Red', size: 'Large', stock: 4, extra_price: 10 }] };
     const html = await render(ui.ProductDetail, 'Buyer/ProductDetail', { product: { ...product, variants: variations, images: [], reviews: [] }, variations, relatedProducts: [], cartQuantities: [], shopStats: { rating: null, products_count: 1, review_count: 0, response_rate: null, joined: null } });
-    assert.match(html, /Choose an option/);
+    assert.doesNotMatch(html, /Choose an option/);
+    assert.match(html, /Color \/ Edition:<\/span><span[^>]*>Red<\/span>/);
+    assert.match(html, /Size:<\/span><span[^>]*>Large<\/span>/);
     assert.doesNotMatch(html, /This product selection is out of stock/);
     assert.doesNotMatch(html, /₱999\.00/);
     assert.match(html, /Add to Bag/);

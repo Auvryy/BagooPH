@@ -3,6 +3,7 @@ import CatalogueLink from '@/Components/CatalogueLink';
 import { Star, Truck, ShoppingBag, Check, MapPin } from 'lucide-react';
 import { Product } from '@/types';
 import { ratingLabel, recordedRating } from '@/Components/RatingStars';
+import { defaultVariantDisplayPrice, defaultVariantRegularPrice } from '@/utils/productPricing';
 
 interface ProductCardProps {
     product: Product;
@@ -12,7 +13,7 @@ interface ProductCardProps {
     isSuccess?: boolean;
     actionLabel?: string;
     className?: string;
-    saveControl?: React.ReactNode;
+    heartControl?: React.ReactNode;
     showDeliveryBadge?: boolean;
 }
 
@@ -24,15 +25,16 @@ export default function ProductCard({
     isSuccess = false,
     actionLabel = 'Add to Bag',
     className = '',
-    saveControl,
+    heartControl,
     showDeliveryBadge = true,
 }: ProductCardProps) {
-    const priceNum = Number(product.price_range?.min ?? product.sale_offer?.effective_price ?? product.price);
+    const priceNum = defaultVariantDisplayPrice(product);
     const maxPrice = Number(product.price_range?.max ?? priceNum);
-    const regularMin = Number(product.price_range?.regular_min ?? product.price);
-    const compareNum = product.sale_offer?.active && priceNum < regularMin ? regularMin
-        : product.compare_at_price ? regularMin + Number(product.compare_at_price) - Number(product.price) : null;
-    const discountPct = maxPrice === priceNum && compareNum && compareNum > priceNum
+    const hasDefaultCombination = Boolean(product.variants?.combinations?.length);
+    const regularPrice = defaultVariantRegularPrice(product);
+    const compareNum = product.sale_offer?.active && priceNum < regularPrice ? regularPrice
+        : product.compare_at_price ? regularPrice + Number(product.compare_at_price) - Number(product.price) : null;
+    const discountPct = (hasDefaultCombination || maxPrice === priceNum) && compareNum && compareNum > priceNum
         ? Math.round(((compareNum - priceNum) / compareNum) * 100)
         : null;
 
@@ -61,7 +63,7 @@ export default function ProductCard({
 
     return (
         <article
-            className={`group bg-white rounded-lg border border-slate-300 overflow-hidden hover:shadow-xl hover:border-slate-400 transition-all duration-300 flex flex-col justify-between shadow-2xs ${className}`}
+            className={`group relative bg-white rounded-lg border border-slate-300 overflow-hidden hover:shadow-xl hover:border-slate-400 transition-all duration-300 flex flex-col justify-between shadow-2xs ${className}`}
         >
             <CatalogueLink href={targetUrl} className="flex flex-1 flex-col">
             {/* 1. Product Image Container with Discount Badge at bottom of image */}
@@ -82,7 +84,7 @@ export default function ProductCard({
 
                 {product.shop?.vacation_mode && <span className="absolute left-2 top-2 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">On vacation</span>}
                 {isOutOfStock && (
-                    <span className="absolute right-2 top-2 z-10 rounded-sm border border-slate-700 bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white">
+                        <span className={`absolute right-2 ${heartControl ? 'top-12' : 'top-2'} z-10 rounded-sm border border-slate-700 bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white`}>
                         Out of stock
                     </span>
                 )}
@@ -127,9 +129,9 @@ export default function ProductCard({
                     {/* Price Block */}
                     <div className="flex items-baseline gap-1.5 pt-0.5 font-sans">
                         <span className="text-sm sm:text-base font-black text-[#E00D42]">
-                            {formatPrice(priceNum)}{maxPrice > priceNum ? ` – ${formatPrice(maxPrice)}` : ''}
+                            {formatPrice(priceNum)}{!hasDefaultCombination && maxPrice > priceNum ? ` – ${formatPrice(maxPrice)}` : ''}
                         </span>
-                        {maxPrice === priceNum && compareNum && compareNum > priceNum && (
+                        {discountPct && compareNum && compareNum > priceNum && (
                             <span className="text-[10px] text-slate-400 line-through">
                                 {formatPrice(compareNum)}
                             </span>
@@ -163,7 +165,7 @@ export default function ProductCard({
             </div>
 
             </CatalogueLink>
-            {saveControl && <div className="px-2.5 pb-2.5">{saveControl}</div>}
+            {heartControl && <div className="absolute right-2 top-2 z-20">{heartControl}</div>}
             {/* Optional Quick Add Action (only rendered if explicitly passed) */}
             {onQuickAdd && (
                 <div className="px-2.5 pb-2.5 pt-0">

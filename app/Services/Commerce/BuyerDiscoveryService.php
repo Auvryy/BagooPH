@@ -174,6 +174,7 @@ class BuyerDiscoveryService
             ->orWhereRaw("LOWER(products.description) LIKE ? ESCAPE '!'", [$pattern])
             ->orWhereRaw("LOWER(products.sku) LIKE ? ESCAPE '!'", [$pattern])
             ->orWhereHas('category', fn (Builder $category) => $category->whereRaw("LOWER(categories.name) LIKE ? ESCAPE '!'", [$pattern]))
+            ->orWhereHas('storeTags', fn (Builder $tag) => $tag->whereRaw("LOWER(store_tags.name) LIKE ? ESCAPE '!'", [$pattern]))
             ->orWhereHas('shop', fn (Builder $shop) => $shop->whereRaw("LOWER(shops.name) LIKE ? ESCAPE '!'", [$pattern]));
     }
 
@@ -196,10 +197,15 @@ class BuyerDiscoveryService
             }
         }
 
-        $case .= " WHEN LOWER(products.sku) LIKE ? ESCAPE '!' THEN 4"
-            ." WHEN EXISTS (SELECT 1 FROM categories WHERE categories.id = products.category_id AND LOWER(categories.name) LIKE ? ESCAPE '!') THEN 5"
-            ." WHEN EXISTS (SELECT 1 FROM shops WHERE shops.id = products.shop_id AND LOWER(shops.name) LIKE ? ESCAPE '!') THEN 6"
-            ." WHEN LOWER(products.description) LIKE ? ESCAPE '!' THEN 7 ELSE 8 END";
+        $case .= " WHEN EXISTS (SELECT 1 FROM product_store_tag JOIN store_tags ON store_tags.id = product_store_tag.store_tag_id WHERE product_store_tag.product_id = products.id AND store_tags.shop_id = products.shop_id AND LOWER(store_tags.name) = ?) THEN 4"
+            ." WHEN EXISTS (SELECT 1 FROM product_store_tag JOIN store_tags ON store_tags.id = product_store_tag.store_tag_id WHERE product_store_tag.product_id = products.id AND store_tags.shop_id = products.shop_id AND LOWER(store_tags.name) LIKE ? ESCAPE '!') THEN 5"
+            ." WHEN LOWER(products.sku) LIKE ? ESCAPE '!' THEN 6"
+            ." WHEN EXISTS (SELECT 1 FROM categories WHERE categories.id = products.category_id AND LOWER(categories.name) LIKE ? ESCAPE '!') THEN 7"
+            ." WHEN EXISTS (SELECT 1 FROM shops WHERE shops.id = products.shop_id AND LOWER(shops.name) LIKE ? ESCAPE '!') THEN 8"
+            ." WHEN LOWER(products.description) LIKE ? ESCAPE '!' THEN 9 ELSE 10 END";
+        $bindings[] = $phrase;
+        $bindings[] = $this->likePattern($phrase);
+        $bindings[] = $this->likePattern($phrase);
         $bindings[] = $this->likePattern($phrase);
         $bindings[] = $this->likePattern($phrase);
         $bindings[] = $this->likePattern($phrase);

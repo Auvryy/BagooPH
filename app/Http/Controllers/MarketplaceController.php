@@ -7,11 +7,10 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\ShopFollow;
-use App\Models\StoreCategory;
 use App\Models\User;
 use App\Services\Commerce\BuyerDiscoveryService;
 use App\Services\Commerce\ReviewService;
-use App\Services\Commerce\StoreCategoryService;
+use App\Services\Commerce\StoreTagService;
 use App\Services\ShopEligibilityService;
 use App\Services\Vouchers\VoucherCollectionService;
 use Illuminate\Http\RedirectResponse;
@@ -165,7 +164,7 @@ class MarketplaceController extends Controller
 
     public function show(string $slug): Response
     {
-        $product = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'images'])->availableForSale()->withReviewSummary()
+        $product = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'images', 'storeTags'])->availableForSale()->withReviewSummary()
             ->where('status', 'active')
             ->where(function ($q) use ($slug) {
                 $q->where('slug', $slug);
@@ -176,7 +175,7 @@ class MarketplaceController extends Controller
             ->first();
 
         if (! $product && preg_match('/(?:-i\.|\.)?(\d+)$/', $slug, $matches)) {
-            $product = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'images'])->availableForSale()->withReviewSummary()
+            $product = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'images', 'storeTags'])->availableForSale()->withReviewSummary()
                 ->where('status', 'active')
                 ->where('id', (int) $matches[1])
                 ->first();
@@ -201,7 +200,7 @@ class MarketplaceController extends Controller
         ]);
     }
 
-    public function shop(Request $request, string $slug, ?StoreCategory $storeCategory = null): Response
+    public function shop(Request $request, string $slug): Response
     {
         $shop = Shop::with('user')->eligible()
             ->withCount(['products' => function ($q) {
@@ -212,12 +211,12 @@ class MarketplaceController extends Controller
 
         $discovery = app(BuyerDiscoveryService::class);
         $filters = $discovery->selection($request);
-        $storeCategories = app(StoreCategoryService::class);
-        $selection = $storeCategories->publicSelection($request, $shop, $storeCategory);
+        $storeTags = app(StoreTagService::class);
+        $selection = $storeTags->publicSelection($shop, $request->input('tag'));
         if ($selection !== 'all') {
-            $filters['store_category'] = $selection;
+            $filters['tag'] = $selection;
         }
-        $products = $discovery->paginate($storeCategories->filterPublic($discovery->filter(
+        $products = $discovery->paginate($storeTags->filterPublic($discovery->filter(
             $discovery->catalogue()->where('products.shop_id', $shop->id), $filters
         ), $shop, $selection), $filters, 18);
 
@@ -231,8 +230,7 @@ class MarketplaceController extends Controller
             'shopStats' => app(ReviewService::class)->shopSummary($shop),
             'products' => $products,
             'filters' => $filters,
-            'categories' => $discovery->categories()->filter(fn ($category) => in_array($category->id, app(ShopEligibilityService::class)->categoryTreeIds($shop->rootCategory)))->values(),
-            'storeCategories' => $storeCategories->publicRows($shop),
+            'storeTags' => $storeTags->publicRows($shop),
             'isFollowing' => $currentUser?->isBuyer() && ShopFollow::where('buyer_id', $currentUser->id)->where('shop_id', $shop->id)->exists(),
             'followerCount' => ShopFollow::where('shop_id', $shop->id)->count(),
             'isOwner' => (bool) $isOwner,

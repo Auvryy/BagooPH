@@ -103,12 +103,14 @@ export async function visitCatalogue(href: string, options: Parameters<typeof ro
         }
     } });
     if (options.only?.length) cataloguePrefetch.prioritize();
-    const ready = options.only?.length ? false : await cataloguePrefetch.ready(href);
+    const forceFresh = options.fresh === true;
+    if (forceFresh) cataloguePrefetch.invalidate(href);
+    const ready = options.only?.length || forceFresh ? false : await cataloguePrefetch.ready(href);
     if (cancelled || ticket !== navigation) return;
     const current = { href, failed: () => options.onError?.({ navigation: 'Could not load this page. Please try again.' }) };
     managedVisit = current;
     const release = () => { if (managedVisit === current) managedVisit = undefined; };
-    router.visit(href, { ...options, headers: { ...options.headers, ...cataloguePrefetch.headers() }, fresh: !ready,
+    router.visit(href, { ...options, headers: { ...options.headers, ...cataloguePrefetch.headers() }, fresh: forceFresh || !ready,
         onCancelToken: token => { cancelRequest = token.cancel; if (cancelled) token.cancel(); },
         // Cached visits replay callbacks without a new global request/finish event.
         onFinish: visit => { release(); cataloguePrefetch.setBusy(foreground > 0); options.onFinish?.(visit); },
