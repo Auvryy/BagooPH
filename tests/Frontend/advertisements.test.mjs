@@ -12,7 +12,7 @@ const root = resolve(import.meta.dirname, '../..');
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-advertisements-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.route; delete globalThis.adTestHooks; delete globalThis.adFormData; delete globalThis.adReviewState; });
 const bundle = await build({
-    stdin: { contents: `export { default as Banners } from '@/Components/BuyerAdvertisements';
+    stdin: { contents: `export { promotionDateWindow, promotionDateErrors, nextPromotionMinute, promotionSuggestedStart } from '@/utils/promotionDates'; export { default as Banners } from '@/Components/BuyerAdvertisements';
         export { default as Promotion } from '@/Pages/Buyer/Promotion';
         export { default as Terms } from '@/Components/AdvertisementOfferTerms';
         export { default as AdminList } from '@/Pages/Admin/Advertisements/Index';
@@ -317,4 +317,37 @@ test('carousel controls send no click while an image activation is recorded once
         if (previousDoc === undefined) delete globalThis.document; else globalThis.document = previousDoc;
         globalThis.fetch = previousFetch;
     }
+});
+
+
+test('promotion dates round voucher starts up, preserve end bounds and use Manila today', () => {
+    const offer = { starts_at: '2026-11-06T16:00:30Z', ends_at: '2026-11-08T02:00:59Z' };
+    const now = new Date('2026-11-06T17:00:00Z');
+    assert.deepEqual(ui.promotionDateWindow(offer, now), { minimum: '2026-11-07T00:01', maximum: '2026-11-08T10:00' });
+    assert.deepEqual(ui.promotionDateErrors('2026-11-07T01:01', '2026-11-08T10:00', offer, undefined, now), {});
+    assert.ok(ui.promotionDateErrors('2026-11-07T00:00', '2026-11-08T10:00', offer, undefined, now).starts_at);
+    assert.ok(ui.promotionDateErrors('2026-11-07T01:01', '2026-11-08T10:01', offer, undefined, now).ends_at);
+    assert.ok(ui.promotionDateErrors('2026-11-08T10:00', '2026-11-08T10:00', offer, undefined, now).starts_at);
+    assert.equal(ui.promotionSuggestedStart(offer, now), '2026-11-07T01:00');
+    assert.equal(ui.nextPromotionMinute(''), '');
+    assert.ok(ui.promotionDateErrors('garbage', '2026-99-99T10:00', offer, undefined, now).starts_at);
+    assert.ok(ui.promotionDateErrors('2026-11-07T01:01', '2026-99-99T10:00', offer, undefined, now).ends_at);
+    assert.ok(ui.promotionDateErrors('', '', offer, undefined, now).ends_at);
+    assert.equal(ui.nextPromotionMinute('2026-11-07T23:59'), '2026-11-08T00:00');
+    assert.ok(ui.promotionDateErrors('2026-11-06T10:00', '2026-11-08T10:00', undefined, undefined, now).starts_at);
+    assert.deepEqual(ui.promotionDateErrors('2026-11-06T10:00', '2026-11-08T10:00', undefined, '2026-11-06T10:00', now), {});
+});
+
+test('seller promotion editor exposes linked voucher bounds and field feedback', async () => {
+    const offers = [{ id: 88, name: 'Published savings', code: 'BAGOO88', shop_id: 3, starts_at: '2027-10-15T02:00:00Z', ends_at: '2027-10-16T02:00:00Z' }];
+    globalThis.adFormData = { offer_revision_id: '88', starts_at: '2027-10-15T10:00', ends_at: '2027-10-17T10:00' };
+    try {
+        const html = await render(ui.SellerEditor, { ...sellerProps(null), options: { ...sellerOptions, offers } }, 'seller');
+        assert.match(html, /Voucher period:/);
+        assert.match(html, /Use voucher dates/);
+        assert.match(html, /min="2027-10-15T10:00"/);
+        assert.match(html, /max="2027-10-16T10:00"/);
+        assert.match(html, /End the promotion before or when the linked voucher ends/);
+        assert.match(html, /aria-invalid="true"/);
+    } finally { delete globalThis.adFormData; }
 });

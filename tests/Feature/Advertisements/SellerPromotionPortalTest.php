@@ -341,6 +341,30 @@ class SellerPromotionPortalTest extends TestCase
         return $voucher->fresh();
     }
 
+    public function test_promotion_dates_report_linked_voucher_boundaries_beside_the_fields(): void
+    {
+        $voucher = $this->voucher($this->shop);
+        $data = $this->data(['offer_revision_id' => $voucher->current_revision_id,
+            'starts_at' => '2026-10-15T19:59', 'ends_at' => '2026-10-18T20:01']);
+        $this->actingAs($this->seller)->postJson('/seller/promotions', $data)
+            ->assertUnprocessable()->assertJsonValidationErrors(['advertisement', 'starts_at', 'ends_at'])
+            ->assertJsonPath('errors.starts_at.0', 'Start on or after Oct 15, 2026 8:00 PM (Asia/Manila), when the linked voucher begins.')
+            ->assertJsonPath('errors.ends_at.0', 'End on or before Oct 18, 2026 8:00 PM (Asia/Manila), when the linked voucher ends.');
+        $this->assertDatabaseCount('advertisements', 0);
+        $this->post('/seller/promotions', $this->data(['offer_revision_id' => $voucher->current_revision_id,
+            'starts_at' => '2026-10-15T20:00', 'ends_at' => '2026-10-18T20:00']))->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('advertisements', 1);
+    }
+
+    public function test_promotion_dates_reject_backdated_start_and_expired_end(): void
+    {
+        $this->actingAs($this->seller)->postJson('/seller/promotions', $this->data(['starts_at' => '2026-10-14T23:59']))
+            ->assertUnprocessable()->assertJsonValidationErrors('starts_at');
+        $this->postJson('/seller/promotions', $this->data(['starts_at' => '2026-10-15T10:00', 'ends_at' => '2026-10-15T11:00']))
+            ->assertUnprocessable()->assertJsonValidationErrors('ends_at');
+        $this->assertDatabaseCount('advertisements', 0);
+    }
+
     public function test_only_owned_published_shop_offers_and_matching_products_can_be_submitted(): void
     {
         $own = $this->voucher($this->shop);
