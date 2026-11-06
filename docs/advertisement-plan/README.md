@@ -98,10 +98,16 @@ Expiry must work even if a background scheduler is delayed. Do not leave a
 dated sale banner visible just because its image still exists.
 
 Homepage capacity stays bounded: at most three main slides and two side images.
-Admins choose order and dates; there is no auction or secret ranking boost.
-Reject overlapping reservations for the same position and prevent duplicates on
-one homepage. Do not fill empty positions with invented offers or enlarge an
-empty-side layout into the rejected viewport-wide banner.
+Admins approve the campaign, choose its main/side slot and dates, and remain the
+publication authority. At request time, Bagoo may reorder the already eligible
+live campaigns within each main/side group using that buyer's recent product
+interest plus bounded product/category views and ad clicks. This is a buyer
+relevance signal, not paid priority or an auction; it cannot make an unapproved,
+paused, expired, or ineligible campaign appear. Product-catalogue order and
+campaign spend do not change. Reject overlapping reservations for the same
+position and prevent duplicates on one homepage. Do not fill empty positions
+with invented offers or enlarge an empty-side layout into the rejected
+viewport-wide banner.
 
 ## Offers must be real
 
