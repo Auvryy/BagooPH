@@ -13,7 +13,7 @@ use App\Services\Commerce\SellerListingActions;
 use App\Services\Commerce\SellerListingInput;
 use App\Services\Commerce\SellerListingSubmission;
 use App\Services\Commerce\SellerSalesMetricsService;
-use App\Services\Commerce\StoreCategoryService;
+use App\Services\Commerce\StoreTagService;
 use App\Services\Commerce\VariantMatrixService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Http\RedirectResponse;
@@ -43,7 +43,7 @@ class SellerProductController extends Controller
             $query = $this->salesMetrics
                 ->withProductLifecycleTotals(Product::query()->where('shop_id', $shop->id))
                 ->withCount('orderItems')
-                ->with(['category', 'images', 'sales', 'storeCategories', 'moderationDecisions' => fn ($decisions) => $decisions->latest('id')->limit(1)]);
+                ->with(['category', 'images', 'sales', 'storeTags', 'moderationDecisions' => fn ($decisions) => $decisions->latest('id')->limit(1)]);
             $products = $this->inventory->paginate($this->inventory->filter($query, $filters), $filters);
 
             $products->through(function (Product $product) {
@@ -68,9 +68,9 @@ class SellerProductController extends Controller
             'categories' => fn () => Category::whereIn('id', app(ShopEligibilityService::class)->categoryIds($shop))->get(),
             'shop' => $shop,
             'filters' => $filters,
-            'storeCategories' => fn () => app(StoreCategoryService::class)->rows($shop),
+            'storeTags' => fn () => app(StoreTagService::class)->rows($shop),
             'copiedProduct' => fn () => Product::where('shop_id', $shop->id)->where('status', 'draft')
-                ->with(['images', 'storeCategories'])->find($request->session()->get('listing_copy_id')),
+                ->with(['images', 'storeTags'])->find($request->session()->get('listing_copy_id')),
             'bulkResults' => fn () => $request->session()->get('listing_bulk_results', []),
         ]);
     }
@@ -91,8 +91,6 @@ class SellerProductController extends Controller
 
         $validated = app(SellerListingInput::class)->validate($request, $shop);
 
-        $storeCategoryIds = app(StoreCategoryService::class)->membershipIds($shop, $request->input('store_category_ids', []));
-
         $defaultFallback = '/storage/products/placeholder.webp';
         $slug = Product::generateUniqueSlug($validated['name']);
 
@@ -102,7 +100,7 @@ class SellerProductController extends Controller
             ? trim($validated['sku'])
             : 'BGO-'.$cleanPrefix.'-'.strtoupper(Str::random(5));
 
-        $validated['variants'] = $this->sanitizeVariants($request, (int) $validated['stock']);
+        $validated['variants'] = $this->sanitizeVariants($request, (int) $validated['stock'], $validated['price']);
         if (isset($validated['variants']['combinations'])) {
             $validated['stock'] = array_sum(array_column($validated['variants']['combinations'], 'stock'));
         }
@@ -117,7 +115,7 @@ class SellerProductController extends Controller
             'status' => $validated['status'] ?? 'active',
         ]);
 
-        $product->storeCategories()->sync($storeCategoryIds);
+        app(StoreTagService::class)->syncProduct($shop, $product, $request->input('tag_names', []), revalidateAll: true);
         $this->syncProductImages($product, $request, $defaultFallback);
 
         return $product;
@@ -145,7 +143,7 @@ class SellerProductController extends Controller
             : ($product->sku !== null && $product->sku !== '' ? $product->sku : 'BGO-'.$cleanPrefix.'-'.strtoupper(Str::random(5)));
 
         if ($request->has('variants')) {
-            $validated['variants'] = $this->sanitizeVariants($request, (int) $validated['stock']);
+            $validated['variants'] = $this->sanitizeVariants($request, (int) $validated['stock'], $validated['price']);
             app(VariantMatrixService::class)->assertRestorable($product, $validated['variants']);
         }
         $effectiveVariants = array_key_exists('variants', $validated) ? $validated['variants'] : $product->variants;
@@ -155,9 +153,10 @@ class SellerProductController extends Controller
 
         unset($validated['image_file'], $validated['image_files'], $validated['gallery_manifest']);
 
-        $storeCategoryIds = app(StoreCategoryService::class)->membershipIds($shop, $request->input('store_category_ids', $product->storeCategories()->pluck('store_categories.id')->all()));
+        $nameChanged = $product->name !== $validated['name'];
+        $tagInput = $request->exists('tag_names') ? $request->input('tag_names') : $product->storeTags()->where('store_tags.shop_id', $shop->id)->pluck('store_tags.name')->all();
         $product->update($validated);
-        $product->storeCategories()->sync($storeCategoryIds);
+        app(StoreTagService::class)->syncProduct($shop, $product, $tagInput, revalidateAll: $nameChanged);
 
         $this->syncProductImages($product, $request);
 
@@ -218,7 +217,7 @@ class SellerProductController extends Controller
     /**
      * Sanitize and normalize dynamic product variations payload.
      */
-    private function sanitizeVariants(Request $request, int $fallbackStock): ?array
+    private function sanitizeVariants(Request $request, int $fallbackStock, string|int|float $basePrice): ?array
     {
         if (! $request->has('variants')) {
             return null;
@@ -249,6 +248,11 @@ class SellerProductController extends Controller
                 unset($option);
             }
         }
+        foreach (['option1_name', 'option2_name'] as $field) {
+            if (isset($variantsRaw[$field]) && is_string($variantsRaw[$field])) {
+                $variantsRaw[$field] = trim($variantsRaw[$field]);
+            }
+        }
         Validator::make($variantsRaw, [
             'option3_name' => ['prohibited'],
             'pricing_mode' => ['sometimes', Rule::in(['surcharge', 'independent'])],
@@ -256,12 +260,15 @@ class SellerProductController extends Controller
             'colors.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
             'sizes' => ['sometimes', 'array', 'list', 'max:20'],
             'sizes.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
-            'sizes.*.stock' => ['sometimes', 'nullable', 'regex:/\A[0-9]+\z/', 'integer', 'between:0,99999'],
-            'sizes.*.extra_price' => ['sometimes', 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0,99999999.99'],
+            'sizes.*.stock' => ['sometimes', 'nullable', 'regex:/\A(?:0|[1-9][0-9]*)\z/', 'integer', 'between:0,99999'],
+            'sizes.*.extra_price' => ['sometimes', 'numeric', 'regex:/\A(?:0|[1-9][0-9]*)(?:\.[0-9]{1,2})?\z/', 'between:0,99999999.99'],
             'option1_name' => ['nullable', 'string', 'max:100'],
             'option2_name' => ['nullable', 'string', 'max:100'],
         ])->validate();
         $colors = [];
+        $gallery = json_decode((string) $request->input('gallery_manifest', '[]'), true);
+        $gallery = is_array($gallery) && array_is_list($gallery) ? $gallery : [];
+        $assignedImages = [];
         if (! empty($variantsRaw['colors']) && is_array($variantsRaw['colors'])) {
             foreach ($variantsRaw['colors'] as $idx => $color) {
                 if (is_array($color) && isset($color['name']) && $color['name'] !== '') {
@@ -269,12 +276,29 @@ class SellerProductController extends Controller
                     if ($imgUrl && str_starts_with($imgUrl, 'blob:')) {
                         $imgUrl = null;
                     }
+                    $galleryIndex = null;
+                    if (isset($color['gallery_index']) && $color['gallery_index'] !== null && $color['gallery_index'] !== '') {
+                        $rawIndex = $color['gallery_index'];
+                        if ((! is_int($rawIndex) && ! is_string($rawIndex)) || ! ctype_digit((string) $rawIndex)
+                            || ! array_key_exists((int) $rawIndex, $gallery)) {
+                            throw ValidationException::withMessages(['variants' => 'Choose a photo from this product gallery for each variation.']);
+                        }
+                        $galleryIndex = (int) $rawIndex;
+                    }
+                    $manifestUrl = $galleryIndex !== null ? ($gallery[$galleryIndex]['url'] ?? null) : null;
+                    $imageIdentity = is_string($manifestUrl) ? 'url:'.trim($manifestUrl) : ($imgUrl ? 'url:'.$imgUrl : null);
+                    if ($imageIdentity !== null && isset($assignedImages[$imageIdentity])) {
+                        throw ValidationException::withMessages(['variants' => 'Assign each product gallery photo to only one variation.']);
+                    }
+                    if ($imageIdentity !== null) {
+                        $assignedImages[$imageIdentity] = true;
+                    }
                     $colors[] = [
                         'id' => (string) ($color['id'] ?? ('c_'.($idx + 1))),
                         'name' => trim($color['name']),
                         'hex' => ! empty($color['hex']) ? trim($color['hex']) : '#111111',
                         'image_url' => $imgUrl,
-                        'gallery_index' => isset($color['gallery_index']) && is_numeric($color['gallery_index']) ? (int) $color['gallery_index'] : null,
+                        'gallery_index' => $galleryIndex,
                         'in_stock' => isset($color['in_stock']) ? (bool) $color['in_stock'] : true,
                     ];
                 }
@@ -285,10 +309,14 @@ class SellerProductController extends Controller
         if (! empty($variantsRaw['sizes']) && is_array($variantsRaw['sizes'])) {
             foreach ($variantsRaw['sizes'] as $idx => $size) {
                 if (is_array($size) && isset($size['name']) && $size['name'] !== '') {
+                    $extraPrice = isset($size['extra_price']) ? (float) $size['extra_price'] : 0;
+                    if ((float) $basePrice + $extraPrice > 1000000) {
+                        throw ValidationException::withMessages(['sizes.'.$idx.'.extra_price' => 'The selling price for this option cannot exceed ₱1,000,000.00.']);
+                    }
                     $sizes[] = [
                         'id' => (string) ($size['id'] ?? ('s_'.($idx + 1))),
                         'name' => trim($size['name']),
-                        'extra_price' => isset($size['extra_price']) ? max(0, (float) $size['extra_price']) : 0,
+                        'extra_price' => $extraPrice,
                         'stock' => isset($size['stock']) ? max(0, (int) $size['stock']) : $fallbackStock,
                     ];
                 }
@@ -306,7 +334,7 @@ class SellerProductController extends Controller
         $option1Name = ! empty($variantsRaw['option1_name']) ? trim((string) $variantsRaw['option1_name']) : (! empty($colors) ? 'Color / Edition' : null);
         $option2Name = ! empty($variantsRaw['option2_name']) ? trim((string) $variantsRaw['option2_name']) : (! empty($sizes) ? 'Specification / Size' : null);
 
-        $matrix = app(VariantMatrixService::class)->validate($variantsRaw, $colors, $sizes);
+        $matrix = app(VariantMatrixService::class)->validate($variantsRaw, $colors, $sizes, $basePrice);
 
         return [
             ...($matrix !== null ? ['combinations' => $matrix] : []),

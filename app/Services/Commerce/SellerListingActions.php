@@ -61,7 +61,7 @@ class SellerListingActions
             $copy->images()->create($image->only(['image_url', 'sort_order', 'is_primary']));
         }
 
-        $copy->storeCategories()->sync($product->storeCategories()->pluck('store_categories.id')->all());
+        $copy->storeTags()->sync($product->storeTags()->where('store_tags.shop_id', $shop->id)->pluck('store_tags.id')->all());
 
         return $copy;
     }

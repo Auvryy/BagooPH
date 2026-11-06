@@ -34,6 +34,13 @@ class SellerListingBoundaryTest extends TestCase
             'featured_image' => '/storage/products/tote.jpg'], $changes);
     }
 
+    private function tinyPng(string $name): UploadedFile
+    {
+        $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/+NEAAAAASUVORK5CYII=');
+
+        return UploadedFile::fake()->createWithContent($name, $bytes)->mimeType('image/png');
+    }
+
     public static function fields(): array
     {
         return [
@@ -46,12 +53,14 @@ class SellerListingBoundaryTest extends TestCase
             'zero price' => ['price', '0', false], 'negative price' => ['price', '-50', false],
             'under one peso' => ['price', '0.99', false], 'minimum price' => ['price', '1.00', true],
             'above minimum price' => ['price', '1.01', true], 'three decimals' => ['price', '199.999', false],
+            'leading zero price' => ['price', '0234', false], 'leading zero decimal price' => ['price', '01.00', false],
             'below maximum price' => ['price', '999999.99', true], 'maximum price' => ['price', '1000000.00', true],
             'excessive price' => ['price', '1000000.01', false], 'text price' => ['price', 'abc', false],
             'missing price' => ['price', '', false],
             'negative stock' => ['stock', -1, false], 'zero stock' => ['stock', 0, true],
             'one stock' => ['stock', 1, true], 'maximum stock' => ['stock', 99999, true],
             'excessive stock' => ['stock', 100000, false], 'fractional stock' => ['stock', '2.5', false],
+            'leading zero stock' => ['stock', '09999', false], 'double zero stock' => ['stock', '00', false],
         ];
     }
 
@@ -79,7 +88,7 @@ class SellerListingBoundaryTest extends TestCase
 
     public function test_gallery_accepts_one_and_nine_images_and_retains_them_after_a_tenth_is_rejected(): void
     {
-        $this->post('/seller/products', $this->payload(['image_file' => UploadedFile::fake()->image('cover.jpg')]))
+        $this->post('/seller/products', $this->payload(['image_file' => $this->tinyPng('cover.jpg')]))
             ->assertSessionHasNoErrors();
         $product = Product::sole();
         $this->assertSame(1, $product->images()->count());
@@ -114,13 +123,117 @@ class SellerListingBoundaryTest extends TestCase
 
     public function test_uploads_count_toward_the_gallery_limit_and_invalid_mixed_input_saves_nothing(): void
     {
-        $files = array_map(fn ($i) => UploadedFile::fake()->image('photo-'.$i.'.jpg'), range(1, 10));
+        $files = array_map(fn ($i) => $this->tinyPng('photo-'.$i.'.jpg'), range(1, 10));
         $this->post('/seller/products', $this->payload(['image_files' => $files]))->assertSessionHasErrors('image_files');
         $this->assertDatabaseCount('products', 0);
         $this->assertSame([], Storage::disk('public')->allFiles());
         $this->post('/seller/products', $this->payload(['image_files' => array_slice($files, 0, 9)]))
             ->assertSessionHasNoErrors();
         $this->assertSame(9, Product::sole()->images()->count());
+    }
+
+    public function test_product_image_accepts_one_byte_under_and_exactly_five_mib_but_rejects_one_byte_over(): void
+    {
+        $limit = 5 * 1024 * 1024;
+        $pngBytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/+NEAAAAASUVORK5CYII=');
+        foreach ([$limit - 1, $limit] as $size) {
+            $image = UploadedFile::fake()->createWithContent('cover.png', $pngBytes)->mimeType('image/png');
+            $image->sizeToReport = $size;
+            $this->post('/seller/products', $this->payload(['name' => 'Canvas Tote '.$size, 'image_file' => $image]))
+                ->assertSessionHasNoErrors()->assertSessionHas('success');
+        }
+        $this->assertSame(2, Product::count());
+
+        $tooLarge = UploadedFile::fake()->createWithContent('cover.png', $pngBytes)->mimeType('image/png');
+        $tooLarge->sizeToReport = $limit + 1;
+        $this->post('/seller/products', $this->payload(['image_file' => $tooLarge]))
+            ->assertSessionHasErrors('image_file');
+        $this->assertSame(2, Product::count());
+    }
+
+    public function test_each_multi_upload_image_rejects_one_byte_over_five_mib(): void
+    {
+        $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/+NEAAAAASUVORK5CYII=');
+        $image = UploadedFile::fake()->createWithContent('large.png', $bytes)->mimeType('image/png');
+        $image->sizeToReport = (5 * 1024 * 1024) + 1;
+        $manifest = json_encode([['type' => 'file', 'file_index' => 0]]);
+
+        $this->post('/seller/products', $this->payload(['featured_image' => '', 'gallery_manifest' => $manifest, 'image_files' => [$image]]))
+            ->assertSessionHasErrors('image_files.0');
+
+        $this->assertDatabaseCount('products', 0);
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_product_upload_rejects_unsupported_mime_even_when_the_extension_looks_like_an_image(): void
+    {
+        $file = UploadedFile::fake()->create('document.jpg', 100, 'text/plain');
+        $this->post('/seller/products', $this->payload(['image_file' => $file]))
+            ->assertSessionHasErrors('image_file');
+        $this->assertSame(0, Product::count());
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_variant_titles_and_values_accept_100_characters_and_reject_101(): void
+    {
+        $variants = ['option1_name' => str_repeat('G', 100), 'colors' => [['name' => str_repeat('C', 100)]]];
+        $this->post('/seller/products', $this->payload(['variants' => json_encode($variants)]))->assertSessionHasNoErrors();
+        $product = Product::sole();
+        $this->assertSame(100, mb_strlen($product->variants['option1_name']));
+        $this->assertSame(100, mb_strlen($product->variants['colors'][0]['name']));
+
+        $variants['option1_name'] = str_repeat('G', 101);
+        $this->put('/seller/products/'.$product->id, $this->payload(['variants' => json_encode($variants)]))->assertSessionHasErrors('option1_name');
+        $variants['option1_name'] = str_repeat('G', 100);
+        $variants['colors'][0]['name'] = str_repeat('C', 101);
+        $this->put('/seller/products/'.$product->id, $this->payload(['variants' => json_encode($variants)]))->assertSessionHasErrors('colors.0.name');
+        $this->assertSame(100, mb_strlen($product->fresh()->variants['colors'][0]['name']));
+    }
+
+    public function test_variant_stock_and_prices_reject_text_excess_precision_and_leading_zero_forms(): void
+    {
+        $product = Product::factory()->create(['shop_id' => $this->shop->id, 'category_id' => $this->shop->root_category_id]);
+        $base = ['colors' => [['name' => 'Natural']], 'pricing_mode' => 'independent', 'combinations' => [
+            ['color' => 'Natural', 'size' => null, 'stock' => '99999', 'price' => '1000000.00', 'sku' => 'TOTE-NATURAL'],
+        ]];
+        $this->put('/seller/products/'.$product->id, $this->payload(['variants' => json_encode($base)]))->assertSessionHasNoErrors();
+        $this->assertSame(99999, $product->fresh()->stock);
+        $this->assertSame('1000000.00', $product->fresh()->variants['combinations'][0]['price']);
+
+        foreach ([['stock' => '09999'], ['stock' => '100000'], ['price' => '01.00'], ['price' => '123.456'], ['price' => 'text']] as $change) {
+            $invalid = $base;
+            $invalid['combinations'][0] = [...$invalid['combinations'][0], ...$change];
+            $field = array_key_exists('stock', $change) ? 'combinations.0.stock' : 'combinations.0.price';
+            $this->put('/seller/products/'.$product->id, $this->payload(['variants' => json_encode($invalid)]))->assertSessionHasErrors($field);
+            $this->assertSame('1000000.00', $product->fresh()->variants['combinations'][0]['price']);
+        }
+    }
+
+    public function test_each_variant_uses_a_unique_assigned_photo_while_extra_gallery_photos_remain_unassigned(): void
+    {
+        $manifest = [
+            ['type' => 'url', 'url' => 'https://images.example.test/cover.jpg'],
+            ['type' => 'url', 'url' => 'https://images.example.test/natural.jpg'],
+            ['type' => 'url', 'url' => 'https://images.example.test/detail.jpg'],
+        ];
+        $variants = ['colors' => [
+            ['id' => 'natural', 'name' => 'Natural', 'image_url' => $manifest[1]['url'], 'gallery_index' => 1],
+            ['id' => 'black', 'name' => 'Black', 'image_url' => null, 'gallery_index' => null],
+        ]];
+        $this->post('/seller/products', $this->payload([
+            'featured_image' => $manifest[0]['url'], 'gallery_manifest' => json_encode($manifest), 'variants' => json_encode($variants),
+        ]))->assertSessionHasNoErrors();
+        $product = Product::sole();
+        $this->assertSame(3, $product->images()->count());
+        $this->assertSame($manifest[1]['url'], $product->fresh()->variants['colors'][0]['image_url']);
+        $this->assertNull($product->fresh()->variants['colors'][1]['image_url']);
+
+        $variants['colors'][1] = ['id' => 'black', 'name' => 'Black', 'image_url' => $manifest[1]['url'], 'gallery_index' => 1];
+        $before = $product->fresh()->getRawOriginal();
+        $this->put('/seller/products/'.$product->id, $this->payload([
+            'featured_image' => $manifest[0]['url'], 'gallery_manifest' => json_encode($manifest), 'variants' => json_encode($variants),
+        ]))->assertSessionHasErrors('variants');
+        $this->assertSame($before, $product->fresh()->getRawOriginal());
     }
 
     public function test_mixed_existing_and_uploaded_images_cannot_bypass_the_nine_image_limit(): void
@@ -130,14 +243,14 @@ class SellerListingBoundaryTest extends TestCase
         $existing = array_map(fn ($i) => ['type' => 'existing', 'url' => '/storage/products/detail-'.$i.'.jpg'], range(1, 8));
         $manifest = [...$existing, ['type' => 'file', 'file_index' => 0]];
         $this->put('/seller/products/'.$product->id, $this->payload(['gallery_manifest' => json_encode($manifest),
-            'image_files' => [UploadedFile::fake()->image('ninth.jpg')]]))->assertSessionHasNoErrors();
+            'image_files' => [$this->tinyPng('ninth.jpg')]]))->assertSessionHasNoErrors();
         $this->assertSame(9, $product->images()->count());
         $before = $product->images()->orderBy('sort_order')->get()->map->getAttributes()->all();
         $files = Storage::disk('public')->allFiles();
         $manifest = array_map(fn ($row) => ['type' => 'existing', 'url' => $row['image_url']], $before);
         $manifest[] = ['type' => 'file', 'file_index' => 0];
         $this->put('/seller/products/'.$product->id, $this->payload(['gallery_manifest' => json_encode($manifest),
-            'image_files' => [UploadedFile::fake()->image('tenth.jpg')]]))->assertSessionHasErrors('gallery_manifest');
+            'image_files' => [$this->tinyPng('tenth.jpg')]]))->assertSessionHasErrors('gallery_manifest');
         $this->assertSame($before, $product->images()->orderBy('sort_order')->get()->map->getAttributes()->all());
         $this->assertSame($files, Storage::disk('public')->allFiles());
     }
@@ -185,7 +298,7 @@ class SellerListingBoundaryTest extends TestCase
         $this->post('/seller/settings', ['description' => str_repeat('d', 500)])->assertSessionHasNoErrors();
         $this->post('/seller/settings', ['description' => str_repeat('d', 501)])->assertSessionHasErrors('description');
         $this->assertSame(str_repeat('d', 500), $this->shop->fresh()->description);
-        $image = UploadedFile::fake()->image('brand.jpg');
+        $image = $this->tinyPng('brand.jpg');
         $jpeg = file_get_contents($image->getRealPath());
         foreach (['logo_file' => 'logo', 'banner_file' => 'banner'] as $field => $column) {
             foreach ([5138022, 5242880] as $size) {

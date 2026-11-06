@@ -196,15 +196,16 @@ class SellerListingActionsTest extends TestCase
     }
 
     #[DataProvider('portals')]
-    public function test_a_minimal_draft_edit_retains_its_existing_subcategory_and_optional_details(string $portal): void
+    public function test_a_minimal_draft_edit_locks_the_approved_root_and_retains_optional_details(string $portal): void
     {
         $category = Category::factory()->create(['parent_id' => $this->shop->root_category_id, 'is_active' => true]);
         $product = Product::factory()->create(['shop_id' => $this->shop->id, 'category_id' => $category->id, 'status' => 'draft',
             'weight_kg' => '0.80', 'brand' => 'Bagoo Studio', 'condition' => 'new', 'length_cm' => '30.00', 'width_cm' => '20.00', 'height_cm' => '5.00']);
-        $fields = ['category_id', 'price', 'stock', 'description', 'weight_kg', 'brand', 'condition', 'length_cm', 'width_cm', 'height_cm', 'sku'];
+        $fields = ['price', 'stock', 'description', 'weight_kg', 'brand', 'condition', 'length_cm', 'width_cm', 'height_cm', 'sku'];
         $before = $product->fresh()->only($fields);
         $this->put($portal.'/products/'.$product->id, ['name' => 'Updated Private Draft', 'status' => 'draft'])->assertSessionHasNoErrors();
         $this->assertSame('Updated Private Draft', $product->fresh()->name);
+        $this->assertSame($this->shop->root_category_id, $product->fresh()->category_id);
         $this->assertSame($before, $product->fresh()->only($fields));
         $this->assertFalse(Product::availableForSale()->whereKey($product->id)->exists());
     }
