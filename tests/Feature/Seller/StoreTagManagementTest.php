@@ -65,6 +65,22 @@ class StoreTagManagementTest extends TestCase
             && str_contains($request->body(), 'carryall'));
     }
 
+    public function test_inline_tag_check_accepts_relevant_tags_without_creating_rows(): void
+    {
+        $this->fakeTags(['carryall']);
+        $this->postJson('/seller/products/assist-tags', ['product_name' => 'Everyday Canvas Carryall', 'tag' => 'carryall'])
+            ->assertOk()->assertJsonPath('tag', 'carryall');
+        $this->assertDatabaseCount('store_tags', 0);
+    }
+
+    public function test_inline_tag_check_rejects_off_department_tags_without_creating_rows(): void
+    {
+        $this->fakeTags([]);
+        $this->postJson('/seller/products/assist-tags', ['product_name' => 'Everyday Canvas Carryall', 'tag' => 'hollow blocks'])
+            ->assertUnprocessable()->assertJsonValidationErrors('tag_names');
+        $this->assertDatabaseCount('store_tags', 0);
+    }
+
     public function test_tag_manager_requires_a_product_name_before_gemini_relevance_review(): void
     {
         Http::fake();

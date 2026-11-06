@@ -329,3 +329,29 @@ test('single-product deletion explains an unfinished-order rejection inside the 
         assert.match(text(dialog), /This product has unfinished orders/);
     } finally { delete globalThis.document; }
 });
+
+test('listing tags await relevance approval and retain rejected input', async () => {
+    const previousFetch = globalThis.fetch;
+    const previousDocument = globalThis.document;
+    globalThis.document = { querySelector: () => null };
+    let finish;
+    globalThis.fetch = () => new Promise(resolve => { finish = resolve; });
+    const props = { data: { ...emptyListingDetails, tag_names: [], tag_draft: 'carryall' }, errors: {}, tags: [], departmentName: 'Pet Supplies', productName: 'Canvas Carryall', onChange(key, value) { props.data = { ...props.data, [key]: value }; } };
+    const h = harness(ListingDetails, props);
+    try {
+        let tree = h.render();
+        const pending = nodes(tree, n => n.type === 'button' && text(n) === 'Add tag')[0].props.onClick();
+        assert.deepEqual(props.data.tag_names, []);
+        finish({ ok: true, json: async () => ({ tag: 'carryall' }) });
+        await pending;
+        assert.deepEqual(props.data.tag_names, ['carryall']);
+        props.data = { ...props.data, tag_draft: 'hollow blocks' };
+        tree = h.render();
+        const rejected = nodes(tree, n => n.type === 'button' && text(n) === 'Add tag')[0].props.onClick();
+        finish({ ok: false, json: async () => ({ errors: { tag_names: ['Tag does not fit this product.'] } }) });
+        await rejected;
+        assert.deepEqual(props.data.tag_names, ['carryall']);
+        assert.equal(props.data.tag_draft, 'hollow blocks');
+        assert.match(text(h.render()), /Tag does not fit/);
+    } finally { globalThis.fetch = previousFetch; globalThis.document = previousDocument; }
+});

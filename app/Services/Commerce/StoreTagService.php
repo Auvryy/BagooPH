@@ -155,6 +155,14 @@ PROMPT;
         return StoreTag::query()->firstOrCreate(['shop_id' => $shop->id, 'normalized_name' => $normalized], ['name' => $name]);
     }
 
+    public function validateProductTag(Shop $shop, string $productName, string $name): string
+    {
+        $names = $this->normalizeNames([$name], 'tag_names', 1);
+        $this->assertRelevant($shop, [$productName], $names);
+
+        return $names[0];
+    }
+
     private function assertRelevant(Shop $shop, array $productNames, array $names): void
     {
         if ($names === []) {
