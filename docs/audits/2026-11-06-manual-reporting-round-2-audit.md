@@ -30,6 +30,14 @@ AI HTTP exceptions raised by Laravel retry now use the existing safe assistant-f
 
 Verification: seller promotion Docker SQLite suite 20 tests / 370 assertions; advertisement frontend 29/29; voucher/AI backend audit 48 tests / 514 assertions; buyer/product voucher frontend 28/28; focused AI failure regression suite 4 tests / 17 assertions. No voucher application defect was reproduced. Actual applied order discounts, code eligibility, product scope and funding rollback are covered. No production data, connected phone, or visible browser was used. Promotion-date feedback assessment: 4/10 to 8/10 based on explicit limits, client feedback and preserved server enforcement; this is a scoped engineering assessment.
 
+## Personal PDF and UX review
+
+The primary agent personally reread every line of the New test 2pm section and inspected rendered PDF -3 pages 3–15, including the embedded account, KYC, voucher, listing, category-tree, promotion and heart screenshots. No subagents were used for this pass. The tree screenshot is the old behavior the text asks to replace; flat tags remain the current requirement.
+
+The voucher form still presented identity, discount rules, limits and dates as one continuous grid. It now uses named fieldsets for voucher identity, savings and limits, and availability, with icon headings, restrained surface contrast, clear input boundaries, and a distinct action footer. Promotion editing now separates content, destination/offer and scheduling, while its preview stays alongside the form on wide screens. Input validation, values, read-only buyer preview and submit behavior are preserved.
+
+Final Docker TypeScript/Vite production build passed and current local assets were replaced. Focused current UI regression: 145/145 across auth alignment, account center, KYC interaction, notifications, seller worklists, voucher campaigns and advertisements. Source/diff inspection confirms the layout changes are confined to these two forms. Assessment for form grouping: 6/10 to 8/10, based on semantic sections and clearer reading order; actual browser visual acceptance remains unverified. This review does not claim that a source inspection proves subjective visual quality on every viewport.
+
 ## Requirement-by-requirement result
 
 | ID | PDF request | Result and evidence |

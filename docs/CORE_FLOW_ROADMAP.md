@@ -32,6 +32,9 @@ The core flow is complete only when the entire chain passes cross-role tests wit
 
 ## November 6 manual reporting PDF: 2pm web requirements
 
+Personal screenshot/UX pass: the primary agent reread the complete 2pm text and visually inspected its PDF screenshots without subagents. Voucher inputs now use identity, savings/limits and availability fieldsets; promotion inputs have content, destination and schedule sections with a persistent wide-screen preview. The focused UI batch passed 145/145. Form-grouping assessment: 6/10 to 8/10; browser visual acceptance is still unverified.
+
+
 Promotion-date follow-up: seller forms show the linked voucher period and bounded Manila date inputs, with per-field server feedback. Promotion tests passed 20/370 backend and 29/29 frontend; voucher/AI audit passed 48/514 backend and 28/28 voucher frontend. AI provider HTTP failures now use actionable feedback and one sanitized live JSON connection check passed. Promotion-date feedback assessment: 4/10 to 8/10. See the audit for scope and limits.
 
 
