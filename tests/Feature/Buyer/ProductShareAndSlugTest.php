@@ -34,11 +34,7 @@ class ProductShareAndSlugTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->category = Category::factory()->create([
-            'name' => 'Apparel',
-            'is_active' => true,
-            'parent_id' => $this->shop->root_category_id,
-        ]);
+        $this->category = Category::findOrFail($this->shop->root_category_id);
     }
 
     public function test_guest_can_view_product_via_public_share_url_without_authenticating(): void
