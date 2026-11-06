@@ -32,6 +32,12 @@ The core flow is complete only when the entire chain passes cross-role tests wit
 
 ## November 6 manual reporting PDF: 2pm web requirements
 
+Promotion-date follow-up: seller forms show the linked voucher period and bounded Manila date inputs, with per-field server feedback. Promotion tests passed 20/370 backend and 29/29 frontend; voucher/AI audit passed 48/514 backend and 28/28 voucher frontend. AI provider HTTP failures now use actionable feedback and one sanitized live JSON connection check passed. Promotion-date feedback assessment: 4/10 to 8/10. See the audit for scope and limits.
+
+
+Follow-up recheck: product-editor tag additions now await Gemini relevance approval, with retained rejected input and an in-flight guard. The stale November 4 local production assets were replaced by a successful Docker TypeScript/Vite build; the manifest includes the flat Store Tags page. Focused tag checks passed 23/186 backend and 18/18 frontend; the broader 2pm frontend batch passed 217/217 and isolated account/KYC/product backend batch passed 130/1,237. Tag-entry feedback assessment: 6/10 to 8/10. Detailed scope and live-service limits are recorded in the audit below.
+
+
 The PDF's “New test 2pm” web requirements are implemented across registration and account access, KYC and notifications, seller listings and flat tags, buyer catalogue/Bag actions, vouchers, and promotion tools. The user clarified that product master category stays fixed to the seller's approved signup root and seller product organization uses flat shop-owned tags. The listing migration also preserves SQLite product-retention guards when adding/removing that legacy category column. The detailed requirement map and evidence are in [the 2pm audit](audits/2026-11-06-manual-reporting-round-2-audit.md).
 
 Scoped engineering assessments: account status/KYC feedback **4/10 → 8/10**; seller listing, variant and tag workflow **3/10 → 8/10**; buyer search and Bag actions **4/10 → 7/10**; voucher authoring and history **3/10 → 8/10**; promotion tooling and ranking **3/10 → 6/10**. These are narrow source/test-based assessments, not measured usability scores or changes to overall readiness. The current serial focused frontend check passed 338 tests; current TypeScript checking passed with a memory cap; focused account/auth, voucher, seller-migration and ad checks are recorded in the audit. The full frontend sweep's four checkout harness failures and the local GD/WebP image-upload blocker remain documented there.

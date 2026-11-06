@@ -4,6 +4,32 @@ Source: `/home/andy/Downloads/Bagoo manual reporting -2.pdf`, “New test 2pm”
 
 The user clarified that sellers have **no category tree**: products keep the seller's approved signup root category and seller organization uses flat, shop-owned tags checked for relevance by Gemini.
 
+## November 6 follow-up recheck
+
+PDF -3 repeats the 14 prose requirements in the 2pm section. The screenshot-only variant-photo chooser adds upload/selection details; the separate 3pm section is outside this review. Latest user instruction confirms flat tags with no parent/child seller tree.
+
+Two additional gaps were corrected on `fix/store-tags-and-checkout-db`:
+
+- Product-editor tag selection now waits for the existing Gemini relevance checker before adding a typed, saved, or suggested tag. Off-department tags and provider failures retain the input and display feedback. Concurrent clicks are guarded, responses for a changed product name are rejected, and listing-save validation remains authoritative. The check endpoint does not create tag rows.
+- Local Laravel had no Vite hot file and its production manifest was dated November 4. Host build failed with EACCES on root-owned output. Building through the existing Docker PHP/Node runtime succeeded and replaced that output; the new manifest includes `Seller/StoreTags`. Current seller source and navigation contain flat tags without a parent-category control. This is compiled-artifact evidence, not a manual browser session.
+
+Dashboard's listing CTA is now inside page content. Product share/slug test fixtures now use the approved root department, matching the current product policy.
+
+Current follow-up checks: production `npm run build` (TypeScript and Vite) passed in Docker; tag management 23 tests / 186 assertions; seller frontend 18/18 including asynchronous tag approval/rejection; portal consistency 10/10; broader serial 2pm frontend 217/217; isolated Docker account/password/KYC/email/notification/product-share batch 130 tests / 1,237 assertions. The isolated storage path avoided the earlier root-owned test-storage artifact. Local migration status reports no pending migrations. No database reset or seed was performed.
+
+Scoped assessment: tag-entry feedback 6/10 to 8/10, based on rejection before selection and retained input. Live Gemini, SMTP, OAuth, Azure deployment and manual responsive/browser acceptance remain unverified. No commit or push was performed in this recheck.
+
+## Promotion date and larger-feature follow-up
+
+The final Docker production build (TypeScript and Vite) passed after the date changes; current compiled assets include this fix. Code changes are split into local commits on the feature branch; the PR description remains a local draft and no push was performed.
+
+
+The supplied screenshot showed valid linked-voucher containment being reported only as a general advertisement error. Seller promotion editing now displays the voucher period in Asia/Manila, sets date bounds, offers a current-or-voucher-start shortcut, and reports invalid dates beside the fields. The server retains containment, reports exact offer bounds, rejects backdated changed starts and expired ends, and retains unchanged historical starts. Invalid date strings, minute rounding and midnight boundaries are covered.
+
+AI HTTP exceptions raised by Laravel retry now use the existing safe assistant-failure path. Regression coverage exercises HTTP 400/429/500. The configured model identifier exists in the official Google model documentation. One sanitized live configured-service request returned the expected JSON boolean successfully; this proves connectivity and one JSON response, not moderation quality for every input.
+
+Verification: seller promotion Docker SQLite suite 20 tests / 370 assertions; advertisement frontend 29/29; voucher/AI backend audit 48 tests / 514 assertions; buyer/product voucher frontend 28/28; focused AI failure regression suite 4 tests / 17 assertions. No voucher application defect was reproduced. Actual applied order discounts, code eligibility, product scope and funding rollback are covered. No production data, connected phone, or visible browser was used. Promotion-date feedback assessment: 4/10 to 8/10 based on explicit limits, client feedback and preserved server enforcement; this is a scoped engineering assessment.
+
 ## Requirement-by-requirement result
 
 | ID | PDF request | Result and evidence |
