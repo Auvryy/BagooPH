@@ -3,6 +3,7 @@
 namespace App\Services\AI;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -55,7 +56,7 @@ class AiTextService
                         'responseMimeType' => 'application/json',
                     ],
                 ]);
-        } catch (ConnectionException $exception) {
+        } catch (ConnectionException|RequestException $exception) {
             throw new RuntimeException('The assistant could not respond right now.', 0, $exception);
         }
 
