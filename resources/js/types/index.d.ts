@@ -106,6 +106,17 @@ export interface Shop {
     user?: User;
 }
 
+export interface SubCategory {
+    id: number;
+    category_id: number;
+    name: string;
+    slug: string;
+    image_path?: string | null;
+    sort_order: number;
+    is_active: boolean;
+    products_count?: number;
+}
+
 export interface Category {
     id: number;
     parent_id?: number | null;
@@ -116,6 +127,7 @@ export interface Category {
     description?: string | null;
     is_active: boolean;
     products_count?: number;
+    sub_categories?: SubCategory[];
 }
 
 export interface ProductImage {
@@ -159,6 +171,7 @@ export interface Product {
     id: number;
     shop_id: number;
     category_id?: number | null;
+    sub_category_id?: number | null;
     name: string;
     slug: string;
     description: string;
@@ -192,6 +205,7 @@ export interface Product {
     order_items_count?: number;
     shop?: Shop;
     category?: Category;
+    sub_category?: SubCategory | null;
     images?: ProductImage[];
     reviews?: Review[];
     created_at?: string;

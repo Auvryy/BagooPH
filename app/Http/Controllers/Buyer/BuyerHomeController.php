@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\SubCategory;
 use App\Services\Advertisements\AdvertisementReader;
 use App\Services\Advertisements\AdvertisementRecommendationService;
 use App\Services\Commerce\BuyerDiscoveryService;
@@ -76,8 +78,8 @@ class BuyerHomeController extends Controller
                 ->get();
         }
 
-        // 5. Algorithmic Top Products (Personalized by user preference & engagement)
-        $topPersonalizedProducts = Product::with(['shop', 'category'])
+        // 5. Algorithmic Top Products & Curated Subcategory / Niche Showcases (Row 5)
+        $topPersonalizedProducts = Product::with(['shop', 'category', 'subCategory'])
             ->availableForSale()
             ->where('status', 'active')
             ->orderByDesc('sales_count')
@@ -85,20 +87,77 @@ class BuyerHomeController extends Controller
             ->get()
             ->map(function ($product, $index) {
                 $ribbons = [
-                    ['text' => '#1 BESTSELLER', 'tag' => 'backpacks-and-bags', 'niche' => 'Everyday Carry & Tech Packs'],
-                    ['text' => 'TRENDING 3.4K/MO', 'tag' => 'mens-apparel', 'niche' => 'Heavyweight Streetwear & Tees'],
-                    ['text' => '5.0★ TOP RATED', 'tag' => 'sports-and-outdoors', 'niche' => 'Tactical & Outdoor Survival Gear'],
-                    ['text' => 'HOT DEAL -29%', 'tag' => 'electronics-and-gadgets', 'niche' => 'Tech Pouches & EDC Organizers'],
+                    ['text' => '#1 BESTSELLER', 'tag' => 'backpacks-and-bags', 'sub' => 'crossbody-slings', 'niche' => 'Tactical Crossbody Slings', 'sales' => '3.4K SOLD/MO'],
+                    ['text' => 'TRENDING', 'tag' => 'mens-apparel', 'sub' => 'tees-and-tops', 'niche' => 'Oversized Streetwear Tees', 'sales' => '2.8K SOLD/MO'],
+                    ['text' => 'TOP RATED 5.0★', 'tag' => 'jewelry-and-watches', 'sub' => 'tactical-field-watches', 'niche' => 'Mil-Spec Field Watches', 'sales' => '1.9K SOLD/MO'],
+                    ['text' => 'HOT DEMAND', 'tag' => 'backpacks-and-bags', 'sub' => 'tech-pouches-and-organizers', 'niche' => 'Modular Tech Organizers', 'sales' => '1.5K SOLD/MO'],
                 ];
                 $meta = $ribbons[$index % count($ribbons)];
                 $product->personalized_ribbon = $meta['text'];
                 $product->collection_tag = $meta['tag'];
+                $product->collection_sub = $meta['sub'];
                 $product->collection_title = $meta['niche'];
+                $product->sales_badge = $meta['sales'];
                 return $product;
             });
 
+        $topCuratedCollections = [
+            [
+                'id' => 1,
+                'title' => 'Tactical Crossbody Slings',
+                'ribbon' => '#1 BESTSELLER',
+                'ribbon_color' => 'amber',
+                'sales_badge' => '3.4K SOLD/MO',
+                'category_slug' => 'backpacks-and-bags',
+                'category_name' => 'Bags & EDC',
+                'sub_slug' => 'crossbody-slings',
+                'image' => '/images/products/stealth_sling_front.jpg',
+                'item_count_label' => '12+ items',
+                'target_url' => '/?category=backpacks-and-bags&sub=crossbody-slings',
+            ],
+            [
+                'id' => 2,
+                'title' => 'Oversized Streetwear Tees',
+                'ribbon' => 'TRENDING',
+                'ribbon_color' => 'crimson',
+                'sales_badge' => '2.8K SOLD/MO',
+                'category_slug' => 'mens-apparel',
+                'category_name' => "Men's Apparel",
+                'sub_slug' => 'tees-and-tops',
+                'image' => '/images/products/boxy_tee_front.jpg',
+                'item_count_label' => '18+ items',
+                'target_url' => '/?category=mens-apparel&sub=tees-and-tops',
+            ],
+            [
+                'id' => 3,
+                'title' => 'Mil-Spec Field Watches',
+                'ribbon' => 'TOP RATED 5.0★',
+                'ribbon_color' => 'emerald',
+                'sales_badge' => '1.9K SOLD/MO',
+                'category_slug' => 'jewelry-and-watches',
+                'category_name' => 'Jewelry & Watches',
+                'sub_slug' => 'tactical-field-watches',
+                'image' => '/images/categories/jewelry_watches.jpg',
+                'item_count_label' => '8+ items',
+                'target_url' => '/?category=jewelry-and-watches&sub=tactical-field-watches',
+            ],
+            [
+                'id' => 4,
+                'title' => 'Modular Tech Organizers',
+                'ribbon' => 'HOT DEMAND',
+                'ribbon_color' => 'orange',
+                'sales_badge' => '1.5K SOLD/MO',
+                'category_slug' => 'backpacks-and-bags',
+                'category_name' => 'Bags & EDC',
+                'sub_slug' => 'tech-pouches-and-organizers',
+                'image' => '/images/products/nomad_pouch_front.jpg',
+                'item_count_label' => '14+ items',
+                'target_url' => '/?category=backpacks-and-bags&sub=tech-pouches-and-organizers',
+            ],
+        ];
+
         // 6. "Daily Discover" & Search Product Feed
-        $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
+        $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'subCategory'])->availableForSale()->withReviewSummary()
             ->where('status', 'active');
 
         $discovery = app(BuyerDiscoveryService::class);
@@ -107,6 +166,26 @@ class BuyerHomeController extends Controller
         }
         $filters = $discovery->selection($request);
         $feedProducts = $discovery->paginate($discovery->filter($query, $filters), $filters, 18);
+
+        // Subcategories for active category or all active
+        $selectedCategory = $filters['category'] !== 'all' && $filters['category'] !== ''
+            ? Category::where('slug', $filters['category'])->where('is_active', true)->first()
+            : null;
+
+        $subcategoriesQuery = SubCategory::where('is_active', true);
+        if ($selectedCategory) {
+            $subcategoriesQuery->where('category_id', $selectedCategory->id);
+        }
+        $subcategories = $subcategoriesQuery->orderBy('sort_order')->get();
+
+        $subCounts = Product::availableForSale()->whereNotNull('sub_category_id')
+            ->selectRaw('sub_category_id, count(*) as count')
+            ->groupBy('sub_category_id')
+            ->pluck('count', 'sub_category_id');
+
+        $subcategories->each(function ($sub) use ($subCounts) {
+            $sub->setAttribute('products_count', (int) ($subCounts[$sub->id] ?? 0));
+        });
 
         // 5b. Related / Suggested Products (when search is active or when feed has few results)
         $relatedProducts = [];
@@ -146,9 +225,11 @@ class BuyerHomeController extends Controller
         return Inertia::render('Buyer/Home', [
             'banners' => $banners,
             'categories' => $categories,
+            'subcategories' => $subcategories,
             'feedProducts' => $feedProducts,
             'flashSaleProducts' => $flashSaleProducts,
             'topPersonalizedProducts' => $topPersonalizedProducts,
+            'topCuratedCollections' => $topCuratedCollections,
             'relatedProducts' => $relatedProducts,
             'activeShipment' => $activeShipment,
             'filters' => [...$filters, 'tab' => match ($filters['sort']) {

@@ -39,4 +39,9 @@ class Category extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    public function subCategories(): HasMany
+    {
+        return $this->hasMany(SubCategory::class)->where('is_active', true)->orderBy('sort_order');
+    }
 }

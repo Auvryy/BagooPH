@@ -8,7 +8,7 @@ import CatalogueErrors from '@/Components/CatalogueErrors';
 import BagHeartButton from '@/Components/BagHeartButton';
 import CataloguePagination from '@/Components/CataloguePagination';
 import { catalogueFilters } from '@/utils/catalogueNavigation';
-import { Category, PaginatedData, Product } from '@/types';
+import { Category, PaginatedData, Product, SubCategory } from '@/types';
 import { 
     Truck, 
     Star, 
@@ -55,17 +55,35 @@ interface ActiveShipment {
     estimated_delivery: string;
 }
 
+export interface CuratedCollection {
+    id: number;
+    title: string;
+    ribbon: string;
+    ribbon_color: string;
+    sales_badge: string;
+    category_slug: string;
+    category_name: string;
+    sub_slug: string;
+    image: string;
+    item_count_label?: string;
+    target_url: string;
+}
+
 interface Props {
     banners: Advertisement[];
     categories: (Category & { products_count?: number })[];
+    subcategories?: SubCategory[];
     feedProducts: PaginatedData<Product>;
     flashSaleProducts?: Product[];
-    topPersonalizedProducts?: Array<Product & { personalized_ribbon?: string; collection_tag?: string; collection_title?: string }>;
+    topPersonalizedProducts?: Array<Product & { personalized_ribbon?: string; collection_tag?: string; collection_sub?: string; collection_title?: string; sales_badge?: string }>;
+    topCuratedCollections?: CuratedCollection[];
     relatedProducts?: Product[];
     activeShipment?: ActiveShipment | null;
     filters: {
         search?: string;
         category?: string;
+        sub?: string;
+        sub_category?: string;
         sort?: string;
         min_price?: string;
         max_price?: string;
@@ -78,9 +96,11 @@ interface Props {
 export default function BuyerHome({
     banners,
     categories,
+    subcategories = [],
     feedProducts,
     flashSaleProducts: initialFlashSales,
     topPersonalizedProducts: initialTopProducts,
+    topCuratedCollections = [],
     relatedProducts = [],
     activeShipment,
     filters,
@@ -185,20 +205,22 @@ export default function BuyerHome({
         { label: 'Cash on Delivery', badge: 'Doorstep Escrow', icon: Check, color: 'bg-teal-50 text-teal-600', action: () => applyFilterChange({ category: undefined }) },
     ];
 
-    // Row 3: Categories with REAL Product Photography
+    // Row 3: Official 14 Master Categories with Dedicated Clean Studio Photography
     const categoryCatalog = [
         { name: "Men's Apparel", slug: 'mens-apparel', image: '/images/products/boxy_tee_front.jpg', count: '1.2k+ items' },
         { name: 'Bags & EDC', slug: 'backpacks-and-bags', image: '/images/products/stealth_sling_front.jpg', count: '890+ items' },
-        { name: 'Electronics & Tech', slug: 'electronics-and-gadgets', image: '/images/products/nomad_pouch_front.jpg', count: '650+ items' },
-        { name: 'Watches & Gear', slug: 'jewelry-and-watches', image: '/images/products/field_watch_front.jpg', count: '420+ items' },
-        { name: 'Sports & Outdoors', slug: 'sports-and-outdoors', image: '/images/products/tactical_gloves_front.jpg', count: '540+ items' },
-        { name: 'Eyewear & Style', slug: 'bagoo-demo-accessories-5', image: '/images/products/aviator_glasses_front.jpg', count: '310+ items' },
-        { name: 'Home & Studio', slug: 'home-and-garden', image: '/images/carousel/botanical-candle.jpg', count: '480+ items' },
-        { name: 'Leathercraft & Wallets', slug: 'backpacks-and-bags', image: '/images/products/leather_wallet_front.jpg', count: '290+ items' },
-        { name: 'Tactical & Survival', slug: 'sports-and-outdoors', image: '/images/products/paracord_bracelet_front.jpg', count: '380+ items' },
-        { name: 'Caps & Headwear', slug: 'mens-apparel', image: '/images/products/camp_cap_front.jpg', count: '240+ items' },
-        { name: 'Essential Basics', slug: 'mens-apparel', image: '/images/products/transit_brief_front.jpg', count: '510+ items' },
-        { name: 'Hardware & EDC Tools', slug: 'backpacks-and-bags', image: '/images/products/edc_carabiner_front.jpg', count: '190+ items' },
+        { name: 'Electronics & Gadgets', slug: 'electronics-and-gadgets', image: '/images/categories/electronics_audio.jpg', count: '650+ items' },
+        { name: 'Jewelry & Watches', slug: 'jewelry-and-watches', image: '/images/categories/jewelry_watches.jpg', count: '420+ items' },
+        { name: 'Sports & Outdoors', slug: 'sports-and-outdoors', image: '/images/categories/sports_outdoors.jpg', count: '540+ items' },
+        { name: 'Eyewear & Accessories', slug: 'bagoo-demo-accessories-5', image: '/images/products/aviator_glasses_front.jpg', count: '310+ items' },
+        { name: 'Home, Studio & Living', slug: 'home-and-garden', image: '/images/carousel/botanical-candle.jpg', count: '480+ items' },
+        { name: "Women's Apparel", slug: 'womens-apparel', image: '/images/categories/womens_apparel.jpg', count: '1.1k+ items' },
+        { name: 'Health & Beauty', slug: 'health-and-beauty', image: '/images/categories/health_beauty.jpg', count: '590+ items' },
+        { name: 'Automotive & Motorcycle', slug: 'automotive-motorcycle-group-9', image: '/images/categories/automotive.jpg', count: '340+ items' },
+        { name: 'Food & Gourmet', slug: 'food-and-gourmet', image: '/images/categories/food_coffee.jpg', count: '460+ items' },
+        { name: 'Office & School', slug: 'office-and-school-supplies-group-12', image: '/images/categories/office_school.jpg', count: '290+ items' },
+        { name: 'Kids, Baby & Toys', slug: 'kids-and-baby', image: '/images/categories/kids_baby.jpg', count: '380+ items' },
+        { name: 'Pet Supplies', slug: 'pet-supplies', image: '/images/categories/pet_supplies.jpg', count: '270+ items' },
     ];
 
     return (
@@ -292,14 +314,14 @@ export default function BuyerHome({
                             </span>
                         </div>
 
-                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 sm:gap-3">
                             {categoryCatalog.map((cat, idx) => {
                                 const isSelected = filters.category === cat.slug;
                                 return (
                                     <button
                                         key={idx}
                                         type="button"
-                                        onClick={() => applyFilterChange({ category: isSelected ? undefined : cat.slug, search: undefined })}
+                                        onClick={() => applyFilterChange({ category: isSelected ? undefined : cat.slug, sub: undefined, search: undefined })}
                                         className={`group p-2.5 rounded-2xl border transition-all duration-200 flex flex-col items-center justify-between gap-2 cursor-pointer text-center ${
                                             isSelected
                                                 ? 'bg-rose-50 border-[#E00D42] shadow-sm ring-1 ring-[#E00D42]'
@@ -326,6 +348,68 @@ export default function BuyerHome({
                                 );
                             })}
                         </div>
+
+                        {/* Level-2 Subcategory Filter Rail */}
+                        {filters.category && filters.category !== 'all' && subcategories && subcategories.length > 0 && (
+                            <div className="pt-3 border-t border-slate-100 space-y-2 animate-fade-in">
+                                <div className="flex items-center justify-between text-xs font-sans">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-[#E00D42]" />
+                                        <span className="font-bold text-slate-800 uppercase tracking-wide text-[11px]">
+                                            {categories.find(c => c.slug === filters.category)?.name || 'Department'} Subcategories
+                                        </span>
+                                    </div>
+                                    {filters.sub && (
+                                        <button
+                                            type="button"
+                                            onClick={() => applyFilterChange({ sub: undefined })}
+                                            className="text-[11px] font-bold text-slate-500 hover:text-[#E00D42] transition cursor-pointer flex items-center gap-1"
+                                        >
+                                            <RotateCcw className="w-3 h-3" />
+                                            <span>Show All Subcategories</span>
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => applyFilterChange({ sub: undefined })}
+                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-sans transition-all duration-200 shrink-0 cursor-pointer ${
+                                            !filters.sub
+                                                ? 'bg-[#E00D42] text-white shadow-xs'
+                                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                        }`}
+                                    >
+                                        ALL {categories.find(c => c.slug === filters.category)?.name?.toUpperCase() || ''}
+                                    </button>
+                                    {subcategories.map((sub) => {
+                                        const isSubSelected = filters.sub === sub.slug;
+                                        return (
+                                            <button
+                                                key={sub.id}
+                                                type="button"
+                                                onClick={() => applyFilterChange({ sub: isSubSelected ? undefined : sub.slug })}
+                                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-sans transition-all duration-200 shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                                                    isSubSelected
+                                                        ? 'bg-[#E00D42] text-white shadow-xs ring-2 ring-red-300'
+                                                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                                }`}
+                                            >
+                                                <span>{sub.name}</span>
+                                                {typeof sub.products_count === 'number' && sub.products_count > 0 && (
+                                                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                                                        isSubSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                                                    }`}>
+                                                        {sub.products_count}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </section>
 
@@ -402,7 +486,7 @@ export default function BuyerHome({
                 )}
 
                 {/* 5. TOP PRODUCTS // ALGORITHMIC CURATED PICKS (ROW 5) */}
-                {topProductsList.length > 0 && !filters.search && (
+                {((topCuratedCollections && topCuratedCollections.length > 0) || topProductsList.length > 0) && !filters.search && (
                     <section id="top-products" aria-label="Top Products" className="space-y-4 pt-1">
                         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
@@ -413,67 +497,128 @@ export default function BuyerHome({
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight font-sans uppercase">
-                                                Top Products · Curated For You
+                                                Top Products · Curated Collections
                                             </h3>
                                             <span className="bg-[#F97316] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider">
-                                                ALGORITHMIC PICKS
+                                                TOP RANKED
                                             </span>
                                         </div>
                                         <p className="text-xs text-slate-500 font-sans mt-0.5">
-                                            Curated based on your browsing preferences and community sales velocity
+                                            High-velocity subcategories and bestselling niches curated from community demand
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Top Products Cards with Dynamic Ribbons */}
+                            {/* Curated Sub-niche Collection Cards */}
                             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-                                {topProductsList.map((product, idx) => {
-                                    const ribbonText = (product as any).personalized_ribbon || (idx === 0 ? '#1 BESTSELLER' : idx === 1 ? 'TRENDING · 3.4K SOLD' : idx === 2 ? '5.0★ TOP RATED' : 'HOT DEAL -29%');
-                                    const nicheTag = (product as any).collection_tag || (product.category?.slug ?? 'backpacks-and-bags');
-                                    const nicheTitle = (product as any).collection_title || `${product.category?.name ?? 'Curated Gear'} Collection`;
+                                {(topCuratedCollections && topCuratedCollections.length > 0 ? topCuratedCollections : [
+                                    {
+                                        id: 1,
+                                        title: 'Tactical Crossbody Slings',
+                                        ribbon: '#1 BESTSELLER',
+                                        ribbon_color: 'amber',
+                                        sales_badge: '3.4K SOLD/MO',
+                                        category_slug: 'backpacks-and-bags',
+                                        category_name: 'Bags & EDC',
+                                        sub_slug: 'crossbody-slings',
+                                        image: '/images/products/stealth_sling_front.jpg',
+                                        target_url: '/?category=backpacks-and-bags&sub=crossbody-slings',
+                                    },
+                                    {
+                                        id: 2,
+                                        title: 'Oversized Streetwear Tees',
+                                        ribbon: 'TRENDING',
+                                        ribbon_color: 'crimson',
+                                        sales_badge: '2.8K SOLD/MO',
+                                        category_slug: 'mens-apparel',
+                                        category_name: "Men's Apparel",
+                                        sub_slug: 'tees-and-tops',
+                                        image: '/images/products/boxy_tee_front.jpg',
+                                        target_url: '/?category=mens-apparel&sub=tees-and-tops',
+                                    },
+                                    {
+                                        id: 3,
+                                        title: 'Mil-Spec Field Watches',
+                                        ribbon: 'TOP RATED 5.0★',
+                                        ribbon_color: 'emerald',
+                                        sales_badge: '1.9K SOLD/MO',
+                                        category_slug: 'jewelry-and-watches',
+                                        category_name: 'Jewelry & Watches',
+                                        sub_slug: 'tactical-field-watches',
+                                        image: '/images/categories/jewelry_watches.jpg',
+                                        target_url: '/?category=jewelry-and-watches&sub=tactical-field-watches',
+                                    },
+                                    {
+                                        id: 4,
+                                        title: 'Modular Tech Organizers',
+                                        ribbon: 'HOT DEMAND',
+                                        ribbon_color: 'orange',
+                                        sales_badge: '1.5K SOLD/MO',
+                                        category_slug: 'backpacks-and-bags',
+                                        category_name: 'Bags & EDC',
+                                        sub_slug: 'tech-pouches-and-organizers',
+                                        image: '/images/products/nomad_pouch_front.jpg',
+                                        target_url: '/?category=backpacks-and-bags&sub=tech-pouches-and-organizers',
+                                    },
+                                ]).map((collection) => (
+                                    <div
+                                        key={collection.id}
+                                        onClick={() => {
+                                            applyFilterChange({ category: collection.category_slug, sub: collection.sub_slug, search: undefined });
+                                            const el = document.getElementById('product-feed');
+                                            if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                        }}
+                                        className="group/top relative flex flex-col bg-white rounded-2xl border border-slate-200/90 hover:border-red-300 hover:shadow-lg transition-all duration-300 p-3 sm:p-4 cursor-pointer overflow-hidden"
+                                    >
+                                        {/* Ranking Ribbon & Sales Volume Badge */}
+                                        <div className="flex items-center justify-between gap-1 mb-2.5">
+                                            <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-1 rounded-lg text-white shadow-xs ${
+                                                collection.ribbon_color === 'amber' ? 'bg-amber-500' :
+                                                collection.ribbon_color === 'crimson' ? 'bg-[#E00D42]' :
+                                                collection.ribbon_color === 'emerald' ? 'bg-emerald-600' : 'bg-[#F97316]'
+                                            }`}>
+                                                <Flame className="w-3 h-3 fill-white" />
+                                                <span>{collection.ribbon}</span>
+                                            </span>
+                                            <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                                                {collection.sales_badge}
+                                            </span>
+                                        </div>
 
-                                    return (
-                                        <div key={product.id} className="relative flex flex-col group/top">
-                                            {/* Dynamic Algorithmic Ribbon Header */}
-                                            <div className="mb-2 flex items-center justify-between">
-                                                <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-1 rounded-lg text-white shadow-xs ${
-                                                    idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-[#E00D42]' : idx === 2 ? 'bg-emerald-600' : 'bg-[#F97316]'
-                                                }`}>
-                                                    <Flame className="w-3 h-3 fill-white" />
-                                                    <span>{ribbonText}</span>
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => applyFilterChange({ category: nicheTag, search: undefined })}
-                                                    className="text-[10px] font-bold text-slate-500 hover:text-[#E00D42] flex items-center gap-0.5 transition cursor-pointer"
-                                                    title={`View matching ${nicheTitle}`}
-                                                >
-                                                    <span>Discover</span>
-                                                    <ChevronRight className="w-3 h-3" />
-                                                </button>
+                                        {/* Thumbnail Image */}
+                                        <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-100 mb-3 shadow-2xs">
+                                            <img
+                                                src={collection.image}
+                                                alt={collection.title}
+                                                loading="lazy"
+                                                className="w-full h-full object-cover group-hover/top:scale-108 transition-transform duration-500"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover/top:opacity-100 transition-opacity duration-300" />
+                                            <span className="absolute bottom-2 left-2 text-[10px] font-bold text-white uppercase tracking-wider bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-md">
+                                                {collection.category_name}
+                                            </span>
+                                        </div>
+
+                                        {/* Niche Title & Meta */}
+                                        <div className="flex-1 flex flex-col justify-between space-y-2">
+                                            <div>
+                                                <h4 className="font-black text-slate-900 group-hover/top:text-[#E00D42] transition-colors text-sm line-clamp-1 font-sans">
+                                                    {collection.title}
+                                                </h4>
+                                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                                    Explore trending items in <strong className="font-semibold text-slate-700">{collection.category_name}</strong>
+                                                </p>
                                             </div>
 
-                                            {/* Product Card */}
-                                            <ProductCard
-                                                product={product}
-                                                heartControl={<BagHeartButton product={product} />}
-                                                href={route('buyer.products.show', product.slug)}
-                                                className="border-2 border-slate-200 group-hover/top:border-red-300"
-                                            />
-
-                                            {/* Curated Sub-niche Link Pill */}
-                                            <button
-                                                type="button"
-                                                onClick={() => applyFilterChange({ category: nicheTag, search: undefined })}
-                                                className="mt-2 w-full text-center py-2 px-2.5 bg-slate-50 hover:bg-rose-50 text-slate-700 hover:text-[#E00D42] border border-slate-200/80 hover:border-red-200 rounded-xl text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                                            >
-                                                <span>Explore {nicheTitle}</span>
-                                                <ArrowRight className="w-3 h-3 text-[#E00D42]" />
-                                            </button>
+                                            {/* View Collection Action */}
+                                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold font-sans text-[#E00D42] group-hover/top:translate-x-0.5 transition-transform">
+                                                <span>View Collection</span>
+                                                <ChevronRight className="w-4 h-4" />
+                                            </div>
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </section>
@@ -483,7 +628,7 @@ export default function BuyerHome({
                 <div id="product-feed" className="space-y-6 pt-2">
                     
                     {/* Search & Active Filters Header Banner (Triggered when searching or filtering) */}
-                    {(filters.search || (filters.category && filters.category !== 'all') || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
+                    {(filters.search || (filters.category && filters.category !== 'all') || filters.sub || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
                         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_4px_16px_rgba(15,23,42,0.05)] border border-slate-200/90 space-y-3">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                                 <div>
@@ -522,7 +667,16 @@ export default function BuyerHome({
                                 {filters.category && filters.category !== 'all' && (
                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 font-medium">
                                         <span>Dept: {categories.find(c => c.slug === filters.category)?.name || filters.category}</span>
-                                        <button onClick={() => applyFilterChange({ category: undefined })} className="hover:text-[#E00D42]">
+                                        <button onClick={() => applyFilterChange({ category: undefined, sub: undefined })} className="hover:text-[#E00D42]">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+
+                                {filters.sub && (
+                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-50 border border-rose-200 text-[#E00D42] font-semibold">
+                                        <span>Subcategory: {subcategories?.find(s => s.slug === filters.sub)?.name || filters.sub}</span>
+                                        <button onClick={() => applyFilterChange({ sub: undefined })} className="hover:text-red-950">
                                             <X className="w-3 h-3" />
                                         </button>
                                     </span>
@@ -559,7 +713,7 @@ export default function BuyerHome({
                     )}
 
                     {/* Section Header when browsing naturally */}
-                    {!(filters.search || (filters.category && filters.category !== 'all') || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
+                    {!(filters.search || (filters.category && filters.category !== 'all') || filters.sub || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
                         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-2 border-b border-slate-200/90 font-sans">
                             <div>
                                 <div className="flex items-center gap-2 mb-1">

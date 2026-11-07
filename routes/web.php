@@ -537,6 +537,7 @@ Route::get('/admin', function () {
 */
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/', [BuyerHomeController::class, 'index'])->middleware(AdvertisementResponseHeaders::class)->name('marketplace');
+Route::get('/marketplace', [BuyerHomeController::class, 'index'])->middleware(AdvertisementResponseHeaders::class);
 Route::middleware(AdvertisementResponseHeaders::class)->group(function () {
     Route::get('/advertisement-artwork/{token}', [BuyerAdvertisementController::class, 'artwork'])->whereUuid('token')->name('advertisements.artwork');
     Route::post('/advertisement-events', [BuyerAdvertisementController::class, 'event'])->middleware('throttle:advertisement-events')->name('advertisements.events');
