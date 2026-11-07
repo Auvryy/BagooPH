@@ -171,11 +171,11 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
     const available = banners.filter((banner) => !failed.includes(banner.image));
     
     // Main carousel slides with diverse event campaigns (Halloween, Christmas, 11.11, etc.)
-    const dbMain = available.filter(b => b.placement === 'main');
+    const dbMain = available.filter(b => b.placement === 'main' && !b.image.includes('advertisement-artwork'));
     const slides = dbMain.length > 0 ? dbMain : defaultMainSlides;
 
     // 2 unique stacked side banners
-    const dbSide = available.filter(b => b.placement === 'side');
+    const dbSide = available.filter(b => b.placement === 'side' && !b.image.includes('advertisement-artwork'));
     const sideBanners = dbSide.length >= 2 ? dbSide.slice(0, 2) : defaultSideBanners;
 
     const [selected, setSelected] = useState(() => Math.max(0, slides.findIndex((banner) => banner.id === initialSelectedId)));

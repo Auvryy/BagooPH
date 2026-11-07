@@ -53,12 +53,37 @@ class RealCarousellProductSeeder extends Seeder
                 'status' => 'active',
             ]);
 
+            $shopLocations = [
+                'TechCore Gadgets PH' => ['address' => 'Cyberzone, Aurora Blvd, Cubao', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1100'],
+                'Atelier Femme Studio' => ['address' => 'Salcedo Village, L.P. Leviste St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1200'],
+                'Urban Threads Manila' => ['address' => 'Escolta St, Binondo Heritage District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1000'],
+                'Little Wonders Nursery & Toys' => ['address' => 'Tomas Morato Ave, South Triangle', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1104'],
+                'Living Space Home & Garden' => ['address' => 'Batong Malake, Forestry Road', 'city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030'],
+                'Summit Trail & Fitness' => ['address' => 'Canlubang Commercial Complex', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4027'],
+                'PureGlow Skincare Studio' => ['address' => 'Legazpi Village, Dela Rosa St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1203'],
+                'The Media Collector PH' => ['address' => 'Poblacion Heritage District', 'city' => 'Santa Cruz', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4009'],
+                'Artisan Pantry Gourmet' => ['address' => 'Poblacion, Anos Highway', 'city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030'],
+                'MotoGear Performance PH' => ['address' => 'Bucal Bypass Road, National Highway', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4029'],
+                'ErgoWork Workspace Furniture' => ['address' => 'Poblacion, Century City Walk', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1210'],
+                'Heritage Horology & Gems' => ['address' => 'Ongpin St, Chinatown District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1008'],
+                'Papercraft & Scholar Supplies' => ['address' => 'Katipunan Ave, Loyola Heights', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1105'],
+                'Apex Tactical & Carry Goods' => ['address' => 'Taft Ave, Ermita Commercial Plaza', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1004'],
+                'Manila Pet Supplies Depot' => ['address' => 'Bel-Air Village, Jupiter St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1230'],
+            ];
+
             foreach ($categoriesData as $catData) {
                 $categorySlug = $catData['category_slug'];
                 $category = Category::where('slug', $categorySlug)->first();
                 if (! $category) {
                     continue;
                 }
+
+                $loc = $shopLocations[$catData['shop_name']] ?? [
+                    'address' => 'Bonifacio Global City, Taguig, Metro Manila',
+                    'city' => 'Taguig',
+                    'pickup_province' => 'Metro Manila',
+                    'pickup_postal_code' => '1630',
+                ];
 
                 // 1. Create or Find Verified Seller Account
                 $seller = User::firstOrCreate(
@@ -71,8 +96,9 @@ class RealCarousellProductSeeder extends Seeder
                         'kyc_status' => 'approved',
                         'email_verified_at' => now(),
                         'phone' => '+63917' . str_pad((string) mt_rand(1000000, 9999999), 7, '0', STR_PAD_LEFT),
-                        'city' => 'Taguig',
-                        'address' => 'Bonifacio Global City, Taguig, Metro Manila',
+                        'city' => $loc['city'],
+                        'address' => $loc['address'],
+                        'postal_code' => $loc['pickup_postal_code'] ?? null,
                         'birthday' => '1992-05-15',
                     ]
                 );
@@ -88,11 +114,20 @@ class RealCarousellProductSeeder extends Seeder
                         'slug' => $shopSlug,
                         'description' => "Verified official store for {$category->name} on BagooPH with guaranteed authentic stock, secure parcel packing, and fast doorstep COD fulfillment.",
                         'phone' => $seller->phone,
-                        'address' => $seller->address,
-                        'city' => $seller->city,
+                        'address' => $loc['address'],
+                        'city' => $loc['city'],
+                        'pickup_province' => $loc['pickup_province'] ?? null,
+                        'pickup_postal_code' => $loc['pickup_postal_code'] ?? null,
                         'status' => 'active',
                         'review_status' => 'approved',
                         'is_default' => true,
+                    ]);
+                } else {
+                    $shop->update([
+                        'address' => $loc['address'],
+                        'city' => $loc['city'],
+                        'pickup_province' => $loc['pickup_province'] ?? null,
+                        'pickup_postal_code' => $loc['pickup_postal_code'] ?? null,
                     ]);
                 }
 
