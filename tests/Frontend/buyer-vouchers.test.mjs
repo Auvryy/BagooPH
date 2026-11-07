@@ -288,8 +288,8 @@ test('stacked checkout shows each real saving and deducts the combined amount on
         assert.match(html, /Shop discount[\s\S]*?−₱100\.00/);
         assert.match(html, /Bagoo product discount[\s\S]*?−₱50\.00/);
         assert.match(html, /Total[\s\S]*?₱900\.00/);
-        assert.match(html, /No voucher/);
-        assert.match(html, /Cancelled orders keep their voucher use/);
+        assert.match(html, /Choose voucher/);
+        assert.doesNotMatch(html, /Cancelled orders keep their voucher use|One offer per shop/);
     } finally { delete globalThis.voucherQuoteState; }
 });
 
@@ -406,5 +406,16 @@ test('checkout groups product images and prices in the right column and collapse
     assert.match(address, /aria-expanded="false"/);
     assert.match(address, /hidden=""/);
     assert.match(address, /123 Mabini Street/);
-    assert.doesNotMatch(html, /Verify delivery destination|Direct handover at your gate|Shipping is calculated separately|CONTIGUOUS ROAD FREIGHT/);
+    assert.doesNotMatch(html, /Verify delivery destination|Direct handover at your gate|Shipping is calculated separately|CONTIGUOUS ROAD FREIGHT|One offer per shop|Manual choices and No voucher|Cancelled orders keep their voucher use|Click or tap the map to place a pin|Placing your order will save this pin|Move the map pin or use GPS|Collected from the seller, routed/);
+});
+
+
+test('unavailable carrier has one short blocking status without checkout tutorials', async () => {
+    globalThis.voucherQuoteState = { quote, offers: [], current: true, ready: false, pending: false, failure: '', companies: [] };
+    try {
+        const html = await render(ui.Checkout, 'Checkout/Index', checkoutProps);
+        assert.equal(html.match(/Delivery unavailable for this address\./g)?.length, 1);
+        assert.match(html, /<button[^>]*type="submit"[^>]*disabled=""/);
+        assert.doesNotMatch(html, /No approved logistics|No eligible logistics|One offer per shop|Click or tap the map to place a pin/);
+    } finally { delete globalThis.voucherQuoteState; }
 });

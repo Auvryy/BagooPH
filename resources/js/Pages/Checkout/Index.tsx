@@ -257,13 +257,13 @@ export default function CheckoutIndex({
     const routeDetailsReady = completeDoorstepDestination
         && (data.delivery_type === 'doorstep' || Boolean(data.pickup_hub_id));
     const canShowQuote = pricing.ready && routeDetailsReady && Boolean(selectedCompany);
-    const quoteStatus = pricing.pending ? 'Updating prices, delivery fees and voucher eligibility…'
+    const quoteStatus = pricing.pending ? 'Updating total…'
         : pricing.failure ? pricing.failure
-            : noServingCompany ? 'No eligible logistics company serves this address and every seller in your Bag. Try another address.'
-                : !completeDoorstepDestination ? 'Enter a province, city and four-digit postal code to check delivery coverage.'
-                    : data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id ? 'Choose a Bayan Hub to check collection coverage.'
-                    : !selectedCompany ? 'Choose an eligible logistics company to confirm your delivery total.'
-                        : 'Current prices and delivery fees checked.';
+            : noServingCompany ? 'Delivery unavailable for this address.'
+                : !completeDoorstepDestination ? 'Complete your address.'
+                    : data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id ? 'Choose a pickup hub.'
+                    : !selectedCompany ? 'Choose a logistics company.'
+                        : '';
     useEffect(() => {
         if (!pricing.companies) return;
         const defaultCompanyId = defaultLogisticsCompanyId(pricing.companies, data.logistics_company_id);
@@ -364,14 +364,14 @@ export default function CheckoutIndex({
         }
 
         if (data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id) {
-            setValidationError('Please select a designated Bayan Station Hub for self-pickup collection.');
+            setValidationError('Choose a pickup hub.');
             return;
         }
 
         if (noServingCompany || !data.logistics_company_id || !selectedCompany) {
             setValidationError(noServingCompany
-                ? 'No eligible logistics company currently serves this address and every seller in your Bag. Try another address.'
-                : 'Choose a logistics company that serves this delivery route.');
+                ? 'Delivery unavailable for this address.'
+                : 'Choose a logistics company.');
             return;
         }
 
@@ -727,15 +727,6 @@ export default function CheckoutIndex({
                                     {servingCompanies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
                                 </select>
                                 </span>
-                                <span className="mt-1.5 block text-xs font-normal text-slate-600">{noServingCompany
-                                    ? 'No carrier serves this route. Check your address.'
-                                    : data.delivery_type === 'doorstep' && !completeDoorstepDestination
-                                        ? 'Complete your address to see carriers.'
-                                        : servingCompanies.length === 0
-                                            ? 'No carrier available. Check the address or pickup hub.'
-                                            : ''}</span>
-
-
                                 {errors.logistics_company_id && <span className="mt-1 block text-xs text-rose-700">{errors.logistics_company_id}</span>}
                             </label>
                             <fieldset className="min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -941,9 +932,6 @@ export default function CheckoutIndex({
                                 <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(null)} className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50"><Tag className="h-3.5 w-3.5" aria-hidden="true" />Choose voucher</button>
                             </div>
                             <button type="button" onClick={useBestVouchers} disabled={!pricing.ready || bestBusy} className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{bestBusy ? 'Comparing offers…' : 'Use best vouchers'}</button>
-                            <details className="text-slate-500"><summary className="w-fit cursor-pointer text-xs">Voucher terms</summary><div className="mt-2 space-y-2"><p className="text-xs leading-5 text-slate-600">One offer per shop and one Bagoo product or shipping offer. Manual choices and No voucher stay selected until you change them or they become unavailable.</p>
-                            <p className="text-xs leading-5 text-slate-500">Cancelled orders keep their voucher use. Delivery issues or returns do not automatically refund a payment or restore voucher use.</p>
-                            </div></details>
                             {voucherError && <p role="alert" className="text-xs text-rose-700">{voucherError}</p>}
                         </div>
 

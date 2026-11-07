@@ -95,7 +95,7 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
     const loadingStatus = value ? 'Loading map… Your pin is still selected.' : 'Loading map…';
 
     return <div className="location-pin-picker space-y-2">
-        <p id={instructionsId} className={compact ? 'sr-only' : 'text-xs text-slate-700'}>Click or tap the map to place a pin, then drag it to the address. The map cannot verify that it matches your written address. Keyboard: focus the map and use arrow keys to pan; press Enter to pin its center. Press Tab to reach the zoom controls.</p>
+        <p id={instructionsId} className={compact ? 'sr-only' : 'text-xs text-slate-700'}>{compact ? 'Use arrow keys to move the map, then press Enter to select your pin.' : 'Click or tap the map to place a pin, then drag it to the address. The map cannot verify that it matches your written address. Keyboard: focus the map and use arrow keys to pan; press Enter to pin its center. Press Tab to reach the zoom controls.'}</p>
         <div ref={container} role="region" aria-label={`${label} map`} aria-describedby={instructionsId} className="h-64 w-full rounded-lg border border-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]" />
         {(failed || loading || !compact) && <p className="text-xs text-slate-600" role="status">{failed ? tileFailureStatus : loading ? loadingStatus : pinStatus}</p>}
         {failed && <button type="button" onClick={() => setAttempt(previous => previous + 1)} className="min-h-[44px] rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Retry map</button>}
