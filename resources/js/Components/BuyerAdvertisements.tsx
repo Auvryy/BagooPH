@@ -29,7 +29,7 @@ function MeasuredArtwork({ banner, session, interactive, children }: { banner: A
     return cloneElement(children, { ref });
 }
 
-// Completely unique, high-definition promotional campaigns across all slots (NO DUPLICATES)
+// Completely unique, high-definition promotional campaigns across all slots (ZERO DUPLICATES)
 const defaultMainSlides: Advertisement[] = [
     {
         id: 991,
@@ -67,33 +67,9 @@ const defaultMainSlides: Advertisement[] = [
         href: '/campaign/halloween-spree',
         event_slug: 'halloween-spree',
     },
-    {
-        id: 993,
-        title: 'Electronics & Lifestyle Frenzy — Verified Gear & Audio',
-        image: '/images/buyer/advertisements/frenzy.webp',
-        alt_text: 'Electronics Frenzy Event',
-        width: 1880,
-        height: 880,
-        slot: 'main_4',
-        placement: 'main' as const,
-        href: '/campaign/electronics-frenzy',
-        event_slug: 'electronics-frenzy',
-    },
-    {
-        id: 994,
-        title: 'Payday Super Savers — Direct Merchant Discounts',
-        image: '/images/buyer/advertisements/payday.webp',
-        alt_text: 'Payday Super Savers Promotion',
-        width: 1880,
-        height: 880,
-        slot: 'main_5',
-        placement: 'main' as const,
-        href: '/campaign/payday-savers',
-        event_slug: 'payday-savers',
-    },
 ];
 
-// Unique side banners: Anniversary Carnival & Curated Department Niches
+// Unique side banners: Anniversary Carnival & Payday Super Savers (Completely different artwork)
 const defaultSideBanners: Advertisement[] = [
     {
         id: 992,
@@ -108,16 +84,16 @@ const defaultSideBanners: Advertisement[] = [
         event_slug: 'mega-carnival',
     },
     {
-        id: 995,
-        title: 'Curated Department Collections — 14 Official Verified Niches',
-        image: '/images/buyer/advertisements/collection.webp',
-        alt_text: 'Curated Department Collections',
+        id: 994,
+        title: 'Payday Super Savers — Direct Merchant Discounts',
+        image: '/images/buyer/advertisements/payday.webp',
+        alt_text: 'Payday Super Savers Promotion',
         width: 1880,
         height: 880,
         slot: 'side_2',
         placement: 'side' as const,
-        href: '/top-products',
-        event_slug: 'top-products',
+        href: '/campaign/payday-savers',
+        event_slug: 'payday-savers',
     },
 ];
 

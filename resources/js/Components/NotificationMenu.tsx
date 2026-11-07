@@ -132,9 +132,21 @@ function NotificationPreview({ open, close }: { open: boolean; close: () => void
 
     const label = !countAvailable ? 'Notifications temporarily unavailable' : `Notifications${count ? `, ${count} unread` : ''}`;
     return <>
-        <PopoverButton aria-label={label} title={label} className={`relative inline-flex h-10 w-10 shrink-0 items-center justify-center ${radius} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]`}>
-            <Bell className="h-[18px] w-[18px]" aria-hidden="true" />
-            {count > 0 && countAvailable && <span aria-hidden="true" className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#E00D42] px-1 text-[10px] font-semibold text-white">{count > 99 ? '99+' : count}</span>}
+        <PopoverButton
+            aria-label={label}
+            title={label}
+            className={
+                buyer
+                    ? "relative inline-flex h-9 w-9 shrink-0 items-center justify-center text-white hover:text-white/80 transition-colors focus-visible:outline-none cursor-pointer"
+                    : `relative inline-flex h-10 w-10 shrink-0 items-center justify-center ${radius} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]`
+            }
+        >
+            <Bell className="h-5 w-5" aria-hidden="true" />
+            {count > 0 && countAvailable && (
+                <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#F97316] px-1 text-[10px] font-bold text-white shadow-xs">
+                    {count > 99 ? '99+' : count}
+                </span>
+            )}
         </PopoverButton>
         <PopoverPanel as="section" anchor={{ to: 'bottom end', gap: 12, padding: 16 }} focus aria-labelledby={titleId} className={`z-[70] flex max-h-[min(70dvh,var(--anchor-max-height))] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden border border-slate-300 bg-white font-sans text-slate-900 shadow-xl ${buyer ? 'rounded-2xl' : 'rounded-[8px]'}`}>
             <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-300 p-4">

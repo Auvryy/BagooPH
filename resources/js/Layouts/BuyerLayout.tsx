@@ -297,19 +297,19 @@ export default function BuyerLayout({
                                     onMouseEnter={handleUserDropdownEnter}
                                     onMouseLeave={handleUserDropdownLeave}
                                 >
-                                    <div className="h-11 flex items-stretch rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white transition font-sans text-xs font-bold shadow-xs group">
+                                    <div className="flex items-center gap-1.5 py-1 px-1.5 text-white hover:text-rose-100 transition font-sans text-xs sm:text-sm font-bold group cursor-pointer">
                                         <PortalLink
                                             href={route('buyer.orders.index')}
-                                            className="flex min-w-0 items-center gap-2 pl-3 sm:pl-3.5 pr-1 focus:outline-hidden"
+                                            className="flex min-w-0 items-center gap-2 focus:outline-hidden"
                                         >
                                             {auth.user.avatar ? (
                                                 <img
                                                     src={auth.user.avatar}
                                                     alt={auth.user.name}
-                                                    className="w-6 h-6 rounded-lg object-cover border border-white/40 shrink-0"
+                                                    className="w-7 h-7 rounded-full object-cover border border-white/40 shrink-0"
                                                 />
                                             ) : (
-                                                <div className="w-6 h-6 rounded-lg bg-white text-[#E00D42] text-[10px] font-black flex items-center justify-center shrink-0 shadow-2xs">
+                                                <div className="w-7 h-7 rounded-full bg-white text-[#E00D42] text-xs font-black flex items-center justify-center shrink-0 shadow-xs">
                                                     {auth.user.name.charAt(0).toUpperCase()}
                                                 </div>
                                             )}
@@ -322,7 +322,7 @@ export default function BuyerLayout({
                                             aria-haspopup="menu"
                                             aria-expanded={userDropdownOpen}
                                             aria-controls="buyer-account-menu"
-                                            className="flex items-center justify-center px-2.5 cursor-pointer focus:outline-hidden"
+                                            className="flex items-center justify-center p-0.5 cursor-pointer focus:outline-hidden"
                                         >
                                             <ChevronDown className={`w-3.5 h-3.5 text-white/80 group-hover:text-white transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
                                         </button>
