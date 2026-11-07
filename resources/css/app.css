@@ -75,4 +75,32 @@
     .location-pin-picker .leaflet-control-zoom a + a {
         border-top: 1px solid #E2E8F0;
     }
+
+    @keyframes checkout-truck-drive {
+        0%, 100% { transform: translateY(0) scale(1); }
+        50% { transform: translateY(-2.5px) scale(1.02); }
+    }
+
+    @keyframes checkout-road-dash {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-24px); }
+    }
+
+    @keyframes checkout-line-sum {
+        0% { transform: translateX(-100%); }
+        50% { transform: translateX(20%); }
+        100% { transform: translateX(150%); }
+    }
+
+    .animate-truck-drive {
+        animation: checkout-truck-drive 0.55s ease-in-out infinite;
+    }
+
+    .animate-road-dash {
+        animation: checkout-road-dash 0.45s linear infinite;
+    }
+
+    .animate-line-sum {
+        animation: checkout-line-sum 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
 }
