@@ -2,14 +2,20 @@
 
 namespace Tests\Feature\Seeders;
 
+use App\Models\CourierProfile;
+use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
-use App\Models\Shop;
 use App\Models\Product;
+use App\Models\Shop;
+use App\Models\User;
 use App\Services\Logistics\LogisticsCheckoutService;
 use App\Services\Logistics\LogisticsRoutingEngine;
+use App\Services\Logistics\RiderCompanyOfferService;
+use App\Services\Logistics\RiderCompanyRequestService;
 use Database\Seeders\RegionalLogisticsDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class RegionalLogisticsDemoSeederTest extends TestCase
@@ -21,8 +27,8 @@ class RegionalLogisticsDemoSeederTest extends TestCase
         $this->seed(RegionalLogisticsDemoSeeder::class);
         $company = LogisticsCompany::eligible()->where('code', 'BGR')->firstOrFail();
         $this->assertTrue($company->rider_intake_enabled);
-        $this->assertSame(24, \App\Models\CourierProfile::operational()->where('logistics_company_id', $company->id)->count());
-        $this->assertSame(10, \App\Models\HubHandler::eligible()->where('logistics_company_id', $company->id)->count());
+        $this->assertSame(24, CourierProfile::operational()->where('logistics_company_id', $company->id)->count());
+        $this->assertSame(10, HubHandler::eligible()->where('logistics_company_id', $company->id)->count());
         $this->assertSame(3, $company->motherHubs()->count());
         $this->assertSame(7, $company->bayanHubs()->count());
         $this->assertSame(24, $company->fleet()->count());
@@ -54,12 +60,13 @@ class RegionalLogisticsDemoSeederTest extends TestCase
         $this->assertSame([], $checkout->choices($items, $address));
         $this->assertFalse($engine->serves($company, $shop, ['shipping_province' => 'Cebu', 'shipping_city' => 'Cebu City', 'shipping_postal_code' => '6000']));
     }
+
     public function test_rerunning_preserves_the_owners_decision_to_pause_rider_applications(): void
     {
         $this->seed(RegionalLogisticsDemoSeeder::class);
         $company = LogisticsCompany::where('code', 'BGR')->sole();
-        app(\App\Services\Logistics\RiderCompanyRequestService::class)->changeIntake($company->user, [
-            'enabled' => false, 'expected_version' => 1, 'request_token' => (string) \Illuminate\Support\Str::uuid(),
+        app(RiderCompanyRequestService::class)->changeIntake($company->user, [
+            'enabled' => false, 'expected_version' => 1, 'request_token' => (string) Str::uuid(),
         ]);
         $this->seed(RegionalLogisticsDemoSeeder::class);
         $this->assertFalse($company->fresh()->rider_intake_enabled);
@@ -67,4 +74,31 @@ class RegionalLogisticsDemoSeederTest extends TestCase
         $this->assertSame(2, $company->riderIntakeEvents()->count());
     }
 
+    public function test_an_unassigned_rider_can_apply_and_accept_an_offer_from_the_seeded_owner(): void
+    {
+        $this->seed(RegionalLogisticsDemoSeeder::class);
+        $company = LogisticsCompany::where('code', 'BGR')->sole();
+        $hub = $company->bayanHubs()->firstOrFail();
+        $rider = User::factory()->courier()->create();
+        CourierProfile::updateOrCreate(['user_id' => $rider->id], [
+            'vehicle_type' => 'Motorcycle', 'plate_number' => 'DEMO-NEW-01',
+            'license_number' => 'DEMO-NEW-LICENSE', 'or_cr_status' => 'Verified', 'is_available' => false,
+        ]);
+        $request = app(RiderCompanyRequestService::class)->submit($rider, [
+            'company_id' => $company->id, 'intake_version' => $company->rider_intake_version,
+            'sharing_acknowledged' => true, 'request_token' => (string) Str::uuid(),
+        ]);
+        $offer = $this->actingAs($company->user)->postJson('/hub/rider-company-requests/'.$request['id'].'/offers', [
+            'expected_version' => 1, 'request_token' => (string) Str::uuid(),
+            'hub_id' => $hub->id, 'terms' => 'Report to the recorded child hub for the agreed work schedule.',
+        ])->assertOk()->json('data');
+        app(RiderCompanyOfferService::class)->riderDecision($rider, $request['id'], 'accepted', [
+            'expected_version' => 2, 'offer_id' => $offer['offer']['id'], 'terms_hash' => $offer['offer']['terms_hash'],
+            'acknowledged' => true, 'request_token' => (string) Str::uuid(),
+        ]);
+        $profile = $rider->courierProfile->fresh();
+        $this->assertSame($company->id, $profile->logistics_company_id);
+        $this->assertSame($hub->id, $profile->assigned_hub_id);
+        $this->assertFalse($profile->is_available);
+    }
 }

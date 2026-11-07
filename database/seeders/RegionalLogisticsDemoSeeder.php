@@ -8,8 +8,10 @@ use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\User;
+use App\Services\Logistics\RiderCompanyRequestService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /** Additive demo network; never resets orders, accounts, or existing assignments. */
@@ -44,8 +46,8 @@ class RegionalLogisticsDemoSeeder extends Seeder
             }
             $company->refresh();
             if ($company->rider_intake_version === 0 && ! $company->rider_intake_enabled) {
-                app(\App\Services\Logistics\RiderCompanyRequestService::class)->changeIntake($owner, [
-                    'enabled' => true, 'expected_version' => 0, 'request_token' => (string) \Illuminate\Support\Str::uuid(),
+                app(RiderCompanyRequestService::class)->changeIntake($owner, [
+                    'enabled' => true, 'expected_version' => 0, 'request_token' => (string) Str::uuid(),
                 ]);
             }
         });

@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CheckoutSubmission;
+use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\Product;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Services\Logistics\LogisticsCheckoutService;
 use App\Services\Orders\CheckoutQuoteService;
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\RegionalLogisticsDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -185,9 +187,9 @@ class NewEraCheckoutTest extends TestCase
 
     public function test_seeded_regional_company_is_offered_and_buyer_can_purchase_with_it(): void
     {
-        $this->seed(\Database\Seeders\RegionalLogisticsDemoSeeder::class);
+        $this->seed(RegionalLogisticsDemoSeeder::class);
         [$buyer, , , , $line, $input] = $this->purchase();
-        $company = \App\Models\LogisticsCompany::where('code', 'BGR')->sole();
+        $company = LogisticsCompany::where('code', 'BGR')->sole();
         Address::create(['user_id' => $buyer->id, 'recipient_name' => $buyer->name, 'phone' => $buyer->phone,
             'street' => '100 Demo Street', 'province' => 'Laguna', 'city' => 'Santa Cruz',
             'postal_code' => '4009', 'barangay' => 'Poblacion III', 'is_default' => true]);
