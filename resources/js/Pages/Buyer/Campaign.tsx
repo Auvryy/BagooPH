@@ -12,7 +12,8 @@ import {
     Tag, 
     ShoppingBag,
     MapPin,
-    ChevronRight
+    ChevronRight,
+    ShieldCheck
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -362,6 +363,20 @@ export default function CampaignPage({ campaign, products, categories, event, al
                             >
                                 ₱ Under ₱500
                             </button>
+                        </div>
+                    </div>
+
+                    {/* Platform Curation & Enrollment Trust Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-rose-50/70 border border-rose-100 rounded-lg px-3.5 py-2 text-xs text-slate-700 mb-4">
+                        <div className="flex items-center gap-1.5 font-bold text-[#E00D42]">
+                            <ShieldCheck className="w-4 h-4 shrink-0" />
+                            <span>Platform Curated Event</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600">
+                            <span>✓ Seller Nominated &amp; Admin Approved</span>
+                            <span>✓ Guaranteed Genuine Markdown</span>
+                            <span>✓ Origin Bayan Hub Direct Fulfillment</span>
+                            <span>✓ 100% Bagoo Protection</span>
                         </div>
                     </div>
 
