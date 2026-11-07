@@ -13,6 +13,7 @@ export interface Advertisement {
     slot: string;
     placement: 'main' | 'side';
     href: string;
+    event_slug?: string;
     measurement?: AdvertisementMeasurementData;
 }
 
@@ -28,6 +29,7 @@ function MeasuredArtwork({ banner, session, interactive, children }: { banner: A
     return cloneElement(children, { ref });
 }
 
+// Completely unique, high-definition promotional campaigns across all slots (NO DUPLICATES)
 const defaultMainSlides: Advertisement[] = [
     {
         id: 991,
@@ -38,7 +40,32 @@ const defaultMainSlides: Advertisement[] = [
         height: 880,
         slot: 'main_1',
         placement: 'main' as const,
-        href: '#flash-deals',
+        href: '/campaign/11-11-mega-sale',
+        event_slug: '11-11-mega-sale',
+    },
+    {
+        id: 997,
+        title: 'Paskong Pinoy Christmas Grand Gala — Holiday Markdowns & ₱0 Free Shipping',
+        image: '/images/buyer/advertisements/christmas.webp',
+        alt_text: 'Christmas Holiday Grand Gala Sale',
+        width: 1880,
+        height: 880,
+        slot: 'main_2',
+        placement: 'main' as const,
+        href: '/campaign/christmas-gala',
+        event_slug: 'christmas-gala',
+    },
+    {
+        id: 998,
+        title: 'Bagoo Halloween Spooky Spree — Midnight Flash Steals & Treats',
+        image: '/images/buyer/advertisements/halloween.webp',
+        alt_text: 'Halloween Spooky Spree Promotion',
+        width: 1880,
+        height: 880,
+        slot: 'main_3',
+        placement: 'main' as const,
+        href: '/campaign/halloween-spree',
+        event_slug: 'halloween-spree',
     },
     {
         id: 993,
@@ -47,9 +74,10 @@ const defaultMainSlides: Advertisement[] = [
         alt_text: 'Electronics Frenzy Event',
         width: 1880,
         height: 880,
-        slot: 'main_2',
+        slot: 'main_4',
         placement: 'main' as const,
-        href: '#product-feed',
+        href: '/campaign/electronics-frenzy',
+        event_slug: 'electronics-frenzy',
     },
     {
         id: 994,
@@ -58,23 +86,14 @@ const defaultMainSlides: Advertisement[] = [
         alt_text: 'Payday Super Savers Promotion',
         width: 1880,
         height: 880,
-        slot: 'main_3',
+        slot: 'main_5',
         placement: 'main' as const,
-        href: '#flash-deals',
-    },
-    {
-        id: 995,
-        title: 'Curated Department Collections — 14 Official Niches',
-        image: '/images/buyer/advertisements/collection.webp',
-        alt_text: 'Curated Department Collections',
-        width: 1880,
-        height: 880,
-        slot: 'main_4',
-        placement: 'main' as const,
-        href: '/top-products',
+        href: '/campaign/payday-savers',
+        event_slug: 'payday-savers',
     },
 ];
 
+// Unique side banners: Anniversary Carnival & Curated Department Niches
 const defaultSideBanners: Advertisement[] = [
     {
         id: 992,
@@ -85,22 +104,36 @@ const defaultSideBanners: Advertisement[] = [
         height: 880,
         slot: 'side_1',
         placement: 'side' as const,
-        href: '/vouchers',
+        href: '/campaign/mega-carnival',
+        event_slug: 'mega-carnival',
     },
     {
-        id: 996,
-        title: 'Grand Celebration Mega Carnival — Free Shipping ₱0 Min Spend',
-        image: '/images/buyer/advertisements/carnival.webp',
-        alt_text: 'Mega Carnival Grand Celebration Free Shipping',
+        id: 995,
+        title: 'Curated Department Collections — 14 Official Verified Niches',
+        image: '/images/buyer/advertisements/collection.webp',
+        alt_text: 'Curated Department Collections',
         width: 1880,
         height: 880,
         slot: 'side_2',
         placement: 'side' as const,
-        href: '#flash-deals',
+        href: '/top-products',
+        event_slug: 'top-products',
     },
 ];
 
 function getSlideTheme(image: string) {
+    if (image.includes('halloween')) {
+        return {
+            glow: 'from-[#3B1261]/80 via-[#EA580C]/70 to-[#7E22CE]/60',
+            shadow: '0 24px 50px -12px rgba(234, 88, 12, 0.45)',
+        };
+    }
+    if (image.includes('christmas')) {
+        return {
+            glow: 'from-[#064E3B]/80 via-[#991B1B]/70 to-[#F59E0B]/60',
+            shadow: '0 24px 50px -12px rgba(153, 27, 27, 0.45)',
+        };
+    }
     if (image.includes('carnival')) {
         return {
             glow: 'from-[#4C0519]/70 via-[#9F1239]/60 to-[#E11D48]/50',
@@ -137,11 +170,11 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
     const [failed, setFailed] = useState<string[]>([]);
     const available = banners.filter((banner) => !failed.includes(banner.image));
     
-    // Main carousel slides
+    // Main carousel slides with diverse event campaigns (Halloween, Christmas, 11.11, etc.)
     const dbMain = available.filter(b => b.placement === 'main');
     const slides = dbMain.length > 0 ? dbMain : defaultMainSlides;
 
-    // 2 stacked side banners
+    // 2 unique stacked side banners
     const dbSide = available.filter(b => b.placement === 'side');
     const sideBanners = dbSide.length >= 2 ? dbSide.slice(0, 2) : defaultSideBanners;
 
@@ -150,7 +183,7 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
     const currentIndex = selected % Math.max(slides.length, 1);
     const current = slides[currentIndex];
 
-    // Automatic slide cycling slightly faster (3200ms instead of 5000ms), pauses on hover
+    // Automatic slide cycling (3200ms), pauses on hover
     useEffect(() => {
         if (slides.length <= 1 || isHovered) return;
         const interval = setInterval(() => {
@@ -171,27 +204,27 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
     return (
         <section
             aria-label="Bagoo event promotions"
-            className="relative w-full overflow-visible mb-4 sm:mb-5"
+            className="relative w-full overflow-visible mb-4 sm:mb-5 pt-0"
         >
             {/* Subtle, big-spread ambient shadow glowing with the event banner color below the entire 3-image layout */}
             <div
                 aria-hidden="true"
-                className={`absolute -inset-x-2 sm:-inset-x-4 -bottom-6 sm:-bottom-8 h-24 sm:h-36 bg-gradient-to-r ${theme.glow} blur-2xl sm:blur-3xl rounded-[3rem] -z-10 pointer-events-none transition-all duration-700 opacity-80 sm:opacity-90`}
+                className={`absolute -inset-x-2 sm:-inset-x-4 -bottom-6 sm:-bottom-8 h-24 sm:h-36 bg-gradient-to-r ${theme.glow} blur-2xl sm:blur-3xl -z-10 pointer-events-none transition-all duration-700 opacity-80 sm:opacity-90`}
             />
 
-            {/* 3-Image Layout: 1 large carousel (2/3) + 2 stacked side banners (1/3), edge-to-edge full bleed with zero corner radius where touching header/outer edges */}
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-2 sm:gap-2.5 items-stretch">
+            {/* 3-Image Layout:
+                - gap-0 (NO white space between banners)
+                - rounded-none (NO corner radius anywhere)
+                - border-none on outer edges to eliminate any white line peeking through
+            */}
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-0 items-stretch bg-slate-950 overflow-hidden rounded-none shadow-sm">
                 
-                {/* 1. Main Carousel Hero Banner:
-                    - Top and left touch header and screen wall -> NO radius (rounded-t-none rounded-l-none)
-                    - Inner slice facing right side banners -> smooth rounded-r-xl
-                    - Bottom facing page -> smooth rounded-b-xl
-                */}
+                {/* 1. Main Carousel Hero Banner */}
                 <div
                     role="region"
                     aria-roledescription="carousel"
                     aria-label="Featured platform event"
-                    className="relative w-full overflow-hidden rounded-none lg:rounded-r-2xl rounded-b-xl lg:rounded-bl-none border-b sm:border-y lg:border-r border-slate-200/80 bg-slate-950 group transition-all duration-700 flex flex-col justify-center"
+                    className="relative w-full overflow-hidden rounded-none bg-slate-950 group transition-all duration-700 flex flex-col justify-center"
                     style={{ boxShadow: theme.shadow }}
                     onMouseEnter={() => setIsHovered(true)}
                     onMouseLeave={() => setIsHovered(false)}
@@ -202,7 +235,7 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                         onClick={() => measurement.click(current.measurement)}
                         onAuxClick={(event) => { if (event.button === 1) measurement.click(current.measurement); }}
                         aria-label={current.title}
-                        className="block w-full h-full focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
+                        className="block w-full h-full rounded-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
                     >
                         <MeasuredArtwork banner={current} session={measurement} interactive={interactive}>
                             <img
@@ -213,7 +246,7 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                                 height={current.height}
                                 onError={() => failedImage(current.image)}
                                 loading="eager"
-                                className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01]"
+                                className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] rounded-none"
                             />
                         </MeasuredArtwork>
                     </PictureLink>
@@ -226,7 +259,7 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                                 type="button"
                                 onClick={() => move(-1)}
                                 aria-label="Previous event"
-                                className="absolute left-2.5 sm:left-3.5 top-1/2 flex h-8 w-8 sm:h-9 sm:w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 hover:bg-[#E00D42] text-white backdrop-blur-md shadow-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
+                                className="absolute left-3 top-1/2 flex h-8 w-8 sm:h-9 sm:w-9 -translate-y-1/2 items-center justify-center rounded-none bg-black/50 hover:bg-[#E00D42] text-white backdrop-blur-md shadow-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
                             >
                                 <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                             </button>
@@ -234,11 +267,11 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                                 type="button"
                                 onClick={() => move(1)}
                                 aria-label="Next event"
-                                className="absolute right-2.5 sm:right-3.5 top-1/2 flex h-8 w-8 sm:h-9 sm:w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 hover:bg-[#E00D42] text-white backdrop-blur-md shadow-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
+                                className="absolute right-3 top-1/2 flex h-8 w-8 sm:h-9 sm:w-9 -translate-y-1/2 items-center justify-center rounded-none bg-black/50 hover:bg-[#E00D42] text-white backdrop-blur-md shadow-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
                             >
                                 <ChevronRight className="h-5 w-5" aria-hidden="true" />
                             </button>
-                            <div role="group" aria-label="Choose an advertisement" className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 gap-1.5 bg-black/50 backdrop-blur-md border border-white/20 px-2.5 py-1 rounded-full shadow-md">
+                            <div role="group" aria-label="Choose an advertisement" className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 gap-1.5 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-none shadow-md">
                                 {slides.map((banner, index) => (
                                     <button
                                         key={banner.id}
@@ -246,11 +279,11 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                                         onClick={() => setSelected(index)}
                                         aria-label={`Show event ${index + 1}: ${banner.title}`}
                                         aria-pressed={currentIndex === index}
-                                        className="flex h-3 w-3 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] cursor-pointer"
+                                        className="flex h-3 w-3 items-center justify-center rounded-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] cursor-pointer"
                                     >
                                         <span
                                             aria-hidden="true"
-                                            className={`h-1.5 rounded-full transition-all duration-300 ${currentIndex === index ? 'w-4.5 bg-[#E00D42] shadow-[0_0_8px_#E00D42]' : 'w-1.5 bg-white/50 hover:bg-white/80'}`}
+                                            className={`h-1.5 transition-all duration-300 ${currentIndex === index ? 'w-4.5 bg-[#E00D42] shadow-[0_0_8px_#E00D42]' : 'w-1.5 bg-white/50 hover:bg-white/80'}`}
                                         />
                                     </button>
                                 ))}
@@ -259,15 +292,12 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                     )}
                 </div>
 
-                {/* 2. Right Column: 2 Stacked Side Banners
-                    - Touching header or right wall -> NO radius (rounded-t-none rounded-r-none)
-                    - Logical inner slicing corner facing main carousel or between banners -> smooth rounded-l-2xl / rounded-b-xl
-                */}
-                <div className="hidden lg:grid grid-rows-2 gap-2 sm:gap-2.5 min-w-0">
-                    {/* Top Side Banner: touches header & right wall -> rounded-t-none rounded-r-none, inner left/bottom has radius */}
+                {/* 2. Right Column: 2 Stacked Side Banners (Seamless, gap-0, rounded-none) */}
+                <div className="hidden lg:grid grid-rows-2 gap-0 min-w-0 bg-slate-950">
+                    {/* Top Side Banner */}
                     {sideBanners[0] && (
                         <div
-                            className="relative overflow-hidden rounded-l-2xl rounded-t-none rounded-r-none rounded-b-lg border-b border-l border-slate-200/80 bg-slate-950 shadow-sm hover:shadow-md transition-all duration-300 group flex items-center justify-center"
+                            className="relative overflow-hidden rounded-none bg-slate-950 shadow-none group flex items-center justify-center border-l border-b border-black/40"
                         >
                             <PictureLink
                                 href={sideBanners[0].href}
@@ -275,7 +305,7 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                                 onClick={() => measurement.click(sideBanners[0].measurement)}
                                 onAuxClick={(event) => { if (event.button === 1) measurement.click(sideBanners[0].measurement); }}
                                 aria-label={sideBanners[0].title}
-                                className="block w-full h-full focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
+                                className="block w-full h-full rounded-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
                             >
                                 <MeasuredArtwork banner={sideBanners[0]} session={measurement} interactive={interactive}>
                                     <img
@@ -285,17 +315,17 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                                         height={sideBanners[0].height}
                                         onError={() => failedImage(sideBanners[0].image)}
                                         loading="eager"
-                                        className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+                                        className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02] rounded-none"
                                     />
                                 </MeasuredArtwork>
                             </PictureLink>
                         </div>
                     )}
 
-                    {/* Bottom Side Banner: touches right wall -> rounded-r-none, inner left/top has radius, bottom facing down has slight curve */}
+                    {/* Bottom Side Banner */}
                     {sideBanners[1] && (
                         <div
-                            className="relative overflow-hidden rounded-l-2xl rounded-r-none rounded-t-lg rounded-b-none border-t border-l border-slate-200/80 bg-slate-950 shadow-sm hover:shadow-md transition-all duration-300 group flex items-center justify-center"
+                            className="relative overflow-hidden rounded-none bg-slate-950 shadow-none group flex items-center justify-center border-l border-black/40"
                         >
                             <PictureLink
                                 href={sideBanners[1].href}
@@ -303,7 +333,7 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                                 onClick={() => measurement.click(sideBanners[1].measurement)}
                                 onAuxClick={(event) => { if (event.button === 1) measurement.click(sideBanners[1].measurement); }}
                                 aria-label={sideBanners[1].title}
-                                className="block w-full h-full focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
+                                className="block w-full h-full rounded-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
                             >
                                 <MeasuredArtwork banner={sideBanners[1]} session={measurement} interactive={interactive}>
                                     <img
@@ -313,7 +343,7 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                                         height={sideBanners[1].height}
                                         onError={() => failedImage(sideBanners[1].image)}
                                         loading="eager"
-                                        className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+                                        className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02] rounded-none"
                                     />
                                 </MeasuredArtwork>
                             </PictureLink>

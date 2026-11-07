@@ -269,8 +269,8 @@ export default function BuyerHome({
                     </div>
                 )}
 
-                {/* 1. HERO PROMOTIONAL BANNER SECTION (Edge-to-edge flush with zero top/side margin, bottom margin only) */}
-                <div className="-mt-3 sm:-mt-4 -mx-2 sm:-mx-3 md:-mx-4">
+                {/* 1. HERO PROMOTIONAL BANNER SECTION (Seamless full bleed against header with zero white peeking lines or gaps) */}
+                <div className="-mt-4 sm:-mt-5 md:-mt-5.5 -mx-2 sm:-mx-3 md:-mx-4">
                     <BuyerAdvertisements banners={banners} />
                 </div>
 
