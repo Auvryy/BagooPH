@@ -30,6 +30,12 @@ Buyer checkout
 
 The core flow is complete only when the entire chain passes cross-role tests without a portal inventing statuses, bypassing custody, settling COD early, or relying on sample success data.
 
+## November 7 logistics network and region corrections
+
+An explicit additive `RegionalLogisticsDemoSeeder` / `./bagoo.sh seed-logistics` adds an eligible company with three Mother Hubs, seven child hubs, ten operators and 24 operational riders/vehicles. Initial rider intake is recorded through its existing service; reruns preserve accounts and later intake pauses. Checkout tests prove eligible buyer choice and retained purchased carrier. Region corrections now use a true multiple selection and indexed multipart lists; backend comparison preserves review and rejects reordered no-op changes. The local seed was applied without resetting data. Existing Calanasan addresses containing postal code 4012 remain unchanged; the correct seeded coverage is 3814.
+
+Verification and limits: [logistics repair audit](audits/2026-11-07-logistics-repair.md). Docker journey batch passed 43/1,679; correction/request/offer/voucher batch passed 210/1,888; seed passed 3/31; final frontend passed 41; final TypeScript/Vite build passed. The full logistics run covered 858 tests / 49,453 assertions: 856 passed and two shared fake-upload storage collisions failed. The complete affected class passed with independent storage (54/4,943), resolving those failures. Fresh registration passed 25/198. Scoped region-correction assessment: 2/10 to 8/10; demo-network availability: 0/10 to 8/10. Browser/phone and deployment acceptance remain unverified. Existing work in the original checkout was preserved; new work is isolated on `fix/logistics-checkout-and-network` from current main.
+
 ## November 6 manual reporting PDF: 2pm web requirements
 
 The PDF's “New test 2pm” web requirements are implemented across registration and account access, KYC and notifications, seller listings and flat tags, buyer catalogue/Bag actions, vouchers, and promotion tools. The user clarified that product master category stays fixed to the seller's approved signup root and seller product organization uses flat shop-owned tags. The listing migration also preserves SQLite product-retention guards when adding/removing that legacy category column. The detailed requirement map and evidence are in [the 2pm audit](audits/2026-11-06-manual-reporting-round-2-audit.md).
