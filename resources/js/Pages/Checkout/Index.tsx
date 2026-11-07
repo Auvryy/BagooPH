@@ -1,3 +1,4 @@
+import CheckoutAddressDisclosure from '@/Components/CheckoutAddressDisclosure';
 import PriceSegments from '@/Components/PriceSegments';
 import UploadHint from '@/Components/UploadHint';
 import React, { useState, useEffect, useRef } from 'react';
@@ -17,27 +18,24 @@ import axios from 'axios';
 import usePurchaseQuote, { PurchaseQuote, VoucherOffer } from '@/hooks/usePurchaseQuote';
 import { chooseVoucher, withoutVoucher, repairedVoucherSelection, isVoucherRequestCurrent } from '@/utils/voucherSelection';
 import { Cart, CartItem, PageProps, User, Address } from '@/types';
-import { 
-    ShoppingBag, 
-    ArrowLeft, 
-    Truck, 
-    Wallet, 
-    ShieldCheck, 
-    MapPin, 
-    Check, 
+import {
+    ShoppingBag,
+    ArrowLeft,
+    Truck,
+    Wallet,
+    MapPin,
+    Check,
     AlertCircle,
     Tag,
     Clock,
     X,
     Gift,
     Upload,
-    FileText,
     ShieldAlert,
     AlertTriangle,
     Lock,
     Store,
     Crosshair,
-    Navigation,
     Building2,
     Package
 } from 'lucide-react';
@@ -73,11 +71,11 @@ interface Props {
     logisticsCompanies?: { id: number; name: string; logo?: string | null; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number }[];
 }
 
-export default function CheckoutIndex({ 
-    cart, 
-    items, 
+export default function CheckoutIndex({
+    cart,
+    items,
     quote: initialQuote,
-    user, 
+    user,
     availableVouchers = [],
     kycStatus = 'none',
     kycFeedback = null,
@@ -160,6 +158,9 @@ export default function CheckoutIndex({
         saved_address_id: (initialAddress?.id ?? null) as number | null,
         saved_address_location_token: (initialAddress?.location_token ?? null) as string | null,
     });
+    const addressNeedsEditing = !initialAddress || !initialAddress.recipient_name || !initialAddress.phone || !initialAddress.street || !initialAddress.city || !initialAddress.province || !initialAddress.barangay || !initialAddress.postal_code || !validDeliveryPin(initialAddress.latitude ?? null, initialAddress.longitude ?? null);
+    const addressError = Boolean(errors.recipient_name || errors.recipient_phone || errors.shipping_address || errors.shipping_city || errors.shipping_province || errors.shipping_postal_code || errors.destination_barangay || errors.shipping_latitude || errors.shipping_longitude || errors.landmark || errors.saved_address_id || errors.saved_address_location_token || errors.save_address);
+    const addressLine = [data.recipient_name, data.shipping_address, data.destination_barangay, data.shipping_city, data.shipping_province, data.shipping_postal_code].filter(Boolean).join(', ');
     const gps = useCheckoutGps(point => setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })));
 
     const handleAddressChange = (addressId: string) => {
@@ -256,13 +257,13 @@ export default function CheckoutIndex({
     const routeDetailsReady = completeDoorstepDestination
         && (data.delivery_type === 'doorstep' || Boolean(data.pickup_hub_id));
     const canShowQuote = pricing.ready && routeDetailsReady && Boolean(selectedCompany);
-    const quoteStatus = pricing.pending ? 'Updating prices, delivery fees and voucher eligibility…'
+    const quoteStatus = pricing.pending ? 'Updating total…'
         : pricing.failure ? pricing.failure
-            : noServingCompany ? 'No eligible logistics company serves this address and every seller in your Bag. Try another address.'
-                : !completeDoorstepDestination ? 'Enter a province, city and four-digit postal code to check delivery coverage.'
-                    : data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id ? 'Choose a Bayan Hub to check collection coverage.'
-                    : !selectedCompany ? 'Choose an eligible logistics company to confirm your delivery total.'
-                        : 'Current prices and delivery fees checked.';
+            : noServingCompany ? 'Delivery unavailable for this address.'
+                : !completeDoorstepDestination ? 'Complete your address.'
+                    : data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id ? 'Choose a pickup hub.'
+                    : !selectedCompany ? 'Choose a logistics company.'
+                        : '';
     useEffect(() => {
         if (!pricing.companies) return;
         const defaultCompanyId = defaultLogisticsCompanyId(pricing.companies, data.logistics_company_id);
@@ -363,14 +364,14 @@ export default function CheckoutIndex({
         }
 
         if (data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id) {
-            setValidationError('Please select a designated Bayan Station Hub for self-pickup collection.');
+            setValidationError('Choose a pickup hub.');
             return;
         }
 
         if (noServingCompany || !data.logistics_company_id || !selectedCompany) {
             setValidationError(noServingCompany
-                ? 'No eligible logistics company currently serves this address and every seller in your Bag. Try another address.'
-                : 'Choose a logistics company that serves this delivery route.');
+                ? 'Delivery unavailable for this address.'
+                : 'Choose a logistics company.');
             return;
         }
 
@@ -424,12 +425,12 @@ export default function CheckoutIndex({
             <Head title="Secure Checkout — BagooPH" />
 
             <div className="space-y-6">
-                
+
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-200">
                     <div className="min-w-0">
-                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Finalize Checkout</h1>
-                        <p className="text-xs text-slate-500 font-sans mt-0.5">Verify delivery destination, applied vouchers, and payment mode</p>
+                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Checkout</h1>
+
                     </div>
 
                     <Link
@@ -465,173 +466,28 @@ export default function CheckoutIndex({
                 )}
 
                 <form onSubmit={handlePromptConfirmation} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    
+
                     {/* Left Column: Forms */}
-                    <div className="lg:col-span-8 space-y-6 font-sans">
-                        
+                    <div className="lg:col-span-7 space-y-5 font-sans">
+
                         {/* 1. Verified Delivery Destination & Fulfillment Method */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-5">
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-300 shadow-2xs space-y-5">
                             <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
                                 <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
-                                    01
+                                    <Truck className="h-4 w-4" aria-hidden="true" />
                                 </div>
                                 <div>
                                     <h2 className="font-bold text-sm text-slate-900">
-                                        Fulfillment Method & Destination
+                                        Delivery
                                     </h2>
-                                    <p className="text-[11px] text-slate-500">Choose doorstep courier dispatch or free collection at a Bayan Hub</p>
+
                                 </div>
                             </div>
 
-                            {/* Fulfillment Method Selector Cards */}
-                            <label className="block text-sm font-semibold text-slate-800">Logistics company
-                                <select required value={data.logistics_company_id} onChange={event => setData({ ...data, logistics_company_id: event.target.value, pickup_hub_id: '' })} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-[#E00D42] focus:ring-[#E00D42]">
-                                    <option value="">Choose a logistics company</option>
-                                    {servingCompanies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
-                                </select>
-                                <span className="mt-1.5 block text-xs font-normal text-slate-600">{noServingCompany
-                                    ? 'No approved logistics company currently serves this address and every seller in your Bag. Try another address or ask the seller to confirm coverage.'
-                                    : data.delivery_type === 'doorstep' && !completeDoorstepDestination
-                                        ? 'Enter your province, city and four-digit postal code to check which companies can serve this route.'
-                                        : servingCompanies.length === 0
-                                            ? 'No eligible company is available for this delivery method. Review your address or collection hub.'
-                                            : 'Only eligible companies for the current delivery route are offered.'}</span>
-                                {selectedCompany && <span className="mt-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800">
-                                    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white text-[#C20836]">
-                                        <Truck className="h-4 w-4" aria-hidden="true" />
-                                        {selectedCompany.logo && <img src={selectedCompany.logo} alt="" loading="lazy" className="absolute inset-0 h-full w-full bg-white object-contain" onError={event => event.currentTarget.remove()} />}
-                                    </span>
-                                    <span>Selected carrier: {selectedCompany.name}</span>
-                                </span>}
-                                <span className="mt-1.5 block text-xs font-normal text-slate-500">Shipping uses the greater of actual and volumetric weight. The selected company must serve every seller and your delivery destination.</span>
-                                {errors.logistics_company_id && <span className="mt-1 block text-xs text-rose-700">{errors.logistics_company_id}</span>}
-                            </label>
-                            <fieldset className="min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <legend className="sr-only">Delivery method</legend>
-                                {/* Option 1: Doorstep Delivery */}
-                                <label
-                                    className={`relative focus-within:ring-2 focus-within:ring-[#E00D42] focus-within:ring-offset-2 p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
-                                        data.delivery_type === 'doorstep'
-                                            ? 'border-[#E00D42] bg-red-50/20 shadow-xs'
-                                            : 'border-slate-200 bg-white hover:border-slate-300'
-                                    }`}
-                                >
-                                    <input type="radio" name="delivery_type" value="doorstep" checked={data.delivery_type === 'doorstep'} onChange={() => setData(previous => withDoorstepDelivery(previous, addresses.length < addressBookLimit))} className="sr-only" />
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className={`p-2 rounded-lg ${data.delivery_type === 'doorstep' ? 'bg-[#E00D42] text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                                <Truck className="w-4 h-4" />
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-bold text-slate-900">Doorstep Delivery</p>
-                                                <p className="text-[11px] text-slate-500">Direct handover at your gate / door</p>
-                                            </div>
-                                        </div>
-                                        <span className="text-xs font-bold font-sans text-slate-900">
-                                            {quotePrice(quote.doorstep_shipping_fee)}
-                                        </span>
-                                    </div>
-                                    <p className="text-[10px] text-slate-400 mt-2 font-sans">
-                                        Shipping is calculated separately for each shop.
-                                    </p>
-                                </label>
-
-                                {/* Option 2: Free Bayan Hub Self-Pickup */}
-                                <label
-                                    className={`relative focus-within:ring-2 focus-within:ring-[#E00D42] focus-within:ring-offset-2 p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
-                                        data.delivery_type === 'hub_self_pickup'
-                                            ? 'border-[#E00D42] bg-rose-50/30 shadow-xs'
-                                            : 'border-slate-200 bg-white hover:border-slate-300'
-                                    }`}
-                                >
-                                    <input type="radio" name="delivery_type" value="hub_self_pickup" checked={data.delivery_type === 'hub_self_pickup'} onChange={() => setData('delivery_type', 'hub_self_pickup')} className="sr-only" />
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className={`p-2 rounded-lg ${data.delivery_type === 'hub_self_pickup' ? 'bg-[#E00D42] text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                                <Store className="w-4 h-4" />
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <p className="text-xs font-bold text-slate-900">Bayan Hub Self-Pickup</p>
-                                                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-rose-100 text-[#E00D42] font-sans">
-                                                        100% FREE
-                                                    </span>
-                                                </div>
-                                                <p className="text-[11px] text-slate-500">Pick up at municipal station</p>
-                                            </div>
-                                        </div>
-                                        <span className="text-xs font-black font-sans text-[#E00D42]">
-                                            ₱0.00
-                                        </span>
-                                    </div>
-                                    <p className="text-[10px] text-slate-600 mt-2 font-sans">
-                                        No delivery fee. Private claim code and identity check at collection.
-                                    </p>
-                                </label>
-                            </fieldset>
-
-                            {/* When Bayan Hub Pickup is selected */}
-                            {data.delivery_type === 'hub_self_pickup' && (
-                                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
-                                    <div className="flex items-start gap-2.5">
-                                        <Building2 className="w-5 h-5 text-[#E00D42] shrink-0 mt-0.5" />
-                                        <div>
-                                            <h3 className="text-xs font-bold text-slate-900">Select Collection Station (Bayan Hub)</h3>
-                                            <p className="text-[11px] text-slate-600 mt-0.5">
-                                                Choose a hub from your selected company serving the recipient address. Local parcels stay within one child hub; regional parcels travel through the Mother Hub network. Tracking shows collection readiness and private claim-code access.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="checkout-pickup-hub" className="block text-xs font-semibold text-slate-800 mb-1.5">
-                                            Designated Bayan Station *
-                                        </label>
-                                        <select
-                                            id="checkout-pickup-hub"
-                                            aria-invalid={Boolean(errors.pickup_hub_id)}
-                                            aria-describedby={errors.pickup_hub_id ? 'checkout-pickup-hub-error' : undefined}
-                                            required
-                                            value={data.pickup_hub_id}
-                                            onChange={(e) => setData('pickup_hub_id', e.target.value)}
-                                            className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] shadow-2xs"
-                                        >
-                                            <option value="">-- Choose a Local Bayan Hub Station --</option>
-                                            {pickupHubs.filter(hub => String(hub.logistics_company_id) === String(data.logistics_company_id)).map((hub) => (
-                                                <option key={hub.id} value={hub.id}>
-                                                    [{hub.code}] {hub.name} — {hub.city_municipality}, {hub.province}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.pickup_hub_id && (
-                                            <p id="checkout-pickup-hub-error" className="text-rose-700 text-[11px] mt-1">{errors.pickup_hub_id}</p>
-                                        )}
-                                    </div>
-
-                                    {data.pickup_hub_id && (
-                                        <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1">
-                                            {(() => {
-                                                const selectedHub = pickupHubs.find(h => String(h.id) === String(data.pickup_hub_id));
-                                                if (!selectedHub) return null;
-                                                return (
-                                                    <>
-                                                        <p className="font-bold text-slate-900">{selectedHub.name} ({selectedHub.code})</p>
-                                                        <p className="text-slate-600">{selectedHub.address}, {selectedHub.city_municipality}, {selectedHub.province}</p>
-                                                        <p className="text-[10px] text-slate-600 font-sans pt-1">
-                                                            Check the recorded hub hours in order tracking before travelling. Bring identification and your private claim code when collection is ready.
-                                                        </p>
-                                                    </>
-                                                );
-                                            })()}
-                                        </div>
-                                    )}
-
-                                </div>
-                            )}
-                            <div className="space-y-4">
+                            <CheckoutAddressDisclosure summary={addressLine} initiallyExpanded={addressNeedsEditing} hasErrors={addressError || validationError === deliveryLocationErrorMessage || validationError === 'Please complete all required recipient and address fields.'}>
                                 <div className="space-y-1">
                                     <h3 className="text-sm font-bold text-slate-900">Recipient and address</h3>
-                                    {isHubPickup && <p className="text-xs leading-5 text-slate-600">Keep your own address here so we can check that the selected hub serves your area. Collection takes place at the selected hub, and this address is saved only if you choose to save it.</p>}
+
                                 </div>
                                 {/* Saved Address Dropdown Selector */}
                                 {addresses.length > 0 && (
@@ -639,14 +495,14 @@ export default function CheckoutIndex({
                                         <div className="flex items-center justify-between">
                                             <label htmlFor="checkout-saved-address" className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
                                                 <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
-                                                <span>Select Saved Delivery Destination</span>
+                                                <span>Saved address</span>
                                             </label>
                                             <Link
                                                 href={route('buyer.profile', { tab: 'addresses' })}
                                                 className="text-[11px] font-semibold text-[#E00D42] hover:underline"
                                                 target="_blank"
                                             >
-                                                Manage Address Book
+                                                Address book
                                             </Link>
                                         </div>
                                         <select
@@ -684,7 +540,7 @@ export default function CheckoutIndex({
                                             onChange={(val) => setData('recipient_phone', val)}
                                             placeholder="917 123 4567"
                                             accentColor="primary"
-                                            helperText="10-digit mobile number (e.g. 917 123 4567)"
+                                            helperText=""
                                             required
                                         />
                                     </div>
@@ -786,7 +642,7 @@ export default function CheckoutIndex({
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                             <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                                                 <Crosshair className="w-3.5 h-3.5 text-[#E00D42]" />
-                                                Delivery location (required for doorstep delivery)
+                                                Map pin
                                             </span>
                                             <button
                                                 type="button"
@@ -795,7 +651,7 @@ export default function CheckoutIndex({
                                                 className="min-h-[44px] w-fit rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-[#E00D42] hover:text-[#E00D42] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
                                             >
                                                 <MapPin className="w-3 h-3 text-[#E00D42]" />
-                                                <span>{gps.locating ? 'Acquiring GPS...' : 'Pin My Current Location'}</span>
+                                                <span>{gps.locating ? 'Acquiring GPS...' : 'Use my location'}</span>
                                             </button>
                                         </div>
 
@@ -805,13 +661,13 @@ export default function CheckoutIndex({
                                             </p>
                                         )}
 
-                                        <LocationPinPicker
+                                        <LocationPinPicker compact
                                             value={data.shipping_latitude !== '' && data.shipping_longitude !== '' && Number.isFinite(Number(data.shipping_latitude)) && Number.isFinite(Number(data.shipping_longitude))
                                                 ? { latitude: Number(data.shipping_latitude), longitude: Number(data.shipping_longitude) } : null}
                                             onChange={point => { gps.cancel(); setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })); }}
                                         />
-                                        {data.saved_address_id !== null && <p className="text-xs text-slate-600">Placing your order will save this pin to the selected address.</p>}
-                                        <p id="checkout-location-help" className="text-xs text-slate-600">Move the map pin or use GPS. Your delivery point is saved automatically.</p>
+
+
                                         {hasInvalidDeliveryLocation && <p role="alert" className="text-xs text-rose-700">{deliveryLocationErrorMessage}</p>}
 
                                         <div>
@@ -824,7 +680,7 @@ export default function CheckoutIndex({
                                                 aria-describedby={errors.landmark ? 'checkout-landmark-error' : undefined}
                                                 type="text"
                                                 list="checkout-landmark-suggestions"
-                                                placeholder="e.g. Tapat ng Barangay Hall, Dilaw na Gate na may black fence, tabi ng tindahan"
+                                                placeholder="Nearby landmark"
                                                 maxLength={255}
                                                 minLength={5}
                                                 value={data.landmark}
@@ -840,9 +696,7 @@ export default function CheckoutIndex({
                                                 <option value="At the building gate" />
                                             </datalist>
                                             {errors.landmark && <p id="checkout-landmark-error" className="text-rose-700 text-[11px] mt-1">{errors.landmark}</p>}
-                                            <p className="text-[10px] text-slate-400 mt-0.5">
-                                                Add a useful landmark or location to help the rider find your address. Check the pin before placing your order.
-                                            </p>
+
                                         </div>
                                     </div>
 
@@ -855,32 +709,182 @@ export default function CheckoutIndex({
                                                 onChange={(e) => setData('save_address', e.target.checked)}
                                                 className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
                                             />
-                                            <span>{addresses.length >= addressBookLimit ? (!isHubPickup ? `Your address book has ${addressBookLimit} addresses. Choose one or remove an address before saving a new one.` : `Your address book has ${addressBookLimit} addresses. You can use this address for this order without saving it.`) : !isHubPickup ? 'This delivery address and pin will be saved to your address book.' : 'Save this address to my address book'}</span>
+                                            <span>{addresses.length >= addressBookLimit ? (!isHubPickup ? 'Address book full · choose a saved address' : 'Use this address once') : 'Save address'}</span>
                                         </label>
                                     )}
                                 </div>
-                            </div>
+                            </CheckoutAddressDisclosure>
+
+                            {/* Fulfillment Method Selector Cards */}
+                            <label className="block text-sm font-semibold text-slate-800">Logistics company
+                                <span className="mt-2 flex items-center gap-2">
+                                    {selectedCompany && <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white text-[#C20836]">
+                                        <Truck className="h-4 w-4" aria-hidden="true" />
+                                        {selectedCompany.logo && <img src={selectedCompany.logo} alt="" loading="lazy" className="absolute inset-0 h-full w-full bg-white object-contain" onError={event => event.currentTarget.remove()} />}
+                                    </span>}
+                                    <select required value={data.logistics_company_id} onChange={event => setData({ ...data, logistics_company_id: event.target.value, pickup_hub_id: '' })} className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-[#E00D42] focus:ring-[#E00D42]">
+                                    <option value="">Choose a logistics company</option>
+                                    {servingCompanies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
+                                </select>
+                                </span>
+                                {errors.logistics_company_id && <span className="mt-1 block text-xs text-rose-700">{errors.logistics_company_id}</span>}
+                            </label>
+                            <fieldset className="min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <legend className="sr-only">Delivery method</legend>
+                                {/* Option 1: Doorstep Delivery */}
+                                <label
+                                    className={`relative focus-within:ring-2 focus-within:ring-[#E00D42] focus-within:ring-offset-2 p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
+                                        data.delivery_type === 'doorstep'
+                                            ? 'border-[#E00D42] bg-red-50/20 shadow-xs'
+                                            : 'border-slate-200 bg-white hover:border-slate-300'
+                                    }`}
+                                >
+                                    <input type="radio" name="delivery_type" value="doorstep" checked={data.delivery_type === 'doorstep'} onChange={() => setData(previous => withDoorstepDelivery(previous, addresses.length < addressBookLimit))} className="sr-only" />
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={`p-2 rounded-lg ${data.delivery_type === 'doorstep' ? 'bg-[#E00D42] text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                <Truck className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-900">Doorstep Delivery</p>
+
+                                            </div>
+                                        </div>
+                                        <span className="text-xs font-bold font-sans text-slate-900">
+                                            {quotePrice(quote.doorstep_shipping_fee)}
+                                        </span>
+                                    </div>
+
+                                </label>
+
+                                {/* Option 2: Free Bayan Hub Self-Pickup */}
+                                <label
+                                    className={`relative focus-within:ring-2 focus-within:ring-[#E00D42] focus-within:ring-offset-2 p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
+                                        data.delivery_type === 'hub_self_pickup'
+                                            ? 'border-[#E00D42] bg-rose-50/30 shadow-xs'
+                                            : 'border-slate-200 bg-white hover:border-slate-300'
+                                    }`}
+                                >
+                                    <input type="radio" name="delivery_type" value="hub_self_pickup" checked={data.delivery_type === 'hub_self_pickup'} onChange={() => setData('delivery_type', 'hub_self_pickup')} className="sr-only" />
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={`p-2 rounded-lg ${data.delivery_type === 'hub_self_pickup' ? 'bg-[#E00D42] text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                <Store className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <p className="text-xs font-bold text-slate-900">Bayan Hub Self-Pickup</p>
+                                                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-rose-100 text-[#E00D42] font-sans">
+                                                        FREE
+                                                    </span>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                        <span className="text-xs font-black font-sans text-[#E00D42]">
+                                            ₱0.00
+                                        </span>
+                                    </div>
+
+                                </label>
+                            </fieldset>
+
+                            {/* When Bayan Hub Pickup is selected */}
+                            {data.delivery_type === 'hub_self_pickup' && (
+                                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
+                                    <div className="flex items-start gap-2.5">
+                                        <Building2 className="w-5 h-5 text-[#E00D42] shrink-0 mt-0.5" />
+                                        <div>
+                                            <h3 className="text-xs font-bold text-slate-900">Pickup location</h3>
+
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="checkout-pickup-hub" className="block text-xs font-semibold text-slate-800 mb-1.5">
+                                            Pickup hub *
+                                        </label>
+                                        <select
+                                            id="checkout-pickup-hub"
+                                            aria-invalid={Boolean(errors.pickup_hub_id)}
+                                            aria-describedby={errors.pickup_hub_id ? 'checkout-pickup-hub-error' : undefined}
+                                            required
+                                            value={data.pickup_hub_id}
+                                            onChange={(e) => setData('pickup_hub_id', e.target.value)}
+                                            className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] shadow-2xs"
+                                        >
+                                            <option value="">Choose a pickup hub</option>
+                                            {pickupHubs.filter(hub => String(hub.logistics_company_id) === String(data.logistics_company_id)).map((hub) => (
+                                                <option key={hub.id} value={hub.id}>
+                                                    [{hub.code}] {hub.name} — {hub.city_municipality}, {hub.province}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.pickup_hub_id && (
+                                            <p id="checkout-pickup-hub-error" className="text-rose-700 text-[11px] mt-1">{errors.pickup_hub_id}</p>
+                                        )}
+                                    </div>
+
+                                    {data.pickup_hub_id && (
+                                        <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1">
+                                            {(() => {
+                                                const selectedHub = pickupHubs.find(h => String(h.id) === String(data.pickup_hub_id));
+                                                if (!selectedHub) return null;
+                                                return (
+                                                    <>
+                                                        <p className="font-bold text-slate-900">{selectedHub.name} ({selectedHub.code})</p>
+                                                        <p className="text-slate-600">{selectedHub.address}, {selectedHub.city_municipality}, {selectedHub.province}</p>
+
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
+
+                                </div>
+                            )}
+
                         </div>
 
-                        {/* 2. Package Items in this Order */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
+                        {/* 4. Payment Method */}
+                        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-300 shadow-2xs space-y-4">
                             <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
                                 <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
-                                    02
+                                    <Wallet className="h-4 w-4" aria-hidden="true" />
+                                </div>
+                                <div className="flex items-center justify-between flex-1">
+                                    <h2 className="font-bold text-sm text-slate-900">
+                                        Payment Method
+                                    </h2>
+                                </div>
+                            </div>
+
+                            <BuyerPaymentChoice compact value={data.payment_method} onChange={method => setData('payment_method', method)} balanceCents={walletBalanceCents} disabled={processing} />
+                            {errors.payment_method && <p role="alert" className="text-xs text-rose-700">{errors.payment_method}</p>}
+                        </div>
+
+                    </div>
+
+                    {/* Right Column: Order total */}
+                    <div className="lg:col-span-5 min-w-0 self-start space-y-5 rounded-2xl border border-slate-300 bg-white p-4 sm:p-6 shadow-sm font-sans text-xs">
+                        {/* 2. Package Items in this Order */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
+                                    <ShoppingBag className="h-4 w-4" aria-hidden="true" />
                                 </div>
                                 <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900">
-                                    <Package className="h-4 w-4 text-[#C20836]" aria-hidden="true" />
-                                    Items In Your Shopping Bag ({items.length})
+                                    Your order ({items.length})
                                 </h2>
                             </div>
 
                             <div className="divide-y divide-slate-100 font-sans text-xs">
                                 {quote.shops.map(shop => <section key={shop.shop_id} className="space-y-3 py-4" aria-label={shop.shop_name}>
-                                    <h3 className="font-bold text-sm text-slate-900">{shop.shop_name}</h3><ShippingCalculation calculation={shop.shipping_quote} selfPickup={data.delivery_type === 'hub_self_pickup'} />
+                                    <h3 className="font-semibold text-xs text-slate-500">{shop.shop_name}</h3>
                                     {items.filter(item => item.product?.shop?.id === shop.shop_id).map((item) => (
                                     <div key={item.id} className="py-3.5 flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-3.5 min-w-0">
-                                            <span className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-slate-400">
+                                            <span className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-slate-400">
                                                 <Package className="h-5 w-5" aria-hidden="true" />
                                                 {((item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image) && <img
                                                     src={(item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image || ''}
@@ -890,14 +894,12 @@ export default function CheckoutIndex({
                                                     className="absolute inset-0 h-full w-full bg-white object-cover"
                                                 />}
                                             </span>
-                                            <div className="truncate space-y-0.5">
-                                                <p className="font-bold text-slate-900 truncate text-xs">{item.product?.name}</p>
-                                                <p className="text-slate-500 text-[11px]">
-                                                    Shop: {item.product?.shop?.name || 'Bagoo Prime Store'}
-                                                </p>
+                                            <div className="min-w-0 space-y-1">
+                                                <p className="font-semibold text-slate-900 line-clamp-2 text-sm">{item.product?.name}</p>
+
                                                 {(item.color || item.size) && (
                                                     <p className="text-slate-400 text-[11px]">
-                                                        Variant: {[item.color, item.size].filter(Boolean).join(' / ')}
+                                                        {[item.color, item.size].filter(Boolean).join(' / ')}
                                                     </p>
                                                 )}
                                             </div>
@@ -917,109 +919,39 @@ export default function CheckoutIndex({
                                         <span className="flex items-center gap-1.5 text-xs text-slate-600"><Tag className="h-3.5 w-3.5 text-[#C20836]" aria-hidden="true" />Shop voucher · {appliedVouchers.find(offer => offer.shop_id === shop.shop_id)?.code ?? 'No voucher'}</span>
                                         <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(shop.shop_id)} className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50"><Tag className="h-3.5 w-3.5" aria-hidden="true" />Choose voucher</button>
                                     </div>
-                                    <CheckoutVoucherBreakdown quote={quote} shopId={shop.shop_id} price={quotePrice} />
+                                    <details className="text-xs text-slate-500"><summary className="w-fit cursor-pointer">Price details</summary><div className="mt-3 space-y-3"><CheckoutVoucherBreakdown quote={quote} shopId={shop.shop_id} price={quotePrice} /><ShippingCalculation calculation={shop.shipping_quote} selfPickup={isHubPickup} /></div></details>
                                 </section>)}
                             </div>
                         </div>
 
-                        {/* 3. Logistics & Delivery Carrier */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
-                                    03
-                                </div>
-                                <h2 className="font-bold text-sm text-slate-900">
-                                    Logistics Carrier & Delivery
-                                </h2>
-                            </div>
 
-                            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex items-start justify-between gap-4 text-xs font-sans">
-                                <div className="flex items-start gap-3.5">
-                                    <div className="w-9 h-9 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center shrink-0 mt-0.5">
-                                        {isHubPickup ? (
-                                            <Store className="w-5 h-5 text-[#E00D42]" />
-                                        ) : (
-                                            <Truck className="w-5 h-5 text-[#E00D42]" />
-                                        )}
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
-                                            <span>{servingCompanies.find(company => String(company.id) === String(data.logistics_company_id))?.name ?? 'Selected logistics company'}</span>
-                                            <span className={`px-2 py-0.5 rounded-xs text-[10px] font-sans font-bold ${
-                                                isHubPickup ? 'bg-rose-100 text-[#E00D42]' : 'bg-slate-200 text-slate-800'
-                                            }`}>
-                                                {isHubPickup ? 'FREE SELF-PICKUP' : 'CONTIGUOUS ROAD FREIGHT'}
-                                            </span>
-                                        </div>
-                                        <p className="text-slate-500 text-[11px] leading-relaxed">
-                                            {isHubPickup
-                                                ? 'Collected from the seller, routed through the company’s hubs and held for your secure counter collection. Local parcels stay within one child hub.'
-                                                : 'Collected from the seller, routed through the company’s hubs and delivered by your assigned rider. Local parcels stay within one child hub.'}
-                                        </p>
-                                        <p className="text-slate-400 text-[10px] font-sans">
-                                            Follow recorded parcel updates in My Purchases after ordering.
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="text-right shrink-0">
-                                    <span className="text-[10px] text-slate-400 block font-sans">SHIPPING RATE</span>
-                                    <span className={`text-sm font-black ${finalShippingFee === 0 ? 'text-[#E00D42]' : 'text-slate-900'}`}>
-                                        {quotePrice(finalShippingFee)}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
 
-                        {/* 4. Payment Method */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
-                                    04
-                                </div>
-                                <div className="flex items-center justify-between flex-1">
-                                    <h2 className="font-bold text-sm text-slate-900">
-                                        Payment Method
-                                    </h2>
-                                </div>
-                            </div>
-
-                            <BuyerPaymentChoice value={data.payment_method} onChange={method => setData('payment_method', method)} balanceCents={walletBalanceCents} disabled={processing} />
-                            {errors.payment_method && <p role="alert" className="text-xs text-rose-700">{errors.payment_method}</p>}
-                        </div>
-
-                    </div>
-
-                    {/* Right Column: Order Total Breakdown */}
-                    <div className="lg:col-span-4 space-y-6 font-sans text-xs">
-                        
-                        <div className="space-y-3 rounded-2xl border border-slate-300 bg-white p-5 shadow-2xs">
+                        <div className="space-y-3 border-t border-slate-200 pt-5">
                             <div className="flex items-center justify-between gap-3">
                                 <div><h3 className="flex items-center gap-2 font-bold text-slate-900"><Gift className="h-4 w-4 text-[#C20836]" aria-hidden="true" />Bagoo voucher</h3><p className="mt-1 text-xs text-slate-600">{appliedVouchers.find(offer => offer.issuer === 'platform')?.code ?? 'No voucher'}</p></div>
                                 <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(null)} className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50"><Tag className="h-3.5 w-3.5" aria-hidden="true" />Choose voucher</button>
                             </div>
                             <button type="button" onClick={useBestVouchers} disabled={!pricing.ready || bestBusy} className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{bestBusy ? 'Comparing offers…' : 'Use best vouchers'}</button>
-                            <p className="text-xs leading-5 text-slate-600">One offer per shop and one Bagoo product or shipping offer. Manual choices and No voucher stay selected until you change them or they become unavailable.</p>
-                            <p className="text-xs leading-5 text-slate-500">Cancelled orders keep their voucher use. Delivery issues or returns do not automatically refund a payment or restore voucher use.</p>
                             {voucherError && <p role="alert" className="text-xs text-rose-700">{voucherError}</p>}
                         </div>
 
                         {/* ORDER TOTAL SUMMARY */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4 sticky top-24">
+                        <div className="space-y-4 border-t border-slate-200 pt-5">
                             <h3 className="font-bold text-slate-900 text-sm pb-3 border-b border-slate-100">
-                                Order Total Breakdown
+                                Order total
                             </h3>
 
                             <CheckoutVoucherBreakdown quote={quote} price={quotePrice} />
-                            <p className="text-xs text-slate-600">Payment mode: {data.payment_method === 'wallet' ? 'Bagoo Wallet · virtual credits' : 'Cash on Delivery (COD)'}</p>
+
 
                             <div className="pt-3 border-t border-slate-100 flex justify-between items-baseline text-sm">
-                                <span className="font-bold text-slate-900">Total Payment:</span>
+                                <span className="font-bold text-slate-900">Total</span>
                                 <span className="text-2xl font-black text-[#E00D42]">
                                     {quotePrice(grandTotal)}
                                 </span>
                             </div>
 
-                            <p role="status" aria-live="polite" className="text-xs text-slate-600">{quoteStatus}</p>
+                            {(!pricing.ready || pricing.pending || pricing.failure || noServingCompany) && <p role="status" aria-live="polite" className="text-xs text-slate-600">{quoteStatus}</p>}
                             {quote.shops.length > 1 && <div className="space-y-2 border-t border-slate-200 pt-3">
                                 {quote.shops.map(shop => <div key={shop.shop_id} className="flex justify-between gap-3 text-xs text-slate-600">
                                     <span>{shop.shop_name}</span><span className="font-semibold">{quotePrice(shop.total)}</span>
@@ -1121,10 +1053,7 @@ export default function CheckoutIndex({
                                 </span>
                             </button>
 
-                            <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 pt-2 font-sans">
-                                <ShieldCheck className="w-4 h-4 text-[#E00D42]" />
-                                <span>BagooPH Buyer Protection Guarantee</span>
-                            </div>
+
                         </div>
                     </div>
 
@@ -1134,7 +1063,7 @@ export default function CheckoutIndex({
                 <Dialog open={showConfirmModal} onClose={() => { if (!processing) setShowConfirmModal(false); }} className="relative z-50">
                     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs overflow-y-auto flex items-center justify-center p-3 sm:p-4 animate-fade-in">
                         <DialogPanel className="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-4 sm:p-8 shadow-2xl border border-slate-200 space-y-5 sm:space-y-6 font-sans my-auto">
-                            
+
                             {/* Modal Header */}
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                                 <div>
@@ -1159,7 +1088,7 @@ export default function CheckoutIndex({
 
                             {/* Summary Cards */}
                             <div className="space-y-3 font-sans text-xs">
-                                
+
                                 {/* Recipient & Destination Summary */}
                                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
                                     <span className="text-[11px] text-slate-400 font-semibold block flex items-center gap-1.5">

@@ -36,7 +36,7 @@ class VoucherDemoSeeder extends Seeder
             unset($campaign['actor'], $campaign['shop'], $campaign['legacy_code']);
             $service = app(VoucherCampaignService::class);
             $voucher = $service->saveDraft($actor, [...$campaign, 'min_spend' => '500.00', 'budget' => '10000.00',
-                'usage_limit' => 100, 'per_buyer_limit' => 2, 'starts_at' => now()->subMinute()->toIso8601String(),
+                'usage_limit' => 100, 'per_buyer_limit' => 2, 'starts_at' => now()->startOfMinute()->toIso8601String(),
                 'ends_at' => now()->addDays(14)->toIso8601String(), 'request_key' => (string) Str::uuid(), 'source_version' => 0], shop: $owner);
             $service->act($actor, $voucher, ['action' => 'publish', 'request_key' => (string) Str::uuid(), 'source_version' => $voucher->campaign_version], $owner);
         }

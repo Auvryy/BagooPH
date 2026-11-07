@@ -189,7 +189,18 @@ class IdentityCorrectionService
                     return $existing;
                 }
                 abort_unless(hash_equals($this->restrictions->token($source), $data['source_token']), 409, 'The reviewed details changed. Reload before requesting a correction.');
-                if (! array_filter($data['changes'], fn ($value, $field) => (string) $value !== (string) ($source['values'][$field] ?? null), ARRAY_FILTER_USE_BOTH)) {
+                if (! array_filter($data['changes'], function ($value, $field) use ($source): bool {
+                    $before = $source['values'][$field] ?? null;
+                    if (is_array($value)) {
+                        $before = is_array($before) ? $before : [];
+                        sort($value);
+                        sort($before);
+
+                        return $value !== $before;
+                    }
+
+                    return (string) $value !== (string) $before;
+                }, ARRAY_FILTER_USE_BOTH)) {
                     throw ValidationException::withMessages(['changes' => 'Propose at least one actual correction.']);
                 }
                 foreach ($this->requiredDocuments($subject, $evidence) as $kind) {

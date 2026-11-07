@@ -133,16 +133,16 @@ const input = { item_ids: [10], delivery_type: 'doorstep', code: '', revision: '
 test('checkout uses quoted gross shipping, one discount and actual savings without repeating the deduction', async () => {
     const html = await render(ui.Checkout, 'Checkout/Index', { ...checkoutProps, items: [{ ...items[0], unit_price: 1,
         product: { ...items[0].product, price: 900 } }] });
-    const summary = html.slice(html.indexOf('Order Total Breakdown'));
+    const summary = html.slice(html.indexOf('Order total'));
     assert.match(summary, /Shipping before discounts[\s\S]*?₱100\.00/);
     assert.match(summary, /Bagoo shipping discount[\s\S]*?−₱30\.00/);
-    assert.match(summary, /Total Payment:[\s\S]*?₱2,070\.00/);
+    assert.match(summary, /Total[\s\S]*?₱2,070\.00/);
     assert.match(summary, /Shipping payable[\s\S]*?₱70\.00/);
     assert.doesNotMatch(html, /Free Shipping Applied|₱75 Discount Applied/);
     assert.match(html, /Bagoo voucher/);
     assert.match(html, /Use best vouchers/);
     assert.match(html, /Bagoo shop one[\s\S]*?₱1,035\.00/);
-    const selectedItems = html.slice(html.indexOf('Items In Your Shopping Bag'), html.indexOf('Logistics &amp; Delivery Carrier'));
+    const selectedItems = html.slice(html.indexOf('Your order'), html.indexOf('Bagoo voucher'));
     assert.match(selectedItems, /1 × ₱1,000\.00/);
     assert.doesNotMatch(selectedItems, /₱1\.00|₱900\.00/);
     assert.equal(globalThis.voucherQuoteInput.shipping_province, 'Metro Manila');
@@ -287,9 +287,9 @@ test('stacked checkout shows each real saving and deducts the combined amount on
         assert.match(html, /BAGOO_50/);
         assert.match(html, /Shop discount[\s\S]*?−₱100\.00/);
         assert.match(html, /Bagoo product discount[\s\S]*?−₱50\.00/);
-        assert.match(html, /Total Payment:[\s\S]*?₱900\.00/);
-        assert.match(html, /No voucher/);
-        assert.match(html, /Cancelled orders keep their voucher use/);
+        assert.match(html, /Total[\s\S]*?₱900\.00/);
+        assert.match(html, /Choose voucher/);
+        assert.doesNotMatch(html, /Cancelled orders keep their voucher use|One offer per shop/);
     } finally { delete globalThis.voucherQuoteState; }
 });
 
@@ -390,4 +390,32 @@ test('receipt displays recorded product and partial shipping amounts with one fi
     assert.match(html, /<div class="[^"]*text-slate-600"><dt>Total savings<\/dt><dd>₱130\.00<\/dd><\/div>/);
     assert.match(html, /Total COD<\/dt><dd class="text-\[#E00D42\]">₱920\.00<\/dd>/);
     assert.doesNotMatch(html, /Free shipping/);
+});
+
+
+test('checkout groups product images and prices in the right column and collapses a complete saved address', async () => {
+    const props = { ...checkoutProps, items: [{ ...items[0], product: { ...items[0].product, featured_image: '/images/demo-product.webp' } }],
+        addresses: [{ ...checkoutProps.addresses[0], latitude: 14.57, longitude: 121.08 }] };
+    const html = await render(ui.Checkout, 'Checkout/Index', props);
+    const column = html.slice(html.indexOf('lg:col-span-5'));
+    assert.ok(column.indexOf('Your order') < column.indexOf('Order total'));
+    assert.match(column, /demo-product\.webp/);
+    assert.match(column, /Everyday bag/);
+    assert.match(column, /1 × ₱1,000\.00/);
+    const address = html.slice(html.indexOf('aria-label="Delivery address"'), html.indexOf('Payment Method'));
+    assert.match(address, /aria-expanded="false"/);
+    assert.match(address, /hidden=""/);
+    assert.match(address, /123 Mabini Street/);
+    assert.doesNotMatch(html, /Verify delivery destination|Direct handover at your gate|Shipping is calculated separately|CONTIGUOUS ROAD FREIGHT|One offer per shop|Manual choices and No voucher|Cancelled orders keep their voucher use|Click or tap the map to place a pin|Placing your order will save this pin|Move the map pin or use GPS|Collected from the seller, routed/);
+});
+
+
+test('unavailable carrier has one short blocking status without checkout tutorials', async () => {
+    globalThis.voucherQuoteState = { quote, offers: [], current: true, ready: false, pending: false, failure: '', companies: [] };
+    try {
+        const html = await render(ui.Checkout, 'Checkout/Index', checkoutProps);
+        assert.equal(html.match(/Delivery unavailable for this address\./g)?.length, 1);
+        assert.match(html, /<button[^>]*type="submit"[^>]*disabled=""/);
+        assert.doesNotMatch(html, /No approved logistics|No eligible logistics|One offer per shop|Click or tap the map to place a pin/);
+    } finally { delete globalThis.voucherQuoteState; }
 });

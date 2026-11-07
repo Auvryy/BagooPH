@@ -30,6 +30,9 @@ case "$cmd" in
   migrate)
     docker compose exec app php artisan migrate "$@"
     ;;
+  seed-logistics)
+    docker compose exec app php artisan db:seed --class=RegionalLogisticsDemoSeeder "$@"
+    ;;
   seed)
     docker compose exec app php artisan db:seed "$@"
     ;;
@@ -86,6 +89,7 @@ case "$cmd" in
     echo "  artisan      Run php artisan commands inside app container"
     echo "  migrate      Run database migrations"
     echo "  seed         Run database seeders"
+    echo "  seed-logistics Add the regional demo company without resetting data"
     echo "  fresh        Run fresh migrations and seed demo data"
     echo "  npm          Run npm commands inside app container"
     echo "  deploy       Build assets, migrate, warm caches and start the scheduler"

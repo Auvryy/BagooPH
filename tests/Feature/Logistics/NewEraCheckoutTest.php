@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\CheckoutSubmission;
+use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\Product;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Services\Logistics\LogisticsCheckoutService;
 use App\Services\Orders\CheckoutQuoteService;
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\RegionalLogisticsDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -181,6 +183,22 @@ class NewEraCheckoutTest extends TestCase
         $this->assertNotEmpty($expected);
         $this->actingAs($buyer)->get(route('checkout.index'))->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page->component('Checkout/Index')->where('logisticsCompanies', $expected));
+    }
+
+    public function test_seeded_regional_company_is_offered_and_buyer_can_purchase_with_it(): void
+    {
+        $this->seed(RegionalLogisticsDemoSeeder::class);
+        [$buyer, , , , $line, $input] = $this->purchase();
+        $company = LogisticsCompany::where('code', 'BGR')->sole();
+        Address::create(['user_id' => $buyer->id, 'recipient_name' => $buyer->name, 'phone' => $buyer->phone,
+            'street' => '100 Demo Street', 'province' => 'Laguna', 'city' => 'Santa Cruz',
+            'postal_code' => '4009', 'barangay' => 'Poblacion III', 'is_default' => true]);
+        $this->actingAs($buyer)->get(route('checkout.index'))->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('logisticsCompanies',
+                fn ($choices) => collect($choices)->contains('id', $company->id)));
+        $this->post(route('checkout.store'), [...$input, 'logistics_company_id' => $company->id])
+            ->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
+        $this->assertSame($company->id, Order::sole()->delivery->logistics_company_id);
     }
 
     public function test_unconfigured_counter_is_not_offered_and_cannot_reserve_stock_or_a_checkout_submission(): void

@@ -1,4 +1,5 @@
 import UploadHint from '@/Components/UploadHint';
+import { appendCorrectionChanges, correctionValueLabel, type CorrectionValue } from '@/utils/identityCorrectionValues';
 import React, { useEffect, useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
 import axios from 'axios';
@@ -8,14 +9,14 @@ import { refreshPage, requestErrors } from '@/utils/accountRequests';
 
 export type Correction = {
     id: number; version: number; shop_id: number | null; reason: string; requested_at: string;
-    before: Record<string, string | number | null>; proposed: Record<string, string | number | null>;
+    before: Record<string, CorrectionValue>; proposed: Record<string, CorrectionValue>;
     review_token: string; documents: Record<string, string | null>; current: boolean;
     provenance: { source: string; kyc_decision_id: number | null; shop_review_decision_id: number | null };
     decision: { id: number; action: string; reason: string; actor: string; decided_at: string; eligible: boolean } | null;
 };
 export type CorrectionSubject = {
     id: number; name: string; role: string; shop_id: number | null; source_token: string;
-    values: Record<string, string | number | null>;
+    values: Record<string, CorrectionValue>;
     fields: { key: string; label: string; type: string; options: string[] }[];
     requests: Correction[]; required_documents: string[]; provenance: Correction['provenance'];
 };
@@ -62,13 +63,13 @@ export default function IdentityCorrectionPanel({ subject, categories, adminRevi
     const fields = [...subject.fields.filter(item => !['birthday', 'root_category_id'].includes(item.key)), { key: 'birthday', label: 'Birth date', type: 'date', options: [] }, ...(subject.role === 'seller' ? [{ key: 'root_category_id', label: 'Shop master category', type: 'category', options: [] }] : [])];
     const [field, setField] = useState('birthday');
     const selected = fields.find(item => item.key === field)!;
-    const form = useForm({ source_token: subject.source_token, shop_id: subject.shop_id, changes: { birthday: subject.values.birthday ?? '' } as Record<string, string | number | null>, reason: '',
+    const form = useForm({ source_token: subject.source_token, shop_id: subject.shop_id, changes: { birthday: subject.values.birthday ?? '' } as Record<string, CorrectionValue>, reason: '',
         id_document: null as File | null, business_permit: null as File | null, driver_license: null as File | null, or_cr_document: null as File | null, franchise_document: null as File | null });
     const fileInputs = { id: 'id_document', permit: 'business_permit', license: 'driver_license', orcr: 'or_cr_document', franchise: 'franchise_document' } as const;
     useEffect(() => {
         form.setData(previous => ({ ...previous, source_token: subject.source_token, shop_id: subject.shop_id, changes: { [field]: subject.values[field] ?? '' } }));
     }, [subject.source_token]);
-    const display = (key: string, value: string | number | null) => key === 'root_category_id' ? categories.find(category => category.id === Number(value))?.name ?? (value ? `Category #${value}` : 'Not recorded') : value ?? 'Not recorded';
+    const display = (key: string, value: CorrectionValue) => key === 'root_category_id' ? categories.find(category => category.id === Number(value))?.name ?? (value ? `Category #${value}` : 'Not recorded') : correctionValueLabel(value);
     const [sending, setSending] = useState(false);
     const [result, setResult] = useState('');
     const [fileVersion, setFileVersion] = useState(0);
@@ -80,13 +81,17 @@ export default function IdentityCorrectionPanel({ subject, categories, adminRevi
     const submit = async (event: React.FormEvent) => {
         event.preventDefault();
         if (sending) return;
+        if (selected.type === 'multiselect' && (!Array.isArray(form.data.changes[field]) || (form.data.changes[field] as string[]).length === 0)) {
+            form.setError('changes', 'Choose at least one value for this detail.');
+            return;
+        }
         setSending(true); setResult(''); form.clearErrors();
         try {
             const body = new FormData();
             body.append('source_token', form.data.source_token);
             if (form.data.shop_id) body.append('shop_id', String(form.data.shop_id));
             body.append('reason', form.data.reason);
-            Object.entries(form.data.changes).forEach(([key, value]) => body.append(`changes[${key}]`, String(value ?? '')));
+            appendCorrectionChanges(body, form.data.changes);
             Object.values(fileInputs).forEach(key => { const file = form.data[key]; if (file) body.append(key, file); });
             await axios.post(baseUrl, body, { headers: { Accept: 'application/json' } });
             form.setData(previous => ({ ...previous, reason: '', id_document: null, business_permit: null, driver_license: null, or_cr_document: null, franchise_document: null }));
@@ -115,11 +120,14 @@ export default function IdentityCorrectionPanel({ subject, categories, adminRevi
             {buyer ? <AccountSectionHeading icon={FilePenLine} title="Request a correction" as="h3" compact description="Choose one reviewed detail and enter the corrected value." /> : <h2 className="font-semibold">Request a correction</h2>}
             <div className={buyer ? 'grid min-w-0 gap-4 sm:grid-cols-2' : ''}>
                 <label className="mt-4 block min-w-0 text-sm font-semibold text-slate-700">Detail to correct<select value={field} disabled={sending} onChange={event => { const key = event.target.value; setField(key); form.setData('changes', { [key]: subject.values[key] ?? '' }); }} className={selectControl}>{fields.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}</select></label>
-                <label className={`${buyer ? 'mt-4' : 'mt-3'} block min-w-0 text-sm font-semibold text-slate-700`}>Corrected {selected.label.toLowerCase()}
-                    {selected.type === 'category' ? <select required disabled={sending} value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className={selectControl}><option value="">Choose a master category</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
-                        : selected.options.length > 0 ? <select disabled={sending} value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className={selectControl}><option value="">Choose a value</option>{selected.options.map(option => <option key={option}>{option}</option>)}</select>
-                            : <input type={selected.type} disabled={sending} value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className={control} />}
-                </label>
+                <div className={`${buyer ? 'mt-4' : 'mt-3'} block min-w-0 text-sm font-semibold text-slate-700`}><span id="identity-correction-label">Corrected {selected.label.toLowerCase()}</span>
+                    {selected.type === 'multiselect' ? <fieldset aria-labelledby="identity-correction-label" disabled={sending} className="mt-2 grid max-h-64 gap-2 overflow-y-auto rounded-lg border border-slate-300 p-3 sm:grid-cols-2">{selected.options.map(option => {
+                        const values = Array.isArray(form.data.changes[field]) ? form.data.changes[field] as string[] : [];
+                        return <label key={option} className="flex items-start gap-2 text-sm font-normal"><input type="checkbox" checked={values.includes(option)} onChange={event => form.setData('changes', { [field]: event.target.checked ? [...values, option] : values.filter(value => value !== option) })} className="mt-1 rounded border-slate-300 text-[#E00D42]" />{option}</label>;
+                    })}</fieldset> : selected.type === 'category' ? <select aria-labelledby="identity-correction-label" required disabled={sending} value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className={selectControl}><option value="">Choose a master category</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
+                        : selected.options.length > 0 ? <select aria-labelledby="identity-correction-label" disabled={sending} value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className={selectControl}><option value="">Choose a value</option>{selected.options.map(option => <option key={option}>{option}</option>)}</select>
+                            : <input aria-labelledby="identity-correction-label" type={selected.type} disabled={sending} value={String(form.data.changes[field] ?? '')} onChange={event => form.setData('changes', { [field]: event.target.value })} className={control} />}
+                </div>
             </div>
             <p className={buyer ? 'break-words rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-relaxed text-slate-600' : 'mt-2 text-sm text-slate-600'}>Currently recorded: <span className="font-semibold text-slate-900">{display(field, subject.values[field] ?? null)}</span></p>
             <label className="mt-4 block text-sm font-semibold text-slate-700">Reason<textarea required disabled={sending} value={form.data.reason} onChange={event => form.setData('reason', event.target.value)} rows={3} maxLength={1000} className={`${control} ${buyer ? 'resize-y' : ''}`} /></label>
