@@ -139,7 +139,7 @@ class RealCarousellProductSeeder extends Seeder
                 $subSlugs = $subCategoryMapping[$categorySlug] ?? [];
 
                 foreach ($catData['products'] as $pIdx => $prodData) {
-                    $subSlug = $subSlugs[$pIdx] ?? null;
+                    $subSlug = $prodData['sub_slug'] ?? ($subSlugs[$pIdx] ?? null);
                     $subCategory = $subSlug ? SubCategory::where('slug', $subSlug)->first() : null;
 
                     $prodName = trim($prodData['title']);

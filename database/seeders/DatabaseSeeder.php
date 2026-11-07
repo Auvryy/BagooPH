@@ -95,7 +95,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $this->call(SellerDemoSeeder::class);
+        $this->call(RealCarousellProductSeeder::class);
         $this->call(SubCategorySeeder::class);
         $this->call(VoucherDemoSeeder::class);
         $this->call(AdvertisementDemoSeeder::class);

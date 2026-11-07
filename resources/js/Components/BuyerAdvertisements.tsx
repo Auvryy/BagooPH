@@ -28,213 +28,212 @@ function MeasuredArtwork({ banner, session, interactive, children }: { banner: A
     return cloneElement(children, { ref });
 }
 
+const defaultSlides: Advertisement[] = [
+    {
+        id: 991,
+        title: 'Bagoo 11.11 Mega Sale — Up to 90% Off & Free Shipping',
+        image: '/images/buyer/advertisements/mega-sale.webp',
+        alt_text: 'Bagoo 11.11 Mega Sale Promotion',
+        width: 1880,
+        height: 880,
+        slot: 'main_1',
+        placement: 'main' as const,
+        href: '#flash-deals',
+    },
+    {
+        id: 992,
+        title: 'Mega Carnival Grand Celebration — Extra 15% Vouchers',
+        image: '/images/buyer/advertisements/carnival.webp',
+        alt_text: 'Mega Carnival Grand Celebration',
+        width: 1880,
+        height: 880,
+        slot: 'main_2',
+        placement: 'main' as const,
+        href: '/vouchers',
+    },
+    {
+        id: 993,
+        title: 'Electronics & Lifestyle Frenzy — Verified Gear & Audio',
+        image: '/images/buyer/advertisements/frenzy.webp',
+        alt_text: 'Electronics Frenzy Event',
+        width: 1880,
+        height: 880,
+        slot: 'main_3',
+        placement: 'main' as const,
+        href: '#product-feed',
+    },
+    {
+        id: 994,
+        title: 'Payday Super Savers — Direct Merchant Discounts',
+        image: '/images/buyer/advertisements/payday.webp',
+        alt_text: 'Payday Super Savers Promotion',
+        width: 1880,
+        height: 880,
+        slot: 'main_4',
+        placement: 'main' as const,
+        href: '#flash-deals',
+    },
+    {
+        id: 995,
+        title: 'Curated Department Collections — 14 Official Niches',
+        image: '/images/buyer/advertisements/collection.webp',
+        alt_text: 'Curated Department Collections',
+        width: 1880,
+        height: 880,
+        slot: 'main_5',
+        placement: 'main' as const,
+        href: '/top-products',
+    },
+];
+
+function getSlideTheme(image: string) {
+    if (image.includes('carnival')) {
+        return {
+            glow: 'from-[#4C0519]/70 via-[#9F1239]/60 to-[#E11D48]/50',
+            shadow: '0 24px 56px -12px rgba(159, 18, 57, 0.45)',
+        };
+    }
+    if (image.includes('frenzy')) {
+        return {
+            glow: 'from-[#3B0764]/70 via-[#7E22CE]/60 to-[#C026D3]/50',
+            shadow: '0 24px 56px -12px rgba(126, 34, 206, 0.42)',
+        };
+    }
+    if (image.includes('payday')) {
+        return {
+            glow: 'from-[#064E3B]/70 via-[#059669]/60 to-[#10B981]/50',
+            shadow: '0 24px 56px -12px rgba(5, 150, 105, 0.42)',
+        };
+    }
+    if (image.includes('collection')) {
+        return {
+            glow: 'from-[#78350F]/70 via-[#D97706]/60 to-[#F59E0B]/50',
+            shadow: '0 24px 56px -12px rgba(217, 119, 6, 0.42)',
+        };
+    }
+    // Default / Mega Sale
+    return {
+        glow: 'from-[#7A0623]/75 via-[#E00D42]/65 to-[#B91C1C]/55',
+        shadow: '0 24px 56px -12px rgba(224, 13, 66, 0.48)',
+    };
+}
+
 export default function BuyerAdvertisements({ banners, interactive = true, initialSelectedId }: { banners: Advertisement[]; interactive?: boolean; initialSelectedId?: number }) {
     const measurement = useRef(new AdvertisementMeasurementSession()).current;
     const [failed, setFailed] = useState<string[]>([]);
     const available = banners.filter((banner) => !failed.includes(banner.image));
-    let slides = available.filter((banner) => banner.placement === 'main').slice(0, 5);
-    let supportingAds = available.filter((banner) => banner.placement === 'side').slice(0, 2);
+    
+    // Combine passed banners with default rich hero campaigns
+    let slides = available.length > 0 
+        ? [...available, ...defaultSlides.filter(ds => !available.some(a => a.image === ds.image))]
+        : defaultSlides;
 
-    // Ensure the main platform event is scrollable/carousel with diverse campaigns
-    if (slides.length <= 1) {
-        slides = [
-            ...(slides.length > 0 ? slides : []),
-            {
-                id: 991,
-                title: 'Bagoo 11.11 Mega Sale — Up to 90% Off & Free Shipping',
-                image: '/images/buyer/advertisements/mega-sale.webp',
-                alt_text: 'Bagoo 11.11 Mega Sale Promotion',
-                width: 1200,
-                height: 480,
-                slot: 'main_1',
-                placement: 'main' as const,
-                href: '#flash-deals',
-            },
-            {
-                id: 992,
-                title: 'Mega Carnival Grand Celebration — Extra 15% Vouchers',
-                image: '/images/buyer/advertisements/carnival.webp',
-                alt_text: 'Mega Carnival Grand Celebration',
-                width: 1200,
-                height: 480,
-                slot: 'main_2',
-                placement: 'main' as const,
-                href: '/vouchers',
-            },
-            {
-                id: 993,
-                title: 'Electronics & Lifestyle Frenzy — Verified Gear & Audio',
-                image: '/images/buyer/advertisements/frenzy.webp',
-                alt_text: 'Electronics Frenzy Event',
-                width: 1200,
-                height: 480,
-                slot: 'main_3',
-                placement: 'main' as const,
-                href: '#product-feed',
-            },
-        ].slice(0, 3);
-    }
-
-    if (supportingAds.length < 2) {
-        const fallbacks: Advertisement[] = [
-            {
-                id: 994,
-                title: '11.11 Partner Promos — Stack & Save Up to ₱2,000 More',
-                image: '/images/buyer/advertisements/carnival.webp',
-                alt_text: 'Partner Promos Event',
-                width: 600,
-                height: 230,
-                slot: 'side_1',
-                placement: 'side' as const,
-                href: '/vouchers',
-            },
-            {
-                id: 995,
-                title: 'Free Shipping ₱0 Min Spend — Doorstep Delivery Guarantee',
-                image: '/images/buyer/advertisements/frenzy.webp',
-                alt_text: 'Free Shipping Vouchers',
-                width: 600,
-                height: 230,
-                slot: 'side_2',
-                placement: 'side' as const,
-                href: '#flash-deals',
-            },
-        ];
-        supportingAds = [...supportingAds, ...fallbacks.filter(fb => !supportingAds.some(sa => sa.image === fb.image))].slice(0, 2);
-    }
     const [selected, setSelected] = useState(() => Math.max(0, slides.findIndex((banner) => banner.id === initialSelectedId)));
     const [isHovered, setIsHovered] = useState(false);
     const currentIndex = selected % Math.max(slides.length, 1);
     const current = slides[currentIndex];
 
-    // Automatic slide cycling every 5 seconds (pauses on hover)
+    // Automatic slide cycling slightly faster (3000ms instead of 5000ms), pauses on hover
     useEffect(() => {
         if (slides.length <= 1 || isHovered) return;
         const interval = setInterval(() => {
             setSelected((prev) => (prev + 1) % slides.length);
-        }, 5000);
+        }, 3000);
         return () => clearInterval(interval);
     }, [slides.length, isHovered]);
 
-    if (!current && !supportingAds.length) return null;
+    if (!current) return null;
     const failedImage = (image: string) => setFailed((images) => images.includes(image) ? images : [...images, image]);
 
     const move = (direction: number) => {
         setSelected((index) => (index + direction + slides.length) % slides.length);
     };
 
+    const theme = getSlideTheme(current.image);
+
     return (
         <section
-            aria-label="Bagoo advertisements"
-            data-main={Boolean(current)}
-            data-side={Boolean(supportingAds.length)}
-            className={`buyer-ad-grid grid min-w-0 grid-cols-1 items-stretch gap-4 ${current && supportingAds.length ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : 'mx-auto w-full max-w-4xl'}`}
+            aria-label="Bagoo event promotion"
+            className="relative w-full overflow-visible mb-5 sm:mb-6"
         >
-            {current && (
-                <div
-                    role="region"
-                    aria-roledescription="carousel"
-                    aria-label="Featured advertisements"
-                    className="relative min-w-0 rounded-2xl overflow-hidden border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.06)] bg-slate-100 group"
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
+            {/* Subtle, big-spread ambient shadow glowing with the event banner color below the image */}
+            <div
+                aria-hidden="true"
+                className={`absolute -inset-x-2 sm:-inset-x-4 -bottom-6 sm:-bottom-8 h-24 sm:h-36 bg-gradient-to-r ${theme.glow} blur-2xl sm:blur-3xl rounded-[3rem] -z-10 pointer-events-none transition-all duration-700 opacity-80 sm:opacity-90`}
+            />
+
+            {/* Single full-width hero banner without side gaps, eating space */}
+            <div
+                role="region"
+                aria-roledescription="carousel"
+                aria-label="Featured platform event"
+                className="relative w-full overflow-hidden rounded-none sm:rounded-2xl md:rounded-3xl border-y sm:border border-slate-200/80 bg-slate-950 group transition-all duration-700"
+                style={{ boxShadow: theme.shadow }}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+            >
+                <PictureLink
+                    href={current.href}
+                    interactive={interactive}
+                    onClick={() => measurement.click(current.measurement)}
+                    onAuxClick={(event) => { if (event.button === 1) measurement.click(current.measurement); }}
+                    aria-label={current.title}
+                    className="block focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
                 >
-                    <PictureLink
-                        href={current.href}
-                        interactive={interactive}
-                        onClick={() => measurement.click(current.measurement)}
-                        onAuxClick={(event) => { if (event.button === 1) measurement.click(current.measurement); }}
-                        aria-label={current.title}
-                        className="block focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
-                    >
-                        <MeasuredArtwork banner={current} session={measurement} interactive={interactive}>
-                            <img
-                                key={current.id}
-                                src={current.image}
-                                alt={current.alt_text}
-                                width={current.width}
-                                height={current.height}
-                                onError={() => failedImage(current.image)}
-                                loading="eager"
-                                className="block h-auto w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
-                            />
-                        </MeasuredArtwork>
-                    </PictureLink>
+                    <MeasuredArtwork banner={current} session={measurement} interactive={interactive}>
+                        <img
+                            key={current.id}
+                            src={current.image}
+                            alt={current.alt_text}
+                            width={current.width}
+                            height={current.height}
+                            onError={() => failedImage(current.image)}
+                            loading="eager"
+                            className="block w-full h-[180px] sm:h-[260px] md:h-[340px] lg:h-[400px] object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01]"
+                        />
+                    </MeasuredArtwork>
+                </PictureLink>
 
-                    <p aria-live="polite" className="sr-only">{current.title}</p>
+                <p aria-live="polite" className="sr-only">{current.title}</p>
 
-                    {slides.length > 1 && (
-                        <>
-                            <button
-                                type="button"
-                                onClick={() => move(-1)}
-                                aria-label="Previous advertisement"
-                                className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-[#E00D42]/90 text-white hover:bg-[#E00D42] shadow-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
-                            >
-                                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => move(1)}
-                                aria-label="Next advertisement"
-                                className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-[#E00D42]/90 text-white hover:bg-[#E00D42] shadow-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
-                            >
-                                <ChevronRight className="h-5 w-5" aria-hidden="true" />
-                            </button>
-                            <div role="group" aria-label="Choose an advertisement" className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 bg-white/85 border border-slate-200/80 px-2.5 py-1 rounded-full shadow-sm">
-                                {slides.map((banner, index) => (
-                                    <button
-                                        key={banner.id}
-                                        type="button"
-                                        onClick={() => setSelected(index)}
-                                        aria-label={`Show advertisement ${index + 1}: ${banner.title}`}
-                                        aria-pressed={currentIndex === index}
-                                        className="flex h-3.5 w-3.5 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] cursor-pointer"
-                                    >
-                                        <span
-                                            aria-hidden="true"
-                                            className={`h-1.5 rounded-full transition-all duration-300 ${currentIndex === index ? 'w-5 bg-[#E00D42]' : 'w-1.5 bg-slate-300'}`}
-                                        />
-                                    </button>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
-            )}
-
-            {supportingAds.length > 0 && (
-                <div aria-label="More advertisements" data-count={supportingAds.length} className={`buyer-ad-supporting grid min-w-0 grid-cols-1 gap-4 ${current ? '' : 'mx-auto w-full max-w-md'}`}>
-                    {supportingAds.map((banner) => (
-                        <div
-                            key={banner.id}
-                            className="rounded-2xl overflow-hidden border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.06)] hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] hover:-translate-y-1 transition-all duration-300 bg-slate-100 group"
+                {slides.length > 1 && (
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => move(-1)}
+                            aria-label="Previous event"
+                            className="absolute left-2.5 sm:left-4 top-1/2 flex h-8 w-8 sm:h-10 sm:w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 hover:bg-[#E00D42] text-white backdrop-blur-md shadow-lg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
                         >
-                            <PictureLink
-                                href={banner.href}
-                                interactive={interactive}
-                                onClick={() => measurement.click(banner.measurement)}
-                                onAuxClick={(event) => { if (event.button === 1) measurement.click(banner.measurement); }}
-                                aria-label={banner.title}
-                                className="block min-w-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]"
-                            >
-                                <MeasuredArtwork banner={banner} session={measurement} interactive={interactive}>
-                                    <img
-                                        src={banner.image}
-                                        alt={banner.alt_text}
-                                        width={banner.width}
-                                        height={banner.height}
-                                        onError={() => failedImage(banner.image)}
-                                        loading="lazy"
-                                        decoding="async"
-                                        className="block h-auto w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => move(1)}
+                            aria-label="Next event"
+                            className="absolute right-2.5 sm:right-4 top-1/2 flex h-8 w-8 sm:h-10 sm:w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 hover:bg-[#E00D42] text-white backdrop-blur-md shadow-lg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
+                        >
+                            <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
+                        </button>
+                        <div role="group" aria-label="Choose an advertisement" className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 bg-black/50 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full shadow-lg">
+                            {slides.map((banner, index) => (
+                                <button
+                                    key={banner.id}
+                                    type="button"
+                                    onClick={() => setSelected(index)}
+                                    aria-label={`Show event ${index + 1}: ${banner.title}`}
+                                    aria-pressed={currentIndex === index}
+                                    className="flex h-3.5 w-3.5 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] cursor-pointer"
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        className={`h-1.5 rounded-full transition-all duration-300 ${currentIndex === index ? 'w-5 bg-[#E00D42] shadow-[0_0_8px_#E00D42]' : 'w-1.5 bg-white/50 hover:bg-white/80'}`}
                                     />
-                                </MeasuredArtwork>
-                            </PictureLink>
+                                </button>
+                            ))}
                         </div>
-                    ))}
-                </div>
-            )}
+                    </>
+                )}
+            </div>
         </section>
     );
 }
