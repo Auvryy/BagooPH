@@ -86,6 +86,37 @@ class IdentityCorrectionTest extends TestCase
             'reason' => 'Current evidence confirms this correction.', 'affected_work_confirmed' => true];
     }
 
+    public function test_service_region_correction_preserves_lists_through_review(): void
+    {
+        $subject = $this->subject('logistics');
+        $company = $subject->logisticsCompany;
+        $regions = ['NCR', 'Region III', 'Region IV-A'];
+        $form = app(IdentityCorrectionService::class)->form($subject, $subject);
+        $regionField = collect($form['fields'])->firstWhere('key', 'service_areas');
+        $this->assertSame('multiselect', $regionField['type']);
+        $this->assertSame(['NCR', 'Region IV-A'], $form['values']['service_areas']);
+
+        $correction = $this->submit($subject, ['service_areas' => $regions]);
+        $this->assertSame($regions, $correction->proposed['service_areas']);
+        $this->assertSame(['NCR', 'Region IV-A'], $company->fresh()->service_areas);
+        $this->post('/admin/identity-corrections/'.$correction->id.'/decision', $this->inspect($this->admin(), $correction))
+            ->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertSame($regions, $company->fresh()->service_areas);
+        $this->assertSame('logistics', $subject->fresh()->role);
+        $this->assertFalse($company->fresh()->is_active);
+    }
+
+    public function test_service_region_correction_rejects_scalar_and_unknown_regions(): void
+    {
+        $subject = $this->subject('logistics');
+        foreach (['NCR,Region III', ['Unknown region'], ['NCR', 'NCR'], [], ['Region IV-A', 'NCR']] as $regions) {
+            $this->actingAs($subject)->post('/account/identity-corrections', $this->payload($subject, ['service_areas' => $regions]))
+                ->assertSessionHasErrors();
+        }
+        $this->assertDatabaseCount('identity_correction_requests', 0);
+        $this->assertSame(['NCR', 'Region IV-A'], $subject->logisticsCompany->fresh()->service_areas);
+    }
+
     public static function rolesAndRoutes(): array
     {
         $data = [];
