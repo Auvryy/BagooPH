@@ -117,6 +117,20 @@ export interface SubCategory {
     products_count?: number;
 }
 
+export interface CuratedCollection {
+    id: number;
+    title: string;
+    ribbon: string;
+    ribbon_color: 'amber' | 'crimson' | 'emerald' | 'orange';
+    sales_badge: string;
+    category_slug: string;
+    category_name: string;
+    sub_slug: string;
+    image: string;
+    item_count_label?: string;
+    target_url: string;
+}
+
 export interface Category {
     id: number;
     parent_id?: number | null;

@@ -79,82 +79,23 @@ class BuyerHomeController extends Controller
         }
 
         // 5. Algorithmic Top Products & Curated Subcategory / Niche Showcases (Row 5)
+        $topCuratedCollections = self::curatedCollections();
+
         $topPersonalizedProducts = Product::with(['shop', 'category', 'subCategory'])
             ->availableForSale()
             ->where('status', 'active')
             ->orderByDesc('sales_count')
-            ->take(4)
+            ->take(6)
             ->get()
-            ->map(function ($product, $index) {
-                $ribbons = [
-                    ['text' => '#1 BESTSELLER', 'tag' => 'backpacks-and-bags', 'sub' => 'crossbody-slings', 'niche' => 'Tactical Crossbody Slings', 'sales' => '3.4K SOLD/MO'],
-                    ['text' => 'TRENDING', 'tag' => 'mens-apparel', 'sub' => 'tees-and-tops', 'niche' => 'Oversized Streetwear Tees', 'sales' => '2.8K SOLD/MO'],
-                    ['text' => 'TOP RATED 5.0★', 'tag' => 'jewelry-and-watches', 'sub' => 'tactical-field-watches', 'niche' => 'Mil-Spec Field Watches', 'sales' => '1.9K SOLD/MO'],
-                    ['text' => 'HOT DEMAND', 'tag' => 'backpacks-and-bags', 'sub' => 'tech-pouches-and-organizers', 'niche' => 'Modular Tech Organizers', 'sales' => '1.5K SOLD/MO'],
-                ];
-                $meta = $ribbons[$index % count($ribbons)];
-                $product->personalized_ribbon = $meta['text'];
-                $product->collection_tag = $meta['tag'];
-                $product->collection_sub = $meta['sub'];
-                $product->collection_title = $meta['niche'];
-                $product->sales_badge = $meta['sales'];
+            ->map(function ($product, $index) use ($topCuratedCollections) {
+                $meta = $topCuratedCollections[$index % count($topCuratedCollections)];
+                $product->personalized_ribbon = $meta['ribbon'];
+                $product->collection_tag = $meta['category_slug'];
+                $product->collection_sub = $meta['sub_slug'];
+                $product->collection_title = $meta['title'];
+                $product->sales_badge = $meta['sales_badge'];
                 return $product;
             });
-
-        $topCuratedCollections = [
-            [
-                'id' => 1,
-                'title' => 'Tactical Crossbody Slings',
-                'ribbon' => '#1 BESTSELLER',
-                'ribbon_color' => 'amber',
-                'sales_badge' => '3.4K SOLD/MO',
-                'category_slug' => 'backpacks-and-bags',
-                'category_name' => 'Bags & EDC',
-                'sub_slug' => 'crossbody-slings',
-                'image' => '/images/products/stealth_sling_front.jpg',
-                'item_count_label' => '12+ items',
-                'target_url' => '/?category=backpacks-and-bags&sub=crossbody-slings',
-            ],
-            [
-                'id' => 2,
-                'title' => 'Oversized Streetwear Tees',
-                'ribbon' => 'TRENDING',
-                'ribbon_color' => 'crimson',
-                'sales_badge' => '2.8K SOLD/MO',
-                'category_slug' => 'mens-apparel',
-                'category_name' => "Men's Apparel",
-                'sub_slug' => 'tees-and-tops',
-                'image' => '/images/products/boxy_tee_front.jpg',
-                'item_count_label' => '18+ items',
-                'target_url' => '/?category=mens-apparel&sub=tees-and-tops',
-            ],
-            [
-                'id' => 3,
-                'title' => 'Mil-Spec Field Watches',
-                'ribbon' => 'TOP RATED 5.0★',
-                'ribbon_color' => 'emerald',
-                'sales_badge' => '1.9K SOLD/MO',
-                'category_slug' => 'jewelry-and-watches',
-                'category_name' => 'Jewelry & Watches',
-                'sub_slug' => 'tactical-field-watches',
-                'image' => '/images/categories/jewelry_watches.jpg',
-                'item_count_label' => '8+ items',
-                'target_url' => '/?category=jewelry-and-watches&sub=tactical-field-watches',
-            ],
-            [
-                'id' => 4,
-                'title' => 'Modular Tech Organizers',
-                'ribbon' => 'HOT DEMAND',
-                'ribbon_color' => 'orange',
-                'sales_badge' => '1.5K SOLD/MO',
-                'category_slug' => 'backpacks-and-bags',
-                'category_name' => 'Bags & EDC',
-                'sub_slug' => 'tech-pouches-and-organizers',
-                'image' => '/images/products/nomad_pouch_front.jpg',
-                'item_count_label' => '14+ items',
-                'target_url' => '/?category=backpacks-and-bags&sub=tech-pouches-and-organizers',
-            ],
-        ];
 
         // 6. "Daily Discover" & Search Product Feed
         $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'subCategory'])->availableForSale()->withReviewSummary()
@@ -236,5 +177,136 @@ class BuyerHomeController extends Controller
                 'newest' => 'new_arrivals', 'top_sales', 'top_rated' => $filters['sort'], default => 'all',
             }],
         ]);
+    }
+
+    public function topProducts(Request $request): InertiaResponse
+    {
+        $categories = app(BuyerDiscoveryService::class)->categories();
+        $collections = self::curatedCollections();
+
+        $activeCollectionSlug = $request->input('collection', $collections[0]['sub_slug']);
+        $activeCollection = collect($collections)->firstWhere('sub_slug', $activeCollectionSlug) ?? $collections[0];
+
+        $subCategory = SubCategory::where('slug', $activeCollection['sub_slug'])->first();
+
+        $productsQuery = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'subCategory'])
+            ->availableForSale()
+            ->withReviewSummary()
+            ->where('status', 'active');
+
+        if ($subCategory) {
+            $products = (clone $productsQuery)
+                ->where('sub_category_id', $subCategory->id)
+                ->orderByDesc('sales_count')
+                ->orderByDesc('rating')
+                ->get();
+
+            if ($products->count() < 6) {
+                $existingIds = $products->pluck('id')->all();
+                $fillers = (clone $productsQuery)
+                    ->whereNotIn('id', $existingIds)
+                    ->orderByDesc('sales_count')
+                    ->take(6 - count($existingIds))
+                    ->get();
+                $products = $products->concat($fillers);
+            }
+        } else {
+            $products = $productsQuery
+                ->orderByDesc('sales_count')
+                ->orderByDesc('rating')
+                ->take(12)
+                ->get();
+        }
+
+        return Inertia::render('Buyer/TopProducts', [
+            'categories' => $categories,
+            'collections' => $collections,
+            'activeCollection' => $activeCollection,
+            'products' => $products,
+        ]);
+    }
+
+    public static function curatedCollections(): array
+    {
+        return [
+            [
+                'id' => 1,
+                'title' => 'Tactical Crossbody Slings',
+                'ribbon' => '#1 BESTSELLER',
+                'ribbon_color' => 'amber',
+                'sales_badge' => '3.4K+ SOLD/MO',
+                'category_slug' => 'backpacks-and-bags',
+                'category_name' => 'Bags & EDC',
+                'sub_slug' => 'crossbody-slings',
+                'image' => '/images/products/stealth_sling_front.jpg',
+                'item_count_label' => '12+ items',
+                'target_url' => '/top-products?collection=crossbody-slings',
+            ],
+            [
+                'id' => 2,
+                'title' => 'Oversized Streetwear Tees',
+                'ribbon' => 'TRENDING',
+                'ribbon_color' => 'crimson',
+                'sales_badge' => '2.8K+ SOLD/MO',
+                'category_slug' => 'mens-apparel',
+                'category_name' => "Men's Apparel",
+                'sub_slug' => 'tees-and-tops',
+                'image' => '/images/products/boxy_tee_front.jpg',
+                'item_count_label' => '18+ items',
+                'target_url' => '/top-products?collection=tees-and-tops',
+            ],
+            [
+                'id' => 3,
+                'title' => 'Mil-Spec Field Watches',
+                'ribbon' => 'TOP RATED 5.0★',
+                'ribbon_color' => 'emerald',
+                'sales_badge' => '1.9K+ SOLD/MO',
+                'category_slug' => 'jewelry-and-watches',
+                'category_name' => 'Jewelry & Watches',
+                'sub_slug' => 'tactical-field-watches',
+                'image' => '/images/categories/jewelry_watches.jpg',
+                'item_count_label' => '8+ items',
+                'target_url' => '/top-products?collection=tactical-field-watches',
+            ],
+            [
+                'id' => 4,
+                'title' => 'Modular Tech Organizers',
+                'ribbon' => 'HOT DEMAND',
+                'ribbon_color' => 'orange',
+                'sales_badge' => '1.5K+ SOLD/MO',
+                'category_slug' => 'backpacks-and-bags',
+                'category_name' => 'Bags & EDC',
+                'sub_slug' => 'tech-pouches-and-organizers',
+                'image' => '/images/products/nomad_pouch_front.jpg',
+                'item_count_label' => '14+ items',
+                'target_url' => '/top-products?collection=tech-pouches-and-organizers',
+            ],
+            [
+                'id' => 5,
+                'title' => 'Commuter Backpacks & Roll-Tops',
+                'ribbon' => 'RISING STAR',
+                'ribbon_color' => 'amber',
+                'sales_badge' => '1.2K+ SOLD/MO',
+                'category_slug' => 'backpacks-and-bags',
+                'category_name' => 'Bags & EDC',
+                'sub_slug' => 'commuter-backpacks',
+                'image' => '/images/products/aero_rolltop_front.jpg',
+                'item_count_label' => '10+ items',
+                'target_url' => '/top-products?collection=commuter-backpacks',
+            ],
+            [
+                'id' => 6,
+                'title' => 'EDC Hardware & Carabiners',
+                'ribbon' => 'COMMUNITY CHOICE',
+                'ribbon_color' => 'emerald',
+                'sales_badge' => '950+ SOLD/MO',
+                'category_slug' => 'backpacks-and-bags',
+                'category_name' => 'Bags & EDC',
+                'sub_slug' => 'edc-hardware',
+                'image' => '/images/products/edc_carabiner_front.jpg',
+                'item_count_label' => '16+ items',
+                'target_url' => '/top-products?collection=edc-hardware',
+            ],
+        ];
     }
 }

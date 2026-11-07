@@ -489,83 +489,122 @@ export default function BuyerHome({
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight font-sans uppercase">
-                                            Top Products · Curated Collections
+                                            Top Products
                                         </h3>
-                                        <span className="bg-[#F97316] text-white text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md tracking-wider">
-                                            TOP RANKED
+                                        <span className="bg-[#E00D42] text-white text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md tracking-wider">
+                                            ALGORITHMIC PICKS
                                         </span>
                                     </div>
                                     <p className="text-[11px] text-slate-500 font-sans">
-                                        High-velocity subcategories and bestselling niches curated from community demand
+                                        High-velocity bestselling niches ranked by community sales and verified repeat orders
                                     </p>
                                 </div>
                             </div>
+
+                            <Link
+                                href="/top-products"
+                                className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-0.5 cursor-pointer ml-auto sm:ml-0"
+                            >
+                                <span>See All</span>
+                                <ChevronRight className="w-3.5 h-3.5" />
+                            </Link>
                         </div>
 
-                        {/* Curated Sub-niche Collection Cards */}
-                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-1.5 sm:gap-2 md:gap-2.5">
+                        {/* Curated Sub-niche Collection Cards (Bagoo Unique In-Image Scrim Card Design) */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5">
                             {(topCuratedCollections && topCuratedCollections.length > 0 ? topCuratedCollections : [
                                 {
                                     id: 1,
                                     title: 'Tactical Crossbody Slings',
                                     ribbon: '#1 BESTSELLER',
                                     ribbon_color: 'amber',
-                                    sales_badge: '3.4K SOLD/MO',
+                                    sales_badge: '3.4K+ SOLD/MO',
                                     category_slug: 'backpacks-and-bags',
                                     category_name: 'Bags & EDC',
                                     sub_slug: 'crossbody-slings',
                                     image: '/images/products/stealth_sling_front.jpg',
-                                    target_url: '/?category=backpacks-and-bags&sub=crossbody-slings',
+                                    target_url: '/top-products?collection=crossbody-slings',
                                 },
                                 {
                                     id: 2,
                                     title: 'Oversized Streetwear Tees',
                                     ribbon: 'TRENDING',
                                     ribbon_color: 'crimson',
-                                    sales_badge: '2.8K SOLD/MO',
+                                    sales_badge: '2.8K+ SOLD/MO',
                                     category_slug: 'mens-apparel',
                                     category_name: "Men's Apparel",
                                     sub_slug: 'tees-and-tops',
                                     image: '/images/products/boxy_tee_front.jpg',
-                                    target_url: '/?category=mens-apparel&sub=tees-and-tops',
+                                    target_url: '/top-products?collection=tees-and-tops',
                                 },
                                 {
                                     id: 3,
                                     title: 'Mil-Spec Field Watches',
                                     ribbon: 'TOP RATED 5.0★',
                                     ribbon_color: 'emerald',
-                                    sales_badge: '1.9K SOLD/MO',
+                                    sales_badge: '1.9K+ SOLD/MO',
                                     category_slug: 'jewelry-and-watches',
                                     category_name: 'Jewelry & Watches',
                                     sub_slug: 'tactical-field-watches',
                                     image: '/images/categories/jewelry_watches.jpg',
-                                    target_url: '/?category=jewelry-and-watches&sub=tactical-field-watches',
+                                    target_url: '/top-products?collection=tactical-field-watches',
                                 },
                                 {
                                     id: 4,
                                     title: 'Modular Tech Organizers',
                                     ribbon: 'HOT DEMAND',
                                     ribbon_color: 'orange',
-                                    sales_badge: '1.5K SOLD/MO',
+                                    sales_badge: '1.5K+ SOLD/MO',
                                     category_slug: 'backpacks-and-bags',
                                     category_name: 'Bags & EDC',
                                     sub_slug: 'tech-pouches-and-organizers',
                                     image: '/images/products/nomad_pouch_front.jpg',
-                                    target_url: '/?category=backpacks-and-bags&sub=tech-pouches-and-organizers',
+                                    target_url: '/top-products?collection=tech-pouches-and-organizers',
+                                },
+                                {
+                                    id: 5,
+                                    title: 'Commuter Backpacks & Roll-Tops',
+                                    ribbon: 'RISING STAR',
+                                    ribbon_color: 'amber',
+                                    sales_badge: '1.2K+ SOLD/MO',
+                                    category_slug: 'backpacks-and-bags',
+                                    category_name: 'Bags & EDC',
+                                    sub_slug: 'commuter-backpacks',
+                                    image: '/images/products/aero_rolltop_front.jpg',
+                                    target_url: '/top-products?collection=commuter-backpacks',
+                                },
+                                {
+                                    id: 6,
+                                    title: 'EDC Hardware & Carabiners',
+                                    ribbon: 'COMMUNITY CHOICE',
+                                    ribbon_color: 'emerald',
+                                    sales_badge: '950+ SOLD/MO',
+                                    category_slug: 'backpacks-and-bags',
+                                    category_name: 'Bags & EDC',
+                                    sub_slug: 'edc-hardware',
+                                    image: '/images/products/edc_carabiner_front.jpg',
+                                    target_url: '/top-products?collection=edc-hardware',
                                 },
                             ]).map((collection) => (
-                                <div
+                                <Link
                                     key={collection.id}
-                                    onClick={() => {
-                                        applyFilterChange({ category: collection.category_slug, sub: collection.sub_slug, search: undefined });
-                                        const el = document.getElementById('product-feed');
-                                        if (el) el.scrollIntoView({ behavior: 'smooth' });
-                                    }}
-                                    className="group/top relative flex flex-col bg-white rounded-xl border border-slate-200/80 hover:border-red-300 hover:shadow-md transition-all duration-200 p-2 sm:p-2.5 cursor-pointer overflow-hidden"
+                                    href={collection.target_url || `/top-products?collection=${collection.sub_slug}`}
+                                    className="group/top relative block rounded-xl overflow-hidden aspect-4/3 sm:aspect-square bg-slate-900 border border-slate-200/80 hover:border-red-400 hover:shadow-lg transition-all duration-300 cursor-pointer"
                                 >
-                                    {/* Ranking Ribbon & Sales Volume Badge */}
-                                    <div className="flex items-center justify-between gap-1 mb-1.5">
-                                        <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-md text-white shadow-xs ${
+                                    {/* Full Card Background Image */}
+                                    <img
+                                        src={collection.image}
+                                        alt={collection.title}
+                                        loading="lazy"
+                                        className="absolute inset-0 w-full h-full object-cover group-hover/top:scale-108 transition-transform duration-500"
+                                    />
+
+                                    {/* Elegant Dark Gradient Scrim */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent transition-opacity group-hover/top:opacity-95" />
+
+                                    {/* Top-Left Ribbon Badge */}
+                                    <div className="absolute top-2 left-2 z-10 flex items-center gap-1">
+                                        <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-md text-white shadow-md ${
                                             collection.ribbon_color === 'amber' ? 'bg-amber-500' :
                                             collection.ribbon_color === 'crimson' ? 'bg-[#E00D42]' :
                                             collection.ribbon_color === 'emerald' ? 'bg-emerald-600' : 'bg-[#F97316]'
@@ -573,43 +612,24 @@ export default function BuyerHome({
                                             <Flame className="w-2.5 h-2.5 fill-white" />
                                             <span>{collection.ribbon}</span>
                                         </span>
-                                        <span className="text-[9px] font-black font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
-                                            {collection.sales_badge}
-                                        </span>
                                     </div>
 
-                                    {/* Thumbnail Image */}
-                                    <div className="relative aspect-4/3 w-full rounded-lg overflow-hidden bg-slate-100 border border-slate-100 mb-2 shadow-2xs">
-                                        <img
-                                            src={collection.image}
-                                            alt={collection.title}
-                                            loading="lazy"
-                                            className="w-full h-full object-cover group-hover/top:scale-105 transition-transform duration-300"
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover/top:opacity-100 transition-opacity duration-200" />
-                                        <span className="absolute bottom-1.5 left-1.5 text-[9px] font-bold text-white uppercase tracking-wider bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded">
-                                            {collection.category_name}
-                                        </span>
-                                    </div>
-
-                                    {/* Niche Title & Meta */}
-                                    <div className="flex-1 flex flex-col justify-between space-y-1">
-                                        <div>
-                                            <h4 className="font-bold text-slate-900 group-hover/top:text-[#E00D42] transition-colors text-xs sm:text-sm line-clamp-1 font-sans">
-                                                {collection.title}
-                                            </h4>
-                                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
-                                                Explore trending items in <strong className="font-semibold text-slate-700">{collection.category_name}</strong>
-                                            </p>
+                                    {/* Inside Bottom Info Scrim (Monthly Sales + Title + Department) */}
+                                    <div className="absolute inset-x-0 bottom-0 p-2 sm:p-2.5 z-10 flex flex-col justify-end text-white font-sans">
+                                        <div className="flex items-center justify-between gap-1 mb-1">
+                                            <span className="text-[9px] font-mono font-bold uppercase text-amber-300 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded border border-amber-300/30">
+                                                {collection.sales_badge}
+                                            </span>
+                                            <span className="text-[8px] font-bold text-white/75 uppercase tracking-wider truncate">
+                                                {collection.category_name}
+                                            </span>
                                         </div>
 
-                                        {/* View Collection Action */}
-                                        <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold font-sans text-[#E00D42] group-hover/top:translate-x-0.5 transition-transform">
-                                            <span>View Collection</span>
-                                            <ChevronRight className="w-3.5 h-3.5" />
-                                        </div>
+                                        <h4 className="font-bold text-white text-xs sm:text-[13px] leading-tight line-clamp-1 group-hover/top:text-amber-200 transition-colors">
+                                            {collection.title}
+                                        </h4>
                                     </div>
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </section>
