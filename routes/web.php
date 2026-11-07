@@ -573,6 +573,7 @@ Route::middleware('auth')->prefix('buyer-returns')->name('buyer-returns.')->grou
 Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/', [BuyerHomeController::class, 'index'])->name('index');
     Route::get('/home', fn () => redirect()->route('marketplace'));
+    Route::get('/flash-deals', fn () => redirect('/#flash-deals'))->name('flash-deals');
     Route::get('/search', [BuyerProductController::class, 'search'])->name('search');
     Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog');
     Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');

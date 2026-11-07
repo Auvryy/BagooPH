@@ -78,6 +78,32 @@ class VoucherCampaignManagementTest extends TestCase
         $this->assertSame($shop->id, $voucher->fresh()->shop_id);
     }
 
+    public function test_historical_voucher_dates_can_stay_unchanged_but_cannot_be_newly_backdated(): void
+    {
+        [$shop, $voucher, $payload] = $this->published();
+
+        $unchanged = [...$payload,
+            'source_version' => $voucher->fresh()->campaign_version,
+            'request_key' => (string) Str::uuid(),
+            'reason' => 'Keep the original voucher dates unchanged.'];
+
+        $this->actingAs($shop->user)->patch('/seller/vouchers/'.$voucher->id, $unchanged)
+            ->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $savedTerms = $voucher->fresh()->draft->terms;
+        $changed = [...$payload,
+            'starts_at' => now()->subMinutes(2)->toIso8601String(),
+            'source_version' => $voucher->fresh()->campaign_version,
+            'request_key' => (string) Str::uuid(),
+            'reason' => 'Do not move the voucher into the past.'];
+
+        $this->patchJson('/seller/vouchers/'.$voucher->id, $changed)
+            ->assertUnprocessable()->assertJsonValidationErrors('starts_at');
+
+        $this->assertSame($savedTerms['starts_at'], $voucher->fresh()->draft->terms['starts_at']);
+        $this->assertSame($savedTerms['ends_at'], $voucher->fresh()->draft->terms['ends_at']);
+    }
+
     public function test_code_normalization_precedes_uniqueness_and_generated_codes_are_valid(): void
     {
         $shop = Shop::factory()->approved()->create();

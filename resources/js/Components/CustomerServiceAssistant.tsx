@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, MessageCircle, Send, UserRound, X } from 'lucide-react';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import BagooLogo from '@/Components/BagooLogo';
+import { router } from '@inertiajs/react';
 
 interface MessageItem {
     role: 'buyer' | 'assistant';
@@ -9,6 +11,7 @@ interface MessageItem {
 
 interface Props {
     onContactHuman?: () => void;
+    onOpenMessages?: () => void;
 }
 
 const quickQuestions = [
@@ -17,7 +20,7 @@ const quickQuestions = [
     'How do I upload my verification document?',
 ];
 
-export default function CustomerServiceAssistant({ onContactHuman }: Props) {
+export default function CustomerServiceAssistant({ onContactHuman, onOpenMessages }: Props) {
     const [open, setOpen] = useState(false);
     const [message, setMessage] = useState('');
     const [orderNumber, setOrderNumber] = useState('');
@@ -29,6 +32,17 @@ export default function CustomerServiceAssistant({ onContactHuman }: Props) {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, [messages, loading]);
+
+    const handleHumanContact = () => {
+        setOpen(false);
+        if (onOpenMessages) {
+            onOpenMessages();
+        } else if (onContactHuman) {
+            onContactHuman();
+        } else if (typeof window !== 'undefined' && (window as any).route) {
+            router.visit(route('buyer.messages'));
+        }
+    };
 
     const ask = async (question = message) => {
         const trimmed = question.trim();
@@ -64,88 +78,140 @@ export default function CustomerServiceAssistant({ onContactHuman }: Props) {
 
     return (
         <>
-            {!open && (
-                <button
-                    type="button"
-                    onClick={() => setOpen(true)}
-                    className="fixed bottom-16 right-4 sm:bottom-6 sm:right-6 z-50 inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-black text-white font-semibold rounded-xs shadow-xl border border-slate-700 text-xs"
-                >
-                    <MessageCircle className="w-4 h-4 text-[#E00D42]" />
-                    Support
-                </button>
-            )}
+            <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="inline-flex min-h-9 items-center gap-2 rounded-lg text-xs text-slate-500 transition hover:text-[#E00D42] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-200 cursor-pointer"
+                aria-expanded={open}
+                aria-controls="buyer-support-panel"
+            >
+                <MessageCircle className="w-4 h-4 text-[#E00D42]" />
+                Support
+            </button>
 
             {open && (
-                <section className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[60] w-[calc(100vw-2rem)] max-w-sm bg-white border border-slate-200 rounded-lg shadow-2xl overflow-hidden">
-                    <header className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-900 text-white">
-                        <div className="flex min-w-0 items-center gap-2">
-                            <BagooLogo className="w-8 h-8" rounded="rounded-xs" />
-                            <div className="min-w-0">
-                                <h2 className="block text-sm font-bold leading-5 text-white">Bagoo Support</h2>
-                                <p className="text-[10px] text-slate-300">Shopping and order help</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            {onContactHuman && (
-                                <button type="button" onClick={() => { setOpen(false); onContactHuman(); }} className="inline-flex items-center gap-1.5 px-2 py-1.5 text-[10px] font-semibold text-white border border-slate-600 rounded-xs hover:bg-slate-800" title="Talk to a person">
-                                    <UserRound className="w-3.5 h-3.5 text-[#E00D42]" />
-                                    <span className="hidden sm:inline">Talk to a person</span>
-                                </button>
-                            )}
-                            <button type="button" onClick={() => setOpen(false)} className="p-1 text-slate-300 hover:text-white" aria-label="Close support">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </header>
-
-                    <div className="max-h-72 overflow-y-auto p-3 space-y-2">
-                        {messages.length === 0 && (
-                            <div className="space-y-2">
-                                <p className="text-xs leading-relaxed text-slate-600">Ask about shopping, checkout, verification, or an order.</p>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {quickQuestions.map(question => (
-                                        <button key={question} type="button" onClick={() => ask(question)} className="px-2 py-1 text-[10px] text-slate-700 border border-slate-200 rounded-xs hover:bg-slate-50 text-left">
-                                            {question}
-                                        </button>
-                                    ))}
+                <Dialog open={open} onClose={() => setOpen(false)} className="relative z-[60]">
+                    <DialogPanel
+                        id="buyer-support-panel"
+                        aria-label="Bagoo Support"
+                        className="fixed bottom-24 right-4 sm:right-6 z-[60] flex max-h-[calc(100dvh-8rem)] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-red-100 bg-white shadow-[0_12px_40px_rgba(224,13,66,0.18)]"
+                    >
+                        {/* Header in Red Theme - No Black */}
+                        <header className="flex items-center justify-between gap-3 px-4 py-3 bg-[#E00D42] text-white">
+                            <div className="flex min-w-0 items-center gap-2">
+                                <BagooLogo className="w-7 h-7" rounded="rounded-md" />
+                                <div className="min-w-0">
+                                    <DialogTitle className="block text-sm font-bold leading-5 text-white">Bagoo Support</DialogTitle>
+                                    <p className="text-[10px] text-white/80 font-medium">Shopping and order help</p>
                                 </div>
                             </div>
-                        )}
-                        {messages.map((item, index) => (
-                            <div key={`${item.role}-${index}`} className={`flex ${item.role === 'buyer' ? 'justify-end' : 'justify-start'}`}>
-                                <p className={`max-w-[88%] px-2.5 py-2 text-xs leading-relaxed rounded-sm ${item.role === 'buyer' ? 'bg-[#E00D42] text-white' : 'bg-slate-100 text-slate-700'}`}>
-                                    {item.text}
-                                </p>
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={handleHumanContact}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold text-white bg-white/20 hover:bg-white/30 rounded-lg transition-colors cursor-pointer"
+                                    title="Open buyer messages"
+                                    aria-label="Open buyer messages"
+                                >
+                                    <UserRound className="w-3.5 h-3.5 text-white" />
+                                    <span className="hidden sm:inline">Messages</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setOpen(false)}
+                                    className="p-1 text-white/80 hover:text-white rounded-md hover:bg-white/20 transition cursor-pointer"
+                                    aria-label="Close support"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
                             </div>
-                        ))}
-                        {loading && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
-                        {error && <p className="text-[11px] text-rose-600">{error}</p>}
-                        <div ref={messagesEndRef} />
-                    </div>
+                        </header>
 
-                    <div className="px-3 pb-3 space-y-2">
-                        <input
-                            value={orderNumber}
-                            onChange={event => setOrderNumber(event.target.value)}
-                            placeholder="Optional order number"
-                            className="w-full px-2.5 py-2 text-[11px] border border-slate-200 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
-                        />
-                        <form onSubmit={event => { event.preventDefault(); void ask(); }} className="flex items-end gap-2">
-                            <textarea
-                                value={message}
-                                onChange={event => setMessage(event.target.value)}
-                                onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void ask(); } }}
-                                rows={2}
-                                maxLength={1000}
-                                placeholder="Type your question"
-                                className="flex-1 resize-none px-2.5 py-2 text-xs border border-slate-200 rounded-xs focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
+                        {/* Order context */}
+                        <div className="p-3 bg-red-50/60 border-b border-red-100">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-red-900 mb-1">
+                                Order context (optional)
+                            </label>
+                            <input
+                                value={orderNumber}
+                                onChange={event => setOrderNumber(event.target.value)}
+                                aria-label="Order number (optional)"
+                                placeholder="e.g. BGO-XXXXX"
+                                className="w-full text-xs font-mono rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-slate-800 placeholder:text-slate-400 focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42]"
                             />
-                            <button type="submit" disabled={!message.trim() || loading} className="p-2.5 bg-[#E00D42] text-white rounded-xs disabled:opacity-50" aria-label="Send question">
-                                <Send className="w-4 h-4" />
-                            </button>
-                        </form>
-                    </div>
-                </section>
+                        </div>
+
+                        {/* Messages Body */}
+                        <div className="min-h-0 max-h-72 overflow-y-auto p-3 space-y-2 bg-slate-50/50">
+                            {messages.length === 0 && (
+                                <div className="space-y-2">
+                                    <div className="rounded-xl bg-white border border-slate-200/80 p-3 text-xs leading-relaxed text-slate-700 shadow-2xs">
+                                        Mabuhay! I am your Bagoo shopping assistant. Ask about shopping, checkout, orders, returns, or seller tracking.
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5 pt-1">
+                                        {quickQuestions.map(question => (
+                                            <button
+                                                key={question}
+                                                type="button"
+                                                onClick={() => ask(question)}
+                                                className="px-2.5 py-1 text-[10px] font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-lg transition-colors cursor-pointer text-left"
+                                            >
+                                                {question}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {messages.map((item, index) => (
+                                <div key={`${item.role}-${index}`} className={`flex ${item.role === 'buyer' ? 'justify-end' : 'justify-start'}`}>
+                                    <p className={`max-w-[85%] px-3 py-2 text-xs leading-relaxed rounded-xl shadow-2xs ${
+                                        item.role === 'buyer' 
+                                            ? 'bg-[#E00D42] text-white font-medium' 
+                                            : 'bg-white border border-slate-200/80 text-slate-800'
+                                    }`}>
+                                        {item.text}
+                                    </p>
+                                </div>
+                            ))}
+
+                            {loading && (
+                                <div className="flex items-center gap-2 text-xs text-[#E00D42] bg-white border border-red-100 p-2.5 rounded-xl shadow-2xs font-medium">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#E00D42]" />
+                                    <span>Searching marketplace knowledge base…</span>
+                                </div>
+                            )}
+
+                            {error && (
+                                <div role="alert" className="rounded-xl bg-red-50 border border-red-200 p-2 text-xs text-red-700">
+                                    {error}
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Textarea & Submit */}
+                        <div className="p-3 border-t border-slate-100 bg-white">
+                            <form onSubmit={event => { event.preventDefault(); void ask(); }} className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={message}
+                                    onChange={event => setMessage(event.target.value)}
+                                    placeholder="Type your question…"
+                                    className="flex-1 text-xs rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-800 placeholder:text-slate-400 focus:border-[#E00D42] focus:ring-1 focus:ring-[#E00D42] focus:bg-white"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!message.trim() || loading}
+                                    className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-[#E00D42] hover:bg-[#C20836] disabled:opacity-40 text-white transition-colors cursor-pointer shadow-xs active:scale-95"
+                                    aria-label="Send question"
+                                >
+                                    <Send className="w-4 h-4" />
+                                </button>
+                            </form>
+                        </div>
+                    </DialogPanel>
+                </Dialog>
             )}
         </>
     );

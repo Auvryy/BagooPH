@@ -66,7 +66,10 @@ class AssistantTest extends TestCase
             ->assertJsonPath('content.description', 'A practical everyday bag with a lightweight design.')
             ->assertJsonCount(2, 'content.selling_points');
 
-        Http::assertSent(fn ($request) => str_contains($request->body(), 'Black nylon bag')
+        Http::assertSent(fn ($request) => $request->url() === 'https://generativelanguage.googleapis.com/v1beta/models/test-model:generateContent'
+            && $request->hasHeader('x-goog-api-key', 'test-key')
+            && ! str_contains($request->url(), 'test-key')
+            && str_contains($request->body(), 'Black nylon bag')
             && str_contains($request->body(), 'Never invent prices'));
     }
 

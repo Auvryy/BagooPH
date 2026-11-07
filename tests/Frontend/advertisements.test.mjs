@@ -10,7 +10,7 @@ import { createInertiaApp } from '@inertiajs/react';
 
 const root = resolve(import.meta.dirname, '../..');
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-advertisements-'));
-after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.route; delete globalThis.adTestHooks; delete globalThis.adFormData; delete globalThis.adReviewState; });
+after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.route; delete globalThis.adTestHooks; delete globalThis.adFormData; delete globalThis.adFormErrors; delete globalThis.adFormHarness; delete globalThis.adEditorHooks; delete globalThis.adReviewState; });
 const bundle = await build({
     stdin: { contents: `export { promotionDateWindow, promotionDateErrors, nextPromotionMinute, promotionSuggestedStart } from '@/utils/promotionDates'; export { default as Banners } from '@/Components/BuyerAdvertisements';
         export { default as Promotion } from '@/Pages/Buyer/Promotion';
@@ -25,20 +25,26 @@ const bundle = await build({
         export { default as SellerPreview } from '@/Pages/Seller/Promotions/Preview';`, resolveDir: root, loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false, loader: { '.css': 'empty' },
     plugins: [{ name: 'advertisement-interaction-hooks', setup(builder) {
-        builder.onResolve({ filter: /^react$/ }, args => ['ad-hooks', 'ad-review-hooks'].includes(args.namespace) ? { path: 'react', external: true }
+        builder.onResolve({ filter: /^react$/ }, args => ['ad-hooks', 'ad-review-hooks', 'ad-promotion-hooks'].includes(args.namespace) ? { path: 'react', external: true }
             : args.importer.endsWith('/BuyerAdvertisements.tsx') ? { path: 'ad-hooks', namespace: 'ad-hooks' }
-            : args.importer.endsWith('/Advertisements/Review.tsx') ? { path: 'ad-review-hooks', namespace: 'ad-review-hooks' } : undefined);
+            : args.importer.endsWith('/Advertisements/Review.tsx') ? { path: 'ad-review-hooks', namespace: 'ad-review-hooks' }
+            : args.importer.endsWith('/Promotions/Edit.tsx') ? { path: 'ad-promotion-hooks', namespace: 'ad-promotion-hooks' } : undefined);
         builder.onLoad({ filter: /.*/, namespace: 'ad-hooks' }, () => ({ contents: `import React from 'react'; export * from 'react';
             export const useState = initial => globalThis.adTestHooks ? globalThis.adTestHooks.useState(initial) : React.useState(initial);
             export const useRef = initial => globalThis.adTestHooks ? globalThis.adTestHooks.useState(() => ({ current: initial }))[0] : React.useRef(initial);` }));
         builder.onLoad({ filter: /.*/, namespace: 'ad-review-hooks' }, () => ({ contents: `import React from 'react';
             export const useState = initial => React.useState(() => { const h = globalThis.adReviewState;
                 const i = h ? h.index++ : -1; return h && Object.hasOwn(h.values, i) ? h.values[i] : typeof initial === 'function' ? initial() : initial; });` }));
+        builder.onLoad({ filter: /.*/, namespace: 'ad-promotion-hooks' }, () => ({ contents: `import React from 'react'; export * from 'react';
+            export const useState = initial => globalThis.adEditorHooks ? globalThis.adEditorHooks.useState(initial) : React.useState(initial);
+            export const useEffect = effect => globalThis.adEditorHooks ? undefined : React.useEffect(effect);` }));
         builder.onResolve({ filter: /^@inertiajs\/react$/ }, args => args.namespace === 'ad-forms' ? { path: '@inertiajs/react', external: true }
             : /\/(?:Advertisements|Promotions)\/Edit\.tsx$/.test(args.importer) ? { path: 'ad-forms', namespace: 'ad-forms' } : undefined);
         builder.onLoad({ filter: /.*/, namespace: 'ad-forms' }, () => ({ contents: `export * from '@inertiajs/react';
             import { useForm as realForm } from '@inertiajs/react';
-            export const useForm = initial => { const form = realForm(initial); return globalThis.adFormData ? { ...form, data: { ...form.data, ...globalThis.adFormData } } : form; };` }));
+            export const useForm = initial => { if (globalThis.adFormHarness) return globalThis.adFormHarness(initial);
+                const form = realForm(initial); return globalThis.adFormData || globalThis.adFormErrors
+                ? { ...form, data: { ...form.data, ...(globalThis.adFormData ?? {}) }, errors: { ...form.errors, ...(globalThis.adFormErrors ?? {}) } } : form; };` }));
     } }],
 });
 const modulePath = join(temporary, 'advertisements.mjs');
@@ -350,4 +356,49 @@ test('seller promotion editor exposes linked voucher bounds and field feedback',
         assert.match(html, /End the promotion before or when the linked voucher ends/);
         assert.match(html, /aria-invalid="true"/);
     } finally { delete globalThis.adFormData; }
+});
+
+test('linked-offer boundary failures point to the date fields and keep the submitted values', async () => {
+    const offers = [{ id: 88, name: 'Published savings', code: 'BAGOO88', shop_id: 3, starts_at: '2027-10-15T02:00:00Z', ends_at: '2027-10-16T02:00:00Z' }];
+    const startError = 'Start on or after Oct 15, 2027 10:00 AM (Asia/Manila), when the linked voucher begins.';
+    const endError = 'End on or before Oct 16, 2027 10:00 AM (Asia/Manila), when the linked voucher ends.';
+    globalThis.adFormData = { offer_revision_id: '88', starts_at: '2027-10-15T09:00', ends_at: '2027-10-17T10:00' };
+    globalThis.adFormErrors = { advertisement: 'The advertisement must start and end within the linked offer period.', starts_at: startError, ends_at: endError };
+    try {
+        const html = await render(ui.SellerEditor, { ...sellerProps(null), options: { ...sellerOptions, offers } }, 'seller');
+        assert.match(html, /href="#promotion-starts-at">Requested start:/);
+        assert.match(html, /href="#promotion-ends-at">Requested end:/);
+        assert.match(html, /id="promotion-starts-at"[^>]*aria-invalid="true"/);
+        assert.match(html, /id="promotion-ends-at"[^>]*aria-invalid="true"/);
+        assert.match(html, new RegExp(startError.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+        assert.match(html, new RegExp(endError.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+        assert.match(html, /value="2027-10-15T09:00"/);
+        assert.match(html, /value="2027-10-17T10:00"/);
+        assert.doesNotMatch(html, /The advertisement must start and end within the linked offer period/);
+    } finally { delete globalThis.adFormData; delete globalThis.adFormErrors; }
+});
+
+test('changing a promotion date or linked voucher clears the stale boundary summary', () => {
+    const offers = [{ id: 88, name: 'Published savings', code: 'BAGOO88', shop_id: 3, starts_at: '2027-10-15T02:00:00Z', ends_at: '2027-10-16T02:00:00Z' }];
+    const cleared = [];
+    globalThis.adEditorHooks = { useState(initial) { return [typeof initial === 'function' ? initial() : initial, () => {}]; } };
+    globalThis.adFormHarness = initial => ({
+        data: { ...initial, offer_revision_id: '88', starts_at: '2027-10-15T09:00', ends_at: '2027-10-17T10:00' },
+        errors: { advertisement: 'The advertisement must start and end within the linked offer period.' },
+        isDirty: false, processing: false,
+        clearErrors: (...fields) => cleared.push(fields), setData: () => {}, setError: () => {}, setDefaults: () => {}, post: () => {},
+    });
+    try {
+        const page = ui.SellerEditor({ ...sellerProps(null), options: { ...sellerOptions, offers } });
+        const editor = page.type(page.props);
+        const start = nodes(editor.props.children, node => node.type === 'input' && node.props.id === 'promotion-starts-at')[0];
+        const end = nodes(editor.props.children, node => node.type === 'input' && node.props.id === 'promotion-ends-at')[0];
+        const voucher = nodes(editor.props.children, node => node.type === 'select' && node.props.value === '88')[0];
+        start.props.onChange({ target: { value: '2027-10-15T10:00' } });
+        end.props.onChange({ target: { value: '2027-10-16T10:00' } });
+        voucher.props.onChange({ target: { value: '89' } });
+        assert.deepEqual(cleared, [
+            ['starts_at', 'advertisement'], ['ends_at', 'advertisement'], ['offer_revision_id', 'starts_at', 'ends_at', 'advertisement'],
+        ]);
+    } finally { delete globalThis.adEditorHooks; delete globalThis.adFormHarness; }
 });

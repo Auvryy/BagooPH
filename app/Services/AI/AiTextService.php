@@ -43,7 +43,8 @@ class AiTextService
             $response = Http::timeout((int) config('ai.timeout', 20))
                 ->retry(1, 250)
                 ->acceptJson()
-                ->post($endpoint . '?key=' . rawurlencode($apiKey), [
+                ->withHeaders(['x-goog-api-key' => $apiKey])
+                ->post($endpoint, [
                     'systemInstruction' => [
                         'parts' => [['text' => $systemPrompt]],
                     ],

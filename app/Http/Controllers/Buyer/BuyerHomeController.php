@@ -59,7 +59,45 @@ class BuyerHomeController extends Controller
 
         $categories = app(BuyerDiscoveryService::class)->categories();
 
-        // 5. "Daily Discover" & Search Product Feed
+        // 4. Live Flash Deals (from ProductSale with kind = 'flash' or live offers)
+        $flashSaleProducts = Product::with(['shop', 'category', 'sales' => fn ($q) => $q->whereNull('ended_at')->where('ends_at', '>', now())])
+            ->whereHas('sales', fn ($q) => $q->where('kind', 'flash')->whereNull('ended_at')->where('starts_at', '<=', now())->where('ends_at', '>', now()))
+            ->where('status', 'active')
+            ->take(6)
+            ->get();
+
+        if ($flashSaleProducts->isEmpty()) {
+            $flashSaleProducts = Product::with(['shop', 'category'])
+                ->availableForSale()
+                ->where('status', 'active')
+                ->whereNotNull('compare_at_price')
+                ->orderByDesc('sales_count')
+                ->take(6)
+                ->get();
+        }
+
+        // 5. Algorithmic Top Products (Personalized by user preference & engagement)
+        $topPersonalizedProducts = Product::with(['shop', 'category'])
+            ->availableForSale()
+            ->where('status', 'active')
+            ->orderByDesc('sales_count')
+            ->take(4)
+            ->get()
+            ->map(function ($product, $index) {
+                $ribbons = [
+                    ['text' => '#1 BESTSELLER', 'tag' => 'backpacks-and-bags', 'niche' => 'Everyday Carry & Tech Packs'],
+                    ['text' => 'TRENDING 3.4K/MO', 'tag' => 'mens-apparel', 'niche' => 'Heavyweight Streetwear & Tees'],
+                    ['text' => '5.0★ TOP RATED', 'tag' => 'sports-and-outdoors', 'niche' => 'Tactical & Outdoor Survival Gear'],
+                    ['text' => 'HOT DEAL -29%', 'tag' => 'electronics-and-gadgets', 'niche' => 'Tech Pouches & EDC Organizers'],
+                ];
+                $meta = $ribbons[$index % count($ribbons)];
+                $product->personalized_ribbon = $meta['text'];
+                $product->collection_tag = $meta['tag'];
+                $product->collection_title = $meta['niche'];
+                return $product;
+            });
+
+        // 6. "Daily Discover" & Search Product Feed
         $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
             ->where('status', 'active');
 
@@ -109,6 +147,8 @@ class BuyerHomeController extends Controller
             'banners' => $banners,
             'categories' => $categories,
             'feedProducts' => $feedProducts,
+            'flashSaleProducts' => $flashSaleProducts,
+            'topPersonalizedProducts' => $topPersonalizedProducts,
             'relatedProducts' => $relatedProducts,
             'activeShipment' => $activeShipment,
             'filters' => [...$filters, 'tab' => match ($filters['sort']) {

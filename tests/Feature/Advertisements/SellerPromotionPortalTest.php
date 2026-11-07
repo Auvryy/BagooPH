@@ -347,13 +347,32 @@ class SellerPromotionPortalTest extends TestCase
         $data = $this->data(['offer_revision_id' => $voucher->current_revision_id,
             'starts_at' => '2026-10-15T19:59', 'ends_at' => '2026-10-18T20:01']);
         $this->actingAs($this->seller)->postJson('/seller/promotions', $data)
-            ->assertUnprocessable()->assertJsonValidationErrors(['advertisement', 'starts_at', 'ends_at'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['starts_at', 'ends_at'])->assertJsonMissingPath('errors.advertisement')
             ->assertJsonPath('errors.starts_at.0', 'Start on or after Oct 15, 2026 8:00 PM (Asia/Manila), when the linked voucher begins.')
             ->assertJsonPath('errors.ends_at.0', 'End on or before Oct 18, 2026 8:00 PM (Asia/Manila), when the linked voucher ends.');
         $this->assertDatabaseCount('advertisements', 0);
         $this->post('/seller/promotions', $this->data(['offer_revision_id' => $voucher->current_revision_id,
             'starts_at' => '2026-10-15T20:00', 'ends_at' => '2026-10-18T20:00']))->assertSessionHasNoErrors();
         $this->assertDatabaseCount('advertisements', 1);
+    }
+
+    public function test_invalid_offer_dates_on_a_draft_update_are_field_specific_and_leave_saved_dates_unchanged(): void
+    {
+        $voucher = $this->voucher($this->shop);
+        $ad = $this->draft();
+        $savedStart = $ad->latestRevision->starts_at->toIso8601String();
+        $savedEnd = $ad->latestRevision->ends_at->toIso8601String();
+
+        $this->actingAs($this->seller)->postJson('/seller/promotions/'.$ad->id.'/draft', $this->data([
+            'image' => null, 'source_version' => $ad->version, 'offer_revision_id' => $voucher->current_revision_id,
+            'starts_at' => '2026-10-15T19:59', 'ends_at' => '2026-10-18T20:00',
+        ]))->assertUnprocessable()->assertJsonValidationErrors('starts_at')
+            ->assertJsonMissingPath('errors.advertisement')
+            ->assertJsonPath('errors.starts_at.0', 'Start on or after Oct 15, 2026 8:00 PM (Asia/Manila), when the linked voucher begins.');
+
+        $this->assertDatabaseCount('advertisement_revisions', 1);
+        $this->assertSame($savedStart, $ad->latestRevision->fresh()->starts_at->toIso8601String());
+        $this->assertSame($savedEnd, $ad->latestRevision->fresh()->ends_at->toIso8601String());
     }
 
     public function test_promotion_dates_reject_backdated_start_and_expired_end(): void
@@ -377,7 +396,8 @@ class SellerPromotionPortalTest extends TestCase
         $this->postJson('/seller/promotions', [...$data, 'offer_revision_id' => $platform->current_revision_id])->assertUnprocessable()->assertJsonValidationErrors('advertisement');
         $foreignProduct = Product::factory()->create(['shop_id' => $other->id, 'category_id' => $other->root_category_id]);
         $this->postJson('/seller/promotions', [...$data, 'product_ids' => [$foreignProduct->id]])->assertUnprocessable()->assertJsonValidationErrors('advertisement');
-        $this->postJson('/seller/promotions', [...$data, 'ends_at' => '2026-10-20T20:00'])->assertUnprocessable()->assertJsonValidationErrors('advertisement');
+        $this->postJson('/seller/promotions', [...$data, 'ends_at' => '2026-10-20T20:00'])->assertUnprocessable()
+            ->assertJsonValidationErrors('ends_at')->assertJsonMissingPath('errors.advertisement');
         $this->post('/seller/promotions', $data)->assertSessionHasNoErrors()->assertSessionHas('success');
         $ad = Advertisement::sole();
         $service = app(SellerPromotionService::class);
