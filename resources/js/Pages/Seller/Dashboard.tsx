@@ -155,19 +155,21 @@ export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveri
                         <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
                         <span>Storefront Preview</span>
                     </PortalLink>
-                    <PortalLink
-                        href={route('seller.products.index')}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold font-sans rounded-lg shadow-xs transition uppercase tracking-wider"
-                    >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>New Listing</span>
-                    </PortalLink>
                 </div>
             }
         >
             <Head title="Dashboard — BagooPH" />
 
             <div className="space-y-6 font-sans">
+                <div className="flex justify-end">
+                    <PortalLink
+                        href={route('seller.products.index')}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#E00D42] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-xs transition hover:bg-[#C20836]"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>List New Product</span>
+                    </PortalLink>
+                </div>
                 
                 {/* 1. TOP BUSINESS KPI TILES (CLEAN MINIMALIST CARDS) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

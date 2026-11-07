@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
 import type { StoreTag } from '@/types';
 
@@ -22,6 +22,10 @@ export default function SellerListingDetails({ data, errors, tags, departmentNam
     productName: string;
     onChange: <K extends keyof ListingDetails>(key: K, value: ListingDetails[K]) => void;
 }) {
+    const checkingTag = useRef(false);
+    const [tagPending, setTagPending] = useState(false);
+    const latest = useRef({ data, productName });
+    latest.current = { data, productName };
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [suggestionError, setSuggestionError] = useState('');
     const [suggesting, setSuggesting] = useState(false);
@@ -36,13 +40,38 @@ export default function SellerListingDetails({ data, errors, tags, departmentNam
         return message ? <span role="alert" className="mt-1 block text-xs font-normal text-rose-700">{message}</span> : null;
     };
     const membershipError = Object.entries(errors).find(([key]) => key === 'tag_names' || key.startsWith('tag_names.'))?.[1];
-    const addTag = (raw: string) => {
+    const addTag = async (raw: string) => {
         const name = raw.trim().replace(/\s+/g, ' ');
         if (!name || Array.from(name).length > 50 || /[<>\u0000-\u001f\u007f]/u.test(name)) return;
         if (data.tag_names.some(tag => tag.toLocaleLowerCase() === name.toLocaleLowerCase()) || data.tag_names.length >= 20) return;
-        onChange('tag_names', [...data.tag_names, name]);
-        onChange('tag_draft', '');
-        setSuggestions(current => current.filter(tag => tag.toLocaleLowerCase() !== name.toLocaleLowerCase()));
+        if (checkingTag.current) return;
+        if (!productName.trim()) { setSuggestionError('Enter the product name before adding a tag.'); return; }
+        checkingTag.current = true;
+        setTagPending(true);
+        setSuggestionError('');
+        const checkedProduct = productName;
+        try {
+            const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+            const response = await fetch(route('seller.products.assist-tags'), {
+                method: 'POST', credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify({ product_name: checkedProduct.trim(), tag: name }),
+            });
+            const payload = await response.json();
+            if (!response.ok || payload.tag !== name) throw new Error(payload.errors?.tag_names?.[0] || payload.message || 'This tag could not be verified. Try again.');
+            if (latest.current.productName !== checkedProduct) throw new Error('The product name changed. Check the tag again.');
+            const current = latest.current.data;
+            if (current.tag_names.length < 20 && !current.tag_names.some(tag => tag.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+                onChange('tag_names', [...current.tag_names, name]);
+                if (current.tag_draft.trim() === raw.trim()) onChange('tag_draft', '');
+                setSuggestions(tags => tags.filter(tag => tag.toLocaleLowerCase() !== name.toLocaleLowerCase()));
+            }
+        } catch (failure) {
+            setSuggestionError(failure instanceof Error ? failure.message : 'Could not check this tag. Try again.');
+        } finally {
+            checkingTag.current = false;
+            setTagPending(false);
+        }
     };
     const removeTag = (name: string) => onChange('tag_names', data.tag_names.filter(tag => tag.toLocaleLowerCase() !== name.toLocaleLowerCase()));
     const suggestTags = async () => {
@@ -88,11 +117,11 @@ export default function SellerListingDetails({ data, errors, tags, departmentNam
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                     <input value={data.tag_draft} onChange={event => onChange('tag_draft', event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addTag(data.tag_draft); } }} maxLength={50} placeholder="Add a product tag" className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs" aria-label="Add product tag" />
-                    <button type="button" onClick={() => addTag(data.tag_draft)} disabled={!data.tag_draft.trim() || data.tag_names.length >= 20} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold disabled:opacity-50">Add tag</button>
+                    <button type="button" onClick={() => addTag(data.tag_draft)} disabled={tagPending || !data.tag_draft.trim() || data.tag_names.length >= 20} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold disabled:opacity-50">{tagPending ? 'Checking tag…' : 'Add tag'}</button>
                     <button type="button" onClick={() => void suggestTags()} disabled={!productName.trim() || suggesting || data.tag_names.length >= 20} className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{suggesting ? <span className="animate-pulse">Checking…</span> : <><Sparkles className="h-3.5 w-3.5" />Suggest tags</>}</button>
                 </div>
-                {available.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{available.map(tag => <button key={tag.id} type="button" onClick={() => addTag(tag.name)} disabled={data.tag_names.length >= 20} className="rounded-full border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:border-rose-300 hover:text-rose-700 disabled:opacity-50">+ {tag.name}</button>)}</div>}
-                {suggestions.length > 0 && <div className="mt-3"><p className="text-xs font-semibold text-slate-600">AI suggestions · review before adding</p><div className="mt-2 flex flex-wrap gap-2">{suggestions.map(name => <button key={name} type="button" onClick={() => addTag(name)} disabled={data.tag_names.length >= 20} className="rounded-full border border-violet-300 bg-violet-50 px-2.5 py-1 text-xs text-violet-800 disabled:opacity-50">+ {name}</button>)}</div></div>}
+                {available.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{available.map(tag => <button key={tag.id} type="button" onClick={() => addTag(tag.name)} disabled={tagPending || data.tag_names.length >= 20} className="rounded-full border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:border-rose-300 hover:text-rose-700 disabled:opacity-50">+ {tag.name}</button>)}</div>}
+                {suggestions.length > 0 && <div className="mt-3"><p className="text-xs font-semibold text-slate-600">AI suggestions · review before adding</p><div className="mt-2 flex flex-wrap gap-2">{suggestions.map(name => <button key={name} type="button" onClick={() => addTag(name)} disabled={tagPending || data.tag_names.length >= 20} className="rounded-full border border-violet-300 bg-violet-50 px-2.5 py-1 text-xs text-violet-800 disabled:opacity-50">+ {name}</button>)}</div></div>}
                 {suggestionError && <p role="alert" className="mt-2 text-xs text-rose-700">{suggestionError}</p>}
                 {membershipError && <p role="alert" className="mt-2 text-xs text-rose-700">{membershipError}</p>}
             </div>

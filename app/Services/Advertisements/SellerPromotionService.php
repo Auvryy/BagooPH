@@ -73,6 +73,14 @@ class SellerPromotionService
             $ad = $advertisement ? $this->find($actor, $advertisement->id) : null;
             $this->version($ad, $meta['source_version']);
             abort_if($ad?->archived_at, 422, 'This promotion is archived. Create a new draft.');
+            $start = CarbonImmutable::parse($data['starts_at'], 'UTC');
+            if ($start->lessThan(CarbonImmutable::now('Asia/Manila')->startOfDay())
+                && (! $ad || ! $ad->latestRevision?->starts_at?->equalTo($start))) {
+                throw ValidationException::withMessages(['starts_at' => 'Choose today or a future date in Asia/Manila.']);
+            }
+            if (CarbonImmutable::parse($data['ends_at'], 'UTC')->lessThanOrEqualTo(now())) {
+                throw ValidationException::withMessages(['ends_at' => 'Choose a future end date and time in Asia/Manila.']);
+            }
             $candidate = new AdvertisementRevision($data);
             $this->assertOwnedTarget($shop, $candidate);
             $before = $ad ? app(AdvertisementManager::class)->snapshot($ad) : [];

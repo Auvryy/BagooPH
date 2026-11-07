@@ -77,6 +77,32 @@ export default function ProductSales({ shop, product, sales }: Props) {
             <form onSubmit={submit} className="space-y-4 rounded-lg border border-slate-300 bg-white p-5">
                 <div className="flex items-center justify-between"><h2 className="font-bold text-slate-900">{editing ? 'Edit sale' : 'Create a sale'}</h2>{editing && <button type="button" onClick={clear} aria-label="Cancel sale editing" className="rounded-lg p-2 hover:bg-slate-100"><X className="h-4 w-4" /></button>}</div>
                 <label className="block text-sm font-semibold">Sale type<select value={form.data.kind} onChange={event => form.setData('kind', event.target.value as 'store' | 'flash')} disabled={!!editing} className={field}><option value="store">Store sale</option><option value="flash">Flash sale</option></select>{error('kind')}</label>
+                {form.data.kind === 'flash' && !editing && (
+                    <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs flex items-center justify-between gap-2">
+                        <span className="font-semibold text-amber-900">⚡ Auto-fill next 4-hour flash deal slot (25% off)</span>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const now = new Date();
+                                const starts = new Date(now.getTime() + 5 * 60 * 1000);
+                                const ends = new Date(starts.getTime() + 4 * 60 * 60 * 1000);
+                                form.setData({
+                                    ...form.data,
+                                    kind: 'flash',
+                                    name: '11.11 Flash Deal Slot',
+                                    discount_type: 'percentage',
+                                    percentage: '25',
+                                    starts_at: localInput(starts.toISOString()),
+                                    ends_at: localInput(ends.toISOString()),
+                                    quantity: String(Math.min(25, product.stock)),
+                                });
+                            }}
+                            className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[10px] shrink-0 cursor-pointer shadow-xs"
+                        >
+                            Apply Preset
+                        </button>
+                    </div>
+                )}
                 <label className="block text-sm font-semibold">Name<input value={form.data.name} maxLength={100} required onChange={event => form.setData('name', event.target.value)} className={field} />{error('name')}</label>
                 <label className="block text-sm font-semibold">Discount method<select value={form.data.discount_type} disabled={running && editing?.kind === 'flash'} onChange={event => { form.setData('discount_type', event.target.value as 'fixed' | 'percentage'); form.clearErrors('price', 'percentage'); }} className={field}><option value="percentage">Percentage off each option</option><option value="fixed">Base sale price</option></select>{error('discount_type')}</label>
                 {form.data.discount_type === 'percentage' ? <label className="block text-sm font-semibold">Discount (%)<input type="number" inputMode="numeric" step="1" min="1" max="99" value={form.data.percentage} required disabled={running && editing?.kind === 'flash'} onChange={event => form.setData('percentage', event.target.value)} className={field} aria-invalid={!!form.errors.percentage || !!percentageError} />{error('percentage')}{percentageError && <p role="alert" className="mt-1 text-sm text-rose-700">{percentageError}</p>}<span className="mt-1 block text-xs font-normal text-slate-500">Use a whole percentage from 1 to 99. Every complete option price receives this discount.</span></label>

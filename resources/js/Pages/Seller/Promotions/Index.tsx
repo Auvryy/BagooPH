@@ -1,6 +1,6 @@
 import { FormEvent } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ImagePlus, Plus } from 'lucide-react';
+import { ImagePlus, Plus, Zap, ArrowRight } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { AdvertisementSummary, Pagination, reviewLabel, displayLabel, dateLabel } from '@/types/advertisements';
 
@@ -12,6 +12,34 @@ export default function Promotions({ promotions, shop, available, canSubmit, bas
         actions={available && <div className="flex flex-wrap gap-3"><Link href={`${baseUrl}/performance`} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold">Performance</Link>{canSubmit && <Link href={`${baseUrl}/create`} className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-bold text-white"><Plus className="h-4 w-4" />New promotion</Link>}</div>}>
         <Head title="Shop promotions" />
         <div className="space-y-6">
+            {/* Flash Sales Campaign Registration Card for Sellers */}
+            <div className="rounded-2xl border-2 border-red-200 bg-red-50/60 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-start gap-3.5">
+                    <div className="w-12 h-12 rounded-xl bg-[#E00D42] text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <Zap className="w-6 h-6 fill-white" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-base font-black text-slate-900 tracking-tight">
+                                Official Flash Deal & Hourly Campaign Registration
+                            </h3>
+                            <span className="bg-[#E00D42] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md">
+                                ACTIVE
+                            </span>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
+                            Nominate your verified catalog products into Bagoo’s 4-hour Flash Deals slots. Selected items receive top homepage exposure, dynamic discount ribbons, and lightning sale velocity.
+                        </p>
+                    </div>
+                </div>
+                <Link
+                    href={route('seller.products.index')}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] text-white text-xs font-bold transition shadow-xs shrink-0 cursor-pointer active:scale-95"
+                >
+                    <span>Register Products for Flash Sale</span>
+                    <ArrowRight className="w-4 h-4" />
+                </Link>
+            </div>
             {!available && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">Promotion requests need the pending application migration before they can be managed.</p>}
             {!canSubmit && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">Your shop needs current approval and activity before submitting new promotions. Your past requests remain available. <Link href={route('seller.settings')} className="font-bold underline">Review shop settings</Link></p>}
             <form onSubmit={search} className="flex flex-wrap items-end gap-3">

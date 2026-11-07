@@ -64,6 +64,15 @@ test('middle initials add one period on blur and allow editing a second letter a
 const stats={totalProducts:1,lowStockCount:0,outOfStockCount:0,completedGrossSales:500,completedUnits:1,completedOrderCount:1,averageCompletedOrderValue:500,estimatedSellerShare:450,openOrderValue:0,openUnits:0,openOrderCount:0,pendingPackCount:0,readyPickupCount:0,shippedCount:0,completedCount:1,returnCount:0};
 const sales=Array.from({length:30},(_,i)=>({date:'Oct '+(i+1),revenue:i===29?500:0,units:i===29?1:0}));
 const props={shop:{id:1,name:'Bagoo Shop'},stats,dailySales:sales,salesPeriod:30,recentOrders:[],topProducts:[]};
+test('seller listing action stays in dashboard content while storefront preview remains in the header',async()=>{
+ const html=await render(ui.Sales,props);
+ const header=html.match(/<header[\s\S]*?<\/header>/i)?.[0]??'';
+ const main=html.match(/<main[\s\S]*?<\/main>/i)?.[0]??'';
+ assert.match(header,/Storefront Preview/);
+ assert.doesNotMatch(header,/List New Product|New Listing/);
+ assert.match(main,/List New Product/);
+ assert.doesNotMatch(html,/New Listing/);
+});
 test('seller chart renders actual sales and usable period choices instead of hiding data beyond seven days',async()=>{
  const html=await render(ui.Sales,props);
  assert.match(html,/Sales chart period/);for(const days of [7,30,90])assert.ok(html.includes('Last '+days+' days'));

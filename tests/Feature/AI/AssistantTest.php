@@ -22,6 +22,21 @@ class AssistantTest extends TestCase
         ]);
     }
 
+    public function test_provider_http_errors_become_safe_assistant_failures(): void
+    {
+        foreach ([400, 429, 500] as $status) {
+            Http::fake(['*' => Http::response(['error' => ['message' => 'private-provider-detail']], $status)]);
+            try {
+                app(\App\Services\AI\AiTextService::class)->generateJson('Return JSON', 'Describe a bag');
+                $this->fail('Expected a safe provider failure.');
+            } catch (\RuntimeException $exception) {
+                $this->assertSame('The assistant could not respond right now.', $exception->getMessage());
+                $this->assertStringNotContainsString('test-key', $exception->getMessage());
+                $this->assertStringNotContainsString('private-provider-detail', $exception->getMessage());
+            }
+        }
+    }
+
     public function test_seller_can_generate_a_reviewable_listing_draft(): void
     {
         Http::fake([
@@ -51,7 +66,10 @@ class AssistantTest extends TestCase
             ->assertJsonPath('content.description', 'A practical everyday bag with a lightweight design.')
             ->assertJsonCount(2, 'content.selling_points');
 
-        Http::assertSent(fn ($request) => str_contains($request->body(), 'Black nylon bag')
+        Http::assertSent(fn ($request) => $request->url() === 'https://generativelanguage.googleapis.com/v1beta/models/test-model:generateContent'
+            && $request->hasHeader('x-goog-api-key', 'test-key')
+            && ! str_contains($request->url(), 'test-key')
+            && str_contains($request->body(), 'Black nylon bag')
             && str_contains($request->body(), 'Never invent prices'));
     }
 

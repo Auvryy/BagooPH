@@ -11,7 +11,7 @@ import {
     Tag, 
     LogOut, 
     Settings, 
-    MessageSquare, 
+    MessageSquare,
     ChevronDown, 
     ShieldCheck, 
     Truck, 
@@ -23,7 +23,7 @@ import {
     SlidersHorizontal,
     ShieldAlert
 } from 'lucide-react';
-import ChatModal from '@/Components/ChatModal';
+import BuyerChatLauncher from '@/Components/BuyerChatLauncher';
 import BuyerApplicationModal from '@/Components/BuyerApplicationModal';
 import CustomerServiceAssistant from '@/Components/CustomerServiceAssistant';
 import { getDomainUrl } from '@/utils/domain';
@@ -119,12 +119,6 @@ export default function BuyerLayout({
         };
     }, [userDropdownOpen]);
 
-    const [chatOpen, setChatOpen] = useState(false);
-    const [chatMessage, setChatMessage] = useState('');
-    const [chatHistory, setChatHistory] = useState([
-        { sender: 'support', text: 'Mabuhay! Welcome to BagooPH Support. How can we assist your shopping today?' }
-    ]);
-
     const [applicationOpen, setApplicationOpen] = useState(false);
     const applicationKey = buyerApplication ? `bagoo_application_${buyerApplication.user.id}_${buyerApplication.user.status}_${buyerApplication.user.kyc_status}_${buyerApplication.user.kyc_reviewed_at ?? ''}` : null;
     React.useEffect(() => {
@@ -172,53 +166,57 @@ export default function BuyerLayout({
 
             {!hideHeader && (
                 <>
-                    {/* 1. TOP UTILITY BAR (CLEAN & DISTINCTIVE) */}
-                    <div className="bg-[#111319] text-white/80 text-xs border-b border-white/10 shrink-0">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between font-sans text-xs">
+                    {/* 1. TOP UTILITY BAR (VIBRANT BRAND ACCENT) */}
+                    <div className="bg-[#C20836] text-white/90 text-xs border-b border-[#A8062E] shrink-0 font-sans">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 flex items-center justify-between font-sans text-xs">
                     <div className="flex items-center gap-4">
-                        <a href={sellerUrl} className="hover:text-[#E00D42] transition flex items-center gap-1.5 font-semibold text-white/90">
-                            <Store className="w-3.5 h-3.5 text-[#E00D42]" />
-                            <span>Sell on Bagoo</span>
+                        <a href={sellerUrl} className="hover:text-white transition flex items-center gap-1.5 font-bold text-white">
+                            <Store className="w-3.5 h-3.5 text-amber-300" />
+                            <span>Seller Centre</span>
                         </a>
-                        <span className="text-white/20">/</span>
-                        <a href={courierUrl} className="hover:text-emerald-400 transition flex items-center gap-1.5 text-white/80 font-medium">
-                            <Truck className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-white/30">|</span>
+                        <a href={sellerRegisterUrl} className="hover:text-white transition text-white/90 font-medium">
+                            <span>Start Selling</span>
+                        </a>
+                        <span className="text-white/30">|</span>
+                        <a href={courierUrl} className="hover:text-white transition flex items-center gap-1.5 text-white/90 font-medium">
+                            <Truck className="w-3.5 h-3.5 text-emerald-300" />
                             <span>Courier Fleet</span>
                         </a>
-                        <span className="text-white/20 hidden sm:inline">/</span>
-                        <Link href="/overview" className="hover:text-white transition flex items-center gap-1 text-white/60 hidden sm:inline">
+                        <span className="text-white/30 hidden sm:inline">|</span>
+                        <Link href="/overview" className="hover:text-white transition flex items-center gap-1 text-white/80 hidden sm:inline">
                             <span>Platform Showcase</span>
                         </Link>
                     </div>
 
-                    <div className="flex items-center gap-4 text-white/70">
+                    <div className="flex items-center gap-4 text-white/90 font-medium">
                         <PortalLink href={route('buyer.orders.index')} className="hover:text-white transition hidden sm:inline">Track Order</PortalLink>
-                        <span className="text-white/20 hidden sm:inline">/</span>
-                        <span className="text-[#E00D42] font-semibold">PHP ₱ (PH)</span>
+                        <span className="text-white/30 hidden sm:inline">|</span>
+                        <span className="text-amber-300 font-bold">PHP ₱ (PH)</span>
                     </div>
                 </div>
             </div>
 
-            {/* 2. MAIN HEADER: LOGO | SEARCH | (CART + PROFILE BESIDE EACH OTHER) */}
-            <header className="bg-white text-slate-900 border-b border-slate-200 sticky top-0 z-40 shadow-xs shrink-0">
+            {/* 2. MAIN HEADER: VIBRANT BRAND CRIMSON BACKGROUND */}
+            <header className="bg-[#E00D42] text-white border-b border-[#C20836] sticky top-0 z-40 shadow-md shrink-0 font-sans">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
                     <div className="flex items-center justify-between gap-4 sm:gap-6">
                         
                         {/* Logo */}
                         <PortalLink href={route('buyer.index')} className="flex items-center gap-3 shrink-0 group">
-                            <BagooLogo className="w-9 h-9 sm:w-10 sm:h-10 group-hover:scale-105 transition-transform" rounded="rounded-xs" />
+                            <BagooLogo className="w-10 h-10 group-hover:scale-105 transition-transform drop-shadow-sm" rounded="rounded-xl" />
                             <div className="flex flex-col">
-                                <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none">
-                                    Bagoo<span className="text-[#E00D42]">PH</span>
+                                <span className="text-xl sm:text-2xl font-black tracking-tight text-white leading-none flex items-center gap-0.5">
+                                    Bagoo<span className="text-amber-300">PH</span>
                                 </span>
-                                <span className="text-[10px] tracking-wider text-slate-500 uppercase font-bold">
-                                    Marketplace
+                                <span className="text-[10px] tracking-wider text-rose-100 uppercase font-black mt-0.5">
+                                    Official Marketplace
                                 </span>
                             </div>
                         </PortalLink>
 
-                        {/* Search Bar */}
-                        <div className="flex-1 max-w-2xl hidden md:block">
+                        {/* Search Bar & Trending Keywords */}
+                        <div className="flex-1 max-w-2xl hidden md:flex md:flex-col gap-1">
                             <form onSubmit={handleSearch} aria-busy={search.state.status === 'loading'} className="relative flex items-center h-11">
                                 <input
                                     type="text"
@@ -230,73 +228,63 @@ export default function BuyerLayout({
                                     aria-label="Search products"
                                     aria-invalid={search.state.invalid || undefined}
                                     placeholder="Search 14 departments, curated gear, or trending brands..."
-                                    className="w-full h-11 pl-4 pr-28 bg-slate-50 border border-slate-200 rounded-xs text-slate-900 text-xs placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#E00D42]/20 focus:border-[#E00D42] focus:bg-white transition"
+                                    className="w-full h-11 pl-4 pr-28 bg-white border border-white rounded-xl text-slate-900 text-xs placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-white/40 shadow-xs transition"
                                 />
                                 {searchQuery && (
                                     <button
                                         type="button"
                                         onClick={search.clear}
                                         aria-label="Clear search"
-                                        className="absolute right-24 text-slate-400 hover:text-slate-700 p-1"
+                                        className="absolute right-24 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
                                     >
                                         <X className="w-3.5 h-3.5" />
                                     </button>
                                 )}
                                 <button
                                     type="submit"
-                                    className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white rounded-xs text-xs font-bold transition flex items-center gap-1.5 shadow-xs font-sans cursor-pointer"
+                                    className="absolute right-1.5 top-1.5 bottom-1.5 px-5 bg-[#E00D42] hover:bg-[#C20836] active:scale-95 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs font-sans cursor-pointer"
                                 >
                                     <Search className="w-3.5 h-3.5" />
                                     <span>{search.state.status === 'loading' ? 'Searching…' : 'Search'}</span>
                                 </button>
-                                <p role="status" className={search.state.status === 'error' ? 'absolute top-full mt-1 bg-white text-xs text-red-700' : 'sr-only'}>{search.state.message}</p>
+                                <p role="status" className={search.state.status === 'error' ? 'absolute top-full mt-1 bg-white text-xs text-red-700 rounded-md p-1 shadow-sm' : 'sr-only'}>{search.state.message}</p>
                             </form>
+
+                            {/* Trending Search Chips */}
+                            <div className="flex items-center gap-2.5 text-[11px] text-rose-100 font-medium overflow-x-auto scrollbar-none pt-0.5">
+                                <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Trending:</span>
+                                {['Oversized Tee', 'EDC Sling Bag', 'Paracord Gear', 'Field Watch', 'Tactical Gloves', 'Aviator Glasses'].map((term) => (
+                                    <button
+                                        key={term}
+                                        type="button"
+                                        onClick={() => {
+                                            search.update(term, false);
+                                            router.get(route('buyer.index'), { search: term }, { preserveState: true });
+                                        }}
+                                        className="hover:text-white hover:underline transition-colors whitespace-nowrap cursor-pointer"
+                                    >
+                                        {term}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
-                        {/* RIGHT ACTIONS: CHAT, BAG & PROFILE DIRECTLY BESIDE EACH OTHER */}
-                        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-
-                            {/* CHAT BUTTON */}
-                            <Link 
-                                href={auth.user ? route('buyer.messages') : route('login')} 
-                                className={`relative h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xs border font-sans text-[11px] sm:text-xs font-bold group shadow-2xs transition ${
-                                    route().current('buyer.messages') || route().current('messages')
-                                        ? 'bg-rose-50 border-[#E00D42] text-[#E00D42]'
-                                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
-                                }`}
-                                title="In-App Chat & Inquiries"
-                            >
-                                <div className="relative flex items-center">
-                                    <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E00D42] group-hover:scale-105 transition-transform" />
-                                    {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
-                                        <span className="absolute -top-1.5 -right-1.5 flex h-2.5 w-2.5">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E00D42] opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#E00D42]"></span>
-                                        </span>
-                                    )}
-                                </div>
-                                <span className="hidden sm:inline">Chat</span>
-                                {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
-                                    <span className="min-w-[16px] sm:min-w-[18px] h-4 sm:h-[18px] px-1 bg-[#E00D42] text-white rounded-full text-[9px] sm:text-[10px] font-black flex items-center justify-center shadow-xs">
-                                        {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
-                                    </span>
-                                )}
-                            </Link>
-
+                        {/* RIGHT ACTIONS: BAG & PROFILE */}
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                             {/* BAG BUTTON */}
                             <NotificationLink />
                             <Link 
                                 href={route('buyer.cart')} 
-                                className={`relative h-9 sm:h-11 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 rounded-xs border font-sans text-[11px] sm:text-xs font-bold group shadow-2xs transition ${
+                                className={`relative h-11 flex items-center gap-2 px-3.5 sm:px-4 rounded-xl font-sans text-xs font-bold transition shadow-xs border ${
                                     route().current('buyer.cart')
-                                        ? 'bg-rose-50 border-[#E00D42] text-[#E00D42]'
-                                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+                                        ? 'bg-white text-[#E00D42] border-white'
+                                        : 'bg-white/15 hover:bg-white/25 text-white border-white/25 active:scale-95'
                                 }`}
                             >
-                                <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#E00D42] group-hover:scale-105 transition-transform" />
+                                <ShoppingBag className="w-4 h-4 text-white" />
                                 <span className="hidden sm:inline">Bag</span>
                                 {cartCount > 0 && (
-                                    <span className="min-w-[16px] sm:min-w-[18px] h-4 sm:h-[18px] px-1 bg-[#E00D42] text-white rounded-full text-[9px] sm:text-[10px] font-black flex items-center justify-center shadow-xs">
+                                    <span className="min-w-[18px] h-[18px] px-1 bg-[#F97316] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
                                         {cartCount}
                                     </span>
                                 )}
@@ -310,23 +298,23 @@ export default function BuyerLayout({
                                     onMouseEnter={handleUserDropdownEnter}
                                     onMouseLeave={handleUserDropdownLeave}
                                 >
-                                    <div className="h-9 sm:h-11 flex items-stretch rounded-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 transition font-sans text-[11px] sm:text-xs font-bold shadow-2xs group">
+                                    <div className="h-11 flex items-stretch rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white transition font-sans text-xs font-bold shadow-xs group">
                                         <PortalLink
                                             href={route('buyer.orders.index')}
-                                            className="flex min-w-0 items-center gap-1.5 sm:gap-2 pl-2.5 sm:pl-4 pr-1 sm:pr-2 focus:outline-hidden"
+                                            className="flex min-w-0 items-center gap-2 pl-3 sm:pl-3.5 pr-1 focus:outline-hidden"
                                         >
                                             {auth.user.avatar ? (
                                                 <img
                                                     src={auth.user.avatar}
                                                     alt={auth.user.name}
-                                                    className="w-5 h-5 sm:w-6 sm:h-6 rounded-md object-cover border border-slate-200 shrink-0"
+                                                    className="w-6 h-6 rounded-lg object-cover border border-white/40 shrink-0"
                                                 />
                                             ) : (
-                                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-[#E00D42] text-white text-[9px] sm:text-[10px] font-black flex items-center justify-center shrink-0">
+                                                <div className="w-6 h-6 rounded-lg bg-white text-[#E00D42] text-[10px] font-black flex items-center justify-center shrink-0 shadow-2xs">
                                                     {auth.user.name.charAt(0).toUpperCase()}
                                                 </div>
                                             )}
-                                            <span className="truncate max-w-[80px] sm:max-w-[100px] hidden sm:inline font-semibold">{auth.user.name.split(' ')[0]}</span>
+                                            <span className="truncate max-w-[80px] sm:max-w-[100px] hidden sm:inline font-bold">{auth.user.name.split(' ')[0]}</span>
                                         </PortalLink>
                                         <button
                                             type="button"
@@ -335,9 +323,9 @@ export default function BuyerLayout({
                                             aria-haspopup="menu"
                                             aria-expanded={userDropdownOpen}
                                             aria-controls="buyer-account-menu"
-                                            className="flex items-center justify-center px-2.5 sm:px-3 cursor-pointer focus:outline-hidden"
+                                            className="flex items-center justify-center px-2.5 cursor-pointer focus:outline-hidden"
                                         >
-                                            <ChevronDown className={`w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                                            <ChevronDown className={`w-3.5 h-3.5 text-white/80 group-hover:text-white transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
                                         </button>
                                     </div>
 
@@ -428,16 +416,16 @@ export default function BuyerLayout({
                                     )}
                                 </div>
                             ) : hideAuthButtons ? null : (
-                                <div className="flex items-center gap-1.5 sm:gap-2 font-sans text-xs">
+                                <div className="flex items-center gap-2 font-sans text-xs">
                                     <Link 
                                         href={route('login')} 
-                                        className="h-9 sm:h-11 flex items-center px-2.5 sm:px-4 rounded-xs bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold transition border border-slate-200 shadow-2xs text-[11px] sm:text-xs"
+                                        className="h-11 flex items-center px-4 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold transition border border-white/25 text-xs shadow-xs cursor-pointer"
                                     >
                                         Sign In
                                     </Link>
                                     <Link 
                                         href={route('register')} 
-                                        className="h-9 sm:h-11 flex items-center px-2.5 sm:px-4 rounded-xs bg-[#E00D42] hover:bg-[#C20836] text-white font-bold transition shadow-xs text-[11px] sm:text-xs"
+                                        className="h-11 flex items-center px-4 rounded-xl bg-white hover:bg-rose-50 text-[#E00D42] font-black transition shadow-xs text-xs cursor-pointer"
                                     >
                                         Register
                                     </Link>
@@ -526,16 +514,8 @@ export default function BuyerLayout({
                 </div>
             )}
 
-            <ChatModal
-                isOpen={chatOpen}
-                onClose={() => setChatOpen(false)}
-                receiverId={2}
-                receiverName="Bagoo Customer Care"
-                shopName="Bagoo Customer Care"
-            />
-
-            {user && user.role === 'buyer' && !hideCustomerCare && !route().current('buyer.messages') && !route().current('messages') && (
-                <CustomerServiceAssistant onContactHuman={() => setChatOpen(true)} />
+            {!hideHeader && !route().current('buyer.messages') && !route().current('messages') && (
+                <BuyerChatLauncher href={user ? route('buyer.messages') : route('login')} unreadCount={unreadMessagesCount} />
             )}
 
             {/* 4.5. BUYER IDENTITY VERIFICATION REMINDER MODAL */}
@@ -576,8 +556,9 @@ export default function BuyerLayout({
                     </div>
 
                     <div>
-                        <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs">Governance & Security</h5>
+                        <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs">Help & information</h5>
                         <ul className="space-y-2 text-slate-500">
+                            {user?.role === 'buyer' && !hideCustomerCare && <li><CustomerServiceAssistant onOpenMessages={() => router.visit(route('buyer.messages'))} /></li>}
                             <li><a href={adminUrl} className="hover:text-slate-900 text-slate-600 text-xs">Admin Governance Console</a></li>
                             <li><Link href="/overview" className="hover:text-[#E00D42]">Platform Architecture</Link></li>
                             <li><span className="text-slate-400">Strict KYC Compliance Verified</span></li>

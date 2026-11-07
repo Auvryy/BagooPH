@@ -3,6 +3,7 @@
 namespace App\Services\AI;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -42,7 +43,8 @@ class AiTextService
             $response = Http::timeout((int) config('ai.timeout', 20))
                 ->retry(1, 250)
                 ->acceptJson()
-                ->post($endpoint . '?key=' . rawurlencode($apiKey), [
+                ->withHeaders(['x-goog-api-key' => $apiKey])
+                ->post($endpoint, [
                     'systemInstruction' => [
                         'parts' => [['text' => $systemPrompt]],
                     ],
@@ -55,7 +57,7 @@ class AiTextService
                         'responseMimeType' => 'application/json',
                     ],
                 ]);
-        } catch (ConnectionException $exception) {
+        } catch (ConnectionException|RequestException $exception) {
             throw new RuntimeException('The assistant could not respond right now.', 0, $exception);
         }
 

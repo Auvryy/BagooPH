@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import { DialogTitle } from '@headlessui/react';
-import { X } from 'lucide-react';
+import { CalendarDays, SlidersHorizontal, Ticket, X } from 'lucide-react';
 import Modal from '@/Components/Modal';
 import { Campaign, campaignMoney, manilaInput, previewPromotion } from './campaignTypes';
 import VoucherProductSelection from './VoucherProductSelection';
@@ -65,16 +65,18 @@ export default function CampaignForm({ campaign, platform, onClose }: { campaign
     );
     return <Modal show onClose={onClose} closeable={!form.processing} maxWidth="2xl">
         <form onSubmit={submit} className="flex max-h-[85dvh] flex-col">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-300 p-5">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-300 bg-rose-50/50 p-5">
                 <div><DialogTitle className="text-lg font-bold text-slate-900">{campaign ? 'Edit draft' : 'New voucher draft'}</DialogTitle>
                     <p className="mt-1 text-xs text-slate-600">{platform ? 'Bagoo funds this promotion.' : 'Your shop funds this product discount.'} Times use Asia/Manila.</p></div>
                 <button type="button" onClick={onClose} disabled={form.processing} aria-label="Close voucher draft" className="rounded-lg p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button>
             </div>
             <div className="space-y-5 overflow-y-auto p-5">
                 {campaign?.current_revision_id && <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Saving keeps the published offer unchanged. Publishing this draft starts a new revision with its own dated budget and use limits. Existing orders keep their savings.</p>}
-                <div className="grid gap-4 sm:grid-cols-2">
+                <fieldset className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm"><legend className="flex items-center gap-2 px-2 text-sm font-bold text-slate-900"><Ticket className="h-4 w-4 text-[#E00D42]" />Voucher identity</legend><div className="grid gap-4 sm:grid-cols-2">
                     {control('name', 'Offer title', 'text', { maxLength: 100 })}
                     <div>{control('code', 'Code (leave blank to generate)', 'text', { minLength: campaign ? undefined : 4, maxLength: campaign ? undefined : 12, pattern: campaign ? undefined : '[A-Za-z0-9]{4,12}', readOnly: !!campaign })}<p className="mt-1 text-xs text-slate-500">4–12 letters and numbers, without spaces or symbols. Existing codes stay the same.</p></div>
+                </div></fieldset>
+                <fieldset className="rounded-xl border border-slate-300 bg-slate-50/60 p-4"><legend className="flex items-center gap-2 px-2 text-sm font-bold text-slate-900"><SlidersHorizontal className="h-4 w-4 text-[#E00D42]" />Savings and limits</legend><p className="mb-4 text-xs leading-relaxed text-slate-500">Set the discount buyers receive and the limits that protect your spending.</p><div className="grid gap-4 sm:grid-cols-2">
                     <label className="block text-xs font-semibold text-slate-700">Discount type
                         <select value={form.data.discount_type} onChange={e => form.setData('discount_type', e.target.value as typeof form.data.discount_type)} className="mt-1.5 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]">
                             <option value="fixed">Fixed product discount</option><option value="percent">Percentage product discount</option>
@@ -93,11 +95,13 @@ export default function CampaignForm({ campaign, platform, onClose }: { campaign
                     {control('budget', 'Spending ceiling (₱)', 'number', { min: 0.01, max: 999999999.99, step: '0.01' })}
                     {control('usage_limit', 'Remaining successful uses', 'number', { min: 1, max: 1000000, step: 1 })}
                     {control('per_buyer_limit', 'Uses per buyer', 'number', { min: 1, max: 1000000, step: 1 })}
+                </div></fieldset>
+                <fieldset className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm"><legend className="flex items-center gap-2 px-2 text-sm font-bold text-slate-900"><CalendarDays className="h-4 w-4 text-[#E00D42]" />Availability</legend><p className="mb-4 text-xs leading-relaxed text-slate-500">Choose when buyers can use this offer. Both dates use Philippine time.</p><div className="grid gap-4 sm:grid-cols-2">
                     <div>{control('starts_at', 'Start (Philippine time)', 'datetime-local', { min: keepsPastStart ? undefined : nowInput })}
                         {keepsPastStart && <p className="mt-1 text-xs font-normal text-slate-500">This existing start date stays visible. Choose today or later if you want to change it.</p>}</div>
                     <div>{control('ends_at', 'End (Philippine time)', 'datetime-local', { min: keepsPastEnd ? undefined : nowInput })}
                         {keepsPastEnd && <p className="mt-1 text-xs font-normal text-slate-500">This historical end date stays visible. Choose a future date to publish a new revision.</p>}</div>
-                </div>
+                </div></fieldset>
                 {!platform && <VoucherProductSelection scope={form.data.product_scope} ids={form.data.product_ids} initialProducts={campaign?.selected_products}
                     disabled={form.processing} errors={Object.entries(form.errors).filter(([key]) => key === 'product_scope' || key === 'product_ids' || key.startsWith('product_ids.')).map(([, message]) => message)}
                     onScope={scope => { form.setData(data => ({ ...data, product_scope: scope, product_ids: scope === 'all' ? [] : data.product_ids })); form.clearErrors('product_scope', 'product_ids'); }}
@@ -123,7 +127,7 @@ export default function CampaignForm({ campaign, platform, onClose }: { campaign
                 </div>
                 {Object.entries(form.errors).filter(([key]) => !['name', 'code', 'description', 'reason', 'discount_type', 'discount_value', 'min_spend', 'max_discount', 'budget', 'usage_limit', 'per_buyer_limit', 'starts_at', 'ends_at', 'product_scope', 'product_ids'].includes(key) && !key.startsWith('product_ids.')).map(([key, message]) => <p key={key} role="alert" className="text-sm text-rose-700">{message}</p>)}
             </div>
-            <div className="flex flex-wrap justify-end gap-3 border-t border-slate-300 p-4">
+            <div className="flex flex-wrap justify-end gap-3 border-t border-slate-300 bg-white p-4 shadow-[0_-4px_16px_rgba(15,23,42,0.04)]">
                 <button type="button" disabled={form.processing} onClick={onClose} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold">Cancel</button>
                 <button type="submit" name="save_action" value="draft" disabled={form.processing || (form.data.product_scope === 'selected' && form.data.product_ids.length === 0)} className="rounded-xl border border-[#E00D42] bg-white px-4 py-2.5 text-sm font-bold text-[#E00D42] disabled:opacity-50">{submittingAction === 'draft' && form.processing ? 'Saving…' : 'Save draft'}</button>
                 <button type="submit" name="save_action" value="publish" disabled={form.processing || (form.data.product_scope === 'selected' && form.data.product_ids.length === 0)} className="rounded-xl bg-[#E00D42] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{submittingAction === 'publish' && form.processing ? 'Publishing…' : 'Publish voucher'}</button>

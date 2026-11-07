@@ -77,7 +77,22 @@ class AdvertisementDestinationService
     public function assertPublishable(AdvertisementRevision $revision, CarbonImmutable $start, CarbonImmutable $end): void
     {
         if ($problem = $this->problem($revision, true, $start, $end)) {
-            throw ValidationException::withMessages(['advertisement' => $problem]);
+            $errors = [];
+            if ($problem === 'The advertisement must start and end within the linked offer period.') {
+                $offer = VoucherRevision::find($revision->offer_revision_id);
+                if ($offer && $start->lessThan($offer->starts_at)) {
+                    $errors['starts_at'] = 'Start on or after '.$offer->starts_at->setTimezone('Asia/Manila')->format('M j, Y g:i A').' (Asia/Manila), when the linked voucher begins.';
+                }
+                if ($offer && $end->greaterThan($offer->ends_at)) {
+                    $errors['ends_at'] = 'End on or before '.$offer->ends_at->setTimezone('Asia/Manila')->format('M j, Y g:i A').' (Asia/Manila), when the linked voucher ends.';
+                }
+            }
+            // Date containment has actionable field errors. Keep the page-level
+            // advertisement error for other eligibility failures only.
+            if ($errors === []) {
+                $errors['advertisement'] = $problem;
+            }
+            throw ValidationException::withMessages($errors);
         }
     }
 
