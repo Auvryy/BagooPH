@@ -52,6 +52,8 @@ class BuyerProductController extends Controller
             }
         } elseif ($filters['search'] !== '' && $suggestions) {
             $related = $discovery->filter($discovery->catalogue(), [...$filters, 'search' => $suggestions[0]]);
+        } else {
+            $related->whereNotIn('products.id', $products->pluck('id'));
         }
         $related->orderByDesc('sales_count')->orderByDesc('products.id')->limit(6);
 
