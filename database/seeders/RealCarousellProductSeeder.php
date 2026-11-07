@@ -94,15 +94,19 @@ class RealCarousellProductSeeder extends Seeder
                         'review_status' => 'approved',
                         'is_default' => true,
                     ]);
+                }
 
-                    // Admin review decision for shop eligibility
-                    ShopReviewDecision::create([
+                // Admin review decision for shop eligibility
+                $decision = ShopReviewDecision::firstOrCreate(
+                    [
                         'shop_id' => $shop->id,
+                        'decision' => 'approved',
+                    ],
+                    [
                         'reviewer_id' => $admin->id,
                         'reviewer_role' => 'admin',
                         'reviewer_name' => $admin->name,
                         'submission_token' => (string) Str::uuid(),
-                        'decision' => 'approved',
                         'reason' => 'Store passes business identity verification and authorized department inspection.',
                         'reviewed_at' => now(),
                         'seller_id' => $seller->id,
@@ -122,8 +126,14 @@ class RealCarousellProductSeeder extends Seeder
                                 'city' => $shop->city,
                             ],
                         ],
-                    ]);
-                }
+                    ]
+                );
+
+                $shop->update([
+                    'review_decision_id' => $decision->id,
+                    'review_status' => 'approved',
+                    'status' => 'active',
+                ]);
 
                 // 3. Seed 2 Real Products from Carousell
                 $subSlugs = $subCategoryMapping[$categorySlug] ?? [];
@@ -140,21 +150,29 @@ class RealCarousellProductSeeder extends Seeder
                         $prodName = substr($prodName, 0, 117) . '...';
                     }
 
-                    $skuPrefix = strtoupper(substr(str_replace('-', '', $categorySlug), 0, 4));
-                    $sku = "BGO-{$skuPrefix}-" . str_pad((string) ($pIdx + 1), 3, '0', STR_PAD_LEFT);
-                    while (Product::where('sku', $sku)->exists()) {
-                        $sku = "BGO-{$skuPrefix}-" . mt_rand(100, 999);
-                    }
+                    $existingProduct = Product::where('shop_id', $shop->id)
+                        ->where(function ($q) use ($prodData, $prodName) {
+                            $q->where('featured_image', $prodData['image_path'])
+                                ->orWhere('name', $prodName);
+                        })
+                        ->first();
 
-                    $existingProduct = Product::where('shop_id', $shop->id)->where('sku', $sku)->first();
                     if ($existingProduct) {
                         $existingProduct->update([
+                            'name' => $prodName,
                             'featured_image' => $prodData['image_path'],
                             'price' => $prodData['price'],
                             'compare_at_price' => $prodData['compare_at_price'],
                             'sub_category_id' => $subCategory?->id,
+                            'status' => 'active',
                         ]);
                         continue;
+                    }
+
+                    $skuPrefix = strtoupper(substr(str_replace('-', '', $categorySlug), 0, 4));
+                    $sku = "BGO-{$skuPrefix}-" . str_pad((string) ($pIdx + 1), 3, '0', STR_PAD_LEFT);
+                    while (Product::where('sku', $sku)->exists()) {
+                        $sku = "BGO-{$skuPrefix}-" . mt_rand(100, 999);
                     }
 
                     $slug = Product::generateUniqueSlug($prodName);
