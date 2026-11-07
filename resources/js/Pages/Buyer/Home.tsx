@@ -238,17 +238,17 @@ export default function BuyerHome({
                 <meta name="twitter:description" content="Shop verified merchants on BagooPH with nationwide Cash on Delivery (COD)." />
             </Head>
 
-            <div className="space-y-6">
+            <div className="space-y-3 sm:space-y-4">
 
                 {/* 1. ACTIVE ORDER TELEMETRY STRIP (IF BUYER HAS IN-TRANSIT PACKAGE) */}
                 {activeShipment && (
-                    <div className="p-4 rounded-2xl bg-[#E00D42] text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-[0_4px_16px_rgba(224,13,66,0.25)] border border-[#C20836] font-sans text-xs">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white text-[#E00D42] flex items-center justify-center shrink-0 shadow-sm">
-                                <Truck className="w-5 h-5 animate-bounce" />
+                    <div className="p-3 sm:p-3.5 rounded-xl bg-[#E00D42] text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-[0_4px_16px_rgba(224,13,66,0.2)] border border-[#C20836] font-sans text-xs">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-lg bg-white text-[#E00D42] flex items-center justify-center shrink-0 shadow-sm">
+                                <Truck className="w-4 h-4 animate-bounce" />
                             </div>
                             <div>
-                                <div className="flex items-center gap-2 text-[10px] text-amber-200 font-bold uppercase tracking-wider">
+                                <div className="flex items-center gap-1.5 text-[10px] text-amber-200 font-bold uppercase tracking-wider">
                                     <span>● LIVE DISPATCH TELEMETRY</span>
                                     <span>•</span>
                                     <span>{activeShipment.status.replace('_', ' ').toUpperCase()}</span>
@@ -261,10 +261,10 @@ export default function BuyerHome({
 
                         <Link
                             href={route('buyer.orders.show', activeShipment.order_id)}
-                            className="px-4 py-2 bg-white hover:bg-amber-50 text-[#E00D42] rounded-xl font-bold text-[11px] uppercase transition-colors shrink-0 flex items-center gap-1.5 shadow-sm active:scale-95"
+                            className="px-3.5 py-1.5 bg-white hover:bg-amber-50 text-[#E00D42] rounded-lg font-bold text-[10px] sm:text-[11px] uppercase transition-colors shrink-0 flex items-center gap-1 shadow-sm active:scale-95"
                         >
                             <span>Track Package</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
+                            <ArrowRight className="w-3 h-3" />
                         </Link>
                     </div>
                 )}
@@ -273,8 +273,8 @@ export default function BuyerHome({
                 <BuyerAdvertisements banners={banners} />
 
                 {/* 2. OFFICIAL FEATURE ACTION SHORTCUTS (ROW 2) */}
-                <section aria-label="Feature shortcuts" className="pt-1">
-                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 sm:gap-3">
+                <section aria-label="Feature shortcuts" className="pt-0.5">
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 sm:gap-2">
                         {featureShortcuts.map((item, idx) => {
                             const IconComponent = item.icon;
                             return (
@@ -282,16 +282,13 @@ export default function BuyerHome({
                                     key={idx}
                                     type="button"
                                     onClick={item.action}
-                                    className="p-2 sm:p-2.5 rounded-2xl border border-slate-200/90 bg-white hover:border-red-200 hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer group text-center"
+                                    className="p-1.5 sm:p-2 rounded-xl border border-slate-200/80 bg-white hover:border-red-200 hover:shadow-xs transition-all duration-200 flex flex-col items-center justify-center gap-1 cursor-pointer group text-center"
                                 >
-                                    <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 shadow-xs ${item.color}`}>
-                                        <IconComponent className="w-5 h-5" />
+                                    <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-transform group-hover:scale-105 shadow-2xs ${item.color}`}>
+                                        <IconComponent className="w-4 h-4" />
                                     </div>
                                     <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 group-hover:text-[#E00D42] truncate max-w-full font-sans leading-tight">
                                         {item.label}
-                                    </span>
-                                    <span className="text-[9px] font-bold text-slate-400 group-hover:text-[#E00D42] -mt-1 hidden sm:inline">
-                                        {item.badge}
                                     </span>
                                 </button>
                             );
@@ -299,346 +296,340 @@ export default function BuyerHome({
                     </div>
                 </section>
 
-                {/* 3. CATEGORIES WITH REAL PRODUCT PHOTOGRAPHY (ROW 3) */}
-                <section aria-label="Product Categories" className="space-y-3 pt-1">
-                    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] space-y-3">
-                        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42]"></span>
-                                <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight font-sans uppercase">
-                                    Categories
-                                </h3>
-                            </div>
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                Real Local Curations
-                            </span>
+                {/* 3. CATEGORIES (ROW 3) - CLEAN SURFACE */}
+                <section aria-label="Product Categories" className="space-y-2 pt-0.5">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-[#E00D42]" />
+                            <h3 className="text-xs sm:text-sm font-black text-slate-900 tracking-tight font-sans uppercase">
+                                Categories
+                            </h3>
                         </div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            14 Official Departments
+                        </span>
+                    </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 sm:gap-3">
-                            {categoryCatalog.map((cat, idx) => {
-                                const isSelected = filters.category === cat.slug;
-                                return (
-                                    <button
-                                        key={idx}
-                                        type="button"
-                                        onClick={() => applyFilterChange({ category: isSelected ? undefined : cat.slug, sub: undefined, search: undefined })}
-                                        className={`group p-2.5 rounded-2xl border transition-all duration-200 flex flex-col items-center justify-between gap-2 cursor-pointer text-center ${
-                                            isSelected
-                                                ? 'bg-rose-50 border-[#E00D42] shadow-sm ring-1 ring-[#E00D42]'
-                                                : 'bg-slate-50/60 hover:bg-white border-slate-200/80 hover:border-red-200 hover:shadow-md hover:-translate-y-1'
-                                        }`}
-                                    >
-                                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-white border border-slate-100 shadow-2xs shrink-0">
-                                            <img
-                                                src={cat.image}
-                                                alt={cat.name}
-                                                loading="lazy"
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                            />
-                                        </div>
-                                        <div className="min-w-0 w-full">
-                                            <span className={`block text-[11px] font-bold truncate ${isSelected ? 'text-[#E00D42]' : 'text-slate-800 group-hover:text-[#E00D42]'}`}>
-                                                {cat.name}
-                                            </span>
-                                            <span className="block text-[9px] text-slate-400 font-medium">
-                                                {cat.count}
-                                            </span>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {/* Level-2 Subcategory Filter Rail */}
-                        {filters.category && filters.category !== 'all' && subcategories && subcategories.length > 0 && (
-                            <div className="pt-3 border-t border-slate-100 space-y-2 animate-fade-in">
-                                <div className="flex items-center justify-between text-xs font-sans">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-[#E00D42]" />
-                                        <span className="font-bold text-slate-800 uppercase tracking-wide text-[11px]">
-                                            {categories.find(c => c.slug === filters.category)?.name || 'Department'} Subcategories
+                    <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-7 gap-1.5 sm:gap-2">
+                        {categoryCatalog.map((cat, idx) => {
+                            const isSelected = filters.category === cat.slug;
+                            return (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => applyFilterChange({ category: isSelected ? undefined : cat.slug, sub: undefined, search: undefined })}
+                                    className={`group p-1.5 sm:p-2 rounded-xl border transition-all duration-200 flex flex-col items-center justify-between gap-1.5 cursor-pointer text-center ${
+                                        isSelected
+                                            ? 'bg-rose-50 border-[#E00D42] shadow-2xs ring-1 ring-[#E00D42]'
+                                            : 'bg-white hover:bg-slate-50 border-slate-200/80 hover:border-red-200 hover:shadow-xs'
+                                    }`}
+                                >
+                                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-slate-50 border border-slate-100 shadow-2xs shrink-0">
+                                        <img
+                                            src={cat.image}
+                                            alt={cat.name}
+                                            loading="lazy"
+                                            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-300"
+                                        />
+                                    </div>
+                                    <div className="min-w-0 w-full">
+                                        <span className={`block text-[10px] sm:text-[11px] font-bold truncate ${isSelected ? 'text-[#E00D42]' : 'text-slate-800 group-hover:text-[#E00D42]'}`}>
+                                            {cat.name}
+                                        </span>
+                                        <span className="block text-[8px] sm:text-[9px] text-slate-400 font-medium">
+                                            {cat.count}
                                         </span>
                                     </div>
-                                    {filters.sub && (
-                                        <button
-                                            type="button"
-                                            onClick={() => applyFilterChange({ sub: undefined })}
-                                            className="text-[11px] font-bold text-slate-500 hover:text-[#E00D42] transition cursor-pointer flex items-center gap-1"
-                                        >
-                                            <RotateCcw className="w-3 h-3" />
-                                            <span>Show All Subcategories</span>
-                                        </button>
-                                    )}
-                                </div>
+                                </button>
+                            );
+                        })}
+                    </div>
 
-                                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1">
+                    {/* Level-2 Subcategory Filter Rail */}
+                    {filters.category && filters.category !== 'all' && subcategories && subcategories.length > 0 && (
+                        <div className="pt-2 border-t border-slate-200/80 space-y-1.5 animate-fade-in">
+                            <div className="flex items-center justify-between text-xs font-sans">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#E00D42]" />
+                                    <span className="font-bold text-slate-800 uppercase tracking-wide text-[10px] sm:text-[11px]">
+                                        {categories.find(c => c.slug === filters.category)?.name || 'Department'} Subcategories
+                                    </span>
+                                </div>
+                                {filters.sub && (
                                     <button
                                         type="button"
                                         onClick={() => applyFilterChange({ sub: undefined })}
-                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-sans transition-all duration-200 shrink-0 cursor-pointer ${
-                                            !filters.sub
-                                                ? 'bg-[#E00D42] text-white shadow-xs'
-                                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                                        }`}
+                                        className="text-[10px] font-bold text-slate-500 hover:text-[#E00D42] transition cursor-pointer flex items-center gap-1"
                                     >
-                                        ALL {categories.find(c => c.slug === filters.category)?.name?.toUpperCase() || ''}
+                                        <RotateCcw className="w-3 h-3" />
+                                        <span>Show All</span>
                                     </button>
-                                    {subcategories.map((sub) => {
-                                        const isSubSelected = filters.sub === sub.slug;
-                                        return (
-                                            <button
-                                                key={sub.id}
-                                                type="button"
-                                                onClick={() => applyFilterChange({ sub: isSubSelected ? undefined : sub.slug })}
-                                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-sans transition-all duration-200 shrink-0 cursor-pointer flex items-center gap-1.5 ${
-                                                    isSubSelected
-                                                        ? 'bg-[#E00D42] text-white shadow-xs ring-2 ring-red-300'
-                                                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                                                }`}
-                                            >
-                                                <span>{sub.name}</span>
-                                                {typeof sub.products_count === 'number' && sub.products_count > 0 && (
-                                                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                                                        isSubSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
-                                                    }`}>
-                                                        {sub.products_count}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                )}
                             </div>
-                        )}
-                    </div>
+
+                            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+                                <button
+                                    type="button"
+                                    onClick={() => applyFilterChange({ sub: undefined })}
+                                    className={`px-3 py-1 rounded-lg text-[11px] font-bold font-sans transition-all duration-200 shrink-0 cursor-pointer ${
+                                        !filters.sub
+                                            ? 'bg-[#E00D42] text-white shadow-xs'
+                                            : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80'
+                                    }`}
+                                >
+                                    ALL {categories.find(c => c.slug === filters.category)?.name?.toUpperCase() || ''}
+                                </button>
+                                {subcategories.map((sub) => {
+                                    const isSubSelected = filters.sub === sub.slug;
+                                    return (
+                                        <button
+                                            key={sub.id}
+                                            type="button"
+                                            onClick={() => applyFilterChange({ sub: isSubSelected ? undefined : sub.slug })}
+                                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-sans transition-all duration-200 shrink-0 cursor-pointer flex items-center gap-1 ${
+                                                isSubSelected
+                                                    ? 'bg-[#E00D42] text-white shadow-xs ring-1 ring-red-300'
+                                                    : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80'
+                                            }`}
+                                        >
+                                            <span>{sub.name}</span>
+                                            {typeof sub.products_count === 'number' && sub.products_count > 0 && (
+                                                <span className={`text-[9px] px-1 py-0.2 rounded-full font-mono ${
+                                                    isSubSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                                                }`}>
+                                                    {sub.products_count}
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </section>
 
                 {/* 4. FLASH DEALS WITH COUNTDOWN TIMER (ROW 4) */}
                 {liveFlashProducts.length > 0 && !filters.search && (
-                    <section id="flash-deals" aria-label="Flash Deals" className="space-y-4 pt-1">
-                        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] space-y-4">
-                            {/* Flash Sale Header Bar */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-[#E00D42] text-white p-2 rounded-xl flex items-center justify-center shadow-xs">
-                                        <Zap className="w-5 h-5 fill-white" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight font-sans">
-                                                FLASH DEALS
-                                            </h3>
-                                            <span className="bg-[#E00D42] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider">
-                                                LIMITED TIME
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-slate-500 font-sans mt-0.5">
-                                            Hot promotional pricing with limited warehouse allocation
-                                        </p>
-                                    </div>
+                    <section id="flash-deals" aria-label="Flash Deals" className="space-y-2">
+                        {/* Flash Sale Header Bar */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1.5 border-b border-slate-200/80">
+                            <div className="flex items-center gap-2.5">
+                                <div className="bg-[#E00D42] text-white p-1.5 rounded-lg flex items-center justify-center shadow-xs">
+                                    <Zap className="w-4 h-4 fill-white" />
                                 </div>
-
-                                {/* Live Countdown Timer Box (Signature Red & Warm Orange - Zero Black) */}
-                                <div className="flex items-center gap-3">
+                                <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-slate-500 font-sans uppercase tracking-wider">
-                                            Ends in:
+                                        <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight font-sans">
+                                            FLASH DEALS
+                                        </h3>
+                                        <span className="bg-[#E00D42] text-white text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md tracking-wider">
+                                            LIMITED TIME
                                         </span>
-                                        <div className="flex items-center gap-1 font-mono text-xs font-black">
-                                            <span className="bg-[#E00D42] text-white px-2 py-1 rounded-md shadow-xs">
-                                                {String(timeLeft.hours).padStart(2, '0')}
-                                            </span>
-                                            <span className="text-[#E00D42] font-black">:</span>
-                                            <span className="bg-[#E00D42] text-white px-2 py-1 rounded-md shadow-xs">
-                                                {String(timeLeft.minutes).padStart(2, '0')}
-                                            </span>
-                                            <span className="text-[#E00D42] font-black">:</span>
-                                            <span className="bg-[#F97316] text-white px-2 py-1 rounded-md shadow-xs animate-pulse">
-                                                {String(timeLeft.seconds).padStart(2, '0')}
-                                            </span>
-                                        </div>
                                     </div>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => handleTabChange('top_sales')}
-                                        className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-0.5 cursor-pointer ml-2"
-                                    >
-                                        <span>See All</span>
-                                        <ChevronRight className="w-3.5 h-3.5" />
-                                    </button>
+                                    <p className="text-[11px] text-slate-500 font-sans">
+                                        Hot promotional pricing with limited warehouse allocation
+                                    </p>
                                 </div>
                             </div>
 
-                            {/* Flash Sale Product Row (Only Image, Price & Selling Fast Bar) */}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4">
-                                {liveFlashProducts.map((product) => (
-                                    <FlashDealCard
-                                        key={product.id}
-                                        product={product}
-                                        heartControl={<BagHeartButton product={product} />}
-                                        href={route('buyer.products.show', product.slug)}
-                                    />
-                                ))}
+                            {/* Live Countdown Timer Box (Signature Red & Warm Orange - Zero Black) */}
+                            <div className="flex items-center gap-2.5">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-[11px] font-bold text-slate-500 font-sans uppercase tracking-wider">
+                                        Ends in:
+                                    </span>
+                                    <div className="flex items-center gap-1 font-mono text-xs font-black">
+                                        <span className="bg-[#E00D42] text-white px-1.5 py-0.5 rounded shadow-xs">
+                                            {String(timeLeft.hours).padStart(2, '0')}
+                                        </span>
+                                        <span className="text-[#E00D42] font-black">:</span>
+                                        <span className="bg-[#E00D42] text-white px-1.5 py-0.5 rounded shadow-xs">
+                                            {String(timeLeft.minutes).padStart(2, '0')}
+                                        </span>
+                                        <span className="text-[#E00D42] font-black">:</span>
+                                        <span className="bg-[#F97316] text-white px-1.5 py-0.5 rounded shadow-xs animate-pulse">
+                                            {String(timeLeft.seconds).padStart(2, '0')}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleTabChange('top_sales')}
+                                    className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-0.5 cursor-pointer ml-1"
+                                >
+                                    <span>See All</span>
+                                    <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
                             </div>
+                        </div>
+
+                        {/* Flash Sale Product Row (Compact dense 6-column grid) */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
+                            {liveFlashProducts.map((product) => (
+                                <FlashDealCard
+                                    key={product.id}
+                                    product={product}
+                                    heartControl={<BagHeartButton product={product} />}
+                                    href={route('buyer.products.show', product.slug)}
+                                />
+                            ))}
                         </div>
                     </section>
                 )}
 
                 {/* 5. TOP PRODUCTS // ALGORITHMIC CURATED PICKS (ROW 5) */}
                 {((topCuratedCollections && topCuratedCollections.length > 0) || topProductsList.length > 0) && !filters.search && (
-                    <section id="top-products" aria-label="Top Products" className="space-y-4 pt-1">
-                        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.05)] space-y-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-[#E00D42] text-white p-2 rounded-xl flex items-center justify-center shadow-xs">
-                                        <Sparkles className="w-5 h-5 fill-white" />
+                    <section id="top-products" aria-label="Top Products" className="space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1.5 border-b border-slate-200/80">
+                            <div className="flex items-center gap-2.5">
+                                <div className="bg-[#E00D42] text-white p-1.5 rounded-lg flex items-center justify-center shadow-xs">
+                                    <Sparkles className="w-4 h-4 fill-white" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight font-sans uppercase">
+                                            Top Products · Curated Collections
+                                        </h3>
+                                        <span className="bg-[#F97316] text-white text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md tracking-wider">
+                                            TOP RANKED
+                                        </span>
                                     </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight font-sans uppercase">
-                                                Top Products · Curated Collections
-                                            </h3>
-                                            <span className="bg-[#F97316] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider">
-                                                TOP RANKED
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-slate-500 font-sans mt-0.5">
-                                            High-velocity subcategories and bestselling niches curated from community demand
-                                        </p>
-                                    </div>
+                                    <p className="text-[11px] text-slate-500 font-sans">
+                                        High-velocity subcategories and bestselling niches curated from community demand
+                                    </p>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Curated Sub-niche Collection Cards */}
-                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-                                {(topCuratedCollections && topCuratedCollections.length > 0 ? topCuratedCollections : [
-                                    {
-                                        id: 1,
-                                        title: 'Tactical Crossbody Slings',
-                                        ribbon: '#1 BESTSELLER',
-                                        ribbon_color: 'amber',
-                                        sales_badge: '3.4K SOLD/MO',
-                                        category_slug: 'backpacks-and-bags',
-                                        category_name: 'Bags & EDC',
-                                        sub_slug: 'crossbody-slings',
-                                        image: '/images/products/stealth_sling_front.jpg',
-                                        target_url: '/?category=backpacks-and-bags&sub=crossbody-slings',
-                                    },
-                                    {
-                                        id: 2,
-                                        title: 'Oversized Streetwear Tees',
-                                        ribbon: 'TRENDING',
-                                        ribbon_color: 'crimson',
-                                        sales_badge: '2.8K SOLD/MO',
-                                        category_slug: 'mens-apparel',
-                                        category_name: "Men's Apparel",
-                                        sub_slug: 'tees-and-tops',
-                                        image: '/images/products/boxy_tee_front.jpg',
-                                        target_url: '/?category=mens-apparel&sub=tees-and-tops',
-                                    },
-                                    {
-                                        id: 3,
-                                        title: 'Mil-Spec Field Watches',
-                                        ribbon: 'TOP RATED 5.0★',
-                                        ribbon_color: 'emerald',
-                                        sales_badge: '1.9K SOLD/MO',
-                                        category_slug: 'jewelry-and-watches',
-                                        category_name: 'Jewelry & Watches',
-                                        sub_slug: 'tactical-field-watches',
-                                        image: '/images/categories/jewelry_watches.jpg',
-                                        target_url: '/?category=jewelry-and-watches&sub=tactical-field-watches',
-                                    },
-                                    {
-                                        id: 4,
-                                        title: 'Modular Tech Organizers',
-                                        ribbon: 'HOT DEMAND',
-                                        ribbon_color: 'orange',
-                                        sales_badge: '1.5K SOLD/MO',
-                                        category_slug: 'backpacks-and-bags',
-                                        category_name: 'Bags & EDC',
-                                        sub_slug: 'tech-pouches-and-organizers',
-                                        image: '/images/products/nomad_pouch_front.jpg',
-                                        target_url: '/?category=backpacks-and-bags&sub=tech-pouches-and-organizers',
-                                    },
-                                ]).map((collection) => (
-                                    <div
-                                        key={collection.id}
-                                        onClick={() => {
-                                            applyFilterChange({ category: collection.category_slug, sub: collection.sub_slug, search: undefined });
-                                            const el = document.getElementById('product-feed');
-                                            if (el) el.scrollIntoView({ behavior: 'smooth' });
-                                        }}
-                                        className="group/top relative flex flex-col bg-white rounded-2xl border border-slate-200/90 hover:border-red-300 hover:shadow-lg transition-all duration-300 p-3 sm:p-4 cursor-pointer overflow-hidden"
-                                    >
-                                        {/* Ranking Ribbon & Sales Volume Badge */}
-                                        <div className="flex items-center justify-between gap-1 mb-2.5">
-                                            <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-1 rounded-lg text-white shadow-xs ${
-                                                collection.ribbon_color === 'amber' ? 'bg-amber-500' :
-                                                collection.ribbon_color === 'crimson' ? 'bg-[#E00D42]' :
-                                                collection.ribbon_color === 'emerald' ? 'bg-emerald-600' : 'bg-[#F97316]'
-                                            }`}>
-                                                <Flame className="w-3 h-3 fill-white" />
-                                                <span>{collection.ribbon}</span>
-                                            </span>
-                                            <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
-                                                {collection.sales_badge}
-                                            </span>
+                        {/* Curated Sub-niche Collection Cards */}
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-1.5 sm:gap-2 md:gap-2.5">
+                            {(topCuratedCollections && topCuratedCollections.length > 0 ? topCuratedCollections : [
+                                {
+                                    id: 1,
+                                    title: 'Tactical Crossbody Slings',
+                                    ribbon: '#1 BESTSELLER',
+                                    ribbon_color: 'amber',
+                                    sales_badge: '3.4K SOLD/MO',
+                                    category_slug: 'backpacks-and-bags',
+                                    category_name: 'Bags & EDC',
+                                    sub_slug: 'crossbody-slings',
+                                    image: '/images/products/stealth_sling_front.jpg',
+                                    target_url: '/?category=backpacks-and-bags&sub=crossbody-slings',
+                                },
+                                {
+                                    id: 2,
+                                    title: 'Oversized Streetwear Tees',
+                                    ribbon: 'TRENDING',
+                                    ribbon_color: 'crimson',
+                                    sales_badge: '2.8K SOLD/MO',
+                                    category_slug: 'mens-apparel',
+                                    category_name: "Men's Apparel",
+                                    sub_slug: 'tees-and-tops',
+                                    image: '/images/products/boxy_tee_front.jpg',
+                                    target_url: '/?category=mens-apparel&sub=tees-and-tops',
+                                },
+                                {
+                                    id: 3,
+                                    title: 'Mil-Spec Field Watches',
+                                    ribbon: 'TOP RATED 5.0★',
+                                    ribbon_color: 'emerald',
+                                    sales_badge: '1.9K SOLD/MO',
+                                    category_slug: 'jewelry-and-watches',
+                                    category_name: 'Jewelry & Watches',
+                                    sub_slug: 'tactical-field-watches',
+                                    image: '/images/categories/jewelry_watches.jpg',
+                                    target_url: '/?category=jewelry-and-watches&sub=tactical-field-watches',
+                                },
+                                {
+                                    id: 4,
+                                    title: 'Modular Tech Organizers',
+                                    ribbon: 'HOT DEMAND',
+                                    ribbon_color: 'orange',
+                                    sales_badge: '1.5K SOLD/MO',
+                                    category_slug: 'backpacks-and-bags',
+                                    category_name: 'Bags & EDC',
+                                    sub_slug: 'tech-pouches-and-organizers',
+                                    image: '/images/products/nomad_pouch_front.jpg',
+                                    target_url: '/?category=backpacks-and-bags&sub=tech-pouches-and-organizers',
+                                },
+                            ]).map((collection) => (
+                                <div
+                                    key={collection.id}
+                                    onClick={() => {
+                                        applyFilterChange({ category: collection.category_slug, sub: collection.sub_slug, search: undefined });
+                                        const el = document.getElementById('product-feed');
+                                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                    }}
+                                    className="group/top relative flex flex-col bg-white rounded-xl border border-slate-200/80 hover:border-red-300 hover:shadow-md transition-all duration-200 p-2 sm:p-2.5 cursor-pointer overflow-hidden"
+                                >
+                                    {/* Ranking Ribbon & Sales Volume Badge */}
+                                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                                        <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-md text-white shadow-xs ${
+                                            collection.ribbon_color === 'amber' ? 'bg-amber-500' :
+                                            collection.ribbon_color === 'crimson' ? 'bg-[#E00D42]' :
+                                            collection.ribbon_color === 'emerald' ? 'bg-emerald-600' : 'bg-[#F97316]'
+                                        }`}>
+                                            <Flame className="w-2.5 h-2.5 fill-white" />
+                                            <span>{collection.ribbon}</span>
+                                        </span>
+                                        <span className="text-[9px] font-black font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                                            {collection.sales_badge}
+                                        </span>
+                                    </div>
+
+                                    {/* Thumbnail Image */}
+                                    <div className="relative aspect-4/3 w-full rounded-lg overflow-hidden bg-slate-100 border border-slate-100 mb-2 shadow-2xs">
+                                        <img
+                                            src={collection.image}
+                                            alt={collection.title}
+                                            loading="lazy"
+                                            className="w-full h-full object-cover group-hover/top:scale-105 transition-transform duration-300"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover/top:opacity-100 transition-opacity duration-200" />
+                                        <span className="absolute bottom-1.5 left-1.5 text-[9px] font-bold text-white uppercase tracking-wider bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded">
+                                            {collection.category_name}
+                                        </span>
+                                    </div>
+
+                                    {/* Niche Title & Meta */}
+                                    <div className="flex-1 flex flex-col justify-between space-y-1">
+                                        <div>
+                                            <h4 className="font-bold text-slate-900 group-hover/top:text-[#E00D42] transition-colors text-xs sm:text-sm line-clamp-1 font-sans">
+                                                {collection.title}
+                                            </h4>
+                                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
+                                                Explore trending items in <strong className="font-semibold text-slate-700">{collection.category_name}</strong>
+                                            </p>
                                         </div>
 
-                                        {/* Thumbnail Image */}
-                                        <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-100 mb-3 shadow-2xs">
-                                            <img
-                                                src={collection.image}
-                                                alt={collection.title}
-                                                loading="lazy"
-                                                className="w-full h-full object-cover group-hover/top:scale-108 transition-transform duration-500"
-                                            />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover/top:opacity-100 transition-opacity duration-300" />
-                                            <span className="absolute bottom-2 left-2 text-[10px] font-bold text-white uppercase tracking-wider bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-md">
-                                                {collection.category_name}
-                                            </span>
-                                        </div>
-
-                                        {/* Niche Title & Meta */}
-                                        <div className="flex-1 flex flex-col justify-between space-y-2">
-                                            <div>
-                                                <h4 className="font-black text-slate-900 group-hover/top:text-[#E00D42] transition-colors text-sm line-clamp-1 font-sans">
-                                                    {collection.title}
-                                                </h4>
-                                                <p className="text-[11px] text-slate-500 mt-0.5">
-                                                    Explore trending items in <strong className="font-semibold text-slate-700">{collection.category_name}</strong>
-                                                </p>
-                                            </div>
-
-                                            {/* View Collection Action */}
-                                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold font-sans text-[#E00D42] group-hover/top:translate-x-0.5 transition-transform">
-                                                <span>View Collection</span>
-                                                <ChevronRight className="w-4 h-4" />
-                                            </div>
+                                        {/* View Collection Action */}
+                                        <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold font-sans text-[#E00D42] group-hover/top:translate-x-0.5 transition-transform">
+                                            <span>View Collection</span>
+                                            <ChevronRight className="w-3.5 h-3.5" />
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
                         </div>
                     </section>
                 )}
 
                 {/* 5. "DAILY DISCOVER" & SEARCH PRODUCT FEED */}
-                <div id="product-feed" className="space-y-6 pt-2">
+                <div id="product-feed" className="space-y-3 pt-1">
                     
                     {/* Search & Active Filters Header Banner (Triggered when searching or filtering) */}
                     {(filters.search || (filters.category && filters.category !== 'all') || filters.sub || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
-                        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_4px_16px_rgba(15,23,42,0.05)] border border-slate-200/90 space-y-3">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                        <div className="bg-white rounded-xl p-3 sm:p-3.5 shadow-2xs border border-slate-200/80 space-y-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
                                 <div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5">
                                         <Search className="w-4 h-4 text-[#E00D42]" />
-                                        <h3 className="font-black text-slate-900 text-sm sm:text-base font-sans">
+                                        <h3 className="font-black text-slate-900 text-xs sm:text-sm font-sans uppercase">
                                             {filters.search ? `SEARCH RESULTS FOR "${filters.search.toUpperCase()}"` : 'FILTERED PRODUCTS'}
                                         </h3>
                                     </div>
-                                    <p className="text-xs text-slate-500 font-sans mt-0.5">
+                                    <p className="text-[11px] text-slate-500 font-sans mt-0.5">
                                         Found <span className="font-bold text-[#E00D42]">{feedProducts.total}</span> products matching your criteria
                                     </p>
                                 </div>
@@ -646,7 +637,7 @@ export default function BuyerHome({
                                 <button
                                     type="button"
                                     onClick={clearAllFilters}
-                                    className="text-xs font-sans font-bold text-slate-600 hover:text-[#E00D42] flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 hover:border-[#E00D42]/40 transition w-fit cursor-pointer shadow-2xs"
+                                    className="text-xs font-sans font-bold text-slate-600 hover:text-[#E00D42] flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#E00D42]/40 transition w-fit cursor-pointer shadow-2xs"
                                 >
                                     <RotateCcw className="w-3.5 h-3.5" />
                                     <span>Reset All Filters</span>
@@ -654,9 +645,9 @@ export default function BuyerHome({
                             </div>
 
                             {/* Active Filter Chips */}
-                            <div className="flex items-center gap-2 flex-wrap font-sans text-[11px]">
+                            <div className="flex items-center gap-1.5 flex-wrap font-sans text-[11px]">
                                 {filters.search && (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 font-medium">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-800 font-medium">
                                         <span>Keyword: "{filters.search}"</span>
                                         <button onClick={() => applyFilterChange({ search: undefined })} className="hover:text-[#E00D42]">
                                             <X className="w-3 h-3" />
@@ -665,7 +656,7 @@ export default function BuyerHome({
                                 )}
 
                                 {filters.category && filters.category !== 'all' && (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 font-medium">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-800 font-medium">
                                         <span>Dept: {categories.find(c => c.slug === filters.category)?.name || filters.category}</span>
                                         <button onClick={() => applyFilterChange({ category: undefined, sub: undefined })} className="hover:text-[#E00D42]">
                                             <X className="w-3 h-3" />
@@ -674,7 +665,7 @@ export default function BuyerHome({
                                 )}
 
                                 {filters.sub && (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-50 border border-rose-200 text-[#E00D42] font-semibold">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-[#E00D42] font-semibold">
                                         <span>Subcategory: {subcategories?.find(s => s.slug === filters.sub)?.name || filters.sub}</span>
                                         <button onClick={() => applyFilterChange({ sub: undefined })} className="hover:text-red-950">
                                             <X className="w-3 h-3" />
@@ -683,7 +674,7 @@ export default function BuyerHome({
                                 )}
 
                                 {(filters.min_price || filters.max_price) && (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 font-medium">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-800 font-medium">
                                         <span>Price: ₱{filters.min_price || '0'} – ₱{filters.max_price || '∞'}</span>
                                         <button onClick={() => { setMinPrice(''); setMaxPrice(''); applyFilterChange({ min_price: undefined, max_price: undefined }); }} className="hover:text-[#E00D42]">
                                             <X className="w-3 h-3" />
@@ -692,7 +683,7 @@ export default function BuyerHome({
                                 )}
 
                                 {filters.in_stock && (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-medium">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 font-medium">
                                         <span>In Stock Only</span>
                                         <button onClick={() => applyFilterChange({ in_stock: undefined })} className="hover:text-emerald-950">
                                             <X className="w-3 h-3" />
@@ -701,7 +692,7 @@ export default function BuyerHome({
                                 )}
 
                                 {filters.rating && (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-medium">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 font-medium">
                                         <span>Rating: {filters.rating}★ & up</span>
                                         <button onClick={() => applyFilterChange({ rating: undefined })} className="hover:text-amber-950">
                                             <X className="w-3 h-3" />
@@ -714,32 +705,32 @@ export default function BuyerHome({
 
                     {/* Section Header when browsing naturally */}
                     {!(filters.search || (filters.category && filters.category !== 'all') || filters.sub || filters.min_price || filters.max_price || filters.in_stock || filters.rating) && (
-                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-2 border-b border-slate-200/90 font-sans">
+                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 pb-1.5 border-b border-slate-200/80 font-sans">
                             <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-[#E00D42] animate-pulse"></span>
-                                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                    <span className="w-2 h-2 rounded-full bg-[#E00D42] animate-pulse"></span>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
                                         VERIFIED MARKETPLACE // DAILY DISCOVER
                                     </span>
                                 </div>
-                                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-sans">
+                                <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight font-sans">
                                     RECOMMENDED FOR YOU
                                 </h2>
                             </div>
-                            <div className="text-xs text-slate-500 font-medium">
+                            <div className="text-[11px] text-slate-500 font-medium">
                                 Curated from <strong className="text-slate-900 font-bold">{feedProducts.total}</strong> active listings
                             </div>
                         </div>
                     )}
 
                     {/* Filter & Sort Controls Toolbar */}
-                    <div className="bg-white rounded-2xl p-3 sm:p-3.5 shadow-[0_2px_12px_rgba(15,23,42,0.04)] border border-slate-200/90 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 font-sans text-xs">
+                    <div className="bg-white rounded-xl p-1.5 sm:p-2 shadow-2xs border border-slate-200/80 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 font-sans text-xs">
                         
                         {/* Left: Feed Sort Tabs */}
-                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5">
+                        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
                             <button
                                 onClick={() => handleTabChange('all')}
-                                className={`px-4 py-2 rounded-xl font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
                                     activeTab === 'all' 
                                         ? 'bg-[#E00D42] text-white shadow-xs' 
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70'
@@ -749,7 +740,7 @@ export default function BuyerHome({
                             </button>
                             <button
                                 onClick={() => handleTabChange('top_sales')}
-                                className={`px-4 py-2 rounded-xl font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
                                     activeTab === 'top_sales' 
                                         ? 'bg-[#E00D42] text-white shadow-xs' 
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70'
@@ -759,7 +750,7 @@ export default function BuyerHome({
                             </button>
                             <button
                                 onClick={() => handleTabChange('top_rated')}
-                                className={`px-4 py-2 rounded-xl font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
                                     activeTab === 'top_rated' 
                                         ? 'bg-[#E00D42] text-white shadow-xs' 
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70'
@@ -769,7 +760,7 @@ export default function BuyerHome({
                             </button>
                             <button
                                 onClick={() => handleTabChange('new_arrivals')}
-                                className={`px-4 py-2 rounded-xl font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
                                     activeTab === 'new_arrivals' 
                                         ? 'bg-[#E00D42] text-white shadow-xs' 
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70'
@@ -780,14 +771,14 @@ export default function BuyerHome({
                         </div>
 
                         {/* Right: Quick Sort & Filters Toggle */}
-                        <div className="flex items-center gap-2.5 justify-between md:justify-end">
+                        <div className="flex items-center gap-2 justify-between md:justify-end">
                             {/* Sort Selector Dropdown */}
                             <div className="flex items-center gap-1.5">
-                                <span className="text-slate-400 font-medium hidden sm:inline">Sort:</span>
+                                <span className="text-slate-400 font-medium hidden sm:inline text-xs">Sort:</span>
                                 <select
                                     value={filters.sort || 'relevance'}
                                     onChange={(e) => applyFilterChange({ sort: e.target.value })}
-                                    className="bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-sans font-bold text-slate-800 py-2 pl-3 pr-8 focus:ring-[#E00D42] focus:border-[#E00D42] transition-colors cursor-pointer"
+                                    className="bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-sans font-bold text-slate-800 py-1.5 pl-2.5 pr-7 focus:ring-[#E00D42] focus:border-[#E00D42] transition-colors cursor-pointer"
                                 >
                                     <option value="relevance">Relevance</option>
                                     <option value="top_sales">Best Sellers</option>
@@ -802,7 +793,7 @@ export default function BuyerHome({
                             <button
                                 type="button"
                                 onClick={() => setShowFiltersPanel(!showFiltersPanel)}
-                                className={`px-3.5 py-2 rounded-xl border font-bold flex items-center gap-1.5 transition-all duration-200 cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all duration-200 cursor-pointer ${
                                     showFiltersPanel || filters.min_price || filters.max_price || filters.in_stock
                                         ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
@@ -816,20 +807,20 @@ export default function BuyerHome({
 
                     {/* Expandable Advanced Filters Box */}
                     {showFiltersPanel && (
-                        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_4px_16px_rgba(15,23,42,0.06)] border border-slate-200 space-y-4 font-sans text-xs animate-scale-in">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                        <div className="bg-white rounded-xl p-3 sm:p-3.5 shadow-2xs border border-slate-200/80 space-y-3 font-sans text-xs animate-scale-in">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                                 
                                 {/* 1. Category Dropdown */}
                                 <div>
-                                    <label className="block text-slate-500 font-bold text-[10px] uppercase mb-1.5">Department</label>
+                                    <label className="block text-slate-500 font-bold text-[10px] uppercase mb-1">Department</label>
                                     <select
                                         value={filters.category || 'all'}
                                         onChange={(e) => applyFilterChange({ category: e.target.value !== 'all' ? e.target.value : undefined })}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs py-2 px-3 font-medium focus:ring-[#E00D42] focus:border-[#E00D42]"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2.5 font-medium focus:ring-[#E00D42] focus:border-[#E00D42]"
                                     >
                                         <option value="all">All Departments ({feedProducts.total})</option>
                                         {categories.map((c) => (
-                                            <option key={c.id} value={c.slug}>
+                                             <option key={c.id} value={c.slug}>
                                                 {c.name} ({c.products_count ?? 0})
                                             </option>
                                         ))}
@@ -838,14 +829,14 @@ export default function BuyerHome({
 
                                 {/* 2. Price Range Form */}
                                 <div>
-                                    <label className="block text-slate-500 font-bold text-[10px] uppercase mb-1.5">Price Range (₱ PHP)</label>
+                                    <label className="block text-slate-500 font-bold text-[10px] uppercase mb-1">Price Range (₱ PHP)</label>
                                     <form onSubmit={handlePriceSubmit} className="flex items-center gap-1.5">
                                         <input
                                             type="number"
                                             placeholder="Min"
                                             value={minPrice}
                                             onChange={(e) => setMinPrice(e.target.value)}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs py-2 px-3 focus:ring-[#E00D42] focus:border-[#E00D42]"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2.5 focus:ring-[#E00D42] focus:border-[#E00D42]"
                                         />
                                         <span className="text-slate-400 font-bold">-</span>
                                         <input
@@ -853,11 +844,11 @@ export default function BuyerHome({
                                             placeholder="Max"
                                             value={maxPrice}
                                             onChange={(e) => setMaxPrice(e.target.value)}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs py-2 px-3 focus:ring-[#E00D42] focus:border-[#E00D42]"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2.5 focus:ring-[#E00D42] focus:border-[#E00D42]"
                                         />
                                         <button
                                             type="submit"
-                                            className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-xl font-bold uppercase transition-colors shrink-0 shadow-xs cursor-pointer active:scale-95"
+                                            className="px-3 py-1.5 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-lg font-bold uppercase transition-colors shrink-0 shadow-xs cursor-pointer active:scale-95 text-xs"
                                         >
                                             Apply
                                         </button>
@@ -871,15 +862,15 @@ export default function BuyerHome({
                                             type="checkbox"
                                             checked={Boolean(filters.in_stock)}
                                             onChange={(e) => applyFilterChange({ in_stock: e.target.checked ? true : undefined })}
-                                            className="rounded-md border-slate-300 text-[#E00D42] focus:ring-[#E00D42] w-4 h-4 cursor-pointer"
+                                            className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42] w-4 h-4 cursor-pointer"
                                         />
-                                        <span className="text-slate-800 font-bold">In Stock Only</span>
+                                        <span className="text-slate-800 font-bold text-xs">In Stock Only</span>
                                     </label>
 
                                     <select
                                         value={filters.rating || ''}
                                         onChange={(e) => applyFilterChange({ rating: e.target.value || undefined })}
-                                        className="bg-slate-50 border border-slate-200 rounded-xl text-xs py-2 px-3 font-medium focus:ring-[#E00D42] focus:border-[#E00D42]"
+                                        className="bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-2.5 font-medium focus:ring-[#E00D42] focus:border-[#E00D42]"
                                     >
                                         <option value="">Any Rating</option>
                                         <option value="4">4★ & above</option>
@@ -891,19 +882,19 @@ export default function BuyerHome({
                         </div>
                     )}
 
-                    <section id="catalogue-results" tabIndex={-1} aria-label="Product results" className="space-y-6 scroll-mt-28 outline-none">
+                    <section id="catalogue-results" tabIndex={-1} aria-label="Product results" className="space-y-4 scroll-mt-28 outline-none">
                     {/* Feed Product Grid */}
                     {feedProducts.data.length === 0 ? (
-                        <div className="space-y-6">
-                            <div className="bg-white rounded-2xl p-12 text-center space-y-3 border border-slate-200/90 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
-                                <ShoppingBag className="w-14 h-14 text-slate-300 mx-auto" />
-                                <h3 className="text-lg font-bold text-slate-900">No products found matching your search</h3>
+                        <div className="space-y-4">
+                            <div className="bg-white rounded-xl p-8 text-center space-y-3 border border-slate-200/80 shadow-2xs">
+                                <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
+                                <h3 className="text-base font-bold text-slate-900">No products found matching your search</h3>
                                 <p className="text-xs text-slate-500 font-sans max-w-sm mx-auto">
                                     Try adjusting your search query, checking for typos, or clearing active filters to browse the complete catalog.
                                 </p>
                                 <button
                                     onClick={clearAllFilters}
-                                    className="mt-3 px-5 py-2.5 bg-[#E00D42] text-white rounded-xl text-xs font-sans font-bold uppercase hover:bg-[#C20836] transition shadow-xs cursor-pointer active:scale-95"
+                                    className="mt-2 px-4 py-2 bg-[#E00D42] text-white rounded-lg text-xs font-sans font-bold uppercase hover:bg-[#C20836] transition shadow-xs cursor-pointer active:scale-95"
                                 >
                                     Clear All Filters & Browse All
                                 </button>
@@ -911,12 +902,12 @@ export default function BuyerHome({
 
                             {/* Related / Recommended Fallback Products */}
                             {relatedProducts && relatedProducts.length > 0 && (
-                                <div className="space-y-4 pt-4">
-                                    <div className="flex items-center gap-2 font-sans">
+                                <div className="space-y-3 pt-2">
+                                    <div className="flex items-center gap-1.5 font-sans">
                                         <Sparkles className="w-4 h-4 text-[#E00D42]" />
-                                        <h4 className="font-bold text-slate-900 text-sm uppercase">Recommended Products You Might Like</h4>
+                                        <h4 className="font-bold text-slate-900 text-xs sm:text-sm uppercase">Recommended Products You Might Like</h4>
                                     </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
                                         {relatedProducts.map((product) => (
                                             <ProductCard
                                                 key={product.id}
@@ -930,7 +921,7 @@ export default function BuyerHome({
                             )}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
                             {feedProducts.data.map((product) => (
                                 <ProductCard
                                     key={product.id}
@@ -944,12 +935,12 @@ export default function BuyerHome({
 
                     {/* Related Products Discovery Feed (when search query produced matches) */}
                     {filters.search && feedProducts.data.length > 0 && relatedProducts && relatedProducts.length > 0 && (
-                        <div className="bg-white rounded-2xl p-5 shadow-[0_4px_16px_rgba(15,23,42,0.05)] border border-slate-200/90 space-y-4 mt-8 font-sans">
-                            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                        <div className="bg-white rounded-xl p-3 sm:p-4 shadow-2xs border border-slate-200/80 space-y-3 mt-4 font-sans">
+                            <div className="flex items-center gap-1.5 pb-1.5 border-b border-slate-100">
                                 <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                 <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Related Recommendations</h4>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-6">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
                                 {relatedProducts.map((p) => (
                                     <ProductCard
                                         key={p.id}

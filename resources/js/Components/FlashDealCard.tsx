@@ -42,10 +42,10 @@ export default function FlashDealCard({ product, heartControl, href }: FlashDeal
     const progressPct = Math.min(95, Math.max(45, ((product.sales_count || 12) % 60) + 35));
 
     return (
-        <article className="group relative bg-white rounded-2xl border border-slate-200/90 shadow-[0_4px_14px_rgba(15,23,42,0.05)] hover:shadow-[0_18px_36px_rgba(224,13,66,0.12)] hover:border-red-200 hover:-translate-y-1.5 transition-all duration-300 ease-out flex flex-col justify-between overflow-hidden cursor-pointer">
+        <article className="group relative bg-white rounded-xl border border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.04)] hover:shadow-[0_16px_32px_rgba(224,13,66,0.1)] hover:border-red-300 hover:-translate-y-1 transition-all duration-200 ease-out flex flex-col justify-between overflow-hidden cursor-pointer">
             <CatalogueLink href={targetUrl} className="flex flex-1 flex-col">
                 {/* 1. Square Image */}
-                <div className="relative aspect-square bg-slate-50 overflow-hidden rounded-t-2xl">
+                <div className="relative aspect-square bg-slate-50 overflow-hidden rounded-t-xl">
                     {product.featured_image ? (
                         <img
                             src={product.featured_image}
@@ -61,8 +61,8 @@ export default function FlashDealCard({ product, heartControl, href }: FlashDeal
 
                     {/* Discount badge in Top-Left */}
                     {discountPct > 0 && (
-                        <div className="absolute top-2 left-2 z-10 pointer-events-none">
-                            <span className="bg-[#E00D42] text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-md shadow-sm tracking-wider flex items-center gap-1">
+                        <div className="absolute top-1.5 left-1.5 z-10 pointer-events-none">
+                            <span className="bg-[#E00D42] text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow-xs tracking-wider flex items-center gap-0.5">
                                 <Flame className="w-2.5 h-2.5 fill-white" />
                                 <span>-{discountPct}%</span>
                             </span>
@@ -71,10 +71,10 @@ export default function FlashDealCard({ product, heartControl, href }: FlashDeal
                 </div>
 
                 {/* 2. Price & Progress Bar (Inside the Card) */}
-                <div className="p-3 space-y-2.5 font-sans flex flex-col justify-between flex-1 bg-white">
+                <div className="p-2 sm:p-2.5 space-y-1.5 font-sans flex flex-col justify-between flex-1 bg-white">
                     {/* Price */}
                     <div className="space-y-0.5">
-                        <div className="text-base sm:text-lg font-black text-[#E00D42] tracking-tight">
+                        <div className="text-sm sm:text-base font-black text-[#E00D42] tracking-tight">
                             {formatPrice(priceNum)}
                         </div>
                         {discountPct > 0 && compareNum && compareNum > priceNum && (

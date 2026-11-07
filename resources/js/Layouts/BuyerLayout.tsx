@@ -168,7 +168,7 @@ export default function BuyerLayout({
                 <>
                     {/* 1. TOP UTILITY BAR (VIBRANT BRAND ACCENT) */}
                     <div className="bg-[#C20836] text-white/90 text-xs border-b border-[#A8062E] shrink-0 font-sans">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 flex items-center justify-between font-sans text-xs">
+                <div className="max-w-[1536px] mx-auto px-2 sm:px-3 md:px-4 py-1.5 flex items-center justify-between font-sans text-xs">
                     <div className="flex items-center gap-4">
                         <a href={sellerUrl} className="hover:text-white transition flex items-center gap-1.5 font-bold text-white">
                             <Store className="w-3.5 h-3.5 text-amber-300" />
@@ -199,7 +199,7 @@ export default function BuyerLayout({
 
             {/* 2. MAIN HEADER: VIBRANT BRAND CRIMSON BACKGROUND */}
             <header className="bg-[#E00D42] text-white border-b border-[#C20836] sticky top-0 z-40 shadow-md shrink-0 font-sans">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+                <div className="max-w-[1536px] mx-auto px-2 sm:px-3 md:px-4 py-3">
                     <div className="flex items-center justify-between gap-4 sm:gap-6">
                         
                         {/* Logo */}
@@ -216,7 +216,7 @@ export default function BuyerLayout({
                         </PortalLink>
 
                         {/* Search Bar & Trending Keywords */}
-                        <div className="flex-1 max-w-2xl hidden md:flex md:flex-col gap-1">
+                        <div className="flex-1 max-w-3xl hidden md:flex md:flex-col gap-1">
                             <form onSubmit={handleSearch} aria-busy={search.state.status === 'loading'} className="relative flex items-center h-11">
                                 <input
                                     type="text"
@@ -466,12 +466,12 @@ export default function BuyerLayout({
             )}
 
             {/* 3. MAIN CONTENT BODY */}
-            <main aria-busy={search.state.status === 'loading'} className={`flex-1 min-h-0 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col ${
+            <main aria-busy={search.state.status === 'loading'} className={`flex-1 min-h-0 max-w-[1536px] w-full mx-auto px-2 sm:px-3 md:px-4 flex flex-col ${
                 fullHeight 
-                    ? 'py-2 sm:py-3 overflow-hidden' 
+                    ? 'py-1 sm:py-2 overflow-hidden' 
                     : hideHeader 
                         ? 'pt-2 sm:pt-3 pb-8 overflow-x-hidden' 
-                        : 'py-6 overflow-x-hidden'
+                        : 'py-3 sm:py-4 overflow-x-hidden'
             }`}>
                 {buyerApplication && !buyerApplication.can_use_portal && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white p-4 text-sm">
                     <p>Checkout is unavailable until your buyer account is active and approved.</p>
@@ -523,8 +523,8 @@ export default function BuyerLayout({
 
             {/* 5. FOOTER */}
             {!hideFooter && (
-                <footer className="bg-white border-t border-slate-200 text-slate-600 mt-16 font-sans text-xs">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+                <footer className="bg-white border-t border-slate-200 text-slate-600 mt-12 font-sans text-xs">
+                <div className="max-w-[1536px] mx-auto px-2 sm:px-3 md:px-4 py-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                     <div>
                         <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs">Platform Directory</h5>
                         <ul className="space-y-2 text-slate-500">
