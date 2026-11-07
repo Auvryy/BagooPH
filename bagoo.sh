@@ -30,6 +30,9 @@ case "$cmd" in
   migrate)
     docker compose exec app php artisan migrate "$@"
     ;;
+  seed-logistics)
+    docker compose exec app php artisan db:seed --class=RegionalLogisticsDemoSeeder "$@"
+    ;;
   seed)
     docker compose exec app php artisan db:seed "$@"
     ;;
