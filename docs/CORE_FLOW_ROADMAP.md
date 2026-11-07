@@ -30,6 +30,12 @@ Buyer checkout
 
 The core flow is complete only when the entire chain passes cross-role tests without a portal inventing statuses, bypassing custody, settling COD early, or relying on sample success data.
 
+## November 7 minimal buyer checkout
+
+The checkout redesign on `feat/checkout-minimal-layout` groups product thumbnails, item facts, vouchers and prices in one right-column summary. A complete saved address starts as a single line with Edit/Done disclosure; new/incomplete addresses and validation failures open the controls, retaining values and focusing the first native invalid field. Routine explanatory copy and duplicate carrier panels are removed. Payment choices are compact and optional calculations/policies use disclosures. Wallet credit meaning, blocking feedback, final amounts and confirmation remain available.
+
+Focused frontend checks passed 85 cases. The final TypeScript/Vite production build passed (12.71 seconds Vite phase). Source/rendered interaction assessment for checkout clarity: 5/10 to 8/10; browser/phone visual acceptance remains unverified. [Checkout layout handoff](audits/2026-11-07-checkout-layout.md) records the requirements, evidence, limitations and local PR draft. This branch includes the prior logistics work; the original checkout remains preserved.
+
 ## November 7 logistics network and region corrections
 
 An explicit additive `RegionalLogisticsDemoSeeder` / `./bagoo.sh seed-logistics` adds an eligible company with three Mother Hubs, seven child hubs, ten operators and 24 operational riders/vehicles. Initial rider intake is recorded through its existing service; reruns preserve accounts and later intake pauses. Checkout tests prove eligible buyer choice and retained purchased carrier. Region corrections now use a true multiple selection and indexed multipart lists; backend comparison preserves review and rejects reordered no-op changes. The local seed was applied without resetting data. Existing Calanasan addresses containing postal code 4012 remain unchanged; the correct seeded coverage is 3814.
