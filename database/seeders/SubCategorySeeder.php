@@ -33,7 +33,7 @@ class SubCategorySeeder extends Seeder
             // 1. Pet Supplies
             'pet-supplies' => [
                 'name' => 'Pet Supplies',
-                'image' => '/images/categories/pet_supplies.jpg',
+                'image' => '/images/categories/icons/cat-pet-supplies.png',
                 'subs' => [
                     ['name' => 'Dog Food & Treats', 'slug' => 'dog-food-and-treats', 'sort_order' => 1],
                     ['name' => 'Cat Litter & Accessories', 'slug' => 'cat-litter-and-accessories', 'sort_order' => 2],
@@ -47,7 +47,7 @@ class SubCategorySeeder extends Seeder
             // 2. Electronics and Gadgets
             'electronics-and-gadgets' => [
                 'name' => 'Electronics and Gadgets',
-                'image' => '/images/categories/electronics_audio.jpg',
+                'image' => '/images/categories/icons/cat-electronics-and-gadgets.png',
                 'subs' => [
                     ['name' => 'Mobile Phones & Accessories', 'slug' => 'mobile-phones-and-accessories', 'sort_order' => 1],
                     ['name' => 'Laptops, Desktops & Monitors', 'slug' => 'laptops-desktops-and-monitors', 'sort_order' => 2],
@@ -61,7 +61,7 @@ class SubCategorySeeder extends Seeder
             // 3. Women's Apparel
             'womens-apparel' => [
                 'name' => "Women's Apparel",
-                'image' => '/images/categories/womens_apparel.jpg',
+                'image' => '/images/categories/icons/cat-womens-apparel.png',
                 'subs' => [
                     ['name' => 'Dresses & Skirts', 'slug' => 'dresses-and-skirts', 'sort_order' => 1],
                     ['name' => 'Tops & Blouses', 'slug' => 'tops-and-blouses', 'sort_order' => 2],
@@ -75,7 +75,7 @@ class SubCategorySeeder extends Seeder
             // 4. Men's Apparel
             'mens-apparel' => [
                 'name' => "Men's Apparel",
-                'image' => '/images/products/boxy_tee_front.jpg',
+                'image' => '/images/categories/icons/cat-mens-apparel.png',
                 'subs' => [
                     ['name' => 'Suits & Blazers', 'slug' => 'suits-and-blazers', 'sort_order' => 1],
                     ['name' => 'Casual Shirts & Pants', 'slug' => 'casual-shirts-and-pants', 'sort_order' => 2],
@@ -90,7 +90,7 @@ class SubCategorySeeder extends Seeder
             // 5. Kids and Baby
             'kids-and-baby' => [
                 'name' => 'Kids and Baby',
-                'image' => '/images/categories/kids_baby.jpg',
+                'image' => '/images/categories/icons/cat-kids-and-baby.png',
                 'subs' => [
                     ['name' => 'Baby Clothes & Accessories', 'slug' => 'baby-clothes-and-accessories', 'sort_order' => 1],
                     ['name' => 'Toys & Games', 'slug' => 'toys-and-games', 'sort_order' => 2],
@@ -104,7 +104,7 @@ class SubCategorySeeder extends Seeder
             // 6. Home and Garden
             'home-and-garden' => [
                 'name' => 'Home and Garden',
-                'image' => '/images/carousel/botanical-candle.jpg',
+                'image' => '/images/categories/icons/cat-home-and-garden.png',
                 'subs' => [
                     ['name' => 'Kitchen Appliances', 'slug' => 'kitchen-appliances', 'sort_order' => 1],
                     ['name' => 'Furniture & Decor', 'slug' => 'furniture-and-decor', 'sort_order' => 2],
@@ -118,7 +118,7 @@ class SubCategorySeeder extends Seeder
             // 7. Sports and Outdoors
             'sports-and-outdoors' => [
                 'name' => 'Sports and Outdoors',
-                'image' => '/images/categories/sports_outdoors.jpg',
+                'image' => '/images/categories/icons/cat-sports-and-outdoors.png',
                 'subs' => [
                     ['name' => 'Fitness Equipment', 'slug' => 'fitness-equipment', 'sort_order' => 1],
                     ['name' => 'Camping & Hiking Gear', 'slug' => 'camping-and-hiking-gear', 'sort_order' => 2],
@@ -132,7 +132,7 @@ class SubCategorySeeder extends Seeder
             // 8. Health and Beauty
             'health-and-beauty' => [
                 'name' => 'Health and Beauty',
-                'image' => '/images/categories/health_beauty.jpg',
+                'image' => '/images/categories/icons/cat-health-and-beauty.png',
                 'subs' => [
                     ['name' => 'Skincare Products', 'slug' => 'skincare-products', 'sort_order' => 1],
                     ['name' => 'Haircare Solutions', 'slug' => 'haircare-solutions', 'sort_order' => 2],
@@ -160,7 +160,7 @@ class SubCategorySeeder extends Seeder
             // 10. Food and Gourmet
             'food-and-gourmet' => [
                 'name' => 'Food and Gourmet',
-                'image' => '/images/categories/food_coffee.jpg',
+                'image' => '/images/categories/icons/cat-food-and-gourmet.png',
                 'subs' => [
                     ['name' => 'Baking Supplies & Ingredients', 'slug' => 'baking-supplies-and-ingredients', 'sort_order' => 1],
                     ['name' => 'Coffee, Tea & Beverages', 'slug' => 'coffee-tea-and-beverages', 'sort_order' => 2],
@@ -174,7 +174,7 @@ class SubCategorySeeder extends Seeder
             // 11. Automotive & Motorcycle (Group 9)
             'automotive-motorcycle-group-9' => [
                 'name' => 'Automotive & Motorcycle (Group 9)',
-                'image' => '/images/categories/automotive.jpg',
+                'image' => '/images/categories/icons/cat-automotive-and-motorcycle.png',
                 'subs' => [
                     ['name' => 'Protective Gear', 'slug' => 'protective-gear', 'sort_order' => 1],
                     ['name' => 'Maintenance & Repair Tools', 'slug' => 'maintenance-and-repair-tools', 'sort_order' => 2],
@@ -201,7 +201,7 @@ class SubCategorySeeder extends Seeder
             // 13. Jewelry and Watches
             'jewelry-and-watches' => [
                 'name' => 'Jewelry and Watches',
-                'image' => '/images/categories/jewelry_watches.jpg',
+                'image' => '/images/categories/icons/cat-jewelry-and-watches.png',
                 'subs' => [
                     ['name' => 'Necklaces & Pendants', 'slug' => 'necklaces-and-pendants', 'sort_order' => 1],
                     ['name' => 'Rings & Earrings', 'slug' => 'rings-and-earrings', 'sort_order' => 2],
@@ -216,7 +216,7 @@ class SubCategorySeeder extends Seeder
             // 14. Office and School Supplies (Group 12)
             'office-and-school-supplies-group-12' => [
                 'name' => 'Office and School Supplies (Group 12)',
-                'image' => '/images/categories/office_school.jpg',
+                'image' => '/images/categories/icons/cat-office-and-school.png',
                 'subs' => [
                     ['name' => 'Notebooks & Paper Products', 'slug' => 'notebooks-and-paper-products', 'sort_order' => 1],
                     ['name' => 'Writing Instruments', 'slug' => 'writing-instruments', 'sort_order' => 2],
@@ -230,7 +230,7 @@ class SubCategorySeeder extends Seeder
             // Legacy Bag & EDC Category (ID 1 in seed)
             'backpacks-and-bags' => [
                 'name' => 'Men\'s Gear & Everyday Carry',
-                'image' => '/images/products/stealth_sling_front.jpg',
+                'image' => '/images/categories/icons/cat-backpacks-and-bags.png',
                 'subs' => [
                     ['name' => 'Crossbody Slings & Chest Packs', 'slug' => 'crossbody-slings', 'sort_order' => 1],
                     ['name' => 'Commuter Backpacks & Roll-Tops', 'slug' => 'commuter-backpacks', 'sort_order' => 2],
@@ -254,7 +254,7 @@ class SubCategorySeeder extends Seeder
                 ]);
             } else {
                 $updateData = [];
-                if (! empty($dept['image']) && empty($category->image)) {
+                if (! empty($dept['image'])) {
                     $updateData['image'] = $dept['image'];
                 }
                 if (! empty($updateData)) {

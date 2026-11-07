@@ -251,7 +251,7 @@ export default function BuyerLayout({
                             </form>
 
                             {/* Trending Search Chips */}
-                            <div className="flex items-center gap-2.5 text-[11px] text-rose-100 font-medium overflow-x-auto scrollbar-none pt-0.5">
+                            <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-rose-100 font-medium pt-0.5">
                                 <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Trending:</span>
                                 {['Oversized Tee', 'EDC Sling Bag', 'Paracord Gear', 'Field Watch', 'Tactical Gloves', 'Aviator Glasses'].map((term) => (
                                     <button
@@ -271,23 +271,22 @@ export default function BuyerLayout({
 
                         {/* RIGHT ACTIONS: BAG & PROFILE */}
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                            {/* BAG BUTTON */}
+                            {/* BAG ACTION */}
                             <NotificationLink />
                             <Link 
                                 href={route('buyer.cart')} 
-                                className={`relative h-11 flex items-center gap-2 px-3.5 sm:px-4 rounded-xl font-sans text-xs font-bold transition shadow-xs border ${
-                                    route().current('buyer.cart')
-                                        ? 'bg-white text-[#E00D42] border-white'
-                                        : 'bg-white/15 hover:bg-white/25 text-white border-white/25 active:scale-95'
-                                }`}
+                                className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-white hover:text-rose-100 transition font-sans text-sm font-bold tracking-tight group focus:outline-hidden"
+                                aria-label={`Shopping Bag (${cartCount} items)`}
                             >
-                                <ShoppingBag className="w-4 h-4 text-white" />
-                                <span className="hidden sm:inline">Bag</span>
-                                {cartCount > 0 && (
-                                    <span className="min-w-[18px] h-[18px] px-1 bg-[#F97316] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
-                                        {cartCount}
-                                    </span>
-                                )}
+                                <div className="relative flex items-center justify-center">
+                                    <ShoppingBag className="w-5 h-5 text-white group-hover:scale-105 transition-transform" />
+                                    {cartCount > 0 && (
+                                        <span className="absolute -top-1.5 -right-2 min-w-[17px] h-[17px] px-1 bg-[#F97316] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
+                                            {cartCount}
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="hidden sm:inline font-bold">Bag</span>
                             </Link>
 
                             {/* PROFILE BUTTON WITH SEAMLESS HOVER BRIDGE */}
@@ -416,16 +415,17 @@ export default function BuyerLayout({
                                     )}
                                 </div>
                             ) : hideAuthButtons ? null : (
-                                <div className="flex items-center gap-2 font-sans text-xs">
+                                <div className="flex items-center gap-2 sm:gap-2.5 font-sans text-xs sm:text-sm font-bold">
                                     <Link 
                                         href={route('login')} 
-                                        className="h-11 flex items-center px-4 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold transition border border-white/25 text-xs shadow-xs cursor-pointer"
+                                        className="text-white/95 hover:text-white hover:underline transition-colors py-1 cursor-pointer whitespace-nowrap"
                                     >
                                         Sign In
                                     </Link>
+                                    <span className="text-white/40 text-xs select-none">|</span>
                                     <Link 
                                         href={route('register')} 
-                                        className="h-11 flex items-center px-4 rounded-xl bg-white hover:bg-rose-50 text-[#E00D42] font-black transition shadow-xs text-xs cursor-pointer"
+                                        className="text-white hover:text-amber-200 transition-colors py-1 cursor-pointer font-extrabold whitespace-nowrap"
                                     >
                                         Register
                                     </Link>

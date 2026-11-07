@@ -43,7 +43,7 @@ class SellerProductController extends Controller
             $query = $this->salesMetrics
                 ->withProductLifecycleTotals(Product::query()->where('shop_id', $shop->id))
                 ->withCount('orderItems')
-                ->with(['category', 'images', 'sales', 'storeTags', 'moderationDecisions' => fn ($decisions) => $decisions->latest('id')->limit(1)]);
+                ->with(['category', 'subCategory', 'images', 'sales', 'storeTags', 'moderationDecisions' => fn ($decisions) => $decisions->latest('id')->limit(1)]);
             $products = $this->inventory->paginate($this->inventory->filter($query, $filters), $filters);
 
             $products->through(function (Product $product) {
@@ -65,8 +65,8 @@ class SellerProductController extends Controller
 
         return Inertia::render('Seller/Products', [
             'products' => $loadProducts,
-            'categories' => fn () => Category::whereIn('id', app(ShopEligibilityService::class)->categoryIds($shop))->get(),
-            'shop' => $shop,
+            'categories' => fn () => Category::with('subCategories')->whereIn('id', app(ShopEligibilityService::class)->categoryIds($shop))->get(),
+            'shop' => fn () => $shop->loadMissing('rootCategory.subCategories'),
             'filters' => $filters,
             'storeTags' => fn () => app(StoreTagService::class)->rows($shop),
             'copiedProduct' => fn () => Product::where('shop_id', $shop->id)->where('status', 'draft')

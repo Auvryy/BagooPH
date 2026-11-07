@@ -1,0 +1,502 @@
+[
+  {
+    "category_slug": "pet-supplies",
+    "shop_name": "Manila Pet Supplies Depot",
+    "seller_name": "Miguel Santos",
+    "seller_email": "seller.pets@bagoo.ph",
+    "queries": [
+      "dog food",
+      "pet grooming"
+    ],
+    "products": [
+      {
+        "title": "Royal Canin Veterinary Hepatic Dog Food Cans",
+        "price": 270,
+        "compare_at_price": 351,
+        "image_path": "/images/products/carousell_pet_supplies_1.jpg",
+        "category_slug": "pet-supplies",
+        "shop_name": "Manila Pet Supplies Depot",
+        "seller_name": "Miguel Santos",
+        "seller_email": "seller.pets@bagoo.ph",
+        "query": "dog food"
+      },
+      {
+        "title": "Professional Pet Grooming Razor Rechargeable",
+        "price": 299,
+        "compare_at_price": 389,
+        "image_path": "/images/products/carousell_pet_supplies_2.jpg",
+        "category_slug": "pet-supplies",
+        "shop_name": "Manila Pet Supplies Depot",
+        "seller_name": "Miguel Santos",
+        "seller_email": "seller.pets@bagoo.ph",
+        "query": "pet grooming"
+      }
+    ]
+  },
+  {
+    "category_slug": "electronics-and-gadgets",
+    "shop_name": "TechCore Gadgets PH",
+    "seller_name": "Althea Reyes",
+    "seller_email": "seller.tech@bagoo.ph",
+    "queries": [
+      "wireless headphones",
+      "smart watch"
+    ],
+    "products": [
+      {
+        "title": "JBL Live Wireless Headphones",
+        "price": 999,
+        "compare_at_price": 1299,
+        "image_path": "/images/products/carousell_electronics_and_gadgets_1.jpg",
+        "category_slug": "electronics-and-gadgets",
+        "shop_name": "TechCore Gadgets PH",
+        "seller_name": "Althea Reyes",
+        "seller_email": "seller.tech@bagoo.ph",
+        "query": "wireless headphones"
+      },
+      {
+        "title": "UDFINE SMART WATCH STARRY BLACK",
+        "price": 1500,
+        "compare_at_price": 1950,
+        "image_path": "/images/products/carousell_electronics_and_gadgets_2.jpg",
+        "category_slug": "electronics-and-gadgets",
+        "shop_name": "TechCore Gadgets PH",
+        "seller_name": "Althea Reyes",
+        "seller_email": "seller.tech@bagoo.ph",
+        "query": "smart watch"
+      }
+    ]
+  },
+  {
+    "category_slug": "womens-apparel",
+    "shop_name": "Atelier Femme Studio",
+    "seller_name": "Chloe Dela Cruz",
+    "seller_email": "seller.womens@bagoo.ph",
+    "queries": [
+      "linen dress",
+      "womens blazer"
+    ],
+    "products": [
+      {
+        "title": "Linen Midi Dress Smocked Back with Adjustable Strap",
+        "price": 200,
+        "compare_at_price": 260,
+        "image_path": "/images/products/carousell_womens_apparel_1.jpg",
+        "category_slug": "womens-apparel",
+        "shop_name": "Atelier Femme Studio",
+        "seller_name": "Chloe Dela Cruz",
+        "seller_email": "seller.womens@bagoo.ph",
+        "query": "linen dress"
+      },
+      {
+        "title": "G2000 Olive Green Women Blazer Small",
+        "price": 500,
+        "compare_at_price": 650,
+        "image_path": "/images/products/carousell_womens_apparel_2.jpg",
+        "category_slug": "womens-apparel",
+        "shop_name": "Atelier Femme Studio",
+        "seller_name": "Chloe Dela Cruz",
+        "seller_email": "seller.womens@bagoo.ph",
+        "query": "womens blazer"
+      }
+    ]
+  },
+  {
+    "category_slug": "mens-apparel",
+    "shop_name": "Urban Threads Manila",
+    "seller_name": "Mark Bautista",
+    "seller_email": "seller.mens@bagoo.ph",
+    "queries": [
+      "heavyweight boxy tee",
+      "mens cargo pants"
+    ],
+    "products": [
+      {
+        "title": "No Fear Heavyweight Boxy Fit T-Shirt Size L",
+        "price": 300,
+        "compare_at_price": 390,
+        "image_path": "/images/products/carousell_mens_apparel_1.jpg",
+        "category_slug": "mens-apparel",
+        "shop_name": "Urban Threads Manila",
+        "seller_name": "Mark Bautista",
+        "seller_email": "seller.mens@bagoo.ph",
+        "query": "heavyweight boxy tee"
+      },
+      {
+        "title": "RRJ Mens Cargo jeans Mens Sizes onhand",
+        "price": 950,
+        "compare_at_price": 1235,
+        "image_path": "/images/products/carousell_mens_apparel_2.jpg",
+        "category_slug": "mens-apparel",
+        "shop_name": "Urban Threads Manila",
+        "seller_name": "Mark Bautista",
+        "seller_email": "seller.mens@bagoo.ph",
+        "query": "mens cargo pants"
+      }
+    ]
+  },
+  {
+    "category_slug": "kids-and-baby",
+    "shop_name": "Little Wonders Nursery & Toys",
+    "seller_name": "Grace Tan",
+    "seller_email": "seller.kids@bagoo.ph",
+    "queries": [
+      "baby romper clothes",
+      "wooden toy blocks"
+    ],
+    "products": [
+      {
+        "title": "Toddler Ruffled Sleeves Baby Girl Romper Outfit Dress Summer Floral Clothes likenew",
+        "price": 250,
+        "compare_at_price": 325,
+        "image_path": "/images/products/carousell_kids_and_baby_1.jpg",
+        "category_slug": "kids-and-baby",
+        "shop_name": "Little Wonders Nursery & Toys",
+        "seller_name": "Grace Tan",
+        "seller_email": "seller.kids@bagoo.ph",
+        "query": "baby romper clothes"
+      },
+      {
+        "title": "Imagination Discovery Alphabet Blocks Wooden Learning Toy",
+        "price": 350,
+        "compare_at_price": 455,
+        "image_path": "/images/products/carousell_kids_and_baby_2.jpg",
+        "category_slug": "kids-and-baby",
+        "shop_name": "Little Wonders Nursery & Toys",
+        "seller_name": "Grace Tan",
+        "seller_email": "seller.kids@bagoo.ph",
+        "query": "wooden toy blocks"
+      }
+    ]
+  },
+  {
+    "category_slug": "home-and-garden",
+    "shop_name": "Living Space Home & Garden",
+    "seller_name": "Danilo Aquino",
+    "seller_email": "seller.home@bagoo.ph",
+    "queries": [
+      "ceramic plant pot",
+      "kitchen cookware set"
+    ],
+    "products": [
+      {
+        "title": "Pink ceramic ribbed plant pot",
+        "price": 200,
+        "compare_at_price": 260,
+        "image_path": "/images/products/carousell_home_and_garden_1.jpg",
+        "category_slug": "home-and-garden",
+        "shop_name": "Living Space Home & Garden",
+        "seller_name": "Danilo Aquino",
+        "seller_email": "seller.home@bagoo.ph",
+        "query": "ceramic plant pot"
+      },
+      {
+        "title": "Bundle set\n\nInclusions\n1 kitchen set\n1 cookware set\nGood quality",
+        "price": 3700,
+        "compare_at_price": 4810,
+        "image_path": "/images/products/carousell_home_and_garden_2.jpg",
+        "category_slug": "home-and-garden",
+        "shop_name": "Living Space Home & Garden",
+        "seller_name": "Danilo Aquino",
+        "seller_email": "seller.home@bagoo.ph",
+        "query": "kitchen cookware set"
+      }
+    ]
+  },
+  {
+    "category_slug": "sports-and-outdoors",
+    "shop_name": "Summit Trail & Fitness",
+    "seller_name": "Rafael Mendoza",
+    "seller_email": "seller.sports@bagoo.ph",
+    "queries": [
+      "camping lantern",
+      "hiking backpack"
+    ],
+    "products": [
+      {
+        "title": "Coleman Vintage Unleaded  Camping Lantern",
+        "price": 2800,
+        "compare_at_price": 3640,
+        "image_path": "/images/products/carousell_sports_and_outdoors_1.jpg",
+        "category_slug": "sports-and-outdoors",
+        "shop_name": "Summit Trail & Fitness",
+        "seller_name": "Rafael Mendoza",
+        "seller_email": "seller.sports@bagoo.ph",
+        "query": "camping lantern"
+      },
+      {
+        "title": "Columbia Unisex Wildwood Heights 45L+5L Hiking Backpack Black",
+        "price": 7000,
+        "compare_at_price": 9100,
+        "image_path": "/images/products/carousell_sports_and_outdoors_2.jpg",
+        "category_slug": "sports-and-outdoors",
+        "shop_name": "Summit Trail & Fitness",
+        "seller_name": "Rafael Mendoza",
+        "seller_email": "seller.sports@bagoo.ph",
+        "query": "hiking backpack"
+      }
+    ]
+  },
+  {
+    "category_slug": "health-and-beauty",
+    "shop_name": "PureGlow Skincare Studio",
+    "seller_name": "Katrina Ramos",
+    "seller_email": "seller.beauty@bagoo.ph",
+    "queries": [
+      "cerave hydrating cleanser",
+      "french perfume"
+    ],
+    "products": [
+      {
+        "title": "CeraVe Hydrating Facial Cleanser Value Size 16 fl oz",
+        "price": 590,
+        "compare_at_price": 767,
+        "image_path": "/images/products/carousell_health_and_beauty_1.jpg",
+        "category_slug": "health-and-beauty",
+        "shop_name": "PureGlow Skincare Studio",
+        "seller_name": "Katrina Ramos",
+        "seller_email": "seller.beauty@bagoo.ph",
+        "query": "cerave hydrating cleanser"
+      },
+      {
+        "title": "AETHER Extrait French Avenue Perfume",
+        "price": 1800,
+        "compare_at_price": 2340,
+        "image_path": "/images/products/carousell_health_and_beauty_2.jpg",
+        "category_slug": "health-and-beauty",
+        "shop_name": "PureGlow Skincare Studio",
+        "seller_name": "Katrina Ramos",
+        "seller_email": "seller.beauty@bagoo.ph",
+        "query": "french perfume"
+      }
+    ]
+  },
+  {
+    "category_slug": "books-and-media",
+    "shop_name": "The Media Collector PH",
+    "seller_name": "Julian Castro",
+    "seller_email": "seller.books@bagoo.ph",
+    "queries": [
+      "hardcover novel book",
+      "ps5 game disc"
+    ],
+    "products": [
+      {
+        "title": "A Court of Thorns &amp; Roses ( Hardcover ) Novel Book by Sarah J. Maas",
+        "price": 1300,
+        "compare_at_price": 1690,
+        "image_path": "/images/products/carousell_books_and_media_1.jpg",
+        "category_slug": "books-and-media",
+        "shop_name": "The Media Collector PH",
+        "seller_name": "Julian Castro",
+        "seller_email": "seller.books@bagoo.ph",
+        "query": "hardcover novel book"
+      },
+      {
+        "title": "Marvel Wolverine PS5 Game Disc",
+        "price": 2500,
+        "compare_at_price": 3250,
+        "image_path": "/images/products/carousell_books_and_media_2.jpg",
+        "category_slug": "books-and-media",
+        "shop_name": "The Media Collector PH",
+        "seller_name": "Julian Castro",
+        "seller_email": "seller.books@bagoo.ph",
+        "query": "ps5 game disc"
+      }
+    ]
+  },
+  {
+    "category_slug": "food-and-gourmet",
+    "shop_name": "Artisan Pantry Gourmet",
+    "seller_name": "Patricia Lim",
+    "seller_email": "seller.food@bagoo.ph",
+    "queries": [
+      "single origin arabica coffee beans",
+      "japanese matcha green tea powder"
+    ],
+    "products": [
+      {
+        "title": "Single Origin Maramag Bukidnon Coffee Beans 250g Specialty Coffee",
+        "price": 269,
+        "compare_at_price": 350,
+        "image_path": "/images/products/carousell_food_and_gourmet_1.jpg",
+        "category_slug": "food-and-gourmet",
+        "shop_name": "Artisan Pantry Gourmet",
+        "seller_name": "Patricia Lim",
+        "seller_email": "seller.food@bagoo.ph",
+        "query": "single origin arabica coffee beans"
+      },
+      {
+        "title": "Superfood Grocer Premium Matcha Ceremonial Grade Green Tea Powder",
+        "price": 300,
+        "compare_at_price": 390,
+        "image_path": "/images/products/carousell_food_and_gourmet_2.jpg",
+        "category_slug": "food-and-gourmet",
+        "shop_name": "Artisan Pantry Gourmet",
+        "seller_name": "Patricia Lim",
+        "seller_email": "seller.food@bagoo.ph",
+        "query": "japanese matcha green tea powder"
+      }
+    ]
+  },
+  {
+    "category_slug": "automotive-motorcycle-group-9",
+    "shop_name": "MotoGear Performance PH",
+    "seller_name": "Angelo Cruz",
+    "seller_email": "seller.moto@bagoo.ph",
+    "queries": [
+      "motorcycle riding gloves",
+      "car dashcam hd"
+    ],
+    "products": [
+      {
+        "title": "Unused SPHINX SP-38 Motorcycle Riding Gloves for Men and Women",
+        "price": 500,
+        "compare_at_price": 650,
+        "image_path": "/images/products/carousell_automotive_motorcycle_group_9_1.jpg",
+        "category_slug": "automotive-motorcycle-group-9",
+        "shop_name": "MotoGear Performance PH",
+        "seller_name": "Angelo Cruz",
+        "seller_email": "seller.moto@bagoo.ph",
+        "query": "motorcycle riding gloves"
+      },
+      {
+        "title": "7-STAR FULL HD 1080P Car DVR Dashcam",
+        "price": 2500,
+        "compare_at_price": 3250,
+        "image_path": "/images/products/carousell_automotive_motorcycle_group_9_2.jpg",
+        "category_slug": "automotive-motorcycle-group-9",
+        "shop_name": "MotoGear Performance PH",
+        "seller_name": "Angelo Cruz",
+        "seller_email": "seller.moto@bagoo.ph",
+        "query": "car dashcam hd"
+      }
+    ]
+  },
+  {
+    "category_slug": "furniture-and-office-equipment",
+    "shop_name": "ErgoWork Workspace Furniture",
+    "seller_name": "Paolo Dizon",
+    "seller_email": "seller.furniture@bagoo.ph",
+    "queries": [
+      "ergonomic mesh chair",
+      "standing desk riser"
+    ],
+    "products": [
+      {
+        "title": "White Ergonomic Mesh Office Chair with Headrest",
+        "price": 1300,
+        "compare_at_price": 1690,
+        "image_path": "/images/products/carousell_furniture_and_office_equipment_1.jpg",
+        "category_slug": "furniture-and-office-equipment",
+        "shop_name": "ErgoWork Workspace Furniture",
+        "seller_name": "Paolo Dizon",
+        "seller_email": "seller.furniture@bagoo.ph",
+        "query": "ergonomic mesh chair"
+      },
+      {
+        "title": "White Metal Laptop Stand Desk Riser",
+        "price": 500,
+        "compare_at_price": 650,
+        "image_path": "/images/products/carousell_furniture_and_office_equipment_2.jpg",
+        "category_slug": "furniture-and-office-equipment",
+        "shop_name": "ErgoWork Workspace Furniture",
+        "seller_name": "Paolo Dizon",
+        "seller_email": "seller.furniture@bagoo.ph",
+        "query": "standing desk riser"
+      }
+    ]
+  },
+  {
+    "category_slug": "jewelry-and-watches",
+    "shop_name": "Heritage Horology & Gems",
+    "seller_name": "Vicente Soriano",
+    "seller_email": "seller.jewelry@bagoo.ph",
+    "queries": [
+      "seiko automatic watch",
+      "sterling silver pendant necklace"
+    ],
+    "products": [
+      {
+        "title": "Seiko Prospex Save The Ocean SRPF77K1 Turtle Automatic Watch",
+        "price": 20000,
+        "compare_at_price": 26000,
+        "image_path": "/images/products/carousell_jewelry_and_watches_1.jpg",
+        "category_slug": "jewelry-and-watches",
+        "shop_name": "Heritage Horology & Gems",
+        "seller_name": "Vicente Soriano",
+        "seller_email": "seller.jewelry@bagoo.ph",
+        "query": "seiko automatic watch"
+      },
+      {
+        "title": "NJN85 NEPHRITE Green Four Leaf Clover Jade Pendant Sterling Silver Necklace",
+        "price": 8500,
+        "compare_at_price": 11050,
+        "image_path": "/images/products/carousell_jewelry_and_watches_2.jpg",
+        "category_slug": "jewelry-and-watches",
+        "shop_name": "Heritage Horology & Gems",
+        "seller_name": "Vicente Soriano",
+        "seller_email": "seller.jewelry@bagoo.ph",
+        "query": "sterling silver pendant necklace"
+      }
+    ]
+  },
+  {
+    "category_slug": "office-and-school-supplies-group-12",
+    "shop_name": "Papercraft & Scholar Supplies",
+    "seller_name": "Elena Villanueva",
+    "seller_email": "seller.school@bagoo.ph",
+    "queries": [
+      "fountain pen fine nib",
+      "bullet journal notebook"
+    ],
+    "products": [
+      {
+        "title": "Pilot Kakuno Fountain Pen Fine Nib with Diamine Jug of Sangria Ink Sample",
+        "price": 400,
+        "compare_at_price": 520,
+        "image_path": "/images/products/carousell_office_and_school_supplies_group_12_1.jpg",
+        "category_slug": "office-and-school-supplies-group-12",
+        "shop_name": "Papercraft & Scholar Supplies",
+        "seller_name": "Elena Villanueva",
+        "seller_email": "seller.school@bagoo.ph",
+        "query": "fountain pen fine nib"
+      },
+      {
+        "title": "Decathlon Bullet Journal (LIMITED EDITION)",
+        "price": 250,
+        "compare_at_price": 325,
+        "image_path": "/images/products/carousell_office_and_school_supplies_group_12_2.jpg",
+        "category_slug": "office-and-school-supplies-group-12",
+        "shop_name": "Papercraft & Scholar Supplies",
+        "seller_name": "Elena Villanueva",
+        "seller_email": "seller.school@bagoo.ph",
+        "query": "bullet journal notebook"
+      }
+    ]
+  },
+  {
+    "category_slug": "backpacks-and-bags",
+    "shop_name": "Apex Tactical & Carry Goods",
+    "seller_name": "Eduardo Valenzuela",
+    "seller_email": "seller.bags@bagoo.ph",
+    "products": [
+      {
+        "title": "Master-Piece Archive Tactical Messenger Sling Bag",
+        "price": 1750,
+        "compare_at_price": 2450,
+        "image_path": "/images/products/carousell_backpacks_and_bags_1.jpg",
+        "category_slug": "backpacks-and-bags",
+        "query": "tactical sling bag"
+      },
+      {
+        "title": "Visvim Ballistic Cordura 22L Commuter Backpack",
+        "price": 3450,
+        "compare_at_price": 4950,
+        "image_path": "/images/products/carousell_backpacks_and_bags_2.jpg",
+        "category_slug": "backpacks-and-bags",
+        "query": "cordura backpack"
+      }
+    ]
+  }
+]

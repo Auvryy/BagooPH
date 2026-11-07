@@ -205,22 +205,22 @@ export default function BuyerHome({
         { label: 'Cash on Delivery', badge: 'Doorstep Escrow', icon: Check, color: 'bg-teal-50 text-teal-600', action: () => applyFilterChange({ category: undefined }) },
     ];
 
-    // Row 3: Official 14 Master Categories with Dedicated Clean Studio Photography
+    // Row 3: Official 14 Master Categories with Custom Transparent Icons
     const categoryCatalog = [
-        { name: "Men's Apparel", slug: 'mens-apparel', image: '/images/products/boxy_tee_front.jpg', count: '1.2k+ items' },
-        { name: 'Bags & EDC', slug: 'backpacks-and-bags', image: '/images/products/stealth_sling_front.jpg', count: '890+ items' },
-        { name: 'Electronics & Gadgets', slug: 'electronics-and-gadgets', image: '/images/categories/electronics_audio.jpg', count: '650+ items' },
-        { name: 'Jewelry & Watches', slug: 'jewelry-and-watches', image: '/images/categories/jewelry_watches.jpg', count: '420+ items' },
-        { name: 'Sports & Outdoors', slug: 'sports-and-outdoors', image: '/images/categories/sports_outdoors.jpg', count: '540+ items' },
-        { name: 'Eyewear & Accessories', slug: 'bagoo-demo-accessories-5', image: '/images/products/aviator_glasses_front.jpg', count: '310+ items' },
-        { name: 'Home, Studio & Living', slug: 'home-and-garden', image: '/images/carousel/botanical-candle.jpg', count: '480+ items' },
-        { name: "Women's Apparel", slug: 'womens-apparel', image: '/images/categories/womens_apparel.jpg', count: '1.1k+ items' },
-        { name: 'Health & Beauty', slug: 'health-and-beauty', image: '/images/categories/health_beauty.jpg', count: '590+ items' },
-        { name: 'Automotive & Motorcycle', slug: 'automotive-motorcycle-group-9', image: '/images/categories/automotive.jpg', count: '340+ items' },
-        { name: 'Food & Gourmet', slug: 'food-and-gourmet', image: '/images/categories/food_coffee.jpg', count: '460+ items' },
-        { name: 'Office & School', slug: 'office-and-school-supplies-group-12', image: '/images/categories/office_school.jpg', count: '290+ items' },
-        { name: 'Kids, Baby & Toys', slug: 'kids-and-baby', image: '/images/categories/kids_baby.jpg', count: '380+ items' },
-        { name: 'Pet Supplies', slug: 'pet-supplies', image: '/images/categories/pet_supplies.jpg', count: '270+ items' },
+        { name: "Men's Apparel", slug: 'mens-apparel', image: '/images/categories/icons/cat-mens-apparel.png', count: '1.2k+ items' },
+        { name: 'Bags & EDC', slug: 'backpacks-and-bags', image: '/images/categories/icons/cat-backpacks-and-bags.png', count: '890+ items' },
+        { name: 'Electronics & Gadgets', slug: 'electronics-and-gadgets', image: '/images/categories/icons/cat-electronics-and-gadgets.png', count: '650+ items' },
+        { name: 'Jewelry & Watches', slug: 'jewelry-and-watches', image: '/images/categories/icons/cat-jewelry-and-watches.png', count: '420+ items' },
+        { name: 'Sports & Outdoors', slug: 'sports-and-outdoors', image: '/images/categories/icons/cat-sports-and-outdoors.png', count: '540+ items' },
+        { name: 'Eyewear & Accessories', slug: 'bagoo-demo-accessories-5', image: '/images/categories/icons/cat-eyewear-and-accessories.png', count: '310+ items' },
+        { name: 'Home & Living', slug: 'home-and-garden', image: '/images/categories/icons/cat-home-and-garden.png', count: '480+ items' },
+        { name: "Women's Apparel", slug: 'womens-apparel', image: '/images/categories/icons/cat-womens-apparel.png', count: '1.1k+ items' },
+        { name: 'Health & Beauty', slug: 'health-and-beauty', image: '/images/categories/icons/cat-health-and-beauty.png', count: '590+ items' },
+        { name: 'Automotive & Motorcycle', slug: 'automotive-motorcycle-group-9', image: '/images/categories/icons/cat-automotive-and-motorcycle.png', count: '340+ items' },
+        { name: 'Food & Gourmet', slug: 'food-and-gourmet', image: '/images/categories/icons/cat-food-and-gourmet.png', count: '460+ items' },
+        { name: 'Office & School', slug: 'office-and-school-supplies-group-12', image: '/images/categories/icons/cat-office-and-school.png', count: '290+ items' },
+        { name: 'Kids & Baby', slug: 'kids-and-baby', image: '/images/categories/icons/cat-kids-and-baby.png', count: '380+ items' },
+        { name: 'Pet Supplies', slug: 'pet-supplies', image: '/images/categories/icons/cat-pet-supplies.png', count: '270+ items' },
     ];
 
     return (
@@ -310,7 +310,7 @@ export default function BuyerHome({
                         </span>
                     </div>
 
-                    <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-7 gap-1.5 sm:gap-2">
+                    <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-7 gap-1 sm:gap-2">
                         {categoryCatalog.map((cat, idx) => {
                             const isSelected = filters.category === cat.slug;
                             return (
@@ -318,27 +318,32 @@ export default function BuyerHome({
                                     key={idx}
                                     type="button"
                                     onClick={() => applyFilterChange({ category: isSelected ? undefined : cat.slug, sub: undefined, search: undefined })}
-                                    className={`group p-1.5 sm:p-2 rounded-xl border transition-all duration-200 flex flex-col items-center justify-between gap-1.5 cursor-pointer text-center ${
+                                    className={`group py-1 px-1 flex flex-col items-center justify-start gap-1 cursor-pointer text-center transition-all duration-200 hover:-translate-y-0.5 focus:outline-hidden ${
                                         isSelected
-                                            ? 'bg-rose-50 border-[#E00D42] shadow-2xs ring-1 ring-[#E00D42]'
-                                            : 'bg-white hover:bg-slate-50 border-slate-200/80 hover:border-red-200 hover:shadow-xs'
+                                            ? 'text-[#E00D42]'
+                                            : 'text-slate-800'
                                     }`}
                                 >
-                                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-slate-50 border border-slate-100 shadow-2xs shrink-0">
+                                    {/* Icon Container: Pure image, no box */}
+                                    <div className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center shrink-0">
                                         <img
                                             src={cat.image}
                                             alt={cat.name}
                                             loading="lazy"
-                                            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-300"
+                                            className={`w-full h-full object-contain transition-transform duration-300 ${
+                                                isSelected ? 'scale-110 drop-shadow-md' : 'group-hover:scale-110 drop-shadow-xs'
+                                            }`}
                                         />
                                     </div>
-                                    <div className="min-w-0 w-full">
-                                        <span className={`block text-[10px] sm:text-[11px] font-bold truncate ${isSelected ? 'text-[#E00D42]' : 'text-slate-800 group-hover:text-[#E00D42]'}`}>
+                                    <div className="min-w-0 w-full flex flex-col items-center">
+                                        <span className={`block text-[10px] sm:text-[11px] font-bold leading-tight line-clamp-2 transition-colors ${
+                                            isSelected ? 'text-[#E00D42] font-black' : 'text-slate-800 group-hover:text-[#E00D42]'
+                                        }`}>
                                             {cat.name}
                                         </span>
-                                        <span className="block text-[8px] sm:text-[9px] text-slate-400 font-medium">
-                                            {cat.count}
-                                        </span>
+                                        {isSelected && (
+                                            <span className="inline-block w-4 h-0.5 bg-[#E00D42] rounded-full mt-0.5" />
+                                        )}
                                     </div>
                                 </button>
                             );
@@ -367,11 +372,11 @@ export default function BuyerHome({
                                 )}
                             </div>
 
-                            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+                            <div className="flex flex-wrap items-center gap-1.5 py-1">
                                 <button
                                     type="button"
                                     onClick={() => applyFilterChange({ sub: undefined })}
-                                    className={`px-3 py-1 rounded-lg text-[11px] font-bold font-sans transition-all duration-200 shrink-0 cursor-pointer ${
+                                    className={`px-3 py-1 rounded-lg text-[11px] font-bold font-sans transition-all duration-200 cursor-pointer ${
                                         !filters.sub
                                             ? 'bg-[#E00D42] text-white shadow-xs'
                                             : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80'
@@ -386,7 +391,7 @@ export default function BuyerHome({
                                             key={sub.id}
                                             type="button"
                                             onClick={() => applyFilterChange({ sub: isSubSelected ? undefined : sub.slug })}
-                                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-sans transition-all duration-200 shrink-0 cursor-pointer flex items-center gap-1 ${
+                                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-sans transition-all duration-200 cursor-pointer flex items-center gap-1 ${
                                                 isSubSelected
                                                     ? 'bg-[#E00D42] text-white shadow-xs ring-1 ring-red-300'
                                                     : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80'
@@ -614,17 +619,11 @@ export default function BuyerHome({
                                         </span>
                                     </div>
 
-                                    {/* Inside Bottom Info Scrim (Monthly Sales + Title + Department) */}
+                                    {/* Inside Bottom Info Scrim (Title + Department) */}
                                     <div className="absolute inset-x-0 bottom-0 p-2 sm:p-2.5 z-10 flex flex-col justify-end text-white font-sans">
-                                        <div className="flex items-center justify-between gap-1 mb-1">
-                                            <span className="text-[9px] font-mono font-bold uppercase text-amber-300 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded border border-amber-300/30">
-                                                {collection.sales_badge}
-                                            </span>
-                                            <span className="text-[8px] font-bold text-white/75 uppercase tracking-wider truncate">
-                                                {collection.category_name}
-                                            </span>
-                                        </div>
-
+                                        <span className="text-[9px] font-bold text-rose-200 uppercase tracking-wider truncate mb-0.5">
+                                            {collection.category_name}
+                                        </span>
                                         <h4 className="font-bold text-white text-xs sm:text-[13px] leading-tight line-clamp-1 group-hover/top:text-amber-200 transition-colors">
                                             {collection.title}
                                         </h4>
@@ -746,11 +745,11 @@ export default function BuyerHome({
                     {/* Filter & Sort Controls Toolbar */}
                     <div className="bg-white rounded-xl p-1.5 sm:p-2 shadow-2xs border border-slate-200/80 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 font-sans text-xs">
                         
-                        {/* Left: Feed Sort Tabs */}
-                        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+                        {/* Left: Feed Sort Tabs (Flex Wrap - No Horizontal Scrolling) */}
+                        <div className="flex flex-wrap items-center gap-1.5 py-0.5">
                             <button
                                 onClick={() => handleTabChange('all')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 cursor-pointer ${
                                     activeTab === 'all' 
                                         ? 'bg-[#E00D42] text-white shadow-xs' 
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70'
@@ -760,7 +759,7 @@ export default function BuyerHome({
                             </button>
                             <button
                                 onClick={() => handleTabChange('top_sales')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 cursor-pointer ${
                                     activeTab === 'top_sales' 
                                         ? 'bg-[#E00D42] text-white shadow-xs' 
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70'
@@ -770,7 +769,7 @@ export default function BuyerHome({
                             </button>
                             <button
                                 onClick={() => handleTabChange('top_rated')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 cursor-pointer ${
                                     activeTab === 'top_rated' 
                                         ? 'bg-[#E00D42] text-white shadow-xs' 
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70'
@@ -780,7 +779,7 @@ export default function BuyerHome({
                             </button>
                             <button
                                 onClick={() => handleTabChange('new_arrivals')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 shrink-0 cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all duration-200 cursor-pointer ${
                                     activeTab === 'new_arrivals' 
                                         ? 'bg-[#E00D42] text-white shadow-xs' 
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70'

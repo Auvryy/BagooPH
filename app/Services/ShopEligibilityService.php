@@ -150,6 +150,12 @@ class ShopEligibilityService
     {
         $id = (int) ($categoryId ?? $shop->root_category_id);
         $rootId = (int) $shop->root_category_id;
+        if ($id !== $rootId) {
+            $category = Category::find($id);
+            if ($category && (int) $category->parent_id === $rootId) {
+                $id = $rootId;
+            }
+        }
         if ($id !== $rootId || ! in_array($rootId, $this->categoryIds($shop), true)) {
             throw ValidationException::withMessages(['category_id' => 'Products use the exact department approved for this shop.']);
         }

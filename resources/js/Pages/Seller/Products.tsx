@@ -142,6 +142,8 @@ interface Props {
 }
 
 export default function SellerProducts({ products, categories, shop, filters = {}, bulkResults = [], storeTags = [] }: Props) {
+    const activeShopCategory = categories.find(c => Number(c.id) === Number(shop.root_category_id)) || shop.root_category;
+    const departmentSubCategories = activeShopCategory?.sub_categories || [];
     useResolvedPage(products.current_page);
     const createDraftKey = `bagoo:seller-product-draft:v1:${shop.id}:create`;
     const editDraftKey = (productId: number) => `bagoo:seller-product-draft:v1:${shop.id}:product:${productId}`;
@@ -289,6 +291,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const createForm = useForm<{
         name: string;
         category_id: string | number;
+        sub_category_id: string | number;
         price: string;
         compare_at_price: string;
         stock: string;
@@ -305,6 +308,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         ...emptyListingDetails,
         name: '',
         category_id: String(shop.root_category_id ?? ''),
+        sub_category_id: '',
         price: '',
         compare_at_price: '',
         stock: '',
@@ -322,6 +326,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
     const editForm = useForm<{
         name: string;
         category_id: string | number;
+        sub_category_id: string | number;
         price: string;
         compare_at_price: string;
         stock: string;
@@ -338,6 +343,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
         ...emptyListingDetails,
         name: '',
         category_id: String(shop.root_category_id ?? ''),
+        sub_category_id: '',
         price: '',
         compare_at_price: '',
         stock: '0',
@@ -819,6 +825,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
             tag_draft: '',
             name: product.name,
             category_id: String(product.category_id || ''),
+            sub_category_id: String(product.sub_category_id || ''),
             price: product.status === 'draft' && Number(product.price) === 0 ? '' : String(product.price),
             compare_at_price: String(product.compare_at_price || ''),
             stock: String(product.stock),
@@ -2371,7 +2378,12 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                                 </div>
                                             </td>
                                             <td className="py-4 px-4 text-slate-600 font-medium">
-                                                {product.category?.name || 'Curated Department'}
+                                                <div className="text-xs font-semibold text-slate-800">{product.category?.name || 'Curated Department'}</div>
+                                                {product.sub_category && (
+                                                    <span className="inline-block mt-0.5 text-[10px] text-[#E00D42] font-bold bg-rose-50 border border-rose-100 rounded px-1.5 py-0.2">
+                                                        {product.sub_category.name}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="py-4 px-4 font-black text-slate-900 font-sans text-sm">
                                                 {formatPrice(product.price)}
@@ -2717,18 +2729,33 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         {listingFeedback(true, 'name')}
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
                                         <div>
                                             <label className="block font-bold text-slate-700 uppercase mb-2">
                                                 Approved Department
                                             </label>
                                             <input type="hidden" name="category_id" value={shop.root_category_id ?? ''} />
-                                            <div className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800" aria-label="Approved department, fixed for this shop">{shop.root_category?.name ?? categories[0]?.name ?? 'Department unavailable'}</div>
+                                            <div className="rounded-xl border border-slate-300 bg-slate-100 px-3.5 py-3 text-xs sm:text-sm font-semibold text-slate-800 truncate" aria-label="Approved department, fixed for this shop">{shop.root_category?.name ?? categories[0]?.name ?? 'Department unavailable'}</div>
+                                        </div>
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase mb-2">
+                                                Subcategory / Niche
+                                            </label>
+                                            <select
+                                                value={createForm.data.sub_category_id}
+                                                onChange={(e) => createForm.setData('sub_category_id', e.target.value)}
+                                                className="w-full px-3 sm:px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] text-xs font-sans transition"
+                                            >
+                                                <option value="">Select Subcategory (Recommended)</option>
+                                                {departmentSubCategories.map((sub) => (
+                                                    <option key={sub.id} value={sub.id}>{sub.name}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                         <div>
                                             <div className="flex items-center justify-between mb-2">
                                                 <label className="block font-bold text-slate-700 uppercase">SKU / Model Code</label>
-                                                <span className="text-[10px] text-slate-400 font-sans">Optional • Auto-generated</span>
+                                                <span className="text-[10px] text-slate-400 font-sans">Optional</span>
                                             </div>
                                             <input
                                                 type="text"
@@ -3047,16 +3074,29 @@ export default function SellerProducts({ products, categories, shop, filters = {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
                                         <div>
                                             <label className="block font-bold text-slate-700 uppercase mb-2">Approved Department</label>
                                             <input type="hidden" name="category_id" value={shop.root_category_id ?? ''} />
-                                            <div className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800" aria-label="Approved department, fixed for this shop">{shop.root_category?.name ?? categories[0]?.name ?? 'Department unavailable'}</div>
+                                            <div className="rounded-xl border border-slate-300 bg-slate-100 px-3.5 py-3 text-xs sm:text-sm font-semibold text-slate-800 truncate" aria-label="Approved department, fixed for this shop">{shop.root_category?.name ?? categories[0]?.name ?? 'Department unavailable'}</div>
+                                        </div>
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase mb-2">Subcategory / Niche</label>
+                                            <select
+                                                value={editForm.data.sub_category_id}
+                                                onChange={(e) => editForm.setData('sub_category_id', e.target.value)}
+                                                className="w-full px-3 sm:px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-1 focus:ring-[#E00D42] text-xs font-sans transition"
+                                            >
+                                                <option value="">Select Subcategory (Recommended)</option>
+                                                {departmentSubCategories.map((sub) => (
+                                                    <option key={sub.id} value={sub.id}>{sub.name}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                         <div>
                                             <div className="flex items-center justify-between mb-2">
                                                 <label className="block font-bold text-slate-700 uppercase">SKU / Model Code</label>
-                                                <span className="text-[10px] text-slate-400 font-sans">Optional • Auto-generated</span>
+                                                <span className="text-[10px] text-slate-400 font-sans">Optional</span>
                                             </div>
                                             <input
                                                 type="text"

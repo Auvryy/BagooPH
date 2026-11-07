@@ -15,6 +15,7 @@ interface ProductCardProps {
     className?: string;
     heartControl?: React.ReactNode;
     showDeliveryBadge?: boolean;
+    rankBadge?: React.ReactNode;
 }
 
 export default function ProductCard({
@@ -27,6 +28,7 @@ export default function ProductCard({
     className = '',
     heartControl,
     showDeliveryBadge = true,
+    rankBadge,
 }: ProductCardProps) {
     const priceNum = defaultVariantDisplayPrice(product);
     const maxPrice = Number(product.price_range?.max ?? priceNum);
@@ -85,15 +87,16 @@ export default function ProductCard({
                         </div>
                     )}
 
-                    {/* Top Status Overlays (Red & Yellow-Orange only - No Black) */}
-                    <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-10 pointer-events-none">
+                    {/* Top Status Overlays (Rank + Discount Badges aligned side-by-side) */}
+                    <div className="absolute top-1.5 left-1.5 flex items-center gap-1 z-10 pointer-events-none flex-wrap max-w-[calc(100%-2.5rem)]">
+                        {rankBadge}
                         {discountPct && (
                             <span className="bg-[#E00D42] text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow-xs tracking-wider flex items-center gap-0.5">
                                 <Flame className="w-2.5 h-2.5 fill-white" />
                                 <span>-{discountPct}%</span>
                             </span>
                         )}
-                        {salesCountVal > 1000 && !discountPct && (
+                        {salesCountVal > 1000 && !discountPct && !rankBadge && (
                             <span className="bg-[#F97316] text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shadow-xs tracking-wider flex items-center gap-0.5">
                                 <Sparkles className="w-2 h-2 text-white" />
                                 <span>HOT</span>
