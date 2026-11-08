@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Head, router, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { HubNextStep, HubPageHeader, HubRoute } from '@/Components/Logistics/Workspace';
+import HubConveyorRail from '@/Components/Logistics/HubConveyorRail';
 import HubCounterPreview, { CounterPreviewParcel } from '@/Components/HubCounterPreview';
 import { HubParcelAction, HubParcelState, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import WaybillCamera from '@/Components/WaybillCamera';
@@ -378,6 +379,15 @@ export default function ScanStation({
                     )}
 
                     {returnResult && <section className="mb-4 rounded-lg border border-slate-300 bg-white p-5"><h2 className="font-bold text-slate-900">Buyer return {returnResult.reference}</h2><p className="mt-2 break-all text-sm text-slate-600">{returnResult.barcode}</p><p className="mt-2 text-sm text-slate-600">This scan identifies the separate return. Record its real intake or manifest handover from the case.</p><Link href={returnResult.href} className="mt-4 inline-flex rounded-lg bg-[#E00D42] px-4 py-2.5 text-sm font-semibold text-white">Open buyer return</Link></section>}
+
+                    {/* Interactive Animated Conveyor Rail (Hub 6 Stations) */}
+                    <HubConveyorRail
+                        currentStatus={lastResult?.delivery?.status || ''}
+                        deliveryType={lastResult?.delivery?.delivery_type || 'standard'}
+                        basePath={basePath}
+                        isScanning={isSubmitting}
+                    />
+
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                         {/* LEFT COLUMN: Physical & Optical Barcode Scanner (col-span-6) */}
                         <div className="lg:col-span-6 space-y-4">

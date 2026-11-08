@@ -59,9 +59,10 @@ class LogisticsSafetyAndFloatShieldTest extends TestCase
                 ->andReturn(500000);
         });
 
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
         $payload = array_merge($this->codCollectionInput($delivery), [
             'status' => 'delivered',
-            'proof_image_file' => UploadedFile::fake()->image('pod.jpg'),
+            'proof_image_file' => UploadedFile::fake()->createWithContent('pod.png', $png),
         ]);
 
         $response = $this->actingAs($rider)
@@ -85,9 +86,10 @@ class LogisticsSafetyAndFloatShieldTest extends TestCase
                 ->andReturn(2000000);
         });
 
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
         $payload = array_merge($this->codCollectionInput($delivery), [
             'status' => 'delivered',
-            'proof_image_file' => UploadedFile::fake()->image('pod.jpg'),
+            'proof_image_file' => UploadedFile::fake()->createWithContent('pod.png', $png),
         ]);
 
         $response = $this->actingAs($rider)
