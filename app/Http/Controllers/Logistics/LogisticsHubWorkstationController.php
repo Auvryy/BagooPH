@@ -19,6 +19,7 @@ use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\DeliveryReturnService;
+use App\Services\Logistics\FleetDispatchEngine;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\HubParcelWorkstationService;
 use App\Services\Logistics\HubScanTransferService;
@@ -831,6 +832,10 @@ class LogisticsHubWorkstationController extends Controller
                 ->count() : 0,
         ];
 
+        $corridorStaging = $activeHub
+            ? app(FleetDispatchEngine::class)->corridorStagingSummary($activeHub)
+            : collect();
+
         return Inertia::render('Hub/ScanStation', [
             'activeHub' => $activeHub,
             'hubs' => $hubs,
@@ -840,6 +845,25 @@ class LogisticsHubWorkstationController extends Controller
             'counterTotal' => $counterTotal,
             'basePath' => $basePath,
             'stats' => $stats,
+            'corridorStaging' => $corridorStaging,
+        ]);
+    }
+
+    /**
+     * Real-time freight accumulation and automated vehicle sizing for outbound corridors.
+     */
+    public function corridorStaging(Request $request, FleetDispatchEngine $dispatchEngine): JsonResponse
+    {
+        abort_unless($request->user()?->isLogistics(), 403, 'Only logistics operators may query corridor staging.');
+        [$hub] = $this->getActiveHub($request, $request->user());
+        abort_unless($hub, 404, 'No active facility found.');
+
+        $corridors = $dispatchEngine->corridorStagingSummary($hub);
+
+        return response()->json([
+            'success' => true,
+            'hub' => $hub->only(['id', 'name', 'code', 'tier']),
+            'corridors' => $corridors,
         ]);
     }
 
@@ -1126,6 +1150,17 @@ class LogisticsHubWorkstationController extends Controller
         $canConfirm = $requiresConfirmation && ! $requiresManifest && $guidance['can_act'] && $guidance['action'] === 'scan';
         $routingEngine = app(LogisticsRoutingEngine::class);
         $nextHop = $routingEngine->computeNextHop($delivery, $hub);
+        $forwardTarget = $routingEngine->forwardSortTarget($delivery, $hub);
+
+        $dispatchEngine = app(FleetDispatchEngine::class);
+        $dws = $dispatchEngine->getDwsProfile($delivery, $hub);
+        $motherBagSlotting = null;
+        if ($forwardTarget && $forwardTarget['id'] !== $hub->id) {
+            $destHub = LogisticsHub::find($forwardTarget['id']);
+            if ($destHub) {
+                $motherBagSlotting = $dispatchEngine->previewMotherBagSlotting($delivery, $hub, $destHub);
+            }
+        }
 
         return [
             'success' => true,
@@ -1153,7 +1188,9 @@ class LogisticsHubWorkstationController extends Controller
                 'scanned_location' => $scannedLocation,
                 'guidance' => $guidance,
                 'registry_url' => $registryUrl,
-                'routing_target' => $routingEngine->forwardSortTarget($delivery, $hub),
+                'routing_target' => $forwardTarget,
+                'dws' => $dws,
+                'mother_bag_slotting' => $motherBagSlotting,
                 'current_hub' => $custodyHub ? [
                     'id' => $custodyHub->id,
                     'name' => $custodyHub->name,
@@ -1669,6 +1706,28 @@ class LogisticsHubWorkstationController extends Controller
 
         $actor = $request->user();
 
+        if ($request->boolean('corridor_dispatch')) {
+            try {
+                $dispatchResult = app(FleetDispatchEngine::class)->autoDispatchCorridor($hub, $destinationHub, $actor);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Automated Linehaul Dispatch Complete! Manifest #{$dispatchResult['manifest']->reference} ({$dispatchResult['parcels_count']} parcels, {$dispatchResult['mother_bags_count']} Mother Bags). Gate Pass issued.",
+                    'data' => [
+                        'manifest_reference' => $dispatchResult['manifest']->reference,
+                        'bag_reference' => 'Corridor Consolidation',
+                        'seal_number' => implode(', ', $dispatchResult['gate_pass']['seals']),
+                        'parcel_count' => $dispatchResult['parcels_count'],
+                        'destination_hub' => $destinationHub->name,
+                        'vehicle_plate' => $dispatchResult['gate_pass']['vehicle_plate'],
+                        'gate_pass' => $dispatchResult['gate_pass'],
+                    ],
+                ]);
+            } catch (DomainException $e) {
+                return $this->operationError($request, $e->getMessage(), 422);
+            }
+        }
+
         try {
             $result = DB::transaction(function () use ($hub, $destinationHub, $actor, $validated) {
                 $eligibility = app(LogisticsEligibilityService::class);
@@ -1881,6 +1940,29 @@ class LogisticsHubWorkstationController extends Controller
                     'version' => $bag->version + 1,
                 ]);
 
+                $gatePassCode = 'GP-'.date('Ymd').'-'.$manifest->id.'-'.strtoupper(Str::random(4));
+                $gatePass = [
+                    'gate_pass_code' => $gatePassCode,
+                    'issued_at' => now()->toIso8601String(),
+                    'departure_gate' => 'Gate Bay '.((($hub->id + $destinationHub->id) % 4) + 1),
+                    'manifest_id' => $manifest->id,
+                    'manifest_reference' => $manifest->reference,
+                    'source_hub' => $hub->only(['id', 'name', 'code', 'tier']),
+                    'destination_hub' => $destinationHub->only(['id', 'name', 'code', 'tier']),
+                    'driver_name' => $fleetVehicle->driver?->name ?? 'Assigned Driver',
+                    'driver_phone' => $fleetVehicle->driver?->phone ?? 'N/A',
+                    'vehicle_plate' => $fleetVehicle->plate_number,
+                    'vehicle_type' => $fleetVehicle->vehicle_type,
+                    'total_mother_bags' => 1,
+                    'total_loose_cargo' => 0,
+                    'total_parcels_enclosed' => $eligibleDeliveries->count(),
+                    'total_weight_kg' => round($eligibleDeliveries->count() * 0.8, 1),
+                    'vehicle_capacity_kg' => (float) ($fleetVehicle->capacity_kg ?? 1200.0),
+                    'utilization_pct' => min(100.0, round((($eligibleDeliveries->count() * 0.8) / ($fleetVehicle->capacity_kg ?? 1200.0)) * 100, 1)),
+                    'seals' => [$sealNumber],
+                    'verification_hash' => hash('sha256', $manifest->reference.$gatePassCode.now()->toDateString()),
+                ];
+
                 return [
                     'manifest_reference' => $manifest->reference,
                     'bag_reference' => $bag->reference,
@@ -1888,6 +1970,7 @@ class LogisticsHubWorkstationController extends Controller
                     'parcel_count' => $eligibleDeliveries->count(),
                     'destination_hub' => $destinationHub->name,
                     'vehicle_plate' => $fleetVehicle->plate_number,
+                    'gate_pass' => $gatePass,
                 ];
             });
         } catch (DomainException $e) {

@@ -417,6 +417,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
         Route::post('/scan/fast-dispatch', [LogisticsHubWorkstationController::class, 'fastDispatch']);
+        Route::get('/corridor-staging', [LogisticsHubWorkstationController::class, 'corridorStaging']);
         Route::get('/command-sheet', [LogisticsHubWorkstationController::class, 'commandSheet'])->name('logistics.command-sheet');
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay']);
         Route::post('/deliveries/{delivery}/assign-rider', [LogisticsHubWorkstationController::class, 'assignRider']);
@@ -909,6 +910,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
         Route::post('/scan/fast-dispatch', [LogisticsHubWorkstationController::class, 'fastDispatch'])->name('scan.fast-dispatch');
+        Route::get('/corridor-staging', [LogisticsHubWorkstationController::class, 'corridorStaging'])->name('corridor-staging');
         Route::get('/command-sheet', [LogisticsHubWorkstationController::class, 'commandSheet'])->name('command-sheet');
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay'])->name('sort');
         Route::post('/deliveries/{delivery}/assign-rider', [LogisticsHubWorkstationController::class, 'assignRider'])->name('assignRider');
