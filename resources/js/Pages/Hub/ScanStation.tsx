@@ -167,6 +167,23 @@ export default function ScanStation({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [fastDispatching, setFastDispatching] = useState(false);
     const [audioEnabled, setAudioEnabled] = useState(true);
+    const [autoConfirm, setAutoConfirm] = useState(() => {
+        try {
+            return typeof window !== 'undefined' && window.localStorage?.getItem('hub_continuous_scan') === 'true';
+        } catch {
+            return false;
+        }
+    });
+
+    const toggleAutoConfirm = () => {
+        setAutoConfirm((prev) => {
+            const next = !prev;
+            try {
+                window.localStorage?.setItem('hub_continuous_scan', String(next));
+            } catch {}
+            return next;
+        });
+    };
 
     // Dynamic prompt state
     const [lastResult, setLastResult] = useState<{
@@ -273,6 +290,20 @@ export default function ScanStation({
                 setMasterBagResult(null);
                 setLastResult({ prompt: data.prompt, delivery: data.delivery, confirmed: Boolean(data.confirmed), alreadyReceived: data.already_received });
                 playSound(data.confirmed ? 'success' : 'beep');
+
+                if (autoConfirm && !confirming && data.prompt.requires_confirmation && data.delivery.guidance?.can_act && data.delivery.guidance?.action === 'scan') {
+                    setScanMessage('Auto-confirming custody action…');
+                    void runScan({
+                        barcode: data.delivery.tracking_number,
+                        mode: 'confirm',
+                        action: data.prompt.action,
+                        expected_status: data.prompt.expected_status,
+                        attempt_reference: data.prompt.attempt_reference ?? undefined,
+                        route_reference: data.prompt.route_reference ?? undefined,
+                        claim_reference: data.prompt.claim_reference ?? undefined,
+                    }, true);
+                    return;
+                }
             }
             setScanMessage(data.message);
             setBarcodeInput('');
@@ -598,20 +629,37 @@ export default function ScanStation({
                                             Scan or enter a waybill
                                         </label>
 
-                                        {/* Audio Feedback Toggle */}
-                                        <button
-                                            type="button"
-                                            onClick={() => setAudioEnabled(!audioEnabled)}
-                                            className={`px-3 py-1.5 rounded-lg border transition shadow-2xs flex items-center gap-1.5 text-xs font-semibold font-sans cursor-pointer ${
-                                                audioEnabled
-                                                    ? 'bg-rose-50/80 border-rose-200 text-[#C20836] hover:bg-[#E00D42] hover:text-white'
-                                                    : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'
-                                            }`}
-                                            title={audioEnabled ? 'Sound Enabled' : 'Sound Muted'}
-                                        >
-                                            {audioEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-                                            <span>{audioEnabled ? 'Audio ON' : 'Muted'}</span>
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            {/* Rapid Auto-Intake Continuous Scan Toggle */}
+                                            <button
+                                                type="button"
+                                                onClick={toggleAutoConfirm}
+                                                className={`px-3 py-1.5 rounded-lg border transition shadow-2xs flex items-center gap-1.5 text-xs font-semibold font-sans cursor-pointer ${
+                                                    autoConfirm
+                                                        ? 'bg-[#E00D42] border-[#E00D42] text-white shadow-xs'
+                                                        : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100'
+                                                }`}
+                                                title={autoConfirm ? 'Continuous Scan Active: Auto-confirms custody on scan without clicking' : 'Click to enable continuous scan mode'}
+                                            >
+                                                <Zap className="w-3.5 h-3.5" />
+                                                <span>{autoConfirm ? 'Continuous Scan: ON' : 'Continuous Scan: OFF'}</span>
+                                            </button>
+
+                                            {/* Audio Feedback Toggle */}
+                                            <button
+                                                type="button"
+                                                onClick={() => setAudioEnabled(!audioEnabled)}
+                                                className={`px-3 py-1.5 rounded-lg border transition shadow-2xs flex items-center gap-1.5 text-xs font-semibold font-sans cursor-pointer ${
+                                                    audioEnabled
+                                                        ? 'bg-rose-50/80 border-rose-200 text-[#C20836] hover:bg-[#E00D42] hover:text-white'
+                                                        : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'
+                                                }`}
+                                                title={audioEnabled ? 'Sound Enabled' : 'Sound Muted'}
+                                            >
+                                                {audioEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                                                <span>{audioEnabled ? 'Audio ON' : 'Muted'}</span>
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <form onSubmit={handleInputSubmit} className="space-y-3">
