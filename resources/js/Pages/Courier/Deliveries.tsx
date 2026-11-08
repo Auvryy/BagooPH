@@ -473,7 +473,12 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                         <input id="pickup-waybill" type="text" autoComplete="off" spellCheck={false} maxLength={255} required value={barcode} disabled={loadingId !== null} aria-invalid={Boolean(errors.barcode) || waybillMismatch} aria-describedby="waybill-help waybill-error" onChange={(event) => { setBarcode(event.target.value); setErrors((current) => ({ ...current, barcode: '' })); }} className={courierInput} />
                         <CourierFieldError id="waybill-error" message={errors.barcode} />
                         {waybillMismatch && <p id="waybill-mismatch" role="status" className="mt-2 rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-3 text-sm leading-relaxed text-[#92400E]">This scanned code does not match the selected parcel waybill. Check the physical label, then scan or enter the matching code. The server verifies it again before recording.</p>}
-                        <WaybillCamera onScan={(value) => { setBarcode(value); setErrors((current) => ({ ...current, barcode: '' })); }} disabled={loadingId !== null} instruction="A camera scan only fills the waybill field. Compare it with the parcel above, then submit the permitted rider action." />
+                        <WaybillCamera
+                            autoStart={target.status === 'picked_up'}
+                            onScan={(value) => { setBarcode(value); setErrors((current) => ({ ...current, barcode: '' })); }}
+                            disabled={loadingId !== null}
+                            instruction="A camera scan fills the waybill field. Compare it with the parcel above, then submit the permitted rider action."
+                        />
                     </div>
                     {target.status === 'delivered' && (
                         <>
