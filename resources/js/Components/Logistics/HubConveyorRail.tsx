@@ -7,11 +7,12 @@ import {
     Boxes,
     Send,
     Store,
-    CheckCircle2,
     ArrowRight,
-    ExternalLink,
     Info,
     Sparkles,
+    Package,
+    Activity,
+    Check,
 } from 'lucide-react';
 
 export interface HubConveyorStation {
@@ -89,6 +90,7 @@ interface HubConveyorRailProps {
     deliveryType?: string;
     basePath?: string;
     isScanning?: boolean;
+    trackingNumber?: string;
     onStationClick?: (stationId: string) => void;
 }
 
@@ -97,6 +99,7 @@ export default function HubConveyorRail({
     deliveryType = 'standard',
     basePath = '/hub',
     isScanning = false,
+    trackingNumber,
     onStationClick,
 }: HubConveyorRailProps) {
     // Determine the active station index (0 to 5) based on parcel delivery status
@@ -169,6 +172,7 @@ export default function HubConveyorRail({
         return 0; // Default to inbound dock
     };
 
+    const hasScannedParcel = Boolean(currentStatus);
     const activeIndex = getActiveStationIndex(currentStatus, deliveryType);
     const [selectedStation, setSelectedStation] = useState<HubConveyorStation>(
         HUB_STATIONS[activeIndex] || HUB_STATIONS[0]
@@ -181,11 +185,41 @@ export default function HubConveyorRail({
         }
     }, [currentStatus, activeIndex]);
 
+    // Multiple continuous parcels on the conveyor belt (continuous staggered flow)
+    const conveyorParcels = [
+        { id: 'p1', delay: '0s', label: 'Parcel #4829', style: 'bg-amber-100 border-amber-300 text-amber-900' },
+        { id: 'p2', delay: '-2.8s', label: 'Express #1094', style: 'bg-white border-rose-200 text-[#E00D42]' },
+        { id: 'p3', delay: '-5.6s', label: 'Tote #8210', style: 'bg-amber-50 border-amber-200 text-amber-800' },
+        { id: 'p4', delay: '-8.4s', label: 'Carton #5521', style: 'bg-amber-200 border-amber-400 text-amber-950' },
+        { id: 'p5', delay: '-11.2s', label: 'Bag #3301', style: 'bg-slate-100 border-slate-300 text-slate-800' },
+    ];
+
     return (
         <section
-            aria-label="Interactive Hub Conveyor Rail"
+            aria-label="Interactive Hub Conveyor Automation Line"
             className="mb-5 overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5 transition-all"
         >
+            <style>{`
+                @keyframes conveyorBeltRoll {
+                    0% { background-position: 0 0; }
+                    100% { background-position: 24px 0; }
+                }
+                @keyframes parcelConveyorTravel {
+                    0% { left: -3%; opacity: 0; transform: translateY(-50%) scale(0.85); }
+                    4% { opacity: 1; transform: translateY(-50%) scale(1); }
+                    96% { opacity: 1; transform: translateY(-50%) scale(1); }
+                    100% { left: 101%; opacity: 0; transform: translateY(-50%) scale(0.85); }
+                }
+                @keyframes scannerLaser {
+                    0%, 100% { top: 0%; opacity: 0.8; }
+                    50% { top: 100%; opacity: 0.2; }
+                }
+                @keyframes beaconPulse {
+                    0%, 100% { transform: scale(1); opacity: 0.6; }
+                    50% { transform: scale(1.3); opacity: 0; }
+                }
+            `}</style>
+
             {/* Header & Status Indicator */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
@@ -193,42 +227,101 @@ export default function HubConveyorRail({
                         <Sparkles className="h-4 w-4" />
                     </span>
                     <div>
-                        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                            Hub Conveyor Station Pipeline
-                        </h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                                Hub Conveyor Automation Line
+                            </h2>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                6 Stations Online
+                            </span>
+                        </div>
                         <p className="text-[11px] text-slate-500">
-                            Interactive visual rail of the 6 specialized operational stations
+                            Multi-parcel continuous conveyor system across all specialized hub stations
                         </p>
                     </div>
                 </div>
 
-                {currentStatus && (
-                    <div className="flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-[#E00D42]">
-                        <span className="h-2 w-2 rounded-full bg-[#E00D42] animate-pulse" />
-                        <span>Active at: {HUB_STATIONS[activeIndex]?.title}</span>
-                    </div>
-                )}
+                <div className="flex items-center gap-2">
+                    {hasScannedParcel ? (
+                        <div className="flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[11px] font-semibold text-[#E00D42] shadow-2xs">
+                            <span className="h-2 w-2 rounded-full bg-[#E00D42] animate-ping" />
+                            <span>
+                                Scanned Focus: Station {HUB_STATIONS[activeIndex]?.number} ({HUB_STATIONS[activeIndex]?.title})
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
+                            <Activity className="h-3 w-3 text-slate-400" />
+                            <span>Continuous Throughput Active</span>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Conveyor Rail Line with Moving Parcel */}
-            <div className="relative mt-5 pt-2 pb-3">
-                {/* Visual Steel Track / Conveyor Belt */}
-                <div className="relative h-2.5 w-full rounded-full bg-slate-100 border border-slate-200 overflow-hidden">
-                    {/* Conveyor Rollers pattern */}
-                    <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_50%,rgba(203,213,225,0.4)_50%)] bg-[length:12px_100%] animate-[moveRight_1.5s_linear_infinite]" />
-                    {/* Filled Progress Line */}
+            {/* Conveyor Belt System with Continuous Multi-Parcel Animation */}
+            <div className="relative mt-5 mb-3 px-2 sm:px-6">
+                {/* Physical Conveyor Track Chassis */}
+                <div className="relative h-11 w-full rounded-xl bg-slate-900 border-2 border-slate-700 p-1 shadow-inner overflow-hidden">
+                    {/* Metal Conveyor Guide Rails (Top & Bottom) */}
+                    <div className="absolute inset-x-0 top-0 h-1 bg-slate-600 border-b border-slate-500 z-10" />
+                    <div className="absolute inset-x-0 bottom-0 h-1 bg-slate-600 border-t border-slate-500 z-10" />
+
+                    {/* Motorized Rollers with Continuous Motion Texture */}
                     <div
-                        className="h-full bg-[#E00D42] transition-all duration-700 ease-out"
-                        style={{ width: `${(activeIndex / (HUB_STATIONS.length - 1)) * 100}%` }}
+                        className="absolute inset-0 bg-[linear-gradient(90deg,#1e293b_0%,#334155_50%,#1e293b_100%)] bg-[length:24px_100%]"
+                        style={{
+                            animation: 'conveyorBeltRoll 1.2s linear infinite',
+                        }}
                     />
+
+                    {/* Live Moving Parcels Flowing Along the Belt */}
+                    {conveyorParcels.map((parcel) => (
+                        <div
+                            key={parcel.id}
+                            className="absolute top-1/2 z-20 pointer-events-none"
+                            style={{
+                                animation: 'parcelConveyorTravel 14s linear infinite',
+                                animationDelay: parcel.delay,
+                            }}
+                        >
+                            {/* Stylized Miniature Carton Box */}
+                            <div
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[9px] font-bold shadow-xs ${parcel.style} select-none`}
+                            >
+                                <Package className="h-3 w-3 shrink-0" />
+                                <span className="hidden sm:inline font-mono text-[8px] tracking-tight">{parcel.label}</span>
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* Active Laser Scan Target at the Scanned Station Node */}
+                    {hasScannedParcel && (
+                        <div
+                            className="absolute top-0 bottom-0 z-25 pointer-events-none transition-all duration-700 ease-out"
+                            style={{
+                                left: `calc(${(activeIndex / 5) * 100}% - 18px)`,
+                                width: '36px',
+                            }}
+                        >
+                            <div className="relative w-full h-full bg-rose-500/20 border-x border-[#E00D42]/60 backdrop-blur-2xs">
+                                {/* Red Scanning Laser Beam */}
+                                <div
+                                    className="absolute inset-x-0 h-0.5 bg-[#E00D42] shadow-[0_0_8px_#E00D42]"
+                                    style={{
+                                        animation: 'scannerLaser 1.5s ease-in-out infinite',
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* 6 Interactive Stations along the Rail */}
-                <div className="relative -mt-4.5 flex justify-between">
+                {/* 6 Specialized Operational Station Nodes Along the Rail */}
+                <div className="relative -mt-7 flex justify-between">
                     {HUB_STATIONS.map((station, idx) => {
                         const Icon = station.icon;
-                        const isPast = idx < activeIndex;
-                        const isCurrent = idx === activeIndex;
+                        const isScannedActive = hasScannedParcel && idx === activeIndex;
                         const isTargetSelected = selectedStation.id === station.id;
 
                         return (
@@ -241,37 +334,45 @@ export default function HubConveyorRail({
                                 }}
                                 className="group relative flex flex-col items-center focus:outline-none"
                             >
-                                {/* Station Node Badge */}
+                                {/* Station Node Workstation Badge */}
                                 <div
-                                    className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-xl border transition-all duration-300 shadow-xs cursor-pointer ${
-                                        isCurrent
-                                            ? 'border-[#E00D42] bg-[#E00D42] text-white ring-4 ring-rose-100 scale-110'
-                                            : isPast
-                                            ? 'border-emerald-500 bg-emerald-50 text-emerald-700 hover:border-emerald-600'
+                                    className={`relative z-30 flex h-11 w-11 items-center justify-center rounded-xl border-2 transition-all duration-300 shadow-md cursor-pointer ${
+                                        isScannedActive
+                                            ? 'border-[#E00D42] bg-[#E00D42] text-white ring-4 ring-rose-200 scale-110 shadow-rose-200'
                                             : isTargetSelected
-                                            ? 'border-slate-400 bg-slate-100 text-slate-800 ring-2 ring-slate-200'
-                                            : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800'
+                                            ? 'border-slate-800 bg-white text-slate-900 ring-2 ring-slate-300'
+                                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-900'
                                     }`}
                                 >
-                                    {isPast ? (
-                                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                                    ) : (
-                                        <Icon className="h-4 w-4" />
-                                    )}
+                                    <Icon className="h-5 w-5" />
 
-                                    {/* Moving Parcel Indicator on Active Node */}
-                                    {isCurrent && (
-                                        <span className="absolute -top-2 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white border border-[#E00D42] shadow-xs">
-                                            <span className="h-2 w-2 rounded-full bg-[#E00D42] animate-ping" />
-                                        </span>
+                                    {/* Active Scanning Beacon Pulse on Scanned Node */}
+                                    {isScannedActive && (
+                                        <>
+                                            <span
+                                                className="absolute -inset-1 rounded-xl bg-rose-400 pointer-events-none"
+                                                style={{ animation: 'beaconPulse 2s cubic-bezier(0, 0, 0.2, 1) infinite' }}
+                                            />
+                                            {/* Station Number Tag on Active Node */}
+                                            <span className="absolute -top-2 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white border border-[#E00D42] text-[9px] font-black text-[#E00D42] shadow-2xs">
+                                                {station.number}
+                                            </span>
+                                        </>
                                     )}
                                 </div>
+
+                                {/* Active Scanned Waybill Floating Tag */}
+                                {isScannedActive && trackingNumber && (
+                                    <div className="absolute -top-7 z-40 whitespace-nowrap rounded-md bg-slate-900 px-2 py-0.5 text-[9px] font-bold font-mono text-white shadow-md border border-slate-700 animate-bounce">
+                                        #{trackingNumber}
+                                    </div>
+                                )}
 
                                 {/* Station Label */}
                                 <div className="mt-2 text-center">
                                     <span
                                         className={`block text-[11px] font-bold leading-tight transition-colors ${
-                                            isCurrent
+                                            isScannedActive
                                                 ? 'text-[#E00D42]'
                                                 : isTargetSelected
                                                 ? 'text-slate-900'
@@ -280,7 +381,7 @@ export default function HubConveyorRail({
                                     >
                                         {station.title}
                                     </span>
-                                    <span className="hidden sm:block text-[10px] text-slate-400">
+                                    <span className="text-[10px] text-slate-400 font-medium">
                                         Station {station.number}
                                     </span>
                                 </div>
@@ -300,6 +401,11 @@ export default function HubConveyorRail({
                         <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600">
                             Role: {selectedStation.role}
                         </span>
+                        {hasScannedParcel && selectedStation.number === HUB_STATIONS[activeIndex]?.number && (
+                            <span className="rounded-md bg-rose-100 border border-rose-200 text-[#C20836] px-2 py-0.5 text-[10px] font-bold">
+                                Current Scan Location
+                            </span>
+                        )}
                     </div>
 
                     {selectedStation.actionHref && (
