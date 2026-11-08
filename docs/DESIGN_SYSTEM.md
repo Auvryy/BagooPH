@@ -15,32 +15,41 @@
 >   - Secondary Accent: `#F59E0B` (Amber) and `#F97316` (Warm Orange)
 >   - Neutral Surfaces: Clean white (`#FFFFFF`), warm light slates (`bg-slate-50`, `bg-slate-100`), with crisp dividing borders (`border-slate-200`)
 
-## 2. Dimensionality: Roundy, Modern & High-Density Tactile Surfaces
+## 2. Dimensionality: Modern Tactile Depth Over Flat Design
 
-- **Roundy Feel**: Embrace friendly, modern curves (`rounded-2xl`, `rounded-full`, pill tags). Avoid sharp or dated flat boxy borders.
-- **Snug Spacing (High-Density E-Commerce)**: Top e-commerce sites (Shopee, Lazada) feel full, energetic, and compact. Keep card margins and gutters compact (`gap-3` to `gap-4`, tight vertical margins) so users experience rich product discovery without barren white space.
-- **Micro-Dimensionality**: Depth is achieved through soft ambient drop-shadows (`shadow-[0_4px_16px_rgba(15,23,42,0.06)]`, `shadow-sm`, `shadow-md`), border highlights (`border-slate-200/90`, `border-stone-800`), and tactile hover lifts (`hover:-translate-y-0.5 hover:shadow-md active:translate-y-0`).
+- **NO FLAT DESIGN**: Never use flat, lifeless, monotone rectangular layouts. Modern high-tier e-commerce and logistics interfaces must feel physical, responsive, and tactile.
+- **Generous Corner Radiuses**: Embrace modern, friendly curvature—`rounded-2xl` for primary cards, modals, and station panels; `rounded-xl` for interactive controls, inputs, and action buttons. Sharp boxy 90-degree corners are banned.
+- **Micro-Dimensional Shadows**: Depth is created using subtle, layered ambient drop shadows (`shadow-sm`, `shadow-md`, `shadow-[0_4px_20px_rgba(0,0,0,0.06)]`) and crisp border contrasts (`border-slate-200/90`, `border-stone-800`), separating interactive layers cleanly.
+- **Micro-Animations on Every Interaction**: Every interactive component must have physical, responsive feedback:
+  - **Hover**: Subtle vertical lift (`hover:-translate-y-0.5`) with shadow expansion (`hover:shadow-md`).
+  - **Active / Click**: Tactile mechanical press-in (`active:translate-y-0 active:scale-[0.99]`).
+  - **Transitions**: Silky ease transitions (`transition-all duration-150 ease-out`).
+  - **Operational Motion**: Light, discrete progress animation (e.g. low-FPS box stepping between nodes on scan) that provides instant visual feedback for real work rather than distracting idle loops.
 - **Sidebar & Core Accents**: The primary navigation sidebar, major headings, selected radio controls, active tab underlines, and selected map markers utilize **Warm Ink (`#1C1A17`)**, creating a rich near-black foundation rather than cold generic slate.
 
-## 3. Strict Design Rules: Zero AI Slop, No Emojis, No Gradients, No Redundant Text
+## 3. Strict Design Rules: Zero AI Slop, No Emojis, No Gradients, No Fake "Online" Chips
 
 > [!CAUTION]
-> **ABSOLUTE BAN ON AI SLOP, EMOJIS, AND SYNTHETIC GRADIENTS**
+> **ABSOLUTE PROHIBITIONS: NO AI SLOP, EMOJIS, SYNTHETIC GRADIENTS, OR FAKE STATUS CHIPS**
 >
 > 1. **Never Use AI Slop or Redundant/Repetitive Text**:
 >    - **Zero Corporate/AI Bloat**: Eliminate tutorial lectures, redundant status repetitions, and artificial enterprise buzzwords (e.g., *"6 Stations Online"*, *"Continuous Throughput Active"*, *"Multi-parcel continuous conveyor system"*, *"Role: Unloader / Gatekeeper"*, *"The queue includes rider handovers awaiting intake..."*).
 >    - **Direct, Functional Operational Copy**: Sorters and warehouse operators need instant, concise facts. Label things directly: *"Hub Pipeline"*, *"Inbound"*, *"Sorting"*, *"Outbound Bay"*, *"Waybill verified"*, *"Next hop: [Facility]"*. Never lecture the user about how logistics works.
 >
-> 2. **Never Use Emojis in Design**:
+> 2. **Never Use Fake "Online" Status Chips or Boilerplate Pills**:
+>    - Strictly ban generic decorative colored chips that mimic fake status indicators (e.g. green badges with pulsing dots like `🟢 6 Stations Online`, `Live Throughput Active`, or boilerplate dashboard template pills).
+>    - If status is necessary, display clean, high-contrast operational badges without decorative pulsing dots or artificial "online" vanity chips.
+>
+> 3. **Never Use Emojis in Design**:
 >    - Strictly prohibit emojis (e.g. ⚡, 📦, 🚚, 🔥, 🚀, ✨, 🛑, 👉) in UI layouts, buttons, headings, tables, KPI cards, badges, alerts, toast notifications, and backend flash messages.
 >    - Use crisp, professional vector icons from `lucide-react` exclusively (`Package`, `Truck`, `Scale`, `Layers`, `Send`, `CheckCircle2`, `AlertCircle`).
 >
-> 3. **Never Use Synthetic Gradients**:
+> 4. **Never Use Synthetic Gradients**:
 >    - Strictly avoid multi-color AI gradients, rainbow borders, and background color fade meshes.
 >    - Use solid, authentic surfaces: clean white (`#FFFFFF`), warm subtle canvas (`#F8F9FA`), warm near-black Ink (`#1C1A17`), and Bagoo crimson (`#E00D42` / `#C20836`).
 >    - Depth must be created exclusively via tactile drop shadows, crisp border contrast, and physical press states—never through background color fades.
 >
-> 4. **No Unreadable Tiny Fonts**:
+> 5. **No Unreadable Tiny Fonts**:
 >    - Never use micro fonts like `text-[10px]` or `text-[11px]` for operational data, timestamps, or sorting bin codes. Use minimum `text-xs` (12px) with bold tabular weights so operators can read them effortlessly under warehouse lighting.
 
 ## 4. Real Product Imagery in Categories
