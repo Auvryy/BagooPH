@@ -169,7 +169,7 @@ export default function HubMap({ hubs, selectedId, onSelect, routeIds, className
     return <figure className={`hub-network-map relative isolate flex min-h-64 flex-col overflow-hidden rounded-2xl border border-slate-200/90 shadow-sm bg-slate-100 ${className}`}>
         <style>{`
             .hub-map-selected .hub-map-pin-dot {
-                background: #1C1A17 !important;
+                background: #121316 !important;
                 border-color: #ffffff !important;
                 transform: scale(1.12);
                 box-shadow: 0 0 0 4px rgba(28, 26, 23, 0.28), 0 4px 12px rgba(28, 26, 23, 0.45) !important;
@@ -186,7 +186,7 @@ export default function HubMap({ hubs, selectedId, onSelect, routeIds, className
         `}</style>
         {valid.length ? <div ref={element} aria-label="Company hubs on OpenStreetMap; choose a hub marker to inspect it" className="min-h-0 w-full flex-1" /> : <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-6 text-center"><MapPinned className="h-8 w-8 text-slate-400" /><p className="mt-3 text-sm font-semibold text-slate-700">No map pins saved yet</p><p className="mt-2 max-w-sm text-xs leading-5 text-slate-500">Use the hub names and addresses below. A location appears here when its coordinates are recorded.</p></div>}
         <figcaption className="relative shrink-0 space-y-1 border-t border-slate-200/90 bg-white px-3.5 py-2.5 text-[11px] leading-5 text-slate-500">
-            {!!valid.length && <p>Dashed lines follow highway transit corridors.{selected && <span className="ml-1 font-semibold text-[#1C1A17]">Selected: {selected.code ?? selected.name}.</span>}</p>}
+            {!!valid.length && <p>Dashed lines follow highway transit corridors.{selected && <span className="ml-1 font-semibold text-[#121316]">Selected: {selected.code ?? selected.name}.</span>}</p>}
             {tileError && <p>Street tiles are unavailable. Saved hub pins and the hub list still work.</p>}
             {missing > 0 && <p>{missing} {missing === 1 ? 'hub has' : 'hubs have'} no saved map pin; use the address list.</p>}
         </figcaption>

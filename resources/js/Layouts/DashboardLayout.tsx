@@ -284,20 +284,20 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             {/* Sidebar (Permanently Fixed on Desktop) */}
             <LogisticsNavigationDrawer enabled={role === 'logistics'} open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
             <aside id="portal-navigation" className={`
-                fixed inset-y-0 left-0 z-50 w-64 overscroll-contain bg-[#1C1A17] text-stone-200 border-r border-stone-800
+                fixed inset-y-0 left-0 z-50 w-64 overscroll-contain bg-[#121316] text-zinc-200 border-r border-[#1F2128]
                 flex flex-col transition-transform duration-200 ease-in-out
                 ${sidebarOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'}
                 lg:visible lg:static lg:translate-x-0 lg:h-full lg:shrink-0 lg:z-30
             `}>
                 
                 {/* Brand Header */}
-                <div className="p-4 border-b border-stone-800 shrink-0 bg-[#1C1A17]">
+                <div className="p-4 border-b border-[#1F2128] shrink-0 bg-[#121316]">
                     <div className="flex items-center justify-between">
                         <Link href={role === 'seller' ? route('seller.dashboard') : role === 'admin' ? route('admin.dashboard') : role === 'logistics' ? route('hub.dashboard') : '/'} className="flex items-center gap-2.5">
                             <BagooLogo className="w-8 h-8 shadow-xs" rounded="rounded-xl" />
                             <div>
                                 <span className="text-base font-black tracking-tight text-white">Bagoo<span className="text-[#E00D42]">PH</span></span>
-                                <span className="block text-[9px] uppercase font-bold tracking-widest text-stone-400 -mt-0.5 font-sans">
+                                <span className="block text-[9px] uppercase font-bold tracking-widest text-zinc-400 -mt-0.5 font-sans">
                                     {role === 'seller' ? 'Seller Centre' : role === 'admin' ? 'Admin Portal' : role === 'logistics' ? 'Logistics Hub' : 'Portal'}
                                 </span>
                             </div>
@@ -307,7 +307,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             aria-label="Close navigation"
                             data-autofocus={role === 'logistics' ? true : undefined}
                             onClick={() => setSidebarOpen(false)}
-                            className={`lg:hidden p-1 text-stone-400 hover:text-white cursor-pointer ${role === 'logistics' ? 'flex min-h-11 min-w-11 items-center justify-center' : ''}`}
+                            className={`lg:hidden p-1 text-zinc-400 hover:text-white cursor-pointer ${role === 'logistics' ? 'flex min-h-11 min-w-11 items-center justify-center' : ''}`}
                         >
                             <X className="w-5 h-5" />
                         </button>
@@ -315,13 +315,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 </div>
 
                 {role === 'seller' && currentShop && (
-                    <div className="shrink-0 border-b border-stone-800 bg-[#25221E] p-3">
-                        <Link href={route('seller.settings')} className="flex items-start gap-2 rounded-xl border border-stone-700 bg-[#1C1A17] p-3 transition hover:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]">
+                    <div className="shrink-0 border-b border-[#1F2128] bg-[#181A20] p-3">
+                        <Link href={route('seller.settings')} className="flex items-start gap-2 rounded-xl border border-[#2B2D37] bg-[#121316] p-3 transition hover:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]">
                             <Store className="mt-0.5 h-4 w-4 shrink-0 text-[#E00D42]" />
                             <div className="min-w-0">
-                                <p className="truncate text-xs font-bold text-stone-100">{currentShop.name}</p>
-                                <p className="mt-1 text-xs text-stone-300">{currentShop.root_category?.name ?? 'Category needs review'}</p>
-                                <p className="mt-1 text-xs text-stone-400">Shop settings</p>
+                                <p className="truncate text-xs font-bold text-zinc-100">{currentShop.name}</p>
+                                <p className="mt-1 text-xs text-zinc-300">{currentShop.root_category?.name ?? 'Category needs review'}</p>
+                                <p className="mt-1 text-xs text-zinc-400">Shop settings</p>
                             </div>
                         </Link>
                     </div>
@@ -329,17 +329,17 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                 {/* Active Hub Facility & Switcher for Logistics */}
                 {role === 'logistics' && (
-                    <div className="p-3 border-b border-stone-800 bg-[#1C1A17] shrink-0">
+                    <div className="p-3 border-b border-[#1F2128] bg-[#121316] shrink-0">
                         <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 font-sans flex items-center gap-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-sans flex items-center gap-1">
                                 <Building2 className="w-3 h-3 text-[#E00D42]" /> {canSwitchHubs ? 'Viewing facility' : 'Assigned facility'}
                             </span>
-                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-lg bg-[#25221E] text-stone-300 border border-stone-700 uppercase font-sans">
+                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-lg bg-[#181A20] text-zinc-300 border border-[#2B2D37] uppercase font-sans">
                                 {activeHub ? activeHub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub' : 'No facility'}
                             </span>
                         </div>
 
-                        {canSwitchHubs && !canScanParcels && <p className="mb-2 text-[10px] leading-4 text-stone-400">Viewing this hub. Physical scans need its assigned handler.</p>}
+                        {canSwitchHubs && !canScanParcels && <p className="mb-2 text-[10px] leading-4 text-zinc-400">Viewing this hub. Physical scans need its assigned handler.</p>}
 
                         {/* Facility Switcher Dropdown Button */}
                         <div className="relative">
@@ -347,62 +347,62 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 type="button"
                                 onClick={() => canSwitchHubs && setHubSwitcherOpen(!hubSwitcherOpen)}
                                 disabled={!canSwitchHubs || switchingHub !== null}
-                                className={`w-full flex items-center justify-between p-2.5 rounded-xl bg-[#25221E] border border-stone-700/80 text-left transition shadow-sm group ${
-                                    canSwitchHubs ? 'hover:border-stone-500 cursor-pointer' : 'cursor-default'
+                                className={`w-full flex items-center justify-between p-2.5 rounded-xl bg-[#181A20] border border-[#2B2D37] text-left transition shadow-sm group ${
+                                    canSwitchHubs ? 'hover:border-zinc-500 cursor-pointer' : 'cursor-default'
                                 }`}
                             >
                                 <div className="min-w-0 flex-1">
-                                    <p className={`text-xs font-bold text-stone-100 truncate transition ${canSwitchHubs ? 'group-hover:text-white' : ''}`}>
+                                    <p className={`text-xs font-bold text-zinc-100 truncate transition ${canSwitchHubs ? 'group-hover:text-white' : ''}`}>
                                         {switchingHub !== null ? 'Changing facility…' : activeHub?.name || logisticsCompany?.name || 'No facility assigned'}
                                     </p>
-                                    <p className="text-[10px] text-stone-400 font-sans truncate">
+                                    <p className="text-[10px] text-zinc-400 font-sans truncate">
                                         Station: {activeHub?.code || 'Not assigned'} • {activeHub?.city_municipality || 'Location not provided'}
                                     </p>
                                 </div>
                                 {canSwitchHubs && (
-                                    <ChevronDown className={`w-3.5 h-3.5 text-stone-400 shrink-0 ml-1.5 transition-transform ${hubSwitcherOpen ? 'rotate-180' : ''}`} />
+                                    <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 shrink-0 ml-1.5 transition-transform ${hubSwitcherOpen ? 'rotate-180' : ''}`} />
                                 )}
                             </button>
 
                             {canSwitchHubs && hubSwitcherOpen && allHubs && allHubs.length > 0 && (
-                                <div className="absolute left-0 right-0 top-full mt-1 bg-[#25221E] rounded-xl shadow-xl border border-stone-700 py-1.5 z-50 text-stone-200">
-                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400 font-sans">
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-[#181A20] rounded-xl shadow-xl border border-[#2B2D37] py-1.5 z-50 text-zinc-200">
+                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-sans">
                                         Switch Operating Hub
                                     </div>
-                                    <div className="max-h-48 overflow-y-auto divide-y divide-stone-800">
+                                    <div className="max-h-48 overflow-y-auto divide-y divide-[#1F2128]">
                                         {allHubs.map((h: any) => (
-                                            <button
-                                                key={h.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setHubSwitcherOpen(false);
-                                                    if (h.id !== activeHub?.id && !hubSwitchPending.current) {
-                                                        hubSwitchPending.current = true;
-                                                        setSwitchingHub(h.id);
-                                                        router.post(route('hub.switchHub'), { hub_id: h.id }, { preserveScroll: true, onFinish: () => { hubSwitchPending.current = false; setSwitchingHub(null); } });
-                                                    }
-                                                }}
-                                                className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer hover:bg-[#2C2824] ${
-                                                    h.id === activeHub?.id ? 'bg-[#2C2824] font-bold text-[#E00D42]' : 'text-stone-200'
-                                                }`}
-                                            >
-                                                <div className="min-w-0 flex-1 pr-2">
-                                                    <p className="truncate">{h.name}</p>
-                                                    <p className="text-[10px] text-stone-400 font-sans truncate">
-                                                        {h.code} • {h.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
-                                                    </p>
-                                                </div>
-                                                {h.id === activeHub?.id && (
-                                                    <Check className="w-3.5 h-3.5 text-[#E00D42] shrink-0" />
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
+                                             <button
+                                                 key={h.id}
+                                                 type="button"
+                                                 onClick={() => {
+                                                     setHubSwitcherOpen(false);
+                                                     if (h.id !== activeHub?.id && !hubSwitchPending.current) {
+                                                         hubSwitchPending.current = true;
+                                                         setSwitchingHub(h.id);
+                                                         router.post(route('hub.switchHub'), { hub_id: h.id }, { preserveScroll: true, onFinish: () => { hubSwitchPending.current = false; setSwitchingHub(null); } });
+                                                     }
+                                                 }}
+                                                 className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer hover:bg-[#22252E] ${
+                                                     h.id === activeHub?.id ? 'bg-[#22252E] font-bold text-[#E00D42]' : 'text-zinc-200'
+                                                 }`}
+                                             >
+                                                 <div className="min-w-0 flex-1 pr-2">
+                                                     <p className="truncate">{h.name}</p>
+                                                     <p className="text-[10px] text-zinc-400 font-sans truncate">
+                                                         {h.code} • {h.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
+                                                     </p>
+                                                 </div>
+                                                 {h.id === activeHub?.id && (
+                                                     <Check className="w-3.5 h-3.5 text-[#E00D42] shrink-0" />
+                                                 )}
+                                             </button>
+                                         ))}
+                                     </div>
+                                 </div>
+                             )}
+                         </div>
+                     </div>
+                 )}
 
                 {/* Navigation Sections */}
                 <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto font-sans scrollbar-thin">
@@ -510,12 +510,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 </nav>
 
                 {/* Sidebar Bottom: Sign Out Button */}
-                <div className="p-3 border-t border-stone-800 bg-[#1C1A17] shrink-0 mt-auto">
+                <div className="p-3 border-t border-[#1F2128] bg-[#121316] shrink-0 mt-auto">
                     <Link
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-stone-300 hover:text-white hover:bg-[#25221E] transition border border-stone-700/80 hover:border-stone-600 uppercase tracking-wider shadow-sm cursor-pointer font-sans"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-zinc-300 hover:text-white hover:bg-[#181A20] transition border border-[#2B2D37] hover:border-zinc-600 uppercase tracking-wider shadow-sm cursor-pointer font-sans"
                     >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out</span>
@@ -541,7 +541,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             <Menu className="w-5 h-5" />
                         </button>
                         <div className="min-w-0">
-                            {role === 'logistics' ? <><p className="hidden text-[10px] font-medium text-slate-400 sm:block">Logistics workspace</p><p className="truncate text-sm font-bold text-[#1C1A17]">{title}</p></> : <><h1 className="text-base font-black text-[#1C1A17] tracking-tight truncate">{title}</h1>{subtitle && <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5 truncate">{subtitle}</div>}</>}
+                            {role === 'logistics' ? <><p className="hidden text-[10px] font-medium text-slate-400 sm:block">Logistics workspace</p><p className="truncate text-sm font-bold text-[#121316]">{title}</p></> : <><h1 className="text-base font-black text-[#121316] tracking-tight truncate">{title}</h1>{subtitle && <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5 truncate">{subtitle}</div>}</>}
                         </div>
                     </div>
 
@@ -573,7 +573,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 )}
                                 <div className="hidden sm:block text-left font-sans">
                                     <div className="flex items-center gap-1">
-                                        <p className="text-xs font-bold text-[#1C1A17] leading-tight group-hover:text-[#E00D42] transition">{user?.name}</p>
+                                        <p className="text-xs font-bold text-[#121316] leading-tight group-hover:text-[#E00D42] transition">{user?.name}</p>
                                         <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                                     </div>
                                     <span className="text-[10px] text-slate-500 font-bold uppercase">

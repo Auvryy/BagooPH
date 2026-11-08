@@ -25,7 +25,7 @@
   - **Active / Click**: Tactile mechanical press-in (`active:translate-y-0 active:scale-[0.99]`).
   - **Transitions**: Silky ease transitions (`transition-all duration-150 ease-out`).
   - **Operational Motion**: Light, discrete progress animation (e.g. low-FPS box stepping between nodes on scan) that provides instant visual feedback for real work rather than distracting idle loops.
-- **Sidebar & Core Accents**: The primary navigation sidebar, major headings, selected radio controls, active tab underlines, and selected map markers utilize **Warm Ink (`#1C1A17`)**, creating a rich near-black foundation rather than cold generic slate.
+- **Sidebar & Core Accents**: The primary navigation sidebar, major headings, selected radio controls, active tab underlines, and selected map markers utilize **Neutral Obsidian (`#121316` / `#111215`)**, a refined deep graphite-black completely free of brown, amber, or sepia undertones. Active elements use Bagoo signature crimson (`#E00D42`).
 
 ## 3. Strict Design Rules: Zero AI Slop, No Emojis, No Gradients, No Fake "Online" Chips
 
@@ -46,11 +46,13 @@
 >
 > 4. **Never Use Synthetic Gradients**:
 >    - Strictly avoid multi-color AI gradients, rainbow borders, and background color fade meshes.
->    - Use solid, authentic surfaces: clean white (`#FFFFFF`), warm subtle canvas (`#F8F9FA`), warm near-black Ink (`#1C1A17`), and Bagoo crimson (`#E00D42` / `#C20836`).
+>    - Use solid, authentic surfaces: clean white (`#FFFFFF`), warm subtle canvas (`#F8F9FA`), neutral obsidian black (`#121316`), and Bagoo crimson (`#E00D42` / `#C20836`).
 >    - Depth must be created exclusively via tactile drop shadows, crisp border contrast, and physical press states—never through background color fades.
 >
-> 5. **No Unreadable Tiny Fonts**:
->    - Never use micro fonts like `text-[10px]` or `text-[11px]` for operational data, timestamps, or sorting bin codes. Use minimum `text-xs` (12px) with bold tabular weights so operators can read them effortlessly under warehouse lighting.
+> 5. **Notion-Inspired Spacing & Geometry Scale**:
+>    - **Generous Padding & Rhythm**: Cards must have ample breathing room (`p-5` to `p-6`). Elements and labels must never touch card borders or feel squished.
+>    - **Standard Select Dropdowns**: Always use clean, native-feel `<select>` dropdowns for facility and driver selection rather than confusing text inputs with up/down carets.
+>    - **No Unreadable Tiny Fonts**: Never use micro fonts like `text-[10px]` or `text-[11px]` for operational data, timestamps, or sorting bin codes. Use minimum `text-xs` (12px) with bold tabular weights so operators can read them effortlessly under warehouse lighting.
 
 ## 4. Real Product Imagery in Categories
 

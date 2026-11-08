@@ -205,8 +205,11 @@ The full operational improvements backlog is prioritized as follows:
      - Never use unicode emojis (⚡, 📦, 🚚, 🔥, 🚀, ✨, 🛑, 👉) in UI layouts, buttons, cards, status badges, alerts, or backend controller messages. Use crisp vector icons from `lucide-react` exclusively.
   6. **Zero Synthetic Gradients**:
      - Never use multi-color AI gradients or color fade meshes. Surfaces must use authentic solids (`#FFFFFF`, `#F8F9FA`, `#1C1A17`, `#E00D42`). Depth must come from tactile shadows, crisp dividing borders, and physical active press states.
-  7. **Warm Ink (`#1C1A17`) Palette**:
-     - Navigation sidebar, major headings, selected radios, active tab underlines, and map selected pins must use warm near-black **`#1C1A17`** (Ink), giving the interface an authentic, premium feel without cold generic slate.
-  8. **No Unreadable Micro-Fonts**:
+  7. **Neutral Obsidian (`#121316` / `#111215`) Palette**:
+     - Navigation sidebar, major headings, selected radios, active tab underlines, and map selected pins must use neutral deep obsidian black **`#121316`**, completely free of brown, amber, or sepia undertones.
+  8. **Notion-Inspired Spacing & Clean Native Dropdowns**:
+     - **Generous Padding**: Cards must have ample breathing room (`p-5` to `p-6`). Never cram labels, metrics, or icons against borders.
+     - **True Select Dropdowns**: Always use clean, native-feel `<select>` dropdowns for facility and driver selection rather than confusing text inputs with up/down carets.
+  9. **No Unreadable Micro-Fonts**:
      - Never use `text-[10px]` or `text-[11px]` for data values. Use readable `text-xs` (12px) with bold tabular weights.
 

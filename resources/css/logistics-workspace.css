@@ -30,18 +30,18 @@
 .hub-map-pin-dot { display: block; width: 28px; height: 28px; border: 4px solid white; border-radius: 50%; background: #e00d42; box-shadow: 0 2px 8px rgba(15, 23, 42, .25); transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease; }
 .hub-map-mother { border-radius: 8px; background: #0f172a; }
 .hub-map-selected .hub-map-pin-dot {
-    background: #1C1A17 !important;
+    background: #121316 !important;
     border-color: #ffffff !important;
     transform: scale(1.12);
-    box-shadow: 0 0 0 4px rgba(28, 26, 23, 0.28), 0 4px 12px rgba(28, 26, 23, 0.45) !important;
+    box-shadow: 0 0 0 4px rgba(18, 19, 22, 0.28), 0 4px 12px rgba(18, 19, 22, 0.45) !important;
     animation: hub-pin-pulse 2s infinite ease-in-out;
 }
 @keyframes hub-pin-pulse {
     0%, 100% {
-        box-shadow: 0 0 0 4px rgba(28, 26, 23, 0.28), 0 4px 12px rgba(28, 26, 23, 0.45);
+        box-shadow: 0 0 0 4px rgba(18, 19, 22, 0.28), 0 4px 12px rgba(18, 19, 22, 0.45);
     }
     50% {
-        box-shadow: 0 0 0 9px rgba(28, 26, 23, 0.16), 0 4px 16px rgba(28, 26, 23, 0.55);
+        box-shadow: 0 0 0 9px rgba(18, 19, 22, 0.16), 0 4px 16px rgba(18, 19, 22, 0.55);
     }
 }
 .hub-network-map .leaflet-marker-icon:focus-visible { outline: 3px solid #e00d42; outline-offset: 4px; border-radius: 50%; }

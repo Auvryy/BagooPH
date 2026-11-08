@@ -139,7 +139,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
             actions={scope.can_scan ? (
                 <Link
                     href={route('hub.scan.station')}
-                    className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#C20836]"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#E00D42] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#C20836] active:scale-[0.99]"
                 >
                     <ScanLine className="h-4 w-4" />
                     Scan parcel
@@ -148,34 +148,53 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
         >
             <Head title="Facility Network — BagooPH" />
 
-            <div className="space-y-5 font-sans">
+            <div className="space-y-6 font-sans">
                 <HubPageHeader title="Hub network" description="See how your company’s hubs connect. Choose a pin or facility card to inspect its coverage and available actions." icon={Building2} />
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)]">
-                    <HubMap hubs={filteredHubs} selectedId={selectedHub?.id ?? activeHub?.id} onSelect={hub => setSelectedHub(hubs.find(item => item.id === hub.id) ?? null)} className="h-[340px]" />
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+                    <div className="rounded-xl overflow-hidden border border-zinc-200/90 shadow-sm bg-white">
+                        <HubMap hubs={filteredHubs} selectedId={selectedHub?.id ?? activeHub?.id} onSelect={hub => setSelectedHub(hubs.find(item => item.id === hub.id) ?? null)} className="h-[360px]" />
+                    </div>
                     <HubPanel title="Your network at a glance" icon={<Warehouse className="h-4 w-4" />}>
-                        <div className="flex gap-5"><div><p className="text-3xl font-bold tracking-tight text-slate-950">{motherHubs.length}</p><p className="mt-1 text-xs text-slate-500">Mother Hubs</p></div><div className="border-l border-slate-200 pl-5"><p className="text-3xl font-bold tracking-tight text-slate-950">{bayanHubs.length}</p><p className="mt-1 text-xs text-slate-500">Bayan Hubs</p></div></div>
-                        <div className="mt-5 space-y-3 border-t border-slate-200 pt-4 text-xs text-slate-600"><p className="flex items-center gap-2"><span className="h-3 w-3 rounded bg-slate-900" />Mother Hub · transfers between service areas</p><p className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-[#E00D42]" />Bayan Hub · pickup, local sorting and delivery</p></div>
-                        <p className="mt-4 text-xs leading-5 text-slate-500">Map links show configured hub relationships. A parcel follows its own saved route and actual scans.</p>
-                        {activeHub && <div className="mt-4 rounded-lg bg-slate-50 p-3"><p className="text-[11px] text-slate-500">Current facility view</p><p className="mt-1 text-xs font-semibold text-slate-900">{activeHub.name}</p></div>}
+                        <div className="flex gap-6">
+                            <div>
+                                <p className="text-3xl font-black tracking-tight text-[#1C1A17]">{motherHubs.length}</p>
+                                <p className="mt-1 text-xs text-zinc-500 font-medium">Mother Hubs</p>
+                            </div>
+                            <div className="border-l border-zinc-200 pl-6">
+                                <p className="text-3xl font-black tracking-tight text-[#1C1A17]">{bayanHubs.length}</p>
+                                <p className="mt-1 text-xs text-zinc-500 font-medium">Bayan Hubs</p>
+                            </div>
+                        </div>
+                        <div className="mt-5 space-y-3 border-t border-zinc-100 pt-4 text-xs text-zinc-600">
+                            <p className="flex items-center gap-2"><span className="h-3 w-3 rounded-md bg-[#1C1A17]" />Mother Hub · transfers between service areas</p>
+                            <p className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-[#E00D42]" />Bayan Hub · pickup, local sorting and delivery</p>
+                        </div>
+                        <p className="mt-4 text-xs leading-5 text-zinc-500">Map links show configured hub relationships. A parcel follows its own saved route and actual scans.</p>
+                        {activeHub && (
+                            <div className="mt-4 rounded-xl bg-zinc-50 border border-zinc-200/80 p-3.5 shadow-xs">
+                                <p className="text-[11px] text-zinc-500 font-medium">Current facility view</p>
+                                <p className="mt-0.5 text-xs font-bold text-[#1C1A17]">{activeHub.name}</p>
+                            </div>
+                        )}
                     </HubPanel>
                 </div>
-                {scope.can_switch_facility && <details className="rounded-xl border border-slate-200 bg-white shadow-sm"><summary className="cursor-pointer px-5 py-4 text-sm font-semibold text-slate-800">People & placements <span className="ml-2 text-xs font-normal text-slate-500">Rider requests and handler assignments</span></summary><div className="space-y-4 border-t border-slate-200 p-4">
+                {scope.can_switch_facility && <details className="rounded-xl border border-zinc-200/90 bg-white shadow-sm overflow-hidden"><summary className="cursor-pointer px-6 py-4.5 text-xs sm:text-sm font-bold text-[#1C1A17] hover:bg-zinc-50/50 transition-colors">People & placements <span className="ml-2 text-xs font-normal text-zinc-500">Rider requests and handler assignments</span></summary><div className="space-y-4 border-t border-zinc-100 p-5 sm:p-6">
                 <CompanyRiderIntake workspace={riderIntake} />
                 {scope.can_switch_facility && hubs.length > 0 && (
-                    <form className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm" onSubmit={(event) => {
+                    <form className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-xs" onSubmit={(event) => {
                         event.preventDefault();
                         placement.post(route('hub.placements'), { preserveScroll: true, onSuccess: () => placement.reset('email') });
                     }}>
-                        <h2 className="text-base font-bold text-slate-900">Assign a hub handler</h2>
-                        <p className="mt-1 text-xs leading-5 text-slate-500">Use an approved logistics account’s email. New rider assignments use company offers and rider acceptance above.</p>
+                        <h2 className="text-sm sm:text-base font-bold text-[#1C1A17]">Assign a hub handler</h2>
+                        <p className="mt-1 text-xs leading-5 text-zinc-500">Use an approved logistics account’s email. New rider assignments use company offers and rider acceptance above.</p>
                         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            <label className="space-y-1 text-xs font-semibold text-slate-700">
+                            <label className="space-y-1.5 text-xs font-bold text-[#1C1A17]">
                                 <span>Account email</span>
-                                <input type="email" required maxLength={254} className="block w-full rounded-md border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" value={placement.data.email} onChange={(event) => placement.setData('email', event.target.value)} />
+                                <input type="email" required maxLength={254} className="block w-full rounded-xl border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white text-xs text-[#1C1A17] font-medium shadow-xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 px-3.5 py-2.5 transition-colors" value={placement.data.email} onChange={(event) => placement.setData('email', event.target.value)} placeholder="handler@company.com" />
                             </label>
-                            <label className="space-y-1 text-xs font-semibold text-slate-700">
+                            <label className="space-y-1.5 text-xs font-bold text-[#1C1A17]">
                                 <span>Destination facility</span>
-                                <select required className="block w-full rounded-md border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" value={placement.data.hub_id} onChange={(event) => {
+                                <select required className="block w-full rounded-xl border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white text-xs text-[#1C1A17] font-medium shadow-xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 px-3.5 py-2.5 transition-colors" value={placement.data.hub_id} onChange={(event) => {
                                     placement.setData('hub_id', event.target.value);
                                 }}>
                                     <option value="">Choose a facility</option>
@@ -183,64 +202,64 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                 </select>
                             </label>
                         </div>
-                        {Object.values(placement.errors).map((error, index) => <p key={index} role="alert" className="mt-2 text-sm text-red-700">{error}</p>)}
-                        <button type="submit" disabled={placement.processing} className="mt-4 rounded-md bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white hover:bg-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:opacity-50">{placement.processing ? 'Saving…' : 'Save placement'}</button>
+                        {Object.values(placement.errors).map((error, index) => <p key={index} role="alert" className="mt-2 text-xs font-medium text-rose-700">{error}</p>)}
+                        <button type="submit" disabled={placement.processing} className="mt-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition active:scale-[0.99] disabled:opacity-50">{placement.processing ? 'Saving…' : 'Save placement'}</button>
                     </form>
                 )}
                 </div></details>}
-                <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
-                    <div className="flex flex-col gap-3 border-b border-slate-300 pb-4 lg:flex-row lg:items-center lg:justify-between">
+                <section className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-sm">
+                    <div className="flex flex-col gap-3 border-b border-zinc-100 pb-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
-                            <h2 className="text-base font-bold text-slate-900">Company facilities</h2>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                            <h2 className="text-base font-bold text-[#1C1A17]">Company facilities</h2>
+                            <p className="mt-1 text-xs leading-5 text-zinc-500">
                                 Only active facilities owned by {scope.company_name} are listed below.
                             </p>
                         </div>
                         {activeHub && (
-                            <div className="rounded-md border border-[#E00D42]/30 bg-[#FDF2F4] px-3 py-2">
-                                <p className="text-xs text-slate-500">Working facility</p>
-                                <p className="mt-0.5 text-sm font-bold text-slate-900">
-                                    {activeHub.name} <span className="text-xs font-semibold text-[#E00D42]">{activeHub.code}</span>
+                            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 shadow-xs">
+                                <p className="text-[11px] text-zinc-500 font-medium">Working facility</p>
+                                <p className="mt-0.5 text-xs font-bold text-[#1C1A17]">
+                                    {activeHub.name} <span className="font-mono text-xs font-bold text-[#E00D42] ml-1">{activeHub.code}</span>
                                 </p>
                             </div>
                         )}
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <div className="mt-5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
                         {networkMetrics.map((metric) => {
                             const Icon = metric.icon;
                             return (
-                                <div key={metric.label} className="rounded-md border border-slate-300 bg-slate-50 p-3">
+                                <div key={metric.label} className="rounded-xl border border-zinc-200/90 bg-zinc-50/70 p-4 shadow-xs">
                                     <div className="flex items-center justify-between gap-3">
                                         <div>
-                                            <p className="text-xs text-slate-500">{metric.label}</p>
-                                            <p className="mt-1 text-xl font-extrabold text-slate-900">{metric.value.toLocaleString()}</p>
+                                            <p className="text-xs text-zinc-500 font-medium">{metric.label}</p>
+                                            <p className="mt-1 text-xl sm:text-2xl font-black text-[#1C1A17]">{metric.value.toLocaleString()}</p>
                                         </div>
-                                        <span className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600">
+                                        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 shadow-xs">
                                             <Icon className="h-4 w-4" />
                                         </span>
                                     </div>
-                                    <p className="mt-2 text-xs text-slate-500">{metric.detail}</p>
+                                    <p className="mt-2 text-xs text-zinc-400 font-medium">{metric.detail}</p>
                                 </div>
                             );
                         })}
                     </div>
                 </section>
 
-                <section className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <section className="rounded-xl border border-zinc-200/90 bg-white p-4.5 sm:p-5 shadow-sm">
+                    <div className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between">
                         <div className="relative w-full lg:max-w-md">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
                             <input
                                 type="search"
                                 aria-label="Search facilities" value={search}
                                 onChange={(event) => setSearch(event.target.value)}
                                 placeholder="Search facility, code, municipality, or province"
-                                className="w-full rounded-lg border-slate-300 bg-white py-2 pl-9 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                className="w-full rounded-xl border border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white py-2.5 pl-9 pr-3.5 text-xs font-medium text-[#1C1A17] placeholder:text-zinc-400 focus:outline-none focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 shadow-xs transition-colors"
                             />
                         </div>
 
-                        <div className="grid grid-cols-3 gap-1 rounded-md border border-slate-300 bg-slate-50 p-1 text-xs">
+                        <div className="grid grid-cols-3 gap-1 rounded-xl border border-zinc-200/90 bg-zinc-100/70 p-1 text-xs">
                             {[
                                 { value: 'all' as const, label: `All (${hubs.length})` },
                                 { value: 'regional_mother_hub' as const, label: `Mother (${motherHubs.length})` },
@@ -250,10 +269,10 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                     key={filter.value}
                                     type="button"
                                     onClick={() => setFilterTier(filter.value)}
-                                    className={`rounded-lg px-3 py-1.5 font-semibold transition ${
+                                    className={`rounded-lg px-3 py-1.5 font-bold transition-all duration-150 ${
                                         filterTier === filter.value
-                                            ? 'bg-white text-slate-900 shadow-sm'
-                                            : 'text-slate-500 hover:text-slate-800'
+                                            ? 'bg-white text-[#1C1A17] shadow-xs'
+                                            : 'text-zinc-500 hover:text-zinc-900'
                                     }`}
                                 >
                                     {filter.label}
@@ -274,26 +293,26 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                     key={hub.id}
                                     type="button"
                                     onClick={() => setSelectedHub(hub)}
-                                    className={`group flex min-h-64 flex-col rounded-lg border bg-white p-5 text-left shadow-sm transition hover:border-slate-400 hover:shadow-sm ${
-                                        isWorkingFacility ? 'border-[#E00D42] ring-1 ring-[#E00D42]/20' : 'border-slate-300'
+                                    className={`group flex min-h-64 flex-col rounded-xl border bg-white p-5 sm:p-6 text-left shadow-sm transition-all duration-150 hover:border-zinc-300 hover:shadow-md ${
+                                        isWorkingFacility ? 'border-[#E00D42] ring-2 ring-[#E00D42]/15' : 'border-zinc-200/90'
                                     }`}
                                 >
                                     <div className="flex items-start justify-between gap-3">
-                                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border ${
+                                        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-xs ${
                                             isWorkingFacility
-                                                ? 'border-[#E00D42]/30 bg-[#FDF2F4] text-[#E00D42]'
-                                                : 'border-slate-300 bg-slate-50 text-slate-700'
+                                                ? 'border-rose-200 bg-rose-50 text-[#E00D42]'
+                                                : 'border-zinc-200 bg-zinc-50 text-zinc-700'
                                         }`}>
                                             {hub.tier === 'regional_mother_hub'
-                                                ? <Warehouse className="h-4 w-4" />
-                                                : <Store className="h-4 w-4" />}
+                                                ? <Warehouse className="h-5 w-5" />
+                                                : <Store className="h-5 w-5" />}
                                         </span>
                                         <div className="flex flex-wrap justify-end gap-1.5">
-                                            <span className="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-bold uppercase text-slate-700">
+                                            <span className="rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-bold uppercase text-zinc-700 shadow-xs">
                                                 {facilityType(hub.tier)}
                                             </span>
                                             {isWorkingFacility && (
-                                                <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-bold uppercase text-emerald-700">
+                                                <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold uppercase text-emerald-700 shadow-xs">
                                                     <Check className="h-3 w-3" /> Working
                                                 </span>
                                             )}
@@ -302,49 +321,49 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
 
                                     <div className="mt-4">
                                         <div className="flex items-center gap-2">
-                                            <h3 className="line-clamp-1 text-base font-bold text-slate-900">{hub.name}</h3>
-                                            <span className="shrink-0 text-xs font-semibold text-slate-400">{hub.code}</span>
+                                            <h3 className="line-clamp-1 text-base font-bold text-[#1C1A17]">{hub.name}</h3>
+                                            <span className="shrink-0 text-xs font-mono font-bold text-zinc-400">{hub.code}</span>
                                         </div>
-                                        <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-                                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                        <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500 font-medium">
+                                            <MapPin className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
                                             <span className="truncate">{hub.city_municipality}, {hub.province}</span>
                                         </p>
                                     </div>
 
-                                    <div className="mt-4 rounded-md border border-slate-300 bg-slate-50 p-3">
+                                    <div className="mt-4 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3.5 shadow-xs">
                                         <div className="flex items-center justify-between text-xs">
-                                            <span className="text-slate-500">Capacity used</span>
-                                            <span className="font-semibold text-slate-800">
+                                            <span className="text-zinc-500 font-medium">Capacity used</span>
+                                            <span className="font-bold text-[#1C1A17]">
                                                 {hub.parcel_count.toLocaleString()} / {hub.capacity.toLocaleString()}
                                             </span>
                                         </div>
-                                        <div className="mt-2 h-1.5 overflow-hidden rounded-lg bg-slate-200">
+                                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-200">
                                             <div
-                                                className={`h-full rounded-lg ${capacityTone}`}
+                                                className={`h-full rounded-full ${capacityTone}`}
                                                 style={{ width: `${Math.min(100, hub.utilization)}%` }}
                                             />
                                         </div>
-                                        <div className="mt-3 grid grid-cols-3 divide-x divide-slate-300 text-center">
+                                        <div className="mt-3.5 grid grid-cols-3 divide-x divide-zinc-200 text-center">
                                             <div>
-                                                <span className="block text-xs text-slate-500">Vehicles</span>
-                                                <span className="mt-0.5 block text-sm font-bold text-slate-900">{hub.fleet_count}</span>
+                                                <span className="block text-xs text-zinc-500 font-medium">Vehicles</span>
+                                                <span className="mt-0.5 block text-sm font-bold text-[#1C1A17]">{hub.fleet_count}</span>
                                             </div>
                                             <div>
-                                                <span className="block text-xs text-slate-500">Handlers</span>
-                                                <span className="mt-0.5 block text-sm font-bold text-slate-900">{hub.handlers_count}</span>
+                                                <span className="block text-xs text-zinc-500 font-medium">Handlers</span>
+                                                <span className="mt-0.5 block text-sm font-bold text-[#1C1A17]">{hub.handlers_count}</span>
                                             </div>
                                             <div>
-                                                <span className="block text-xs text-slate-500">Barangays</span>
-                                                <span className="mt-0.5 block text-sm font-bold text-slate-900">{hub.coverage_barangays.length}</span>
+                                                <span className="block text-xs text-zinc-500 font-medium">Barangays</span>
+                                                <span className="mt-0.5 block text-sm font-bold text-[#1C1A17]">{hub.coverage_barangays.length}</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="mt-auto flex items-center justify-between border-t border-slate-300 pt-3 text-xs">
-                                        <span className="text-slate-500">
+                                    <div className="mt-auto flex items-center justify-between border-t border-zinc-100 pt-3.5 text-xs">
+                                        <span className="text-zinc-500 font-medium">
                                             {hub.allows_self_pickup ? `${hub.ready_pickup_count} awaiting counter pickup` : 'Transfer facility'}
                                         </span>
-                                        <span className="inline-flex items-center gap-1 font-semibold text-[#E00D42]">
+                                        <span className="inline-flex items-center gap-1 font-bold text-[#E00D42] group-hover:text-[#C20836]">
                                             View facility
                                             <ChevronRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
                                         </span>
@@ -354,10 +373,12 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                         })}
                     </section>
                 ) : (
-                    <section className="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center">
-                        <Building2 className="mx-auto h-8 w-8 text-slate-400" />
-                        <h2 className="mt-3 text-sm font-bold text-slate-900">No facilities found</h2>
-                        <p className="mt-1 text-xs text-slate-500">Try another search or facility type.</p>
+                    <section className="rounded-xl border border-dashed border-zinc-200 bg-white p-12 text-center">
+                        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-400 mb-3">
+                            <Building2 className="h-6 w-6" />
+                        </span>
+                        <h2 className="text-sm font-bold text-[#1C1A17]">No facilities found</h2>
+                        <p className="mt-1 text-xs text-zinc-500">Try another search or facility type.</p>
                     </section>
                 )}
             </div>
@@ -368,33 +389,33 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                         type="button"
                         aria-label="Close facility details"
                         onClick={closeDetails}
-                        className="absolute inset-0 h-full w-full bg-slate-950/25"
+                        className="absolute inset-0 h-full w-full bg-black/40 backdrop-blur-xs transition-opacity"
                     />
 
                     <aside
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="facility-details-title"
-                        className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col overscroll-contain overflow-y-auto border-l border-slate-300 bg-white shadow-2xl"
+                        className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col overscroll-contain overflow-y-auto border-l border-zinc-200/90 bg-white shadow-2xl"
                     >
-                        <header className="border-b border-slate-300 border-t-4 border-t-[#E00D42] bg-white px-5 py-4 sm:px-6">
+                        <header className="border-b border-zinc-100 border-t-4 border-t-[#E00D42] bg-white px-6 py-5">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-bold uppercase text-slate-700">
+                                        <span className="rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-bold uppercase text-zinc-700 shadow-xs">
                                             {facilityType(selectedHub.tier)}
                                         </span>
-                                        <span className="text-xs font-semibold text-[#E00D42]">{selectedHub.code}</span>
+                                        <span className="text-xs font-mono font-bold text-[#E00D42]">{selectedHub.code}</span>
                                     </div>
-                                    <h2 id="facility-details-title" className="mt-3 text-xl font-extrabold text-slate-900">
+                                    <h2 id="facility-details-title" className="mt-3 text-xl font-black text-[#1C1A17]">
                                         {selectedHub.name}
                                     </h2>
-                                    <p className="mt-1 text-xs text-slate-500">{selectedHub.company_name}</p>
+                                    <p className="mt-1 text-xs text-zinc-500 font-medium">{selectedHub.company_name}</p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={closeDetails}
-                                    className="rounded-lg border border-slate-300 p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+                                    className="rounded-xl border border-zinc-200/90 p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors shadow-xs"
                                     aria-label="Close facility details"
                                 >
                                     <X className="h-4 w-4" />
@@ -403,7 +424,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
 
                             <div className="mt-4">
                                 {scope.active_hub_id === selectedHub.id ? (
-                                    <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+                                    <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-700 shadow-xs">
                                         <Check className="h-4 w-4" />
                                         Current working facility
                                     </div>
@@ -411,21 +432,21 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => handleSwitchHub(selectedHub.id)}
-                                        className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#C20836]"
+                                        className="inline-flex items-center gap-2 rounded-xl bg-[#E00D42] hover:bg-[#C20836] px-4 py-2 text-xs font-bold text-white shadow-sm transition active:scale-[0.99]"
                                     >
                                         <Building2 className="h-4 w-4" />
                                         Use as working facility
                                     </button>
                                 ) : (
-                                    <p className="text-xs text-slate-500">Your account is restricted to its assigned facility.</p>
+                                    <p className="text-xs text-zinc-500 font-medium">Your account is restricted to its assigned facility.</p>
                                 )}
                             </div>
                         </header>
 
-                        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6">
+                        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
                             <section>
-                                <h3 className="text-sm font-bold text-slate-900">Facility snapshot</h3>
-                                <div className="mt-3 grid grid-cols-2 gap-3">
+                                <h3 className="text-sm font-bold text-[#1C1A17]">Facility snapshot</h3>
+                                <div className="mt-3.5 grid grid-cols-2 gap-3.5">
                                     {[
                                         { label: 'Parcels in custody', value: selectedHub.parcel_count.toLocaleString(), icon: Package },
                                         { label: 'Staging capacity', value: selectedHub.capacity.toLocaleString(), icon: Warehouse },
@@ -434,108 +455,108 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                     ].map((item) => {
                                         const Icon = item.icon;
                                         return (
-                                            <div key={item.label} className="rounded-md border border-slate-300 bg-slate-50 p-3">
-                                                <div className="flex items-center gap-2 text-slate-500">
+                                            <div key={item.label} className="rounded-xl border border-zinc-200/90 bg-zinc-50/70 p-4 shadow-xs">
+                                                <div className="flex items-center gap-2 text-zinc-500">
                                                     <Icon className="h-4 w-4" />
-                                                    <span className="text-xs">{item.label}</span>
+                                                    <span className="text-xs font-medium">{item.label}</span>
                                                 </div>
-                                                <p className="mt-2 text-lg font-extrabold text-slate-900">{item.value}</p>
+                                                <p className="mt-2 text-lg font-black text-[#1C1A17]">{item.value}</p>
                                             </div>
                                         );
                                     })}
                                 </div>
-                                <div className="mt-3 rounded-md border border-slate-300 bg-white p-3">
+                                <div className="mt-3.5 rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs">
                                     <div className="flex items-center justify-between text-xs">
-                                        <span className="text-slate-500">Capacity used</span>
-                                        <span className="font-semibold text-slate-800">{selectedHub.utilization}%</span>
+                                        <span className="text-zinc-500 font-medium">Capacity used</span>
+                                        <span className="font-bold text-[#1C1A17]">{selectedHub.utilization}%</span>
                                     </div>
-                                    <div className="mt-2 h-1.5 overflow-hidden rounded-lg bg-slate-200">
+                                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-200">
                                         <div
-                                            className={`h-full rounded-lg ${selectedHub.utilization >= 80 ? 'bg-amber-500' : 'bg-[#E00D42]'}`}
+                                            className={`h-full rounded-full ${selectedHub.utilization >= 80 ? 'bg-amber-500' : 'bg-[#E00D42]'}`}
                                             style={{ width: `${Math.min(100, selectedHub.utilization)}%` }}
                                         />
                                     </div>
                                 </div>
                             </section>
 
-                            <section className="border-t border-slate-300 pt-5">
-                                <h3 className="text-sm font-bold text-slate-900">Location</h3>
-                                <div className="mt-3 rounded-md border border-slate-300 bg-slate-50 p-4">
-                                    <div className="flex items-start gap-2.5 text-xs leading-5 text-slate-700">
+                            <section className="border-t border-zinc-100 pt-6">
+                                <h3 className="text-sm font-bold text-[#1C1A17]">Location</h3>
+                                <div className="mt-3.5 rounded-xl border border-zinc-200/90 bg-zinc-50/70 p-4.5 shadow-xs">
+                                    <div className="flex items-start gap-3 text-xs leading-5 text-zinc-700 font-medium">
                                         <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#E00D42]" />
                                         <span>
                                             {selectedHub.address}, {selectedHub.barangay}, {selectedHub.city_municipality}, {selectedHub.province}
                                         </span>
                                     </div>
-                                    <div className="mt-3 border-t border-slate-300 pt-3 text-xs text-slate-500">
-                                        GPS pin: <span className="font-semibold text-slate-700">{Number(selectedHub.latitude).toFixed(4)}° N, {Number(selectedHub.longitude).toFixed(4)}° E</span>
+                                    <div className="mt-3 border-t border-zinc-200/80 pt-3 text-xs text-zinc-500">
+                                        GPS pin: <span className="font-mono font-bold text-[#1C1A17]">{Number(selectedHub.latitude).toFixed(4)}° N, {Number(selectedHub.longitude).toFixed(4)}° E</span>
                                     </div>
                                 </div>
                             </section>
 
-                            <section className="border-t border-slate-300 pt-5">
+                            <section className="border-t border-zinc-100 pt-6">
                                 <div className="flex items-center justify-between gap-3">
                                     <div>
-                                        <h3 className="text-sm font-bold text-slate-900">Service coverage</h3>
-                                        <p className="mt-1 text-xs text-slate-500">
+                                        <h3 className="text-sm font-bold text-[#1C1A17]">Service coverage</h3>
+                                        <p className="mt-0.5 text-xs text-zinc-500 font-medium">
                                             {selectedHub.coverage_barangays.length} assigned barangays
                                         </p>
                                     </div>
-                                    <span className="rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700">
+                                    <span className="rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-700 shadow-xs">
                                         {selectedHub.allows_self_pickup ? 'Counter pickup available' : 'Transfer only'}
                                     </span>
                                 </div>
 
                                 {selectedHub.coverage_barangays.length > 8 && (
-                                    <div className="relative mt-3">
-                                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                    <div className="relative mt-3.5">
+                                        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
                                         <input
                                             type="search"
                                             aria-label="Search assigned barangays" value={coverageSearch}
                                             onChange={(event) => setCoverageSearch(event.target.value)}
                                             placeholder="Search assigned barangay"
-                                            className="w-full rounded-lg border-slate-300 py-2 pl-9 pr-3 text-xs focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                            className="w-full rounded-xl border border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white py-2 pl-9 pr-3 text-xs font-medium text-[#1C1A17] placeholder:text-zinc-400 focus:outline-none focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 shadow-xs transition-colors"
                                         />
                                     </div>
                                 )}
 
-                                <div className="mt-3 grid max-h-48 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                                <div className="mt-3.5 grid max-h-48 grid-cols-1 gap-2.5 overflow-y-auto sm:grid-cols-2">
                                     {filteredCoverage.length > 0 ? filteredCoverage.map((barangay) => (
-                                        <div key={barangay} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700">
+                                        <div key={barangay} className="rounded-xl border border-zinc-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-[#1C1A17] shadow-xs">
                                             {barangay}
                                         </div>
                                     )) : (
-                                        <p className="col-span-full rounded-md border border-dashed border-slate-300 p-4 text-center text-xs text-slate-500">
+                                        <p className="col-span-full rounded-xl border border-dashed border-zinc-200 p-4 text-center text-xs text-zinc-400 font-medium">
                                             No matching barangay found.
                                         </p>
                                     )}
                                 </div>
                             </section>
 
-                            <section className="border-t border-slate-300 pt-5">
-                                <h3 className="text-sm font-bold text-slate-900">Facility tools</h3>
-                                <div className="mt-3 space-y-2">
+                            <section className="border-t border-zinc-100 pt-6">
+                                <h3 className="text-sm font-bold text-[#1C1A17]">Facility tools</h3>
+                                <div className="mt-3.5 space-y-2.5">
                                     <Link
                                         href={route('hub.scan.station')}
-                                        className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-3 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
+                                        className="flex items-center justify-between rounded-xl border border-zinc-200/90 bg-white px-4 py-3 text-xs font-bold text-[#1C1A17] shadow-xs transition hover:bg-zinc-50 hover:border-zinc-300"
                                     >
                                         <span className="flex items-center gap-2.5"><ScanLine className="h-4 w-4 text-[#E00D42]" /> Scan parcel</span>
-                                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                                        <ChevronRight className="h-4 w-4 text-zinc-400" />
                                     </Link>
                                     <Link
                                         href={route('hub.deliveries')}
-                                        className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-3 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
+                                        className="flex items-center justify-between rounded-xl border border-zinc-200/90 bg-white px-4 py-3 text-xs font-bold text-[#1C1A17] shadow-xs transition hover:bg-zinc-50 hover:border-zinc-300"
                                     >
-                                        <span className="flex items-center gap-2.5"><Package className="h-4 w-4 text-slate-600" /> Parcels and waybills</span>
-                                        <ChevronRight className="h-4 w-4 text-slate-400" />
+                                        <span className="flex items-center gap-2.5"><Package className="h-4 w-4 text-zinc-600" /> Parcels and waybills</span>
+                                        <ChevronRight className="h-4 w-4 text-zinc-400" />
                                     </Link>
                                     {selectedHub.allows_self_pickup && (
                                         <Link
                                             href={route('hub.counter')}
-                                            className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-3 text-xs font-semibold text-slate-800 transition hover:bg-slate-50"
+                                            className="flex items-center justify-between rounded-xl border border-zinc-200/90 bg-white px-4 py-3 text-xs font-bold text-[#1C1A17] shadow-xs transition hover:bg-zinc-50 hover:border-zinc-300"
                                         >
-                                            <span className="flex items-center gap-2.5"><Store className="h-4 w-4 text-slate-600" /> Counter pickup</span>
-                                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                                            <span className="flex items-center gap-2.5"><Store className="h-4 w-4 text-zinc-600" /> Counter pickup</span>
+                                            <ChevronRight className="h-4 w-4 text-zinc-400" />
                                         </Link>
                                     )}
                                 </div>

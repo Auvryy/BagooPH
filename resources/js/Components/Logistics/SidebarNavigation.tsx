@@ -27,10 +27,10 @@ export default function SidebarNavigation({ items }: { items: Item[] }) {
                     aria-expanded={open}
                     aria-controls={id}
                     onClick={() => setExpanded(value => ({ ...value, [group.title]: !open }))}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-semibold text-stone-400 transition hover:text-stone-200 hover:bg-[#25221E]"
+                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-semibold text-zinc-400 transition hover:text-zinc-200 hover:bg-[#181A20]"
                 >
                     <span className="flex items-center gap-2">{group.title}</span>
-                    <ChevronDown className={`h-3.5 w-3.5 text-stone-400 transition-transform ${open ? '' : '-rotate-90'}`} />
+                    <ChevronDown className={`h-3.5 w-3.5 text-zinc-400 transition-transform ${open ? '' : '-rotate-90'}`} />
                 </button>
                 <div id={id} hidden={!open} className="space-y-1 pb-2 pt-0.5">
                     {links.map(item => (
@@ -41,10 +41,10 @@ export default function SidebarNavigation({ items }: { items: Item[] }) {
                             className={`group flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-2 text-xs transition ${
                                 item.current
                                     ? 'bg-[#E00D42] text-white font-bold rounded-xl shadow-sm'
-                                    : 'text-stone-300 hover:text-white hover:bg-[#2C2824] rounded-xl font-medium'
+                                    : 'text-zinc-300 hover:text-white hover:bg-[#1E2027] rounded-xl font-medium'
                             }`}
                         >
-                            <item.icon className={`h-4 w-4 shrink-0 ${item.current ? 'text-white' : 'text-stone-400 group-hover:text-stone-200'}`} />
+                            <item.icon className={`h-4 w-4 shrink-0 ${item.current ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`} />
                             <span className="flex-1">
                                 {item.name === 'Counter Pickup'
                                     ? 'Counter pickup'
