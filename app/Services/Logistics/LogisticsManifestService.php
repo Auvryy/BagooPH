@@ -519,7 +519,7 @@ class LogisticsManifestService
         if ($delivery->status === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB && $delivery->current_hub_id === $delivery->origin_bayan_hub_id && $source->tier === 'local_bayan_hub') {
             return $this->expectedHub($delivery, $delivery->origin_mother_hub_id, 'regional_mother_hub');
         }
-        if ($delivery->status === OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL && $source->isMotherHub()) {
+        if (in_array($delivery->status, [OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB, OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL], true) && $source->isMotherHub()) {
             if (! $this->actualHubReceipt($delivery, $source->id) && ! $this->historicalHubReceipt($delivery, $source->id)) {
                 throw new DomainException('The Mother Hub needs its actual manifest receipt before further departure.');
             }

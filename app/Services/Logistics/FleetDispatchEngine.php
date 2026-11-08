@@ -364,7 +364,13 @@ class FleetDispatchEngine
                     ]);
                 })
                 ->get()
-                ->filter(fn (Delivery $del) => $this->manifestService->nextHub($del) === $dest->id);
+                ->filter(function (Delivery $del) use ($dest) {
+                    try {
+                        return $this->manifestService->nextHub($del) === $dest->id;
+                    } catch (\Throwable) {
+                        return false;
+                    }
+                });
 
             $sealedBagsCount = $sealedBags->count();
             $openBagsCount = $openBags->count();
