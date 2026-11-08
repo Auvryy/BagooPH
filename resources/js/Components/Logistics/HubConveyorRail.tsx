@@ -102,24 +102,70 @@ export default function HubConveyorRail({
     // Determine the active station index (0 to 5) based on parcel delivery status
     const getActiveStationIndex = (status: string, type: string): number => {
         const s = status.toLowerCase();
-        if (s.includes('delivered') || s.includes('picked_up') || s.includes('completed')) {
-            return 5; // Handover complete
+        if (!s) return 0;
+
+        // 1. Station 6: Front Desk / Handover (completed, customer collected, or ready at counter)
+        if (
+            s.includes('customer_collected') ||
+            s.includes('delivered') ||
+            s.includes('completed') ||
+            (type === 'counter_pickup' && s.includes('ready_for_hub_pickup'))
+        ) {
+            return 5;
         }
-        if (s.includes('out_for_delivery') || s.includes('ready_for_pickup') || s.includes('dispatched')) {
-            return type === 'counter_pickup' ? 5 : 4; // Outbound dispatch or counter
+
+        // 2. Station 5: Outbound Bay (doorstep out for delivery, assigned to delivery rider, or linehaul dispatch)
+        if (
+            s.includes('out_for_delivery') ||
+            s.includes('assigned_to_rider') ||
+            s.includes('in_transit_to_dest') ||
+            s.includes('arrived_at_destination_hub') ||
+            s.includes('dispatched')
+        ) {
+            return 4;
         }
-        if (s.includes('in_transit') || s.includes('mother_bag') || s.includes('manifested')) {
-            return 3; // Bagging / Linehaul
+
+        // 3. Station 4: Consolidation (mother hub transfer / mother bagging)
+        if (
+            s.includes('in_transit_to_mother_hub') ||
+            s.includes('arrived_at_mother_hub') ||
+            s.includes('mother_bag') ||
+            s.includes('manifested')
+        ) {
+            return 3;
         }
-        if (s.includes('sorting') || s.includes('sorted')) {
-            return 2; // Sorting matrix
+
+        // 4. Station 3: Sorting Matrix (sorting to line haul cages or barangay pigeonholes)
+        if (
+            s.includes('sorted_to_line_haul') ||
+            s.includes('sorted_to_barangay_bin') ||
+            s.includes('sorting') ||
+            s.includes('sorted')
+        ) {
+            return 2;
         }
-        if (s.includes('weighed') || s.includes('dimension') || s.includes('dws')) {
-            return 1; // DWS inspection
+
+        // 5. Station 2: DWS Station (parcel received at origin hub, performing weight/dimension audit)
+        if (
+            s.includes('arrived_at_origin_hub') ||
+            s.includes('weighed') ||
+            s.includes('dimension') ||
+            s.includes('dws')
+        ) {
+            return 1;
         }
-        if (s.includes('received_at_hub') || s.includes('intake') || s.includes('picked_up_from_seller')) {
-            return 0; // Inbound dock
+
+        // 6. Station 1: Inbound Dock (first-mile rider collected from seller, awaiting physical intake at hub gate)
+        if (
+            s.includes('picked_up') ||
+            s.includes('ready_for_pickup') ||
+            s.includes('received_at_hub') ||
+            s.includes('intake') ||
+            s.includes('picked_up_from_seller')
+        ) {
+            return 0;
         }
+
         return 0; // Default to inbound dock
     };
 
