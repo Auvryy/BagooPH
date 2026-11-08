@@ -345,6 +345,18 @@ class LogisticsRoutingEngine
      */
     public function validateBackhaul(Delivery $delivery, LogisticsHub $targetHub, ?LogisticsHub $currentHub = null): ?string
     {
+        // Reverse/return logistics moves parcels backward to origin/seller by design
+        if (in_array($delivery->status, [
+            OrderStateMachineService::STATUS_RETURN_TO_SENDER,
+            OrderStateMachineService::STATUS_RETURN_IN_TRANSIT,
+            'returned',
+            'returned_to_hub',
+            'staged_for_seller_return',
+            'returned_to_seller',
+        ], true)) {
+            return null;
+        }
+
         $current = $currentHub ?? ($delivery->current_hub_id ? LogisticsHub::find($delivery->current_hub_id) : null);
         $currentHubId = $current?->id ?? $delivery->current_hub_id;
 
@@ -354,13 +366,25 @@ class LogisticsRoutingEngine
         $originMotherId = $delivery->origin_mother_hub_id;
 
         // Is parcel at destination_mother_hub or destination_bayan_hub?
-        $isAtDestMother = $destMotherId && (
-            $currentHubId === $destMotherId
-            || in_array($delivery->status, [
-                OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
-                OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
-            ], true)
-        );
+        $isAtDestMother = false;
+        if ($destMotherId) {
+            if ($originMotherId && $originMotherId !== $destMotherId) {
+                // Distinct mother hubs: only at destination mother hub if current facility is destination mother hub,
+                // or if it has reached or passed destination mother hub with recorded checkpoint.
+                $isAtDestMother = ($currentHubId === $destMotherId)
+                    || ($currentHubId !== $originMotherId && $currentHubId !== $originBayanId && in_array($delivery->status, [
+                        OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+                        OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
+                    ], true) && $delivery->checkpoints()->where('hub_id', $destMotherId)->exists());
+            } else {
+                // Single mother hub in network
+                $isAtDestMother = ($currentHubId === $destMotherId)
+                    || in_array($delivery->status, [
+                        OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+                        OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
+                    ], true);
+            }
+        }
 
         $isAtDestBayan = $destBayanId && (
             $currentHubId === $destBayanId

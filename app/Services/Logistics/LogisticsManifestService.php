@@ -239,7 +239,7 @@ class LogisticsManifestService
                     if ($manifest->direction === 'recovery' && ($candidate->id !== $recovery?->delivery_id || $manifest->recovery_leg_index !== $recovery->leg_index)) {
                         throw new DomainException('A recovery manifest may carry only the parcel and leg from its original recovery case.');
                     }
-                    if ($manifest->direction !== 'recovery') {
+                    if (! in_array($manifest->direction, ['recovery', 'return'], true)) {
                         $targetHub = LogisticsHub::find($manifest->destination_hub_id);
                         if ($targetHub && ($backhaulError = app(LogisticsRoutingEngine::class)->validateBackhaul($delivery, $targetHub, LogisticsHub::find($manifest->source_hub_id)))) {
                             throw new DomainException($backhaulError);
