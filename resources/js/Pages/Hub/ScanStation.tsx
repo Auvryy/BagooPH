@@ -9,6 +9,8 @@ import { HubParcelAction, HubParcelState, ParcelGuidance } from '@/Components/Hu
 import WaybillCamera from '@/Components/WaybillCamera';
 import { requestWaybill, waybillCode, WaybillRequestError } from '@/utils/waybillScan';
 import useOperationalRefresh from '@/hooks/useOperationalRefresh';
+import { useBarcodeWedge } from '@/hooks/useBarcodeWedge';
+import { scannerAudio } from '@/utils/scannerAudio';
 import {
     ScanLine,
     Package,
@@ -26,7 +28,11 @@ import {
     Boxes,
     CornerDownRight,
     Truck,
-    Send
+    Send,
+    Zap,
+    Lock,
+    Tag,
+    XCircle
 } from 'lucide-react';
 
 interface LogisticsHub {
@@ -100,7 +106,7 @@ interface DynamicPrompt {
 interface ScannedDeliveryResult {
     guidance: ParcelGuidance;
     registry_url?: string | null;
-    routing_target?: { name: string; code: string; tier: string } | null;
+    routing_target?: { id: number; name: string; code: string; tier: string } | null;
     id: number;
     tracking_number: string;
     status: string;
@@ -131,6 +137,20 @@ interface ScannedDeliveryResult {
     };
 }
 
+interface MasterBagScanResult {
+    reference: string;
+    seal_number: string;
+    source_hub: string;
+    destination_hub: string;
+    parcel_count: number;
+    status: string;
+    parcels?: Array<{
+        tracking_number: string;
+        order_number?: string;
+        status: string;
+    }>;
+}
+
 export default function ScanStation({
     activeHub,
     hubs,
@@ -144,6 +164,7 @@ export default function ScanStation({
     const [activeTab, setActiveTab] = useState<'scan' | 'counter' | 'logs'>('scan');
     const [barcodeInput, setBarcodeInput] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [fastDispatching, setFastDispatching] = useState(false);
     const [audioEnabled, setAudioEnabled] = useState(true);
 
     // Dynamic prompt state
@@ -153,6 +174,7 @@ export default function ScanStation({
         confirmed: boolean;
         alreadyReceived?: boolean;
     } | null>(null);
+    const [masterBagResult, setMasterBagResult] = useState<MasterBagScanResult | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
     const [recoveryUrl, setRecoveryUrl] = useState<string | null>(null);
     const [scanMessage, setScanMessage] = useState<string | null>(null);
@@ -176,6 +198,7 @@ export default function ScanStation({
     useOperationalRefresh(isSubmitting, ['activeHub', 'hubs', 'basePath', 'recentScans', 'pendingOriginIntake', 'counterPickups', 'counterTotal', 'stats']);
     useEffect(() => {
         setLastResult(null);
+        setMasterBagResult(null);
         setReturnResult(null);
         setScanError(null);
         setRecoveryUrl(null);
@@ -191,37 +214,19 @@ export default function ScanStation({
         if (activeTab === 'scan') barcodeInputRef.current?.focus();
     }, [activeTab, activeHub?.id]);
 
+    useEffect(() => {
+        scannerAudio.setEnabled(audioEnabled);
+    }, [audioEnabled]);
+
     // Sound effect synthesizer via Web Audio API
-    const playSound = (type: 'success' | 'error' | 'beep') => {
+    const playSound = (type: 'success' | 'error' | 'beep' | 'seal' | 'dispatch') => {
         if (!audioEnabled) return;
         try {
-            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-            if (!AudioCtx) return;
-            const ctx = new AudioCtx();
-
-            if (type === 'beep' || type === 'success') {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(880, ctx.currentTime);
-                gain.gain.setValueAtTime(0.12, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-                osc.start(ctx.currentTime);
-                osc.stop(ctx.currentTime + 0.15);
-            } else if (type === 'error') {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(220, ctx.currentTime);
-                gain.gain.setValueAtTime(0.2, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-                osc.start(ctx.currentTime);
-                osc.stop(ctx.currentTime + 0.35);
-            }
+            if (type === 'success') scannerAudio.playSuccess();
+            else if (type === 'error') scannerAudio.playError();
+            else if (type === 'beep') scannerAudio.playScanBeep();
+            else if (type === 'seal') scannerAudio.playSealLock();
+            else if (type === 'dispatch') scannerAudio.playDispatch();
         } catch {
             // Audio context not allowed or unsupported
         }
@@ -236,16 +241,38 @@ export default function ScanStation({
         setRecoveryUrl(null);
         setScanMessage(null);
         setSessionExpired(false);
-        if (!confirming) { setLastResult(null); setReturnResult(null); }
+        if (!confirming) { setLastResult(null); setReturnResult(null); setMasterBagResult(null); }
         try {
-            const data = await requestWaybill<{ prompt: DynamicPrompt; delivery: ScannedDeliveryResult; confirmed: boolean; message: string; already_received?: boolean;
-                return_case?: { reference: string; barcode: string; href: string; status: string } }>(
+            const data = await requestWaybill<{
+                prompt?: DynamicPrompt;
+                delivery?: ScannedDeliveryResult;
+                confirmed: boolean;
+                message: string;
+                already_received?: boolean;
+                is_master_bag?: boolean;
+                bag?: MasterBagScanResult;
+                return_case?: { reference: string; barcode: string; href: string; status: string };
+            }>(
                 `${basePath}/scan`, { ...body, hub_id: activeHub.id }, request.signal,
             );
             if (pendingRequest.current !== request || request.signal.aborted) return;
-            playSound(data.confirmed ? 'success' : 'beep');
-            if (data.return_case) { setReturnResult(data.return_case); setLastResult(null); }
-            else { setReturnResult(null); setLastResult({ prompt: data.prompt, delivery: data.delivery, confirmed: Boolean(data.confirmed), alreadyReceived: data.already_received }); }
+
+            if (data.is_master_bag && data.bag) {
+                setMasterBagResult(data.bag);
+                setLastResult(null);
+                setReturnResult(null);
+                playSound(data.confirmed ? 'success' : 'beep');
+            } else if (data.return_case) {
+                setReturnResult(data.return_case);
+                setLastResult(null);
+                setMasterBagResult(null);
+                playSound(data.confirmed ? 'success' : 'beep');
+            } else if (data.delivery && data.prompt) {
+                setReturnResult(null);
+                setMasterBagResult(null);
+                setLastResult({ prompt: data.prompt, delivery: data.delivery, confirmed: Boolean(data.confirmed), alreadyReceived: data.already_received });
+                playSound(data.confirmed ? 'success' : 'beep');
+            }
             setScanMessage(data.message);
             setBarcodeInput('');
             if (confirming) {
@@ -256,8 +283,9 @@ export default function ScanStation({
             if (pendingRequest.current !== request || request.signal.aborted) return;
             playSound('error');
             setLastResult(null);
+            setMasterBagResult(null);
             setBarcodeInput(String(body.barcode ?? ''));
-            setScanError(error instanceof Error ? error.message : 'The waybill could not be checked. Try again.');
+            setScanError(error instanceof Error ? error.message : 'The barcode could not be checked. Try again.');
             setRecoveryUrl(error instanceof WaybillRequestError ? error.recoveryUrl : null);
             setSessionExpired(error instanceof WaybillRequestError && [401, 419].includes(error.status));
         } finally {
@@ -269,6 +297,7 @@ export default function ScanStation({
     };
 
     const handleBarcodeProcess = (barcode: string) => runScan({ barcode: waybillCode(barcode, window.location.origin) ?? barcode, mode: 'inspect' });
+
     const confirmScanAction = () => {
         if (!lastResult?.prompt.requires_confirmation || !lastResult.delivery.guidance.can_act || lastResult.delivery.guidance.action !== 'scan') return;
         return runScan({
@@ -279,6 +308,100 @@ export default function ScanStation({
             claim_reference: lastResult.prompt.claim_reference ?? undefined,
         }, true);
     };
+
+    const confirmMasterBagIngestion = () => {
+        if (!masterBagResult) return;
+        return runScan({
+            barcode: masterBagResult.reference,
+            mode: 'confirm',
+            action: 'INGEST_MASTER_BAG',
+            expected_status: 'in_transit',
+        }, true);
+    };
+
+    const triggerFastDispatch = async (destinationHubId?: number) => {
+        const destId = destinationHubId || lastResult?.delivery?.routing_target?.id;
+        if (!destId || !activeHub || fastDispatching) return;
+
+        setFastDispatching(true);
+        setScanError(null);
+        setScanMessage(null);
+
+        try {
+            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content
+                || ((window as unknown as { csrfToken?: string }).csrfToken ?? '');
+
+            const response = await fetch(`${basePath}/scan/fast-dispatch`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    destination_hub_id: destId,
+                    delivery_ids: lastResult?.delivery?.id ? [lastResult.delivery.id] : undefined,
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || data.message || 'Fast dispatch failed');
+            }
+
+            playSound('dispatch');
+            setScanMessage(data.message);
+            setLastResult(null);
+            setMasterBagResult(null);
+            await refreshPage();
+        } catch (err) {
+            playSound('error');
+            setScanError(err instanceof Error ? err.message : 'Fast dispatch failed');
+        } finally {
+            setFastDispatching(false);
+        }
+    };
+
+    // Industrial Hardware Wedge Scanner Hook
+    useBarcodeWedge({
+        enabled: activeTab === 'scan',
+        onScan: (scannedCode) => {
+            const code = scannedCode.trim();
+            if (!code) return;
+
+            // Action Command Barcodes
+            if (code === 'CMD-CONFIRM') {
+                scannerAudio.playCommand();
+                if (masterBagResult && masterBagResult.status !== 'received') {
+                    confirmMasterBagIngestion();
+                } else if (lastResult?.prompt.requires_confirmation) {
+                    confirmScanAction();
+                }
+                return;
+            }
+
+            if (code === 'CMD-DISPATCH') {
+                scannerAudio.playCommand();
+                triggerFastDispatch();
+                return;
+            }
+
+            if (code === 'CMD-CLEAR') {
+                scannerAudio.playCommand();
+                setBarcodeInput('');
+                setLastResult(null);
+                setMasterBagResult(null);
+                setScanError(null);
+                setScanMessage(null);
+                barcodeInputRef.current?.focus();
+                return;
+            }
+
+            // Normal Barcode (Parcel Waybill or Master Bag BAG-)
+            handleBarcodeProcess(code);
+        },
+    });
 
     // Handle Manual Input Submit
     const handleInputSubmit = (e: React.FormEvent) => {
@@ -453,6 +576,15 @@ export default function ScanStation({
                                     </div>
                                 </form>
 
+                                <div className="mt-3 flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-400 border-t border-slate-100 pt-2.5">
+                                    <span className="flex items-center gap-1 text-slate-600 font-semibold">
+                                        <Zap className="h-3.5 w-3.5 text-amber-500" />
+                                        Hardware Laser Wedge Active
+                                    </span>
+                                    <span className="text-slate-400">
+                                        Cmds: <span className="text-slate-700 font-semibold">[CMD-CONFIRM]</span> · <span className="text-slate-700 font-semibold">[CMD-DISPATCH]</span> · <span className="text-slate-700 font-semibold">[CMD-CLEAR]</span>
+                                    </span>
+                                </div>
                             </div>
 
                             <WaybillCamera key={activeHub?.id} onScan={handleBarcodeProcess} disabled={isSubmitting}
@@ -460,9 +592,110 @@ export default function ScanStation({
                         </div>
 
                         {/* RIGHT COLUMN: Live Routing Action & Intelligence HUD (col-span-6) */}
-                        <div className="lg:col-span-6">
+                        <div className="lg:col-span-6 space-y-4">
+                            {/* MASTER BAG INGESTION CARD */}
+                            {masterBagResult && (
+                                <div className="bg-white rounded-xl border-2 border-indigo-400 shadow-md p-4 sm:p-5 space-y-4">
+                                    <div className="flex items-center justify-between border-b border-indigo-100 pb-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold">
+                                                <Boxes className="h-4 w-4" />
+                                            </span>
+                                            <div>
+                                                <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 block">
+                                                    Master Consolidation Bag
+                                                </span>
+                                                <span className="text-[11px] text-slate-500 font-mono">
+                                                    From: {masterBagResult.source_hub} &rarr; {masterBagResult.destination_hub}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase font-mono ${
+                                            masterBagResult.status === 'received'
+                                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                                : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                        }`}>
+                                            {masterBagResult.status}
+                                        </span>
+                                    </div>
+
+                                    <div className="rounded-xl bg-slate-900 text-white p-4 text-center">
+                                        <p className="text-[10px] font-mono tracking-widest text-slate-400 uppercase">Master Bag Tag</p>
+                                        <p className="text-2xl font-black font-mono tracking-wider text-emerald-400 mt-0.5">{masterBagResult.reference}</p>
+                                        <p className="text-xs font-mono text-slate-300 mt-1">
+                                            Numbered Tamper Seal: <span className="text-amber-300 font-bold">{masterBagResult.seal_number || 'N/A'}</span>
+                                        </p>
+                                    </div>
+
+                                    {masterBagResult.status !== 'received' ? (
+                                        <div className="space-y-2">
+                                            <button
+                                                type="button"
+                                                disabled={isSubmitting}
+                                                onClick={confirmMasterBagIngestion}
+                                                className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white px-5 py-3 text-sm font-bold shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                                            >
+                                                <Zap className="h-4 w-4 fill-current text-amber-300" />
+                                                <span>{isSubmitting ? 'Ingesting Nested Parcels…' : `⚡ Ingest All ${masterBagResult.parcel_count} Nested Parcels`}</span>
+                                            </button>
+                                            <p className="text-center text-[11px] text-slate-400 font-mono">or scan hardware barcode [CMD-CONFIRM]</p>
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-900 flex items-center gap-2">
+                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                                            <span>All parcels received into hub custody and queued for local sorting.</span>
+                                        </div>
+                                    )}
+
+                                    {masterBagResult.parcels && masterBagResult.parcels.length > 0 && (
+                                        <div className="border-t border-slate-100 pt-3 space-y-1.5">
+                                            <p className="text-xs font-bold text-slate-700">Contained Parcels ({masterBagResult.parcels.length})</p>
+                                            <div className="max-h-36 overflow-y-auto divide-y divide-slate-100 text-xs font-mono">
+                                                {masterBagResult.parcels.map((p, idx) => (
+                                                    <div key={idx} className="py-1 flex items-center justify-between">
+                                                        <span className="text-[#E00D42] font-semibold">{p.tracking_number}</span>
+                                                        <span className="text-slate-400 text-[11px]">{p.order_number ? `#${p.order_number}` : ''}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        disabled={isSubmitting}
+                                        onClick={() => { setMasterBagResult(null); setBarcodeInput(''); barcodeInputRef.current?.focus(); }}
+                                        className="w-full rounded-lg border border-slate-300 bg-white py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                                    >
+                                        Scan Next Bag / Parcel
+                                    </button>
+                                </div>
+                            )}
+
                             {lastResult ? (
                                 <div className="bg-white rounded-lg border border-slate-300 shadow-sm p-4 sm:p-5 space-y-4">
+                                    {/* Prominent High-Contrast Route Target Badge */}
+                                    {lastResult.delivery.routing_target && (
+                                        <div className="rounded-xl border-2 border-slate-900 bg-slate-900 text-white p-4 shadow-sm flex items-center justify-between">
+                                            <div>
+                                                <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-amber-400">
+                                                    Route Target Facility
+                                                </span>
+                                                <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white mt-0.5">
+                                                    {lastResult.delivery.routing_target.name}
+                                                </div>
+                                                <div className="text-xs text-slate-300 font-mono">
+                                                    CODE: {lastResult.delivery.routing_target.code} · TIER: {lastResult.delivery.routing_target.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
+                                                </div>
+                                            </div>
+                                            <div className="shrink-0 text-right">
+                                                <span className="inline-flex items-center justify-center rounded-lg bg-emerald-500/20 px-3 py-1.5 font-mono text-xs font-bold text-emerald-300 border border-emerald-500/30">
+                                                    {lastResult.delivery.destination_bin ? `BIN: ${lastResult.delivery.destination_bin}` : 'SORT QUEUE'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="flex items-center justify-between border-b border-slate-300 pb-3">
                                         <span className="text-[11px] font-sans uppercase text-slate-500 tracking-wider font-bold">
                                             Parcel result
@@ -498,19 +731,32 @@ export default function ScanStation({
                                                         Dispatch on Vehicle Transfer Manifest
                                                     </h3>
                                                     <p className="mt-1 text-xs text-slate-600 leading-relaxed">
-                                                        This parcel is safely stored at <strong>{activeHub?.name}</strong>. Enterprise chain-of-custody requires loading this parcel onto an authorized transfer manifest to reach <strong>{lastResult.delivery.routing_target?.name || 'the next facility'}</strong>.
+                                                        This parcel is stored at <strong>{activeHub?.name}</strong>, addressed to <strong>{lastResult.delivery.routing_target?.name || 'the next facility'}</strong>.
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="pt-1 flex flex-wrap gap-2">
-                                                <Link
-                                                    href={lastResult.prompt.manifest_url || lastResult.delivery.guidance.href || '/hub/manifests'}
-                                                    className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#C20836] transition cursor-pointer"
-                                                >
-                                                    <Send className="h-4 w-4" />
-                                                    <span>Open Manifests to Dispatch ({lastResult.delivery.routing_target?.code || 'Next Hub'})</span>
-                                                    <ArrowRight className="h-3.5 w-3.5" />
-                                                </Link>
+                                            <div className="pt-2 space-y-2">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        disabled={fastDispatching || isSubmitting}
+                                                        onClick={() => triggerFastDispatch(lastResult.delivery.routing_target?.id)}
+                                                        className="inline-flex items-center gap-2 rounded-xl bg-[#E00D42] px-5 py-3 text-sm font-bold text-white shadow-md hover:bg-[#C20836] transition cursor-pointer active:scale-98 disabled:opacity-50"
+                                                    >
+                                                        <Zap className="h-4 w-4 fill-current text-amber-300" />
+                                                        <span>{fastDispatching ? 'Creating Bag & Manifest…' : `⚡ 1-Click Fast Dispatch to ${lastResult.delivery.routing_target?.code || 'Next Hub'}`}</span>
+                                                    </button>
+                                                    <span className="text-[11px] text-slate-500 font-mono">or scan [CMD-DISPATCH]</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Link
+                                                        href={lastResult.prompt.manifest_url || lastResult.delivery.guidance.href || '/hub/manifests'}
+                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                                                    >
+                                                        <span>Advanced Manifest Workstation</span>
+                                                        <ArrowRight className="h-3 w-3" />
+                                                    </Link>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -641,8 +887,8 @@ export default function ScanStation({
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="text-[10px] uppercase text-slate-500 font-sans font-bold">Waybill Code</div>
-                                            <div className="text-xs font-bold font-sans text-slate-900">
+                                            <div className="text-[10px] uppercase text-rose-500 font-sans font-bold">Waybill Code</div>
+                                            <div className="text-xs font-mono font-black text-[#E00D42] bg-rose-50 px-2 py-0.5 rounded border border-rose-200 inline-block mt-0.5">
                                                 {lastResult.delivery.tracking_number}
                                             </div>
                                         </div>
