@@ -1822,7 +1822,7 @@ class LogisticsHubWorkstationController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "⚡ Fast Outbound Dispatched {$result['parcel_count']} parcels to {$result['destination_hub']} via {$result['manifest_reference']} (Master Bag: {$result['bag_reference']})!",
+            'message' => "Fast outbound dispatched {$result['parcel_count']} parcels to {$result['destination_hub']} via {$result['manifest_reference']} (Master Bag: {$result['bag_reference']}).",
             'data' => $result,
         ]);
     }
