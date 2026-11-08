@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import useOperationalRefresh from '@/hooks/useOperationalRefresh';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Banknote, Camera, RefreshCw, Search, Truck } from 'lucide-react';
+import { Banknote, Camera, MapPin, RefreshCw, Search, Truck } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
 import CourierJobMap from '@/Components/CourierJobMap';
 import CourierCurrentJob from '@/Components/CourierCurrentJob';
@@ -58,6 +58,25 @@ interface Props {
     isOnline?: boolean;
     stats?: { availablePickups?: number; activePickups?: number; activePickupLimit?: number; finalMileTasks?: number; completedToday?: number };
     queues?: { availablePickups?: PickupTask[]; pickupTasks?: PickupTask[]; finalMileTasks?: FinalMileTask[]; recentActivity?: CourierActivity[] };
+    cashSummary?: {
+        held_cents: number;
+        max_float_cents: number;
+        warning_float_cents: number;
+        is_locked: boolean;
+        is_warning: boolean;
+    };
+}
+
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371e3; // Earth radius in meters
+    const rad = (deg: number) => (deg * Math.PI) / 180;
+    const dLat = rad(lat2 - lat1);
+    const dLon = rad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c);
 }
 
 type WorkspaceView = 'assigned' | 'carrying' | 'available';
@@ -65,7 +84,7 @@ type WorkspaceEntry = { phase: 'pickup'; task: PickupTask } | { phase: 'availabl
 type ActionTarget = { id: number; trackingNumber: string; status: 'picked_up' | 'out_for_delivery' | 'delivered' | 'delivery_failed' };
 const actionLabels = { picked_up: 'Confirm pickup', out_for_delivery: 'Start delivery', delivered: 'Record delivery', delivery_failed: 'Record failed attempt' };
 
-export default function CourierDeliveries({ scope, isOnline = false, stats, queues, recoveryRequestToken }: Props) {
+export default function CourierDeliveries({ scope, isOnline = false, stats, queues, recoveryRequestToken, cashSummary }: Props) {
     const { auth } = usePage<PageProps>().props;
     const pickups = queues?.pickupTasks ?? [];
     const available = queues?.availablePickups ?? [];
@@ -94,6 +113,8 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const [preview, setPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loadingId, setLoadingId] = useState<number | null>(null);
+    const [riderGps, setRiderGps] = useState<{ lat: number; lng: number } | null>(null);
+    const [gpsDistance, setGpsDistance] = useState<number | null>(null);
     useOperationalRefresh(loadingId !== null, ['scope', 'isOnline', 'stats', 'queues', 'recoveryRequestToken']);
     const pending = useRef(false);
     useCourierRequestError(pending, (message) => setErrors({ status: message }));
@@ -228,6 +249,10 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             setErrors({ proof_image_file: 'Add a proof of delivery photo before recording the handoff.' });
             return;
         }
+        if (target.status === 'delivered' && !walletHandover && cashSummary?.is_locked) {
+            setErrors({ status: 'Cannot complete COD delivery: You have reached the ₱20,000 unremitted cash float limit. Please remit cash at a Bayan Hub first.' });
+            return;
+        }
         if (target.status === 'delivered' && !walletHandover && (actionDue === null || netCash !== actionDue || !cashConfirmed)) {
             setErrors({ cash_received: 'Count the saved COD amount, give the correct change, and confirm collection before recording delivery.' });
             return;
@@ -247,6 +272,9 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
             change_given: target.status === 'delivered' && !walletHandover ? changeGiven : undefined,
             cash_confirmed: target.status === 'delivered' && !walletHandover ? cashConfirmed : undefined,
             proof_image_file: (target.status === 'delivered' || target.status === 'delivery_failed') ? proof ?? undefined : undefined,
+            latitude: riderGps?.lat,
+            longitude: riderGps?.lng,
+            geofence_verified: gpsDistance !== null ? gpsDistance <= 100 : undefined,
         }, {
             forceFormData: true, preserveScroll: true,
             onSuccess: (page) => {
@@ -272,6 +300,32 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     ));
     const selectedReviewTask = selectedNeedsCustodyReview ? selectedEntry?.task : undefined;
     const selectedPanelTask = selectedHeldTask ?? selectedReviewTask;
+
+    useEffect(() => {
+        if (target?.status === 'delivered' && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    setRiderGps({ lat, lng });
+                    if (selectedDelivery?.recipient?.latitude && selectedDelivery?.recipient?.longitude) {
+                        const dist = calculateDistanceMeters(
+                            lat,
+                            lng,
+                            selectedDelivery.recipient.latitude,
+                            selectedDelivery.recipient.longitude
+                        );
+                        setGpsDistance(dist);
+                    }
+                },
+                () => {},
+                { enableHighAccuracy: true, timeout: 8000 }
+            );
+        } else if (!target) {
+            setRiderGps(null);
+            setGpsDistance(null);
+        }
+    }, [target?.status, selectedDelivery?.id]);
     const collected = selectedPickup?.retainedByCurrentCourier === true;
     const assignedCount = assignedEntries.length;
     const carryingCount = carryingEntries.length;
@@ -341,6 +395,39 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                 }} className={`${courierButton} gap-2`}><RefreshCw className="h-4 w-4" aria-hidden="true" />{loadingId === -1 ? 'Refreshing…' : 'Refresh tracking'}</button><Link href={courierPath('/cod')} className={`${courierButton} gap-2`}><Banknote className="h-4 w-4" aria-hidden="true" />COD cash handovers</Link></div>
                 {!isOnline && <p className="rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">You are off duty. Existing assigned parcels remain available below; go on duty in the header to receive new work.</p>}
                 {scope?.isAssigned && !scope.isOperational && <p className="rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-4 text-sm leading-relaxed text-[#92400E]">New work is paused at your company or hub. Continue handling parcels already assigned to you.</p>}
+                {cashSummary && (
+                    <div className={`rounded-xl border p-4 shadow-sm ${cashSummary.is_locked ? 'border-rose-300 bg-rose-50 text-rose-950' : cashSummary.is_warning ? 'border-amber-300 bg-[#FFF4DF] text-[#92400E]' : 'border-slate-200 bg-white text-slate-900'}`}>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${cashSummary.is_locked ? 'bg-rose-100 text-rose-700' : cashSummary.is_warning ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'}`}>
+                                    <Banknote className="h-5 w-5" />
+                                </span>
+                                <div>
+                                    <h3 className="text-sm font-bold">Rider COD Cash Float Shield</h3>
+                                    <p className="text-xs text-slate-600">
+                                        {cashSummary.is_locked
+                                            ? '🛑 Delivery Locked: You have reached the ₱20,000 unremitted COD cash limit. Visit a Bayan Hub to remit funds and unlock COD deliveries.'
+                                            : cashSummary.is_warning
+                                            ? '⚠️ Caution: You are nearing the ₱20,000 unremitted COD cash limit. Plan a remittance drop at your Bayan Hub.'
+                                            : 'Unremitted cash collected on the road is tracked for safety.'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-base font-extrabold tabular-nums">
+                                    ₱{(cashSummary.held_cents / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                    <span className="text-xs font-normal text-slate-500"> / ₱20,000.00</span>
+                                </p>
+                                <div className="mt-1 h-2 w-32 overflow-hidden rounded-full bg-slate-200">
+                                    <div
+                                        className={`h-full transition-all duration-300 ${cashSummary.is_locked ? 'bg-rose-600' : cashSummary.is_warning ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                        style={{ width: `${Math.min(100, (cashSummary.held_cents / cashSummary.max_float_cents) * 100)}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div role="group" aria-label="Task filters" className="flex max-w-full gap-1 overflow-x-auto rounded-[8px] bg-slate-100 p-1">
                         {([{ key: 'assigned', label: 'Assigned to you', count: assignedCount }, { key: 'carrying', label: 'Carrying', count: carryingCount }, { key: 'available', label: 'Available to claim', count: stats?.availablePickups ?? available.length }] as const).map((item) => <button key={item.key} type="button" aria-pressed={view === item.key} onClick={() => selectView(item.key)} className={courierClasses(courierButton, 'shrink-0 gap-2 border-transparent bg-transparent px-3 text-sm font-medium hover:bg-slate-200', view === item.key && 'bg-white text-slate-950 shadow-sm hover:bg-white')}><span>{item.label}</span><span className={`rounded-[8px] px-2 py-0.5 text-xs tabular-nums ${view === item.key ? 'bg-slate-100 text-slate-700' : 'bg-slate-200/70 text-slate-600'}`}>{item.count}</span></button>)}
@@ -388,6 +475,25 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                         {waybillMismatch && <p id="waybill-mismatch" role="status" className="mt-2 rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-3 text-sm leading-relaxed text-[#92400E]">This scanned code does not match the selected parcel waybill. Check the physical label, then scan or enter the matching code. The server verifies it again before recording.</p>}
                         <WaybillCamera onScan={(value) => { setBarcode(value); setErrors((current) => ({ ...current, barcode: '' })); }} disabled={loadingId !== null} instruction="A camera scan only fills the waybill field. Compare it with the parcel above, then submit the permitted rider action." />
                     </div>
+                    {target.status === 'delivered' && (
+                        <>
+                            {gpsDistance !== null && (
+                                <div className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs font-medium ${gpsDistance <= 100 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-[#92400E]'}`}>
+                                    <MapPin className="h-4 w-4 shrink-0" />
+                                    <span>
+                                        {gpsDistance <= 100
+                                            ? `GPS Verified: Within customer delivery radius (~${gpsDistance}m away)`
+                                            : `Location Notice: ~${gpsDistance}m from registered delivery coordinates. Ensure you are at the correct location.`}
+                                    </span>
+                                </div>
+                            )}
+                            {cashSummary?.is_locked && !walletHandover && (
+                                <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800">
+                                    <strong>COD Delivery Locked:</strong> You have reached the ₱20,000 unremitted cash limit. You cannot collect more COD cash until you make a deposit at a Bayan Hub.
+                                </div>
+                            )}
+                        </>
+                    )}
                     {target.status === 'delivered' && <section className="space-y-4 rounded-[8px] border border-slate-300 bg-[#FFFAFB] p-4" aria-label="Recipient and COD collection">
                         <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Banknote className="h-5 w-5 text-[#C20836]" aria-hidden="true" />{walletHandover ? 'Prepaid wallet delivery' : 'Count cash at handoff'}</h3><span className="font-semibold tabular-nums text-[#C20836]">{walletHandover ? 'No cash due' : `Due: ${actionDue === null ? 'Unavailable' : courierMoney(actionDue / 100)}`}</span></div>
                         <label className="block text-sm font-semibold" htmlFor="cash-recipient">Person receiving the parcel<input id="cash-recipient" required maxLength={255} value={recipientName} disabled={loadingId !== null} onChange={(event) => setRecipientName(event.target.value)} className={courierInput} /><CourierFieldError message={errors.recipient_name} /></label>
@@ -407,7 +513,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                     <label className="block text-sm font-semibold text-slate-800" htmlFor="courier-notes">{target.status === 'delivery_failed' ? 'Attempt notes' : 'Optional note'}<textarea required={target.status === 'delivery_failed'} id="courier-notes" rows={3} maxLength={500} value={notes} disabled={loadingId !== null} aria-invalid={Boolean(errors.courier_notes || errors.notes)} aria-describedby="notes-help notes-error" onChange={(event) => setNotes(event.target.value)} className={`${courierInput} resize-y`} /></label>
                     <p id="notes-help" className="text-sm text-slate-600">Up to 500 characters.{target.status === 'picked_up' ? ' Pickup notes are also sent to the seller.' : ''}</p>
                     <CourierFieldError id="notes-error" message={errors.courier_notes || errors.notes} />
-                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" disabled={loadingId !== null} onClick={resetAction} className={courierButton}>Cancel</button><button type="submit" disabled={loadingId !== null || waybillMismatch} className={courierPrimary}>{target.status === 'delivered' && <Camera className="h-5 w-5" aria-hidden="true" />}{loadingId !== null ? 'Recording…' : actionLabels[target.status]}</button></div>
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" disabled={loadingId !== null} onClick={resetAction} className={courierButton}>Cancel</button><button type="submit" disabled={loadingId !== null || waybillMismatch || Boolean(target.status === 'delivered' && !walletHandover && cashSummary?.is_locked)} className={courierPrimary}>{target.status === 'delivered' && <Camera className="h-5 w-5" aria-hidden="true" />}{loadingId !== null ? 'Recording…' : actionLabels[target.status]}</button></div>
                 </form>}
             </CourierDialog>
         </CourierLayout>

@@ -14,6 +14,7 @@ use App\Services\Courier\CourierMessagingService;
 use App\Services\Courier\CourierOperationsService;
 use App\Services\Courier\CourierOutcomeService;
 use App\Services\Courier\CourierProofService;
+use App\Services\Courier\RiderCashService;
 use App\Services\Courier\RiderShiftService;
 use App\Services\Courier\RiderTaskService;
 use App\Services\Finance\CodCashService;
@@ -65,6 +66,17 @@ class CourierDeliveryController extends Controller
             'isOnline' => (bool) $user->courierProfile?->is_available,
             'stats' => fn () => $workPayload()['stats'],
             'queues' => fn () => $workPayload()['queues'],
+            'cashSummary' => function () use ($user): array {
+                $held = app(RiderCashService::class)->heldCashCents($user);
+
+                return [
+                    'held_cents' => $held,
+                    'max_float_cents' => RiderCashService::MAX_UNREMITTED_CASH_CENTS,
+                    'warning_float_cents' => RiderCashService::WARNING_UNREMITTED_CASH_CENTS,
+                    'is_locked' => $held >= RiderCashService::MAX_UNREMITTED_CASH_CENTS,
+                    'is_warning' => $held >= RiderCashService::WARNING_UNREMITTED_CASH_CENTS,
+                ];
+            },
         ]);
     }
 
@@ -221,6 +233,15 @@ class CourierDeliveryController extends Controller
                 'max:5120',
             ],
         ]);
+
+        if ($cashRequired) {
+            $heldCents = app(RiderCashService::class)->heldCashCents($request->user());
+            if ($heldCents >= RiderCashService::MAX_UNREMITTED_CASH_CENTS) {
+                return back()->withErrors([
+                    'status' => 'Cannot complete COD delivery: You have reached the ₱20,000 unremitted cash float limit. Please remit collected cash at a Bayan Hub before completing further Cash on Delivery orders.',
+                ]);
+            }
+        }
 
         $rider = $request->user()->load('courierProfile');
         $targetStatus = $validated['status'];
