@@ -50,6 +50,18 @@
 }
 
 @layer components {
+    .location-pin-picker {
+        position: relative;
+        z-index: 0;
+        isolation: isolate;
+    }
+
+    .location-pin-picker .leaflet-pane,
+    .location-pin-picker .leaflet-top,
+    .location-pin-picker .leaflet-bottom {
+        z-index: 10 !important;
+    }
+
     .location-pin-picker .leaflet-control-zoom {
         overflow: hidden;
         border: 1px solid #CBD5E1;

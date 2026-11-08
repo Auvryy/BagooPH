@@ -198,7 +198,7 @@ export default function BuyerLayout({
             </div>
 
             {/* 2. MAIN HEADER: VIBRANT BRAND CRIMSON BACKGROUND */}
-            <header className="bg-[#E00D42] text-white border-b border-[#C20836] sticky top-0 z-50 shadow-md shrink-0 font-sans">
+            <header className="bg-[#E00D42] text-white border-b border-[#C20836] sticky top-0 z-[100] shadow-md shrink-0 font-sans">
                 <div className="max-w-[1536px] mx-auto px-2 sm:px-3 md:px-4 py-3">
                     <div className="flex items-center justify-between gap-4 sm:gap-6">
                         
