@@ -2,16 +2,12 @@
 
 namespace Tests\Feature\Logistics;
 
-use App\Models\Delivery;
-use App\Models\DeliveryCheckpoint;
-use App\Models\Order;
 use App\Models\User;
 use App\Services\Courier\RiderCashService;
 use App\Services\Logistics\OrderStateMachineService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 use Tests\Concerns\InteractsWithCodCollection;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;

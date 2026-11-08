@@ -28,7 +28,6 @@ use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Logistics\LogisticsSortingInputService;
 use App\Services\Logistics\MisrouteTrapService;
-use App\Services\Logistics\MotherBagService;
 use App\Services\Logistics\OrderStateMachineService;
 use App\Services\Logistics\ParcelRecoveryService;
 use App\Services\Logistics\PickupClaimService;
@@ -845,6 +844,14 @@ class LogisticsHubWorkstationController extends Controller
     }
 
     /**
+     * Floor handler barcode intake with dynamic routing prompts (alias for workstation scan).
+     */
+    public function scan(Request $request): JsonResponse|RedirectResponse
+    {
+        return $this->scanIntake($request);
+    }
+
+    /**
      * Floor handler barcode intake with dynamic routing prompts.
      */
     public function scanIntake(Request $request): JsonResponse|RedirectResponse
@@ -856,6 +863,7 @@ class LogisticsHubWorkstationController extends Controller
         $validated = $request->validate([
             'barcode' => $inputs->barcodeRules(),
             'hub_id' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'exists:logistics_hubs,id'],
+            'location_barcode' => ['nullable', 'string', 'max:100'],
             'notes' => $inputs->notesRules(),
             'mode' => 'nullable|in:inspect,confirm',
             'action' => 'required_if:mode,confirm|nullable|string|max:100|regex:/\A[A-Z_]+\z/',
@@ -918,6 +926,55 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         $routingEngine = app(LogisticsRoutingEngine::class);
+
+        // Anti-backhaul guard: Prevent parcels from being dispatched or routed backward
+        $backhaulTarget = $request->filled('destination_hub_id')
+            ? LogisticsHub::find($request->input('destination_hub_id'))
+            : $hub;
+
+        if ($backhaulTarget && ($backhaulError = $routingEngine->validateBackhaul($delivery, $backhaulTarget, $delivery->currentHub ?? $hub))) {
+            return $this->operationError($request, $backhaulError, 422, [
+                'sound' => 'buzz',
+                'errors' => [
+                    'barcode' => [$backhaulError],
+                    'destination_hub_id' => [$backhaulError],
+                ],
+            ]);
+        }
+
+        // Two-Way Location Scan Verification (Poka-Yoke Mode)
+        $locationBarcode = filled($validated['location_barcode'] ?? null) ? trim((string) $validated['location_barcode']) : null;
+        if ($locationBarcode) {
+            $nextHop = $routingEngine->computeNextHop($delivery, $hub);
+            $nextHopBin = $nextHop['recommended_bin'] ?? null;
+            $assignedBin = $delivery->destination_bin;
+            $isDestStation = ($hub->id === $delivery->destination_bayan_hub_id);
+            $expectedBin = $isDestStation
+                ? ($assignedBin ?: ($nextHopBin ?: 'LOC-BIN-01'))
+                : ($nextHopBin ?: ($assignedBin ?: 'LOC-BIN-01'));
+
+            $clean = fn (?string $val) => strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $val));
+            $targetClean = $clean($locationBarcode);
+
+            $matches = false;
+            foreach (array_filter([$expectedBin, $assignedBin, $nextHopBin]) as $candidate) {
+                if (strcasecmp(trim($locationBarcode), trim($candidate)) === 0 || $targetClean === $clean($candidate)) {
+                    $matches = true;
+                    break;
+                }
+            }
+
+            if (! $matches) {
+                $misSortMessage = "Mis-sort Error: Expected slotting into {$expectedBin}, but scanned {$locationBarcode}. Please place parcel in the correct bin.";
+
+                return $this->operationError($request, $misSortMessage, 422, [
+                    'sound' => 'buzz',
+                    'errors' => [
+                        'location_barcode' => [$misSortMessage],
+                    ],
+                ]);
+            }
+        }
         if ($misroute = app(MisrouteTrapService::class)->inspect($delivery, $hub, $request->user())) {
             $observation = app(ParcelRecoveryService::class)->observations($request->user())
                 ->where('hub_id', $hub->id)->where('payload->scanner_misroute', true)
@@ -952,7 +1009,8 @@ class LogisticsHubWorkstationController extends Controller
                     ? 'Waybill verified. Confirm the displayed custody action to continue.'
                     : 'Waybill verified. Use the destination sorting action to continue.',
                 requiresConfirmation: $requiresConfirmation,
-                alreadyReceived: $alreadyReceived
+                alreadyReceived: $alreadyReceived,
+                scannedLocation: $locationBarcode
             ));
         }
 
@@ -1028,7 +1086,8 @@ class LogisticsHubWorkstationController extends Controller
                 : "Custody action recorded for parcel #{$delivery->tracking_number}.",
             requiresConfirmation: $requiresNextConfirmation,
             confirmed: true,
-            alreadyReceived: $alreadyReceived && $requestedAction === 'RECEIVE_FROM_PICKUP_RIDER'
+            alreadyReceived: $alreadyReceived && $requestedAction === 'RECEIVE_FROM_PICKUP_RIDER',
+            scannedLocation: $locationBarcode
         );
 
         if ($request->wantsJson()) {
@@ -1045,7 +1104,8 @@ class LogisticsHubWorkstationController extends Controller
         string $message,
         bool $requiresConfirmation,
         bool $confirmed = false,
-        bool $alreadyReceived = false
+        bool $alreadyReceived = false,
+        ?string $scannedLocation = null
     ): array {
         $delivery->loadMissing(['order.items.product', 'order.buyer', 'currentHub', 'courier', 'assignedRider', 'latestCustodyCheckpoint', 'latestOriginalCheckpoint', 'pickupClaim']);
         $base = request()->is('hub/*') ? '/hub' : '';
@@ -1064,6 +1124,8 @@ class LogisticsHubWorkstationController extends Controller
         $custodyHub = $delivery->currentHub;
         $requiresManifest = in_array($prompt['action'], ['DISPATCH_TO_FEEDER', 'DISPATCH_LINE_HAUL', 'RECEIVE_AT_MOTHER_HUB', 'RECEIVE_AT_DESTINATION_HUB', 'DISPATCH_RETURN_MANIFEST', 'RECEIVE_RETURN_MANIFEST'], true);
         $canConfirm = $requiresConfirmation && ! $requiresManifest && $guidance['can_act'] && $guidance['action'] === 'scan';
+        $routingEngine = app(LogisticsRoutingEngine::class);
+        $nextHop = $routingEngine->computeNextHop($delivery, $hub);
 
         return [
             'success' => true,
@@ -1071,6 +1133,9 @@ class LogisticsHubWorkstationController extends Controller
                 : (! $confirmed && ! $canConfirm ? 'Waybill verified. '.$guidance['next_step'].'.' : $message),
             'already_received' => $alreadyReceived,
             'confirmed' => $confirmed,
+            'next_hop' => $nextHop,
+            'location_verified' => $scannedLocation !== null,
+            'scanned_location' => $scannedLocation,
             'prompt' => [
                 ...$prompt,
                 'expected_status' => $delivery->status,
@@ -1083,9 +1148,12 @@ class LogisticsHubWorkstationController extends Controller
                 'status' => $delivery->status,
                 'delivery_type' => $delivery->delivery_type,
                 'destination_bin' => app(HubParcelWorkstationService::class)->recordedBin($delivery),
+                'next_hop' => $nextHop,
+                'location_verified' => $scannedLocation !== null,
+                'scanned_location' => $scannedLocation,
                 'guidance' => $guidance,
                 'registry_url' => $registryUrl,
-                'routing_target' => app(LogisticsRoutingEngine::class)->forwardSortTarget($delivery, $hub),
+                'routing_target' => $routingEngine->forwardSortTarget($delivery, $hub),
                 'current_hub' => $custodyHub ? [
                     'id' => $custodyHub->id,
                     'name' => $custodyHub->name,
@@ -1461,7 +1529,7 @@ class LogisticsHubWorkstationController extends Controller
                             'request_token' => (string) Str::uuid(),
                             'barcode' => $delivery->tracking_number,
                             'condition' => 'intact',
-                            'notes' => 'Bulk ingested via Master Bag ' . $bag->reference,
+                            'notes' => 'Bulk ingested via Master Bag '.$bag->reference,
                         ]);
                     }
                 }
@@ -1470,7 +1538,7 @@ class LogisticsHubWorkstationController extends Controller
                     $fallbackVehicle = LogisticsFleet::where('logistics_company_id', $hub->logistics_company_id)->where('status', 'active')->first();
                     $manifestService = app(LogisticsManifestService::class);
                     $manifest = LogisticsManifest::create([
-                        'reference' => 'MNF-' . strtoupper(Str::random(8)),
+                        'reference' => 'MNF-'.strtoupper(Str::random(8)),
                         'creation_token' => (string) Str::uuid(),
                         'creation_fingerprint' => hash('sha256', (string) Str::uuid()),
                         'logistics_company_id' => $hub->logistics_company_id,
@@ -1520,7 +1588,7 @@ class LogisticsHubWorkstationController extends Controller
                         'actor_id' => $actor->id,
                         'event_type' => 'parcel_received',
                         'barcode_scanned' => $delivery->tracking_number,
-                        'reference' => 'EVT-' . strtoupper(Str::random(10)),
+                        'reference' => 'EVT-'.strtoupper(Str::random(10)),
                         'hub_id' => $hub->id,
                         'source_state' => DeliveryCheckpoint::state($delivery),
                         'target_state' => ['delivery_status' => $targetStatus],
@@ -1535,7 +1603,7 @@ class LogisticsHubWorkstationController extends Controller
                         'manifest_scan_event_id' => $scanEvent->id,
                         'manifest_number' => $manifest->reference,
                         'expected_status' => $delivery->status,
-                        'notes' => 'Bulk ingested from master bag ' . $bag->reference . ' (Seal ' . $bag->seal_number . ')',
+                        'notes' => 'Bulk ingested from master bag '.$bag->reference.' (Seal '.$bag->seal_number.')',
                     ]);
 
                     $member->update(['active_delivery_id' => null, 'received_at' => now()]);
@@ -1626,6 +1694,12 @@ class LogisticsHubWorkstationController extends Controller
                 }
 
                 $candidates = $query->lockForUpdate()->get();
+                $routingEngine = app(LogisticsRoutingEngine::class);
+                foreach ($candidates as $del) {
+                    if ($backhaulError = $routingEngine->validateBackhaul($del, $destinationHub, $hub)) {
+                        throw new DomainException($backhaulError);
+                    }
+                }
                 $manifestService = app(LogisticsManifestService::class);
                 $eligibleDeliveries = $candidates->filter(function ($del) use ($manifestService, $destinationHub) {
                     return $manifestService->nextHub($del) === $destinationHub->id;
@@ -1655,7 +1729,7 @@ class LogisticsHubWorkstationController extends Controller
                 }
 
                 // 3. Create Mother Bag
-                $bagReference = 'BAG-' . strtoupper(Str::random(12));
+                $bagReference = 'BAG-'.strtoupper(Str::random(12));
                 $creationToken = (string) Str::uuid();
                 $bag = MotherBag::create([
                     'reference' => $bagReference,
@@ -1680,9 +1754,9 @@ class LogisticsHubWorkstationController extends Controller
                 }
 
                 // Seal the Mother Bag
-                $sealNumber = 'SL-' . $hub->code . '-' . date('ymd') . '-' . strtoupper(Str::random(4));
+                $sealNumber = 'SL-'.$hub->code.'-'.date('ymd').'-'.strtoupper(Str::random(4));
                 while (DB::table('mother_bag_seals')->where('logistics_company_id', $hub->logistics_company_id)->where('seal_number', $sealNumber)->exists()) {
-                    $sealNumber = 'SL-' . $hub->code . '-' . date('ymd') . '-' . strtoupper(Str::random(4));
+                    $sealNumber = 'SL-'.$hub->code.'-'.date('ymd').'-'.strtoupper(Str::random(4));
                 }
                 DB::table('mother_bag_seals')->insert([
                     'mother_bag_id' => $bag->id,
@@ -1701,7 +1775,7 @@ class LogisticsHubWorkstationController extends Controller
                 $manifestType = $manifestService->legType($hub, $destinationHub);
                 $manifestToken = (string) Str::uuid();
                 $manifest = LogisticsManifest::create([
-                    'reference' => 'MNF-' . strtoupper(Str::random(8)),
+                    'reference' => 'MNF-'.strtoupper(Str::random(8)),
                     'creation_token' => $manifestToken,
                     'creation_fingerprint' => hash('sha256', $manifestToken),
                     'logistics_company_id' => $hub->logistics_company_id,
@@ -1742,7 +1816,7 @@ class LogisticsHubWorkstationController extends Controller
                         'actor_id' => $actor->id,
                         'event_type' => 'load',
                         'barcode_scanned' => $parcel->tracking_number,
-                        'reference' => 'EVT-' . strtoupper(Str::random(10)),
+                        'reference' => 'EVT-'.strtoupper(Str::random(10)),
                         'hub_id' => $hub->id,
                         'source_state' => DeliveryCheckpoint::state($parcel),
                         'target_state' => ['delivery_id' => $parcel->id],
@@ -1778,7 +1852,7 @@ class LogisticsHubWorkstationController extends Controller
                         'actor_id' => $actor->id,
                         'event_type' => 'parcel_dispatched',
                         'barcode_scanned' => $parcel->tracking_number,
-                        'reference' => 'EVT-' . strtoupper(Str::random(10)),
+                        'reference' => 'EVT-'.strtoupper(Str::random(10)),
                         'hub_id' => $hub->id,
                         'source_state' => DeliveryCheckpoint::state($parcel),
                         'target_state' => ['delivery_status' => $transitStatus],
@@ -1796,7 +1870,7 @@ class LogisticsHubWorkstationController extends Controller
                         'manifest_scan_event_id' => $scanEvent->id,
                         'manifest_number' => $manifest->reference,
                         'expected_status' => $parcel->status,
-                        'notes' => $validated['notes'] ?? ('1-Click Fast Outbound Dispatch to ' . $destinationHub->name),
+                        'notes' => $validated['notes'] ?? ('1-Click Fast Outbound Dispatch to '.$destinationHub->name),
                     ]);
                 }
 
@@ -1817,13 +1891,69 @@ class LogisticsHubWorkstationController extends Controller
                 ];
             });
         } catch (DomainException $e) {
-            return $this->operationError($request, $e->getMessage(), 422);
+            $details = str_starts_with($e->getMessage(), 'Routing Violation')
+                ? ['sound' => 'buzz', 'errors' => ['destination_hub_id' => [$e->getMessage()]]]
+                : [];
+
+            return $this->operationError($request, $e->getMessage(), 422, $details);
         }
 
         return response()->json([
             'success' => true,
             'message' => "Fast outbound dispatched {$result['parcel_count']} parcels to {$result['destination_hub']} via {$result['manifest_reference']} (Master Bag: {$result['bag_reference']}).",
             'data' => $result,
+        ]);
+    }
+
+    /**
+     * Printable barcode command sheet for floor workstations.
+     */
+    public function commandSheet(Request $request)
+    {
+        abort_unless($request->user()?->isLogistics() || $request->user()?->isAdmin(), 403, 'Only logistics handlers may access the command sheet.');
+
+        $commands = [
+            [
+                'code' => 'CMD-DISPATCH',
+                'label' => 'Fast Outbound Dispatch',
+                'description' => 'Trigger immediate line-haul/feeder bag manifest seal & dispatch',
+            ],
+            [
+                'code' => 'CMD-CONFIRM',
+                'label' => 'Confirm Intake',
+                'description' => 'Acknowledge inspection and confirm custody transfer',
+            ],
+            [
+                'code' => 'CMD-CLEAR',
+                'label' => 'Clear Buffer',
+                'description' => 'Reset the active workstation scan input buffer',
+            ],
+        ];
+
+        $bins = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $code = sprintf('LOC-BIN-%02d', $i);
+            $bins[] = [
+                'code' => $code,
+                'label' => sprintf('Sorting Bin %02d', $i),
+                'description' => sprintf('Standard floor sorting lane / staging bin #%d', $i),
+            ];
+        }
+
+        if ($request->wantsJson() && ! $request->header('X-Inertia')) {
+            return response()->json([
+                'commands' => $commands,
+                'bins' => $bins,
+            ]);
+        }
+
+        if ($request->query('format') === 'blade') {
+            return view('hub.command-sheet', compact('commands', 'bins'));
+        }
+
+        return Inertia::render('Hub/CommandSheet', [
+            'commands' => $commands,
+            'bins' => $bins,
         ]);
     }
 

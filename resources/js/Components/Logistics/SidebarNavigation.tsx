@@ -20,6 +20,44 @@ export default function SidebarNavigation({ items }: { items: Item[] }) {
         if (!links.length) return null;
         const open = expanded[group.title] ?? group.defaultOpen;
         const id = 'hub-nav-'+group.title.toLowerCase().replaceAll(' ', '-').replaceAll('&', 'and');
-        return <section key={group.title}><button type="button" aria-expanded={open} aria-controls={id} onClick={() => setExpanded(value => ({ ...value, [group.title]: !open }))} className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"><span className="flex items-center gap-2">{group.title}</span><ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? '' : '-rotate-90'}`} /></button><div id={id} hidden={!open} className="space-y-1 pb-2">{links.map(item => <PortalLink key={item.name} href={item.href} aria-current={item.current ? 'page' : undefined} className={`group flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs font-medium transition ${item.current ? 'bg-rose-50 text-[#C20836] ring-1 ring-inset ring-rose-100' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`}><item.icon className={`h-4 w-4 shrink-0 ${item.current ? 'text-[#E00D42]' : 'text-slate-400 group-hover:text-slate-600'}`} /><span className="flex-1">{item.name === 'Counter Pickup' ? 'Counter pickup' : item.name === 'Fleet Management' ? 'Fleet & drivers' : item.name === 'Facility Network' ? 'Hub network' : item.name}</span></PortalLink>)}</div></section>;
+        return (
+            <section key={group.title}>
+                <button
+                    type="button"
+                    aria-expanded={open}
+                    aria-controls={id}
+                    onClick={() => setExpanded(value => ({ ...value, [group.title]: !open }))}
+                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-semibold text-stone-400 transition hover:text-stone-200 hover:bg-[#25221E]"
+                >
+                    <span className="flex items-center gap-2">{group.title}</span>
+                    <ChevronDown className={`h-3.5 w-3.5 text-stone-400 transition-transform ${open ? '' : '-rotate-90'}`} />
+                </button>
+                <div id={id} hidden={!open} className="space-y-1 pb-2 pt-0.5">
+                    {links.map(item => (
+                        <PortalLink
+                            key={item.name}
+                            href={item.href}
+                            aria-current={item.current ? 'page' : undefined}
+                            className={`group flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-2 text-xs transition ${
+                                item.current
+                                    ? 'bg-[#E00D42] text-white font-bold rounded-xl shadow-sm'
+                                    : 'text-stone-300 hover:text-white hover:bg-[#2C2824] rounded-xl font-medium'
+                            }`}
+                        >
+                            <item.icon className={`h-4 w-4 shrink-0 ${item.current ? 'text-white' : 'text-stone-400 group-hover:text-stone-200'}`} />
+                            <span className="flex-1">
+                                {item.name === 'Counter Pickup'
+                                    ? 'Counter pickup'
+                                    : item.name === 'Fleet Management'
+                                    ? 'Fleet & drivers'
+                                    : item.name === 'Facility Network'
+                                    ? 'Hub network'
+                                    : item.name}
+                            </span>
+                        </PortalLink>
+                    ))}
+                </div>
+            </section>
+        );
     })}</div>;
 }

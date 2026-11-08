@@ -62,7 +62,7 @@ class ProofOfDeliveryValidator
             if ($distanceMeters <= self::GEOFENCE_TOLERANCE_METERS) {
                 $geofencePassed = true;
             } else {
-                $warnings[] = "Rider coordinates are {$distanceMeters}m away from the buyer's pinned address (tolerance: " . self::GEOFENCE_TOLERANCE_METERS . "m).";
+                $warnings[] = "Rider coordinates are {$distanceMeters}m away from the buyer's pinned address (tolerance: ".self::GEOFENCE_TOLERANCE_METERS.'m).';
             }
         } elseif ($destLat === null || $destLong === null) {
             // Customer did not drop an interactive pin; allow with cautionary notice
@@ -73,8 +73,8 @@ class ProofOfDeliveryValidator
         }
 
         // 3. Photo validation
-        $hasPhoto = !empty($photoPath);
-        if (!$hasPhoto) {
+        $hasPhoto = ! empty($photoPath);
+        if (! $hasPhoto) {
             $warnings[] = 'Doorstep Proof of Delivery photo is missing.';
         }
 

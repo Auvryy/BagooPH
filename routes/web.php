@@ -79,6 +79,8 @@ use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerReviewController;
 use App\Http\Controllers\Seller\SellerShopController;
+use App\Http\Controllers\Seller\SellerStoreTagController;
+use App\Http\Controllers\Seller\SellerTagAssistantController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\SellerSettlementController;
 use App\Http\Controllers\ShopVerificationDocumentController;
@@ -250,10 +252,10 @@ $registerSellerRoutes = function () {
     Route::middleware(['auth', 'subdomain.role:seller'])->group(function () {
         Route::get('/dashboard', [SellerDashboardController::class, 'index']);
         Route::get('/store-categories', fn () => redirect('/store-tags'));
-        Route::get('/store-tags', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'index']);
-        Route::post('/store-tags', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'store']);
-        Route::put('/store-tags/{storeTag}', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'update'])->whereNumber('storeTag');
-        Route::delete('/store-tags/{storeTag}', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'destroy'])->whereNumber('storeTag');
+        Route::get('/store-tags', [SellerStoreTagController::class, 'index']);
+        Route::post('/store-tags', [SellerStoreTagController::class, 'store']);
+        Route::put('/store-tags/{storeTag}', [SellerStoreTagController::class, 'update'])->whereNumber('storeTag');
+        Route::delete('/store-tags/{storeTag}', [SellerStoreTagController::class, 'destroy'])->whereNumber('storeTag');
         Route::get('/products', [SellerProductController::class, 'index']);
         Route::get('/products/{product}/sales', [ProductSaleController::class, 'index'])->where(['product' => '[1-9][0-9]{0,17}']);
         Route::post('/products/{product}/sales', [ProductSaleController::class, 'store'])->where(['product' => '[1-9][0-9]{0,17}']);
@@ -262,7 +264,7 @@ $registerSellerRoutes = function () {
         Route::post('/products', [SellerProductController::class, 'store']);
         Route::post('/products/bulk', [SellerProductController::class, 'bulk']);
         Route::post('/products/{product}/duplicate', [SellerProductController::class, 'duplicate']);
-        Route::post('/products/assist-tags', [\App\Http\Controllers\Seller\SellerTagAssistantController::class, 'assist'])->middleware('throttle:20,1');
+        Route::post('/products/assist-tags', [SellerTagAssistantController::class, 'assist'])->middleware('throttle:20,1');
         Route::patch('/products/{product}/stock', [SellerProductController::class, 'updateStock']);
         Route::match(['put', 'post'], '/products/{product}', [SellerProductController::class, 'update']);
         Route::delete('/products/{product}', [SellerProductController::class, 'destroy']);
@@ -415,6 +417,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
         Route::post('/scan/fast-dispatch', [LogisticsHubWorkstationController::class, 'fastDispatch']);
+        Route::get('/command-sheet', [LogisticsHubWorkstationController::class, 'commandSheet'])->name('logistics.command-sheet');
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay']);
         Route::post('/deliveries/{delivery}/assign-rider', [LogisticsHubWorkstationController::class, 'assignRider']);
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup']);
@@ -705,10 +708,10 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->group(function () {
     Route::get('/dashboard', [SellerDashboardController::class, 'index'])->name('dashboard');
     Route::get('/store-categories', fn () => redirect()->route('seller.store-tags.index'))->name('store-categories.index');
-    Route::get('/store-tags', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'index'])->name('store-tags.index');
-    Route::post('/store-tags', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'store'])->name('store-tags.store');
-    Route::put('/store-tags/{storeTag}', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'update'])->whereNumber('storeTag')->name('store-tags.update');
-    Route::delete('/store-tags/{storeTag}', [\App\Http\Controllers\Seller\SellerStoreTagController::class, 'destroy'])->whereNumber('storeTag')->name('store-tags.destroy');
+    Route::get('/store-tags', [SellerStoreTagController::class, 'index'])->name('store-tags.index');
+    Route::post('/store-tags', [SellerStoreTagController::class, 'store'])->name('store-tags.store');
+    Route::put('/store-tags/{storeTag}', [SellerStoreTagController::class, 'update'])->whereNumber('storeTag')->name('store-tags.update');
+    Route::delete('/store-tags/{storeTag}', [SellerStoreTagController::class, 'destroy'])->whereNumber('storeTag')->name('store-tags.destroy');
     Route::get('/products', [SellerProductController::class, 'index'])->name('products.index');
     Route::get('/products/{product}/sales', [ProductSaleController::class, 'index'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.index');
     Route::post('/products/{product}/sales', [ProductSaleController::class, 'store'])->where(['product' => '[1-9][0-9]{0,17}', 'sale' => '[1-9][0-9]{0,17}'])->name('products.sales.store');
@@ -720,7 +723,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/products/assist-description', [SellerAiAssistantController::class, 'generateDescription'])
         ->middleware('throttle:20,1')
         ->name('products.assist-description');
-    Route::post('/products/assist-tags', [\App\Http\Controllers\Seller\SellerTagAssistantController::class, 'assist'])
+    Route::post('/products/assist-tags', [SellerTagAssistantController::class, 'assist'])
         ->middleware('throttle:20,1')
         ->name('products.assist-tags');
     Route::patch('/products/{product}/stock', [SellerProductController::class, 'updateStock'])->name('products.stock.update');
@@ -906,6 +909,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
         Route::post('/scan/fast-dispatch', [LogisticsHubWorkstationController::class, 'fastDispatch'])->name('scan.fast-dispatch');
+        Route::get('/command-sheet', [LogisticsHubWorkstationController::class, 'commandSheet'])->name('command-sheet');
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay'])->name('sort');
         Route::post('/deliveries/{delivery}/assign-rider', [LogisticsHubWorkstationController::class, 'assignRider'])->name('assignRider');
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup'])->name('release');

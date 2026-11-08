@@ -15,6 +15,7 @@ use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class LogisticsRoutingEngine
 {
@@ -240,15 +241,172 @@ class LogisticsRoutingEngine
 
     public function forwardSortTarget(Delivery $parcel, ?LogisticsHub $station): ?array
     {
-        if (! $station || $parcel->order->logistics_flow_version < 2 || ! is_array($parcel->route_hub_ids)
+        if (! $station
             || in_array($parcel->status, ['return_to_sender', 'return_in_transit', 'returned', 'parcel_recovery_held', 'parcel_recovery_in_transit'], true)) {
             return null;
         }
-        $position = array_search($station->id, $parcel->route_hub_ids, true);
+
+        if ($parcel->destination_bayan_hub_id === $station->id) {
+            return null;
+        }
+
+        $position = is_array($parcel->route_hub_ids) ? array_search($station->id, $parcel->route_hub_ids, true) : false;
         $id = $position !== false ? ($parcel->route_hub_ids[$position + 1] ?? null) : null;
+
+        if (! $id) {
+            $nextHop = $this->computeNextHop($parcel, $station);
+            $id = $nextHop['hub_id'] ?? null;
+        }
+
         $next = $id ? LogisticsHub::where('logistics_company_id', $parcel->logistics_company_id)->find($id) : null;
 
         return $next?->only(['id', 'name', 'code', 'tier']);
+    }
+
+    /**
+     * Compute next hop facility and recommended bin for workstation sorting.
+     */
+    public function computeNextHop(Delivery $delivery, LogisticsHub $hub): ?array
+    {
+        $originBayanId = $delivery->origin_bayan_hub_id;
+        $originMotherId = $delivery->origin_mother_hub_id;
+        $destMotherId = $delivery->destination_mother_hub_id;
+        $destBayanId = $delivery->destination_bayan_hub_id;
+
+        // If at destination_bayan_hub: it has arrived at the delivery station!
+        // Destination bin is the local sorting shelf or delivery rider tote.
+        if ($hub->id === $destBayanId) {
+            $recommendedBin = $delivery->destination_bin;
+            if (! $recommendedBin) {
+                $recommendedBin = ($delivery->delivery_type === 'hub_self_pickup' || (method_exists($delivery, 'isSelfPickup') && $delivery->isSelfPickup()))
+                    ? 'SHELF-A1'
+                    : 'LOC-BIN-01';
+            }
+
+            return [
+                'hub_id' => $hub->id,
+                'hub_name' => $hub->name,
+                'hub_code' => $hub->code,
+                'tier' => $hub->tier,
+                'recommended_bin' => $recommendedBin,
+            ];
+        }
+
+        $nextHubId = null;
+
+        if ($hub->id === $originBayanId) {
+            $nextHubId = $originMotherId ?: $destBayanId;
+        } elseif ($hub->id === $originMotherId) {
+            $nextHubId = ($destMotherId && $destMotherId !== $originMotherId)
+                ? $destMotherId
+                : $destBayanId;
+        } elseif ($hub->id === $destMotherId) {
+            $nextHubId = $destBayanId;
+        } elseif (is_array($delivery->route_hub_ids)) {
+            $position = array_search($hub->id, $delivery->route_hub_ids, true);
+            if ($position !== false && isset($delivery->route_hub_ids[$position + 1])) {
+                $nextHubId = $delivery->route_hub_ids[$position + 1];
+            }
+        }
+
+        if (! $nextHubId) {
+            return null;
+        }
+
+        $nextHub = null;
+        if ($nextHubId === $originMotherId && $delivery->relationLoaded('originMotherHub') && $delivery->originMotherHub) {
+            $nextHub = $delivery->originMotherHub;
+        } elseif ($nextHubId === $destMotherId && $delivery->relationLoaded('destinationMotherHub') && $delivery->destinationMotherHub) {
+            $nextHub = $delivery->destinationMotherHub;
+        } elseif ($nextHubId === $destBayanId && $delivery->relationLoaded('destinationBayanHub') && $delivery->destinationBayanHub) {
+            $nextHub = $delivery->destinationBayanHub;
+        }
+
+        if (! $nextHub) {
+            $nextHub = LogisticsHub::find($nextHubId);
+        }
+
+        if (! $nextHub) {
+            return null;
+        }
+
+        return [
+            'hub_id' => $nextHub->id,
+            'hub_name' => $nextHub->name,
+            'hub_code' => $nextHub->code,
+            'tier' => $nextHub->tier,
+            'recommended_bin' => 'BIN-'.$nextHub->code,
+        ];
+    }
+
+    /**
+     * Prevent parcels from being dispatched or routed backward to a hub they have already passed through.
+     * If parcel is at destination_mother_hub or destination_bayan_hub, and target is origin_bayan_hub or origin_mother_hub.
+     */
+    public function validateBackhaul(Delivery $delivery, LogisticsHub $targetHub, ?LogisticsHub $currentHub = null): ?string
+    {
+        $current = $currentHub ?? ($delivery->current_hub_id ? LogisticsHub::find($delivery->current_hub_id) : null);
+        $currentHubId = $current?->id ?? $delivery->current_hub_id;
+
+        $destMotherId = $delivery->destination_mother_hub_id;
+        $destBayanId = $delivery->destination_bayan_hub_id;
+        $originBayanId = $delivery->origin_bayan_hub_id;
+        $originMotherId = $delivery->origin_mother_hub_id;
+
+        // Is parcel at destination_mother_hub or destination_bayan_hub?
+        $isAtDestMother = $destMotherId && (
+            $currentHubId === $destMotherId
+            || in_array($delivery->status, [
+                OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
+                OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
+            ], true)
+        );
+
+        $isAtDestBayan = $destBayanId && (
+            $currentHubId === $destBayanId
+            || in_array($delivery->status, [
+                OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
+                OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
+                OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
+                OrderStateMachineService::STATUS_OUT_FOR_DELIVERY,
+                OrderStateMachineService::STATUS_DELIVERED,
+            ], true)
+        );
+
+        if (! $isAtDestMother && ! $isAtDestBayan) {
+            return null;
+        }
+
+        // Backward hubs:
+        $backwardHubIds = [];
+        if ($originBayanId) {
+            $backwardHubIds[] = $originBayanId;
+        }
+        if ($originMotherId && ($originMotherId !== $destMotherId || $isAtDestBayan)) {
+            $backwardHubIds[] = $originMotherId;
+        }
+
+        if (! in_array($targetHub->id, array_unique($backwardHubIds), true)) {
+            return null;
+        }
+
+        // Compute next authorized facility
+        $effectiveHub = $current ?? ($isAtDestBayan ? $delivery->destinationBayanHub : $delivery->destinationMotherHub);
+        if (! $effectiveHub && $currentHubId) {
+            $effectiveHub = LogisticsHub::find($currentHubId);
+        }
+        $nextHop = $effectiveHub ? $this->computeNextHop($delivery, $effectiveHub) : null;
+        $nextHopName = $nextHop['hub_name']
+            ?? ($delivery->destinationBayanHub?->name ?? 'Destination Bayan Hub');
+
+        return "Routing Violation: Parcel tracking {$delivery->tracking_number} cannot be routed backward to {$targetHub->name}. Next authorized facility is {$nextHopName}.";
+    }
+
+    public function assertNoBackhaul(Delivery $delivery, LogisticsHub $targetHub, ?LogisticsHub $currentHub = null): void
+    {
+        if ($error = $this->validateBackhaul($delivery, $targetHub, $currentHub)) {
+            throw ValidationException::withMessages(['routing' => $error]);
+        }
     }
 
     private function unambiguousHub(Collection $hubs): ?LogisticsHub

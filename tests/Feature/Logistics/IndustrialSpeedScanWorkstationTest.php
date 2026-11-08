@@ -2,16 +2,9 @@
 
 namespace Tests\Feature\Logistics;
 
-use App\Models\Delivery;
-use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
-use App\Models\LogisticsHub;
-use App\Models\LogisticsManifest;
-use App\Models\MotherBag;
-use App\Models\User;
 use App\Services\Logistics\OrderStateMachineService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithRoles;

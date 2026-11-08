@@ -11,7 +11,6 @@
 .logistics-workspace main :where(.font-black, .font-extrabold) { font-weight: 700; }
 .logistics-workspace main :where(.uppercase) { text-transform: none; letter-spacing: 0; }
 .logistics-workspace main :where(.tracking-widest, .tracking-wider) { letter-spacing: 0; }
-.logistics-workspace main :where(.rounded-2xl, .rounded-3xl) { border-radius: 12px; }
 .logistics-workspace main :where(.border-slate-300):not(input):not(select):not(textarea):not(button):not(a) { border-color: #e2e8f0; }
 .logistics-workspace main :where(section.bg-white, article.bg-white, .shadow-sm.bg-white) { box-shadow: 0 1px 3px rgba(15, 23, 42, .035), 0 4px 16px rgba(15, 23, 42, .025); }
 .logistics-workspace main :where(input, select, textarea) { border-radius: 8px; }
@@ -28,9 +27,23 @@
 .hub-network-map .leaflet-control-attribution { font-family: inherit; font-size: 9px; }
 .hub-network-map .leaflet-tooltip { padding: 7px 10px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155; font-family: inherit; font-size: 11px; box-shadow: 0 2px 6px rgba(15, 23, 42, .08); }
 .hub-map-pin { background: none; border: 0; }
-.hub-map-pin-dot { display: block; width: 28px; height: 28px; border: 5px solid white; border-radius: 50%; background: #e00d42; box-shadow: 0 2px 8px rgba(15, 23, 42, .25); }
+.hub-map-pin-dot { display: block; width: 28px; height: 28px; border: 4px solid white; border-radius: 50%; background: #e00d42; box-shadow: 0 2px 8px rgba(15, 23, 42, .25); transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease; }
 .hub-map-mother { border-radius: 8px; background: #0f172a; }
-.hub-map-selected .hub-map-pin-dot { outline: 4px solid rgba(224, 13, 66, .25); }
+.hub-map-selected .hub-map-pin-dot {
+    background: #1C1A17 !important;
+    border-color: #ffffff !important;
+    transform: scale(1.12);
+    box-shadow: 0 0 0 4px rgba(28, 26, 23, 0.28), 0 4px 12px rgba(28, 26, 23, 0.45) !important;
+    animation: hub-pin-pulse 2s infinite ease-in-out;
+}
+@keyframes hub-pin-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 4px rgba(28, 26, 23, 0.28), 0 4px 12px rgba(28, 26, 23, 0.45);
+    }
+    50% {
+        box-shadow: 0 0 0 9px rgba(28, 26, 23, 0.16), 0 4px 16px rgba(28, 26, 23, 0.55);
+    }
+}
 .hub-network-map .leaflet-marker-icon:focus-visible { outline: 3px solid #e00d42; outline-offset: 4px; border-radius: 50%; }
 @media (max-width: 639px) {
     .logistics-workspace main { padding: 16px; }

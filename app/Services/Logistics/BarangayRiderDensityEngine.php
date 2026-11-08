@@ -89,7 +89,7 @@ class BarangayRiderDensityEngine
                 'requires_auxiliary' => $requiresAuxiliary,
                 'recommended_auxiliary_count' => $neededAuxiliaryCount,
                 'alert_message' => $requiresAuxiliary
-                    ? "ALERT: {$brgy} has {$count} packages (exceeds standard limit of " . self::MAX_PARCELS_PER_RIDER . "). Assign {$neededAuxiliaryCount} auxiliary rider(s)."
+                    ? "ALERT: {$brgy} has {$count} packages (exceeds standard limit of ".self::MAX_PARCELS_PER_RIDER."). Assign {$neededAuxiliaryCount} auxiliary rider(s)."
                     : null,
             ];
         }
@@ -103,7 +103,7 @@ class BarangayRiderDensityEngine
             ],
             'date' => $targetDate->toDateString(),
             'total_inbound_parcels' => $deliveries->count(),
-            'available_auxiliary_riders' => array_map(fn($r) => [
+            'available_auxiliary_riders' => array_map(fn ($r) => [
                 'id' => $r->user_id,
                 'name' => $r->user->name,
                 'phone' => $r->user->phone,

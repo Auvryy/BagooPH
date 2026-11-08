@@ -239,6 +239,12 @@ class LogisticsManifestService
                     if ($manifest->direction === 'recovery' && ($candidate->id !== $recovery?->delivery_id || $manifest->recovery_leg_index !== $recovery->leg_index)) {
                         throw new DomainException('A recovery manifest may carry only the parcel and leg from its original recovery case.');
                     }
+                    if ($manifest->direction !== 'recovery') {
+                        $targetHub = LogisticsHub::find($manifest->destination_hub_id);
+                        if ($targetHub && ($backhaulError = app(LogisticsRoutingEngine::class)->validateBackhaul($delivery, $targetHub, LogisticsHub::find($manifest->source_hub_id)))) {
+                            throw new DomainException($backhaulError);
+                        }
+                    }
                     if (! $delivery || $this->direction($delivery) !== $manifest->direction || $this->nextHub($delivery) !== $manifest->destination_hub_id || $delivery->current_hub_id !== $manifest->source_hub_id
                         || $delivery->logistics_company_id !== $manifest->logistics_company_id) {
                         throw new DomainException('This parcel is not expected on this source and destination route.');

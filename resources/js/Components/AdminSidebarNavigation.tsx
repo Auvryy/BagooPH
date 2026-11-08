@@ -15,8 +15,8 @@ const sections = [
 
 function NavigationLink({ item }: { item: AdminNavigationItem }) {
     return <PortalLink href={item.href} aria-current={item.current ? 'page' : undefined}
-        className={`group flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-xs transition focus-visible:ring-2 focus-visible:ring-[#E00D42] ${item.current ? 'bg-[#E00D42] font-bold text-white' : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
-        <span className="flex min-w-0 items-center gap-2.5"><item.icon aria-hidden="true" className="h-4 w-4 shrink-0" /><span>{item.name}</span></span>
+        className={`group flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-xs transition focus-visible:ring-2 focus-visible:ring-[#E00D42] ${item.current ? 'bg-[#E00D42] font-bold text-white shadow-sm' : 'font-medium text-stone-300 hover:bg-[#2C2824] hover:text-white'}`}>
+        <span className="flex min-w-0 items-center gap-2.5"><item.icon aria-hidden="true" className={`h-4 w-4 shrink-0 ${item.current ? 'text-white' : 'text-stone-400 group-hover:text-stone-200'}`} /><span>{item.name}</span></span>
         {item.attention && <NavigationAttentionDot label={item.attentionLabel} />}
     </PortalLink>;
 }
@@ -28,11 +28,11 @@ function NavigationSection({ section, items }: { section: typeof sections[number
     useEffect(() => { if (active) setExpanded(true); }, [active]);
     return <div>
         <button type="button" aria-expanded={expanded} aria-controls={id} onClick={() => setExpanded(value => !value)}
-            className={`flex min-h-10 w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold focus-visible:ring-2 focus-visible:ring-[#E00D42] ${active ? 'bg-rose-50 text-[#C20836]' : 'text-slate-700 hover:bg-slate-100'}`}>
-            <span className="flex min-w-0 items-center gap-2.5"><section.icon aria-hidden="true" className="h-4 w-4 shrink-0" /><span>{section.label}</span></span><span className="flex items-center gap-2">{!expanded && items.some(item => item.attention) && <NavigationAttentionDot />}
-                <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${expanded ? '' : '-rotate-90'}`} /></span>
+            className={`flex min-h-10 w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold focus-visible:ring-2 focus-visible:ring-[#E00D42] ${active ? 'bg-[#25221E] text-stone-100' : 'text-stone-400 hover:bg-[#25221E] hover:text-stone-200'}`}>
+            <span className="flex min-w-0 items-center gap-2.5"><section.icon aria-hidden="true" className="h-4 w-4 shrink-0 text-stone-400" /><span>{section.label}</span></span><span className="flex items-center gap-2">{!expanded && items.some(item => item.attention) && <NavigationAttentionDot />}
+                <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 text-stone-400 transition-transform motion-reduce:transition-none ${expanded ? '' : '-rotate-90'}`} /></span>
         </button>
-        <div id={id} hidden={!expanded} role="group" aria-label={section.label} className="ml-4 mt-1 space-y-0.5 border-l border-slate-300 pl-2">
+        <div id={id} hidden={!expanded} role="group" aria-label={section.label} className="ml-4 mt-1 space-y-0.5 border-l border-stone-800 pl-2">
             {items.map(item => <NavigationLink key={item.name} item={item} />)}
         </div>
     </div>;
