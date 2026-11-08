@@ -1,6 +1,13 @@
 export type RoadPoint = [number, number]; // latitude, longitude
 export type RoadMode = 'motorcycle' | 'scooter' | 'drive';
 
+export interface DetailedRoadRoute {
+    lines: RoadPoint[][];
+    distanceMeters: number;
+    durationMinutes: number;
+    highwayPrioritized: boolean;
+}
+
 export function validRoadPoint(point: RoadPoint): boolean {
     return point.length === 2 && Number.isFinite(point[0]) && Number.isFinite(point[1])
         && Math.abs(point[0]) <= 85.05112878 && Math.abs(point[1]) <= 180;
@@ -80,6 +87,71 @@ export async function fetchRoadRoute(origin: RoadPoint, destination: RoadPoint, 
         const lines = parseRoadRoute(JSON.parse(text));
         if (roadPointDistance(origin, lines[0][0]) > 1500 || roadPointDistance(destination, lines[lines.length - 1].at(-1)!) > 1500) throw new Error('Route endpoints do not match.');
         return lines;
+    } catch (_) {
+        if (signal.aborted) throw new DOMException('Route request cancelled.', 'AbortError');
+        throw new Error('Road routing is unavailable.');
+    }
+}
+
+export async function fetchDetailedRoadRoute(
+    origin: RoadPoint,
+    destination: RoadPoint,
+    mode: RoadMode,
+    key: string,
+    signal: AbortSignal,
+    request: typeof fetch = fetch
+): Promise<DetailedRoadRoute> {
+    if (!validRoadPoint(origin) || !validRoadPoint(destination) || !key.trim() || !['motorcycle', 'scooter', 'drive'].includes(mode)) {
+        throw new Error('Road routing is unavailable.');
+    }
+    const query = new URLSearchParams({
+        waypoints: `${origin.join(',')}|${destination.join(',')}`,
+        mode,
+        type: 'balanced',
+        format: 'geojson',
+        avoid: 'ferries',
+        details: 'route_details',
+        apiKey: key.trim(),
+    });
+    try {
+        const response = await request(`https://api.geoapify.com/v1/routing?${query}`, {
+            signal,
+            credentials: 'omit',
+            cache: 'no-store',
+            referrerPolicy: 'strict-origin-when-cross-origin',
+        });
+        if (!response.ok || response.redirected) throw new Error('Route request failed.');
+        const length = Number(response.headers.get('content-length') || 0);
+        if (length > 2_000_000) throw new Error('Route response is too large.');
+        const text = await readLimited(response);
+        const data = JSON.parse(text);
+        const lines = parseRoadRoute(data);
+        if (roadPointDistance(origin, lines[0][0]) > 1500 || roadPointDistance(destination, lines[lines.length - 1].at(-1)!) > 1500) {
+            throw new Error('Route endpoints do not match.');
+        }
+
+        const feature = data?.features?.[0];
+        let distanceMeters = Number(feature?.properties?.distance ?? 0);
+        let timeSeconds = Number(feature?.properties?.time ?? 0);
+
+        if (!distanceMeters) {
+            for (const line of lines) {
+                for (let i = 1; i < line.length; i++) {
+                    distanceMeters += roadPointDistance(line[i - 1], line[i]);
+                }
+            }
+        }
+
+        if (!timeSeconds) {
+            timeSeconds = Math.round((distanceMeters / 1000) / 35 * 3600);
+        }
+
+        return {
+            lines,
+            distanceMeters: Math.round(distanceMeters),
+            durationMinutes: Math.max(1, Math.round(timeSeconds / 60)),
+            highwayPrioritized: true,
+        };
     } catch (_) {
         if (signal.aborted) throw new DOMException('Route request cancelled.', 'AbortError');
         throw new Error('Road routing is unavailable.');

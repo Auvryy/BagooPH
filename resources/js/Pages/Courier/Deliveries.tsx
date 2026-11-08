@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import useOperationalRefresh from '@/hooks/useOperationalRefresh';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Banknote, Camera, MapPin, RefreshCw, Search, Truck } from 'lucide-react';
+import { Banknote, Camera, Compass, MapPin, Navigation, RefreshCw, Search, Truck } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
 import CourierJobMap from '@/Components/CourierJobMap';
 import CourierCurrentJob from '@/Components/CourierCurrentJob';
@@ -391,6 +391,25 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         <CourierLayout title={courierGreeting(auth.user?.name)} pageLabel="Tasks" subtitle={scope?.isAssigned ? 'See what is assigned to you, what you are carrying, and what you can claim.' : 'Your logistics team needs to assign a company and hub before new work is available.'} isOnline={isOnline} scope={scope}>
             <Head title="Rider dashboard — BagooPH" />
             <div className="space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200/90 bg-rose-50/60 p-3.5 shadow-2xs">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E00D42] text-white shadow-sm">
+                            <Compass className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h2 className="text-sm font-bold text-slate-900">Live Road Navigation & Dynamic Route</h2>
+                            <p className="text-xs text-slate-600">Lively tracks your GPS with AH26 national highway prioritization and fullscreen bike mount view.</p>
+                        </div>
+                    </div>
+                    <Link
+                        href={courierPath('/navigation')}
+                        className="inline-flex items-center gap-2 rounded-lg bg-[#18181B] px-3.5 py-2 text-xs font-bold text-white hover:bg-zinc-800 shadow-sm transition-colors"
+                    >
+                        <Navigation className="h-4 w-4 text-[#E00D42]" />
+                        <span>Launch Fullscreen Map</span>
+                    </Link>
+                </div>
+
                 <details className="rounded-[8px] border border-slate-200 bg-white p-4" open={sampleMapOpen} onToggle={(event) => setSampleMapOpen(event.currentTarget.open)}><summary className="cursor-pointer py-2 text-sm font-semibold">Sample delivery map</summary>{sampleMapOpen && <div className="pt-3"><CourierJobMap /></div>}</details>
                 <div className="flex flex-wrap justify-end gap-2"><button type="button" disabled={loadingId !== null} onClick={() => {
                     if (pending.current) return;
