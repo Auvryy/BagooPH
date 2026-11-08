@@ -35,3 +35,4 @@ TEST_READY.md
 # Machine-local task management guide
 /docs/Task Management.md
 __pycache__/
+public/build_old/
