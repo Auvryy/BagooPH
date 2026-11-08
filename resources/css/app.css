@@ -115,4 +115,14 @@
     .animate-line-sum {
         animation: checkout-line-sum 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
+
+    @keyframes checkout-check-pop {
+        0% { transform: scale(0.65); opacity: 0; }
+        50% { transform: scale(1.12); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+
+    .animate-check-pop {
+        animation: checkout-check-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
 }

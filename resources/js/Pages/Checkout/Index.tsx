@@ -222,6 +222,8 @@ export default function CheckoutIndex({
     };
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [orderDispatchStep, setOrderDispatchStep] = useState<'review' | 'dispatching' | 'confirmed'>('review');
+    const [dispatchErrorMessage, setDispatchErrorMessage] = useState<string | null>(null);
     const orderPending = useRef(false);
     const errorSummaryRef = useRef<HTMLDivElement>(null);
     const [hasConfirmedAgreement, setHasConfirmedAgreement] = useState(false);
@@ -391,21 +393,52 @@ export default function CheckoutIndex({
         }
 
         setHasConfirmedAgreement(false);
+        setOrderDispatchStep('review');
+        setDispatchErrorMessage(null);
         setShowConfirmModal(true);
     };
 
-    const submitFinalOrder = () => {
-        if (orderPending.current || processing) return;
+    const submitFinalOrder = async () => {
+        if (orderPending.current || processing || orderDispatchStep !== 'review') return;
         if (!canShowQuote || !pricing.ready || bestBusy || !hasConfirmedAgreement || kycStatus !== 'approved') {
             setShowConfirmModal(false);
             return;
         }
+
         orderPending.current = true;
-        post(route('checkout.store'), {
-            preserveScroll: true,
-            onError: () => requestAnimationFrame(() => errorSummaryRef.current?.focus()),
-            onFinish: () => { orderPending.current = false; setShowConfirmModal(false); },
-        });
+        setOrderDispatchStep('dispatching');
+        setDispatchErrorMessage(null);
+
+        const startTime = Date.now();
+        const minDispatchDurationMs = 1000; // Guaranteed minimum 1-second truck dispatch animation
+
+        try {
+            const response = await axios.post(route('checkout.store'), data, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            // Ensure the truck animation displays for at least a full 1000ms
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, minDispatchDurationMs - elapsed);
+            await new Promise(resolve => setTimeout(resolve, remaining));
+
+            // Morph into the checkmark animation!
+            setOrderDispatchStep('confirmed');
+
+            // Show checkmark for 1 second before navigating
+            setTimeout(() => {
+                const redirectUrl = response.data?.redirect || route('buyer.orders.index');
+                window.location.href = redirectUrl;
+            }, 1000);
+        } catch (error: any) {
+            orderPending.current = false;
+            setOrderDispatchStep('review');
+            const message = error.response?.data?.message || error.message || 'We could not complete your order. Please check your details.';
+            setDispatchErrorMessage(message);
+        }
     };
 
     const formatPrice = (amount?: number | string | null) => {
@@ -1157,156 +1190,168 @@ export default function CheckoutIndex({
                 </form>
 
                 {/* ORDER PLACEMENT CONFIRMATION MODAL */}
-                <Dialog open={showConfirmModal} onClose={() => { if (!processing) setShowConfirmModal(false); }} className="relative z-50">
+                <Dialog open={showConfirmModal} onClose={() => { if (orderDispatchStep === 'review') setShowConfirmModal(false); }} className="relative z-50">
                     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs overflow-y-auto flex items-center justify-center p-3 sm:p-4 animate-fade-in">
-                        <DialogPanel className="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-4 sm:p-8 shadow-2xl border border-slate-200 space-y-5 sm:space-y-6 font-sans my-auto">
+                        <DialogPanel className="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-8 shadow-2xl border border-slate-200 font-sans my-auto">
                             
-                            {/* Modal Header */}
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                                <div>
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-[#E00D42]">
-                                        <ShoppingBag className="w-4 h-4" />
-                                        <span>Final Review Step</span>
-                                    </div>
-                                    <DialogTitle as="h3" className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
-                                        Confirm & Place Order
-                                    </DialogTitle>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfirmModal(false)}
-                                    disabled={processing}
-                                    aria-label="Close order review"
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
-
-                            {/* Summary Cards */}
-                            <div className="space-y-3 font-sans text-xs">
-                                
-                                {/* Recipient & Destination Summary */}
-                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
-                                    <span className="text-[11px] text-slate-400 font-semibold block flex items-center gap-1.5">
-                                        <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
-                                        <span>{isHubPickup ? 'Recipient address' : 'Delivery destination'}</span>
-                                    </span>
-                                    <p className="font-bold text-slate-900 text-sm">{data.recipient_name} ({data.recipient_phone})</p>
-                                    <p className="break-words text-slate-600 text-xs">{[data.shipping_address, data.destination_barangay, data.shipping_city, data.shipping_province, data.shipping_postal_code].filter(Boolean).join(', ')}</p>
-                                    {isHubPickup && selectedPickupHub && <div className="border-t border-slate-300 pt-2">
-                                        <p className="font-bold text-slate-900">Collect at {selectedPickupHub.name} ({selectedPickupHub.code})</p>
-                                        <p className="break-words text-slate-600">{[selectedPickupHub.address, selectedPickupHub.city_municipality, selectedPickupHub.province].filter(Boolean).join(', ')}</p>
-                                    </div>}
-                                </div>
-
-                                {/* Payment Mode & Voucher Summary */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-                                        <span className="text-[11px] text-slate-400 font-semibold block">Payment Mode</span>
-                                        <span className="font-bold text-slate-700 font-sans">{data.payment_method === 'wallet' ? 'BAGOO WALLET · VIRTUAL CREDITS' : 'CASH ON DELIVERY (COD)'}</span>
-                                    </div>
-                                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-                                        <span className="text-[11px] text-slate-400 font-semibold block">Applied Vouchers</span>
-                                        <span className="font-bold text-slate-800">{appliedVouchers.length ? appliedVouchers.map(offer => offer.code).join(', ') : 'None'}</span>
-                                    </div>
-                                </div>
-
-                                {/* Items Preview List */}
-                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5 max-h-40 overflow-y-auto">
-                                    <span className="text-[11px] text-slate-400 font-semibold block">Package Items ({items.length})</span>
-                                    <div className="divide-y divide-slate-200">
-                                        {items.map(item => (
-                                            <div key={item.id} className="py-2 flex items-center justify-between text-xs">
-                                                <div className="truncate pr-2">
-                                                    <span className="font-semibold text-slate-800 block truncate">{item.product?.name}</span>
-                                                    <span className="text-slate-500 text-[11px]">Qty: <PriceSegments segments={quotedItems.get(item.id)?.price_segments} quantity={quotedItems.get(item.id)?.quantity ?? item.quantity} unitPrice={quotedItems.get(item.id)?.unit_price ?? Number(item.unit_price)} /></span>
-                                                </div>
-                                                <span className="font-bold text-slate-900 shrink-0">{quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Total Amount */}
-                                <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-2xl flex items-center justify-between">
-                                    <span className="font-semibold text-slate-800 text-xs">Total Amount Due:</span>
-                                    <span className="text-xl font-black text-[#E00D42]">{quotePrice(grandTotal)}</span>
-                                </div>
-                            </div>
-
-                            {/* Verification Checkbox */}
-                            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700 select-none p-1 font-sans">
-                                <input
-                                    type="checkbox"
-                                    checked={hasConfirmedAgreement}
-                                    onChange={(e) => setHasConfirmedAgreement(e.target.checked)}
-                                    className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
-                                />
-                                <span>I have reviewed my shipping details and confirm this order placement.</span>
-                            </label>
-
-                            {/* Interactive Dispatch Processing Animation Card */}
-                            {processing && (
-                                <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-red-50 to-amber-50 border border-red-200 shadow-sm animate-fade-in font-sans">
-                                    <div className="flex items-center gap-3">
-                                        <div className="relative w-12 h-12 rounded-xl bg-[#E00D42] text-white flex flex-col items-center justify-center shadow-md overflow-hidden shrink-0">
-                                            <Truck className="w-5 h-5 text-white animate-truck-drive" />
-                                            {/* Road dash lines summing up underneath the truck */}
-                                            <div className="w-16 flex gap-1 animate-road-dash overflow-hidden mt-1">
-                                                <span className="w-2.5 h-0.5 bg-white/70 rounded-full shrink-0" />
-                                                <span className="w-1.5 h-0.5 bg-white/50 rounded-full shrink-0" />
-                                                <span className="w-3 h-0.5 bg-white/90 rounded-full shrink-0" />
-                                            </div>
+                            {/* Phase 1: Fixed 1-Second Truck Dispatching Animation */}
+                            {orderDispatchStep === 'dispatching' && (
+                                <div className="py-12 px-4 text-center space-y-6 animate-fade-in">
+                                    <div className="relative w-24 h-24 rounded-3xl bg-[#E00D42] text-white flex flex-col items-center justify-center shadow-xl overflow-hidden mx-auto">
+                                        <Truck className="w-10 h-10 text-white animate-truck-drive" />
+                                        <div className="w-20 flex gap-1 animate-road-dash overflow-hidden mt-2">
+                                            <span className="w-3 h-0.5 bg-white/70 rounded-full shrink-0" />
+                                            <span className="w-2 h-0.5 bg-white/50 rounded-full shrink-0" />
+                                            <span className="w-4 h-0.5 bg-white/90 rounded-full shrink-0" />
+                                            <span className="w-2 h-0.5 bg-white/60 rounded-full shrink-0" />
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between text-xs font-bold text-slate-900">
-                                                <span>Connecting to BagooPH Express Hub</span>
-                                                <span className="text-[#E00D42] font-black text-[11px] animate-pulse">Summing items & route…</span>
-                                            </div>
-                                            {/* Moving line summation progress */}
-                                            <div className="relative w-full h-1.5 bg-slate-200/90 rounded-full overflow-hidden mt-2">
-                                                <div className="absolute inset-y-0 w-2/5 bg-gradient-to-r from-[#E00D42] to-amber-500 rounded-full animate-line-sum" />
-                                            </div>
-                                            <p className="text-[10px] text-slate-500 mt-1.5">Locking inventory with verified store and reserving doorstep COD dispatch slot.</p>
-                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <DialogTitle as="h3" className="text-xl font-black text-slate-900 tracking-tight">
+                                            Connecting to BagooPH Express Hub…
+                                        </DialogTitle>
+                                        <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                                            Securing verified inventory & reserving doorstep COD dispatch slot
+                                        </p>
+                                    </div>
+                                    <div className="relative w-52 h-1.5 bg-slate-100 rounded-full overflow-hidden mx-auto">
+                                        <div className="absolute inset-y-0 w-2/5 bg-gradient-to-r from-[#E00D42] to-amber-500 rounded-full animate-line-sum" />
                                     </div>
                                 </div>
                             )}
 
-                            {/* Modal Action Buttons */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 font-sans text-xs">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfirmModal(false)}
-                                    disabled={processing}
-                                    className="py-3 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition text-center cursor-pointer"
-                                >
-                                    Edit Details
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={!hasConfirmedAgreement || processing || bestBusy || !canShowQuote || !pricing.ready}
-                                    onClick={submitFinalOrder}
-                                    className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
-                                >
-                                    {processing ? (
-                                        <div className="flex items-center justify-center gap-2">
-                                            <div className="relative flex flex-col items-center justify-center w-10 h-5 overflow-hidden">
-                                                <Truck className="w-3.5 h-3.5 text-white animate-truck-drive" />
-                                                <div className="w-14 flex gap-1 animate-road-dash overflow-hidden">
-                                                    <span className="w-2.5 h-0.5 bg-white/70 rounded-full shrink-0" />
-                                                    <span className="w-1.5 h-0.5 bg-white/50 rounded-full shrink-0" />
-                                                    <span className="w-3 h-0.5 bg-white/90 rounded-full shrink-0" />
-                                                </div>
+                            {/* Phase 2: Truck Morphs into Animated Checkmark */}
+                            {orderDispatchStep === 'confirmed' && (
+                                <div className="py-12 px-4 text-center space-y-6 animate-fade-in">
+                                    <div className="relative w-24 h-24 rounded-3xl bg-emerald-500 text-white flex items-center justify-center shadow-xl mx-auto animate-check-pop">
+                                        <Check className="w-12 h-12 text-white stroke-[3.5]" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <DialogTitle as="h3" className="text-xl font-black text-slate-900 tracking-tight">
+                                            Order Confirmed & Placed!
+                                        </DialogTitle>
+                                        <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                                            Dispatched to courier network. Redirecting to your purchases…
+                                        </p>
+                                    </div>
+                                    <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto opacity-60" />
+                                </div>
+                            )}
+
+                            {/* Phase 0: Review Step Before Placing Order */}
+                            {orderDispatchStep === 'review' && (
+                                <div className="space-y-5 sm:space-y-6">
+                                    {/* Modal Header */}
+                                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                        <div>
+                                            <div className="flex items-center gap-2 text-xs font-semibold text-[#E00D42]">
+                                                <ShoppingBag className="w-4 h-4" />
+                                                <span>Final Review Step</span>
                                             </div>
-                                            <span className="font-extrabold tracking-wide">Dispatching Order…</span>
+                                            <DialogTitle as="h3" className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
+                                                Confirm & Place Order
+                                            </DialogTitle>
                                         </div>
-                                    ) : (
-                                        <span>Confirm & Place Order</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmModal(false)}
+                                            aria-label="Close order review"
+                                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    </div>
+
+                                    {dispatchErrorMessage && (
+                                        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                                            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                                            <span>{dispatchErrorMessage}</span>
+                                        </div>
                                     )}
-                                </button>
-                            </div>
+
+                                    {/* Summary Cards */}
+                                    <div className="space-y-3 font-sans text-xs">
+                                        
+                                        {/* Recipient & Destination Summary */}
+                                        <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1">
+                                            <span className="text-[11px] text-slate-400 font-semibold block flex items-center gap-1.5">
+                                                <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
+                                                <span>{isHubPickup ? 'Recipient address' : 'Delivery destination'}</span>
+                                            </span>
+                                            <p className="font-bold text-slate-900 text-sm">{data.recipient_name} ({data.recipient_phone})</p>
+                                            <p className="break-words text-slate-600 text-xs">{[data.shipping_address, data.destination_barangay, data.shipping_city, data.shipping_province, data.shipping_postal_code].filter(Boolean).join(', ')}</p>
+                                            {isHubPickup && selectedPickupHub && <div className="border-t border-slate-300 pt-2">
+                                                <p className="font-bold text-slate-900">Collect at {selectedPickupHub.name} ({selectedPickupHub.code})</p>
+                                                <p className="break-words text-slate-600">{[selectedPickupHub.address, selectedPickupHub.city_municipality, selectedPickupHub.province].filter(Boolean).join(', ')}</p>
+                                            </div>}
+                                        </div>
+
+                                        {/* Payment Mode & Voucher Summary */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                                                <span className="text-[11px] text-slate-400 font-semibold block">Payment Mode</span>
+                                                <span className="font-bold text-slate-700 font-sans">{data.payment_method === 'wallet' ? 'BAGOO WALLET · VIRTUAL CREDITS' : 'CASH ON DELIVERY (COD)'}</span>
+                                            </div>
+                                            <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                                                <span className="text-[11px] text-slate-400 font-semibold block">Applied Vouchers</span>
+                                                <span className="font-bold text-slate-800">{appliedVouchers.length ? appliedVouchers.map(offer => offer.code).join(', ') : 'None'}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Items Preview List */}
+                                        <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5 max-h-40 overflow-y-auto">
+                                            <span className="text-[11px] text-slate-400 font-semibold block">Package Items ({items.length})</span>
+                                            <div className="divide-y divide-slate-200">
+                                                {items.map(item => (
+                                                    <div key={item.id} className="py-2 flex items-center justify-between text-xs">
+                                                        <div className="truncate pr-2">
+                                                            <span className="font-semibold text-slate-800 block truncate">{item.product?.name}</span>
+                                                            <span className="text-slate-500 text-[11px]">Qty: <PriceSegments segments={quotedItems.get(item.id)?.price_segments} quantity={quotedItems.get(item.id)?.quantity ?? item.quantity} unitPrice={quotedItems.get(item.id)?.unit_price ?? Number(item.unit_price)} /></span>
+                                                        </div>
+                                                        <span className="font-bold text-slate-900 shrink-0">{quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Total Amount */}
+                                        <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-2xl flex items-center justify-between">
+                                            <span className="font-semibold text-slate-800 text-xs">Total Amount Due:</span>
+                                            <span className="text-xl font-black text-[#E00D42]">{quotePrice(grandTotal)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Verification Checkbox */}
+                                    <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700 select-none p-1 font-sans">
+                                        <input
+                                            type="checkbox"
+                                            checked={hasConfirmedAgreement}
+                                            onChange={(e) => setHasConfirmedAgreement(e.target.checked)}
+                                            className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                        />
+                                        <span>I have reviewed my shipping details and confirm this order placement.</span>
+                                    </label>
+
+                                    {/* Modal Action Buttons */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 font-sans text-xs">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmModal(false)}
+                                            className="py-3 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition text-center cursor-pointer"
+                                        >
+                                            Edit Details
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={!hasConfirmedAgreement || orderPending.current || bestBusy || !canShowQuote || !pricing.ready}
+                                            onClick={submitFinalOrder}
+                                            className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                                        >
+                                            <span>Confirm & Place Order</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                         </DialogPanel>
                     </div>
