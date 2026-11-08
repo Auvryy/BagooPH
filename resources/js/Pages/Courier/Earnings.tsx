@@ -18,6 +18,7 @@ interface Props {
         trackingNumber: string;
         orderNumber: string | null;
         itemCount: number;
+        items?: Array<{ name: string; quantity: number }>;
         merchant?: { name: string; address: string };
         originHub?: { name: string; address?: string };
     }>;
@@ -91,6 +92,16 @@ export default function CourierCompletedTrips({ scope, summary, trips, isOnline,
                                     <p className="text-xs text-slate-600">
                                         <span className="font-semibold">Origin Hub: </span>{pickup.originHub?.name || 'Origin Bayan Hub'}
                                     </p>
+                                    {pickup.items && pickup.items.length > 0 && (
+                                        <div className="mt-1 pt-1 border-t border-slate-100 text-xs text-slate-600 space-y-0.5">
+                                            {pickup.items.map((item, idx) => (
+                                                <div key={idx} className="flex justify-between">
+                                                    <span className="font-medium text-slate-700">{item.name}</span>
+                                                    <span>× {item.quantity}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

@@ -9,7 +9,7 @@ import CourierTaskCard, { type CourierTaskItem } from '@/Components/CourierTaskC
 import WaybillCamera from '@/Components/WaybillCamera';
 import { CourierDeliveryOverview, CourierRecentDeliveries, type CourierActivity } from '@/Components/CourierDashboard';
 import { CourierDialog, CourierEmpty, CourierFieldError, CourierPanel, CourierParcelIdentifiers, courierButton, courierClasses, courierInput, courierPrimary } from '@/Components/CourierUI';
-import { courierDate, courierGreeting, courierMoney, courierPath, selectCourierMapJob, type CourierMapJob, type CourierPlace, type CourierScope } from '@/utils/courier';
+import { courierDate, courierGreeting, courierMoney, courierPath, directionsUrl, selectCourierMapJob, type CourierMapJob, type CourierPlace, type CourierScope } from '@/utils/courier';
 import { PageProps, OrderTracking } from '@/types';
 import { currentCourierAction } from '@/utils/orderTracking';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
@@ -471,24 +471,36 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 {carryingCount}
                             </span>
                             <div>
-                                <p className="font-bold">You are carrying {carryingCount} collected pickup{carryingCount === 1 ? '' : 's'} (in custody)</p>
-                                <p className="text-sky-700">Carrying pickups are tracked in your Trips & History to keep your main delivery queue uncluttered.</p>
+                                <p className="font-bold">You are carrying {carryingCount} collected pickup{carryingCount === 1 ? '' : 's'} (in custody). Hub staff must scan it into custody.</p>
+                                <p className="text-sky-700">Existing assigned parcels remain available. Carrying pickups are tracked in Trips & History to keep your main delivery queue uncluttered.</p>
                             </div>
                         </div>
-                        <Link
-                            href={courierPath('/earnings')}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-sky-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-800 transition-colors shadow-2xs"
-                        >
-                            <span>View Pickups in Trips</span>
-                            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Link>
+                        <div className="flex items-center gap-2">
+                            {carryingPickups[0]?.originHub && directionsUrl(carryingPickups[0].originHub) && (
+                                <a
+                                    href={directionsUrl(carryingPickups[0].originHub)!}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 rounded-lg border border-sky-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-sky-800 hover:bg-sky-50 transition-colors"
+                                >
+                                    Directions to Hub
+                                </a>
+                            )}
+                            <Link
+                                href={courierPath('/earnings')}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-800 transition-colors shadow-2xs"
+                            >
+                                <span>View Pickups in Trips</span>
+                                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                            </Link>
+                        </div>
                     </div>
                 )}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div role="group" aria-label="Task filters" className="flex max-w-full gap-1 overflow-x-auto rounded-[8px] bg-slate-100 p-1">
                         {([
                             { key: 'assigned', label: 'Assigned to you', count: assignedCount },
-                            { key: 'available', label: 'Available pickups', count: stats?.availablePickups ?? available.length },
+                            { key: 'available', label: 'Available to claim (pickups)', count: stats?.availablePickups ?? available.length },
                         ] as const).map((item) => (
                             <button
                                 key={item.key}
