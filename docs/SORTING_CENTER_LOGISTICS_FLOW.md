@@ -1,6 +1,6 @@
 # Sorting Center and Logistics Flow
 
-The current routing, bagging, company setup and financial contract is [Master Logistics Specification](MASTER_LOGISTICS_SPECIFICATION.md), based on the user-selected [version-two source](new-docs-era/LOGISTICS_SPECIFICATION_V2.pdf). “Child Hub” and the existing “Bayan Hub” label refer to the same municipal facility. Existing database and API names are retained for compatibility.
+The current routing, bagging, company setup and financial contract is [Master Logistics Specification](MASTER_LOGISTICS_SPECIFICATION.md), based on the user-selected [version-two source](new-docs-era/LOGISTICS_SPECIFICATION_V2.pdf). For in-depth automated hardware specifications, physical tamper seal lifecycles, continuous scanning, DWS stations, and conveyor chute splitting, consult [Mother Bag & Parcel Scanning Automation](MOTHER_BAG_AND_PARCEL_SCANNING_AUTOMATION.md). “Child Hub” and the existing “Bayan Hub” label refer to the same municipal facility. Existing database and API names are retained for compatibility.
 
 ## Station work
 

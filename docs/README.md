@@ -34,6 +34,7 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 | Selected internal virtual credits, wallet payment, expiry, refunds and virtual proceeds alongside COD | `BAGOO_WALLET.md` |
 | Input validation, authorization, concurrency, idempotency, failure recovery | `CORE_FLOW_VALIDATION_AND_EDGE_CASES.md` |
 | Parcel custody, hubs, manifests, retries, self-pickup, COD movement | `SORTING_CENTER_LOGISTICS_FLOW.md` |
+| Mother Bag lifecycle, tamper seals, continuous optical scanning, DWS, sorter chutes | `MOTHER_BAG_AND_PARCEL_SCANNING_AUTOMATION.md` |
 | Buyer-only actions and screens | `BUYER_FLOWCHART.md` |
 | Seller-only actions and screens | `SELLER_FLOW.md` |
 | Pickup/final-mile courier actions | `COURIER_FLOW.md` |
