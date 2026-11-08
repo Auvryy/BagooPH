@@ -79,7 +79,7 @@ The full operational improvements backlog is prioritized as follows:
 | Priority | Category Name | Core Focus & Deliverables | Status |
 | :---: | :--- | :--- | :---: |
 | 🥇 **#1** | **🔥 TOP 1 PRIORITY: Warehouse Automation & Fast Mobile Scanner** | Single-screen continuous flow, zero-focus wedge listener, master tag batch ingestion, command barcodes, dedicated Mobile Scanner PWA (`/hub/scanner`), and text bloat removal. | **Next to Build** |
-| 🥈 **#2** | **Category 1: Courier & Rider Mobile Experience** | Highlighting Waybill vs Order #, camera instant-open with typing fallback, camera permission disclosure, and buyer relationship toggle. | Backlog |
+| 🥈 **#2** | **Category 1: Courier & Rider Mobile Experience** | Highlighting Waybill vs Order #, camera instant-open with typing fallback, camera permission disclosure, and buyer relationship toggle. | **Complete & Verified** |
 | 🥉 **#3** | **Category 2: Routing Intelligence & Misroute Traps** | Automated next-hub routing (no manual dropdowns), loop/ping-pong rejection at Mother Hub, and removing `< >` number spinner inputs. | Backlog |
 | **#4** | **Category 3: Security Seals & Master Bag Custody** | Auto-generated sequential seal numbers (`SL-xxxxx`), 1-click mother bag loading without tag copy-pasting, and camera seal registration. | Backlog |
 | **#5** | **Category 4: Station Visualizations, Mapping & Waybills** | Event-driven reactive conveyor box advancement, official carrier logos on thermal waybills, and real road highway poly-line routing. | Backlog |
@@ -89,7 +89,13 @@ The full operational improvements backlog is prioritized as follows:
 
 ## Detailed Feedback Inventory (By Category)
 
-### Category 1: Courier & Rider Mobile Experience
+### Category 1: Courier & Rider Mobile Experience (Status: ✅ Complete & Verified)
+
+* **Implementation Branch**: `feature/courier-field-experience`
+* **Changes Delivered**:
+  - `resources/js/Components/CourierUI.tsx`: Prominent Bagoo Crimson `#E00D42` "WAYBILL TO SCAN" badge, 18px bold tracking number, with secondary Order Reference demoted.
+  - `resources/js/Components/WaybillCamera.tsx`: Camera privacy disclosure badge explaining local on-device frame analysis without video retention.
+  - `resources/js/Pages/Courier/Deliveries.tsx`: Auto-start camera viewfinder on pickup, out for delivery, and delivery action modals; pre-filled buyer name and default `buyer` relationship; streamlined `[x] Received by representative` checkbox toggle to expose relationship selection only when needed.
 
 #### 1.1 Distinct Tracking vs Order Numbers
 > **User's Exact Words:** *"In the rider we can see 2 BGO make sure highlight in red what is the important one in the rider side"*

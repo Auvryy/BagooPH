@@ -106,6 +106,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const [barcode, setBarcode] = useState('');
     const [recipientName, setRecipientName] = useState('');
     const [recipientRelationship, setRecipientRelationship] = useState('');
+    const [isRepresentative, setIsRepresentative] = useState(false);
     const [cashReceived, setCashReceived] = useState('');
     const [changeGiven, setChangeGiven] = useState('0.00');
     const [cashConfirmed, setCashConfirmed] = useState(false);
@@ -206,7 +207,12 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         }
         setNotes(''); setBarcode(''); setProof(null); setErrors({});
         setFailureReason(''); setAttemptLocation(''); setRequestToken(recoveryRequestToken);
-        setRecipientName(''); setRecipientRelationship(''); setCashReceived(''); setChangeGiven('0.00'); setCashConfirmed(false);
+        const deliveryTask = deliveries.find((task) => task.id === id);
+        const defaultBuyerName = deliveryTask?.recipient?.name || '';
+        setRecipientName(status === 'delivered' ? defaultBuyerName : '');
+        setRecipientRelationship(status === 'delivered' ? 'buyer' : '');
+        setIsRepresentative(false);
+        setCashReceived(''); setChangeGiven('0.00'); setCashConfirmed(false);
         setTarget({ id, trackingNumber, status });
     };
     const claim = (id: number) => {
@@ -462,29 +468,29 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
 
             <CourierDialog open={target !== null} title={target ? actionLabels[target.status] : 'Parcel action'} onClose={() => { if (!pending.current) resetAction(); }} busy={loadingId !== null}>
                 {target && <form onSubmit={submit} className="space-y-4">
-                    <div className="rounded-[8px] border border-slate-300 bg-[#FFFAFB] p-3"><CourierParcelIdentifiers trackingNumber={target.trackingNumber} orderNumber={targetOrderNumber} /></div>
+                    <CourierParcelIdentifiers trackingNumber={target.trackingNumber} orderNumber={targetOrderNumber} />
                     <p className="text-base leading-relaxed text-slate-700">{target.status === 'picked_up' ? 'Confirm only after you have collected this parcel from the seller. Next, bring it to the origin Bayan Hub.' : target.status === 'out_for_delivery' ? 'Confirm that you collected this assigned parcel from the destination Bayan Hub and are starting its delivery leg.' : target.status === 'delivery_failed' ? 'Record the actual attempt, then return the parcel to the destination Bayan Hub. A hub scan is required before recovery.' : 'Record the actual recipient, payment and proof photo. The order updates after these delivery checks.'}</p>
                     <CourierFieldError message={errors.status} />
                     {target.status === 'delivery_failed' && <label className="block text-sm font-semibold" htmlFor="failure-reason">Failure reason<select id="failure-reason" required value={failureReason} disabled={loadingId !== null} onChange={event => setFailureReason(event.target.value)} className={courierInput}><option value="">Choose the actual reason</option><option value="customer_unreachable">Customer unreachable</option><option value="customer_unavailable">Customer unavailable or requested another date</option><option value="address_clarification">Wrong or incomplete address</option><option value="unsafe_conditions">Unsafe conditions or severe weather</option><option value="cod_unavailable">Exact COD payment unavailable</option><option value="customer_refused">Customer refused the parcel</option></select><CourierFieldError message={errors.failure_reason} /></label>}
                     {target.status === 'delivery_failed' && <label className="block text-sm font-semibold" htmlFor="attempt-location">Actual attempt location<input id="attempt-location" type="text" required maxLength={255} value={attemptLocation} disabled={loadingId !== null} onChange={event => setAttemptLocation(event.target.value)} className={courierInput} /><CourierFieldError message={errors.location_name} /></label>}
-                    <div>
-                        <label htmlFor="pickup-waybill" className="block text-sm font-semibold text-slate-800">Parcel waybill</label>
-                        <p id="waybill-help" className="mt-1 text-sm text-slate-600">Scan the actual label or enter its waybill manually. Scanning fills this field; it does not record the parcel action.</p>
-                        <input id="pickup-waybill" type="text" autoComplete="off" spellCheck={false} maxLength={255} required value={barcode} disabled={loadingId !== null} aria-invalid={Boolean(errors.barcode) || waybillMismatch} aria-describedby="waybill-help waybill-error" onChange={(event) => { setBarcode(event.target.value); setErrors((current) => ({ ...current, barcode: '' })); }} className={courierInput} />
+                    <div className="space-y-2">
+                        <label htmlFor="pickup-waybill" className="block text-sm font-bold text-slate-900">Physical Parcel Waybill</label>
+                        <p id="waybill-help" className="text-xs text-slate-600">Camera auto-opens below. If barcode is damaged, type the exact code from the thermal label manually.</p>
+                        <input id="pickup-waybill" type="text" autoComplete="off" spellCheck={false} maxLength={255} required value={barcode} disabled={loadingId !== null} aria-invalid={Boolean(errors.barcode) || waybillMismatch} aria-describedby="waybill-help waybill-error" onChange={(event) => { setBarcode(event.target.value); setErrors((current) => ({ ...current, barcode: '' })); }} className={`${courierInput} font-bold text-sm tracking-wide text-[#C20836]`} placeholder="Scan or type waybill (e.g. BG-DEL-...)" />
                         <CourierFieldError id="waybill-error" message={errors.barcode} />
-                        {waybillMismatch && <p id="waybill-mismatch" role="status" className="mt-2 rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-3 text-sm leading-relaxed text-[#92400E]">This scanned code does not match the selected parcel waybill. Check the physical label, then scan or enter the matching code. The server verifies it again before recording.</p>}
+                        {waybillMismatch && <p id="waybill-mismatch" role="status" className="mt-2 rounded-xl border border-amber-300 bg-[#FFF4DF] p-3 text-sm leading-relaxed text-[#92400E]">This scanned code does not match the selected parcel waybill. Check the physical label, then scan or enter the matching code. The server verifies it again before recording.</p>}
                         <WaybillCamera
-                            autoStart={target.status === 'picked_up'}
+                            autoStart={target.status === 'picked_up' || target.status === 'out_for_delivery' || target.status === 'delivered'}
                             onScan={(value) => { setBarcode(value); setErrors((current) => ({ ...current, barcode: '' })); }}
                             disabled={loadingId !== null}
-                            instruction="A camera scan fills the waybill field. Compare it with the parcel above, then submit the permitted rider action."
+                            instruction="Point camera directly at the physical box waybill barcode to fill this code automatically."
                         />
                     </div>
                     {target.status === 'delivered' && (
                         <>
                             {gpsDistance !== null && (
-                                <div className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs font-medium ${gpsDistance <= 100 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-[#92400E]'}`}>
-                                    <MapPin className="h-4 w-4 shrink-0" />
+                                <div className={`flex items-center gap-2 rounded-xl border p-3 text-xs font-semibold ${gpsDistance <= 100 ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-amber-300 bg-amber-50 text-[#92400E]'}`}>
+                                    <MapPin className="h-4 w-4 shrink-0 text-[#E00D42]" />
                                     <span>
                                         {gpsDistance <= 100
                                             ? `GPS Verified: Within customer delivery radius (~${gpsDistance}m away)`
@@ -493,16 +499,91 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 </div>
                             )}
                             {cashSummary?.is_locked && !walletHandover && (
-                                <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800">
+                                <div className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800">
                                     <strong>COD Delivery Locked:</strong> You have reached the ₱20,000 unremitted cash limit. You cannot collect more COD cash until you make a deposit at a Bayan Hub.
                                 </div>
                             )}
                         </>
                     )}
-                    {target.status === 'delivered' && <section className="space-y-4 rounded-[8px] border border-slate-300 bg-[#FFFAFB] p-4" aria-label="Recipient and COD collection">
-                        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Banknote className="h-5 w-5 text-[#C20836]" aria-hidden="true" />{walletHandover ? 'Prepaid wallet delivery' : 'Count cash at handoff'}</h3><span className="font-semibold tabular-nums text-[#C20836]">{walletHandover ? 'No cash due' : `Due: ${actionDue === null ? 'Unavailable' : courierMoney(actionDue / 100)}`}</span></div>
-                        <label className="block text-sm font-semibold" htmlFor="cash-recipient">Person receiving the parcel<input id="cash-recipient" required maxLength={255} value={recipientName} disabled={loadingId !== null} onChange={(event) => setRecipientName(event.target.value)} className={courierInput} /><CourierFieldError message={errors.recipient_name} /></label>
-                        <label className="block text-sm font-semibold" htmlFor="cash-relationship">Relationship to buyer<select id="cash-relationship" required value={recipientRelationship} disabled={loadingId !== null} onChange={(event) => setRecipientRelationship(event.target.value)} className={courierInput}><option value="">Choose the actual recipient</option><option value="buyer">Buyer</option><option value="household">Household member</option><option value="authorized_recipient">Authorized recipient</option></select><CourierFieldError message={errors.recipient_relationship} /></label>
+                    {target.status === 'delivered' && <section className="space-y-4 rounded-xl border border-slate-300 bg-[#FFFAFB] p-4" aria-label="Recipient and COD collection">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-100 pb-3">
+                            <h3 className="flex items-center gap-2 font-bold text-sm text-slate-900">
+                                <Banknote className="h-5 w-5 text-[#C20836]" aria-hidden="true" />
+                                {walletHandover ? 'Prepaid Wallet Delivery' : 'Count Cash at Handoff'}
+                            </h3>
+                            <span className="font-extrabold tabular-nums text-sm text-[#C20836]">
+                                {walletHandover ? 'No cash due' : `Due: ${actionDue === null ? 'Unavailable' : courierMoney(actionDue / 100)}`}
+                            </span>
+                        </div>
+
+                        {/* Streamlined Recipient Handover */}
+                        <div className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                    <span className="text-xs font-bold text-slate-900 block">Recipient Verification</span>
+                                    <p className="text-xs text-slate-500">
+                                        {isRepresentative ? 'Delivering to an authorized representative / guard' : 'Direct handover to buyer: '}
+                                        {!isRepresentative && <strong className="text-slate-900">{recipientName || 'Buyer'}</strong>}
+                                    </p>
+                                </div>
+                                <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition">
+                                    <input
+                                        type="checkbox"
+                                        checked={isRepresentative}
+                                        disabled={loadingId !== null}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            setIsRepresentative(checked);
+                                            const defaultBuyer = deliveries.find((t) => t.id === target.id)?.recipient?.name || '';
+                                            if (!checked) {
+                                                setRecipientRelationship('buyer');
+                                                setRecipientName(defaultBuyer);
+                                            } else {
+                                                setRecipientRelationship('authorized_recipient');
+                                                setRecipientName('');
+                                            }
+                                        }}
+                                        className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                    />
+                                    <span>Received by representative</span>
+                                </label>
+                            </div>
+
+                            {isRepresentative && (
+                                <div className="pt-2 border-t border-slate-100 space-y-3">
+                                    <label className="block text-xs font-bold text-slate-700" htmlFor="cash-recipient">
+                                        Representative Full Name
+                                        <input
+                                            id="cash-recipient"
+                                            required
+                                            maxLength={255}
+                                            placeholder="Enter name of person who received the parcel"
+                                            value={recipientName}
+                                            disabled={loadingId !== null}
+                                            onChange={(event) => setRecipientName(event.target.value)}
+                                            className={`${courierInput} mt-1 text-sm`}
+                                        />
+                                        <CourierFieldError message={errors.recipient_name} />
+                                    </label>
+                                    <label className="block text-xs font-bold text-slate-700" htmlFor="cash-relationship">
+                                        Relationship to Buyer
+                                        <select
+                                            id="cash-relationship"
+                                            required
+                                            value={recipientRelationship}
+                                            disabled={loadingId !== null}
+                                            onChange={(event) => setRecipientRelationship(event.target.value)}
+                                            className={`${courierInput} mt-1 text-sm`}
+                                        >
+                                            <option value="household">Household member / Family</option>
+                                            <option value="authorized_recipient">Authorized representative / Guard / Neighbor</option>
+                                        </select>
+                                        <CourierFieldError message={errors.recipient_relationship} />
+                                    </label>
+                                </div>
+                            )}
+                        </div>
+
                         {!walletHandover && <><div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold" htmlFor="cash-tender">Cash received (PHP)<input id="cash-tender" type="text" inputMode="decimal" required value={cashReceived} disabled={loadingId !== null} onChange={(event) => setCashReceived(event.target.value)} placeholder="0.00" className={courierInput} /><CourierFieldError message={errors.cash_received} /></label><label className="block text-sm font-semibold" htmlFor="cash-change">Change given (PHP)<input id="cash-change" type="text" inputMode="decimal" required value={changeGiven} disabled={loadingId !== null} onChange={(event) => setChangeGiven(event.target.value)} className={courierInput} /><CourierFieldError message={errors.change_given} /></label></div>
                         <p role="status" className="text-sm text-slate-600">{netCash === null || netCash < 0 ? 'Enter the cash counted and any change actually given.' : `Cash kept for this order: ${courierMoney(netCash / 100)}.${netCash === actionDue ? ' This matches the amount due.' : ' This must match the saved amount due.'}`}</p>
                         <label className="flex items-start gap-3 text-sm leading-relaxed"><input type="checkbox" checked={cashConfirmed} disabled={loadingId !== null} onChange={(event) => setCashConfirmed(event.target.checked)} className="mt-1 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /><span>I counted the cash and gave the stated change. I will hand over the recorded amount separately.</span></label></>}
