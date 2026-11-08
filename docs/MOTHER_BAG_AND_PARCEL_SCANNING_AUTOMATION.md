@@ -287,7 +287,73 @@ A common logistical misconception is that cargo vans are loaded with loose packa
 
 ---
 
-## 7. Transport Dispatch Schedules & Waves
+## 7. Fleet Vehicle Assignment Automation & Dispatch Engine (TMS)
+
+Logistics operations do not rely on warehouse supervisors manually guessing which truck or driver to dispatch. The assignment of vans and linehaul trucks is fully automated through an algorithmic **Transportation Management System (TMS) / Linehaul Dispatch Engine**.
+
+```
+[ REAL-TIME BAGGING & DWS ACCUMULATION ]
+  • Total Actual Weight: 780 kg
+  • Total Volumetric Space: 5.6 CBM
+  • Route: San Pablo Child Hub ──> South Luzon Regional Mother Hub
+                               │
+                               ▼
+[ 1. ALGORITHMIC CAPACITY SIZING (BIN-PACKING) ]
+  • Evaluates vehicle class envelopes (kg, CBM, bag count)
+  • Optimal Match: "L300 Cargo Van" (prevents wasting a 6-wheeler)
+                               │
+                               ▼
+[ 2. DRIVER & VEHICLE SELECTION ENGINE ]
+  • Model A: Active Shift Roster (Child Hubs)
+  • Model B: FIFO Staging Yard Turno Queue (Mother Distribution Centers)
+  • Assigned: Van Plate NDK-1829 / Driver Carlos Mendoza
+                               │
+                               ▼
+[ 3. ELECTRONIC MANIFEST (e-BOL) BINDING ]
+  • Manifest MNF-20261108-03 generated atomically
+  • Binds 14 Mother Bags + 4 Loose Cargo items to vehicle
+                               │
+                               ▼
+[ 4. DOCK BAY DISPATCH & QR GATE PASS ]
+  • Yard overhead LED displays: "Plate NDK-1829 ──> Dock Bay 04"
+  • Driver inspects seals and signs digital e-BOL on mobile terminal
+  • Guardhouse gate scans QR Gate Pass; boom barrier opens
+```
+
+### 7.1 Real-Time Demand Aggregation (Weight & CBM)
+
+As parcels are scanned into Mother Bags and non-baggable cargo is staged, the backend continuously aggregates three live metrics for every destination corridor:
+1. **Actual Weight ($W_{\text{act}}$)**: Live sum from the in-line dynamic DWS scale.
+2. **Volumetric Space ($V_{\text{CBM}}$)**: Calculated as $\sum \frac{L \times W \times H}{1,000,000}$ for all loose items plus the standardized volume profile of each sealed Mother Bag ($0.30\ \text{CBM}$ per 100L sack).
+3. **Container Count**: Number of sealed Mother Bags plus loose oversized cartons.
+
+30 to 45 minutes prior to the scheduled departure cut-off window, the system evaluates the corridor load against available fleet assets.
+
+### 7.2 Automated Vehicle Sizing Algorithm
+
+The system runs a bin-packing optimization to assign the lowest-cost vehicle class that meets the volume and weight demands with a 10% safety buffer:
+
+$$\text{Selected Class} = \min_{\text{class} \in \text{Fleet}} \left\{ \text{Cost}(\text{class}) \;\middle|\; \text{Payload}_{\text{class}} \ge 1.10 \times W_{\text{act}} \quad\text{and}\quad \text{CBM}_{\text{class}} \ge 1.10 \times V_{\text{CBM}} \right\}$$
+
+- **Standard Load ($\le 850\ \text{kg}$, $\le 5.5\ \text{CBM}$)**: The system dispatches an **L300 Cargo Van**.
+- **Double-Day / Campaign Spike ($\ge 1,500\ \text{kg}$, $\ge 12\ \text{CBM}$)**: The system **auto-upgrades** the assignment to a **4-Wheeler Closed Van** or schedules a **second L300 overflow shuttle** without human clerical intervention.
+
+### 7.3 Driver & Plate Binding Models
+
+| Facility Type | Operating Model | Assignment Mechanism |
+|---|---|---|
+| **Child / Bayan Hubs** | **Fixed Shift Rostering** | Regular daily feeder trips run on scheduled rosters. The system checks which driver/plate is on shift for that wave (e.g. *Driver Carlos Mendoza, Plate NDK-1829*) and binds them directly to the `LogisticsManifest`. |
+| **Regional Mother Hubs (DCs)** | **FIFO Staging Yard Queue ("Turno")** | Linehaul trucks check in at the guardhouse upon arrival and enter a virtual queue. When the sorter completes a manifest for a route, the system broadcasts a **Dock Bay Call** via SMS and yard display screens calling the next matching truck to the loading bay. |
+
+### 7.4 Dock Verification, Digital e-BOL & QR Gate Pass
+
+1. **Anti-Misload Dock Scan (`ERR_TRUCK_MISLOAD`)**: As loaders move Mother Bags from staging into the vehicle, a handheld scanner reads each sack barcode. If a bag destined for Batangas is scanned into a truck bound for Laguna, the scanner sounds an immediate alarm and locks the loading sequence.
+2. **Digital Custody Sign-Off**: The driver conducts a visual check of the tamper seals (`SL-...`), verifies the total container count on the driver mobile app, and signs the electronic Bill of Lading (e-BOL). The manifest status flips from `DRAFT` to `IN_TRANSIT`.
+3. **Automated Exit Gate Pass**: The system generates a single **QR Gate Pass** on the driver's phone. At the facility exit gate, the guardhouse optical scanner verifies the gate pass against the live manifest database, records the departure timestamp, and triggers the motorized boom barrier to open.
+
+---
+
+## 8. Transport Dispatch Schedules & Waves
 
 Linehaul vehicles do not depart only at the end of the working day (5:00 PM). Doing so would overwhelm destination sorting hubs with massive midnight bottlenecks. Enterprise networks run **Multi-Wave Dispatch Windows**.
 
@@ -309,9 +375,9 @@ Linehaul vehicles do not depart only at the end of the working day (5:00 PM). Do
 
 ---
 
-## 8. Exception Handling & Security Protocols
+## 9. Exception Handling & Security Protocols
 
-### 8.1 Broken or Mismatched Tamper Seals (`SECURITY_SEAL_VIOLATION`)
+### 9.1 Broken or Mismatched Tamper Seals (`SECURITY_SEAL_VIOLATION`)
 
 If a Mother Bag arrives at an inbound dock with a severed seal, missing seal, or a barcode that does not match the driver's electronic transport manifest:
 1. **Quarantine Lockout**: The system blocks automated 1-scan nested acceptance.
@@ -321,18 +387,18 @@ If a Mother Bag arrives at an inbound dock with a severed seal, missing seal, or
    - Any missing parcel triggers an immediate insurance theft claim.
    - Any unmanifested foreign parcel is routed to the inspection security cage (`TRAP_FOREIGN_CARGO`).
 
-### 8.2 Misroute Intercept Trap (`ERR_MISROUTE_INTERCEPT`)
+### 9.2 Misroute Intercept Trap (`ERR_MISROUTE_INTERCEPT`)
 
 If a parcel destined for Child Hub B (e.g., Sta. Cruz) is scanned into a Mother Bag destined for Child Hub C (e.g., San Pablo):
 - The terminal emits an urgent red visual flash and high-frequency audio tone.
 - The conveyor diverter gate kicks the package into the **Exception Chute**.
 - The database logs a `MISROUTE_PREVENTED` metric against the operator station for quality auditing.
 
-### 8.3 Anti-Backhaul Guard
+### 9.3 Anti-Backhaul Guard
 
 Parcels cannot be manifested or bagged in reverse direction along their delivery route unless the parcel has explicitly transitioned into an authorized **Return to Sender (RTS)** or **Buyer Return** state. Forward journey packages scanned backwards are blocked to prevent systemic circular routing loops.
 
-### 8.4 Empty Mother Bag Recycling & Logistics
+### 9.4 Empty Mother Bag Recycling & Logistics
 
 Mother Bags are high-grade physical assets (costing $8 to $15 per nylon sack) and are not discarded after a single trip:
 1. Once de-consolidated and unpacked at a destination Child Hub, empty bags are inspected for tears.
@@ -341,7 +407,7 @@ Mother Bags are high-grade physical assets (costing $8 to $15 per nylon sack) an
 
 ---
 
-## 9. Verification & Codebase Cross-Reference
+## 10. Verification & Codebase Cross-Reference
 
 | System Function | Implementing Source Component |
 |---|---|
