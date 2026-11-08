@@ -2,7 +2,6 @@
 
 namespace App\Services\Logistics;
 
-use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsFleet;
@@ -12,7 +11,6 @@ use App\Models\LogisticsManifestParcel;
 use App\Models\MotherBag;
 use App\Models\MotherBagParcel;
 use App\Models\User;
-use App\Services\Logistics\OrderStateMachineService;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -29,15 +27,20 @@ class FleetDispatchEngine
      * Maximum baggable dimensions (cm) and single-parcel weight (kg).
      */
     public const MAX_BAGGABLE_LENGTH_CM = 60.0;
+
     public const MAX_BAGGABLE_WIDTH_CM = 60.0;
+
     public const MAX_BAGGABLE_HEIGHT_CM = 60.0;
+
     public const MAX_BAGGABLE_WEIGHT_KG = 15.0;
 
     /**
      * Standard Mother Bag capacity boundaries.
      */
     public const MOTHER_BAG_MAX_PARCELS = 50;
+
     public const MOTHER_BAG_MAX_WEIGHT_KG = 25.0;
+
     public const MOTHER_BAG_VOLUME_CBM = 0.30;
 
     /**
@@ -231,6 +234,7 @@ class FleetDispatchEngine
             if ($existing) {
                 $bag = $existing->bag;
                 $parcelsCount = $bag->parcels()->whereNull('removed_at')->count();
+
                 return [
                     'bagged' => true,
                     'classification' => 'mother_bag',

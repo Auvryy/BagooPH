@@ -5,7 +5,6 @@ namespace Tests\Feature\Logistics;
 use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\LogisticsFleet;
-use App\Models\LogisticsHub;
 use App\Models\MotherBag;
 use App\Models\User;
 use App\Services\Logistics\FleetDispatchEngine;
