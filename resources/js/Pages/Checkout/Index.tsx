@@ -471,7 +471,7 @@ export default function CheckoutIndex({
                     <div className="lg:col-span-8 space-y-6 font-sans">
                         
                         {/* 0. Items in this Order (Prominently Placed at the Top) */}
-                        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+                        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs space-y-4">
                             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                                 <div className="flex items-center gap-2">
                                     <Package className="h-4 w-4 text-[#E00D42]" />
@@ -484,22 +484,19 @@ export default function CheckoutIndex({
                                 </Link>
                             </div>
 
-                            <div className="space-y-4 font-sans text-xs">
+                            <div className="divide-y divide-slate-100 font-sans text-xs">
                                 {quote.shops.map(shop => (
-                                    <section key={shop.shop_id} className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-3" aria-label={shop.shop_name}>
-                                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
-                                            <div className="flex items-center gap-2">
-                                                <Store className="h-3.5 w-3.5 text-slate-600" />
-                                                <h3 className="font-bold text-xs text-slate-900">{shop.shop_name}</h3>
-                                            </div>
-                                            <ShippingCalculation calculation={shop.shipping_quote} selfPickup={data.delivery_type === 'hub_self_pickup'} />
+                                    <div key={shop.shop_id} className="py-3 first:pt-0 last:pb-0 space-y-3" aria-label={shop.shop_name}>
+                                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                                            <Store className="h-3.5 w-3.5 text-[#E00D42]" />
+                                            <span>{shop.shop_name}</span>
                                         </div>
 
-                                        <div className="divide-y divide-slate-100">
+                                        <div className="space-y-3">
                                             {items.filter(item => item.product?.shop?.id === shop.shop_id).map((item) => (
-                                                <div key={item.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+                                                <div key={item.id} className="flex items-center justify-between gap-3">
                                                     <div className="flex items-center gap-3 min-w-0">
-                                                        <span className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-400">
+                                                        <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-slate-400">
                                                             <Package className="h-4 w-4" aria-hidden="true" />
                                                             {((item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image) && (
                                                                 <img
@@ -526,47 +523,45 @@ export default function CheckoutIndex({
                                                         <p className="font-bold text-slate-900 text-xs tabular-nums">
                                                             {quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}
                                                         </p>
-                                                        <p className="text-[10px] text-slate-400 mt-0.5">
-                                                            <PriceSegments segments={quotedItems.get(item.id)?.price_segments} quantity={quotedItems.get(item.id)?.quantity ?? item.quantity} unitPrice={quotedItems.get(item.id)?.unit_price ?? Number(item.unit_price)} />
-                                                        </p>
+                                                        {item.quantity > 1 && (
+                                                            <p className="text-[10px] text-slate-400 mt-0.5">
+                                                                {formatPrice(item.product?.price)} each
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
 
                                         {/* Shop Voucher selector */}
-                                        <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-2.5 text-xs">
+                                        <div className="flex items-center justify-between text-xs py-1.5 px-3 rounded-xl bg-slate-50 border border-slate-200/60">
                                             <span className="flex items-center gap-1.5 text-[11px] text-slate-600">
-                                                <Tag className="h-3 w-3 text-[#C20836]" aria-hidden="true" />
+                                                <Tag className="h-3 w-3 text-[#E00D42]" />
                                                 <span>Shop voucher: <strong className="text-slate-800">{appliedVouchers.find(offer => offer.shop_id === shop.shop_id)?.code ?? 'No voucher applied'}</strong></span>
                                             </span>
                                             <button
                                                 type="button"
                                                 disabled={pricing.pending || bestBusy}
                                                 onClick={() => setPickerSlot(shop.shop_id)}
-                                                className="px-2.5 py-1 rounded-md border border-slate-300 text-[11px] font-bold text-[#C20836] hover:bg-slate-50 transition disabled:opacity-50 cursor-pointer"
+                                                className="text-[11px] font-bold text-[#E00D42] hover:underline disabled:opacity-50 cursor-pointer"
                                             >
                                                 Choose voucher
                                             </button>
                                         </div>
-                                        <CheckoutVoucherBreakdown quote={quote} shopId={shop.shop_id} price={quotePrice} />
-                                    </section>
+                                    </div>
                                 ))}
                             </div>
                         </div>
 
-                        {/* 1. Verified Delivery Destination & Fulfillment Method */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-5">
+                        {/* 1. Fulfillment & Delivery */}
+                        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs space-y-5">
                             <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
+                                <div className="w-7 h-7 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
                                     01
                                 </div>
-                                <div>
-                                    <h2 className="font-bold text-sm text-slate-900">
-                                        Fulfillment Method & Destination
-                                    </h2>
-                                    <p className="text-[11px] text-slate-500">Choose doorstep courier dispatch or free collection at a Bayan Hub</p>
-                                </div>
+                                <h2 className="font-bold text-sm text-slate-900">
+                                    Fulfillment Method & Destination
+                                </h2>
                             </div>
 
                             {/* Minimalist Logistics Carrier Dropdown */}
@@ -620,9 +615,6 @@ export default function CheckoutIndex({
                                             {quotePrice(quote.doorstep_shipping_fee)}
                                         </span>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 mt-2 font-sans">
-                                        Shipping is calculated separately for each shop.
-                                    </p>
                                 </label>
 
                                 {/* Option 2: Free Bayan Hub Self-Pickup */}
@@ -630,7 +622,7 @@ export default function CheckoutIndex({
                                     className={`relative focus-within:ring-2 focus-within:ring-[#E00D42] focus-within:ring-offset-2 p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
                                         data.delivery_type === 'hub_self_pickup'
                                             ? 'border-[#E00D42] bg-rose-50/30 shadow-xs'
-                                            : 'border-slate-200 bg-white hover:border-slate-300'
+                                             : 'border-slate-200 bg-white hover:border-slate-300'
                                     }`}
                                 >
                                     <input type="radio" name="delivery_type" value="hub_self_pickup" checked={data.delivery_type === 'hub_self_pickup'} onChange={() => setData('delivery_type', 'hub_self_pickup')} className="sr-only" />
@@ -653,9 +645,6 @@ export default function CheckoutIndex({
                                             ₱0.00
                                         </span>
                                     </div>
-                                    <p className="text-[10px] text-slate-600 mt-2 font-sans">
-                                        No delivery fee. Private claim code and identity check at collection.
-                                    </p>
                                 </label>
                             </fieldset>
 
@@ -666,8 +655,8 @@ export default function CheckoutIndex({
                                         <Building2 className="w-5 h-5 text-[#E00D42] shrink-0 mt-0.5" />
                                         <div>
                                             <h3 className="text-xs font-bold text-slate-900">Select Collection Station (Bayan Hub)</h3>
-                                            <p className="text-[11px] text-slate-600 mt-0.5">
-                                                Choose a hub from your selected company serving the recipient address. Local parcels stay within one child hub; regional parcels travel through the Mother Hub network. Tracking shows collection readiness and private claim-code access.
+                                            <p className="text-[11px] text-slate-500 mt-0.5">
+                                                Select your local Bayan Hub for free self-collection.
                                             </p>
                                         </div>
                                     </div>
@@ -706,9 +695,6 @@ export default function CheckoutIndex({
                                                     <>
                                                         <p className="font-bold text-slate-900">{selectedHub.name} ({selectedHub.code})</p>
                                                         <p className="text-slate-600">{selectedHub.address}, {selectedHub.city_municipality}, {selectedHub.province}</p>
-                                                        <p className="text-[10px] text-slate-600 font-sans pt-1">
-                                                            Check the recorded hub hours in order tracking before travelling. Bring identification and your private claim code when collection is ready.
-                                                        </p>
                                                     </>
                                                 );
                                             })()}
@@ -719,14 +705,14 @@ export default function CheckoutIndex({
                             )}
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between pb-1">
-                                    <h3 className="text-sm font-bold text-slate-900">Recipient and address</h3>
-                                    {addresses.length > 0 && !isEditingAddress && (
+                                    <h3 className="text-sm font-bold text-slate-900">Delivery Address</h3>
+                                    {addresses.length > 0 && (
                                         <button
                                             type="button"
-                                            onClick={() => setIsEditingAddress(true)}
-                                            className="text-xs font-bold text-[#E00D42] hover:underline"
+                                            onClick={() => setIsEditingAddress(!isEditingAddress)}
+                                            className="text-xs font-bold text-[#E00D42] hover:underline cursor-pointer"
                                         >
-                                            Change Address
+                                            {isEditingAddress ? 'Minimize' : 'Edit / Change'}
                                         </button>
                                     )}
                                 </div>
@@ -940,8 +926,6 @@ export default function CheckoutIndex({
                                                         ? { latitude: Number(data.shipping_latitude), longitude: Number(data.shipping_longitude) } : null}
                                                     onChange={point => { gps.cancel(); setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })); }}
                                                 />
-                                                {data.saved_address_id !== null && <p className="text-xs text-slate-600">Placing your order will save this pin to the selected address.</p>}
-                                                <p id="checkout-location-help" className="text-xs text-slate-600">Move the map pin or use GPS. Your delivery point is saved automatically.</p>
                                                 {hasInvalidDeliveryLocation && <p role="alert" className="text-xs text-rose-700">{deliveryLocationErrorMessage}</p>}
 
                                                 <div>
@@ -991,9 +975,9 @@ export default function CheckoutIndex({
                                             <button
                                                 type="button"
                                                 onClick={() => setIsEditingAddress(false)}
-                                                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition shadow-2xs"
+                                                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition shadow-2xs cursor-pointer"
                                             >
-                                                Save & Collapse Address
+                                                Done / Minimize Address
                                             </button>
                                         </div>
                                     </div>
