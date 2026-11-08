@@ -494,10 +494,10 @@ export default function CheckoutIndex({
 
                                         <div className="space-y-3">
                                             {items.filter(item => item.product?.shop?.id === shop.shop_id).map((item) => (
-                                                <div key={item.id} className="flex items-center justify-between gap-3">
-                                                    <div className="flex items-center gap-3 min-w-0">
-                                                        <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-slate-400">
-                                                            <Package className="h-4 w-4" aria-hidden="true" />
+                                                <div key={item.id} className="flex items-center justify-between gap-4 py-2">
+                                                    <div className="flex items-center gap-4 min-w-0">
+                                                        <span className="relative flex h-20 w-20 sm:h-24 sm:w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 text-slate-400 shadow-2xs">
+                                                            <Package className="h-8 w-8 text-slate-300" aria-hidden="true" />
                                                             {((item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image) && (
                                                                 <img
                                                                     src={(item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image || ''}
@@ -508,23 +508,23 @@ export default function CheckoutIndex({
                                                                 />
                                                             )}
                                                         </span>
-                                                        <div className="min-w-0">
-                                                            <p className="font-bold text-slate-900 truncate text-xs">{item.product?.name}</p>
-                                                            <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                                                                <span className="font-semibold text-slate-700">Qty: {item.quantity}</span>
+                                                        <div className="min-w-0 space-y-1">
+                                                            <p className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">{item.product?.name}</p>
+                                                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                                                <span className="font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">Qty: {item.quantity}</span>
                                                                 {(item.color || item.size) && (
-                                                                    <span>· {[item.color, item.size].filter(Boolean).join(' / ')}</span>
+                                                                    <span className="text-slate-500">· {[item.color, item.size].filter(Boolean).join(' / ')}</span>
                                                                 )}
                                                             </div>
                                                         </div>
                                                     </div>
 
                                                     <div className="text-right shrink-0">
-                                                        <p className="font-bold text-slate-900 text-xs tabular-nums">
+                                                        <p className="font-bold text-slate-900 text-base tabular-nums">
                                                             {quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}
                                                         </p>
                                                         {item.quantity > 1 && (
-                                                            <p className="text-[10px] text-slate-400 mt-0.5">
+                                                            <p className="text-xs text-slate-400 mt-0.5">
                                                                 {formatPrice(item.product?.price)} each
                                                             </p>
                                                         )}
