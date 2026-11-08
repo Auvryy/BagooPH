@@ -175,3 +175,29 @@ The full operational improvements backlog is prioritized as follows:
 > **User's Exact Words:** *"> so many notifications in the buyer side."*
 * **Idea:** Stop pinging the buyer for internal warehouse scans (intake, mother bag seal, cage sort). Only alert on the 4 key milestones.
 * **Verdict:** 100% RIGHT. Prevents customer alert fatigue while keeping tracking timelines complete.
+
+---
+
+### Category 6: UI & Design Rules — Zero AI Slop, No Emojis, No Gradients, Warm Ink Styling
+
+#### 6.1 Absolute Prohibition of Emojis and Artificial AI Slop
+> **User's Exact Words:**  
+> *"make sure there is no emojis you put int he desing and not ai slop those unecessary text or too smal text make sure the desing is not flat and everything is intuitive good ux"*  
+> *"about this it looks so bad like remove the black and those moving animations do the thing like they are just flat and have a dash broken line in to them but when a product is proceseed a low fps box icon is going to one node to another wtihout too much effect so the animation is light.and do you see the ai slop here? the unecessary text those 6 statiosn onlne those cointniuse throughout active are so unecessary"*  
+> *"can you add in our desing docs that enver use ai slow or redundant text like those like dont use emojis and gradients"*
+
+* **Rules Established**:
+  1. **Zero AI Slop & No Redundant Text**:
+     - Remove all robotic fluff, corporate buzzwords, and tutorial lectures (e.g., *"6 Stations Online"*, *"Continuous Throughput Active"*, *"Multi-parcel continuous conveyor system across all specialized hub stations"*, *"Role: Unloader / Gatekeeper"*, *"The queue includes rider handovers awaiting intake..."*).
+     - Keep UI copy strictly operational, direct, and concise (e.g., *"Hub Pipeline"*, *"Inbound"*, *"Sorting"*, *"Outbound Bay"*, *"Waybill verified"*). Never lecture the user about logistics.
+  2. **Zero Emojis in Design**:
+     - Never use unicode emojis (⚡, 📦, 🚚, 🔥, 🚀, ✨, 🛑, 👉) in UI layouts, buttons, cards, status badges, alerts, or backend controller messages. Use crisp vector icons from `lucide-react` exclusively.
+  3. **Zero Synthetic Gradients**:
+     - Never use multi-color AI gradients or color fade meshes. Surfaces must use authentic solids (`#FFFFFF`, `#F8F9FA`, `#1C1A17`, `#E00D42`). Depth must come from tactile shadows (`shadow-sm`, `shadow-md`), crisp dividing borders, and physical active press states.
+  4. **Warm Ink (`#1C1A17`) Palette**:
+     - Navigation sidebar, major headings, selected radios, active tab underlines, and map selected pins must use warm near-black **`#1C1A17`** (Ink), giving the interface an authentic, premium feel without cold generic slate.
+  5. **Tactile Rounded Geometry**:
+     - Use organic rounded containers (`rounded-2xl` for cards, `rounded-xl` for inner controls/buttons). Avoid harsh, flat, boxy rectangles.
+  6. **No Unreadable Micro-Fonts**:
+     - Never use `text-[10px]` or `text-[11px]` for data values. Use readable `text-xs` (12px) with bold tabular weights.
+

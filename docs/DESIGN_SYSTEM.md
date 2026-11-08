@@ -19,10 +19,31 @@
 
 - **Roundy Feel**: Embrace friendly, modern curves (`rounded-2xl`, `rounded-full`, pill tags). Avoid sharp or dated flat boxy borders.
 - **Snug Spacing (High-Density E-Commerce)**: Top e-commerce sites (Shopee, Lazada) feel full, energetic, and compact. Keep card margins and gutters compact (`gap-3` to `gap-4`, tight vertical margins) so users experience rich product discovery without barren white space.
-- **Micro-Dimensionality**: Depth is achieved through soft ambient drop-shadows (`shadow-[0_4px_16px_rgba(15,23,42,0.06)]`), border highlights (`border-slate-200/90`), and tactile hover lifts (`hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(224,13,66,0.12)]`).
-- **No-AI Gradients**: Strictly avoid synthetic AI multi-color gradients. Use authentic solid background tones, real product photography, tactile borders, and micro-shadows.
+- **Micro-Dimensionality**: Depth is achieved through soft ambient drop-shadows (`shadow-[0_4px_16px_rgba(15,23,42,0.06)]`, `shadow-sm`, `shadow-md`), border highlights (`border-slate-200/90`, `border-stone-800`), and tactile hover lifts (`hover:-translate-y-0.5 hover:shadow-md active:translate-y-0`).
+- **Sidebar & Core Accents**: The primary navigation sidebar, major headings, selected radio controls, active tab underlines, and selected map markers utilize **Warm Ink (`#1C1A17`)**, creating a rich near-black foundation rather than cold generic slate.
 
-## 3. Real Product Imagery in Categories
+## 3. Strict Design Rules: Zero AI Slop, No Emojis, No Gradients, No Redundant Text
+
+> [!CAUTION]
+> **ABSOLUTE BAN ON AI SLOP, EMOJIS, AND SYNTHETIC GRADIENTS**
+>
+> 1. **Never Use AI Slop or Redundant/Repetitive Text**:
+>    - **Zero Corporate/AI Bloat**: Eliminate tutorial lectures, redundant status repetitions, and artificial enterprise buzzwords (e.g., *"6 Stations Online"*, *"Continuous Throughput Active"*, *"Multi-parcel continuous conveyor system"*, *"Role: Unloader / Gatekeeper"*, *"The queue includes rider handovers awaiting intake..."*).
+>    - **Direct, Functional Operational Copy**: Sorters and warehouse operators need instant, concise facts. Label things directly: *"Hub Pipeline"*, *"Inbound"*, *"Sorting"*, *"Outbound Bay"*, *"Waybill verified"*, *"Next hop: [Facility]"*. Never lecture the user about how logistics works.
+>
+> 2. **Never Use Emojis in Design**:
+>    - Strictly prohibit emojis (e.g. ⚡, 📦, 🚚, 🔥, 🚀, ✨, 🛑, 👉) in UI layouts, buttons, headings, tables, KPI cards, badges, alerts, toast notifications, and backend flash messages.
+>    - Use crisp, professional vector icons from `lucide-react` exclusively (`Package`, `Truck`, `Scale`, `Layers`, `Send`, `CheckCircle2`, `AlertCircle`).
+>
+> 3. **Never Use Synthetic Gradients**:
+>    - Strictly avoid multi-color AI gradients, rainbow borders, and background color fade meshes.
+>    - Use solid, authentic surfaces: clean white (`#FFFFFF`), warm subtle canvas (`#F8F9FA`), warm near-black Ink (`#1C1A17`), and Bagoo crimson (`#E00D42` / `#C20836`).
+>    - Depth must be created exclusively via tactile drop shadows, crisp border contrast, and physical press states—never through background color fades.
+>
+> 4. **No Unreadable Tiny Fonts**:
+>    - Never use micro fonts like `text-[10px]` or `text-[11px]` for operational data, timestamps, or sorting bin codes. Use minimum `text-xs` (12px) with bold tabular weights so operators can read them effortlessly under warehouse lighting.
+
+## 4. Real Product Imagery in Categories
 
 - **Authentic Photography Over Generic Icons**: Category navigation tiles feature **real, isolated product photography** (e.g., actual boxy tee for Men's Apparel, real sling bag for Everyday Carry, real field watch for Accessories) rather than abstract vector line icons.
 - **Layout**: High-density 2-row multi-column grid of compact rounded tiles with clean category titles below.
