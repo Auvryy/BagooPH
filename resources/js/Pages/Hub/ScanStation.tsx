@@ -181,6 +181,11 @@ interface ScannedDeliveryResult {
     status: string;
     delivery_type: string;
     destination_bin: string | null;
+    assigned_rider?: {
+        id: number;
+        name: string;
+    } | null;
+    can_auto_progress?: boolean;
     current_hub: {
         id: number;
         name: string;
@@ -289,6 +294,8 @@ export default function ScanStation({
         delivery: ScannedDeliveryResult;
         confirmed: boolean;
         alreadyReceived?: boolean;
+        automated_progression?: boolean;
+        steps?: string[];
     } | null>(null);
     const [masterBagResult, setMasterBagResult] = useState<MasterBagScanResult | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
@@ -368,6 +375,8 @@ export default function ScanStation({
                 is_master_bag?: boolean;
                 bag?: MasterBagScanResult;
                 return_case?: { reference: string; barcode: string; href: string; status: string };
+                automated_progression?: boolean;
+                steps?: string[];
             }>(
                 `${basePath}/scan`, { ...body, hub_id: activeHub.id }, request.signal,
             );
@@ -386,10 +395,17 @@ export default function ScanStation({
             } else if (data.delivery && data.prompt) {
                 setReturnResult(null);
                 setMasterBagResult(null);
-                setLastResult({ prompt: data.prompt, delivery: data.delivery, confirmed: Boolean(data.confirmed), alreadyReceived: data.already_received });
-                playSound(data.confirmed ? 'success' : 'beep');
+                setLastResult({
+                    prompt: data.prompt,
+                    delivery: data.delivery,
+                    confirmed: Boolean(data.confirmed),
+                    alreadyReceived: data.already_received,
+                    automated_progression: Boolean(data.automated_progression),
+                    steps: data.steps,
+                });
+                playSound((data.confirmed || data.automated_progression) ? 'success' : 'beep');
 
-                if (autoConfirm && !confirming && data.prompt.requires_confirmation && data.delivery.guidance?.can_act && data.delivery.guidance?.action === 'scan') {
+                if (autoConfirm && !confirming && !data.automated_progression && data.prompt.requires_confirmation && data.delivery.guidance?.can_act && data.delivery.guidance?.action === 'scan') {
                     setScanMessage('Auto-confirming custody action…');
                     void runScan({
                         barcode: data.delivery.tracking_number,
@@ -405,7 +421,7 @@ export default function ScanStation({
             }
             setScanMessage(data.message);
             setBarcodeInput('');
-            if (confirming) {
+            if (confirming || data.automated_progression) {
                 try { await refreshPage(); }
                 catch { if (!request.signal.aborted) setScanError('The custody action was saved, but the queue could not refresh. Reload this scanner to see the latest records.'); }
             }
@@ -426,7 +442,13 @@ export default function ScanStation({
         }
     };
 
-    const handleBarcodeProcess = (barcode: string) => runScan({ barcode: waybillCode(barcode, window.location.origin) ?? barcode, mode: 'inspect' });
+    const handleBarcodeProcess = (barcode: string) => {
+        const code = waybillCode(barcode, window.location.origin) ?? barcode;
+        if (autoConfirm) {
+            return runScan({ barcode: code, mode: 'inspect', continuous: true, auto_advance: true });
+        }
+        return runScan({ barcode: code, mode: 'inspect' });
+    };
 
     const confirmScanAction = () => {
         if (!lastResult?.prompt.requires_confirmation || !lastResult.delivery.guidance.can_act || lastResult.delivery.guidance.action !== 'scan') return;
@@ -1041,6 +1063,44 @@ export default function ScanStation({
                                         </span>
                                     </div>
 
+                                    {/* Automated Scan Progression Trail */}
+                                    {lastResult.steps && lastResult.steps.length > 0 && (
+                                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 space-y-2">
+                                            <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
+                                                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                                <span>Automated Scan Progression Complete</span>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                                                {lastResult.steps.map((step, idx) => (
+                                                    <span key={step} className="inline-flex items-center gap-1 rounded-md bg-white border border-emerald-300 text-emerald-900 px-2 py-0.5 font-semibold shadow-2xs">
+                                                        {step === 'bag_unsealed' && 'Bag Unsealed'}
+                                                        {step === 'manifest_received' && 'Manifest Received'}
+                                                        {step === 'manifest_closed' && 'Manifest Auto-Closed'}
+                                                        {step === 'received_at_origin_hub' && 'Origin Intake'}
+                                                        {step === 'sorted_to_line_haul' && 'Line-Haul Staged'}
+                                                        {step === 'sorted_to_barangay_bin' && `Bin: ${lastResult.delivery.destination_bin || 'Sorted'}`}
+                                                        {step === 'rider_assigned' && `Rider: ${lastResult.delivery.assigned_rider?.name || 'Assigned'}`}
+                                                        {step === 'staged_for_counter_pickup' && 'Counter Staged'}
+                                                        {idx < lastResult.steps!.length - 1 && <ArrowRight className="h-3 w-3 text-emerald-600" />}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Assigned Final-Mile Rider Badge */}
+                                    {lastResult.delivery.assigned_rider && (
+                                        <div className="flex items-center justify-between rounded-xl bg-indigo-50/80 border border-indigo-200 px-4 py-2.5 text-xs">
+                                            <span className="font-semibold text-indigo-900 flex items-center gap-2">
+                                                <Truck className="h-4 w-4 text-indigo-600" />
+                                                Assigned Final-Mile Rider:
+                                            </span>
+                                            <span className="font-bold text-indigo-950 bg-white px-2.5 py-1 rounded-md border border-indigo-200 shadow-2xs">
+                                                {lastResult.delivery.assigned_rider.name}
+                                            </span>
+                                        </div>
+                                    )}
+
                                     <HubNextStep title={lastResult.delivery.guidance.next_step} tone={lastResult.delivery.guidance.blocker ? 'warning' : 'brand'} icon={ArrowRight}><p><span className="font-medium text-[#1C1A17]">Next person:</span> {lastResult.delivery.guidance.responsible}</p>{lastResult.delivery.guidance.blocker && <p className="mt-1 text-amber-800">{lastResult.delivery.guidance.blocker}</p>}</HubNextStep>
                                     <HubParcelState guidance={lastResult.delivery.guidance} />
                                     {lastResult.delivery.routing_target && activeHub && <HubRoute stops={[activeHub,lastResult.delivery.routing_target]} label="Planned next hub" />}
@@ -1098,6 +1158,33 @@ export default function ScanStation({
                                     )}
 
                                     {lastResult.delivery.guidance.action !== 'scan' && lastResult.delivery.guidance.action !== 'manifest' && <HubParcelAction guidance={lastResult.delivery.guidance} />}
+
+                                    {/* 1-Click Automated Custody Advance (Manual Fallback) */}
+                                    {lastResult.delivery.can_auto_progress && !lastResult.confirmed && !lastResult.automated_progression && (
+                                        <div className="rounded-xl border border-emerald-300 bg-emerald-50/80 p-5 shadow-xs space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                                                    <Zap className="h-4 w-4 text-emerald-600" />
+                                                    1-Click Automated Custody Advance
+                                                </span>
+                                                <span className="text-[11px] bg-emerald-200/90 text-emerald-900 px-2 py-0.5 rounded font-bold">
+                                                    Fast Track
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-emerald-900">
+                                                Automatically process inbound receipt, sort to bin, and assign available on-duty rider in one step.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => runScan({ barcode: lastResult.delivery.tracking_number, mode: 'confirm', action: 'AUTO_PROGRESS', continuous: true }, true)}
+                                                disabled={isSubmitting}
+                                                className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:bg-zinc-300 shadow-xs cursor-pointer transition flex items-center justify-center gap-2"
+                                            >
+                                                <Zap className="h-4 w-4 fill-current" />
+                                                <span>{isSubmitting ? 'Processing Progression...' : '1-Click Auto-Progress (Receive ➔ Sort ➔ Assign Rider)'}</span>
+                                            </button>
+                                        </div>
+                                    )}
 
                                     {lastResult.prompt.requires_confirmation && lastResult.delivery.guidance.can_act && lastResult.delivery.guidance.action === 'scan' && (
                                         <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-5 shadow-xs">
