@@ -82,7 +82,7 @@ export default function Exceptions({
                         <ul className="mt-2 space-y-2.5">
                             {sourceGaps.data.map(parcel => (
                                 <li key={parcel.trackingNumber} className="text-xs text-amber-900">
-                                    <p className="font-semibold">{parcel.orderNumber} · <span className="font-mono">{parcel.trackingNumber}</span></p>
+                                    <p className="font-semibold">{parcel.orderNumber} · <span className="tabular-nums">{parcel.trackingNumber}</span></p>
                                     <p className="mt-0.5">{parcel.reason.replaceAll('_', ' ')}</p>
                                 </li>
                             ))}
@@ -107,7 +107,7 @@ export default function Exceptions({
                                 <span className="rounded-md border border-zinc-200/90 bg-zinc-50 px-2 py-0.5 text-xs font-semibold capitalize text-zinc-700">{item.status}</span>
                             </div>
                             <p className="mt-1 text-xs text-zinc-500">
-                                <span className="font-mono">{item.trackingNumber ?? item.reference}</span> · {item.companyName ?? 'Platform review'}
+                                <span className="tabular-nums">{item.trackingNumber ?? item.reference}</span> · {item.companyName ?? 'Platform review'}
                             </p>
                             <p className="mt-2 text-xs sm:text-sm font-medium text-[#121316]">{item.reason.replaceAll('_', ' ')}</p>
                             <p className="mt-1.5 text-xs text-zinc-500">Responsible: {item.responsibleName ?? 'Awaiting assignment'}</p>

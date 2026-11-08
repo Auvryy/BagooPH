@@ -34,6 +34,10 @@
 .logistics-workspace :where(.rounded-3xl) {
     border-radius: 22px;
 }
+.logistics-workspace :where(.font-mono, code, kbd, samp, pre) {
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+}
 .logistics-workspace main :where(h1, h2, h3) {
     letter-spacing: -0.025em;
 }
@@ -116,21 +120,21 @@
 }
 .hub-map-mother {
     border-radius: 8px;
-    background: #121316;
+    background: #9F1239;
 }
 .hub-map-selected .hub-map-pin-dot {
-    background: #121316 !important;
+    background: #E00D42 !important;
     border-color: #ffffff !important;
-    transform: scale(1.12);
-    box-shadow: 0 0 0 4px rgba(18, 19, 22, 0.28), 0 4px 12px rgba(18, 19, 22, 0.45) !important;
+    transform: scale(1.14);
+    box-shadow: 0 0 0 4px rgba(224, 13, 66, 0.28), 0 4px 12px rgba(224, 13, 66, 0.45) !important;
     animation: hub-pin-pulse 2s infinite ease-in-out;
 }
 @keyframes hub-pin-pulse {
     0%, 100% {
-        box-shadow: 0 0 0 4px rgba(18, 19, 22, 0.28), 0 4px 12px rgba(18, 19, 22, 0.45);
+        box-shadow: 0 0 0 4px rgba(224, 13, 66, 0.28), 0 4px 12px rgba(224, 13, 66, 0.45);
     }
     50% {
-        box-shadow: 0 0 0 9px rgba(18, 19, 22, 0.16), 0 4px 16px rgba(18, 19, 22, 0.55);
+        box-shadow: 0 0 0 9px rgba(224, 13, 66, 0.16), 0 4px 16px rgba(224, 13, 66, 0.55);
     }
 }
 .hub-network-map .leaflet-marker-icon:focus-visible {

@@ -24,7 +24,7 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
                         Back to delivery exceptions
                     </Link>
                     <p className="text-xs text-zinc-500">
-                        <span className="font-mono">{item.trackingNumber ?? item.reference}</span> · {item.companyName ?? 'Platform review'} · <span className="font-semibold capitalize text-[#121316]">{item.status}</span>
+                        <span className="tabular-nums">{item.trackingNumber ?? item.reference}</span> · {item.companyName ?? 'Platform review'} · <span className="font-semibold capitalize text-[#121316]">{item.status}</span>
                     </p>
                 </div>
 
@@ -48,7 +48,7 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
                                 ? `${item.state.cash.holderName} · ₱${((item.state.cash.amount_cents ?? 0) / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
                                 : 'Cash holder is unverified.'}
                         </p>
-                        {item.state.cash.reference && <p className="mt-1 font-mono text-xs text-zinc-500">Cash record: {item.state.cash.reference}</p>}
+                        {item.state.cash.reference && <p className="mt-1 tabular-nums text-xs text-zinc-500">Cash record: {item.state.cash.reference}</p>}
                         <p className="mt-2.5 text-xs leading-relaxed text-zinc-500">Cash reconciliation and seller settlement need their separate financial evidence. Closing this case records parcel recovery or holding only.</p>
                     </section>
                 </div>
@@ -87,7 +87,7 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
                                 {events.map(event => (
                                     <li key={event.reference} className="py-2.5 text-xs">
                                         <p className="font-medium text-[#121316]">
-                                            {event.actorName ?? 'Recorded actor'} · <span className="font-mono text-zinc-500">{event.reference}</span> · {human(event.event_type ?? event.reason_code ?? 'recorded attempt')}
+                                            {event.actorName ?? 'Recorded actor'} · <span className="tabular-nums text-zinc-500">{event.reference}</span> · {human(event.event_type ?? event.reason_code ?? 'recorded attempt')}
                                             {event.attempt_number && ` · attempt ${event.attempt_number}`}
                                         </p>
                                         {event.notes && <p className="mt-1 text-zinc-600">{event.notes}</p>}
@@ -159,7 +159,7 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
                             <li key={event.reference} className="py-3 text-xs">
                                 <p className="font-medium text-[#121316]">{event.actor_name} · {human(event.action)} · <span className="font-normal text-zinc-500">{when(event.created_at)}</span></p>
                                 <p className="mt-1 text-zinc-600">{event.reason}</p>
-                                <p className="mt-1 font-mono text-zinc-500">
+                                <p className="mt-1 tabular-nums text-zinc-500">
                                     {event.reference} · Follow-up: {event.responsible_name ?? 'Unassigned'}
                                     {Object.values(event.supporting_evidence).length > 0 && ` · ${Object.values(event.supporting_evidence).join(', ')}`}
                                 </p>

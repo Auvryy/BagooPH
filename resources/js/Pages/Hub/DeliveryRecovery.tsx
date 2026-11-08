@@ -76,7 +76,7 @@ export default function DeliveryRecovery({ deliveries, requestToken, basePath }:
                             <article key={parcel.id} className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                                 <header className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                     <div>
-                                        <h2 className="inline-block rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 font-mono text-xs font-bold text-[#E00D42]">
+                                        <h2 className="inline-block rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
                                             {parcel.trackingNumber}
                                         </h2>
                                         <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-zinc-500">
@@ -192,7 +192,7 @@ export default function DeliveryRecovery({ deliveries, requestToken, basePath }:
                     {review && (
                         <form onSubmit={submit} className="space-y-4">
                             <p className="text-sm text-zinc-600">
-                                <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 font-mono text-xs font-bold text-[#E00D42]">
+                                <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
                                     {review.trackingNumber}
                                 </span>{' '}
                                 · {review.hubName}

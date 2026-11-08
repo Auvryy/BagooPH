@@ -28,7 +28,7 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
                                     <Icon className="h-3.5 w-3.5" />
                                 </span>
                             </div>
-                            <p className="mt-2.5 font-mono text-2xl font-bold tracking-tight tabular-nums text-[#121316] sm:text-3xl">{money(value)}</p>
+                            <p className="mt-2.5 tabular-nums text-2xl font-bold tracking-tight tabular-nums text-[#121316] sm:text-3xl">{money(value)}</p>
                         </div>
                     ))}
                 </div>
@@ -41,11 +41,11 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
                                     <div className="flex flex-wrap items-start justify-between gap-3">
                                         <div className="min-w-0">
                                             <h3 className="break-all text-sm font-semibold text-[#121316]">{entry.order_number}</h3>
-                                            <p className="mt-0.5 break-all font-mono text-xs text-zinc-500">{entry.tracking_number}</p>
+                                            <p className="mt-0.5 break-all tabular-nums text-xs text-zinc-500">{entry.tracking_number}</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xs text-zinc-500">Net earnings</p>
-                                            <p className="mt-0.5 font-mono text-lg font-bold tabular-nums text-[#121316]">{money(entry.net_amount_cents)}</p>
+                                            <p className="mt-0.5 tabular-nums text-lg font-bold tabular-nums text-[#121316]">{money(entry.net_amount_cents)}</p>
                                         </div>
                                     </div>
                                     <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200/80 pt-3">
@@ -72,11 +72,11 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
                                     <tr key={entry.id} className="transition-colors hover:bg-zinc-50/50">
                                         <td className="py-3.5 pr-4">
                                             <p className="font-semibold text-[#121316]">{entry.order_number}</p>
-                                            <p className="mt-0.5 font-mono text-xs text-zinc-500">{entry.tracking_number}</p>
+                                            <p className="mt-0.5 tabular-nums text-xs text-zinc-500">{entry.tracking_number}</p>
                                         </td>
                                         <td className="py-3.5 pr-4 capitalize text-zinc-700">{entry.role}</td>
                                         <td className="py-3.5 pr-4 text-zinc-600">{entry.pool.replaceAll('_', ' ')}{entry.virtual_only ? ' · Virtual' : ' · COD'}</td>
-                                        <td className="py-3.5 pr-4 font-mono font-semibold tabular-nums text-[#121316]">
+                                        <td className="py-3.5 pr-4 tabular-nums font-semibold tabular-nums text-[#121316]">
                                             {money(entry.net_amount_cents)}
                                             {entry.amount_cents !== entry.net_amount_cents && <p className="mt-0.5 font-sans text-xs font-normal text-zinc-500">Gross {money(entry.amount_cents)}</p>}
                                         </td>

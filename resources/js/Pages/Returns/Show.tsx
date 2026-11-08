@@ -58,7 +58,7 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                             <HubPageHeader title="Return parcel" icon={PackageCheck} description={`Purchase ${item.order.order_number} · ${item.reference}`} />
                         ) : (
                             <>
-                                <h1 className="inline-block break-all rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 font-mono text-sm font-bold text-[#E00D42]">
+                                <h1 className="inline-block break-all rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 tabular-nums text-sm font-bold text-[#E00D42]">
                                     {item.reference}
                                 </h1>
                                 <p className="mt-2 text-sm font-semibold text-[#121316]">Purchase {item.order.order_number}</p>

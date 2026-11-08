@@ -65,7 +65,7 @@ export default function LogisticsError({ title, description, requestId, overview
                             </Link>
                         </div>
                         {requestId && (
-                            <p className="mt-6 break-all border-t border-zinc-100 pt-4 font-mono text-[11px] text-zinc-400">
+                            <p className="mt-6 break-all border-t border-zinc-100 pt-4 tabular-nums text-[11px] text-zinc-400">
                                 Reference: {requestId}
                             </p>
                         )}

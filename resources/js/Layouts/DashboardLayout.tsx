@@ -546,7 +546,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 truncate">
                                         <span>{activeHub?.name || logisticsCompany?.name || 'Logistics'}</span>
                                         {activeHub?.code && (
-                                            <span className="rounded-md bg-zinc-100 border border-zinc-200/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-zinc-600">
+                                            <span className="rounded-md bg-rose-50 border border-rose-200 px-2 py-0.5 text-[11px] font-semibold text-[#C20836]">
                                                 {activeHub.code}
                                             </span>
                                         )}
@@ -585,7 +585,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         className="w-8 h-8 rounded-lg object-cover border border-zinc-200 shrink-0"
                                     />
                                 ) : (
-                                    <div className="w-8 h-8 rounded-lg bg-[#121316] text-white font-bold text-xs flex items-center justify-center shadow-2xs group-hover:bg-[#E00D42] transition font-sans">
+                                    <div className="w-8 h-8 rounded-lg bg-[#E00D42] text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:bg-[#C20836] transition font-sans">
                                         {user?.name.charAt(0).toUpperCase()}
                                     </div>
                                 )}
@@ -616,7 +616,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                     className="w-8 h-8 rounded-lg object-cover border border-zinc-200 shrink-0"
                                                 />
                                             ) : (
-                                                <div className="w-8 h-8 rounded-lg bg-[#121316] text-white font-bold text-xs flex items-center justify-center font-sans shrink-0">
+                                                <div className="w-8 h-8 rounded-lg bg-[#E00D42] text-white font-bold text-xs flex items-center justify-center font-sans shrink-0">
                                                     {user?.name.charAt(0).toUpperCase()}
                                                 </div>
                                             )}

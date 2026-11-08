@@ -203,7 +203,7 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                                 {account.source_kind === 'rider_collection' ? 'Doorstep collection' : account.source_kind === 'counter_collection' ? 'Counter collection' : 'Older record review'}
                             </p>
                             <h2 className="mt-1 text-lg font-bold text-[#121316]">{account.order_number}</h2>
-                            <p className="mt-0.5 break-all font-mono text-xs text-zinc-500">{account.tracking_number}</p>
+                            <p className="mt-0.5 break-all tabular-nums text-xs text-zinc-500">{account.tracking_number}</p>
                         </div>
                         <CashBadge status={account.status} />
                     </div>
@@ -211,7 +211,7 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                         <div className="mb-5 flex flex-wrap items-end justify-between gap-4 border-b border-zinc-100 pb-5">
                             <div>
                                 <p className="text-xs font-semibold text-zinc-500">Original COD due</p>
-                                <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums text-[#121316] sm:text-4xl">{cashMoney(account.expected_cents)}</p>
+                                <p className="mt-1 tabular-nums text-3xl font-bold tracking-tight tabular-nums text-[#121316] sm:text-4xl">{cashMoney(account.expected_cents)}</p>
                             </div>
                             <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200/80 bg-zinc-50/70 px-3.5 py-2.5 text-sm">
                                 <Building2 className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden="true" />
@@ -244,7 +244,7 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                                         <p className="mt-1 text-sm font-semibold text-[#121316]">{pending.recipient_name}</p>
                                     </div>
                                 </div>
-                                <p className="mt-4 font-mono text-2xl font-bold tabular-nums text-[#121316]">{cashMoney(pending.amount_cents)}</p>
+                                <p className="mt-4 tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{cashMoney(pending.amount_cents)}</p>
                                 <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">The recipient must count and confirm the cash before the recorded holder changes.</p>
                                 <div className="mt-4 flex flex-wrap gap-2">
                                     {pending.can_receive && <button className={cashPrimary} onClick={() => setTarget({ action: 'receive' })}><Receipt className="h-4 w-4" aria-hidden="true" />Confirm counted cash</button>}
@@ -277,7 +277,7 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                                                         {holder.restricted ? ' · Account restricted' : ''}
                                                     </p>
                                                 </div>
-                                                <p className="font-mono text-lg font-bold tabular-nums text-[#121316]">{cashMoney(holder.amount_cents)}</p>
+                                                <p className="tabular-nums text-lg font-bold tabular-nums text-[#121316]">{cashMoney(holder.amount_cents)}</p>
                                             </div>
                                             {holder.can_offer && editable && !pending && (
                                                 <button className={`${cashButton} mt-3`} onClick={() => setTarget({ action: 'offer', holderId: holder.user_id })}>
@@ -312,12 +312,12 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                                         <li key={reference} className={`rounded-lg border p-4 ${difference.resolved_by ? 'border-zinc-200/90 bg-zinc-50/60' : 'border-amber-200 bg-amber-50/80'}`}>
                                             <div className="flex flex-wrap justify-between gap-2">
                                                 <p className="text-sm font-semibold text-[#121316]">
-                                                    {difference.difference_cents < 0 ? 'Shortage' : 'Overage'} · <span className="font-mono">{cashMoney(Math.abs(difference.difference_cents))}</span>
+                                                    {difference.difference_cents < 0 ? 'Shortage' : 'Overage'} · <span className="tabular-nums">{cashMoney(Math.abs(difference.difference_cents))}</span>
                                                 </p>
                                                 <p className="text-xs font-semibold text-zinc-600">{difference.resolved_by ? 'Reviewed' : 'Review required'}</p>
                                             </div>
-                                            <p className="mt-1.5 break-all font-mono text-xs text-zinc-500">Original receipt: {reference}</p>
-                                            {difference.recovery_evidence && <p className="mt-1 break-all font-mono text-xs text-zinc-500">Recovered cash receipt: {difference.recovery_evidence}</p>}
+                                            <p className="mt-1.5 break-all tabular-nums text-xs text-zinc-500">Original receipt: {reference}</p>
+                                            {difference.recovery_evidence && <p className="mt-1 break-all tabular-nums text-xs text-zinc-500">Recovered cash receipt: {difference.recovery_evidence}</p>}
                                             {!difference.resolved_by && can_reconcile && editable && !pending && (
                                                 <button className={`${cashButton} mt-3`} onClick={() => setTarget({ action: 'adjust', sourceReference: reference })}>
                                                     Review original difference
@@ -344,7 +344,7 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                                                 <p className="mt-0.5 text-xs text-zinc-500">{event.actor_name} · {cashDate(event.created_at)} (Asia/Manila)</p>
                                             </div>
                                             {event.amount_cents !== 0 && (
-                                                <p className="font-mono text-sm font-bold tabular-nums text-[#121316]">
+                                                <p className="tabular-nums text-sm font-bold tabular-nums text-[#121316]">
                                                     {event.event_type === 'adjustment' && event.amount_cents > 0 ? '+' : ''}{cashMoney(event.amount_cents)}
                                                 </p>
                                             )}
@@ -357,11 +357,11 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                                             </p>
                                         )}
                                         {event.reason && <p className="mt-1.5 text-xs leading-relaxed text-zinc-600">{event.reason}</p>}
-                                        {event.evidence_reference && <p className="mt-1.5 break-words font-mono text-xs text-zinc-500">Evidence: {event.evidence_reference}</p>}
+                                        {event.evidence_reference && <p className="mt-1.5 break-words tabular-nums text-xs text-zinc-500">Evidence: {event.evidence_reference}</p>}
                                         <details className="mt-2 text-xs text-zinc-500">
                                             <summary className="w-fit cursor-pointer py-1 font-semibold text-[#C20836]">Receipt reference</summary>
-                                            <p className="mt-1 break-all font-mono">{event.reference}</p>
-                                            {event.source_reference && <p className="mt-1.5 break-all font-mono">Linked original: {event.source_reference}</p>}
+                                            <p className="mt-1 break-all tabular-nums">{event.reference}</p>
+                                            {event.source_reference && <p className="mt-1.5 break-all tabular-nums">Linked original: {event.source_reference}</p>}
                                         </details>
                                     </li>
                                 ))}
@@ -378,19 +378,19 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                                 <dl className="space-y-2.5 text-xs">
                                     <div className="flex justify-between gap-2">
                                         <dt className="text-zinc-500">Product subtotal</dt>
-                                        <dd className="font-mono font-semibold tabular-nums text-[#121316]">{cashMoney(account.product_subtotal_cents)}</dd>
+                                        <dd className="tabular-nums font-semibold tabular-nums text-[#121316]">{cashMoney(account.product_subtotal_cents)}</dd>
                                     </div>
                                     <div className="flex justify-between gap-2">
                                         <dt className="text-zinc-500">Order discount</dt>
-                                        <dd className="font-mono font-semibold tabular-nums text-[#121316]">−{cashMoney(account.discount_cents)}</dd>
+                                        <dd className="tabular-nums font-semibold tabular-nums text-[#121316]">−{cashMoney(account.discount_cents)}</dd>
                                     </div>
                                     <div className="flex justify-between gap-2">
                                         <dt className="text-zinc-500">Shipping</dt>
-                                        <dd className="font-mono font-semibold tabular-nums text-[#121316]">{cashMoney(account.shipping_cents)}</dd>
+                                        <dd className="tabular-nums font-semibold tabular-nums text-[#121316]">{cashMoney(account.shipping_cents)}</dd>
                                     </div>
                                     <div className="flex justify-between gap-2 border-t border-zinc-100 pt-2.5 text-sm">
                                         <dt className="font-bold text-[#121316]">COD due</dt>
-                                        <dd className="font-mono font-bold tabular-nums text-[#121316]">{cashMoney(account.expected_cents)}</dd>
+                                        <dd className="tabular-nums font-bold tabular-nums text-[#121316]">{cashMoney(account.expected_cents)}</dd>
                                     </div>
                                 </dl>
                                 <p className="mt-4 text-xs leading-relaxed text-zinc-500">Shipping stays separate from product proceeds. These amounts do not represent a seller or rider payout.</p>
@@ -405,7 +405,7 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                             <div className="p-5">
                                 {account.status === 'reconciled' ? (
                                     <>
-                                        <p className="font-mono text-2xl font-bold tabular-nums text-emerald-700">{cashMoney(account.reconciled_cents)}</p>
+                                        <p className="tabular-nums text-2xl font-bold tabular-nums text-emerald-700">{cashMoney(account.reconciled_cents)}</p>
                                         <p className="mt-2 text-xs leading-relaxed text-zinc-500">The platform review is recorded. Seller payout and buyer completion remain separate.</p>
                                     </>
                                 ) : (
@@ -428,9 +428,9 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                         {account.excess_cents > 0 && (
                             <section className="rounded-xl border border-amber-200/90 bg-amber-50/80 p-5 shadow-2xs">
                                 <h2 className="text-xs font-bold uppercase tracking-wider text-amber-900">Separate unallocated cash</h2>
-                                <p className="mt-2 font-mono text-xl font-bold tabular-nums text-amber-900">{cashMoney(account.excess_cents)}</p>
+                                <p className="mt-2 tabular-nums text-xl font-bold tabular-nums text-amber-900">{cashMoney(account.excess_cents)}</p>
                                 <ul className="mt-3 space-y-1.5 text-xs text-amber-900">
-                                    {account.excess_holders.map((holder, index) => <li key={index}>{holder.name} · <span className="font-mono">{cashMoney(holder.amount_cents)}</span></li>)}
+                                    {account.excess_holders.map((holder, index) => <li key={index}>{holder.name} · <span className="tabular-nums">{cashMoney(holder.amount_cents)}</span></li>)}
                                 </ul>
                                 <p className="mt-3 text-xs leading-relaxed text-amber-900">The extra cash remains with these recorded holders. It is excluded from this order’s COD and payout eligibility.</p>
                             </section>

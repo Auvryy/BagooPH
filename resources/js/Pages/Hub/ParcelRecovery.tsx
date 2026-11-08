@@ -37,7 +37,7 @@ const labels: Record<string, string> = {
 const label = (value: string) => labels[value] ?? value.replaceAll('_', ' ');
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
 const inputClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-[#121316] shadow-2xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors';
-const buttonClass = 'inline-flex items-center justify-center rounded-lg border border-zinc-200/90 bg-white px-4 py-2 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:border-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 transition-colors';
+const buttonClass = 'inline-flex items-center justify-center rounded-lg border border-rose-200 bg-rose-50/85 px-4 py-2 text-xs font-semibold text-[#C20836] shadow-2xs hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] disabled:cursor-not-allowed disabled:opacity-50 transition-colors cursor-pointer';
 const primaryClass = 'inline-flex items-center justify-center gap-2 rounded-lg bg-[#E00D42] hover:bg-[#C20836] px-4 py-2 text-xs font-bold text-white shadow-xs transition disabled:cursor-not-allowed disabled:opacity-50';
 
 export default function ParcelRecovery({ observations, selectedObservation: selected, filters, basePath, manifestPath, requestToken, creationToken, vehicles }: Props) {
@@ -115,7 +115,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                                             : 'border-zinc-200/90 bg-white hover:border-zinc-300 hover:bg-zinc-50/40 shadow-2xs'
                                     }`}
                                 >
-                                    <span className="inline-block break-all rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 font-mono text-xs font-bold text-[#E00D42]">
+                                    <span className="inline-block break-all rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
                                         {observation.barcode}
                                     </span>
                                     <p className="mt-2.5 text-xs font-bold text-[#121316]">{observation.observedHub}</p>
@@ -179,7 +179,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                             {/* Observation Overview Card */}
                             <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                                 <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                    <h2 className="break-all rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 font-mono text-xs font-bold text-[#E00D42]">
+                                    <h2 className="break-all rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
                                         {selected.barcode}
                                     </h2>
                                     <span className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700">
@@ -314,7 +314,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                                 <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                                     <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                         <h2 className="text-sm font-bold text-[#121316]">Recovery progress</h2>
-                                        <p className="mt-0.5 break-all font-mono text-xs text-zinc-500">{selected.case.reference}</p>
+                                        <p className="mt-0.5 break-all tabular-nums text-xs text-zinc-500">{selected.case.reference}</p>
                                     </header>
                                     <div className="p-5 sm:p-6 space-y-5">
                                         {selected.case.state === 'completed' && (
@@ -374,11 +374,11 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                                             )}
                                             {selected.case.transfers.map(item =>
                                                 item.url ? (
-                                                    <Link key={item.reference} href={item.url} className="break-all text-xs font-mono text-zinc-600 hover:text-[#121316]">
+                                                    <Link key={item.reference} href={item.url} className="break-all text-xs tabular-nums text-zinc-600 hover:text-[#121316]">
                                                         {item.reference} · {label(item.status)}
                                                     </Link>
                                                 ) : (
-                                                    <span key={item.reference} className="break-all text-xs font-mono text-zinc-600">
+                                                    <span key={item.reference} className="break-all text-xs tabular-nums text-zinc-600">
                                                         {item.reference} · {label(item.status)}
                                                     </span>
                                                 )

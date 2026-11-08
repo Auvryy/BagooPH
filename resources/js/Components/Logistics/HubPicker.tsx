@@ -48,9 +48,9 @@ export default function HubPicker({
                         type="button"
                         disabled={disabled}
                         onClick={() => setShowMap(true)}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#C20836] hover:underline disabled:opacity-50 cursor-pointer"
+                        className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50/80 px-2 py-0.5 text-[11px] font-semibold text-[#C20836] hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] transition disabled:opacity-50 cursor-pointer"
                     >
-                        <MapPinned className="h-3.5 w-3.5" />
+                        <MapPinned className="h-3 w-3" />
                         Choose on map
                     </button>
                 )}
@@ -75,7 +75,7 @@ export default function HubPicker({
 
             {selected && (
                 <p className="text-[11px] font-medium text-zinc-500">
-                    {selected.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'} · <span className="font-mono text-zinc-700">{selected.code}</span>
+                    {selected.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'} · <span className="font-semibold text-zinc-700">{selected.code}</span>
                     {selected.city_municipality ? ` · ${selected.city_municipality}` : ''}
                 </p>
             )}

@@ -43,7 +43,7 @@ export default function SettlementDetail({ record, can_release, requestToken }: 
                         {[['Product subtotal', record.product_cents], ['Seller product share', record.seller_cents], ['Platform commission', record.commission_cents], ['Shipping charge', record.shipping_cents], ['Order discount', record.discount_cents]].map(([label, cents]) => (
                             <div key={label as string} className="rounded-lg border border-zinc-100 bg-zinc-50/40 p-3">
                                 <dt className="text-xs font-semibold text-zinc-500">{label}</dt>
-                                <dd className="mt-1 font-mono text-xl font-bold tabular-nums text-[#121316]">{cashMoney(cents as number)}</dd>
+                                <dd className="mt-1 tabular-nums text-xl font-bold tabular-nums text-[#121316]">{cashMoney(cents as number)}</dd>
                             </div>
                         ))}
                     </dl>
@@ -59,7 +59,7 @@ export default function SettlementDetail({ record, can_release, requestToken }: 
                             {[['Seller promotional cost', record.seller_promotion_cents], ['Bagoo promotional cost', record.platform_promotion_cents], [record.return_seller_cents > 0 ? 'Original funded seller share' : 'Net seller payout', record.net_seller_cents], ['Net platform amount', record.net_commission_cents]].map(([label, cents]) => (
                                 <div key={label as string} className="rounded-lg border border-zinc-100 bg-zinc-50/40 p-3">
                                     <dt className="text-xs font-semibold text-zinc-500">{label}</dt>
-                                    <dd className="mt-1 font-mono text-xl font-bold tabular-nums text-[#121316]">{cents === null ? 'Funding review required' : cashMoney(cents as number)}</dd>
+                                    <dd className="mt-1 tabular-nums text-xl font-bold tabular-nums text-[#121316]">{cents === null ? 'Funding review required' : cashMoney(cents as number)}</dd>
                                 </div>
                             ))}
                         </dl>
@@ -68,7 +68,7 @@ export default function SettlementDetail({ record, can_release, requestToken }: 
                         <ul className="mt-4 space-y-1.5 text-xs text-zinc-600">
                             {record.promotion_snapshot.map(offer => (
                                 <li key={offer.allocation_id}>
-                                    {offer.code}: {offer.funding_party === 'shop' ? 'shop-funded' : 'Bagoo-funded'} · <span className="font-mono font-semibold">{cashMoney(offer.seller_expense_cents + offer.platform_expense_cents)}</span>
+                                    {offer.code}: {offer.funding_party === 'shop' ? 'shop-funded' : 'Bagoo-funded'} · <span className="tabular-nums font-semibold">{cashMoney(offer.seller_expense_cents + offer.platform_expense_cents)}</span>
                                 </li>
                             ))}
                         </ul>
@@ -77,9 +77,9 @@ export default function SettlementDetail({ record, can_release, requestToken }: 
 
                 <section className="space-y-3 overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
                     <h2 className="text-sm font-semibold text-[#121316]">Source references</h2>
-                    <p className="break-all text-xs text-zinc-600">Order completion: <span className="font-mono text-[#121316]">{record.buyer_reference ?? 'Awaiting verified completion'}</span></p>
-                    <p className="break-all text-xs text-zinc-600">Reconciliation: <span className="font-mono text-[#121316]">{record.reconciliation_reference ?? 'Awaiting platform reconciliation'}</span></p>
-                    <p className="break-all text-xs text-zinc-600">Settlement: <span className="font-mono text-[#121316]">{record.reference ?? 'Release not yet authorized'}</span></p>
+                    <p className="break-all text-xs text-zinc-600">Order completion: <span className="tabular-nums text-[#121316]">{record.buyer_reference ?? 'Awaiting verified completion'}</span></p>
+                    <p className="break-all text-xs text-zinc-600">Reconciliation: <span className="tabular-nums text-[#121316]">{record.reconciliation_reference ?? 'Awaiting platform reconciliation'}</span></p>
+                    <p className="break-all text-xs text-zinc-600">Settlement: <span className="tabular-nums text-[#121316]">{record.reference ?? 'Release not yet authorized'}</span></p>
                     {can_release && record.cash_id && <Link className={cashButton} href={`/cash-handover/${record.cash_id}`}>Original COD evidence</Link>}
                     {record.legacy_ledger && (
                         <p className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900">
@@ -166,10 +166,10 @@ export default function SettlementDetail({ record, can_release, requestToken }: 
                                     </p>
                                     <p className="text-xs text-zinc-500">{cashDate(event.created_at)}</p>
                                 </div>
-                                <p className="mt-1.5 break-all font-mono text-xs text-zinc-500">{event.reference}</p>
+                                <p className="mt-1.5 break-all tabular-nums text-xs text-zinc-500">{event.reference}</p>
                                 <p className="mt-1.5 text-xs font-medium text-zinc-700">{event.actor_name} · {event.actor_role}</p>
                                 <p className="mt-1.5 text-xs text-zinc-600">{event.reason}</p>
-                                {event.payment_reference && <p className="mt-1.5 break-all text-xs text-zinc-600">Payment reference: <span className="font-mono">{event.payment_reference}</span></p>}
+                                {event.payment_reference && <p className="mt-1.5 break-all text-xs text-zinc-600">Payment reference: <span className="tabular-nums">{event.payment_reference}</span></p>}
                                 {event.source_reference && <p className="mt-1.5 break-all text-xs text-zinc-600">Original evidence: {event.source_reference} · Previous reference: {event.context.previous_reference}</p>}
                                 {event.proof_url && <a className={`${cashButton} mt-3`} href={event.proof_url}>Open private payment evidence</a>}
                             </li>

@@ -51,7 +51,7 @@ export default function Settlements({ records, filters, can_release }: {
                             </div>
                             <p className="mt-1 text-xs text-zinc-500">{record.shop_name ?? 'Original shop requires review'}</p>
                             <p className="mt-4 text-xs font-semibold text-zinc-500">Net seller payout</p>
-                            <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-[#121316]">
+                            <p className="mt-1 tabular-nums text-2xl font-bold tabular-nums text-[#121316]">
                                 {record.net_seller_cents === null ? 'Funding review required' : cashMoney(record.status === 'settled' ? record.paid_seller_cents : record.payable_seller_cents)}
                             </p>
                             <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-zinc-100 bg-zinc-50/50 p-3 text-xs">

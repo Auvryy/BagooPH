@@ -68,7 +68,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                     <Icon className="h-3.5 w-3.5" />
                                 </span>
                             </div>
-                            <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-[#121316]">{value}</p>
+                            <p className="mt-2 tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{value}</p>
                         </div>
                     ))}
                 </div>
@@ -145,7 +145,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                                 </span>
                                                 <div>
                                                     <h3 className="text-sm font-semibold text-[#121316]">{hub.name}</h3>
-                                                    <p className="mt-0.5 text-xs text-zinc-500"><span className="font-mono">{hub.code}</span> · {hub.city_municipality}</p>
+                                                    <p className="mt-0.5 text-xs text-zinc-500"><span className="tabular-nums">{hub.code}</span> · {hub.city_municipality}</p>
                                                 </div>
                                             </div>
                                             <HubBadge tone={hub.is_active ? 'success' : 'warning'}>{hub.is_active ? 'Active' : 'Inactive'}</HubBadge>

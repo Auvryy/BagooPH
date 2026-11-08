@@ -109,7 +109,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-1.5 min-w-0">
                                             <span
-                                                className="min-w-0 truncate rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 font-mono text-xs font-bold text-[#E00D42]"
+                                                className="min-w-0 truncate rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]"
                                                 title={item.reference}
                                             >
                                                 {item.reference}
@@ -158,7 +158,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     <div className="flex items-center gap-2.5">
                                         <Container className="h-4 w-4 text-[#E00D42]" />
                                         <div>
-                                            <h2 className="text-sm font-bold text-[#121316] font-mono">{bag.reference}</h2>
+                                            <h2 className="text-sm font-bold text-[#121316] tabular-nums">{bag.reference}</h2>
                                             <p className="text-xs text-zinc-500">Master tag, recorded route and numbered seal</p>
                                         </div>
                                     </div>
@@ -172,7 +172,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     <div className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-zinc-200/80 bg-zinc-50/30 p-4">
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2">
-                                                <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 font-mono text-xs font-bold text-[#E00D42]">
+                                                <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
                                                     {bag.reference}
                                                 </span>
                                                 <HubBadge tone={bag.status === 'received' ? 'success' : 'brand'}>{words(bag.status)}</HubBadge>
@@ -191,9 +191,9 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         </div>
                                         <div data-bag-label className="rounded-xl border border-zinc-200/90 bg-white p-4 text-center shadow-xs">
                                             <QRCodeSVG value={bag.reference} size={96} />
-                                            <p className="mt-2.5 text-xs font-mono font-bold text-[#121316]">{bag.reference}</p>
+                                            <p className="mt-2.5 text-xs tabular-nums font-bold text-[#121316]">{bag.reference}</p>
                                             <p className="mt-1 text-xs text-zinc-500 font-medium">{bag.source.code} → {bag.destination.code}</p>
-                                            {bag.seal_number && <p className="mt-1 text-xs font-mono text-zinc-600">Seal {bag.seal_number}</p>}
+                                            {bag.seal_number && <p className="mt-1 text-xs tabular-nums text-zinc-600">Seal {bag.seal_number}</p>}
                                         </div>
                                     </div>
                                 </div>
@@ -241,7 +241,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                 <input
                                                     required
                                                     maxLength={80}
-                                                    className={`${hubInput} mt-1.5 font-mono`}
+                                                    className={`${hubInput} mt-1.5 tabular-nums`}
                                                     value={action.data.seal_number}
                                                     onChange={event => action.setData('seal_number', event.target.value)}
                                                     placeholder="SL-XXXXX"
@@ -286,11 +286,11 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             </div>
                                             <label className="text-xs font-bold text-[#121316]">
                                                 Master bag barcode
-                                                <input required className={`${hubInput} mt-1.5 font-mono`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
+                                                <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
                                             </label>
                                             <label className="text-xs font-bold text-[#121316]">
                                                 Numbered seal
-                                                <input required className={`${hubInput} mt-1.5 font-mono`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
+                                                <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
                                             </label>
                                             <fieldset className="space-y-3 sm:col-span-2">
                                                 <legend className="mb-2 text-xs font-bold text-[#121316]">Draft transport manifest</legend>
@@ -334,7 +334,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                                     {item.vehicle_plate ?? `Transfer #${item.id}`}
                                                                 </span>
                                                                 <span className="mt-1 block text-xs text-zinc-500">{item.driver_name ?? 'Recorded driver'} · Draft #{item.id}</span>
-                                                                <span title={item.reference} className="mt-1 block truncate text-[11px] font-mono text-zinc-400">{item.reference}</span>
+                                                                <span title={item.reference} className="mt-1 block truncate text-[11px] tabular-nums text-zinc-400">{item.reference}</span>
                                                             </span>
                                                         </label>
                                                     ))}
@@ -376,7 +376,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         {bag.manifest_id && (
                                             <label className="block text-xs font-bold text-[#121316]">
                                                 {bag.manifest_id ? 'Numbered seal' : ''}
-                                                <input required className={`${hubInput} mt-1.5 font-mono`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
+                                                <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
                                             </label>
                                         )}
                                         <label className="block text-xs font-bold text-[#121316]">
@@ -404,11 +404,11 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         <form onSubmit={event => submit(event, 'open')} className="space-y-4">
                                             <label className="block text-xs font-bold text-[#121316]">
                                                 Scanned master bag tag
-                                                <input required className={`${hubInput} mt-1.5 font-mono`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
+                                                <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
                                             </label>
                                             <label className="block text-xs font-bold text-[#121316]">
                                                 Seal number observed
-                                                <input required className={`${hubInput} mt-1.5 font-mono`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
+                                                <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
                                             </label>
                                             <label className="flex items-center gap-2.5 text-xs text-zinc-700 font-medium">
                                                 <input
@@ -463,7 +463,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             {bag.parcels.map(item => (
                                                 <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors">
                                                     <td className="px-5 py-3.5">
-                                                        <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 font-mono text-xs font-bold text-[#E00D42]">
+                                                        <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
                                                             {item.tracking_number}
                                                         </span>
                                                     </td>
@@ -509,7 +509,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                         {event.actor}{event.barcode_scanned ? ` · ${event.barcode_scanned}` : ''}
                                                     </p>
                                                 </div>
-                                                <time className="text-xs text-zinc-400 font-mono">{new Date(event.created_at).toLocaleString('en-PH')}</time>
+                                                <time className="text-xs text-zinc-400 tabular-nums">{new Date(event.created_at).toLocaleString('en-PH')}</time>
                                             </li>
                                         ))}
                                     </ol>

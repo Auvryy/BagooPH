@@ -5,13 +5,13 @@ export const hubInput =
     'w-full rounded-lg border border-zinc-300/90 bg-white px-3.5 py-2 text-sm text-[#121316] shadow-2xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 disabled:bg-zinc-100 disabled:text-zinc-400 transition-all';
 
 const buttonBase =
-    'inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold shadow-2xs transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E00D42] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';
+    'inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold shadow-xs transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E00D42] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';
 
 export const hubButton =
-    buttonBase + ' border-zinc-200/90 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-[#121316] hover:border-zinc-300';
+    buttonBase + ' border-rose-200 bg-rose-50/85 text-[#C20836] hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] hover:shadow-sm';
 
 export const hubPrimary =
-    buttonBase + ' border-[#E00D42] bg-[#E00D42] text-white hover:bg-[#C20836] shadow-xs';
+    buttonBase + ' border-[#E00D42] bg-[#E00D42] text-white hover:bg-[#C20836] hover:border-[#C20836] shadow-sm hover:shadow-md';
 
 export function HubPanel({
     title,
@@ -155,11 +155,17 @@ export type HubStep = {
 };
 
 export function HubStepRail({ steps, label = 'Transfer progress' }: { steps: HubStep[]; label?: string }) {
+    const colClass =
+        steps.length === 5
+            ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
+            : steps.length === 3
+            ? 'grid-cols-1 sm:grid-cols-3'
+            : 'grid-cols-2 sm:grid-cols-4';
     return (
         <ol
             tabIndex={0}
             aria-label={label}
-            className="hub-step-rail grid grid-cols-2 gap-2 overflow-x-auto rounded-xl border border-zinc-200/90 bg-white p-2 shadow-xs sm:grid-cols-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]"
+            className={`hub-step-rail grid gap-2 overflow-x-auto rounded-xl border border-zinc-200/90 bg-white p-2.5 shadow-xs ${colClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]`}
         >
             {steps.map((step, index) => {
                 const Icon = step.state === 'done' ? Check : step.icon ?? Circle;
@@ -169,21 +175,21 @@ export function HubStepRail({ steps, label = 'Transfer progress' }: { steps: Hub
                         aria-current={step.state === 'current' ? 'step' : undefined}
                         className={`relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 transition-colors ${
                             step.state === 'current'
-                                ? 'bg-rose-50/70 border border-rose-200/70'
+                                ? 'bg-rose-50 border border-rose-300 shadow-2xs'
                                 : step.state === 'done'
-                                ? 'bg-zinc-50/80'
-                                : 'bg-transparent'
+                                ? 'bg-rose-50/40 border border-rose-200/70'
+                                : 'bg-zinc-50/50 border border-zinc-100'
                         }`}
                     >
                         <span
                             className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${
                                 step.state === 'done'
-                                    ? 'border-[#121316] bg-[#121316] text-white'
+                                    ? 'border-[#E00D42] bg-[#E00D42] text-white shadow-2xs'
                                     : step.state === 'current'
-                                    ? 'border-[#E00D42] bg-[#E00D42] text-white'
+                                    ? 'border-[#E00D42] bg-[#E00D42] text-white ring-4 ring-[#E00D42]/15 shadow-2xs'
                                     : step.state === 'blocked'
                                     ? 'border-amber-300 bg-amber-50 text-amber-700'
-                                    : 'border-zinc-200 bg-zinc-50 text-zinc-400'
+                                    : 'border-zinc-200 bg-white text-zinc-400'
                             }`}
                         >
                             {step.state === 'waiting' ? index + 1 : <Icon className="h-3.5 w-3.5" />}
@@ -191,11 +197,9 @@ export function HubStepRail({ steps, label = 'Transfer progress' }: { steps: Hub
                         <span className="min-w-0 flex-1">
                             <span
                                 className={`block truncate text-xs font-semibold ${
-                                    step.state === 'current'
+                                    step.state === 'current' || step.state === 'done'
                                         ? 'text-[#C20836]'
-                                        : step.state === 'waiting'
-                                        ? 'text-zinc-500'
-                                        : 'text-[#121316]'
+                                        : 'text-zinc-500'
                                 }`}
                             >
                                 {step.title}
@@ -257,7 +261,7 @@ export function HubRoute({
                                     {stop.id === currentHubId ? ' · Active' : ''}
                                 </span>
                                 <span className="block truncate text-xs font-semibold text-[#121316]">{stop.name}</span>
-                                {stop.code && <span className="block font-mono text-[10px] text-zinc-500">{stop.code}</span>}
+                                {stop.code && <span className="block text-[10px] font-semibold text-zinc-500">{stop.code}</span>}
                             </span>
                         </div>
                         {index < stops.length - 1 && <ArrowRight className="h-3.5 w-3.5 shrink-0 text-zinc-400" />}

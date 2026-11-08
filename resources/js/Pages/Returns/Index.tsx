@@ -60,10 +60,10 @@ export default function ReturnsIndex({ cases }: { cases: PaginatedData<Summary> 
                                 <Link
                                     key={item.id}
                                     href={`/buyer-returns/${item.id}`}
-                                    className="flex flex-wrap items-center justify-between gap-4 px-5 py-4.5 hover:bg-zinc-50/60 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]"
+                                    className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 hover:bg-zinc-50/60 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]"
                                 >
                                     <div className="min-w-0">
-                                        <p className="inline-block break-all rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 font-mono text-xs font-bold text-[#E00D42]">
+                                        <p className="inline-block break-all rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
                                             {item.reference}
                                         </p>
                                         <p className="mt-2 text-sm font-semibold text-[#121316]">Purchase {item.order_number}</p>

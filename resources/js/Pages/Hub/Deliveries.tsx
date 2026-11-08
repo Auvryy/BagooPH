@@ -225,11 +225,11 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             <header className="flex items-start justify-between gap-4 border-b border-zinc-100 bg-zinc-50/40 px-5 py-4">
                                 <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-bold font-mono tracking-wide text-[#E00D42]">
+                                        <span className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-bold tabular-nums tracking-wide text-[#E00D42]">
                                             <span className="text-[10px] font-sans font-extrabold uppercase text-[#C20836]">WAYBILL:</span>
                                             {delivery.tracking_number}
                                         </span>
-                                        <span className="rounded-md border border-zinc-200 bg-white px-2 py-0.5 font-mono text-[11px] font-semibold text-zinc-600">
+                                        <span className="rounded-md border border-zinc-200 bg-white px-2 py-0.5 tabular-nums text-[11px] font-semibold text-zinc-600">
                                             Order Ref: #{delivery.order_number}
                                         </span>
                                     </div>
@@ -259,7 +259,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                         {delivery.items?.[0]?.name ?? `${delivery.item_count} items`}
                                         {delivery.items?.length > 1 ? ` + ${delivery.items.length - 1} more` : ''}
                                     </p>
-                                    <span className="shrink-0 font-mono text-[11px] text-zinc-400">
+                                    <span className="shrink-0 tabular-nums text-[11px] text-zinc-400">
                                         {delivery.created_at}
                                     </span>
                                 </div>
@@ -270,7 +270,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                     <div className="space-y-1.5 text-xs text-zinc-600 border-t sm:border-t-0 sm:border-l border-zinc-200/70 pt-2.5 sm:pt-0 sm:pl-3.5">
                                         <p className="flex items-center justify-between gap-2">
                                             <span className="text-zinc-500">Sorting bin:</span>
-                                            <span className="font-mono font-semibold text-zinc-900">{delivery.destination_bin ?? 'Not assigned'}</span>
+                                            <span className="tabular-nums font-semibold text-zinc-900">{delivery.destination_bin ?? 'Not assigned'}</span>
                                         </p>
                                         <p className="flex items-center justify-between gap-2">
                                             <span className="text-zinc-500">Delivery rider:</span>
@@ -313,7 +313,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                     ))}
                 </div>
             )}
-            {deliveries.last_page > 1 && <nav aria-label="Parcel pages" className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500"><span>Page {deliveries.current_page} of {deliveries.last_page} · {deliveries.total} parcels</span><div className="flex flex-wrap gap-2">{deliveries.links.map((link, index) => link.url ? <PortalLink key={index} href={link.url} only={listProps} preserveScroll preserveState aria-current={link.active ? 'page' : undefined} className={`inline-flex min-h-9 items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-xs hover:bg-zinc-50 transition cursor-pointer ${link.active ? 'border-zinc-900 bg-zinc-100 text-zinc-900 font-bold' : ''}`}>{paginationLabel(link.label)}</PortalLink> : <span key={index} aria-disabled="true" className="px-3 py-1.5 text-zinc-400">{paginationLabel(link.label)}</span>)}</div></nav>}
+            {deliveries.last_page > 1 && <nav aria-label="Parcel pages" className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500"><span>Page {deliveries.current_page} of {deliveries.last_page} · {deliveries.total} parcels</span><div className="flex flex-wrap gap-2">{deliveries.links.map((link, index) => link.url ? <PortalLink key={index} href={link.url} only={listProps} preserveScroll preserveState aria-current={link.active ? 'page' : undefined} className={`inline-flex min-h-9 items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-xs hover:bg-zinc-50 transition cursor-pointer ${link.active ? 'border-[#E00D42] bg-[#E00D42] text-white font-bold' : ''}`}>{paginationLabel(link.label)}</PortalLink> : <span key={index} aria-disabled="true" className="px-3 py-1.5 text-zinc-400">{paginationLabel(link.label)}</span>)}</div></nav>}
         </div>
         <CourierDialog open={Boolean(choosing)} onClose={() => setChoosingId(null)} busy={busy} title="Choose delivery rider">{choosing && <div className="space-y-4"><p className="text-sm leading-6 text-zinc-600">{choosing.tracking_number} · {choosing.destination_barangay}. Only riders eligible for this parcel are listed.</p><RiderPicker riders={eligibleRiders} eligibleIds={choosing.guidance.eligible_rider_ids} value={selectedRiders[choosing.id] ?? ''} onChange={value => setSelectedRiders(current => ({ ...current, [choosing.id]: value }))} disabled={busy} />{!ridersForChoice.length && <HubEmpty title="No eligible riders available" description="Riders need the right service area and vehicle, duty enabled and acknowledged COD. Ask the rider or company manager to review readiness." icon={UserRound} action={<PortalLink href={route('hub.network')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 shadow-xs transition cursor-pointer">Review hub team</PortalLink>} />}{readError && <p role="alert" className="text-sm text-red-700">{readError}</p>}<div className="flex justify-end gap-2 border-t border-zinc-200 pt-4"><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 shadow-xs transition cursor-pointer" disabled={busy} onClick={() => setChoosingId(null)}>Cancel</button><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#E00D42] bg-[#E00D42] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#c70b3a] shadow-xs transition cursor-pointer" disabled={busy || !choosing.guidance.eligible_rider_ids.includes(Number(selectedRiders[choosing.id]))} onClick={() => assignRider(choosing)}>{busy ? 'Assigning…' : 'Assign rider'}</button></div></div>}</CourierDialog>
     </DashboardLayout>;

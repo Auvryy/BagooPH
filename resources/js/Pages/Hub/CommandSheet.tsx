@@ -60,20 +60,20 @@ export default function CommandSheet({ commands, bins }: Props) {
                 {/* Title Banner */}
                 <div className="border-b-2 border-zinc-900 pb-5 mb-8 flex items-end justify-between">
                     <div>
-                        <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-[#C20836]">
+                        <div className="flex items-center gap-2 text-xs tabular-nums font-bold uppercase tracking-wider text-[#C20836]">
                             <Zap className="h-4 w-4 fill-current text-[#E00D42]" />
                             Bagoo Logistics Hub Operation Sheet
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 mt-1 uppercase font-sans">
                             Hardware Laser Command & Sort Sheet
                         </h1>
-                        <p className="text-xs text-zinc-500 font-mono mt-1">
+                        <p className="text-xs text-zinc-500 tabular-nums mt-1">
                             Standard 1D Code128 barcodes for hardware wedge barcode scanners and mobile camera intake.
                         </p>
                     </div>
                     <div className="text-right hidden sm:block print:block">
-                        <span className="text-xs font-mono text-zinc-400 block">STANDARD ISSUE</span>
-                        <span className="text-xs font-mono font-bold text-zinc-800">ISO/IEC 15417 COMPLIANT</span>
+                        <span className="text-xs tabular-nums text-zinc-400 block">STANDARD ISSUE</span>
+                        <span className="text-xs tabular-nums font-bold text-zinc-800">ISO/IEC 15417 COMPLIANT</span>
                     </div>
                 </div>
 
@@ -85,7 +85,7 @@ export default function CommandSheet({ commands, bins }: Props) {
                             1. Operational Command Barcodes
                         </h2>
                     </div>
-                    <p className="text-xs text-zinc-600 mb-5 font-mono">
+                    <p className="text-xs text-zinc-600 mb-5 tabular-nums">
                         Scan directly into the workstation input to trigger hardware macro actions without touching keyboard or mouse.
                     </p>
 
@@ -96,7 +96,7 @@ export default function CommandSheet({ commands, bins }: Props) {
                                 className="bg-white border border-zinc-300 print:border-2 print:border-zinc-900 rounded-xl p-6 flex flex-col items-center justify-between text-center shadow-xs hover:border-zinc-400 hover:shadow-sm transition-all print:shadow-none print:break-inside-avoid"
                             >
                                 <div className="mb-2">
-                                    <span className="inline-block px-3 py-1 rounded-lg text-[11px] font-mono font-bold bg-zinc-900 text-white uppercase tracking-wider">
+                                    <span className="inline-block px-3 py-1 rounded-lg text-[11px] tabular-nums font-bold bg-[#E00D42] text-white uppercase tracking-wider">
                                         Command
                                     </span>
                                     <h3 className="text-base font-bold text-zinc-900 mt-2">
@@ -115,7 +115,7 @@ export default function CommandSheet({ commands, bins }: Props) {
                                         displayValue={false}
                                         className="max-w-full"
                                     />
-                                    <span className="text-xs font-mono font-black tracking-widest text-zinc-900 mt-2">
+                                    <span className="text-xs tabular-nums font-black tracking-widest text-zinc-900 mt-2">
                                         *{cmd.code}*
                                     </span>
                                 </div>
@@ -132,7 +132,7 @@ export default function CommandSheet({ commands, bins }: Props) {
                             2. Standard Sorting Bins & Staging Shelves
                         </h2>
                     </div>
-                    <p className="text-xs text-zinc-600 mb-5 font-mono">
+                    <p className="text-xs text-zinc-600 mb-5 tabular-nums">
                         Poka-Yoke location barcodes. Scan during Two-Way Verification to confirm parcel placement into correct slot.
                     </p>
 
@@ -143,7 +143,7 @@ export default function CommandSheet({ commands, bins }: Props) {
                                 className="bg-white border border-zinc-300 print:border-2 print:border-zinc-800 rounded-xl p-4 flex flex-col items-center justify-between text-center shadow-xs hover:border-zinc-400 hover:shadow-sm transition-all print:shadow-none print:break-inside-avoid"
                             >
                                 <div className="mb-1">
-                                    <span className="text-[11px] font-mono font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 uppercase">
+                                    <span className="text-[11px] tabular-nums font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 uppercase">
                                         {bin.label}
                                     </span>
                                 </div>
@@ -156,7 +156,7 @@ export default function CommandSheet({ commands, bins }: Props) {
                                         displayValue={false}
                                         className="max-w-full"
                                     />
-                                    <span className="text-[11px] font-mono font-black tracking-wider text-zinc-900 mt-1.5">
+                                    <span className="text-[11px] tabular-nums font-black tracking-wider text-zinc-900 mt-1.5">
                                         *{bin.code}*
                                     </span>
                                 </div>
@@ -166,7 +166,7 @@ export default function CommandSheet({ commands, bins }: Props) {
                 </section>
 
                 {/* Footer notes */}
-                <footer className="mt-12 pt-5 border-t border-zinc-200 text-center text-[11px] text-zinc-400 font-mono">
+                <footer className="mt-12 pt-5 border-t border-zinc-200 text-center text-[11px] text-zinc-400 tabular-nums">
                     Bagoo Logistics Automation · Anti-Backhaul & Poka-Yoke Floor Verification · Form BL-WS-CMD-128
                 </footer>
             </main>

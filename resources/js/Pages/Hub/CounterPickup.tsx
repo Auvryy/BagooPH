@@ -257,7 +257,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </span>
                             </p>
                         </div>
-                        <span className="shrink-0 text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-rose-50 text-[#E00D42] border border-rose-200">
+                        <span className="shrink-0 text-xs tabular-nums font-bold px-2 py-0.5 rounded-md bg-rose-50 text-[#E00D42] border border-rose-200">
                             {activeHub?.code || 'STATION'}
                         </span>
                     </div>
@@ -279,7 +279,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                         Counter Parcel Queue
                                     </h3>
                                 </div>
-                                <span className="inline-flex items-center rounded-md border border-zinc-200/90 bg-white px-2.5 py-0.5 text-xs font-mono font-semibold text-zinc-700">
+                                <span className="inline-flex items-center rounded-md border border-zinc-200/90 bg-white px-2.5 py-0.5 text-xs tabular-nums font-semibold text-zinc-700">
                                     {counterParcels.total} matching parcels
                                 </span>
                             </div>
@@ -323,10 +323,10 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                         ) : (
                             <div className="divide-y divide-zinc-100 mt-2">
                                 {pageParcels.map((parcel) => (
-                                    <div key={parcel.id} className="py-4.5 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div key={parcel.id} className="py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2 flex-wrap font-sans">
-                                                <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold font-mono tracking-wide text-[#E00D42] shadow-xs">
+                                                <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold tabular-nums tracking-wide text-[#E00D42] shadow-xs">
                                                     <span className="text-[10px] uppercase font-sans font-extrabold mr-1 text-[#C20836]">WAYBILL:</span>{parcel.tracking_number}
                                                 </span>
                                                 <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-zinc-100 text-zinc-700 border border-zinc-200">
@@ -430,10 +430,10 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     {recentlyCollected.map((item) => (
                                         <div key={item.id} className="py-3">
                                             <div className="flex items-center justify-between">
-                                                <span className="font-mono font-bold text-xs text-[#1C1A17]">
+                                                <span className="tabular-nums font-bold text-xs text-[#1C1A17]">
                                                     {item.tracking_number}
                                                 </span>
-                                                <span className="text-[11px] text-zinc-400 font-mono">
+                                                <span className="text-[11px] text-zinc-400 tabular-nums">
                                                     {item.collected_at}
                                                 </span>
                                             </div>
@@ -472,7 +472,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 <DialogTitle className="text-base font-bold text-[#1C1A17]">
                                     Verify counter handover
                                 </DialogTitle>
-                                <p className="text-xs text-[#E00D42] font-mono font-bold mt-1">
+                                <p className="text-xs text-[#E00D42] tabular-nums font-bold mt-1">
                                     {selectedParcel.tracking_number}
                                 </p>
                                 {selectedParcel.claim && <p className="mt-1 text-xs text-zinc-500">Holding deadline: {new Date(selectedParcel.claim.expires_at).toLocaleString('en-PH')} · {selectedParcel.claim.status}</p>}
@@ -523,7 +523,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     value={claimCode}
                                     onChange={(e) => setClaimCode(e.target.value)}
                                     required autoComplete="off" placeholder="Enter the buyer’s private claim code"
-                                    className={`${hubInput} font-mono`}
+                                    className={`${hubInput} tabular-nums`}
                                 />
                             </div>
 

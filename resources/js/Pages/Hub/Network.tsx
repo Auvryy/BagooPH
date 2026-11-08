@@ -157,7 +157,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                         <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs shadow-2xs">
                             <span className="text-zinc-500">Working facility:</span>
                             <span className="font-semibold text-[#121316]">{activeHub.name}</span>
-                            <span className="font-mono font-semibold text-[#E00D42]">{activeHub.code}</span>
+                            <span className="tabular-nums font-semibold text-[#E00D42]">{activeHub.code}</span>
                         </div>
                     )}
                 />
@@ -169,16 +169,16 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                     <HubPanel title="Your network at a glance" icon={<Warehouse className="h-4 w-4" />}>
                         <div className="grid grid-cols-2 divide-x divide-zinc-200/80 rounded-lg border border-zinc-200/80 bg-zinc-50/40 p-3.5">
                             <div className="pr-3">
-                                <p className="font-mono text-2xl font-bold tracking-tight tabular-nums text-[#121316]">{motherHubs.length}</p>
+                                <p className="tabular-nums text-2xl font-bold tracking-tight tabular-nums text-[#121316]">{motherHubs.length}</p>
                                 <p className="mt-0.5 text-xs font-medium text-zinc-500">Mother Hubs</p>
                             </div>
                             <div className="pl-3">
-                                <p className="font-mono text-2xl font-bold tracking-tight tabular-nums text-[#121316]">{bayanHubs.length}</p>
+                                <p className="tabular-nums text-2xl font-bold tracking-tight tabular-nums text-[#121316]">{bayanHubs.length}</p>
                                 <p className="mt-0.5 text-xs font-medium text-zinc-500">Bayan Hubs</p>
                             </div>
                         </div>
                         <div className="mt-4 space-y-2.5 border-t border-zinc-100 pt-4 text-xs text-zinc-600">
-                            <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-[#121316]" />Mother Hub · transfers between service areas</p>
+                            <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-[#9F1239]" />Mother Hub · transfers between service areas</p>
                             <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#E00D42]" />Bayan Hub · pickup, local sorting and delivery</p>
                         </div>
                         <p className="mt-3.5 text-xs leading-relaxed text-zinc-500">Map links show configured hub relationships. A parcel follows its own saved route and actual scans.</p>
@@ -256,7 +256,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                             <div className="rounded-md border border-zinc-200/90 bg-white px-3 py-1 text-xs shadow-2xs">
                                 <span className="text-zinc-500">Working facility: </span>
                                 <span className="font-semibold text-[#121316]">{activeHub.name}</span>
-                                <span className="ml-1.5 font-mono text-xs font-semibold text-[#E00D42]">{activeHub.code}</span>
+                                <span className="ml-1.5 tabular-nums text-xs font-semibold text-[#E00D42]">{activeHub.code}</span>
                             </div>
                         )}
                     </div>
@@ -272,7 +272,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                             <Icon className="h-3.5 w-3.5" />
                                         </span>
                                     </div>
-                                    <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-[#121316]">{metric.value.toLocaleString()}</p>
+                                    <p className="mt-2 tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{metric.value.toLocaleString()}</p>
                                     <p className="mt-1 text-xs text-zinc-500">{metric.detail}</p>
                                 </div>
                             );
@@ -357,7 +357,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                     <div className="mt-3.5">
                                         <div className="flex items-center gap-2">
                                             <h3 className="line-clamp-1 text-sm font-bold text-[#121316]">{hub.name}</h3>
-                                            <span className="shrink-0 font-mono text-xs font-semibold text-zinc-400">{hub.code}</span>
+                                            <span className="shrink-0 tabular-nums text-xs font-semibold text-zinc-400">{hub.code}</span>
                                         </div>
                                         <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500">
                                             <MapPin className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
@@ -368,7 +368,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                     <div className="mt-4 rounded-lg border border-zinc-200/80 bg-zinc-50/50 p-3">
                                         <div className="flex items-center justify-between text-xs">
                                             <span className="font-medium text-zinc-500">Capacity used</span>
-                                            <span className="font-mono font-semibold text-[#121316]">
+                                            <span className="tabular-nums font-semibold text-[#121316]">
                                                 {hub.parcel_count.toLocaleString()} / {hub.capacity.toLocaleString()}
                                             </span>
                                         </div>
@@ -381,15 +381,15 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                         <div className="mt-3 grid grid-cols-3 divide-x divide-zinc-200/80 text-center">
                                             <div>
                                                 <span className="block text-[11px] text-zinc-500">Vehicles</span>
-                                                <span className="mt-0.5 block font-mono text-xs font-bold text-[#121316]">{hub.fleet_count}</span>
+                                                <span className="mt-0.5 block tabular-nums text-xs font-bold text-[#121316]">{hub.fleet_count}</span>
                                             </div>
                                             <div>
                                                 <span className="block text-[11px] text-zinc-500">Handlers</span>
-                                                <span className="mt-0.5 block font-mono text-xs font-bold text-[#121316]">{hub.handlers_count}</span>
+                                                <span className="mt-0.5 block tabular-nums text-xs font-bold text-[#121316]">{hub.handlers_count}</span>
                                             </div>
                                             <div>
                                                 <span className="block text-[11px] text-zinc-500">Barangays</span>
-                                                <span className="mt-0.5 block font-mono text-xs font-bold text-[#121316]">{hub.coverage_barangays.length}</span>
+                                                <span className="mt-0.5 block tabular-nums text-xs font-bold text-[#121316]">{hub.coverage_barangays.length}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -440,7 +440,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                         <span className="rounded-md border border-zinc-200/90 bg-zinc-50 px-2.5 py-0.5 text-xs font-semibold text-zinc-700">
                                             {facilityType(selectedHub.tier)}
                                         </span>
-                                        <span className="font-mono text-xs font-semibold text-[#E00D42]">{selectedHub.code}</span>
+                                        <span className="tabular-nums text-xs font-semibold text-[#E00D42]">{selectedHub.code}</span>
                                     </div>
                                     <h2 id="facility-details-title" className="mt-2.5 text-lg font-bold text-[#121316]">
                                         {selectedHub.name}
@@ -495,7 +495,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                                     <Icon className="h-3.5 w-3.5" />
                                                     <span className="text-xs font-medium">{item.label}</span>
                                                 </div>
-                                                <p className="mt-2 font-mono text-lg font-bold tabular-nums text-[#121316]">{item.value}</p>
+                                                <p className="mt-2 tabular-nums text-lg font-bold tabular-nums text-[#121316]">{item.value}</p>
                                             </div>
                                         );
                                     })}
@@ -503,7 +503,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                 <div className="mt-3 rounded-xl border border-zinc-200/90 bg-white p-3.5">
                                     <div className="flex items-center justify-between text-xs">
                                         <span className="text-zinc-500">Capacity used</span>
-                                        <span className="font-mono font-semibold text-[#121316]">{selectedHub.utilization}%</span>
+                                        <span className="tabular-nums font-semibold text-[#121316]">{selectedHub.utilization}%</span>
                                     </div>
                                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-100">
                                         <div
@@ -524,7 +524,7 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                         </span>
                                     </div>
                                     <div className="mt-3 border-t border-zinc-200/80 pt-3 text-xs text-zinc-500">
-                                        GPS pin: <span className="font-mono font-semibold text-[#121316]">{Number(selectedHub.latitude).toFixed(4)}° N, {Number(selectedHub.longitude).toFixed(4)}° E</span>
+                                        GPS pin: <span className="tabular-nums font-semibold text-[#121316]">{Number(selectedHub.latitude).toFixed(4)}° N, {Number(selectedHub.longitude).toFixed(4)}° E</span>
                                     </div>
                                 </div>
                             </section>

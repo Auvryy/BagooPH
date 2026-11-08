@@ -100,7 +100,7 @@ export default function Overview({ records, totals, filters, mode, error, stateO
                     {totals.map(total => (
                         <article key={total.key} className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
                             <h2 className="text-xs font-semibold text-zinc-500">{total.label}</h2>
-                            <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-[#121316]">{financeMoney(total.amount_cents)}</p>
+                            <p className="mt-2 tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{financeMoney(total.amount_cents)}</p>
                             <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">{total.definition}</p>
                             {total.amount_cents !== null && total.url && (
                                 <Link href={total.url} className="mt-3 inline-flex min-h-9 items-center text-xs font-semibold text-[#C20836] underline underline-offset-4">
@@ -126,7 +126,7 @@ export default function Overview({ records, totals, filters, mode, error, stateO
                                     {['held', 'reconciled', 'pending', 'settled'].filter(key => key in record.metrics).map(key => (
                                         <div key={key}>
                                             <dt className="text-zinc-500">{totals.find(total => total.key === key)?.label}</dt>
-                                            <dd className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-[#121316]">{financeMoney(record.metrics[key])}</dd>
+                                            <dd className="mt-0.5 tabular-nums text-sm font-semibold tabular-nums text-[#121316]">{financeMoney(record.metrics[key])}</dd>
                                         </div>
                                     ))}
                                 </dl>

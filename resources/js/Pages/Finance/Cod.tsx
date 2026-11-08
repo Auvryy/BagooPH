@@ -60,7 +60,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                                     </span>
                                 </div>
-                                <p className="mt-2.5 break-words font-mono text-2xl font-bold tabular-nums text-[#121316]">{cashMoney(amount)}</p>
+                                <p className="mt-2.5 break-words tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{cashMoney(amount)}</p>
                                 <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">{note}</p>
                             </div>
                         ))}
@@ -101,7 +101,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                             />
                             <button
                                 type="submit"
-                                className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:bg-zinc-50 hover:text-[#121316]"
+                                className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-[#E00D42] bg-[#E00D42] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#C20836] cursor-pointer"
                                 aria-label="Search cash records"
                             >
                                 <Search className="h-4 w-4" aria-hidden="true" />
@@ -127,7 +127,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-4 py-3.5">
                                             <div>
                                                 <h3 className="text-sm font-bold text-[#121316]">{account.order_number}</h3>
-                                                <p className="mt-0.5 break-all font-mono text-xs text-zinc-500">{account.tracking_number}</p>
+                                                <p className="mt-0.5 break-all tabular-nums text-xs text-zinc-500">{account.tracking_number}</p>
                                             </div>
                                             <CashBadge status={account.status} />
                                         </div>
@@ -135,7 +135,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                             <div className="flex items-start justify-between gap-4">
                                                 <div>
                                                     <p className="text-xs font-semibold text-zinc-500">Original COD due</p>
-                                                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-[#121316]">{cashMoney(account.expected_cents)}</p>
+                                                    <p className="mt-1 tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{cashMoney(account.expected_cents)}</p>
                                                 </div>
                                                 <span className="rounded-md border border-zinc-200/80 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-600">
                                                     {account.source_kind === 'rider_collection' ? 'Doorstep' : account.source_kind === 'counter_collection' ? 'Counter' : 'Older record'}
@@ -157,7 +157,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                                                 {holder.name}
                                                                 <span className="ml-1 text-zinc-500">· {holder.stage === 'rider' ? 'Rider' : holder.stage === 'hub' ? 'Hub' : 'Platform'}</span>
                                                             </span>
-                                                            <strong className="shrink-0 font-mono font-bold tabular-nums text-[#121316]">{cashMoney(holder.amount_cents)}</strong>
+                                                            <strong className="shrink-0 tabular-nums font-bold tabular-nums text-[#121316]">{cashMoney(holder.amount_cents)}</strong>
                                                         </div>
                                                     ))
                                                 ) : (
@@ -212,7 +212,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                             {legacy.map(record => (
                                 <li key={record.delivery_id} className="flex flex-col justify-between gap-3 py-3.5 sm:flex-row sm:items-center">
                                     <div>
-                                        <p className="text-sm font-semibold text-[#121316]">{record.order_number} · <span className="font-mono">{cashMoney(record.due_cents)}</span></p>
+                                        <p className="text-sm font-semibold text-[#121316]">{record.order_number} · <span className="tabular-nums">{cashMoney(record.due_cents)}</span></p>
                                         <p className="mt-0.5 text-xs text-zinc-500">{record.has_counter_source ? 'Original counter source available for verification' : 'Collection has no verified source'}</p>
                                     </div>
                                     <button

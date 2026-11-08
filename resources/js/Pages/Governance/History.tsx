@@ -127,11 +127,11 @@ export default function History({ events, filters, sources, subjectTypes, scope 
                                         </td>
                                         <td className="px-5 py-3.5">
                                             <p className="font-medium text-[#121316]">{event.subject.name ?? 'Name not recorded'}</p>
-                                            <p className="mt-0.5 font-mono text-zinc-500">{recordLabel(event.subject.type)} #{event.subject.id}</p>
+                                            <p className="mt-0.5 tabular-nums text-zinc-500">{recordLabel(event.subject.type)} #{event.subject.id}</p>
                                         </td>
                                         <td className="px-5 py-3.5">
                                             <p className="font-medium text-[#121316]">{event.actor.name}</p>
-                                            <p className="mt-0.5 font-mono text-zinc-500">Reviewer #{event.actor.id}</p>
+                                            <p className="mt-0.5 tabular-nums text-zinc-500">Reviewer #{event.actor.id}</p>
                                         </td>
                                         <td className="whitespace-nowrap px-5 py-3.5 text-zinc-500">{governanceTime(event.occurred_at)}</td>
                                         <td className="px-5 py-3.5">

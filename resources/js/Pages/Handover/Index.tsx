@@ -220,13 +220,13 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                         {issues.data.map(issue => (
                             <article key={issue.id} className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                                 <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                    <h2 className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 font-mono text-xs font-bold text-[#E00D42]">
+                                    <h2 className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
                                         {issue.order_number}
                                     </h2>
                                     <IssueBadge state={issue.state} />
                                 </header>
                                 <div className="p-5">
-                                    <p className="break-words text-xs font-mono font-semibold text-zinc-700">Waybill: {issue.tracking_number}</p>
+                                    <p className="break-words text-xs tabular-nums font-semibold text-zinc-700">Waybill: {issue.tracking_number}</p>
                                     <p className="mt-2 text-sm font-bold text-[#121316]">{issueKind[issue.kind]}</p>
                                     <p className="mt-1.5 text-xs text-zinc-500">Reported by {issue.reporter_name}</p>
                                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4">

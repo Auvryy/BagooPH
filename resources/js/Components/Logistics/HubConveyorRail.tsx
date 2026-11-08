@@ -138,14 +138,14 @@ export default function HubConveyorRail({
             {/* Compact Notion Workflow Header */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-zinc-100">
                 <div className="flex items-center gap-2">
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-zinc-100 border border-zinc-200/80 text-zinc-700">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-rose-50 border border-rose-200/80 text-[#E00D42]">
                         <Package className="h-3.5 w-3.5" />
                     </span>
                     <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-800">
                         Hub Pipeline
                     </h2>
                     {trackingNumber && (
-                        <span className="text-xs font-mono font-bold text-[#E00D42] bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                        <span className="text-xs font-bold text-[#E00D42] bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
                             {trackingNumber}
                         </span>
                     )}
@@ -153,16 +153,16 @@ export default function HubConveyorRail({
 
                 <div className="flex items-center gap-2">
                     {isScanning ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-zinc-600 bg-zinc-100 px-2.5 py-0.5 rounded-md border border-zinc-200">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#C20836] bg-rose-50 px-2.5 py-0.5 rounded-md border border-rose-200">
                             Resolving stage…
                         </span>
                     ) : hasScannedParcel ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-900 bg-zinc-100 px-2.5 py-0.5 rounded-md border border-zinc-200/90">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#C20836] bg-rose-50 px-2.5 py-0.5 rounded-md border border-rose-200">
                             <ChevronRight className="w-3.5 h-3.5 text-[#E00D42]" />
                             <span>Station {HUB_STATIONS[activeIndex].number}: {HUB_STATIONS[activeIndex].title}</span>
                         </span>
                     ) : (
-                        <span className="text-xs text-zinc-400 font-mono">
+                        <span className="text-xs font-medium text-zinc-400">
                             Ready for scan
                         </span>
                     )}
@@ -183,23 +183,23 @@ export default function HubConveyorRail({
                             onClick={() => onStationClick && onStationClick(station.id)}
                             className={`group relative flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition focus:outline-none cursor-pointer ${
                                 isStationActive
-                                    ? 'border-[#E00D42] bg-rose-50/70 text-zinc-900 shadow-2xs'
+                                    ? 'border-[#E00D42] bg-rose-50 text-zinc-900 shadow-xs'
                                     : isStationCompleted
-                                        ? 'border-zinc-200/90 bg-zinc-50/80 text-zinc-700 hover:border-zinc-300'
-                                        : 'border-zinc-200/70 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50/50'
+                                        ? 'border-rose-200/80 bg-rose-50/40 text-zinc-800 hover:border-rose-300'
+                                        : 'border-zinc-200/80 bg-white text-zinc-600 hover:border-rose-200 hover:bg-rose-50/30'
                             }`}
                         >
                             <div
                                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition ${
                                     isStationActive
-                                        ? 'border-[#E00D42] bg-[#E00D42] text-white'
+                                        ? 'border-[#E00D42] bg-[#E00D42] text-white shadow-2xs'
                                         : isStationCompleted
-                                            ? 'border-zinc-300 bg-white text-zinc-800'
-                                            : 'border-zinc-200 bg-zinc-50 text-zinc-500 group-hover:text-zinc-800'
+                                            ? 'border-[#E00D42] bg-[#E00D42] text-white'
+                                            : 'border-rose-200/70 bg-rose-50/60 text-[#E00D42] group-hover:bg-[#E00D42] group-hover:text-white'
                                 }`}
                             >
                                 {isStationCompleted ? (
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-zinc-700" />
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-white" />
                                 ) : (
                                     <Icon className="h-3.5 w-3.5" />
                                 )}
@@ -207,18 +207,18 @@ export default function HubConveyorRail({
 
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-1">
-                                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-zinc-400">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
                                         Station {station.number}
                                     </span>
                                     {isStationActive && (
-                                        <span className="text-[10px] font-mono font-bold uppercase text-[#E00D42]">
+                                        <span className="text-[10px] font-bold uppercase text-[#E00D42]">
                                             Active
                                         </span>
                                     )}
                                 </div>
                                 <span
                                     className={`block truncate text-xs font-bold leading-snug ${
-                                        isStationActive ? 'text-[#E00D42]' : 'text-zinc-800'
+                                        isStationActive || isStationCompleted ? 'text-[#C20836]' : 'text-zinc-800'
                                     }`}
                                 >
                                     {station.title}
