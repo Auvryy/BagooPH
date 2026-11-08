@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import useOperationalRefresh from '@/hooks/useOperationalRefresh';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Banknote, Camera, Compass, MapPin, Navigation, RefreshCw, Search, Truck } from 'lucide-react';
+import { ArrowRight, Banknote, Camera, Compass, MapPin, Navigation, RefreshCw, Search, Truck } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
 import CourierJobMap from '@/Components/CourierJobMap';
 import CourierCurrentJob from '@/Components/CourierCurrentJob';
@@ -79,7 +79,7 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
     return Math.round(R * c);
 }
 
-type WorkspaceView = 'assigned' | 'carrying' | 'available';
+type WorkspaceView = 'assigned' | 'available';
 type WorkspaceEntry = { phase: 'pickup'; task: PickupTask } | { phase: 'available'; task: PickupTask } | { phase: 'final_mile'; task: FinalMileTask };
 type ActionTarget = { id: number; trackingNumber: string; status: 'picked_up' | 'out_for_delivery' | 'delivered' | 'delivery_failed' };
 const actionLabels = { picked_up: 'Confirm pickup', out_for_delivery: 'Start delivery', delivered: 'Record delivery', delivery_failed: 'Record failed attempt' };
@@ -91,7 +91,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const deliveries = queues?.finalMileTasks ?? [];
     const activity = queues?.recentActivity ?? [];
     const [view, setView] = useState<WorkspaceView>(() => {
-        if ([...pickups, ...deliveries].some((task) => task.retainedByCurrentCourier === true)) return 'carrying';
         return deliveries.length || pickups.length ? 'assigned' : 'available';
     });
     const [search, setSearch] = useState('');
@@ -121,16 +120,14 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     useCourierRequestError(pending, (message) => setErrors({ status: message }));
     const normalizedSearch = search.trim().toLowerCase();
     const matches = (...values: Array<string | null | undefined>) => values.some((value) => value?.toLowerCase().includes(normalizedSearch));
+    const carryingPickups = pickups.filter((task) => task.retainedByCurrentCourier);
+    const carryingCount = carryingPickups.length;
     const assignedEntries: WorkspaceEntry[] = [
         ...pickups.filter((task) => !task.retainedByCurrentCourier).map((task) => ({ phase: 'pickup' as const, task })),
-        ...deliveries.filter((task) => !task.retainedByCurrentCourier).map((task) => ({ phase: 'final_mile' as const, task })),
-    ];
-    const carryingEntries: WorkspaceEntry[] = [
-        ...pickups.filter((task) => task.retainedByCurrentCourier).map((task) => ({ phase: 'pickup' as const, task })),
-        ...deliveries.filter((task) => task.retainedByCurrentCourier).map((task) => ({ phase: 'final_mile' as const, task })),
+        ...deliveries.map((task) => ({ phase: 'final_mile' as const, task })),
     ];
     const availableEntries: WorkspaceEntry[] = available.map((task) => ({ phase: 'available', task }));
-    const viewEntries = view === 'assigned' ? assignedEntries : view === 'carrying' ? carryingEntries : availableEntries;
+    const viewEntries = view === 'assigned' ? assignedEntries : availableEntries;
     const visibleEntries = viewEntries.filter(({ phase, task }) => {
         const itemNames = task.items?.map((item) => item.name) ?? [];
         if (phase === 'pickup' || phase === 'available') {
@@ -287,7 +284,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                 const error = (page.props as PageProps).flash?.error;
                 if (error) setErrors({ status: error });
                 else {
-                    if (target.status === 'picked_up' || target.status === 'out_for_delivery') setView('carrying');
+                    setView('assigned');
                     resetAction();
                 }
             },
@@ -334,7 +331,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     }, [target?.status, selectedDelivery?.id]);
     const collected = selectedPickup?.retainedByCurrentCourier === true;
     const assignedCount = assignedEntries.length;
-    const carryingCount = carryingEntries.length;
 
     const renderTaskCard = (entry: WorkspaceEntry) => {
         const { phase, task } = entry;
@@ -468,15 +464,59 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                         </div>
                     </div>
                 )}
+                {carryingCount > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 text-xs text-sky-900 shadow-2xs">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-600 text-white font-bold shrink-0">
+                                {carryingCount}
+                            </span>
+                            <div>
+                                <p className="font-bold">You are carrying {carryingCount} collected pickup{carryingCount === 1 ? '' : 's'} (in custody)</p>
+                                <p className="text-sky-700">Carrying pickups are tracked in your Trips & History to keep your main delivery queue uncluttered.</p>
+                            </div>
+                        </div>
+                        <Link
+                            href={courierPath('/earnings')}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-sky-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-800 transition-colors shadow-2xs"
+                        >
+                            <span>View Pickups in Trips</span>
+                            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Link>
+                    </div>
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div role="group" aria-label="Task filters" className="flex max-w-full gap-1 overflow-x-auto rounded-[8px] bg-slate-100 p-1">
-                        {([{ key: 'assigned', label: 'Assigned to you', count: assignedCount }, { key: 'carrying', label: 'Carrying', count: carryingCount }, { key: 'available', label: 'Available to claim', count: stats?.availablePickups ?? available.length }] as const).map((item) => <button key={item.key} type="button" aria-pressed={view === item.key} onClick={() => selectView(item.key)} className={courierClasses(courierButton, 'shrink-0 gap-2 border-transparent bg-transparent px-3 text-sm font-medium hover:bg-slate-200', view === item.key && 'bg-white text-slate-950 shadow-sm hover:bg-white')}><span>{item.label}</span><span className={`rounded-[8px] px-2 py-0.5 text-xs tabular-nums ${view === item.key ? 'bg-slate-100 text-slate-700' : 'bg-slate-200/70 text-slate-600'}`}>{item.count}</span></button>)}
+                        {([
+                            { key: 'assigned', label: 'Assigned to you', count: assignedCount },
+                            { key: 'available', label: 'Available pickups', count: stats?.availablePickups ?? available.length },
+                        ] as const).map((item) => (
+                            <button
+                                key={item.key}
+                                type="button"
+                                aria-pressed={view === item.key}
+                                onClick={() => selectView(item.key)}
+                                className={courierClasses(
+                                    courierButton,
+                                    'shrink-0 gap-2 border-transparent bg-transparent px-3 text-sm font-medium hover:bg-slate-200',
+                                    view === item.key && 'bg-white text-slate-950 shadow-sm hover:bg-white'
+                                )}
+                            >
+                                <span>{item.label}</span>
+                                <span
+                                    className={`rounded-[8px] px-2 py-0.5 text-xs tabular-nums ${
+                                        view === item.key ? 'bg-slate-100 text-slate-700' : 'bg-slate-200/70 text-slate-600'
+                                    }`}
+                                >
+                                    {item.count}
+                                </span>
+                            </button>
+                        ))}
                     </div>
                     <label className="relative block w-full sm:w-72"><span className="sr-only">Search this queue</span><Search className="pointer-events-none absolute left-3 top-4 h-4 w-4 text-slate-500" aria-hidden="true" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Waybill, order, product, or address" className={`${courierInput} mt-0 pl-10 text-sm`} /></label>
                 </div>
                 {!target && <CourierFieldError message={errors.status || Object.values(errors).find(Boolean)} />}
                 {visibleEntries.length ? <div className="grid items-start gap-5 min-[860px]:grid-cols-[minmax(0,1fr)_minmax(20rem,1.05fr)]">
-                    <section aria-label={`${view === 'assigned' ? 'Assigned to you' : view === 'carrying' ? 'Parcels you are carrying' : 'Available pickups'} queue`} className="space-y-4">
+                    <section aria-label={`${view === 'assigned' ? 'Assigned to you' : 'Available pickups'} queue`} className="space-y-4">
                         {visibleEntries.map(renderTaskCard)}
                     </section>
                     <div className="space-y-4">
@@ -495,7 +535,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                             </CourierCurrentJob>}
                         </div>}
                     </div>
-                </div> : <CourierEmpty title={normalizedSearch ? 'No matching parcels' : view === 'available' ? 'No available pickups' : view === 'carrying' ? 'No parcels recorded in your custody' : 'No tasks assigned to you'}>{normalizedSearch ? 'Try another waybill, order reference, product, or address.' : view === 'available' ? claimReason || 'Eligible pickups from your origin hub will appear here.' : view === 'carrying' ? 'Parcels appear here only after the latest recorded custody identifies you as their current holder.' : 'Pickup and final-mile work assigned to you will appear here. Assignments do not by themselves mean you are carrying a parcel.'}</CourierEmpty>}
+                </div> : <CourierEmpty title={normalizedSearch ? 'No matching parcels' : view === 'available' ? 'No available pickups' : 'No tasks assigned to you'}>{normalizedSearch ? 'Try another waybill, order reference, product, or address.' : view === 'available' ? claimReason || 'Eligible pickups from your origin hub will appear here.' : 'Pickup and final-mile work assigned to you will appear here. Assignments do not by themselves mean you are carrying a parcel.'}</CourierEmpty>}
                 <CourierDeliveryOverview activity={activity} activePickups={activeCount} pickupLimit={limit} awaitingIntake={pickups.filter((task) => task.retainedByCurrentCourier && task.nextAction === 'await_origin_hub_scan').length} claimReason={claimReason} onViewPickups={() => viewQueue('assigned')} />
                 <CourierRecentDeliveries activity={activity} completedToday={stats?.completedToday} />
             </div>

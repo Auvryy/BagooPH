@@ -350,6 +350,15 @@ class CourierDeliveryController extends Controller
                 ->with(['order', 'destinationBayanHub'])
                 ->latest('delivered_at')
                 ->get();
+
+            $pickupQueue = $this->operations->queue($user, 'pickup')->get();
+            $pickupQueue->loadMissing(['order.items.product:id,name', 'originBayanHub']);
+            $carryingPickups = $pickupQueue
+                ->filter(fn (Delivery $delivery) => $delivery->status === OrderStateMachineService::STATUS_PICKED_UP)
+                ->map(fn (Delivery $delivery) => $this->pickupPayload($delivery, false, $user))
+                ->values();
+        } else {
+            $carryingPickups = collect();
         }
 
         return Inertia::render('Courier/Earnings', [
@@ -368,6 +377,7 @@ class CourierDeliveryController extends Controller
                     ?->copy()->timezone('Asia/Manila')->isSameDay(today('Asia/Manila')))->count(),
             ],
             'trips' => $completed->map(fn (Delivery $delivery) => $this->activityPayload($delivery))->values(),
+            'carryingPickups' => $carryingPickups,
         ]);
     }
 

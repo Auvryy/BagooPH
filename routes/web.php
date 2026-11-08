@@ -361,6 +361,8 @@ $registerCourierRoutes = function () use ($registerCodRoutes) {
         Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty']);
         Route::get('/dashboard', fn () => redirect('/deliveries'));
         Route::get('/courier/deliveries', fn () => redirect('/deliveries'));
+        Route::get('/trips', fn () => redirect('/earnings'));
+        Route::get('/courier/trips', fn () => redirect('/earnings'));
     });
 };
 
@@ -800,6 +802,7 @@ Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courie
     Route::patch('/profile/account', [CourierDeliveryController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [PasswordController::class, 'update'])->name('profile.password.update');
     Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty'])->name('toggleDuty');
+    Route::get('/trips', fn () => redirect()->route('courier.earnings'))->name('trips');
 });
 
 /*
