@@ -161,13 +161,29 @@ class CheckoutController extends Controller
                 ? "Order #{$orders->first()->order_number} successfully placed."
                 : "{$orders->count()} shop orders successfully placed.";
 
-            if ($orders->first()->payment_method === 'wallet') {
-                return $orders->count() === 1
-                    ? redirect()->route('wallet.payments.show', $orders->first()->walletPayment)->with('success', 'Order placed. Review and confirm its wallet payment within one hour.')
-                    : redirect()->route('buyer.profile', ['tab' => 'orders', 'order_status' => 'to_pay'])->with('success', 'Shop orders placed. Complete each wallet payment within one hour.');
+            $targetUrl = $orders->first()->payment_method === 'wallet'
+                ? ($orders->count() === 1
+                    ? route('wallet.payments.show', $orders->first()->walletPayment)
+                    : route('buyer.profile', ['tab' => 'orders', 'order_status' => 'to_pay']))
+                : route('buyer.orders.index');
+
+            if ($request->expectsJson()) {
+                session()->flash('success', $message);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'redirect' => $targetUrl,
+                ]);
             }
 
-            return redirect()->route('buyer.orders.index')->with('success', $message);
+            if ($orders->first()->payment_method === 'wallet') {
+                return $orders->count() === 1
+                    ? redirect()->to($targetUrl)->with('success', 'Order placed. Review and confirm its wallet payment within one hour.')
+                    : redirect()->to($targetUrl)->with('success', 'Shop orders placed. Complete each wallet payment within one hour.');
+            }
+
+            return redirect()->to($targetUrl)->with('success', $message);
         } catch (ValidationException|AuthorizationException $e) {
             throw $e;
         } catch (HttpExceptionInterface $e) {

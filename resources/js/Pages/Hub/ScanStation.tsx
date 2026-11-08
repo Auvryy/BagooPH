@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Head, router, Link } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { HubNextStep, HubPageHeader, HubRoute } from '@/Components/Logistics/Workspace';
+import HubConveyorRail from '@/Components/Logistics/HubConveyorRail';
 import HubCounterPreview, { CounterPreviewParcel } from '@/Components/HubCounterPreview';
 import { HubParcelAction, HubParcelState, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import WaybillCamera from '@/Components/WaybillCamera';
@@ -20,9 +21,12 @@ import {
     RefreshCw,
     Clock,
     Layers,
+    Scale,
     ShieldCheck,
     Boxes,
-    CornerDownRight
+    CornerDownRight,
+    Truck,
+    Send
 } from 'lucide-react';
 
 interface LogisticsHub {
@@ -155,6 +159,18 @@ export default function ScanStation({
     const [returnResult, setReturnResult] = useState<{ reference: string; barcode: string; href: string; status: string } | null>(null);
     const [sessionExpired, setSessionExpired] = useState(false);
 
+    // DWS (Dimension, Weight, Scan) audit state
+    const [dwsLength, setDwsLength] = useState<string>('');
+    const [dwsWidth, setDwsWidth] = useState<string>('');
+    const [dwsHeight, setDwsHeight] = useState<string>('');
+    const [dwsWeightGrams, setDwsWeightGrams] = useState<string>('');
+
+    const dwsVolumetricKg = (Number(dwsLength) > 0 && Number(dwsWidth) > 0 && Number(dwsHeight) > 0)
+        ? (Number(dwsLength) * Number(dwsWidth) * Number(dwsHeight)) / 3500
+        : 0;
+    const dwsActualKg = Number(dwsWeightGrams) > 0 ? Number(dwsWeightGrams) / 1000 : 0;
+    const dwsBillableKg = Math.max(dwsActualKg, dwsVolumetricKg);
+
     const barcodeInputRef = useRef<HTMLInputElement | null>(null);
     const pendingRequest = useRef<AbortController | null>(null);
     useOperationalRefresh(isSubmitting, ['activeHub', 'hubs', 'basePath', 'recentScans', 'pendingOriginIntake', 'counterPickups', 'counterTotal', 'stats']);
@@ -164,6 +180,10 @@ export default function ScanStation({
         setScanError(null);
         setRecoveryUrl(null);
         setScanMessage(null);
+        setDwsLength('');
+        setDwsWidth('');
+        setDwsHeight('');
+        setDwsWeightGrams('');
         setIsSubmitting(false);
         return () => { pendingRequest.current?.abort(); pendingRequest.current = null; };
     }, [activeHub?.id]);
@@ -361,6 +381,16 @@ export default function ScanStation({
                     )}
 
                     {returnResult && <section className="mb-4 rounded-lg border border-slate-300 bg-white p-5"><h2 className="font-bold text-slate-900">Buyer return {returnResult.reference}</h2><p className="mt-2 break-all text-sm text-slate-600">{returnResult.barcode}</p><p className="mt-2 text-sm text-slate-600">This scan identifies the separate return. Record its real intake or manifest handover from the case.</p><Link href={returnResult.href} className="mt-4 inline-flex rounded-lg bg-[#E00D42] px-4 py-2.5 text-sm font-semibold text-white">Open buyer return</Link></section>}
+
+                    {/* Interactive Animated Conveyor Rail (Hub 6 Stations) */}
+                    <HubConveyorRail
+                        currentStatus={lastResult?.delivery?.status || ''}
+                        deliveryType={lastResult?.delivery?.delivery_type || 'standard'}
+                        basePath={basePath}
+                        isScanning={isSubmitting}
+                        trackingNumber={lastResult?.delivery?.tracking_number}
+                    />
+
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                         {/* LEFT COLUMN: Physical & Optical Barcode Scanner (col-span-6) */}
                         <div className="lg:col-span-6 space-y-4">
@@ -445,9 +475,47 @@ export default function ScanStation({
                                     <HubNextStep title={lastResult.delivery.guidance.next_step} tone={lastResult.delivery.guidance.blocker ? 'warning' : 'brand'} icon={ArrowRight}><p><span className="font-medium text-slate-700">Next person:</span> {lastResult.delivery.guidance.responsible}</p>{lastResult.delivery.guidance.blocker && <p className="mt-1 text-amber-800">{lastResult.delivery.guidance.blocker}</p>}</HubNextStep>
                                     <HubParcelState guidance={lastResult.delivery.guidance} />
                                     {lastResult.delivery.routing_target && activeHub && <HubRoute stops={[activeHub,lastResult.delivery.routing_target]} label="Planned next hub" />}
-                                    {lastResult.delivery.guidance.action !== 'scan' && <HubParcelAction guidance={lastResult.delivery.guidance} />}
 
-                                    {lastResult.prompt.manifest_url && !lastResult.delivery.guidance.href && lastResult.delivery.guidance.can_act && <div className="rounded-lg border border-slate-300 bg-white p-3.5"><p className="mb-3 text-xs text-slate-700">Use the recorded manifest to load, dispatch or receive this parcel. Its actual list and scans establish transport custody.</p><Link className="text-sm font-semibold text-[#E00D42]" href={lastResult.prompt.manifest_url}>Open manifests</Link></div>}
+                                    {/* Prominent Next Action Card for Manifest Transfer */}
+                                    {(lastResult.delivery.guidance.action === 'manifest' || lastResult.prompt.manifest_url) && lastResult.delivery.guidance.can_act && (
+                                        <div className="rounded-xl border border-rose-300 bg-rose-50/70 p-4 shadow-sm space-y-3">
+                                            <div className="flex items-start gap-3">
+                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E00D42] text-white shadow-xs">
+                                                    <Truck className="h-5 w-5" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-bold uppercase tracking-wider text-[#C20836]">
+                                                            Next Operational Step
+                                                        </span>
+                                                        {lastResult.alreadyReceived && (
+                                                            <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                                                                Intake Verified
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <h3 className="mt-0.5 text-sm font-bold text-slate-900">
+                                                        Dispatch on Vehicle Transfer Manifest
+                                                    </h3>
+                                                    <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                                                        This parcel is safely stored at <strong>{activeHub?.name}</strong>. Enterprise chain-of-custody requires loading this parcel onto an authorized transfer manifest to reach <strong>{lastResult.delivery.routing_target?.name || 'the next facility'}</strong>.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="pt-1 flex flex-wrap gap-2">
+                                                <Link
+                                                    href={lastResult.prompt.manifest_url || lastResult.delivery.guidance.href || '/hub/manifests'}
+                                                    className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#C20836] transition cursor-pointer"
+                                                >
+                                                    <Send className="h-4 w-4" />
+                                                    <span>Open Manifests to Dispatch ({lastResult.delivery.routing_target?.code || 'Next Hub'})</span>
+                                                    <ArrowRight className="h-3.5 w-3.5" />
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {lastResult.delivery.guidance.action !== 'scan' && lastResult.delivery.guidance.action !== 'manifest' && <HubParcelAction guidance={lastResult.delivery.guidance} />}
 
                                     {lastResult.prompt.requires_confirmation && lastResult.delivery.guidance.can_act && lastResult.delivery.guidance.action === 'scan' && (
                                         <div className="rounded-lg border border-amber-300 bg-amber-50 p-3.5">
@@ -476,8 +544,89 @@ export default function ScanStation({
                                             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#E00D42]">View parcel records</Link>}
                                         <button type="button" disabled={isSubmitting} onClick={() => {
                                             setLastResult(null); setScanMessage(null); setBarcodeInput('');
+                                            setDwsLength(''); setDwsWidth(''); setDwsHeight(''); setDwsWeightGrams('');
                                             barcodeInputRef.current?.focus();
                                         }} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 disabled:opacity-50">Scan next parcel</button>
+                                    </div>
+
+                                    {/* DWS Volumetric Weight Sizing Tool */}
+                                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
+                                                <Scale className="h-4 w-4 text-[#E00D42]" />
+                                                <span>DWS Weight & Dimension Verification</span>
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                                                Divisor: 3,500
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                            <div>
+                                                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Length (cm)</label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.1"
+                                                    placeholder="0.0"
+                                                    value={dwsLength}
+                                                    onChange={(e) => setDwsLength(e.target.value)}
+                                                    className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900 focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Width (cm)</label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.1"
+                                                    placeholder="0.0"
+                                                    value={dwsWidth}
+                                                    onChange={(e) => setDwsWidth(e.target.value)}
+                                                    className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900 focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Height (cm)</label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.1"
+                                                    placeholder="0.0"
+                                                    value={dwsHeight}
+                                                    onChange={(e) => setDwsHeight(e.target.value)}
+                                                    className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900 focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Weight (grams)</label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="1"
+                                                    placeholder="0"
+                                                    value={dwsWeightGrams}
+                                                    onChange={(e) => setDwsWeightGrams(e.target.value)}
+                                                    className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900 focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {(dwsActualKg > 0 || dwsVolumetricKg > 0) && (
+                                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs border-t border-slate-100">
+                                                <div className="text-slate-600">
+                                                    <span>Actual: <strong>{dwsActualKg.toFixed(2)} kg</strong></span>
+                                                    <span className="mx-2">·</span>
+                                                    <span>Volumetric: <strong>{dwsVolumetricKg.toFixed(2)} kg</strong></span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-slate-500">Billable:</span>
+                                                    <span className="font-extrabold text-[#E00D42] bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md tabular-nums">
+                                                        {dwsBillableKg.toFixed(2)} kg
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Assigned Sort Bin */}

@@ -160,6 +160,7 @@ export default function CheckoutIndex({
         saved_address_id: (initialAddress?.id ?? null) as number | null,
         saved_address_location_token: (initialAddress?.location_token ?? null) as string | null,
     });
+    const [isEditingAddress, setIsEditingAddress] = useState(!initialAddress || !validDeliveryPin(initialAddress.latitude ?? null, initialAddress.longitude ?? null));
     const gps = useCheckoutGps(point => setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })));
 
     const handleAddressChange = (addressId: string) => {
@@ -221,6 +222,8 @@ export default function CheckoutIndex({
     };
 
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [orderDispatchStep, setOrderDispatchStep] = useState<'review' | 'dispatching' | 'confirmed'>('review');
+    const [dispatchErrorMessage, setDispatchErrorMessage] = useState<string | null>(null);
     const orderPending = useRef(false);
     const errorSummaryRef = useRef<HTMLDivElement>(null);
     const [hasConfirmedAgreement, setHasConfirmedAgreement] = useState(false);
@@ -390,21 +393,52 @@ export default function CheckoutIndex({
         }
 
         setHasConfirmedAgreement(false);
+        setOrderDispatchStep('review');
+        setDispatchErrorMessage(null);
         setShowConfirmModal(true);
     };
 
-    const submitFinalOrder = () => {
-        if (orderPending.current || processing) return;
+    const submitFinalOrder = async () => {
+        if (orderPending.current || processing || orderDispatchStep !== 'review') return;
         if (!canShowQuote || !pricing.ready || bestBusy || !hasConfirmedAgreement || kycStatus !== 'approved') {
             setShowConfirmModal(false);
             return;
         }
+
         orderPending.current = true;
-        post(route('checkout.store'), {
-            preserveScroll: true,
-            onError: () => requestAnimationFrame(() => errorSummaryRef.current?.focus()),
-            onFinish: () => { orderPending.current = false; setShowConfirmModal(false); },
-        });
+        setOrderDispatchStep('dispatching');
+        setDispatchErrorMessage(null);
+
+        const startTime = Date.now();
+        const minDispatchDurationMs = 1000; // Guaranteed minimum 1-second truck dispatch animation
+
+        try {
+            const response = await axios.post(route('checkout.store'), data, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            // Ensure the truck animation displays for at least a full 1000ms
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, minDispatchDurationMs - elapsed);
+            await new Promise(resolve => setTimeout(resolve, remaining));
+
+            // Morph into the checkmark animation!
+            setOrderDispatchStep('confirmed');
+
+            // Show checkmark for 1 second before navigating
+            setTimeout(() => {
+                const redirectUrl = response.data?.redirect || route('buyer.orders.index');
+                window.location.href = redirectUrl;
+            }, 1000);
+        } catch (error: any) {
+            orderPending.current = false;
+            setOrderDispatchStep('review');
+            const message = error.response?.data?.message || error.message || 'We could not complete your order. Please check your details.';
+            setDispatchErrorMessage(message);
+        }
     };
 
     const formatPrice = (amount?: number | string | null) => {
@@ -469,43 +503,126 @@ export default function CheckoutIndex({
                     {/* Left Column: Forms */}
                     <div className="lg:col-span-8 space-y-6 font-sans">
                         
-                        {/* 1. Verified Delivery Destination & Fulfillment Method */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-5">
-                            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
-                                    01
-                                </div>
-                                <div>
-                                    <h2 className="font-bold text-sm text-slate-900">
-                                        Fulfillment Method & Destination
+                        {/* 0. Items in this Order (Prominently Placed at the Top) */}
+                        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs space-y-4">
+                            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                <div className="flex items-center gap-2">
+                                    <Package className="h-4 w-4 text-[#E00D42]" />
+                                    <h2 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                                        Items in this Order ({items.length})
                                     </h2>
-                                    <p className="text-[11px] text-slate-500">Choose doorstep courier dispatch or free collection at a Bayan Hub</p>
                                 </div>
+                                <Link href={route('buyer.cart')} className="text-[11px] font-semibold text-[#E00D42] hover:underline flex items-center gap-1">
+                                    <span>Modify Bag</span>
+                                </Link>
                             </div>
 
-                            {/* Fulfillment Method Selector Cards */}
-                            <label className="block text-sm font-semibold text-slate-800">Logistics company
-                                <select required value={data.logistics_company_id} onChange={event => setData({ ...data, logistics_company_id: event.target.value, pickup_hub_id: '' })} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-[#E00D42] focus:ring-[#E00D42]">
-                                    <option value="">Choose a logistics company</option>
-                                    {servingCompanies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}
+                            <div className="divide-y divide-slate-100 font-sans text-xs">
+                                {quote.shops.map(shop => (
+                                    <div key={shop.shop_id} className="py-3 first:pt-0 last:pb-0 space-y-3" aria-label={shop.shop_name}>
+                                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                                            <Store className="h-3.5 w-3.5 text-[#E00D42]" />
+                                            <span>{shop.shop_name}</span>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {items.filter(item => item.product?.shop?.id === shop.shop_id).map((item) => (
+                                                <div key={item.id} className="flex items-center justify-between gap-4 py-2">
+                                                    <div className="flex items-center gap-4 min-w-0">
+                                                        <span className="relative flex h-20 w-20 sm:h-24 sm:w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 text-slate-400 shadow-2xs">
+                                                            <Package className="h-8 w-8 text-slate-300" aria-hidden="true" />
+                                                            {((item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image) && (
+                                                                <img
+                                                                    src={(item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image || ''}
+                                                                    alt=""
+                                                                    loading="lazy"
+                                                                    onError={event => event.currentTarget.remove()}
+                                                                    className="absolute inset-0 h-full w-full object-cover"
+                                                                />
+                                                            )}
+                                                        </span>
+                                                        <div className="min-w-0 space-y-1">
+                                                            <p className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">{item.product?.name}</p>
+                                                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                                                <span className="font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">Qty: {item.quantity}</span>
+                                                                {(item.color || item.size) && (
+                                                                    <span className="text-slate-500">· {[item.color, item.size].filter(Boolean).join(' / ')}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="text-right shrink-0">
+                                                        <p className="font-bold text-slate-900 text-base tabular-nums">
+                                                            {quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}
+                                                        </p>
+                                                        {item.quantity > 1 && (
+                                                            <p className="text-xs text-slate-400 mt-0.5">
+                                                                {formatPrice(item.product?.price)} each
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Shop Voucher selector */}
+                                        <div className="flex items-center justify-between text-xs py-1.5 px-3 rounded-xl bg-slate-50 border border-slate-200/60">
+                                            <span className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                                                <Tag className="h-3 w-3 text-[#E00D42]" />
+                                                <span>Shop voucher: <strong className="text-slate-800">{appliedVouchers.find(offer => offer.shop_id === shop.shop_id)?.code ?? 'No voucher applied'}</strong></span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                disabled={pricing.pending || bestBusy}
+                                                onClick={() => setPickerSlot(shop.shop_id)}
+                                                className="text-[11px] font-bold text-[#E00D42] hover:underline disabled:opacity-50 cursor-pointer"
+                                            >
+                                                Choose voucher
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 1. Fulfillment & Delivery */}
+                        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs space-y-5">
+                            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                                <div className="w-7 h-7 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
+                                    01
+                                </div>
+                                <h2 className="font-bold text-sm text-slate-900">
+                                    Fulfillment Method & Destination
+                                </h2>
+                            </div>
+
+                            {/* Minimalist Logistics Carrier Dropdown */}
+                            <div>
+                                <label htmlFor="checkout-carrier-select" className="block text-xs font-bold text-slate-800 mb-1.5">
+                                    Logistics Carrier
+                                </label>
+                                <select
+                                    id="checkout-carrier-select"
+                                    required
+                                    value={data.logistics_company_id}
+                                    onChange={event => setData({ ...data, logistics_company_id: event.target.value, pickup_hub_id: '' })}
+                                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 shadow-2xs focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                >
+                                    <option value="">Choose a logistics carrier</option>
+                                    {servingCompanies.map(company => (
+                                        <option key={company.id} value={company.id}>{company.name}</option>
+                                    ))}
                                 </select>
-                                <span className="mt-1.5 block text-xs font-normal text-slate-600">{noServingCompany
-                                    ? 'No approved logistics company currently serves this address and every seller in your Bag. Try another address or ask the seller to confirm coverage.'
-                                    : data.delivery_type === 'doorstep' && !completeDoorstepDestination
-                                        ? 'Enter your province, city and four-digit postal code to check which companies can serve this route.'
-                                        : servingCompanies.length === 0
-                                            ? 'No eligible company is available for this delivery method. Review your address or collection hub.'
-                                            : 'Only eligible companies for the current delivery route are offered.'}</span>
-                                {selectedCompany && <span className="mt-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800">
-                                    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white text-[#C20836]">
-                                        <Truck className="h-4 w-4" aria-hidden="true" />
-                                        {selectedCompany.logo && <img src={selectedCompany.logo} alt="" loading="lazy" className="absolute inset-0 h-full w-full bg-white object-contain" onError={event => event.currentTarget.remove()} />}
+                                {noServingCompany && (
+                                    <span className="mt-1.5 block text-xs text-rose-600">
+                                        No approved logistics carrier currently serves this route.
                                     </span>
-                                    <span>Selected carrier: {selectedCompany.name}</span>
-                                </span>}
-                                <span className="mt-1.5 block text-xs font-normal text-slate-500">Shipping uses the greater of actual and volumetric weight. The selected company must serve every seller and your delivery destination.</span>
-                                {errors.logistics_company_id && <span className="mt-1 block text-xs text-rose-700">{errors.logistics_company_id}</span>}
-                            </label>
+                                )}
+                                {errors.logistics_company_id && (
+                                    <span className="mt-1 block text-xs text-rose-700">{errors.logistics_company_id}</span>
+                                )}
+                            </div>
                             <fieldset className="min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <legend className="sr-only">Delivery method</legend>
                                 {/* Option 1: Doorstep Delivery */}
@@ -531,9 +648,6 @@ export default function CheckoutIndex({
                                             {quotePrice(quote.doorstep_shipping_fee)}
                                         </span>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 mt-2 font-sans">
-                                        Shipping is calculated separately for each shop.
-                                    </p>
                                 </label>
 
                                 {/* Option 2: Free Bayan Hub Self-Pickup */}
@@ -541,7 +655,7 @@ export default function CheckoutIndex({
                                     className={`relative focus-within:ring-2 focus-within:ring-[#E00D42] focus-within:ring-offset-2 p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
                                         data.delivery_type === 'hub_self_pickup'
                                             ? 'border-[#E00D42] bg-rose-50/30 shadow-xs'
-                                            : 'border-slate-200 bg-white hover:border-slate-300'
+                                             : 'border-slate-200 bg-white hover:border-slate-300'
                                     }`}
                                 >
                                     <input type="radio" name="delivery_type" value="hub_self_pickup" checked={data.delivery_type === 'hub_self_pickup'} onChange={() => setData('delivery_type', 'hub_self_pickup')} className="sr-only" />
@@ -564,9 +678,6 @@ export default function CheckoutIndex({
                                             ₱0.00
                                         </span>
                                     </div>
-                                    <p className="text-[10px] text-slate-600 mt-2 font-sans">
-                                        No delivery fee. Private claim code and identity check at collection.
-                                    </p>
                                 </label>
                             </fieldset>
 
@@ -577,8 +688,8 @@ export default function CheckoutIndex({
                                         <Building2 className="w-5 h-5 text-[#E00D42] shrink-0 mt-0.5" />
                                         <div>
                                             <h3 className="text-xs font-bold text-slate-900">Select Collection Station (Bayan Hub)</h3>
-                                            <p className="text-[11px] text-slate-600 mt-0.5">
-                                                Choose a hub from your selected company serving the recipient address. Local parcels stay within one child hub; regional parcels travel through the Mother Hub network. Tracking shows collection readiness and private claim-code access.
+                                            <p className="text-[11px] text-slate-500 mt-0.5">
+                                                Select your local Bayan Hub for free self-collection.
                                             </p>
                                         </div>
                                     </div>
@@ -617,9 +728,6 @@ export default function CheckoutIndex({
                                                     <>
                                                         <p className="font-bold text-slate-900">{selectedHub.name} ({selectedHub.code})</p>
                                                         <p className="text-slate-600">{selectedHub.address}, {selectedHub.city_municipality}, {selectedHub.province}</p>
-                                                        <p className="text-[10px] text-slate-600 font-sans pt-1">
-                                                            Check the recorded hub hours in order tracking before travelling. Bring identification and your private claim code when collection is ready.
-                                                        </p>
                                                     </>
                                                 );
                                             })()}
@@ -629,352 +737,292 @@ export default function CheckoutIndex({
                                 </div>
                             )}
                             <div className="space-y-4">
-                                <div className="space-y-1">
-                                    <h3 className="text-sm font-bold text-slate-900">Recipient and address</h3>
-                                    {isHubPickup && <p className="text-xs leading-5 text-slate-600">Keep your own address here so we can check that the selected hub serves your area. Collection takes place at the selected hub, and this address is saved only if you choose to save it.</p>}
-                                </div>
-                                {/* Saved Address Dropdown Selector */}
-                                {addresses.length > 0 && (
-                                    <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-xl space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <label htmlFor="checkout-saved-address" className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                                                <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
-                                                <span>Select Saved Delivery Destination</span>
-                                            </label>
-                                            <Link
-                                                href={route('buyer.profile', { tab: 'addresses' })}
-                                                className="text-[11px] font-semibold text-[#E00D42] hover:underline"
-                                                target="_blank"
-                                            >
-                                                Manage Address Book
-                                            </Link>
-                                        </div>
-                                        <select
-                                            id="checkout-saved-address"
-                                            value={selectedAddressId}
-                                            onChange={(e) => handleAddressChange(e.target.value)}
-                                            className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition cursor-pointer shadow-2xs"
+                                <div className="flex items-center justify-between pb-1">
+                                    <h3 className="text-sm font-bold text-slate-900">Delivery Address</h3>
+                                    {addresses.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsEditingAddress(!isEditingAddress)}
+                                            className="text-xs font-bold text-[#E00D42] hover:underline cursor-pointer"
                                         >
-                                            {addresses.map((addr) => (
-                                                <option key={addr.id} value={String(addr.id)}>
-                                                    {addr.is_default ? '[DEFAULT] ' : ''}{addr.recipient_name} — {addr.street}, {addr.city} ({addr.phone})
-                                                </option>
-                                            ))}
-                                            <option value="new">+ Enter New / Different Address</option>
-                                        </select>
+                                            {isEditingAddress ? 'Minimize' : 'Edit / Change'}
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Minimized Single-Line Address Summary */}
+                                {!isEditingAddress && (
+                                    <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <MapPin className="w-4 h-4 text-[#E00D42] shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-bold text-slate-900 truncate">
+                                                    {data.recipient_name || 'No recipient name'} <span className="font-normal text-slate-500">({data.recipient_phone || 'No phone'})</span>
+                                                </p>
+                                                <p className="text-[11px] text-slate-600 truncate mt-0.5">
+                                                    {[data.shipping_address, data.destination_barangay, data.shipping_city, data.shipping_province, data.shipping_postal_code].filter(Boolean).join(', ') || 'No address line'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsEditingAddress(true)}
+                                            className="text-xs font-bold text-[#E00D42] hover:text-[#C20836] shrink-0 ml-3 px-3 py-1.5 rounded-lg border border-slate-300 bg-white shadow-2xs hover:bg-slate-50 transition cursor-pointer"
+                                        >
+                                            Edit
+                                        </button>
                                     </div>
                                 )}
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
-                                    <div>
-                                        <label htmlFor="checkout-recipient-name" className="mb-1.5 block font-semibold text-slate-700">Recipient name *</label>
-                                        <input id="checkout-recipient-name" name="recipient_name" type="text" required minLength={2} maxLength={100}
-                                            value={data.recipient_name} onChange={event => setData('recipient_name', event.target.value)}
-                                            aria-invalid={Boolean(errors.recipient_name)}
-                                            className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-900 focus:border-[#E00D42] focus:bg-white focus:ring-[#E00D42]" />
-                                        {errors.recipient_name && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_name}</p>}
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="checkout-phone" className="block font-semibold text-slate-700 mb-1.5">Contact phone *</label>
-                                        <PhoneInput
-                                            id="checkout-phone"
-                                            error={errors.recipient_phone}
-                                            value={data.recipient_phone}
-                                            onChange={(val) => setData('recipient_phone', val)}
-                                            placeholder="917 123 4567"
-                                            accentColor="primary"
-                                            helperText="10-digit mobile number (e.g. 917 123 4567)"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="sm:col-span-2">
-                                        <label htmlFor="checkout-shipping_address" className="block font-semibold text-slate-700 mb-1.5">Street Address, Unit / House No. *</label>
-                                        <input
-                                            id="checkout-shipping_address"
-                                            aria-invalid={Boolean(errors.shipping_address)}
-                                            aria-describedby={errors.shipping_address ? 'checkout-shipping_address-error' : undefined}
-                                            type="text"
-                                            maxLength={500}
-                                            minLength={5}
-                                            value={data.shipping_address}
-                                            onChange={(e) => updateDeliveryAddress('shipping_address', e.target.value)}
-                                            required
-                                            placeholder="House/Unit No., Street name, Subdivision"
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                        />
-                                        {errors.shipping_address && <p id="checkout-shipping_address-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_address}</p>}
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="checkout-destination_barangay" className="block font-semibold text-slate-700 mb-1.5">Barangay *</label>
-                                        <input
-                                            id="checkout-destination_barangay"
-                                            aria-invalid={Boolean(errors.destination_barangay)}
-                                            aria-describedby={errors.destination_barangay ? 'checkout-destination_barangay-error' : undefined}
-                                            type="text"
-                                            minLength={2}
-                                            value={data.destination_barangay}
-                                            required
-                                            maxLength={100}
-                                            onChange={(e) => updateDeliveryAddress('destination_barangay', e.target.value)}
-                                            placeholder="e.g. Brgy. Santisimo Rosario"
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                        />
-                                        {errors.destination_barangay && <p id="checkout-destination_barangay-error" className="text-rose-700 text-[11px] mt-1">{errors.destination_barangay}</p>}
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="checkout-shipping_city" className="block font-semibold text-slate-700 mb-1.5">City / Municipality *</label>
-                                        <input
-                                            id="checkout-shipping_city"
-                                            aria-invalid={Boolean(errors.shipping_city)}
-                                            aria-describedby={errors.shipping_city ? 'checkout-shipping_city-error' : undefined}
-                                            type="text"
-                                            maxLength={100}
-                                            minLength={2}
-                                            value={data.shipping_city}
-                                            onChange={(e) => updateDeliveryAddress('shipping_city', e.target.value)}
-                                            required
-                                            placeholder="e.g. San Pablo City"
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                        />
-                                        {errors.shipping_city && <p id="checkout-shipping_city-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_city}</p>}
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="checkout-shipping_province" className="block font-semibold text-slate-700 mb-1.5">Province *</label>
-                                        <input
-                                            id="checkout-shipping_province"
-                                            aria-invalid={Boolean(errors.shipping_province)}
-                                            aria-describedby={errors.shipping_province ? 'checkout-shipping_province-error' : undefined}
-                                            type="text"
-                                            minLength={2}
-                                            value={data.shipping_province}
-                                            required
-                                            maxLength={100}
-                                            onChange={(e) => updateDeliveryAddress('shipping_province', e.target.value)}
-                                            placeholder="e.g. Laguna"
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                        />
-                                        {errors.shipping_province && <p id="checkout-shipping_province-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_province}</p>}
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="checkout-shipping_postal_code" className="block font-semibold text-slate-700 mb-1.5">Postal Code *</label>
-                                        <input
-                                            id="checkout-shipping_postal_code"
-                                            aria-invalid={Boolean(errors.shipping_postal_code)}
-                                            aria-describedby={errors.shipping_postal_code ? 'checkout-shipping_postal_code-error' : undefined}
-                                            type="text"
-                                            inputMode="numeric"
-                                            maxLength={4}
-                                            required
-                                            pattern="[0-9]{4}"
-                                            placeholder="e.g. 4000"
-                                            minLength={4}
-                                            value={data.shipping_postal_code}
-                                            onChange={(e) => updateDeliveryAddress('shipping_postal_code', e.target.value)}
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                        />
-                                        {errors.shipping_postal_code && <p id="checkout-shipping_postal_code-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_postal_code}</p>}
-                                    </div>
-
-                                    {/* Delivery pin and landmark block */}
-                                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 sm:col-span-2 space-y-2.5">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                                <Crosshair className="w-3.5 h-3.5 text-[#E00D42]" />
-                                                Delivery location (required for doorstep delivery)
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={gps.capture}
-                                                disabled={gps.locating}
-                                                className="min-h-[44px] w-fit rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-[#E00D42] hover:text-[#E00D42] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
-                                            >
-                                                <MapPin className="w-3 h-3 text-[#E00D42]" />
-                                                <span>{gps.locating ? 'Acquiring GPS...' : 'Pin My Current Location'}</span>
-                                            </button>
-                                        </div>
-
-                                        {gps.status && (
-                                            <p role="status" className="text-xs font-sans text-slate-700 bg-slate-100 px-3 py-2 rounded-lg">
-                                                {gps.status}
-                                            </p>
+                                {/* Collapsible Address Editor Form and Map Pin Picker */}
+                                {isEditingAddress && (
+                                    <div className="space-y-4 pt-1">
+                                        {/* Saved Address Dropdown Selector */}
+                                        {addresses.length > 0 && (
+                                            <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-xl space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <label htmlFor="checkout-saved-address" className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                                                        <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
+                                                        <span>Select Saved Delivery Destination</span>
+                                                    </label>
+                                                    <Link
+                                                        href={route('buyer.profile', { tab: 'addresses' })}
+                                                        className="text-[11px] font-semibold text-[#E00D42] hover:underline"
+                                                        target="_blank"
+                                                    >
+                                                        Manage Address Book
+                                                    </Link>
+                                                </div>
+                                                <select
+                                                    id="checkout-saved-address"
+                                                    value={selectedAddressId}
+                                                    onChange={(e) => {
+                                                        handleAddressChange(e.target.value);
+                                                        if (e.target.value !== 'new') {
+                                                            setIsEditingAddress(false);
+                                                        }
+                                                    }}
+                                                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition cursor-pointer shadow-2xs"
+                                                >
+                                                    {addresses.map((addr) => (
+                                                        <option key={addr.id} value={String(addr.id)}>
+                                                            {addr.is_default ? '[DEFAULT] ' : ''}{addr.recipient_name} — {addr.street}, {addr.city} ({addr.phone})
+                                                        </option>
+                                                    ))}
+                                                    <option value="new">+ Enter New / Different Address</option>
+                                                </select>
+                                            </div>
                                         )}
 
-                                        <LocationPinPicker
-                                            value={data.shipping_latitude !== '' && data.shipping_longitude !== '' && Number.isFinite(Number(data.shipping_latitude)) && Number.isFinite(Number(data.shipping_longitude))
-                                                ? { latitude: Number(data.shipping_latitude), longitude: Number(data.shipping_longitude) } : null}
-                                            onChange={point => { gps.cancel(); setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })); }}
-                                        />
-                                        {data.saved_address_id !== null && <p className="text-xs text-slate-600">Placing your order will save this pin to the selected address.</p>}
-                                        <p id="checkout-location-help" className="text-xs text-slate-600">Move the map pin or use GPS. Your delivery point is saved automatically.</p>
-                                        {hasInvalidDeliveryLocation && <p role="alert" className="text-xs text-rose-700">{deliveryLocationErrorMessage}</p>}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
+                                            <div>
+                                                <label htmlFor="checkout-recipient-name" className="mb-1.5 block font-semibold text-slate-700">Recipient name *</label>
+                                                <input id="checkout-recipient-name" name="recipient_name" type="text" required minLength={2} maxLength={100}
+                                                    value={data.recipient_name} onChange={event => setData('recipient_name', event.target.value)}
+                                                    aria-invalid={Boolean(errors.recipient_name)}
+                                                    className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-slate-900 focus:border-[#E00D42] focus:bg-white focus:ring-[#E00D42]" />
+                                                {errors.recipient_name && <p className="text-rose-500 text-[11px] mt-1">{errors.recipient_name}</p>}
+                                            </div>
 
-                                        <div>
-                                            <label htmlFor="checkout-landmark" className="block text-[10px] text-slate-600 font-bold mb-0.5">
-                                                Delivery landmark (optional)
-                                            </label>
-                                            <input
-                                                id="checkout-landmark"
-                                                aria-invalid={Boolean(errors.landmark)}
-                                                aria-describedby={errors.landmark ? 'checkout-landmark-error' : undefined}
-                                                type="text"
-                                                list="checkout-landmark-suggestions"
-                                                placeholder="e.g. Tapat ng Barangay Hall, Dilaw na Gate na may black fence, tabi ng tindahan"
-                                                maxLength={255}
-                                                minLength={5}
-                                                value={data.landmark}
-                                                onChange={(e) => setData('landmark', e.target.value)}
-                                                className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
-                                            />
-                                            <datalist id="checkout-landmark-suggestions">
-                                                <option value="Near the barangay hall" />
-                                                <option value="Near the public market" />
-                                                <option value="Near the school" />
-                                                <option value="Near the church" />
-                                                <option value="Near the health center" />
-                                                <option value="At the building gate" />
-                                            </datalist>
-                                            {errors.landmark && <p id="checkout-landmark-error" className="text-rose-700 text-[11px] mt-1">{errors.landmark}</p>}
-                                            <p className="text-[10px] text-slate-400 mt-0.5">
-                                                Add a useful landmark or location to help the rider find your address. Check the pin before placing your order.
-                                            </p>
+                                            <div>
+                                                <label htmlFor="checkout-phone" className="block font-semibold text-slate-700 mb-1.5">Contact phone *</label>
+                                                <PhoneInput
+                                                    id="checkout-phone"
+                                                    error={errors.recipient_phone}
+                                                    value={data.recipient_phone}
+                                                    onChange={(val) => setData('recipient_phone', val)}
+                                                    placeholder="917 123 4567"
+                                                    accentColor="primary"
+                                                    helperText="10-digit mobile number (e.g. 917 123 4567)"
+                                                    required
+                                                />
+                                            </div>
+
+                                            <div className="sm:col-span-2">
+                                                <label htmlFor="checkout-shipping_address" className="block font-semibold text-slate-700 mb-1.5">Street Address, Unit / House No. *</label>
+                                                <input
+                                                    id="checkout-shipping_address"
+                                                    aria-invalid={Boolean(errors.shipping_address)}
+                                                    aria-describedby={errors.shipping_address ? 'checkout-shipping_address-error' : undefined}
+                                                    type="text"
+                                                    maxLength={500}
+                                                    minLength={5}
+                                                    value={data.shipping_address}
+                                                    onChange={(e) => updateDeliveryAddress('shipping_address', e.target.value)}
+                                                    required
+                                                    placeholder="House/Unit No., Street name, Subdivision"
+                                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                                />
+                                                {errors.shipping_address && <p id="checkout-shipping_address-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_address}</p>}
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="checkout-destination_barangay" className="block font-semibold text-slate-700 mb-1.5">Barangay *</label>
+                                                <input
+                                                    id="checkout-destination_barangay"
+                                                    aria-invalid={Boolean(errors.destination_barangay)}
+                                                    aria-describedby={errors.destination_barangay ? 'checkout-destination_barangay-error' : undefined}
+                                                    type="text"
+                                                    minLength={2}
+                                                    value={data.destination_barangay}
+                                                    required
+                                                    maxLength={100}
+                                                    onChange={(e) => updateDeliveryAddress('destination_barangay', e.target.value)}
+                                                    placeholder="e.g. Brgy. Santisimo Rosario"
+                                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                                />
+                                                {errors.destination_barangay && <p id="checkout-destination_barangay-error" className="text-rose-700 text-[11px] mt-1">{errors.destination_barangay}</p>}
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="checkout-shipping_city" className="block font-semibold text-slate-700 mb-1.5">City / Municipality *</label>
+                                                <input
+                                                    id="checkout-shipping_city"
+                                                    aria-invalid={Boolean(errors.shipping_city)}
+                                                    aria-describedby={errors.shipping_city ? 'checkout-shipping_city-error' : undefined}
+                                                    type="text"
+                                                    maxLength={100}
+                                                    minLength={2}
+                                                    value={data.shipping_city}
+                                                    onChange={(e) => updateDeliveryAddress('shipping_city', e.target.value)}
+                                                    required
+                                                    placeholder="e.g. San Pablo City"
+                                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                                />
+                                                {errors.shipping_city && <p id="checkout-shipping_city-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_city}</p>}
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="checkout-shipping_province" className="block font-semibold text-slate-700 mb-1.5">Province *</label>
+                                                <input
+                                                    id="checkout-shipping_province"
+                                                    aria-invalid={Boolean(errors.shipping_province)}
+                                                    aria-describedby={errors.shipping_province ? 'checkout-shipping_province-error' : undefined}
+                                                    type="text"
+                                                    minLength={2}
+                                                    value={data.shipping_province}
+                                                    required
+                                                    maxLength={100}
+                                                    onChange={(e) => updateDeliveryAddress('shipping_province', e.target.value)}
+                                                    placeholder="e.g. Laguna"
+                                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                                />
+                                                {errors.shipping_province && <p id="checkout-shipping_province-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_province}</p>}
+                                            </div>
+
+                                            <div>
+                                                <label htmlFor="checkout-shipping_postal_code" className="block font-semibold text-slate-700 mb-1.5">Postal Code *</label>
+                                                <input
+                                                    id="checkout-shipping_postal_code"
+                                                    aria-invalid={Boolean(errors.shipping_postal_code)}
+                                                    aria-describedby={errors.shipping_postal_code ? 'checkout-shipping_postal_code-error' : undefined}
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    maxLength={4}
+                                                    required
+                                                    pattern="[0-9]{4}"
+                                                    placeholder="e.g. 4000"
+                                                    minLength={4}
+                                                    value={data.shipping_postal_code}
+                                                    onChange={(e) => updateDeliveryAddress('shipping_postal_code', e.target.value)}
+                                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                                />
+                                                {errors.shipping_postal_code && <p id="checkout-shipping_postal_code-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_postal_code}</p>}
+                                            </div>
+
+                                            {/* Delivery pin and landmark block */}
+                                            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 sm:col-span-2 space-y-2.5">
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                                        <Crosshair className="w-3.5 h-3.5 text-[#E00D42]" />
+                                                        Delivery location (required for doorstep delivery)
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={gps.capture}
+                                                        disabled={gps.locating}
+                                                        className="min-h-[44px] w-fit rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-[#E00D42] hover:text-[#E00D42] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+                                                    >
+                                                        <MapPin className="w-3 h-3 text-[#E00D42]" />
+                                                        <span>{gps.locating ? 'Acquiring GPS...' : 'Pin My Current Location'}</span>
+                                                    </button>
+                                                </div>
+
+                                                {gps.status && (
+                                                    <p role="status" className="text-xs font-sans text-slate-700 bg-slate-100 px-3 py-2 rounded-lg">
+                                                        {gps.status}
+                                                    </p>
+                                                )}
+
+                                                <LocationPinPicker
+                                                    value={data.shipping_latitude !== '' && data.shipping_longitude !== '' && Number.isFinite(Number(data.shipping_latitude)) && Number.isFinite(Number(data.shipping_longitude))
+                                                        ? { latitude: Number(data.shipping_latitude), longitude: Number(data.shipping_longitude) } : null}
+                                                    onChange={point => { gps.cancel(); setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })); }}
+                                                />
+                                                {hasInvalidDeliveryLocation && <p role="alert" className="text-xs text-rose-700">{deliveryLocationErrorMessage}</p>}
+
+                                                <div>
+                                                    <label htmlFor="checkout-landmark" className="block text-[10px] text-slate-600 font-bold mb-0.5">
+                                                        Delivery landmark (optional)
+                                                    </label>
+                                                    <input
+                                                        id="checkout-landmark"
+                                                        aria-invalid={Boolean(errors.landmark)}
+                                                        aria-describedby={errors.landmark ? 'checkout-landmark-error' : undefined}
+                                                        type="text"
+                                                        list="checkout-landmark-suggestions"
+                                                        placeholder="e.g. Tapat ng Barangay Hall, Dilaw na Gate na may black fence, tabi ng tindahan"
+                                                        maxLength={255}
+                                                        minLength={5}
+                                                        value={data.landmark}
+                                                        onChange={(e) => setData('landmark', e.target.value)}
+                                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                                                    />
+                                                    <datalist id="checkout-landmark-suggestions">
+                                                        <option value="Near the barangay hall" />
+                                                        <option value="Near the public market" />
+                                                        <option value="Near the school" />
+                                                        <option value="Near the church" />
+                                                        <option value="Near the health center" />
+                                                        <option value="At the building gate" />
+                                                    </datalist>
+                                                    {errors.landmark && <p id="checkout-landmark-error" className="text-rose-700 text-[11px] mt-1">{errors.landmark}</p>}
+                                                </div>
+                                            </div>
+
+                                            {selectedAddressId === 'new' && (
+                                                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 select-none pt-1 sm:col-span-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={data.save_address}
+                                                        disabled={addresses.length >= addressBookLimit || !isHubPickup}
+                                                        onChange={(e) => setData('save_address', e.target.checked)}
+                                                        className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                                    />
+                                                    <span>{addresses.length >= addressBookLimit ? (!isHubPickup ? `Your address book has ${addressBookLimit} addresses. Choose one or remove an address before saving a new one.` : `Your address book has ${addressBookLimit} addresses. You can use this address for this order without saving it.`) : !isHubPickup ? 'This delivery address and pin will be saved to your address book.' : 'Save this address to my address book'}</span>
+                                                </label>
+                                            )}
+                                        </div>
+
+                                        <div className="flex justify-end pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditingAddress(false)}
+                                                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition shadow-2xs cursor-pointer"
+                                            >
+                                                Done / Minimize Address
+                                            </button>
                                         </div>
                                     </div>
-
-                                    {selectedAddressId === 'new' && (
-                                        <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 select-none pt-1 sm:col-span-2">
-                                            <input
-                                                type="checkbox"
-                                                checked={data.save_address}
-                                                disabled={addresses.length >= addressBookLimit || !isHubPickup}
-                                                onChange={(e) => setData('save_address', e.target.checked)}
-                                                className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
-                                            />
-                                            <span>{addresses.length >= addressBookLimit ? (!isHubPickup ? `Your address book has ${addressBookLimit} addresses. Choose one or remove an address before saving a new one.` : `Your address book has ${addressBookLimit} addresses. You can use this address for this order without saving it.`) : !isHubPickup ? 'This delivery address and pin will be saved to your address book.' : 'Save this address to my address book'}</span>
-                                        </label>
-                                    )}
-                                </div>
+                                )}
                             </div>
                         </div>
 
-                        {/* 2. Package Items in this Order */}
+                        {/* 2. Payment Method */}
                         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
                             <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
                                 <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
                                     02
-                                </div>
-                                <h2 className="flex items-center gap-2 font-bold text-sm text-slate-900">
-                                    <Package className="h-4 w-4 text-[#C20836]" aria-hidden="true" />
-                                    Items In Your Shopping Bag ({items.length})
-                                </h2>
-                            </div>
-
-                            <div className="divide-y divide-slate-100 font-sans text-xs">
-                                {quote.shops.map(shop => <section key={shop.shop_id} className="space-y-3 py-4" aria-label={shop.shop_name}>
-                                    <h3 className="font-bold text-sm text-slate-900">{shop.shop_name}</h3><ShippingCalculation calculation={shop.shipping_quote} selfPickup={data.delivery_type === 'hub_self_pickup'} />
-                                    {items.filter(item => item.product?.shop?.id === shop.shop_id).map((item) => (
-                                    <div key={item.id} className="py-3.5 flex items-center justify-between gap-4">
-                                        <div className="flex items-center gap-3.5 min-w-0">
-                                            <span className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-slate-400">
-                                                <Package className="h-5 w-5" aria-hidden="true" />
-                                                {((item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image) && <img
-                                                    src={(item.color && item.product?.variants?.colors?.find(c => c.name === item.color)?.image_url) || item.product?.featured_image || ''}
-                                                    alt=""
-                                                    loading="lazy"
-                                                    onError={event => event.currentTarget.remove()}
-                                                    className="absolute inset-0 h-full w-full bg-white object-cover"
-                                                />}
-                                            </span>
-                                            <div className="truncate space-y-0.5">
-                                                <p className="font-bold text-slate-900 truncate text-xs">{item.product?.name}</p>
-                                                <p className="text-slate-500 text-[11px]">
-                                                    Shop: {item.product?.shop?.name || 'Bagoo Prime Store'}
-                                                </p>
-                                                {(item.color || item.size) && (
-                                                    <p className="text-slate-400 text-[11px]">
-                                                        Variant: {[item.color, item.size].filter(Boolean).join(' / ')}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="text-right shrink-0">
-                                            <p className="text-slate-500 text-[11px]">
-                                                <PriceSegments segments={quotedItems.get(item.id)?.price_segments} quantity={quotedItems.get(item.id)?.quantity ?? item.quantity} unitPrice={quotedItems.get(item.id)?.unit_price ?? Number(item.unit_price)} />
-                                            </p>
-                                            <p className="font-bold text-slate-900 text-sm">
-                                                {quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                                    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-300 p-3">
-                                        <span className="flex items-center gap-1.5 text-xs text-slate-600"><Tag className="h-3.5 w-3.5 text-[#C20836]" aria-hidden="true" />Shop voucher · {appliedVouchers.find(offer => offer.shop_id === shop.shop_id)?.code ?? 'No voucher'}</span>
-                                        <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(shop.shop_id)} className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50"><Tag className="h-3.5 w-3.5" aria-hidden="true" />Choose voucher</button>
-                                    </div>
-                                    <CheckoutVoucherBreakdown quote={quote} shopId={shop.shop_id} price={quotePrice} />
-                                </section>)}
-                            </div>
-                        </div>
-
-                        {/* 3. Logistics & Delivery Carrier */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
-                                    03
-                                </div>
-                                <h2 className="font-bold text-sm text-slate-900">
-                                    Logistics Carrier & Delivery
-                                </h2>
-                            </div>
-
-                            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex items-start justify-between gap-4 text-xs font-sans">
-                                <div className="flex items-start gap-3.5">
-                                    <div className="w-9 h-9 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center shrink-0 mt-0.5">
-                                        {isHubPickup ? (
-                                            <Store className="w-5 h-5 text-[#E00D42]" />
-                                        ) : (
-                                            <Truck className="w-5 h-5 text-[#E00D42]" />
-                                        )}
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
-                                            <span>{servingCompanies.find(company => String(company.id) === String(data.logistics_company_id))?.name ?? 'Selected logistics company'}</span>
-                                            <span className={`px-2 py-0.5 rounded-xs text-[10px] font-sans font-bold ${
-                                                isHubPickup ? 'bg-rose-100 text-[#E00D42]' : 'bg-slate-200 text-slate-800'
-                                            }`}>
-                                                {isHubPickup ? 'FREE SELF-PICKUP' : 'CONTIGUOUS ROAD FREIGHT'}
-                                            </span>
-                                        </div>
-                                        <p className="text-slate-500 text-[11px] leading-relaxed">
-                                            {isHubPickup
-                                                ? 'Collected from the seller, routed through the company’s hubs and held for your secure counter collection. Local parcels stay within one child hub.'
-                                                : 'Collected from the seller, routed through the company’s hubs and delivered by your assigned rider. Local parcels stay within one child hub.'}
-                                        </p>
-                                        <p className="text-slate-400 text-[10px] font-sans">
-                                            Follow recorded parcel updates in My Purchases after ordering.
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="text-right shrink-0">
-                                    <span className="text-[10px] text-slate-400 block font-sans">SHIPPING RATE</span>
-                                    <span className={`text-sm font-black ${finalShippingFee === 0 ? 'text-[#E00D42]' : 'text-slate-900'}`}>
-                                        {quotePrice(finalShippingFee)}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 4. Payment Method */}
-                        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-                                <div className="w-8 h-8 rounded-lg bg-[#E00D42]/10 text-[#E00D42] flex items-center justify-center font-bold text-xs">
-                                    04
                                 </div>
                                 <div className="flex items-center justify-between flex-1">
                                     <h2 className="font-bold text-sm text-slate-900">
@@ -992,14 +1040,12 @@ export default function CheckoutIndex({
                     {/* Right Column: Order Total Breakdown */}
                     <div className="lg:col-span-4 space-y-6 font-sans text-xs">
                         
-                        <div className="space-y-3 rounded-2xl border border-slate-300 bg-white p-5 shadow-2xs">
+                        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
                             <div className="flex items-center justify-between gap-3">
                                 <div><h3 className="flex items-center gap-2 font-bold text-slate-900"><Gift className="h-4 w-4 text-[#C20836]" aria-hidden="true" />Bagoo voucher</h3><p className="mt-1 text-xs text-slate-600">{appliedVouchers.find(offer => offer.issuer === 'platform')?.code ?? 'No voucher'}</p></div>
-                                <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(null)} className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50"><Tag className="h-3.5 w-3.5" aria-hidden="true" />Choose voucher</button>
+                                <button type="button" disabled={pricing.pending || bestBusy} onClick={() => setPickerSlot(null)} className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-300 px-3 text-xs font-bold text-[#C20836] disabled:opacity-50 hover:bg-slate-50 transition"><Tag className="h-3.5 w-3.5" aria-hidden="true" />Choose voucher</button>
                             </div>
-                            <button type="button" onClick={useBestVouchers} disabled={!pricing.ready || bestBusy} className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{bestBusy ? 'Comparing offers…' : 'Use best vouchers'}</button>
-                            <p className="text-xs leading-5 text-slate-600">One offer per shop and one Bagoo product or shipping offer. Manual choices and No voucher stay selected until you change them or they become unavailable.</p>
-                            <p className="text-xs leading-5 text-slate-500">Cancelled orders keep their voucher use. Delivery issues or returns do not automatically refund a payment or restore voucher use.</p>
+                            <button type="button" onClick={useBestVouchers} disabled={!pricing.ready || bestBusy} className="min-h-11 w-full rounded-xl border border-slate-300 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50">{bestBusy ? 'Comparing offers…' : 'Use best vouchers'}</button>
                             {voucherError && <p role="alert" className="text-xs text-rose-700">{voucherError}</p>}
                         </div>
 
@@ -1144,156 +1190,168 @@ export default function CheckoutIndex({
                 </form>
 
                 {/* ORDER PLACEMENT CONFIRMATION MODAL */}
-                <Dialog open={showConfirmModal} onClose={() => { if (!processing) setShowConfirmModal(false); }} className="relative z-50">
+                <Dialog open={showConfirmModal} onClose={() => { if (orderDispatchStep === 'review') setShowConfirmModal(false); }} className="relative z-50">
                     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs overflow-y-auto flex items-center justify-center p-3 sm:p-4 animate-fade-in">
-                        <DialogPanel className="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-4 sm:p-8 shadow-2xl border border-slate-200 space-y-5 sm:space-y-6 font-sans my-auto">
+                        <DialogPanel className="bg-white rounded-3xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-8 shadow-2xl border border-slate-200 font-sans my-auto">
                             
-                            {/* Modal Header */}
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                                <div>
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-[#E00D42]">
-                                        <ShoppingBag className="w-4 h-4" />
-                                        <span>Final Review Step</span>
-                                    </div>
-                                    <DialogTitle as="h3" className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
-                                        Confirm & Place Order
-                                    </DialogTitle>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfirmModal(false)}
-                                    disabled={processing}
-                                    aria-label="Close order review"
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
-
-                            {/* Summary Cards */}
-                            <div className="space-y-3 font-sans text-xs">
-                                
-                                {/* Recipient & Destination Summary */}
-                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
-                                    <span className="text-[11px] text-slate-400 font-semibold block flex items-center gap-1.5">
-                                        <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
-                                        <span>{isHubPickup ? 'Recipient address' : 'Delivery destination'}</span>
-                                    </span>
-                                    <p className="font-bold text-slate-900 text-sm">{data.recipient_name} ({data.recipient_phone})</p>
-                                    <p className="break-words text-slate-600 text-xs">{[data.shipping_address, data.destination_barangay, data.shipping_city, data.shipping_province, data.shipping_postal_code].filter(Boolean).join(', ')}</p>
-                                    {isHubPickup && selectedPickupHub && <div className="border-t border-slate-300 pt-2">
-                                        <p className="font-bold text-slate-900">Collect at {selectedPickupHub.name} ({selectedPickupHub.code})</p>
-                                        <p className="break-words text-slate-600">{[selectedPickupHub.address, selectedPickupHub.city_municipality, selectedPickupHub.province].filter(Boolean).join(', ')}</p>
-                                    </div>}
-                                </div>
-
-                                {/* Payment Mode & Voucher Summary */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-                                        <span className="text-[11px] text-slate-400 font-semibold block">Payment Mode</span>
-                                        <span className="font-bold text-slate-700 font-sans">{data.payment_method === 'wallet' ? 'BAGOO WALLET · VIRTUAL CREDITS' : 'CASH ON DELIVERY (COD)'}</span>
-                                    </div>
-                                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-                                        <span className="text-[11px] text-slate-400 font-semibold block">Applied Vouchers</span>
-                                        <span className="font-bold text-slate-800">{appliedVouchers.length ? appliedVouchers.map(offer => offer.code).join(', ') : 'None'}</span>
-                                    </div>
-                                </div>
-
-                                {/* Items Preview List */}
-                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5 max-h-40 overflow-y-auto">
-                                    <span className="text-[11px] text-slate-400 font-semibold block">Package Items ({items.length})</span>
-                                    <div className="divide-y divide-slate-200">
-                                        {items.map(item => (
-                                            <div key={item.id} className="py-2 flex items-center justify-between text-xs">
-                                                <div className="truncate pr-2">
-                                                    <span className="font-semibold text-slate-800 block truncate">{item.product?.name}</span>
-                                                    <span className="text-slate-500 text-[11px]">Qty: <PriceSegments segments={quotedItems.get(item.id)?.price_segments} quantity={quotedItems.get(item.id)?.quantity ?? item.quantity} unitPrice={quotedItems.get(item.id)?.unit_price ?? Number(item.unit_price)} /></span>
-                                                </div>
-                                                <span className="font-bold text-slate-900 shrink-0">{quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Total Amount */}
-                                <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-2xl flex items-center justify-between">
-                                    <span className="font-semibold text-slate-800 text-xs">Total Amount Due:</span>
-                                    <span className="text-xl font-black text-[#E00D42]">{quotePrice(grandTotal)}</span>
-                                </div>
-                            </div>
-
-                            {/* Verification Checkbox */}
-                            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700 select-none p-1 font-sans">
-                                <input
-                                    type="checkbox"
-                                    checked={hasConfirmedAgreement}
-                                    onChange={(e) => setHasConfirmedAgreement(e.target.checked)}
-                                    className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
-                                />
-                                <span>I have reviewed my shipping details and confirm this order placement.</span>
-                            </label>
-
-                            {/* Interactive Dispatch Processing Animation Card */}
-                            {processing && (
-                                <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-red-50 to-amber-50 border border-red-200 shadow-sm animate-fade-in font-sans">
-                                    <div className="flex items-center gap-3">
-                                        <div className="relative w-12 h-12 rounded-xl bg-[#E00D42] text-white flex flex-col items-center justify-center shadow-md overflow-hidden shrink-0">
-                                            <Truck className="w-5 h-5 text-white animate-truck-drive" />
-                                            {/* Road dash lines summing up underneath the truck */}
-                                            <div className="w-16 flex gap-1 animate-road-dash overflow-hidden mt-1">
-                                                <span className="w-2.5 h-0.5 bg-white/70 rounded-full shrink-0" />
-                                                <span className="w-1.5 h-0.5 bg-white/50 rounded-full shrink-0" />
-                                                <span className="w-3 h-0.5 bg-white/90 rounded-full shrink-0" />
-                                            </div>
+                            {/* Phase 1: Fixed 1-Second Truck Dispatching Animation */}
+                            {orderDispatchStep === 'dispatching' && (
+                                <div className="py-12 px-4 text-center space-y-6 animate-fade-in">
+                                    <div className="relative w-24 h-24 rounded-3xl bg-[#E00D42] text-white flex flex-col items-center justify-center shadow-xl overflow-hidden mx-auto">
+                                        <Truck className="w-10 h-10 text-white animate-truck-drive" />
+                                        <div className="w-20 flex gap-1 animate-road-dash overflow-hidden mt-2">
+                                            <span className="w-3 h-0.5 bg-white/70 rounded-full shrink-0" />
+                                            <span className="w-2 h-0.5 bg-white/50 rounded-full shrink-0" />
+                                            <span className="w-4 h-0.5 bg-white/90 rounded-full shrink-0" />
+                                            <span className="w-2 h-0.5 bg-white/60 rounded-full shrink-0" />
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between text-xs font-bold text-slate-900">
-                                                <span>Connecting to BagooPH Express Hub</span>
-                                                <span className="text-[#E00D42] font-black text-[11px] animate-pulse">Summing items & route…</span>
-                                            </div>
-                                            {/* Moving line summation progress */}
-                                            <div className="relative w-full h-1.5 bg-slate-200/90 rounded-full overflow-hidden mt-2">
-                                                <div className="absolute inset-y-0 w-2/5 bg-gradient-to-r from-[#E00D42] to-amber-500 rounded-full animate-line-sum" />
-                                            </div>
-                                            <p className="text-[10px] text-slate-500 mt-1.5">Locking inventory with verified store and reserving doorstep COD dispatch slot.</p>
-                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <DialogTitle as="h3" className="text-xl font-black text-slate-900 tracking-tight">
+                                            Connecting to BagooPH Express Hub…
+                                        </DialogTitle>
+                                        <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                                            Securing verified inventory & reserving doorstep COD dispatch slot
+                                        </p>
+                                    </div>
+                                    <div className="relative w-52 h-1.5 bg-slate-100 rounded-full overflow-hidden mx-auto">
+                                        <div className="absolute inset-y-0 w-2/5 bg-gradient-to-r from-[#E00D42] to-amber-500 rounded-full animate-line-sum" />
                                     </div>
                                 </div>
                             )}
 
-                            {/* Modal Action Buttons */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 font-sans text-xs">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfirmModal(false)}
-                                    disabled={processing}
-                                    className="py-3 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition text-center cursor-pointer"
-                                >
-                                    Edit Details
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={!hasConfirmedAgreement || processing || bestBusy || !canShowQuote || !pricing.ready}
-                                    onClick={submitFinalOrder}
-                                    className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
-                                >
-                                    {processing ? (
-                                        <div className="flex items-center justify-center gap-2">
-                                            <div className="relative flex flex-col items-center justify-center w-10 h-5 overflow-hidden">
-                                                <Truck className="w-3.5 h-3.5 text-white animate-truck-drive" />
-                                                <div className="w-14 flex gap-1 animate-road-dash overflow-hidden">
-                                                    <span className="w-2.5 h-0.5 bg-white/70 rounded-full shrink-0" />
-                                                    <span className="w-1.5 h-0.5 bg-white/50 rounded-full shrink-0" />
-                                                    <span className="w-3 h-0.5 bg-white/90 rounded-full shrink-0" />
-                                                </div>
+                            {/* Phase 2: Truck Morphs into Animated Checkmark */}
+                            {orderDispatchStep === 'confirmed' && (
+                                <div className="py-12 px-4 text-center space-y-6 animate-fade-in">
+                                    <div className="relative w-24 h-24 rounded-3xl bg-emerald-500 text-white flex items-center justify-center shadow-xl mx-auto animate-check-pop">
+                                        <Check className="w-12 h-12 text-white stroke-[3.5]" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <DialogTitle as="h3" className="text-xl font-black text-slate-900 tracking-tight">
+                                            Order Confirmed & Placed!
+                                        </DialogTitle>
+                                        <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                                            Dispatched to courier network. Redirecting to your purchases…
+                                        </p>
+                                    </div>
+                                    <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto opacity-60" />
+                                </div>
+                            )}
+
+                            {/* Phase 0: Review Step Before Placing Order */}
+                            {orderDispatchStep === 'review' && (
+                                <div className="space-y-5 sm:space-y-6">
+                                    {/* Modal Header */}
+                                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                        <div>
+                                            <div className="flex items-center gap-2 text-xs font-semibold text-[#E00D42]">
+                                                <ShoppingBag className="w-4 h-4" />
+                                                <span>Final Review Step</span>
                                             </div>
-                                            <span className="font-extrabold tracking-wide">Dispatching Order…</span>
+                                            <DialogTitle as="h3" className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
+                                                Confirm & Place Order
+                                            </DialogTitle>
                                         </div>
-                                    ) : (
-                                        <span>Confirm & Place Order</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmModal(false)}
+                                            aria-label="Close order review"
+                                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    </div>
+
+                                    {dispatchErrorMessage && (
+                                        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                                            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                                            <span>{dispatchErrorMessage}</span>
+                                        </div>
                                     )}
-                                </button>
-                            </div>
+
+                                    {/* Summary Cards */}
+                                    <div className="space-y-3 font-sans text-xs">
+                                        
+                                        {/* Recipient & Destination Summary */}
+                                        <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1">
+                                            <span className="text-[11px] text-slate-400 font-semibold block flex items-center gap-1.5">
+                                                <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
+                                                <span>{isHubPickup ? 'Recipient address' : 'Delivery destination'}</span>
+                                            </span>
+                                            <p className="font-bold text-slate-900 text-sm">{data.recipient_name} ({data.recipient_phone})</p>
+                                            <p className="break-words text-slate-600 text-xs">{[data.shipping_address, data.destination_barangay, data.shipping_city, data.shipping_province, data.shipping_postal_code].filter(Boolean).join(', ')}</p>
+                                            {isHubPickup && selectedPickupHub && <div className="border-t border-slate-300 pt-2">
+                                                <p className="font-bold text-slate-900">Collect at {selectedPickupHub.name} ({selectedPickupHub.code})</p>
+                                                <p className="break-words text-slate-600">{[selectedPickupHub.address, selectedPickupHub.city_municipality, selectedPickupHub.province].filter(Boolean).join(', ')}</p>
+                                            </div>}
+                                        </div>
+
+                                        {/* Payment Mode & Voucher Summary */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                                                <span className="text-[11px] text-slate-400 font-semibold block">Payment Mode</span>
+                                                <span className="font-bold text-slate-700 font-sans">{data.payment_method === 'wallet' ? 'BAGOO WALLET · VIRTUAL CREDITS' : 'CASH ON DELIVERY (COD)'}</span>
+                                            </div>
+                                            <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                                                <span className="text-[11px] text-slate-400 font-semibold block">Applied Vouchers</span>
+                                                <span className="font-bold text-slate-800">{appliedVouchers.length ? appliedVouchers.map(offer => offer.code).join(', ') : 'None'}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Items Preview List */}
+                                        <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5 max-h-40 overflow-y-auto">
+                                            <span className="text-[11px] text-slate-400 font-semibold block">Package Items ({items.length})</span>
+                                            <div className="divide-y divide-slate-200">
+                                                {items.map(item => (
+                                                    <div key={item.id} className="py-2 flex items-center justify-between text-xs">
+                                                        <div className="truncate pr-2">
+                                                            <span className="font-semibold text-slate-800 block truncate">{item.product?.name}</span>
+                                                            <span className="text-slate-500 text-[11px]">Qty: <PriceSegments segments={quotedItems.get(item.id)?.price_segments} quantity={quotedItems.get(item.id)?.quantity ?? item.quantity} unitPrice={quotedItems.get(item.id)?.unit_price ?? Number(item.unit_price)} /></span>
+                                                        </div>
+                                                        <span className="font-bold text-slate-900 shrink-0">{quotePrice(quotedItems.get(item.id)?.subtotal ?? Number(item.product?.price) * item.quantity)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Total Amount */}
+                                        <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-2xl flex items-center justify-between">
+                                            <span className="font-semibold text-slate-800 text-xs">Total Amount Due:</span>
+                                            <span className="text-xl font-black text-[#E00D42]">{quotePrice(grandTotal)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Verification Checkbox */}
+                                    <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700 select-none p-1 font-sans">
+                                        <input
+                                            type="checkbox"
+                                            checked={hasConfirmedAgreement}
+                                            onChange={(e) => setHasConfirmedAgreement(e.target.checked)}
+                                            className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                        />
+                                        <span>I have reviewed my shipping details and confirm this order placement.</span>
+                                    </label>
+
+                                    {/* Modal Action Buttons */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 font-sans text-xs">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmModal(false)}
+                                            className="py-3 px-4 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition text-center cursor-pointer"
+                                        >
+                                            Edit Details
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={!hasConfirmedAgreement || orderPending.current || bestBusy || !canShowQuote || !pricing.ready}
+                                            onClick={submitFinalOrder}
+                                            className="py-3 px-4 rounded-xl bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold transition text-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                                        >
+                                            <span>Confirm & Place Order</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                         </DialogPanel>
                     </div>

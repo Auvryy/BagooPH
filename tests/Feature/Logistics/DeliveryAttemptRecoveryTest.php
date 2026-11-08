@@ -320,7 +320,7 @@ class DeliveryAttemptRecoveryTest extends TestCase
     {
         return ['status' => 'delivery_failed', 'failure_reason' => 'customer_unreachable', 'courier_notes' => 'Called at the saved address; the buyer could not be reached.',
             'location_name' => 'At the saved buyer address',
-            'barcode' => $delivery->tracking_number, 'request_token' => (string) Str::uuid(), 'proof_image_file' => UploadedFile::fake()->image('attempt.jpg')];
+            'barcode' => $delivery->tracking_number, 'request_token' => (string) Str::uuid(), 'proof_image_file' => UploadedFile::fake()->createWithContent('attempt.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='))];
     }
 
     private function scan(Delivery $delivery, User $handler, LogisticsHub $hub, string $action, string $prefix): void

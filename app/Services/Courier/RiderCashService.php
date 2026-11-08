@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Validator;
 
 class RiderCashService
 {
+    public const MAX_UNREMITTED_CASH_CENTS = 2000000; // ₱20,000.00 float limit
+    public const WARNING_UNREMITTED_CASH_CENTS = 1500000; // ₱15,000.00 warning threshold
+
     public function __construct(private readonly CodCashService $cash, private readonly CodCashViewService $views) {}
 
     public function list(Request $request): array
@@ -94,6 +97,22 @@ class RiderCashService
         }
 
         return $data;
+    }
+
+    public function heldCashCents(User $rider): int
+    {
+        $query = $this->cash->scoped($rider);
+        $held = '0';
+        foreach ((clone $query)->cursor() as $account) {
+            $source = $this->views->present($account, $rider, false);
+            foreach ($source['holders'] as $holder) {
+                if ($holder['user_id'] === $rider->id && $holder['stage'] === 'rider') {
+                    $held = $this->add($held, (string) $holder['amount_cents']);
+                }
+            }
+        }
+
+        return (int) $held;
     }
 
     private function add(string $left, string $right): string
