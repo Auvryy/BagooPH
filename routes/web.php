@@ -343,6 +343,7 @@ $registerCourierRoutes = function () use ($registerCodRoutes) {
     Route::middleware(['auth', 'subdomain.role:courier', 'courier.approved'])->group(function () use ($registerCodRoutes) {
         $registerCodRoutes();
         Route::get('/deliveries', [CourierDeliveryController::class, 'index']);
+        Route::get('/navigation', [CourierDeliveryController::class, 'navigation']);
         Route::get('/navigation/{reference}', [CourierDeliveryController::class, 'navigationStop'])->middleware('throttle:60,1');
         Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim']);
         Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus']);
@@ -360,6 +361,8 @@ $registerCourierRoutes = function () use ($registerCodRoutes) {
         Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty']);
         Route::get('/dashboard', fn () => redirect('/deliveries'));
         Route::get('/courier/deliveries', fn () => redirect('/deliveries'));
+        Route::get('/trips', fn () => redirect('/earnings'));
+        Route::get('/courier/trips', fn () => redirect('/earnings'));
     });
 };
 
@@ -783,6 +786,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
 Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courier.')->group(function () use ($registerCodRoutes) {
     $registerCodRoutes(true);
     Route::get('/deliveries', [CourierDeliveryController::class, 'index'])->name('deliveries');
+    Route::get('/navigation', [CourierDeliveryController::class, 'navigation'])->name('navigation');
     Route::get('/navigation/{reference}', [CourierDeliveryController::class, 'navigationStop'])->middleware('throttle:60,1')->name('navigation-stop');
     Route::post('/deliveries/{delivery}/claim', [CourierDeliveryController::class, 'claim'])->name('claim');
     Route::patch('/deliveries/{delivery}/status', [CourierDeliveryController::class, 'updateStatus'])->name('updateStatus');
@@ -798,6 +802,7 @@ Route::middleware(['auth', 'courier.approved'])->prefix('courier')->name('courie
     Route::patch('/profile/account', [CourierDeliveryController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [PasswordController::class, 'update'])->name('profile.password.update');
     Route::post('/profile/toggle-duty', [CourierDeliveryController::class, 'toggleDuty'])->name('toggleDuty');
+    Route::get('/trips', fn () => redirect()->route('courier.earnings'))->name('trips');
 });
 
 /*

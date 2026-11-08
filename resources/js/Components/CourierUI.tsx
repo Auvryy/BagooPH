@@ -21,10 +21,31 @@ export function CourierBadge({ children, tone = 'neutral' }: PropsWithChildren<{
 }
 
 export function CourierParcelIdentifiers({ trackingNumber, orderNumber }: { trackingNumber: string; orderNumber: string | null }) {
-    return <dl className="grid min-w-0 gap-2 text-sm sm:grid-cols-2">
-        <div className="min-w-0"><dt className="text-xs font-medium text-slate-600">Waybill</dt><dd className="mt-1 break-all font-semibold text-slate-900">{trackingNumber}</dd></div>
-        <div className="min-w-0"><dt className="text-xs font-medium text-slate-600">Order reference</dt><dd className="mt-1 break-all font-medium text-slate-800">{orderNumber || 'Not provided'}</dd></div>
-    </dl>;
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200/90 bg-rose-50/50 p-3 sm:p-3.5">
+            <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-md border border-rose-300 bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#E00D42] shadow-2xs">
+                        Waybill to Scan
+                    </span>
+                    <span className="text-xs text-zinc-500 font-medium">Physical Box Label</span>
+                </div>
+                <p className="mt-1 break-all font-extrabold text-base sm:text-lg text-[#C20836] tracking-tight">
+                    {trackingNumber}
+                </p>
+            </div>
+            {orderNumber && (
+                <div className="text-left sm:text-right border-t sm:border-t-0 border-rose-200/60 pt-2 sm:pt-0 w-full sm:w-auto">
+                    <span className="text-[10px] font-bold text-zinc-400 block uppercase tracking-wider">
+                        Order Ref
+                    </span>
+                    <span className="text-xs font-semibold text-zinc-600 tabular-nums">
+                        {orderNumber}
+                    </span>
+                </div>
+            )}
+        </div>
+    );
 }
 
 export function CourierEmpty({ title, children, icon: Icon = Package }: PropsWithChildren<{ title: string; icon?: LucideIcon }>) {

@@ -80,6 +80,38 @@ class CourierDeliveryController extends Controller
         ]);
     }
 
+    public function navigation(Request $request): Response
+    {
+        $user = $request->user()->load([
+            'courierProfile.company',
+            'courierProfile.hub',
+            'courierProfile.vehicle',
+        ]);
+        $work = null;
+        $workPayload = function () use ($user, &$work): array {
+            return $work ??= $this->dashboardPayload($user);
+        };
+
+        return Inertia::render('Courier/Navigation', [
+            'recoveryRequestToken' => fn () => (string) Str::uuid(),
+            'scope' => $this->scopePayload($user->courierProfile),
+            'isOnline' => (bool) $user->courierProfile?->is_available,
+            'stats' => fn () => $workPayload()['stats'],
+            'queues' => fn () => $workPayload()['queues'],
+            'cashSummary' => function () use ($user): array {
+                $held = app(RiderCashService::class)->heldCashCents($user);
+
+                return [
+                    'held_cents' => $held,
+                    'max_float_cents' => RiderCashService::MAX_UNREMITTED_CASH_CENTS,
+                    'warning_float_cents' => RiderCashService::WARNING_UNREMITTED_CASH_CENTS,
+                    'is_locked' => $held >= RiderCashService::MAX_UNREMITTED_CASH_CENTS,
+                    'is_warning' => $held >= RiderCashService::WARNING_UNREMITTED_CASH_CENTS,
+                ];
+            },
+        ]);
+    }
+
     public function navigationStop(Request $request, string $reference, RiderTaskService $tasks): JsonResponse
     {
         [$parcel, $phase] = $tasks->task($request->user(), $reference);
@@ -318,6 +350,15 @@ class CourierDeliveryController extends Controller
                 ->with(['order', 'destinationBayanHub'])
                 ->latest('delivered_at')
                 ->get();
+
+            $pickupQueue = $this->operations->queue($user, 'pickup')->get();
+            $pickupQueue->loadMissing(['order.items.product:id,name', 'originBayanHub']);
+            $carryingPickups = $pickupQueue
+                ->filter(fn (Delivery $delivery) => $delivery->status === OrderStateMachineService::STATUS_PICKED_UP)
+                ->map(fn (Delivery $delivery) => $this->pickupPayload($delivery, false, $user))
+                ->values();
+        } else {
+            $carryingPickups = collect();
         }
 
         return Inertia::render('Courier/Earnings', [
@@ -336,6 +377,7 @@ class CourierDeliveryController extends Controller
                     ?->copy()->timezone('Asia/Manila')->isSameDay(today('Asia/Manila')))->count(),
             ],
             'trips' => $completed->map(fn (Delivery $delivery) => $this->activityPayload($delivery))->values(),
+            'carryingPickups' => $carryingPickups,
         ]);
     }
 

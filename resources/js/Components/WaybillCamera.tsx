@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/library';
-import { Camera, Image as ImageIcon } from 'lucide-react';
+import { Camera, Image as ImageIcon, ShieldCheck } from 'lucide-react';
 import { selectWaybill } from '@/utils/waybillScan';
 
 interface Detector { detect(video: HTMLVideoElement): Promise<Array<{ rawValue: string }>> }
@@ -208,6 +208,11 @@ export default function WaybillCamera({
                 className={active ? 'max-h-64 w-full rounded-xl bg-black object-contain border border-zinc-300' : 'hidden'}
                 aria-label="Actual waybill camera"
             />
+
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-200/90 bg-emerald-50/60 px-2.5 py-1.5 text-[11px] text-emerald-800 font-medium">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <span>Camera Privacy: Video stream is analyzed on-device strictly for waybill barcode detection. No video is recorded or stored.</span>
+            </div>
 
             <p className="text-xs text-zinc-500 leading-relaxed">
                 {instruction} Point camera directly at the waybill code.

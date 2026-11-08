@@ -13,9 +13,18 @@ interface Props {
     earningEntries?: { id: string; order_number: string; role: string; amount_cents: number; released: boolean; virtual_only: boolean }[];
     shift?: { held_cents: number; can_close: boolean; pending_handovers: number; unresolved_differences: number };
     trips: Array<{ id: number; trackingNumber: string; orderNumber: string | null; recipientName: string; deliveryAddress: string; paymentMethod: string; destinationHub: string | null; deliveredAt: string | null }>;
+    carryingPickups?: Array<{
+        id: number;
+        trackingNumber: string;
+        orderNumber: string | null;
+        itemCount: number;
+        items?: Array<{ name: string; quantity: number }>;
+        merchant?: { name: string; address: string };
+        originHub?: { name: string; address?: string };
+    }>;
 }
 
-export default function CourierCompletedTrips({ scope, summary, trips, isOnline, earningsSummary, earningEntries = [], shift }: Props) {
+export default function CourierCompletedTrips({ scope, summary, trips, isOnline, earningsSummary, earningEntries = [], shift, carryingPickups = [] }: Props) {
     const [search, setSearch] = useState('');
     const [payment, setPayment] = useState('all');
     const [page, setPage] = useState(1);
@@ -54,6 +63,50 @@ export default function CourierCompletedTrips({ scope, summary, trips, isOnline,
                     </CourierPanel>)}
                     <CourierPanel className="col-span-2 min-w-0 p-4 sm:p-5 lg:col-span-1"><p className="flex items-center gap-2 text-xs font-medium text-slate-600"><MapPin className="h-4 w-4 text-[#C20836]" aria-hidden="true" />Current destination hub</p><p className="mt-3 break-words text-lg font-semibold">{scope.hub || 'Hub not assigned'}</p><p className="mt-2 text-xs leading-relaxed text-slate-600">Pickup history and previous hub assignments are not included.</p></CourierPanel>
                 </section>
+                {carryingPickups.length > 0 && (
+                    <CourierPanel className="overflow-hidden p-5 border border-sky-200 bg-sky-50/40">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                    <PackageCheck className="h-5 w-5 text-sky-600" />
+                                    <span>Pickups in Custody ({carryingPickups.length})</span>
+                                </h2>
+                                <p className="mt-1 text-xs text-slate-600">
+                                    These collected pickups are currently in your custody. Bring them to the origin Bayan Hub for intake scanning.
+                                </p>
+                            </div>
+                            <span className="rounded-lg bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800">
+                                Awaiting Hub Intake
+                            </span>
+                        </div>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            {carryingPickups.map((pickup) => (
+                                <div key={pickup.id} className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-2xs space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-extrabold tracking-wide text-[#E00D42]">{pickup.trackingNumber}</span>
+                                        <span className="text-[11px] font-medium text-slate-500">{pickup.orderNumber ? `Order #${pickup.orderNumber}` : ''}</span>
+                                    </div>
+                                    <p className="text-xs text-slate-700">
+                                        <span className="font-semibold">Seller: </span>{pickup.merchant?.name || 'Seller'}
+                                    </p>
+                                    <p className="text-xs text-slate-600">
+                                        <span className="font-semibold">Origin Hub: </span>{pickup.originHub?.name || 'Origin Bayan Hub'}
+                                    </p>
+                                    {pickup.items && pickup.items.length > 0 && (
+                                        <div className="mt-1 pt-1 border-t border-slate-100 text-xs text-slate-600 space-y-0.5">
+                                            {pickup.items.map((item, idx) => (
+                                                <div key={idx} className="flex justify-between">
+                                                    <span className="font-medium text-slate-700">{item.name}</span>
+                                                    <span>× {item.quantity}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </CourierPanel>
+                )}
                 <section aria-label="Trip filters" className="space-y-4 pt-2">
                     <div className="flex flex-wrap items-end justify-between gap-4">
                         <div><h2 className="text-lg font-semibold">Trip history</h2><p role="status" className="mt-1 text-sm text-slate-600">{filtered.length} matching {filtered.length === 1 ? 'delivery' : 'deliveries'}</p></div>

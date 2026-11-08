@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import useOperationalRefresh from '@/hooks/useOperationalRefresh';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Banknote, Camera, MapPin, RefreshCw, Search, Truck } from 'lucide-react';
+import { ArrowRight, Banknote, Camera, Compass, MapPin, Navigation, RefreshCw, Search, Truck } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
 import CourierJobMap from '@/Components/CourierJobMap';
 import CourierCurrentJob from '@/Components/CourierCurrentJob';
@@ -9,7 +9,7 @@ import CourierTaskCard, { type CourierTaskItem } from '@/Components/CourierTaskC
 import WaybillCamera from '@/Components/WaybillCamera';
 import { CourierDeliveryOverview, CourierRecentDeliveries, type CourierActivity } from '@/Components/CourierDashboard';
 import { CourierDialog, CourierEmpty, CourierFieldError, CourierPanel, CourierParcelIdentifiers, courierButton, courierClasses, courierInput, courierPrimary } from '@/Components/CourierUI';
-import { courierDate, courierGreeting, courierMoney, courierPath, selectCourierMapJob, type CourierMapJob, type CourierPlace, type CourierScope } from '@/utils/courier';
+import { courierDate, courierGreeting, courierMoney, courierPath, directionsUrl, selectCourierMapJob, type CourierMapJob, type CourierPlace, type CourierScope } from '@/utils/courier';
 import { PageProps, OrderTracking } from '@/types';
 import { currentCourierAction } from '@/utils/orderTracking';
 import useCourierRequestError from '@/hooks/useCourierRequestError';
@@ -79,7 +79,7 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
     return Math.round(R * c);
 }
 
-type WorkspaceView = 'assigned' | 'carrying' | 'available';
+type WorkspaceView = 'assigned' | 'available';
 type WorkspaceEntry = { phase: 'pickup'; task: PickupTask } | { phase: 'available'; task: PickupTask } | { phase: 'final_mile'; task: FinalMileTask };
 type ActionTarget = { id: number; trackingNumber: string; status: 'picked_up' | 'out_for_delivery' | 'delivered' | 'delivery_failed' };
 const actionLabels = { picked_up: 'Confirm pickup', out_for_delivery: 'Start delivery', delivered: 'Record delivery', delivery_failed: 'Record failed attempt' };
@@ -91,7 +91,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const deliveries = queues?.finalMileTasks ?? [];
     const activity = queues?.recentActivity ?? [];
     const [view, setView] = useState<WorkspaceView>(() => {
-        if ([...pickups, ...deliveries].some((task) => task.retainedByCurrentCourier === true)) return 'carrying';
         return deliveries.length || pickups.length ? 'assigned' : 'available';
     });
     const [search, setSearch] = useState('');
@@ -106,6 +105,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     const [barcode, setBarcode] = useState('');
     const [recipientName, setRecipientName] = useState('');
     const [recipientRelationship, setRecipientRelationship] = useState('');
+    const [isRepresentative, setIsRepresentative] = useState(false);
     const [cashReceived, setCashReceived] = useState('');
     const [changeGiven, setChangeGiven] = useState('0.00');
     const [cashConfirmed, setCashConfirmed] = useState(false);
@@ -120,16 +120,14 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     useCourierRequestError(pending, (message) => setErrors({ status: message }));
     const normalizedSearch = search.trim().toLowerCase();
     const matches = (...values: Array<string | null | undefined>) => values.some((value) => value?.toLowerCase().includes(normalizedSearch));
+    const carryingPickups = pickups.filter((task) => task.retainedByCurrentCourier);
+    const carryingCount = carryingPickups.length;
     const assignedEntries: WorkspaceEntry[] = [
         ...pickups.filter((task) => !task.retainedByCurrentCourier).map((task) => ({ phase: 'pickup' as const, task })),
-        ...deliveries.filter((task) => !task.retainedByCurrentCourier).map((task) => ({ phase: 'final_mile' as const, task })),
-    ];
-    const carryingEntries: WorkspaceEntry[] = [
-        ...pickups.filter((task) => task.retainedByCurrentCourier).map((task) => ({ phase: 'pickup' as const, task })),
-        ...deliveries.filter((task) => task.retainedByCurrentCourier).map((task) => ({ phase: 'final_mile' as const, task })),
+        ...deliveries.map((task) => ({ phase: 'final_mile' as const, task })),
     ];
     const availableEntries: WorkspaceEntry[] = available.map((task) => ({ phase: 'available', task }));
-    const viewEntries = view === 'assigned' ? assignedEntries : view === 'carrying' ? carryingEntries : availableEntries;
+    const viewEntries = view === 'assigned' ? assignedEntries : availableEntries;
     const visibleEntries = viewEntries.filter(({ phase, task }) => {
         const itemNames = task.items?.map((item) => item.name) ?? [];
         if (phase === 'pickup' || phase === 'available') {
@@ -206,7 +204,12 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         }
         setNotes(''); setBarcode(''); setProof(null); setErrors({});
         setFailureReason(''); setAttemptLocation(''); setRequestToken(recoveryRequestToken);
-        setRecipientName(''); setRecipientRelationship(''); setCashReceived(''); setChangeGiven('0.00'); setCashConfirmed(false);
+        const deliveryTask = deliveries.find((task) => task.id === id);
+        const defaultBuyerName = deliveryTask?.recipient?.name || '';
+        setRecipientName(status === 'delivered' ? defaultBuyerName : '');
+        setRecipientRelationship(status === 'delivered' ? 'buyer' : '');
+        setIsRepresentative(false);
+        setCashReceived(''); setChangeGiven('0.00'); setCashConfirmed(false);
         setTarget({ id, trackingNumber, status });
     };
     const claim = (id: number) => {
@@ -281,7 +284,7 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                 const error = (page.props as PageProps).flash?.error;
                 if (error) setErrors({ status: error });
                 else {
-                    if (target.status === 'picked_up' || target.status === 'out_for_delivery') setView('carrying');
+                    setView('assigned');
                     resetAction();
                 }
             },
@@ -328,7 +331,6 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
     }, [target?.status, selectedDelivery?.id]);
     const collected = selectedPickup?.retainedByCurrentCourier === true;
     const assignedCount = assignedEntries.length;
-    const carryingCount = carryingEntries.length;
 
     const renderTaskCard = (entry: WorkspaceEntry) => {
         const { phase, task } = entry;
@@ -385,7 +387,41 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
         <CourierLayout title={courierGreeting(auth.user?.name)} pageLabel="Tasks" subtitle={scope?.isAssigned ? 'See what is assigned to you, what you are carrying, and what you can claim.' : 'Your logistics team needs to assign a company and hub before new work is available.'} isOnline={isOnline} scope={scope}>
             <Head title="Rider dashboard — BagooPH" />
             <div className="space-y-5">
-                <details className="rounded-[8px] border border-slate-200 bg-white p-4" open={sampleMapOpen} onToggle={(event) => setSampleMapOpen(event.currentTarget.open)}><summary className="cursor-pointer py-2 text-sm font-semibold">Sample delivery map</summary>{sampleMapOpen && <div className="pt-3"><CourierJobMap /></div>}</details>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200/90 bg-rose-50/60 p-3.5 shadow-2xs">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E00D42] text-white shadow-sm">
+                            <Compass className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h2 className="text-sm font-bold text-slate-900">Live Road Navigation & Dynamic Route</h2>
+                            <p className="text-xs text-slate-600">Lively tracks your GPS with AH26 national highway prioritization and fullscreen bike mount view.</p>
+                        </div>
+                    </div>
+                    <Link
+                        href={courierPath('/navigation')}
+                        className="inline-flex items-center gap-2 rounded-lg bg-[#18181B] px-3.5 py-2 text-xs font-bold text-white hover:bg-zinc-800 shadow-sm transition-colors"
+                    >
+                        <Navigation className="h-4 w-4 text-[#E00D42]" />
+                        <span>Launch Fullscreen Map</span>
+                    </Link>
+                </div>
+
+                <details className="rounded-[8px] border border-slate-200 bg-white p-4" open={sampleMapOpen} onToggle={(event) => setSampleMapOpen(event.currentTarget.open)}>
+                    <summary className="cursor-pointer py-2 text-sm font-semibold flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                            <Compass className="h-4 w-4 text-[#E00D42]" />
+                            <span>Route Map Preview (Next Stop)</span>
+                        </span>
+                        <span className="text-xs font-normal text-slate-500">
+                            {selectedMapJob ? selectedMapJob.stopLabel : mapJobs[0] ? mapJobs[0].stopLabel : 'Active assignment'}
+                        </span>
+                    </summary>
+                    {sampleMapOpen && (
+                        <div className="pt-3">
+                            <CourierJobMap job={selectedMapJob || mapJobs[0]} />
+                        </div>
+                    )}
+                </details>
                 <div className="flex flex-wrap justify-end gap-2"><button type="button" disabled={loadingId !== null} onClick={() => {
                     if (pending.current) return;
                     pending.current = true; setLoadingId(-1); setErrors({});
@@ -428,15 +464,71 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                         </div>
                     </div>
                 )}
+                {carryingCount > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 text-xs text-sky-900 shadow-2xs">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-600 text-white font-bold shrink-0">
+                                {carryingCount}
+                            </span>
+                            <div>
+                                <p className="font-bold">You are carrying {carryingCount} collected pickup{carryingCount === 1 ? '' : 's'} (in custody). Hub staff must scan it into custody.</p>
+                                <p className="text-sky-700">Existing assigned parcels remain available. Carrying pickups are tracked in Trips & History to keep your main delivery queue uncluttered.</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {carryingPickups[0]?.originHub && directionsUrl(carryingPickups[0].originHub) && (
+                                <a
+                                    href={directionsUrl(carryingPickups[0].originHub)!}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 rounded-lg border border-sky-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-sky-800 hover:bg-sky-50 transition-colors"
+                                >
+                                    Directions to Hub
+                                </a>
+                            )}
+                            <Link
+                                href={courierPath('/earnings')}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-800 transition-colors shadow-2xs"
+                            >
+                                <span>View Pickups in Trips</span>
+                                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                            </Link>
+                        </div>
+                    </div>
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div role="group" aria-label="Task filters" className="flex max-w-full gap-1 overflow-x-auto rounded-[8px] bg-slate-100 p-1">
-                        {([{ key: 'assigned', label: 'Assigned to you', count: assignedCount }, { key: 'carrying', label: 'Carrying', count: carryingCount }, { key: 'available', label: 'Available to claim', count: stats?.availablePickups ?? available.length }] as const).map((item) => <button key={item.key} type="button" aria-pressed={view === item.key} onClick={() => selectView(item.key)} className={courierClasses(courierButton, 'shrink-0 gap-2 border-transparent bg-transparent px-3 text-sm font-medium hover:bg-slate-200', view === item.key && 'bg-white text-slate-950 shadow-sm hover:bg-white')}><span>{item.label}</span><span className={`rounded-[8px] px-2 py-0.5 text-xs tabular-nums ${view === item.key ? 'bg-slate-100 text-slate-700' : 'bg-slate-200/70 text-slate-600'}`}>{item.count}</span></button>)}
+                        {([
+                            { key: 'assigned', label: 'Assigned to you', count: assignedCount },
+                            { key: 'available', label: 'Available to claim (pickups)', count: stats?.availablePickups ?? available.length },
+                        ] as const).map((item) => (
+                            <button
+                                key={item.key}
+                                type="button"
+                                aria-pressed={view === item.key}
+                                onClick={() => selectView(item.key)}
+                                className={courierClasses(
+                                    courierButton,
+                                    'shrink-0 gap-2 border-transparent bg-transparent px-3 text-sm font-medium hover:bg-slate-200',
+                                    view === item.key && 'bg-white text-slate-950 shadow-sm hover:bg-white'
+                                )}
+                            >
+                                <span>{item.label}</span>
+                                <span
+                                    className={`rounded-[8px] px-2 py-0.5 text-xs tabular-nums ${
+                                        view === item.key ? 'bg-slate-100 text-slate-700' : 'bg-slate-200/70 text-slate-600'
+                                    }`}
+                                >
+                                    {item.count}
+                                </span>
+                            </button>
+                        ))}
                     </div>
                     <label className="relative block w-full sm:w-72"><span className="sr-only">Search this queue</span><Search className="pointer-events-none absolute left-3 top-4 h-4 w-4 text-slate-500" aria-hidden="true" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Waybill, order, product, or address" className={`${courierInput} mt-0 pl-10 text-sm`} /></label>
                 </div>
                 {!target && <CourierFieldError message={errors.status || Object.values(errors).find(Boolean)} />}
                 {visibleEntries.length ? <div className="grid items-start gap-5 min-[860px]:grid-cols-[minmax(0,1fr)_minmax(20rem,1.05fr)]">
-                    <section aria-label={`${view === 'assigned' ? 'Assigned to you' : view === 'carrying' ? 'Parcels you are carrying' : 'Available pickups'} queue`} className="space-y-4">
+                    <section aria-label={`${view === 'assigned' ? 'Assigned to you' : 'Available pickups'} queue`} className="space-y-4">
                         {visibleEntries.map(renderTaskCard)}
                     </section>
                     <div className="space-y-4">
@@ -455,36 +547,36 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                             </CourierCurrentJob>}
                         </div>}
                     </div>
-                </div> : <CourierEmpty title={normalizedSearch ? 'No matching parcels' : view === 'available' ? 'No available pickups' : view === 'carrying' ? 'No parcels recorded in your custody' : 'No tasks assigned to you'}>{normalizedSearch ? 'Try another waybill, order reference, product, or address.' : view === 'available' ? claimReason || 'Eligible pickups from your origin hub will appear here.' : view === 'carrying' ? 'Parcels appear here only after the latest recorded custody identifies you as their current holder.' : 'Pickup and final-mile work assigned to you will appear here. Assignments do not by themselves mean you are carrying a parcel.'}</CourierEmpty>}
+                </div> : <CourierEmpty title={normalizedSearch ? 'No matching parcels' : view === 'available' ? 'No available pickups' : 'No tasks assigned to you'}>{normalizedSearch ? 'Try another waybill, order reference, product, or address.' : view === 'available' ? claimReason || 'Eligible pickups from your origin hub will appear here.' : 'Pickup and final-mile work assigned to you will appear here. Assignments do not by themselves mean you are carrying a parcel.'}</CourierEmpty>}
                 <CourierDeliveryOverview activity={activity} activePickups={activeCount} pickupLimit={limit} awaitingIntake={pickups.filter((task) => task.retainedByCurrentCourier && task.nextAction === 'await_origin_hub_scan').length} claimReason={claimReason} onViewPickups={() => viewQueue('assigned')} />
                 <CourierRecentDeliveries activity={activity} completedToday={stats?.completedToday} />
             </div>
 
             <CourierDialog open={target !== null} title={target ? actionLabels[target.status] : 'Parcel action'} onClose={() => { if (!pending.current) resetAction(); }} busy={loadingId !== null}>
                 {target && <form onSubmit={submit} className="space-y-4">
-                    <div className="rounded-[8px] border border-slate-300 bg-[#FFFAFB] p-3"><CourierParcelIdentifiers trackingNumber={target.trackingNumber} orderNumber={targetOrderNumber} /></div>
+                    <CourierParcelIdentifiers trackingNumber={target.trackingNumber} orderNumber={targetOrderNumber} />
                     <p className="text-base leading-relaxed text-slate-700">{target.status === 'picked_up' ? 'Confirm only after you have collected this parcel from the seller. Next, bring it to the origin Bayan Hub.' : target.status === 'out_for_delivery' ? 'Confirm that you collected this assigned parcel from the destination Bayan Hub and are starting its delivery leg.' : target.status === 'delivery_failed' ? 'Record the actual attempt, then return the parcel to the destination Bayan Hub. A hub scan is required before recovery.' : 'Record the actual recipient, payment and proof photo. The order updates after these delivery checks.'}</p>
                     <CourierFieldError message={errors.status} />
                     {target.status === 'delivery_failed' && <label className="block text-sm font-semibold" htmlFor="failure-reason">Failure reason<select id="failure-reason" required value={failureReason} disabled={loadingId !== null} onChange={event => setFailureReason(event.target.value)} className={courierInput}><option value="">Choose the actual reason</option><option value="customer_unreachable">Customer unreachable</option><option value="customer_unavailable">Customer unavailable or requested another date</option><option value="address_clarification">Wrong or incomplete address</option><option value="unsafe_conditions">Unsafe conditions or severe weather</option><option value="cod_unavailable">Exact COD payment unavailable</option><option value="customer_refused">Customer refused the parcel</option></select><CourierFieldError message={errors.failure_reason} /></label>}
                     {target.status === 'delivery_failed' && <label className="block text-sm font-semibold" htmlFor="attempt-location">Actual attempt location<input id="attempt-location" type="text" required maxLength={255} value={attemptLocation} disabled={loadingId !== null} onChange={event => setAttemptLocation(event.target.value)} className={courierInput} /><CourierFieldError message={errors.location_name} /></label>}
-                    <div>
-                        <label htmlFor="pickup-waybill" className="block text-sm font-semibold text-slate-800">Parcel waybill</label>
-                        <p id="waybill-help" className="mt-1 text-sm text-slate-600">Scan the actual label or enter its waybill manually. Scanning fills this field; it does not record the parcel action.</p>
-                        <input id="pickup-waybill" type="text" autoComplete="off" spellCheck={false} maxLength={255} required value={barcode} disabled={loadingId !== null} aria-invalid={Boolean(errors.barcode) || waybillMismatch} aria-describedby="waybill-help waybill-error" onChange={(event) => { setBarcode(event.target.value); setErrors((current) => ({ ...current, barcode: '' })); }} className={courierInput} />
+                    <div className="space-y-2">
+                        <label htmlFor="pickup-waybill" className="block text-sm font-bold text-slate-900">Physical Parcel Waybill</label>
+                        <p id="waybill-help" className="text-xs text-slate-600">Camera auto-opens below. If barcode is damaged, type the exact code from the thermal label manually.</p>
+                        <input id="pickup-waybill" type="text" autoComplete="off" spellCheck={false} maxLength={255} required value={barcode} disabled={loadingId !== null} aria-invalid={Boolean(errors.barcode) || waybillMismatch} aria-describedby="waybill-help waybill-error" onChange={(event) => { setBarcode(event.target.value); setErrors((current) => ({ ...current, barcode: '' })); }} className={`${courierInput} font-bold text-sm tracking-wide text-[#C20836]`} placeholder="Scan or type waybill (e.g. BG-DEL-...)" />
                         <CourierFieldError id="waybill-error" message={errors.barcode} />
-                        {waybillMismatch && <p id="waybill-mismatch" role="status" className="mt-2 rounded-[8px] border border-amber-300 bg-[#FFF4DF] p-3 text-sm leading-relaxed text-[#92400E]">This scanned code does not match the selected parcel waybill. Check the physical label, then scan or enter the matching code. The server verifies it again before recording.</p>}
+                        {waybillMismatch && <p id="waybill-mismatch" role="status" className="mt-2 rounded-xl border border-amber-300 bg-[#FFF4DF] p-3 text-sm leading-relaxed text-[#92400E]">This scanned code does not match the selected parcel waybill. Check the physical label, then scan or enter the matching code. The server verifies it again before recording.</p>}
                         <WaybillCamera
-                            autoStart={target.status === 'picked_up'}
+                            autoStart={target.status === 'picked_up' || target.status === 'out_for_delivery' || target.status === 'delivered'}
                             onScan={(value) => { setBarcode(value); setErrors((current) => ({ ...current, barcode: '' })); }}
                             disabled={loadingId !== null}
-                            instruction="A camera scan fills the waybill field. Compare it with the parcel above, then submit the permitted rider action."
+                            instruction="Point camera directly at the physical box waybill barcode to fill this code automatically."
                         />
                     </div>
                     {target.status === 'delivered' && (
                         <>
                             {gpsDistance !== null && (
-                                <div className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs font-medium ${gpsDistance <= 100 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-[#92400E]'}`}>
-                                    <MapPin className="h-4 w-4 shrink-0" />
+                                <div className={`flex items-center gap-2 rounded-xl border p-3 text-xs font-semibold ${gpsDistance <= 100 ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-amber-300 bg-amber-50 text-[#92400E]'}`}>
+                                    <MapPin className="h-4 w-4 shrink-0 text-[#E00D42]" />
                                     <span>
                                         {gpsDistance <= 100
                                             ? `GPS Verified: Within customer delivery radius (~${gpsDistance}m away)`
@@ -493,16 +585,91 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                                 </div>
                             )}
                             {cashSummary?.is_locked && !walletHandover && (
-                                <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800">
+                                <div className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800">
                                     <strong>COD Delivery Locked:</strong> You have reached the ₱20,000 unremitted cash limit. You cannot collect more COD cash until you make a deposit at a Bayan Hub.
                                 </div>
                             )}
                         </>
                     )}
-                    {target.status === 'delivered' && <section className="space-y-4 rounded-[8px] border border-slate-300 bg-[#FFFAFB] p-4" aria-label="Recipient and COD collection">
-                        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Banknote className="h-5 w-5 text-[#C20836]" aria-hidden="true" />{walletHandover ? 'Prepaid wallet delivery' : 'Count cash at handoff'}</h3><span className="font-semibold tabular-nums text-[#C20836]">{walletHandover ? 'No cash due' : `Due: ${actionDue === null ? 'Unavailable' : courierMoney(actionDue / 100)}`}</span></div>
-                        <label className="block text-sm font-semibold" htmlFor="cash-recipient">Person receiving the parcel<input id="cash-recipient" required maxLength={255} value={recipientName} disabled={loadingId !== null} onChange={(event) => setRecipientName(event.target.value)} className={courierInput} /><CourierFieldError message={errors.recipient_name} /></label>
-                        <label className="block text-sm font-semibold" htmlFor="cash-relationship">Relationship to buyer<select id="cash-relationship" required value={recipientRelationship} disabled={loadingId !== null} onChange={(event) => setRecipientRelationship(event.target.value)} className={courierInput}><option value="">Choose the actual recipient</option><option value="buyer">Buyer</option><option value="household">Household member</option><option value="authorized_recipient">Authorized recipient</option></select><CourierFieldError message={errors.recipient_relationship} /></label>
+                    {target.status === 'delivered' && <section className="space-y-4 rounded-xl border border-slate-300 bg-[#FFFAFB] p-4" aria-label="Recipient and COD collection">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-100 pb-3">
+                            <h3 className="flex items-center gap-2 font-bold text-sm text-slate-900">
+                                <Banknote className="h-5 w-5 text-[#C20836]" aria-hidden="true" />
+                                {walletHandover ? 'Prepaid Wallet Delivery' : 'Count Cash at Handoff'}
+                            </h3>
+                            <span className="font-extrabold tabular-nums text-sm text-[#C20836]">
+                                {walletHandover ? 'No cash due' : `Due: ${actionDue === null ? 'Unavailable' : courierMoney(actionDue / 100)}`}
+                            </span>
+                        </div>
+
+                        {/* Streamlined Recipient Handover */}
+                        <div className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                    <span className="text-xs font-bold text-slate-900 block">Recipient Verification</span>
+                                    <p className="text-xs text-slate-500">
+                                        {isRepresentative ? 'Delivering to an authorized representative / guard' : 'Direct handover to buyer: '}
+                                        {!isRepresentative && <strong className="text-slate-900">{recipientName || 'Buyer'}</strong>}
+                                    </p>
+                                </div>
+                                <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition">
+                                    <input
+                                        type="checkbox"
+                                        checked={isRepresentative}
+                                        disabled={loadingId !== null}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            setIsRepresentative(checked);
+                                            const defaultBuyer = deliveries.find((t) => t.id === target.id)?.recipient?.name || '';
+                                            if (!checked) {
+                                                setRecipientRelationship('buyer');
+                                                setRecipientName(defaultBuyer);
+                                            } else {
+                                                setRecipientRelationship('authorized_recipient');
+                                                setRecipientName('');
+                                            }
+                                        }}
+                                        className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                    />
+                                    <span>Received by representative</span>
+                                </label>
+                            </div>
+
+                            {isRepresentative && (
+                                <div className="pt-2 border-t border-slate-100 space-y-3">
+                                    <label className="block text-xs font-bold text-slate-700" htmlFor="cash-recipient">
+                                        Representative Full Name
+                                        <input
+                                            id="cash-recipient"
+                                            required
+                                            maxLength={255}
+                                            placeholder="Enter name of person who received the parcel"
+                                            value={recipientName}
+                                            disabled={loadingId !== null}
+                                            onChange={(event) => setRecipientName(event.target.value)}
+                                            className={`${courierInput} mt-1 text-sm`}
+                                        />
+                                        <CourierFieldError message={errors.recipient_name} />
+                                    </label>
+                                    <label className="block text-xs font-bold text-slate-700" htmlFor="cash-relationship">
+                                        Relationship to Buyer
+                                        <select
+                                            id="cash-relationship"
+                                            required
+                                            value={recipientRelationship}
+                                            disabled={loadingId !== null}
+                                            onChange={(event) => setRecipientRelationship(event.target.value)}
+                                            className={`${courierInput} mt-1 text-sm`}
+                                        >
+                                            <option value="household">Household member / Family</option>
+                                            <option value="authorized_recipient">Authorized representative / Guard / Neighbor</option>
+                                        </select>
+                                        <CourierFieldError message={errors.recipient_relationship} />
+                                    </label>
+                                </div>
+                            )}
+                        </div>
+
                         {!walletHandover && <><div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold" htmlFor="cash-tender">Cash received (PHP)<input id="cash-tender" type="text" inputMode="decimal" required value={cashReceived} disabled={loadingId !== null} onChange={(event) => setCashReceived(event.target.value)} placeholder="0.00" className={courierInput} /><CourierFieldError message={errors.cash_received} /></label><label className="block text-sm font-semibold" htmlFor="cash-change">Change given (PHP)<input id="cash-change" type="text" inputMode="decimal" required value={changeGiven} disabled={loadingId !== null} onChange={(event) => setChangeGiven(event.target.value)} className={courierInput} /><CourierFieldError message={errors.change_given} /></label></div>
                         <p role="status" className="text-sm text-slate-600">{netCash === null || netCash < 0 ? 'Enter the cash counted and any change actually given.' : `Cash kept for this order: ${courierMoney(netCash / 100)}.${netCash === actionDue ? ' This matches the amount due.' : ' This must match the saved amount due.'}`}</p>
                         <label className="flex items-start gap-3 text-sm leading-relaxed"><input type="checkbox" checked={cashConfirmed} disabled={loadingId !== null} onChange={(event) => setCashConfirmed(event.target.checked)} className="mt-1 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /><span>I counted the cash and gave the stated change. I will hand over the recorded amount separately.</span></label></>}

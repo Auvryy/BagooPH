@@ -362,16 +362,28 @@ test('workspace separates confirmed custody from assignment and keeps product an
     const assignedPickup = { ...pickup, status: 'assigned_pickup', nextAction: 'confirm_pickup', retainedByCurrentCourier: false,
         trackingNumber: 'BGO-ASSIGNED-PICKUP', orderNumber: 'ORDER-ASSIGNED-PICKUP', items: [{ name: 'Woven basket', quantity: 3 }] };
     const carrying = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { pickupTasks: [carryingPickup, assignedPickup], finalMileTasks: [heldDelivery] } });
-    assert.match(carrying, /aria-pressed="true"[^>]*>[^<]*<span>Carrying/);
-    assert.match(carrying, /Cotton tote/);
-    assert.match(carrying, /× 2/);
+    assert.match(carrying, /You are carrying 1 collected pickup \(in custody\)/);
+    assert.match(carrying, /Hub staff must scan it into custody/);
+    assert.match(carrying, /View Pickups in Trips/);
     assert.match(carrying, /Linen jacket/);
     assert.match(carrying, /Carrying · recovery required/);
     assert.match(carrying, /Open handover recovery/);
-    assert.doesNotMatch(carrying, /Woven basket/);
+    assert.match(carrying, /Woven basket/);
     assert.doesNotMatch(carrying, /Scan waybill · record delivery/);
-    assert.match(carrying, /<dt[^>]*>Waybill<\/dt><dd[^>]*>BGO-CARRY-PICKUP/);
-    assert.match(carrying, /<dt[^>]*>Order reference<\/dt><dd[^>]*>ORDER-CARRY-PICKUP/);
+    assert.match(carrying, /BGO-HELD-DELIVERY/);
+
+    const tripsHtml = await renderPage(ui.Trips, 'Earnings', {
+        scope,
+        summary: { completedDeliveries: 0, completedToday: 0 },
+        trips: [],
+        wallet: { id: 1, balanceCents: 5000, heldCents: 0, maxFloatCents: 2000000, isLocked: false, isWarning: false },
+        ledger: { entries: [], hasMore: false, nextCursor: null },
+        carryingPickups: [carryingPickup],
+    });
+    assert.match(tripsHtml, /Pickups in Custody/);
+    assert.match(tripsHtml, /Cotton tote/);
+    assert.match(tripsHtml, /× 2/);
+    assert.match(tripsHtml, /BGO-CARRY-PICKUP/);
 
     const assigned = await renderPage(ui.Deliveries, 'Deliveries', { scope, queues: { finalMileTasks: [{ ...finalMile, status: 'out_for_delivery', nextAction: 'complete_delivery', retainedByCurrentCourier: false, trackingNumber: 'BGO-REVIEW', items: [{ name: 'Ceramic cup', quantity: 1 }] }] } });
     assert.match(assigned, /aria-pressed="true"[^>]*>[^<]*<span>Assigned to you/);
@@ -631,11 +643,13 @@ test('company request review shows its offer while roster retains actual placeme
     } finally { if (originalRoute === undefined) delete globalThis.route; else globalThis.route = originalRoute; }
 });
 
-test('the sample map starts open for both empty and assigned workspaces without claiming real tracking', async () => {
-    for (const queues of [{}, { pickupTasks: [pickup] }]) {
-        const html = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: true, queues });
-        assert.match(html, /<details[^>]*open=""[^>]*><summary[^>]*>Sample delivery map/);
-        assert.match(html, /Illustration only/);
-        assert.match(html, /not a live rider or an assigned parcel/);
-    }
+test('the delivery map preview renders standby GPS for empty workspace and assigned stop for active work', async () => {
+    const emptyHtml = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: true, queues: {} });
+    assert.match(emptyHtml, /Route Map Preview \(Next Stop\)/);
+    assert.match(emptyHtml, /Current rider GPS · Standby \(No active orders to deliver\)/);
+    assert.doesNotMatch(emptyHtml, /Sample delivery map|Sample delivery route|Illustration only/);
+
+    const assignedHtml = await renderPage(ui.Deliveries, 'Deliveries', { scope, isOnline: true, queues: { pickupTasks: [pickup] } });
+    assert.match(assignedHtml, /Route Map Preview \(Next Stop\)/);
+    assert.doesNotMatch(assignedHtml, /Sample delivery map|Illustration only/);
 });

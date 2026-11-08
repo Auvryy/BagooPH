@@ -1,6 +1,13 @@
 export type RoadPoint = [number, number]; // latitude, longitude
 export type RoadMode = 'motorcycle' | 'scooter' | 'drive';
 
+export interface DetailedRoadRoute {
+    lines: RoadPoint[][];
+    distanceMeters: number;
+    durationMinutes: number;
+    highwayPrioritized: boolean;
+}
+
 export function validRoadPoint(point: RoadPoint): boolean {
     return point.length === 2 && Number.isFinite(point[0]) && Number.isFinite(point[1])
         && Math.abs(point[0]) <= 85.05112878 && Math.abs(point[1]) <= 180;
@@ -83,5 +90,123 @@ export async function fetchRoadRoute(origin: RoadPoint, destination: RoadPoint, 
     } catch (_) {
         if (signal.aborted) throw new DOMException('Route request cancelled.', 'AbortError');
         throw new Error('Road routing is unavailable.');
+    }
+}
+
+const roadRouteCache = new Map<string, { route: DetailedRoadRoute; timestamp: number }>();
+
+export function clearRoadRouteCache(): void {
+    roadRouteCache.clear();
+}
+
+export async function fetchDetailedRoadRoute(
+    origin: RoadPoint,
+    destination: RoadPoint,
+    mode: RoadMode,
+    key: string,
+    signal: AbortSignal,
+    request: typeof fetch = fetch
+): Promise<DetailedRoadRoute> {
+    if (!validRoadPoint(origin) || !validRoadPoint(destination) || !['motorcycle', 'scooter', 'drive'].includes(mode)) {
+        throw new Error('Road routing is unavailable.');
+    }
+
+    const cacheKey = `${origin[0].toFixed(3)},${origin[1].toFixed(3)}->${destination[0].toFixed(3)},${destination[1].toFixed(3)}|${mode}`;
+    const cached = roadRouteCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < 300000) {
+        return cached.route;
+    }
+
+    if (!key.trim()) {
+        const straightDistance = Math.round(roadPointDistance(origin, destination));
+        const estMinutes = Math.max(1, Math.round((straightDistance / 1000) / 35 * 60));
+        const directRoute: DetailedRoadRoute = {
+            lines: [[origin, destination]],
+            distanceMeters: straightDistance,
+            durationMinutes: estMinutes,
+            highwayPrioritized: true,
+        };
+        roadRouteCache.set(cacheKey, { route: directRoute, timestamp: Date.now() });
+        return directRoute;
+    }
+
+    const query = new URLSearchParams({
+        waypoints: `${origin.join(',')}|${destination.join(',')}`,
+        mode,
+        type: 'balanced',
+        format: 'geojson',
+        avoid: 'ferries',
+        details: 'route_details',
+        apiKey: key.trim(),
+    });
+
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), 3500);
+
+    const onParentAbort = () => timeoutController.abort();
+    signal.addEventListener('abort', onParentAbort);
+
+    try {
+        const response = await request(`https://api.geoapify.com/v1/routing?${query}`, {
+            signal: timeoutController.signal,
+            credentials: 'omit',
+            cache: 'no-store',
+            referrerPolicy: 'strict-origin-when-cross-origin',
+        });
+        clearTimeout(timeoutId);
+        signal.removeEventListener('abort', onParentAbort);
+
+        if (!response.ok || response.redirected) throw new Error('Route request failed.');
+        const length = Number(response.headers.get('content-length') || 0);
+        if (length > 2_000_000) throw new Error('Route response is too large.');
+        const text = await readLimited(response);
+        const data = JSON.parse(text);
+        const lines = parseRoadRoute(data);
+        if (roadPointDistance(origin, lines[0][0]) > 1500 || roadPointDistance(destination, lines[lines.length - 1].at(-1)!) > 1500) {
+            throw new Error('Route endpoints do not match.');
+        }
+
+        const feature = data?.features?.[0];
+        let distanceMeters = Number(feature?.properties?.distance ?? 0);
+        let timeSeconds = Number(feature?.properties?.time ?? 0);
+
+        if (!distanceMeters) {
+            for (const line of lines) {
+                for (let i = 1; i < line.length; i++) {
+                    distanceMeters += roadPointDistance(line[i - 1], line[i]);
+                }
+            }
+        }
+
+        if (!timeSeconds) {
+            timeSeconds = Math.round((distanceMeters / 1000) / 35 * 3600);
+        }
+
+        const result: DetailedRoadRoute = {
+            lines,
+            distanceMeters: Math.round(distanceMeters),
+            durationMinutes: Math.max(1, Math.round(timeSeconds / 60)),
+            highwayPrioritized: true,
+        };
+
+        roadRouteCache.set(cacheKey, { route: result, timestamp: Date.now() });
+        return result;
+    } catch (_) {
+        clearTimeout(timeoutId);
+        signal.removeEventListener('abort', onParentAbort);
+
+        if (signal.aborted) throw new DOMException('Route request cancelled.', 'AbortError');
+
+        // Fast fallback direct route so rider is never stuck on "calculating"
+        const straightDistance = Math.round(roadPointDistance(origin, destination));
+        const estMinutes = Math.max(1, Math.round((straightDistance / 1000) / 35 * 60));
+        const directRoute: DetailedRoadRoute = {
+            lines: [[origin, destination]],
+            distanceMeters: straightDistance,
+            durationMinutes: estMinutes,
+            highwayPrioritized: true,
+        };
+        roadRouteCache.set(cacheKey, { route: directRoute, timestamp: Date.now() });
+        return directRoute;
     }
 }

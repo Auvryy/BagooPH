@@ -11,8 +11,9 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 ## Safety and Git
 
 - Work only inside this repository.
-- Work on the active single branch (`main`) only; do not switch or create extraneous branches unless explicitly instructed by the user.
-- STRICT PUSH POLICY: Local `git add` and `git commit` are permitted, but NEVER run `git push` unless the user explicitly types the secret phrase: `push mango`. Without `push mango`, commits must strictly remain local on the machine.
+- **NEVER PUSH DIRECTLY TO `main`**: All feature work, bug fixes, UI updates, and modifications must be created and pushed to dedicated feature branches (e.g. `feature/<name>` or `fix/<name>`), never directly to `main`. Merges into `main` must occur exclusively through GitHub Pull Requests (PR).
+- **FRESH BASE**: Before starting any new branch or feature work, always ensure `main` is clean and up to date by running `git pull origin main`.
+- **STRICT PUSH POLICY**: Local `git add` and `git commit` are permitted, but NEVER run `git push` (even to feature branches) unless the user explicitly types the secret phrase: `push mango`. Under no circumstances should `git push origin main` ever be executed; pushes are strictly restricted to feature branches for PR review.
 - For coding tasks, split work into small logical commits by feature or concern instead of one large commit.
 - Give every commit a clear subject and a concise description in the message body. Explain the concrete problem, what changes for the user, and why the change matters in plain language. Include relevant verification and remaining limitations; never invent checks or rely on filenames alone to explain the work.
 - Prepare a readable pull request description for the final branch handoff, covering the combined outcome and validation. Individual commit descriptions explain their own logical changes; a branch description must reflect the final scope.

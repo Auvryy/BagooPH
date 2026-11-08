@@ -1,6 +1,6 @@
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import { Link } from '@inertiajs/react';
-import { AlertTriangle, ArrowUpRight, History, LayoutDashboard, MapPin, Menu, MessageSquare, UserRound, X } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Compass, History, LayoutDashboard, MapPin, Menu, MessageSquare, UserRound, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import BagooLogo from '@/Components/BagooLogo';
 import { courierButton, courierClasses } from '@/Components/CourierUI';
@@ -9,6 +9,7 @@ import PortalLink from '@/Components/PortalLink';
 
 export const courierNavItems = [
     { name: 'Dashboard', path: '/deliveries', page: 'Courier/Deliveries', icon: LayoutDashboard },
+    { name: 'Live Map', path: '/navigation', page: 'Courier/Navigation', icon: Compass },
     { name: 'Trips', path: '/earnings', page: 'Courier/Earnings', icon: History },
     { name: 'Messages', path: '/messages', page: 'Courier/Messages', icon: MessageSquare },
     { name: 'Profile', path: '/profile', page: 'Courier/Profile', icon: UserRound },
