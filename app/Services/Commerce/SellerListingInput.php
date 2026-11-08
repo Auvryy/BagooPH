@@ -18,6 +18,7 @@ class SellerListingInput
         $values = $request->validate([
             'name' => ['required', 'string', 'min:5', 'max:120'],
             'category_id' => [$product ? 'nullable' : $presence, 'exists:categories,id'],
+            'sub_category_id' => ['nullable', 'exists:sub_categories,id'],
             'weight_kg' => [$presence, 'numeric', 'regex:/\A[0-9]+(?:\.[0-9]{1,2})?\z/', 'between:0.01,50000'],
             'brand' => ['nullable', 'string', 'max:100', 'not_regex:/[<>\p{C}]/u'],
             'condition' => ['nullable', Rule::in(['new', 'used'])],
@@ -48,6 +49,7 @@ class SellerListingInput
         ]);
         app(ProductGalleryInput::class)->validate($request, $values['status'] ?? 'active', $product);
         $values['category_id'] = app(ShopEligibilityService::class)->categoryFor($shop, $values['category_id'] ?? $shop->root_category_id);
+        $values['sub_category_id'] = $request->filled('sub_category_id') ? (int) $request->input('sub_category_id') : ($request->exists('sub_category_id') ? null : $product?->sub_category_id);
         $values['price'] ??= $product?->price ?? '0.00';
         $values['stock'] ??= $product?->stock ?? 0;
         $values['description'] ??= $product?->description ?? '';

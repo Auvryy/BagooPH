@@ -19,6 +19,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Buyer\AdvertisementController as BuyerAdvertisementController;
 use App\Http\Controllers\Buyer\AppAssociationController;
 use App\Http\Controllers\Buyer\BuyAgainController;
+use App\Http\Controllers\Buyer\BuyerCampaignController;
 use App\Http\Controllers\Buyer\BuyerDisputeController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
 use App\Http\Controllers\Buyer\BuyerProductController;
@@ -537,6 +538,9 @@ Route::get('/admin', function () {
 */
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/', [BuyerHomeController::class, 'index'])->middleware(AdvertisementResponseHeaders::class)->name('marketplace');
+Route::get('/marketplace', [BuyerHomeController::class, 'index'])->middleware(AdvertisementResponseHeaders::class);
+Route::get('/top-products', [BuyerHomeController::class, 'topProducts'])->middleware(AdvertisementResponseHeaders::class)->name('top-products');
+Route::get('/campaign/{event}', [BuyerCampaignController::class, 'show'])->middleware(AdvertisementResponseHeaders::class)->name('buyer.campaign.show');
 Route::middleware(AdvertisementResponseHeaders::class)->group(function () {
     Route::get('/advertisement-artwork/{token}', [BuyerAdvertisementController::class, 'artwork'])->whereUuid('token')->name('advertisements.artwork');
     Route::post('/advertisement-events', [BuyerAdvertisementController::class, 'event'])->middleware('throttle:advertisement-events')->name('advertisements.events');
@@ -573,6 +577,7 @@ Route::middleware('auth')->prefix('buyer-returns')->name('buyer-returns.')->grou
 Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/', [BuyerHomeController::class, 'index'])->name('index');
     Route::get('/home', fn () => redirect()->route('marketplace'));
+    Route::get('/top-products', [BuyerHomeController::class, 'topProducts'])->name('top-products');
     Route::get('/flash-deals', fn () => redirect('/#flash-deals'))->name('flash-deals');
     Route::get('/search', [BuyerProductController::class, 'search'])->name('search');
     Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog');

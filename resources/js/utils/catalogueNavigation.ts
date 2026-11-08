@@ -1,6 +1,8 @@
 export interface CatalogueFilters {
     search?: string;
     category?: string;
+    sub?: string;
+    sub_category?: string;
     tag?: string;
     location?: string;
     sort?: string;
@@ -20,8 +22,11 @@ export class SupersededCatalogueVisit extends Error {
 
 export function catalogueFilters(filters: CatalogueFilters, updates: CatalogueFilters = {}): Record<string, string> {
     const next = { ...filters, ...updates };
+    if (next.sub_category && !next.sub) {
+        next.sub = next.sub_category;
+    }
     const query: Record<string, string> = {};
-    for (const key of ['search', 'tag', 'category', 'location', 'sort', 'min_price', 'max_price', 'in_stock', 'rating'] as const) {
+    for (const key of ['search', 'tag', 'category', 'sub', 'location', 'sort', 'min_price', 'max_price', 'in_stock', 'rating'] as const) {
         const value = next[key];
         if (value === undefined || value === null || value === '' || value === false || value === 'all') continue;
         if (key === 'in_stock') {

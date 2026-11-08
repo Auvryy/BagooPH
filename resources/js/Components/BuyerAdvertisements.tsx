@@ -13,6 +13,7 @@ export interface Advertisement {
     slot: string;
     placement: 'main' | 'side';
     href: string;
+    event_slug?: string;
     measurement?: AdvertisementMeasurementData;
 }
 
@@ -28,114 +29,179 @@ function MeasuredArtwork({ banner, session, interactive, children }: { banner: A
     return cloneElement(children, { ref });
 }
 
+// Completely unique, high-definition promotional campaigns across all slots (ZERO DUPLICATES)
+const defaultMainSlides: Advertisement[] = [
+    {
+        id: 991,
+        title: 'Bagoo 11.11 Mega Sale — Up to 90% Off & Free Shipping',
+        image: '/images/buyer/advertisements/mega-sale.webp',
+        alt_text: 'Bagoo 11.11 Mega Sale Promotion',
+        width: 1880,
+        height: 880,
+        slot: 'main_1',
+        placement: 'main' as const,
+        href: '/campaign/11-11-mega-sale',
+        event_slug: '11-11-mega-sale',
+    },
+    {
+        id: 997,
+        title: 'Paskong Pinoy Christmas Grand Gala — Holiday Markdowns & ₱0 Free Shipping',
+        image: '/images/buyer/advertisements/christmas.webp',
+        alt_text: 'Christmas Holiday Grand Gala Sale',
+        width: 1880,
+        height: 880,
+        slot: 'main_2',
+        placement: 'main' as const,
+        href: '/campaign/christmas-gala',
+        event_slug: 'christmas-gala',
+    },
+    {
+        id: 998,
+        title: 'Bagoo Halloween Spooky Spree — Midnight Flash Steals & Treats',
+        image: '/images/buyer/advertisements/halloween.webp',
+        alt_text: 'Halloween Spooky Spree Promotion',
+        width: 1880,
+        height: 880,
+        slot: 'main_3',
+        placement: 'main' as const,
+        href: '/campaign/halloween-spree',
+        event_slug: 'halloween-spree',
+    },
+];
+
+// Unique side banners: Anniversary Carnival & Payday Super Savers (Completely different artwork)
+const defaultSideBanners: Advertisement[] = [
+    {
+        id: 992,
+        title: 'Anniversary Gala Mega Carnival — Extra 15% Vouchers & Up to 90% Off',
+        image: '/images/buyer/advertisements/carnival.webp',
+        alt_text: 'Anniversary Gala Mega Carnival',
+        width: 1880,
+        height: 880,
+        slot: 'side_1',
+        placement: 'side' as const,
+        href: '/campaign/mega-carnival',
+        event_slug: 'mega-carnival',
+    },
+    {
+        id: 994,
+        title: 'Payday Super Savers — Direct Merchant Discounts',
+        image: '/images/buyer/advertisements/payday.webp',
+        alt_text: 'Payday Super Savers Promotion',
+        width: 1880,
+        height: 880,
+        slot: 'side_2',
+        placement: 'side' as const,
+        href: '/campaign/payday-savers',
+        event_slug: 'payday-savers',
+    },
+];
+
+function getSlideTheme(image: string) {
+    if (image.includes('halloween')) {
+        return {
+            glow: 'from-[#3B1261]/80 via-[#EA580C]/70 to-[#7E22CE]/60',
+            shadow: '0 24px 50px -12px rgba(234, 88, 12, 0.45)',
+        };
+    }
+    if (image.includes('christmas')) {
+        return {
+            glow: 'from-[#064E3B]/80 via-[#991B1B]/70 to-[#F59E0B]/60',
+            shadow: '0 24px 50px -12px rgba(153, 27, 27, 0.45)',
+        };
+    }
+    if (image.includes('carnival')) {
+        return {
+            glow: 'from-[#4C0519]/70 via-[#9F1239]/60 to-[#E11D48]/50',
+            shadow: '0 24px 50px -12px rgba(159, 18, 57, 0.42)',
+        };
+    }
+    if (image.includes('frenzy')) {
+        return {
+            glow: 'from-[#3B0764]/70 via-[#7E22CE]/60 to-[#C026D3]/50',
+            shadow: '0 24px 50px -12px rgba(126, 34, 206, 0.40)',
+        };
+    }
+    if (image.includes('payday')) {
+        return {
+            glow: 'from-[#064E3B]/70 via-[#059669]/60 to-[#10B981]/50',
+            shadow: '0 24px 50px -12px rgba(5, 150, 105, 0.40)',
+        };
+    }
+    if (image.includes('collection')) {
+        return {
+            glow: 'from-[#78350F]/70 via-[#D97706]/60 to-[#F59E0B]/50',
+            shadow: '0 24px 50px -12px rgba(217, 119, 6, 0.40)',
+        };
+    }
+    // Default / 11.11 Mega Sale (Crimson)
+    return {
+        glow: 'from-[#7A0623]/75 via-[#E00D42]/65 to-[#B91C1C]/55',
+        shadow: '0 24px 50px -12px rgba(224, 13, 66, 0.45)',
+    };
+}
+
 export default function BuyerAdvertisements({ banners, interactive = true, initialSelectedId }: { banners: Advertisement[]; interactive?: boolean; initialSelectedId?: number }) {
     const measurement = useRef(new AdvertisementMeasurementSession()).current;
     const [failed, setFailed] = useState<string[]>([]);
     const available = banners.filter((banner) => !failed.includes(banner.image));
-    let slides = available.filter((banner) => banner.placement === 'main').slice(0, 5);
-    let supportingAds = available.filter((banner) => banner.placement === 'side').slice(0, 2);
+    
+    // Main carousel slides with diverse event campaigns (Halloween, Christmas, 11.11, etc.)
+    const dbMain = available.filter(b => b.placement === 'main' && !b.image.includes('advertisement-artwork'));
+    const slides = dbMain.length > 0 ? dbMain : defaultMainSlides;
 
-    // Ensure the main platform event is scrollable/carousel with diverse campaigns
-    if (slides.length <= 1) {
-        slides = [
-            ...(slides.length > 0 ? slides : []),
-            {
-                id: 991,
-                title: 'Bagoo 11.11 Mega Sale — Up to 90% Off & Free Shipping',
-                image: '/images/buyer/advertisements/mega-sale.webp',
-                alt_text: 'Bagoo 11.11 Mega Sale Promotion',
-                width: 1200,
-                height: 480,
-                slot: 'main_1',
-                placement: 'main' as const,
-                href: '#flash-deals',
-            },
-            {
-                id: 992,
-                title: 'Mega Carnival Grand Celebration — Extra 15% Vouchers',
-                image: '/images/buyer/advertisements/carnival.webp',
-                alt_text: 'Mega Carnival Grand Celebration',
-                width: 1200,
-                height: 480,
-                slot: 'main_2',
-                placement: 'main' as const,
-                href: '/vouchers',
-            },
-            {
-                id: 993,
-                title: 'Electronics & Lifestyle Frenzy — Verified Gear & Audio',
-                image: '/images/buyer/advertisements/frenzy.webp',
-                alt_text: 'Electronics Frenzy Event',
-                width: 1200,
-                height: 480,
-                slot: 'main_3',
-                placement: 'main' as const,
-                href: '#product-feed',
-            },
-        ].slice(0, 3);
-    }
+    // 2 unique stacked side banners
+    const dbSide = available.filter(b => b.placement === 'side' && !b.image.includes('advertisement-artwork'));
+    const sideBanners = dbSide.length >= 2 ? dbSide.slice(0, 2) : defaultSideBanners;
 
-    if (supportingAds.length < 2) {
-        const fallbacks: Advertisement[] = [
-            {
-                id: 994,
-                title: '11.11 Partner Promos — Stack & Save Up to ₱2,000 More',
-                image: '/images/buyer/advertisements/carnival.webp',
-                alt_text: 'Partner Promos Event',
-                width: 600,
-                height: 230,
-                slot: 'side_1',
-                placement: 'side' as const,
-                href: '/vouchers',
-            },
-            {
-                id: 995,
-                title: 'Free Shipping ₱0 Min Spend — Doorstep Delivery Guarantee',
-                image: '/images/buyer/advertisements/frenzy.webp',
-                alt_text: 'Free Shipping Vouchers',
-                width: 600,
-                height: 230,
-                slot: 'side_2',
-                placement: 'side' as const,
-                href: '#flash-deals',
-            },
-        ];
-        supportingAds = [...supportingAds, ...fallbacks.filter(fb => !supportingAds.some(sa => sa.image === fb.image))].slice(0, 2);
-    }
     const [selected, setSelected] = useState(() => Math.max(0, slides.findIndex((banner) => banner.id === initialSelectedId)));
     const [isHovered, setIsHovered] = useState(false);
     const currentIndex = selected % Math.max(slides.length, 1);
     const current = slides[currentIndex];
 
-    // Automatic slide cycling every 5 seconds (pauses on hover)
+    // Automatic slide cycling (3200ms), pauses on hover
     useEffect(() => {
         if (slides.length <= 1 || isHovered) return;
         const interval = setInterval(() => {
             setSelected((prev) => (prev + 1) % slides.length);
-        }, 5000);
+        }, 3200);
         return () => clearInterval(interval);
     }, [slides.length, isHovered]);
 
-    if (!current && !supportingAds.length) return null;
+    if (!current) return null;
     const failedImage = (image: string) => setFailed((images) => images.includes(image) ? images : [...images, image]);
 
     const move = (direction: number) => {
         setSelected((index) => (index + direction + slides.length) % slides.length);
     };
 
+    const theme = getSlideTheme(current.image);
+
     return (
         <section
-            aria-label="Bagoo advertisements"
-            data-main={Boolean(current)}
-            data-side={Boolean(supportingAds.length)}
-            className={`buyer-ad-grid grid min-w-0 grid-cols-1 items-stretch gap-4 ${current && supportingAds.length ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : 'mx-auto w-full max-w-4xl'}`}
+            aria-label="Bagoo event promotions"
+            className="relative w-full overflow-visible mb-4 sm:mb-5 pt-0"
         >
-            {current && (
+            {/* Subtle, big-spread ambient shadow glowing with the event banner color below the entire 3-image layout */}
+            <div
+                aria-hidden="true"
+                className={`absolute -inset-x-2 sm:-inset-x-4 -bottom-6 sm:-bottom-8 h-24 sm:h-36 bg-gradient-to-r ${theme.glow} blur-2xl sm:blur-3xl -z-10 pointer-events-none transition-all duration-700 opacity-80 sm:opacity-90`}
+            />
+
+            {/* 3-Image Layout:
+                - gap-0 (NO white space between banners)
+                - rounded-none (NO corner radius anywhere)
+                - border-none on outer edges to eliminate any white line peeking through
+            */}
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-0 items-stretch bg-slate-950 overflow-hidden rounded-none shadow-sm">
+                
+                {/* 1. Main Carousel Hero Banner */}
                 <div
                     role="region"
                     aria-roledescription="carousel"
-                    aria-label="Featured advertisements"
-                    className="relative min-w-0 rounded-2xl overflow-hidden border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.06)] bg-slate-100 group"
+                    aria-label="Featured platform event"
+                    className="relative w-full overflow-hidden rounded-none bg-slate-950 group transition-all duration-700 flex flex-col justify-center"
+                    style={{ boxShadow: theme.shadow }}
                     onMouseEnter={() => setIsHovered(true)}
                     onMouseLeave={() => setIsHovered(false)}
                 >
@@ -145,7 +211,7 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                         onClick={() => measurement.click(current.measurement)}
                         onAuxClick={(event) => { if (event.button === 1) measurement.click(current.measurement); }}
                         aria-label={current.title}
-                        className="block focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
+                        className="block w-full h-full rounded-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
                     >
                         <MeasuredArtwork banner={current} session={measurement} interactive={interactive}>
                             <img
@@ -156,7 +222,7 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                                 height={current.height}
                                 onError={() => failedImage(current.image)}
                                 loading="eager"
-                                className="block h-auto w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+                                className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] rounded-none"
                             />
                         </MeasuredArtwork>
                     </PictureLink>
@@ -168,32 +234,32 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                             <button
                                 type="button"
                                 onClick={() => move(-1)}
-                                aria-label="Previous advertisement"
-                                className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-[#E00D42]/90 text-white hover:bg-[#E00D42] shadow-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
+                                aria-label="Previous event"
+                                className="absolute left-3 top-1/2 flex h-8 w-8 sm:h-9 sm:w-9 -translate-y-1/2 items-center justify-center rounded-none bg-black/50 hover:bg-[#E00D42] text-white backdrop-blur-md shadow-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
                             >
                                 <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                             </button>
                             <button
                                 type="button"
                                 onClick={() => move(1)}
-                                aria-label="Next advertisement"
-                                className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-[#E00D42]/90 text-white hover:bg-[#E00D42] shadow-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
+                                aria-label="Next event"
+                                className="absolute right-3 top-1/2 flex h-8 w-8 sm:h-9 sm:w-9 -translate-y-1/2 items-center justify-center rounded-none bg-black/50 hover:bg-[#E00D42] text-white backdrop-blur-md shadow-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white opacity-0 group-hover:opacity-100 cursor-pointer"
                             >
                                 <ChevronRight className="h-5 w-5" aria-hidden="true" />
                             </button>
-                            <div role="group" aria-label="Choose an advertisement" className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 bg-white/85 border border-slate-200/80 px-2.5 py-1 rounded-full shadow-sm">
+                            <div role="group" aria-label="Choose an advertisement" className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 gap-1.5 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-none shadow-md">
                                 {slides.map((banner, index) => (
                                     <button
                                         key={banner.id}
                                         type="button"
                                         onClick={() => setSelected(index)}
-                                        aria-label={`Show advertisement ${index + 1}: ${banner.title}`}
+                                        aria-label={`Show event ${index + 1}: ${banner.title}`}
                                         aria-pressed={currentIndex === index}
-                                        className="flex h-3.5 w-3.5 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] cursor-pointer"
+                                        className="flex h-3 w-3 items-center justify-center rounded-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] cursor-pointer"
                                     >
                                         <span
                                             aria-hidden="true"
-                                            className={`h-1.5 rounded-full transition-all duration-300 ${currentIndex === index ? 'w-5 bg-[#E00D42]' : 'w-1.5 bg-slate-300'}`}
+                                            className={`h-1.5 transition-all duration-300 ${currentIndex === index ? 'w-4.5 bg-[#E00D42] shadow-[0_0_8px_#E00D42]' : 'w-1.5 bg-white/50 hover:bg-white/80'}`}
                                         />
                                     </button>
                                 ))}
@@ -201,40 +267,67 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
                         </>
                     )}
                 </div>
-            )}
 
-            {supportingAds.length > 0 && (
-                <div aria-label="More advertisements" data-count={supportingAds.length} className={`buyer-ad-supporting grid min-w-0 grid-cols-1 gap-4 ${current ? '' : 'mx-auto w-full max-w-md'}`}>
-                    {supportingAds.map((banner) => (
+                {/* 2. Right Column: 2 Stacked Side Banners (Seamless, gap-0, rounded-none) */}
+                <div className="hidden lg:grid grid-rows-2 gap-0 min-w-0 bg-slate-950">
+                    {/* Top Side Banner */}
+                    {sideBanners[0] && (
                         <div
-                            key={banner.id}
-                            className="rounded-2xl overflow-hidden border border-slate-200/90 shadow-[0_4px_16px_rgba(15,23,42,0.06)] hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] hover:-translate-y-1 transition-all duration-300 bg-slate-100 group"
+                            className="relative overflow-hidden rounded-none bg-slate-950 shadow-none group flex items-center justify-center border-l border-b border-black/40"
                         >
                             <PictureLink
-                                href={banner.href}
+                                href={sideBanners[0].href}
                                 interactive={interactive}
-                                onClick={() => measurement.click(banner.measurement)}
-                                onAuxClick={(event) => { if (event.button === 1) measurement.click(banner.measurement); }}
-                                aria-label={banner.title}
-                                className="block min-w-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]"
+                                onClick={() => measurement.click(sideBanners[0].measurement)}
+                                onAuxClick={(event) => { if (event.button === 1) measurement.click(sideBanners[0].measurement); }}
+                                aria-label={sideBanners[0].title}
+                                className="block w-full h-full rounded-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
                             >
-                                <MeasuredArtwork banner={banner} session={measurement} interactive={interactive}>
+                                <MeasuredArtwork banner={sideBanners[0]} session={measurement} interactive={interactive}>
                                     <img
-                                        src={banner.image}
-                                        alt={banner.alt_text}
-                                        width={banner.width}
-                                        height={banner.height}
-                                        onError={() => failedImage(banner.image)}
-                                        loading="lazy"
-                                        decoding="async"
-                                        className="block h-auto w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                                        src={sideBanners[0].image}
+                                        alt={sideBanners[0].alt_text}
+                                        width={sideBanners[0].width}
+                                        height={sideBanners[0].height}
+                                        onError={() => failedImage(sideBanners[0].image)}
+                                        loading="eager"
+                                        className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02] rounded-none"
                                     />
                                 </MeasuredArtwork>
                             </PictureLink>
                         </div>
-                    ))}
+                    )}
+
+                    {/* Bottom Side Banner */}
+                    {sideBanners[1] && (
+                        <div
+                            className="relative overflow-hidden rounded-none bg-slate-950 shadow-none group flex items-center justify-center border-l border-black/40"
+                        >
+                            <PictureLink
+                                href={sideBanners[1].href}
+                                interactive={interactive}
+                                onClick={() => measurement.click(sideBanners[1].measurement)}
+                                onAuxClick={(event) => { if (event.button === 1) measurement.click(sideBanners[1].measurement); }}
+                                aria-label={sideBanners[1].title}
+                                className="block w-full h-full rounded-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#E00D42]"
+                            >
+                                <MeasuredArtwork banner={sideBanners[1]} session={measurement} interactive={interactive}>
+                                    <img
+                                        src={sideBanners[1].image}
+                                        alt={sideBanners[1].alt_text}
+                                        width={sideBanners[1].width}
+                                        height={sideBanners[1].height}
+                                        onError={() => failedImage(sideBanners[1].image)}
+                                        loading="eager"
+                                        className="block w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.02] rounded-none"
+                                    />
+                                </MeasuredArtwork>
+                            </PictureLink>
+                        </div>
+                    )}
                 </div>
-            )}
+
+            </div>
         </section>
     );
 }

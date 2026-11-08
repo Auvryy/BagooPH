@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\SubCategory;
 use App\Services\Advertisements\AdvertisementReader;
 use App\Services\Advertisements\AdvertisementRecommendationService;
 use App\Services\Commerce\BuyerDiscoveryService;
@@ -76,29 +78,27 @@ class BuyerHomeController extends Controller
                 ->get();
         }
 
-        // 5. Algorithmic Top Products (Personalized by user preference & engagement)
-        $topPersonalizedProducts = Product::with(['shop', 'category'])
+        // 5. Algorithmic Top Products & Curated Subcategory / Niche Showcases (Row 5)
+        $topCuratedCollections = self::curatedCollections();
+
+        $topPersonalizedProducts = Product::with(['shop', 'category', 'subCategory'])
             ->availableForSale()
             ->where('status', 'active')
             ->orderByDesc('sales_count')
-            ->take(4)
+            ->take(6)
             ->get()
-            ->map(function ($product, $index) {
-                $ribbons = [
-                    ['text' => '#1 BESTSELLER', 'tag' => 'backpacks-and-bags', 'niche' => 'Everyday Carry & Tech Packs'],
-                    ['text' => 'TRENDING 3.4K/MO', 'tag' => 'mens-apparel', 'niche' => 'Heavyweight Streetwear & Tees'],
-                    ['text' => '5.0★ TOP RATED', 'tag' => 'sports-and-outdoors', 'niche' => 'Tactical & Outdoor Survival Gear'],
-                    ['text' => 'HOT DEAL -29%', 'tag' => 'electronics-and-gadgets', 'niche' => 'Tech Pouches & EDC Organizers'],
-                ];
-                $meta = $ribbons[$index % count($ribbons)];
-                $product->personalized_ribbon = $meta['text'];
-                $product->collection_tag = $meta['tag'];
-                $product->collection_title = $meta['niche'];
+            ->map(function ($product, $index) use ($topCuratedCollections) {
+                $meta = $topCuratedCollections[$index % count($topCuratedCollections)];
+                $product->personalized_ribbon = $meta['ribbon'];
+                $product->collection_tag = $meta['category_slug'];
+                $product->collection_sub = $meta['sub_slug'];
+                $product->collection_title = $meta['title'];
+                $product->sales_badge = $meta['sales_badge'];
                 return $product;
             });
 
         // 6. "Daily Discover" & Search Product Feed
-        $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
+        $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'subCategory'])->availableForSale()->withReviewSummary()
             ->where('status', 'active');
 
         $discovery = app(BuyerDiscoveryService::class);
@@ -107,6 +107,26 @@ class BuyerHomeController extends Controller
         }
         $filters = $discovery->selection($request);
         $feedProducts = $discovery->paginate($discovery->filter($query, $filters), $filters, 18);
+
+        // Subcategories for active category or all active
+        $selectedCategory = $filters['category'] !== 'all' && $filters['category'] !== ''
+            ? Category::where('slug', $filters['category'])->where('is_active', true)->first()
+            : null;
+
+        $subcategoriesQuery = SubCategory::where('is_active', true);
+        if ($selectedCategory) {
+            $subcategoriesQuery->where('category_id', $selectedCategory->id);
+        }
+        $subcategories = $subcategoriesQuery->orderBy('sort_order')->get();
+
+        $subCounts = Product::availableForSale()->whereNotNull('sub_category_id')
+            ->selectRaw('sub_category_id, count(*) as count')
+            ->groupBy('sub_category_id')
+            ->pluck('count', 'sub_category_id');
+
+        $subcategories->each(function ($sub) use ($subCounts) {
+            $sub->setAttribute('products_count', (int) ($subCounts[$sub->id] ?? 0));
+        });
 
         // 5b. Related / Suggested Products (when search is active or when feed has few results)
         $relatedProducts = [];
@@ -146,14 +166,147 @@ class BuyerHomeController extends Controller
         return Inertia::render('Buyer/Home', [
             'banners' => $banners,
             'categories' => $categories,
+            'subcategories' => $subcategories,
             'feedProducts' => $feedProducts,
             'flashSaleProducts' => $flashSaleProducts,
             'topPersonalizedProducts' => $topPersonalizedProducts,
+            'topCuratedCollections' => $topCuratedCollections,
             'relatedProducts' => $relatedProducts,
             'activeShipment' => $activeShipment,
             'filters' => [...$filters, 'tab' => match ($filters['sort']) {
                 'newest' => 'new_arrivals', 'top_sales', 'top_rated' => $filters['sort'], default => 'all',
             }],
         ]);
+    }
+
+    public function topProducts(Request $request): InertiaResponse
+    {
+        $categories = app(BuyerDiscoveryService::class)->categories();
+        $collections = self::curatedCollections();
+
+        $activeCollectionSlug = $request->input('collection', $collections[0]['sub_slug']);
+        $activeCollection = collect($collections)->firstWhere('sub_slug', $activeCollectionSlug) ?? $collections[0];
+
+        $subCategory = SubCategory::where('slug', $activeCollection['sub_slug'])->first();
+
+        $productsQuery = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'subCategory'])
+            ->availableForSale()
+            ->withReviewSummary()
+            ->where('status', 'active');
+
+        if ($subCategory) {
+            $products = (clone $productsQuery)
+                ->where('sub_category_id', $subCategory->id)
+                ->orderByDesc('sales_count')
+                ->orderByDesc('rating')
+                ->get();
+
+            if ($products->count() < 6) {
+                $existingIds = $products->pluck('id')->all();
+                $fillers = (clone $productsQuery)
+                    ->whereNotIn('id', $existingIds)
+                    ->orderByDesc('sales_count')
+                    ->take(6 - count($existingIds))
+                    ->get();
+                $products = $products->concat($fillers);
+            }
+        } else {
+            $products = $productsQuery
+                ->orderByDesc('sales_count')
+                ->orderByDesc('rating')
+                ->take(12)
+                ->get();
+        }
+
+        return Inertia::render('Buyer/TopProducts', [
+            'categories' => $categories,
+            'collections' => $collections,
+            'activeCollection' => $activeCollection,
+            'products' => $products,
+        ]);
+    }
+
+    public static function curatedCollections(): array
+    {
+        return [
+            [
+                'id' => 1,
+                'title' => 'Wireless Audio & Gadgets',
+                'ribbon' => '#1 BESTSELLER',
+                'ribbon_color' => 'amber',
+                'sales_badge' => '3.8K+ SOLD/MO',
+                'category_slug' => 'electronics-and-gadgets',
+                'category_name' => 'Electronics & Gadgets',
+                'sub_slug' => 'audio-and-video-equipment',
+                'image' => '/images/products/carousell_electronics_and_gadgets_1.jpg',
+                'item_count_label' => '15+ items',
+                'target_url' => '/top-products?collection=audio-and-video-equipment',
+            ],
+            [
+                'id' => 2,
+                'title' => 'Streetwear Boxy Tees',
+                'ribbon' => 'TRENDING',
+                'ribbon_color' => 'crimson',
+                'sales_badge' => '2.9K+ SOLD/MO',
+                'category_slug' => 'mens-apparel',
+                'category_name' => "Men's Apparel",
+                'sub_slug' => 'tees-and-tops',
+                'image' => '/images/products/carousell_mens_apparel_1.jpg',
+                'item_count_label' => '20+ items',
+                'target_url' => '/top-products?collection=tees-and-tops',
+            ],
+            [
+                'id' => 3,
+                'title' => 'Heritage Automatic Watches',
+                'ribbon' => 'TOP RATED 5.0★',
+                'ribbon_color' => 'emerald',
+                'sales_badge' => '2.1K+ SOLD/MO',
+                'category_slug' => 'jewelry-and-watches',
+                'category_name' => 'Jewelry & Watches',
+                'sub_slug' => 'watches-for-men-and-women',
+                'image' => '/images/products/carousell_jewelry_and_watches_1.jpg',
+                'item_count_label' => '12+ items',
+                'target_url' => '/top-products?collection=watches-for-men-and-women',
+            ],
+            [
+                'id' => 4,
+                'title' => 'Linen Dresses & Summer Wear',
+                'ribbon' => 'HOT DEMAND',
+                'ribbon_color' => 'orange',
+                'sales_badge' => '1.8K+ SOLD/MO',
+                'category_slug' => 'womens-apparel',
+                'category_name' => "Women's Apparel",
+                'sub_slug' => 'dresses-and-skirts',
+                'image' => '/images/products/carousell_womens_apparel_1.jpg',
+                'item_count_label' => '14+ items',
+                'target_url' => '/top-products?collection=dresses-and-skirts',
+            ],
+            [
+                'id' => 5,
+                'title' => 'Outdoor Camping & Trail Gear',
+                'ribbon' => 'RISING STAR',
+                'ribbon_color' => 'amber',
+                'sales_badge' => '1.4K+ SOLD/MO',
+                'category_slug' => 'sports-and-outdoors',
+                'category_name' => 'Sports & Outdoors',
+                'sub_slug' => 'camping-and-hiking-gear',
+                'image' => '/images/products/carousell_sports_and_outdoors_1.jpg',
+                'item_count_label' => '10+ items',
+                'target_url' => '/top-products?collection=camping-and-hiking-gear',
+            ],
+            [
+                'id' => 6,
+                'title' => 'Hydrating Skincare Essentials',
+                'ribbon' => 'COMMUNITY CHOICE',
+                'ribbon_color' => 'emerald',
+                'sales_badge' => '1.1K+ SOLD/MO',
+                'category_slug' => 'health-and-beauty',
+                'category_name' => 'Health & Beauty',
+                'sub_slug' => 'skincare-products',
+                'image' => '/images/products/carousell_health_and_beauty_1.jpg',
+                'item_count_label' => '16+ items',
+                'target_url' => '/top-products?collection=skincare-products',
+            ],
+        ];
     }
 }

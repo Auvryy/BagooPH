@@ -159,7 +159,7 @@ export default function BuyerLayout({
     };
 
     return (
-        <div className={`${fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-hidden'} bg-[#F8FAFC] text-slate-800 font-sans flex flex-col w-full max-w-full selection:bg-[#E00D42] selection:text-white`}>
+        <div className={`${fullHeight ? 'h-screen overflow-hidden' : 'min-h-screen overflow-x-clip'} bg-[#F8FAFC] text-slate-800 font-sans flex flex-col w-full max-w-full selection:bg-[#E00D42] selection:text-white`}>
             
             <CatalogueNavigationNotice />
             {topBanner}
@@ -168,7 +168,7 @@ export default function BuyerLayout({
                 <>
                     {/* 1. TOP UTILITY BAR (VIBRANT BRAND ACCENT) */}
                     <div className="bg-[#C20836] text-white/90 text-xs border-b border-[#A8062E] shrink-0 font-sans">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 flex items-center justify-between font-sans text-xs">
+                <div className="max-w-[1536px] mx-auto px-2 sm:px-3 md:px-4 py-1.5 flex items-center justify-between font-sans text-xs">
                     <div className="flex items-center gap-4">
                         <a href={sellerUrl} className="hover:text-white transition flex items-center gap-1.5 font-bold text-white">
                             <Store className="w-3.5 h-3.5 text-amber-300" />
@@ -198,8 +198,8 @@ export default function BuyerLayout({
             </div>
 
             {/* 2. MAIN HEADER: VIBRANT BRAND CRIMSON BACKGROUND */}
-            <header className="bg-[#E00D42] text-white border-b border-[#C20836] sticky top-0 z-40 shadow-md shrink-0 font-sans">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+            <header className="bg-[#E00D42] text-white border-b border-[#C20836] sticky top-0 z-50 shadow-md shrink-0 font-sans">
+                <div className="max-w-[1536px] mx-auto px-2 sm:px-3 md:px-4 py-3">
                     <div className="flex items-center justify-between gap-4 sm:gap-6">
                         
                         {/* Logo */}
@@ -216,7 +216,7 @@ export default function BuyerLayout({
                         </PortalLink>
 
                         {/* Search Bar & Trending Keywords */}
-                        <div className="flex-1 max-w-2xl hidden md:flex md:flex-col gap-1">
+                        <div className="flex-1 max-w-3xl hidden md:flex md:flex-col gap-1">
                             <form onSubmit={handleSearch} aria-busy={search.state.status === 'loading'} className="relative flex items-center h-11">
                                 <input
                                     type="text"
@@ -251,7 +251,7 @@ export default function BuyerLayout({
                             </form>
 
                             {/* Trending Search Chips */}
-                            <div className="flex items-center gap-2.5 text-[11px] text-rose-100 font-medium overflow-x-auto scrollbar-none pt-0.5">
+                            <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-rose-100 font-medium pt-0.5">
                                 <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Trending:</span>
                                 {['Oversized Tee', 'EDC Sling Bag', 'Paracord Gear', 'Field Watch', 'Tactical Gloves', 'Aviator Glasses'].map((term) => (
                                     <button
@@ -271,23 +271,22 @@ export default function BuyerLayout({
 
                         {/* RIGHT ACTIONS: BAG & PROFILE */}
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                            {/* BAG BUTTON */}
+                            {/* BAG ACTION */}
                             <NotificationLink />
                             <Link 
                                 href={route('buyer.cart')} 
-                                className={`relative h-11 flex items-center gap-2 px-3.5 sm:px-4 rounded-xl font-sans text-xs font-bold transition shadow-xs border ${
-                                    route().current('buyer.cart')
-                                        ? 'bg-white text-[#E00D42] border-white'
-                                        : 'bg-white/15 hover:bg-white/25 text-white border-white/25 active:scale-95'
-                                }`}
+                                className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-white hover:text-rose-100 transition font-sans text-sm font-bold tracking-tight group focus:outline-hidden"
+                                aria-label={`Shopping Bag (${cartCount} items)`}
                             >
-                                <ShoppingBag className="w-4 h-4 text-white" />
-                                <span className="hidden sm:inline">Bag</span>
-                                {cartCount > 0 && (
-                                    <span className="min-w-[18px] h-[18px] px-1 bg-[#F97316] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
-                                        {cartCount}
-                                    </span>
-                                )}
+                                <div className="relative flex items-center justify-center">
+                                    <ShoppingBag className="w-5 h-5 text-white group-hover:scale-105 transition-transform" />
+                                    {cartCount > 0 && (
+                                        <span className="absolute -top-1.5 -right-2 min-w-[17px] h-[17px] px-1 bg-[#F97316] text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
+                                            {cartCount}
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="hidden sm:inline font-bold">Bag</span>
                             </Link>
 
                             {/* PROFILE BUTTON WITH SEAMLESS HOVER BRIDGE */}
@@ -298,19 +297,19 @@ export default function BuyerLayout({
                                     onMouseEnter={handleUserDropdownEnter}
                                     onMouseLeave={handleUserDropdownLeave}
                                 >
-                                    <div className="h-11 flex items-stretch rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white transition font-sans text-xs font-bold shadow-xs group">
+                                    <div className="flex items-center gap-1.5 py-1 px-1.5 text-white hover:text-rose-100 transition font-sans text-xs sm:text-sm font-bold group cursor-pointer">
                                         <PortalLink
                                             href={route('buyer.orders.index')}
-                                            className="flex min-w-0 items-center gap-2 pl-3 sm:pl-3.5 pr-1 focus:outline-hidden"
+                                            className="flex min-w-0 items-center gap-2 focus:outline-hidden"
                                         >
                                             {auth.user.avatar ? (
                                                 <img
                                                     src={auth.user.avatar}
                                                     alt={auth.user.name}
-                                                    className="w-6 h-6 rounded-lg object-cover border border-white/40 shrink-0"
+                                                    className="w-7 h-7 rounded-full object-cover border border-white/40 shrink-0"
                                                 />
                                             ) : (
-                                                <div className="w-6 h-6 rounded-lg bg-white text-[#E00D42] text-[10px] font-black flex items-center justify-center shrink-0 shadow-2xs">
+                                                <div className="w-7 h-7 rounded-full bg-white text-[#E00D42] text-xs font-black flex items-center justify-center shrink-0 shadow-xs">
                                                     {auth.user.name.charAt(0).toUpperCase()}
                                                 </div>
                                             )}
@@ -323,7 +322,7 @@ export default function BuyerLayout({
                                             aria-haspopup="menu"
                                             aria-expanded={userDropdownOpen}
                                             aria-controls="buyer-account-menu"
-                                            className="flex items-center justify-center px-2.5 cursor-pointer focus:outline-hidden"
+                                            className="flex items-center justify-center p-0.5 cursor-pointer focus:outline-hidden"
                                         >
                                             <ChevronDown className={`w-3.5 h-3.5 text-white/80 group-hover:text-white transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
                                         </button>
@@ -416,16 +415,17 @@ export default function BuyerLayout({
                                     )}
                                 </div>
                             ) : hideAuthButtons ? null : (
-                                <div className="flex items-center gap-2 font-sans text-xs">
+                                <div className="flex items-center gap-2 sm:gap-2.5 font-sans text-xs sm:text-sm font-bold">
                                     <Link 
                                         href={route('login')} 
-                                        className="h-11 flex items-center px-4 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold transition border border-white/25 text-xs shadow-xs cursor-pointer"
+                                        className="text-white/95 hover:text-white hover:underline transition-colors py-1 cursor-pointer whitespace-nowrap"
                                     >
                                         Sign In
                                     </Link>
+                                    <span className="text-white/40 text-xs select-none">|</span>
                                     <Link 
                                         href={route('register')} 
-                                        className="h-11 flex items-center px-4 rounded-xl bg-white hover:bg-rose-50 text-[#E00D42] font-black transition shadow-xs text-xs cursor-pointer"
+                                        className="text-white hover:text-amber-200 transition-colors py-1 cursor-pointer font-extrabold whitespace-nowrap"
                                     >
                                         Register
                                     </Link>
@@ -466,12 +466,12 @@ export default function BuyerLayout({
             )}
 
             {/* 3. MAIN CONTENT BODY */}
-            <main aria-busy={search.state.status === 'loading'} className={`flex-1 min-h-0 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col ${
+            <main aria-busy={search.state.status === 'loading'} className={`flex-1 min-h-0 max-w-[1536px] w-full mx-auto px-2 sm:px-3 md:px-4 flex flex-col ${
                 fullHeight 
-                    ? 'py-2 sm:py-3 overflow-hidden' 
+                    ? 'py-1 sm:py-2 overflow-hidden' 
                     : hideHeader 
                         ? 'pt-2 sm:pt-3 pb-8 overflow-x-hidden' 
-                        : 'py-6 overflow-x-hidden'
+                        : 'py-3 sm:py-4 overflow-x-hidden'
             }`}>
                 {buyerApplication && !buyerApplication.can_use_portal && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white p-4 text-sm">
                     <p>Checkout is unavailable until your buyer account is active and approved.</p>
@@ -523,8 +523,8 @@ export default function BuyerLayout({
 
             {/* 5. FOOTER */}
             {!hideFooter && (
-                <footer className="bg-white border-t border-slate-200 text-slate-600 mt-16 font-sans text-xs">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+                <footer className="bg-white border-t border-slate-200 text-slate-600 mt-12 font-sans text-xs">
+                <div className="max-w-[1536px] mx-auto px-2 sm:px-3 md:px-4 py-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                     <div>
                         <h5 className="font-bold uppercase text-slate-900 mb-3 tracking-wider text-xs">Platform Directory</h5>
                         <ul className="space-y-2 text-slate-500">

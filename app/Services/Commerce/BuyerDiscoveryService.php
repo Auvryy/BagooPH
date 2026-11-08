@@ -21,6 +21,8 @@ class BuyerDiscoveryService
         $data = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'category' => ['nullable', 'string', Rule::in(['all', ...Category::where('is_active', true)->pluck('slug')->all()])],
+            'sub' => ['nullable', 'string', 'max:100'],
+            'sub_category' => ['nullable', 'string', 'max:100'],
             'location' => ['bail', 'nullable', 'string', Rule::in(['all', ...array_column(app(CatalogueLocationService::class)->areas(), 'value')])],
             'sort' => ['nullable', 'string', Rule::in(['relevance', 'price_asc', 'price_desc', 'top_sales', 'top_rated', 'newest'])],
             'min_price' => $prices,
@@ -33,9 +35,12 @@ class BuyerDiscoveryService
             throw ValidationException::withMessages(['max_price' => 'The maximum price must be at least the minimum price.']);
         }
 
+        $sub = trim((string) ($data['sub'] ?? ($data['sub_category'] ?? '')));
+
         return [
             'search' => trim((string) ($data['search'] ?? '')),
             'category' => $data['category'] ?? 'all',
+            'sub' => $sub !== '' && $sub !== 'all' ? $sub : '',
             'location' => $data['location'] ?? 'all',
             'sort' => $data['sort'] ?? 'relevance',
             'min_price' => isset($data['min_price']) ? (string) $data['min_price'] : '',
@@ -118,8 +123,16 @@ class BuyerDiscoveryService
                 }
             });
         }
-        if ($filters['category'] !== 'all') {
-            $products->whereIn('products.category_id', $this->categoryIds($filters['category']));
+        if ($filters['category'] !== 'all' && $filters['category'] !== '') {
+            $categoryIds = $this->categoryIds($filters['category']);
+            $products->where(function (Builder $query) use ($categoryIds) {
+                $query->whereIn('products.category_id', $categoryIds)
+                    ->orWhereHas('subCategory', fn (Builder $sq) => $sq->whereIn('category_id', $categoryIds));
+            });
+        }
+        if (! empty($filters['sub']) && $filters['sub'] !== 'all') {
+            $subSlug = $filters['sub'];
+            $products->whereHas('subCategory', fn (Builder $sq) => $sq->where('slug', $subSlug));
         }
         if (($filters['location'] ?? 'all') !== 'all' && $filters['location'] !== '') {
             app(CatalogueLocationService::class)->filter($products, $filters['location']);
@@ -174,6 +187,7 @@ class BuyerDiscoveryService
             ->orWhereRaw("LOWER(products.description) LIKE ? ESCAPE '!'", [$pattern])
             ->orWhereRaw("LOWER(products.sku) LIKE ? ESCAPE '!'", [$pattern])
             ->orWhereHas('category', fn (Builder $category) => $category->whereRaw("LOWER(categories.name) LIKE ? ESCAPE '!'", [$pattern]))
+            ->orWhereHas('subCategory', fn (Builder $sub) => $sub->whereRaw("LOWER(sub_categories.name) LIKE ? ESCAPE '!'", [$pattern]))
             ->orWhereHas('storeTags', fn (Builder $tag) => $tag->whereRaw("LOWER(store_tags.name) LIKE ? ESCAPE '!'", [$pattern]))
             ->orWhereHas('shop', fn (Builder $shop) => $shop->whereRaw("LOWER(shops.name) LIKE ? ESCAPE '!'", [$pattern]));
     }

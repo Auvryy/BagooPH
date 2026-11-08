@@ -106,6 +106,31 @@ export interface Shop {
     user?: User;
 }
 
+export interface SubCategory {
+    id: number;
+    category_id: number;
+    name: string;
+    slug: string;
+    image_path?: string | null;
+    sort_order: number;
+    is_active: boolean;
+    products_count?: number;
+}
+
+export interface CuratedCollection {
+    id: number;
+    title: string;
+    ribbon: string;
+    ribbon_color: 'amber' | 'crimson' | 'emerald' | 'orange';
+    sales_badge: string;
+    category_slug: string;
+    category_name: string;
+    sub_slug: string;
+    image: string;
+    item_count_label?: string;
+    target_url: string;
+}
+
 export interface Category {
     id: number;
     parent_id?: number | null;
@@ -116,6 +141,7 @@ export interface Category {
     description?: string | null;
     is_active: boolean;
     products_count?: number;
+    sub_categories?: SubCategory[];
 }
 
 export interface ProductImage {
@@ -159,6 +185,7 @@ export interface Product {
     id: number;
     shop_id: number;
     category_id?: number | null;
+    sub_category_id?: number | null;
     name: string;
     slug: string;
     description: string;
@@ -192,6 +219,7 @@ export interface Product {
     order_items_count?: number;
     shop?: Shop;
     category?: Category;
+    sub_category?: SubCategory | null;
     images?: ProductImage[];
     reviews?: Review[];
     created_at?: string;
