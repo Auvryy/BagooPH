@@ -11,7 +11,8 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 ## Safety and Git
 
 - Work only inside this repository.
-- Local `git add` and `git commit` are allowed. Never run `git push`; only the user publishes commits.
+- Work on the active single branch (`main`) only; do not switch or create extraneous branches unless explicitly instructed by the user.
+- STRICT PUSH POLICY: Local `git add` and `git commit` are permitted, but NEVER run `git push` unless the user explicitly types the secret phrase: `push mango`. Without `push mango`, commits must strictly remain local on the machine.
 - For coding tasks, split work into small logical commits by feature or concern instead of one large commit.
 - Give every commit a clear subject and a concise description in the message body. Explain the concrete problem, what changes for the user, and why the change matters in plain language. Include relevant verification and remaining limitations; never invent checks or rely on filenames alone to explain the work.
 - Prepare a readable pull request description for the final branch handoff, covering the combined outcome and validation. Individual commit descriptions explain their own logical changes; a branch description must reflect the final scope.
