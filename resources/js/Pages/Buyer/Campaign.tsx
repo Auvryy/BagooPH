@@ -419,7 +419,7 @@ export default function CampaignPage({ campaign, products, categories, event, al
                             {filteredProducts.map((product) => (
                                 <Link
                                     key={product.id}
-                                    href={`/products/${product.slug}`}
+                                    href={`/product/${product.slug}`}
                                     className="group bg-white rounded-lg border border-slate-200/90 overflow-hidden hover:border-[#E00D42] hover:shadow-md transition flex flex-col justify-between"
                                 >
                                     {/* Image with Direct Discount & Event Badge */}
