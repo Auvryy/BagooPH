@@ -5,6 +5,7 @@ import { HubPageHeader, HubPanel, hubButton } from '@/Components/Logistics/Works
 import type { PageProps } from '@/types';
 
 type Work = { title: string; detail: string; person: string; href: string; action: string; Icon: LucideIcon; canOpen?: boolean };
+
 export default function HubRoadmap() {
     const canScan = usePage<PageProps>().props.auth.user?.canScanParcels === true;
     const work: Work[] = [
@@ -16,9 +17,55 @@ export default function HubRoadmap() {
         { title: 'Complete the buyer handover', detail: 'The delivery rider records the recipient and delivery proof, or the authorized counter handler verifies the buyer and claim. Valid receipt and original payment evidence complete new orders.', person: 'Delivery rider or counter handler', href: route('hub.deliveries'), action: 'Review parcel progress', Icon: ClipboardCheck },
         { title: 'Confirm the cash handover', detail: 'The rider offers collected COD. The named hub recipient counts and acknowledges it. Earnings and platform reconciliation keep their own evidence.', person: 'Named cash recipient', href: route('hub.cod.index'), action: 'Open COD cash', Icon: Banknote },
     ];
-    return <DashboardLayout title="Workspace guide"><Head title="Workspace guide — BagooPH" /><div className="space-y-6"><HubPageHeader title="Workspace guide" icon={Building2} description="A quick reference for who acts next. Open a parcel or transfer to see the action allowed by its actual recorded state." />
-        <HubPanel title="Follow the saved hub route" description="Different child hubs transfer through their required Mother Hubs. Same-child orders use the recorded local intake path." icon={<Building2 className="h-4 w-4" />}><div tabIndex={0} aria-label="Standard parcel journey" className="flex items-center gap-2 overflow-x-auto pb-2 text-xs font-semibold text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">{['Pickup rider', 'Origin child hub', 'Required Mother Hubs', 'Destination child hub', 'Delivery rider or counter', 'Buyer'].map((stop, index) => <span key={stop} className="flex shrink-0 items-center gap-2"><span className="whitespace-nowrap rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">{stop}</span>{index < 5 && <ArrowRight className="h-4 w-4 text-slate-400" />}</span>)}</div></HubPanel>
-        <div className="grid gap-4 lg:grid-cols-2">{work.map(({ title, detail, person, href, action, Icon, canOpen }, index) => <article key={title} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-rose-100 bg-rose-50 text-[#E00D42]"><Icon className="h-5 w-5" /></span><div><p className="text-[11px] text-slate-500">Step {index + 1} · {person}</p><h2 className="mt-1 text-sm font-bold text-slate-900">{title}</h2></div></div><p className="mt-4 text-sm leading-6 text-slate-600">{detail}</p>{canOpen !== false ? <Link href={href} className={`${hubButton} mt-4`}>{action}<ArrowRight className="h-4 w-4" /></Link> : <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">An assigned floor handler opens Scan Station.</p>}</article>)}</div>
-        <HubPanel title="When something needs review" icon={<ClipboardCheck className="h-4 w-4" />}><p className="text-sm leading-6 text-slate-600">A failed delivery, damaged or unexpected arrival, or missed handover needs its own retained evidence. Use the recovery and issue pages available in your sidebar. Never repeat a physical handover to recreate a missing scan.</p></HubPanel>
-    </div></DashboardLayout>;
+    return (
+        <DashboardLayout title="Workspace guide">
+            <Head title="Workspace guide — BagooPH" />
+            <div className="space-y-6">
+                <HubPageHeader title="Workspace guide" icon={Building2} description="A quick reference for who acts next. Open a parcel or transfer to see the action allowed by its actual recorded state." />
+
+                <HubPanel title="Follow the saved hub route" description="Different child hubs transfer through their required Mother Hubs. Same-child orders use the recorded local intake path." icon={<Building2 className="h-4 w-4" />}>
+                    <div tabIndex={0} aria-label="Standard parcel journey" className="flex items-center gap-2 overflow-x-auto pb-2 text-xs font-semibold text-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
+                        {['Pickup rider', 'Origin child hub', 'Required Mother Hubs', 'Destination child hub', 'Delivery rider or counter', 'Buyer'].map((stop, index) => (
+                            <span key={stop} className="flex shrink-0 items-center gap-2">
+                                <span className="whitespace-nowrap rounded-lg border border-zinc-200/90 bg-zinc-50 px-3 py-1.5">{stop}</span>
+                                {index < 5 && <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />}
+                            </span>
+                        ))}
+                    </div>
+                </HubPanel>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                    {work.map(({ title, detail, person, href, action, Icon, canOpen }, index) => (
+                        <article key={title} className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
+                            <div className="flex items-start gap-3">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200/80 bg-zinc-50 text-zinc-600">
+                                    <Icon className="h-4 w-4" />
+                                </span>
+                                <div>
+                                    <p className="text-[11px] font-medium text-zinc-500">Step {index + 1} · {person}</p>
+                                    <h2 className="mt-0.5 text-sm font-bold text-[#121316]">{title}</h2>
+                                </div>
+                            </div>
+                            <p className="mt-3.5 text-xs sm:text-sm leading-relaxed text-zinc-600">{detail}</p>
+                            {canOpen !== false ? (
+                                <Link href={href} className={`${hubButton} mt-4`}>
+                                    {action}<ArrowRight className="h-3.5 w-3.5" />
+                                </Link>
+                            ) : (
+                                <p className="mt-4 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3 text-xs leading-5 text-zinc-500">
+                                    An assigned floor handler opens Scan Station.
+                                </p>
+                            )}
+                        </article>
+                    ))}
+                </div>
+
+                <HubPanel title="When something needs review" icon={<ClipboardCheck className="h-4 w-4" />}>
+                    <p className="text-xs sm:text-sm leading-relaxed text-zinc-600">
+                        A failed delivery, damaged or unexpected arrival, or missed handover needs its own retained evidence. Use the recovery and issue pages available in your sidebar. Never repeat a physical handover to recreate a missing scan.
+                    </p>
+                </HubPanel>
+            </div>
+        </DashboardLayout>
+    );
 }

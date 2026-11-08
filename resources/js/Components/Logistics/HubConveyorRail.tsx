@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
     Truck,
     Scale,
@@ -7,6 +7,8 @@ import {
     Send,
     Store,
     Package,
+    CheckCircle2,
+    ChevronRight,
 } from 'lucide-react';
 
 export interface HubConveyorStation {
@@ -128,112 +130,103 @@ export default function HubConveyorRail({
     const hasScannedParcel = Boolean(currentStatus);
     const activeIndex = getActiveStationIndex(currentStatus, deliveryType);
 
-    // Track position for low-FPS discrete motion
-    const [boxIndex, setBoxIndex] = useState(activeIndex);
-
-    useEffect(() => {
-        if (hasScannedParcel) {
-            setBoxIndex(activeIndex);
-        }
-    }, [hasScannedParcel, activeIndex]);
-
     return (
         <section
             aria-label="Hub Processing Pipeline"
-            className="mb-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs"
+            className="rounded-xl border border-zinc-200/90 bg-white p-3.5 shadow-xs font-sans"
         >
-            {/* Header: Clean & Essential Information Only */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+            {/* Compact Notion Workflow Header */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-zinc-100">
                 <div className="flex items-center gap-2">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 font-sans">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-zinc-100 border border-zinc-200/80 text-zinc-700">
+                        <Package className="h-3.5 w-3.5" />
+                    </span>
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-800">
                         Hub Pipeline
                     </h2>
                     {trackingNumber && (
-                        <span className="text-xs font-mono font-bold text-[#E00D42] bg-rose-50 px-2.5 py-0.5 rounded border border-rose-200">
+                        <span className="text-xs font-mono font-bold text-[#E00D42] bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
                             {trackingNumber}
                         </span>
                     )}
                 </div>
 
-                <div>
-                    {hasScannedParcel ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-                            <span className="w-2 h-2 rounded-full bg-[#E00D42]" />
-                            Station {HUB_STATIONS[activeIndex].number}: {HUB_STATIONS[activeIndex].title}
+                <div className="flex items-center gap-2">
+                    {isScanning ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-zinc-600 bg-zinc-100 px-2.5 py-0.5 rounded-md border border-zinc-200">
+                            Resolving stage…
+                        </span>
+                    ) : hasScannedParcel ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-900 bg-zinc-100 px-2.5 py-0.5 rounded-md border border-zinc-200/90">
+                            <ChevronRight className="w-3.5 h-3.5 text-[#E00D42]" />
+                            <span>Station {HUB_STATIONS[activeIndex].number}: {HUB_STATIONS[activeIndex].title}</span>
                         </span>
                     ) : (
-                        <span className="text-xs text-slate-400 font-medium">
+                        <span className="text-xs text-zinc-400 font-mono">
                             Ready for scan
                         </span>
                     )}
                 </div>
             </div>
 
-            {/* Pipeline Stage Track: Flat Nodes with Dashed Broken Line */}
-            <div className="relative pt-2 pb-1">
-                {/* Dashed Broken Line connecting the exact centers of all 6 columns */}
-                <div
-                    className="absolute top-7 border-t-2 border-dashed border-slate-300 pointer-events-none z-0"
-                    style={{
-                        left: 'calc(100% / 12)',
-                        right: 'calc(100% / 12)',
-                    }}
-                />
+            {/* 6-Stage Horizontal Pill Blocks */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                {HUB_STATIONS.map((station, idx) => {
+                    const Icon = station.icon;
+                    const isStationActive = hasScannedParcel && idx === activeIndex;
+                    const isStationCompleted = hasScannedParcel && idx < activeIndex;
 
-                {/* Light Low-FPS Box Icon stepping between nodes on scan */}
-                {hasScannedParcel && (
-                    <div
-                        className="absolute top-3 -translate-x-1/2 z-20 pointer-events-none"
-                        style={{
-                            left: `${((boxIndex + 0.5) / 6) * 100}%`,
-                            transition: 'left 0.45s steps(5, end)',
-                        }}
-                    >
-                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border-2 border-slate-800 text-slate-900 shadow-sm">
-                            <Package className="w-4 h-4 text-[#E00D42]" />
-                        </div>
-                    </div>
-                )}
-
-                {/* 6 Flat Station Nodes */}
-                <div className="grid grid-cols-6 relative z-10">
-                    {HUB_STATIONS.map((station, idx) => {
-                        const Icon = station.icon;
-                        const isStationActive = hasScannedParcel && idx === activeIndex;
-
-                        return (
-                            <button
-                                key={station.id}
-                                type="button"
-                                onClick={() => onStationClick && onStationClick(station.id)}
-                                className="flex flex-col items-center text-center group focus:outline-none"
+                    return (
+                        <button
+                            key={station.id}
+                            type="button"
+                            onClick={() => onStationClick && onStationClick(station.id)}
+                            className={`group relative flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition focus:outline-none cursor-pointer ${
+                                isStationActive
+                                    ? 'border-[#E00D42] bg-rose-50/70 text-zinc-900 shadow-2xs'
+                                    : isStationCompleted
+                                        ? 'border-zinc-200/90 bg-zinc-50/80 text-zinc-700 hover:border-zinc-300'
+                                        : 'border-zinc-200/70 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50/50'
+                            }`}
+                        >
+                            <div
+                                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition ${
+                                    isStationActive
+                                        ? 'border-[#E00D42] bg-[#E00D42] text-white'
+                                        : isStationCompleted
+                                            ? 'border-zinc-300 bg-white text-zinc-800'
+                                            : 'border-zinc-200 bg-zinc-50 text-zinc-500 group-hover:text-zinc-800'
+                                }`}
                             >
-                                {/* Node Badge */}
-                                <div
-                                    className={`w-10 h-10 rounded-lg border flex items-center justify-center transition ${
-                                        isStationActive
-                                            ? 'border-[#E00D42] bg-[#E00D42] text-white shadow-xs'
-                                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-900 shadow-2xs'
-                                    }`}
-                                >
-                                    <Icon className="w-4 h-4" />
-                                </div>
+                                {isStationCompleted ? (
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-zinc-700" />
+                                ) : (
+                                    <Icon className="h-3.5 w-3.5" />
+                                )}
+                            </div>
 
-                                {/* Node Title */}
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-1">
+                                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-zinc-400">
+                                        Station {station.number}
+                                    </span>
+                                    {isStationActive && (
+                                        <span className="text-[10px] font-mono font-bold uppercase text-[#E00D42]">
+                                            Active
+                                        </span>
+                                    )}
+                                </div>
                                 <span
-                                    className={`mt-2 block text-xs font-bold leading-tight ${
-                                        isStationActive ? 'text-[#E00D42]' : 'text-slate-700'
+                                    className={`block truncate text-xs font-bold leading-snug ${
+                                        isStationActive ? 'text-[#E00D42]' : 'text-zinc-800'
                                     }`}
                                 >
                                     {station.title}
                                 </span>
-                                <span className="text-xs text-slate-400 font-medium">
-                                    Station {station.number}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
+                            </div>
+                        </button>
+                    );
+                })}
             </div>
         </section>
     );

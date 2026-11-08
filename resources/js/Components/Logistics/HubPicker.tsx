@@ -62,22 +62,20 @@ export default function HubPicker({
                     onChange={(e) => onChange(e.target.value)}
                     disabled={disabled}
                     aria-invalid={Boolean(error)}
-                    className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition disabled:bg-zinc-100 disabled:text-zinc-500 cursor-pointer"
+                    className="w-full truncate rounded-xl border border-zinc-300 bg-white pl-3.5 pr-9 py-2.5 text-sm font-medium text-[#121316] shadow-xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition disabled:bg-zinc-100 disabled:text-zinc-500 cursor-pointer"
                 >
                     <option value="">{placeholder || 'Select facility…'}</option>
                     {hubs.map((hub) => (
                         <option key={hub.id} value={String(hub.id)}>
                             {hub.name} ({hub.code}) · {hub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
-                            {hub.city_municipality ? ` · ${hub.city_municipality}` : ''}
                         </option>
                     ))}
                 </select>
             </div>
 
             {selected && (
-                <p className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    {selected.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'} · {selected.code}
+                <p className="text-[11px] font-medium text-zinc-500">
+                    {selected.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'} · <span className="font-mono text-zinc-700">{selected.code}</span>
                     {selected.city_municipality ? ` · ${selected.city_municipality}` : ''}
                 </p>
             )}

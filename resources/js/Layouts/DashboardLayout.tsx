@@ -528,7 +528,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
                 
                 {/* Topbar (Clean Fixed Header) */}
-                <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between shrink-0 shadow-2xs z-20">
+                <header className="h-15 bg-white/95 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-8 flex items-center justify-between shrink-0 z-20">
                     <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
                         <button
                             type="button"
@@ -536,17 +536,35 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             aria-controls="portal-navigation"
                             aria-expanded={sidebarOpen}
                             onClick={() => setSidebarOpen(true)}
-                            className={`lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer shrink-0 ${role === 'logistics' ? 'flex min-h-11 min-w-11 items-center justify-center' : ''}`}
+                            className={`lg:hidden p-2 text-zinc-600 hover:bg-zinc-100 rounded-xl cursor-pointer shrink-0 ${role === 'logistics' ? 'flex min-h-11 min-w-11 items-center justify-center' : ''}`}
                         >
                             <Menu className="w-5 h-5" />
                         </button>
                         <div className="min-w-0">
-                            {role === 'logistics' ? <><p className="hidden text-[10px] font-medium text-slate-400 sm:block">Logistics workspace</p><p className="truncate text-sm font-bold text-[#121316]">{title}</p></> : <><h1 className="text-base font-black text-[#121316] tracking-tight truncate">{title}</h1>{subtitle && <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5 truncate">{subtitle}</div>}</>}
+                            {role === 'logistics' ? (
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 truncate">
+                                        <span>{activeHub?.name || logisticsCompany?.name || 'Logistics'}</span>
+                                        {activeHub?.code && (
+                                            <span className="rounded-md bg-zinc-100 border border-zinc-200/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-zinc-600">
+                                                {activeHub.code}
+                                            </span>
+                                        )}
+                                    </span>
+                                    <span className="hidden sm:inline text-zinc-300">/</span>
+                                    <p className="truncate text-sm font-semibold text-[#121316]">{title}</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <h1 className="text-base font-black text-[#121316] tracking-tight truncate">{title}</h1>
+                                    {subtitle && <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2 mt-0.5 truncate">{subtitle}</div>}
+                                </>
+                            )}
                         </div>
                     </div>
 
                     {/* Topbar Actions & User Avatar */}
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2.5 shrink-0">
                         {actions}
                         <NotificationLink />
 
@@ -558,25 +576,25 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         >
                             <Link
                                 href={role === 'seller' ? route('seller.profile') : route('profile.edit')}
-                                className="flex items-center gap-2.5 p-1 rounded-xs hover:bg-slate-100 transition group focus:outline-hidden border border-transparent hover:border-slate-300"
+                                className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-zinc-100/80 transition group focus:outline-hidden border border-transparent hover:border-zinc-200/80"
                             >
                                 {user?.avatar ? (
                                     <img
                                         src={user.avatar}
                                         alt={user.name}
-                                        className="w-8 h-8 rounded-xs object-cover border border-slate-200 shrink-0"
+                                        className="w-8 h-8 rounded-lg object-cover border border-zinc-200 shrink-0"
                                     />
                                 ) : (
-                                    <div className="w-8 h-8 rounded-xs bg-slate-950 text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:bg-[#E00D42] transition font-sans">
+                                    <div className="w-8 h-8 rounded-lg bg-[#121316] text-white font-bold text-xs flex items-center justify-center shadow-2xs group-hover:bg-[#E00D42] transition font-sans">
                                         {user?.name.charAt(0).toUpperCase()}
                                     </div>
                                 )}
                                 <div className="hidden sm:block text-left font-sans">
                                     <div className="flex items-center gap-1">
-                                        <p className="text-xs font-bold text-[#121316] leading-tight group-hover:text-[#E00D42] transition">{user?.name}</p>
-                                        <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                                        <p className="text-xs font-semibold text-[#121316] leading-tight group-hover:text-[#E00D42] transition">{user?.name}</p>
+                                        <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                                     </div>
-                                    <span className="text-[10px] text-slate-500 font-bold uppercase">
+                                    <span className="text-[10px] text-zinc-500 font-medium">
                                         {role === 'seller' ? 'Verified Merchant' : role === 'admin' ? 'Super Admin' : role === 'logistics' ? 'Logistics Operator' : 'Authorized User'}
                                     </span>
                                 </div>
@@ -589,22 +607,22 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     onMouseEnter={handleUserMenuEnter}
                                     onMouseLeave={handleUserMenuLeave}
                                 >
-                                    <div className="bg-white rounded-md shadow-2xl border border-slate-300 py-1.5 text-slate-800 font-sans">
-                                        <div className="px-4 py-2.5 border-b border-slate-200 font-sans text-xs flex items-center gap-2.5">
+                                    <div className="bg-white rounded-xl shadow-xl border border-zinc-200/90 py-1.5 text-zinc-800 font-sans">
+                                        <div className="px-4 py-2.5 border-b border-zinc-100 font-sans text-xs flex items-center gap-2.5">
                                             {user?.avatar ? (
                                                 <img
                                                     src={user.avatar}
                                                     alt={user.name}
-                                                    className="w-8 h-8 rounded-xs object-cover border border-slate-200 shrink-0"
+                                                    className="w-8 h-8 rounded-lg object-cover border border-zinc-200 shrink-0"
                                                 />
                                             ) : (
-                                                <div className="w-8 h-8 rounded-xs bg-slate-900 text-white font-bold text-xs flex items-center justify-center font-sans shrink-0">
+                                                <div className="w-8 h-8 rounded-lg bg-[#121316] text-white font-bold text-xs flex items-center justify-center font-sans shrink-0">
                                                     {user?.name.charAt(0).toUpperCase()}
                                                 </div>
                                             )}
                                             <div className="min-w-0 flex-1">
-                                                <p className="font-bold text-[#1C1A17] truncate">{user?.name}</p>
-                                                <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+                                                <p className="font-semibold text-[#121316] truncate">{user?.name}</p>
+                                                <p className="text-[10px] text-zinc-500 truncate">{user?.email}</p>
                                             </div>
                                         </div>
 

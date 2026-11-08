@@ -12,6 +12,13 @@ export default {
 
     theme: {
         extend: {
+            spacing: {
+                '4.5': '1.125rem',
+            },
+            boxShadow: {
+                '2xs': '0 1px 2px 0 rgba(18, 19, 22, 0.03)',
+                xs: '0 1px 2px 0 rgba(18, 19, 22, 0.04), 0 1px 3px 0 rgba(18, 19, 22, 0.02)',
+            },
             fontFamily: {
                 sans: ['"Plus Jakarta Sans"', ...defaultTheme.fontFamily.sans],
             },

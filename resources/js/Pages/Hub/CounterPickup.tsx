@@ -182,132 +182,133 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
         >
             <Head title="Counter Self-Pickup — BagooPH" />
 
-            <div className="space-y-6 font-sans">
+            <div className="space-y-5 font-sans">
                 <HubPageHeader title="Counter pickup" icon={Store} description="Stage the parcel, then verify the buyer and their private claim code before handing it over." />
                 {isCounterHub && <HubStepRail label="Counter release checks" steps={[{ title: 'Stage parcel', detail: 'Recorded hub arrival', state: 'waiting' }, { title: 'Verify buyer', detail: 'Photo ID and claim code', state: 'waiting' }, { title: 'Check payment', detail: 'Collect cash only for COD', state: 'waiting' }, { title: 'Record handover', detail: 'Release the actual parcel', state: 'waiting' }]} />}
                 {!isCounterHub && <HubNextStep title={activeHub?.tier === 'local_bayan_hub' ? 'Counter pickup is disabled at this hub' : 'Counter pickup is handled by child hubs'} icon={Store}><p>{canConfigureHours ? 'Choose an eligible child hub in the facility switcher to manage its pickup counter. Changing the view does not grant physical handler access.' : 'Use your assigned facility for its recorded parcel work. The company manager and assigned child-hub handler manage counter pickup.'}</p></HubNextStep>}
-                <p className="text-xs text-zinc-500 font-medium">Readiness and attention counts apply to this page. The queue total includes all matching parcels. Check the buyer's photo ID, private claim code and original payment before release.</p>
-                {isCounterHub && canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-sm"><label className="text-sm font-bold text-[#1C1A17]">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-2 w-full rounded-xl border border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white px-3.5 py-2.5 text-xs text-[#1C1A17] font-medium shadow-xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition-colors" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] px-4 py-2 text-xs font-bold text-white shadow-sm transition active:scale-[0.99]">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-xs text-rose-700">{errors.operating_hours}</p>}</form>}
+                {isCounterHub && canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-xs"><label className="text-sm font-bold text-[#1C1A17]">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-2 w-full rounded-xl border border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white px-3.5 py-2.5 text-xs text-[#1C1A17] font-medium shadow-xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition-colors" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] px-4 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99]">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-xs text-rose-700">{errors.operating_hours}</p>}</form>}
                 {isCounterHub && !activeHub?.operating_hours && <p className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs font-medium text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
 
-                {/* 1. TOP STATS TILES */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div className="bg-white rounded-xl p-5 sm:p-6 border border-zinc-200/90 shadow-sm hover:shadow-md transition-all duration-150 flex flex-col justify-between">
+                {/* 1. 4-COLUMN NOTION METRIC STRIP */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80 rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
+                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
                         <div>
-                            <div className="flex items-center justify-between text-zinc-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Ready for Buyer Verification (this page)</span>
-                                <Store className="w-4 h-4 text-zinc-600" />
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-2xl sm:text-3xl font-black text-[#1C1A17] font-sans tracking-tight">
-                                    {readyNow}{' '}
-                                    <span className="text-xs font-semibold text-zinc-500">ready</span>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                                Ready for Buyer Verification (this page)
+                            </p>
+                            <div className="mt-1.5 flex items-baseline gap-2">
+                                <p className="text-2xl font-bold text-zinc-900 tabular-nums">
+                                    {readyNow}
                                 </p>
+                                <span className="text-xs font-semibold text-zinc-500">ready · Staging & valid claim</span>
                             </div>
                         </div>
-                        <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center justify-between text-xs font-sans">
-                            <span className="text-zinc-500">Requirements:</span>
-                            <span className="font-bold text-[#1C1A17]">Staging & valid claim</span>
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/90 bg-zinc-50 text-zinc-700">
+                            <Store className="w-4 h-4" />
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-5 sm:p-6 border border-zinc-200/90 shadow-sm hover:shadow-md transition-all duration-150 flex flex-col justify-between">
+                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
                         <div>
-                            <div className="flex items-center justify-between text-zinc-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Needs Attention (this page)</span>
-                                <AlertCircle className="w-4 h-4 text-amber-600" />
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-2xl sm:text-3xl font-black text-amber-800 font-sans tracking-tight">
-                                    {blockedNow}{' '}
-                                    <span className="text-xs font-semibold text-amber-700">parcels</span>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                                Needs Attention (this page)
+                            </p>
+                            <div className="mt-1.5 flex items-baseline gap-2">
+                                <p className="text-2xl font-bold text-amber-800 tabular-nums">
+                                    {blockedNow}
                                 </p>
+                                <span className="text-xs font-semibold text-amber-700">parcels · Review the blocker</span>
                             </div>
                         </div>
-                        <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center justify-between text-xs font-sans">
-                            <span className="text-zinc-500">Next step:</span>
-                            <span className="font-bold text-amber-800">Review the blocker</span>
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/90 bg-zinc-50 text-zinc-700">
+                            <AlertCircle className="w-4 h-4" />
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-5 sm:p-6 border border-zinc-200/90 shadow-sm hover:shadow-md transition-all duration-150 flex flex-col justify-between">
+                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
                         <div>
-                            <div className="flex items-center justify-between text-zinc-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Recent Verified Collections</span>
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-2xl sm:text-3xl font-black text-[#1C1A17] font-sans tracking-tight">
-                                    {recentlyCollected.length}{' '}
-                                    <span className="text-xs font-semibold text-zinc-400">released</span>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                                Recent Verified Collections
+                            </p>
+                            <div className="mt-1.5 flex items-baseline gap-2">
+                                <p className="text-2xl font-bold text-zinc-900 tabular-nums">
+                                    {recentlyCollected.length}
                                 </p>
+                                <span className="text-xs font-semibold text-zinc-500">released · Up to five shown</span>
                             </div>
                         </div>
-                        <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center justify-between text-xs font-sans">
-                            <span className="text-zinc-500">History:</span>
-                            <span className="font-bold text-[#1C1A17]">Up to five shown</span>
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/90 bg-zinc-50 text-zinc-700">
+                            <CheckCircle2 className="w-4 h-4" />
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-5 sm:p-6 border border-zinc-200/90 shadow-sm hover:shadow-md transition-all duration-150 flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between text-zinc-500 font-sans text-xs">
-                                <span className="font-bold uppercase tracking-wider text-[10px]">Station Location</span>
-                                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg bg-rose-50 text-[#E00D42] border border-rose-200 font-sans">
-                                    {activeHub?.code || 'STATION'}
+                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                                Station Location
+                            </p>
+                            <p className="mt-1.5 text-sm font-bold text-zinc-900 truncate">
+                                {activeHub?.name || 'Local Bayan Hub'}
+                            </p>
+                            <p className="mt-0.5 text-xs text-zinc-500 truncate">
+                                {activeHub?.city_municipality || 'Laguna'} ·{' '}
+                                <span className={`font-semibold ${!isCounterHub ? 'text-zinc-500' : activeHub?.operating_hours ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                    {!isCounterHub ? 'Not a pickup counter' : activeHub?.operating_hours ? 'Hours recorded' : 'Setup required'}
                                 </span>
-                            </div>
-                            <div className="mt-3">
-                                <p className="text-base font-bold text-[#1C1A17] truncate">
-                                    {activeHub?.name || 'Local Bayan Hub'}
-                                </p>
-                                <p className="text-xs text-zinc-500 font-sans mt-0.5">
-                                    {activeHub?.city_municipality || 'Laguna'}
-                                </p>
-                            </div>
+                            </p>
                         </div>
-                        <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center justify-between text-xs font-sans">
-                            <span className="text-zinc-500">Self-Pickup Desk:</span>
-                            <span className={`font-bold ${!isCounterHub ? 'text-zinc-500' : activeHub?.operating_hours ? 'text-emerald-700' : 'text-amber-700'}`}>{!isCounterHub ? 'Not a pickup counter' : activeHub?.operating_hours ? 'Hours recorded' : 'Setup required'}</span>
-                        </div>
+                        <span className="shrink-0 text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-rose-50 text-[#E00D42] border border-rose-200">
+                            {activeHub?.code || 'STATION'}
+                        </span>
                     </div>
                 </div>
 
-                {/* 2. SEARCH BAR & ACTION HEADER */}
-                <div className="bg-white rounded-xl p-4 sm:p-5 border border-zinc-200/90 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3.5">
-                    <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-96">
-                        <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                        <input
-                            type="text"
-                            aria-label="Search counter parcels" value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Tracking code, order number, buyer name or phone..."
-                            className="w-full pl-9 pr-3.5 py-2.5 bg-zinc-50/50 hover:bg-white focus:bg-white border border-zinc-200/90 rounded-xl text-xs font-medium text-[#1C1A17] placeholder:text-zinc-400 focus:outline-none focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 shadow-xs transition-colors"
-                        />
-                    </form>
-
-                    <div className="text-xs font-sans text-zinc-500 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                        <span>Verify photo ID, the one-time claim code and payment before release. Collect cash only for COD.</span>
-                    </div>
-                </div>
-
-                {/* 3. MAIN CONTENT: STAGED PARCELS QUEUE + RECENTLY COLLECTED */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                {/* 2. MAIN CONTENT: UNIFIED NOTION DATABASE VIEW + RECENTLY COLLECTED */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
                     {/* LEFT (8 COLS): STAGED PARCELS FOR HANDOVER */}
-                    <div className="lg:col-span-8 bg-white rounded-xl p-5 sm:p-6 border border-zinc-200/90 shadow-sm">
-                        <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
-                            <div className="flex items-center gap-2">
-                                <Store className="w-4 h-4 text-zinc-700" />
-                                <h3 className="text-xs font-bold text-[#1C1A17] font-sans uppercase tracking-wider">
-                                    Counter Parcel Queue
-                                </h3>
+                    <div className="lg:col-span-8 bg-white rounded-xl border border-zinc-200/90 shadow-xs overflow-hidden">
+                        {/* Cohesive Notion Database Header + Search + Verification Strip */}
+                        <div className="border-b border-zinc-200/80 bg-zinc-50/50 p-5 space-y-3.5">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white border border-zinc-200/90 text-zinc-700 shadow-2xs">
+                                        <Store className="w-3.5 h-3.5" />
+                                    </span>
+                                    <h3 className="text-xs font-bold text-[#1C1A17] font-sans uppercase tracking-wider">
+                                        Counter Parcel Queue
+                                    </h3>
+                                </div>
+                                <span className="inline-flex items-center rounded-md border border-zinc-200/90 bg-white px-2.5 py-0.5 text-xs font-mono font-semibold text-zinc-700">
+                                    {counterParcels.total} matching parcels
+                                </span>
                             </div>
-                            <span className="text-xs font-sans text-zinc-500 font-semibold">
-                                {counterParcels.total} matching parcels
-                            </span>
+
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-80">
+                                    <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        type="text"
+                                        aria-label="Search counter parcels"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        placeholder="Tracking code, order number, buyer name or phone..."
+                                        className="w-full pl-9 pr-3.5 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-medium text-[#1C1A17] placeholder:text-zinc-400 focus:outline-none focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 shadow-2xs transition-colors"
+                                    />
+                                </form>
+
+                                <div className="text-xs font-sans text-zinc-600 flex items-center gap-1.5">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                                    <span>Verify photo ID, the one-time claim code and payment before release. Collect cash only for COD.</span>
+                                </div>
+                            </div>
+
+                            <p className="text-[11px] text-zinc-500 font-medium border-t border-zinc-200/60 pt-2.5">
+                                Readiness and attention counts apply to this page. The queue total includes all matching parcels. Check the buyer's photo ID, private claim code and original payment before release.
+                            </p>
                         </div>
+
+                        <div className="p-5 sm:p-6">
 
                         {pageParcels.length === 0 ? (
                             <div className="py-14 text-center font-sans">
@@ -401,6 +402,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     : <button type="button" disabled className="rounded-xl border border-zinc-200/90 px-3.5 py-2 text-zinc-400 cursor-not-allowed">Next</button>}
                                 {counterParcels.current_page > counterParcels.last_page && <Link href={counterParcels.first_page_url} className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 font-bold text-[#E00D42] shadow-xs">First page</Link>}
                             </nav>
+                        </div>
                         </div>
                     </div>
 
