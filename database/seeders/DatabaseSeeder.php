@@ -102,5 +102,7 @@ class DatabaseSeeder extends Seeder
 
         // Multi-tenant logistics network and supported road topology.
         $this->call(LogisticsNetworkSeeder::class);
+        $this->call(SellerDemoSeeder::class);
+        $this->call(LogisticsTestingEnvironmentSeeder::class);
     }
 }

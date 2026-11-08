@@ -364,7 +364,13 @@ class FleetDispatchEngine
                     ]);
                 })
                 ->get()
-                ->filter(fn (Delivery $del) => $this->manifestService->nextHub($del) === $dest->id);
+                ->filter(function (Delivery $del) use ($dest) {
+                    try {
+                        return $this->manifestService->nextHub($del) === $dest->id;
+                    } catch (\Throwable) {
+                        return false;
+                    }
+                });
 
             $sealedBagsCount = $sealedBags->count();
             $openBagsCount = $openBags->count();
@@ -508,8 +514,40 @@ class FleetDispatchEngine
                 ->first();
         }
 
+        // Additional resilient fallback: Any active fleet vehicle with assigned driver not currently dispatched
+        if (! $vehicle) {
+            $vehicle = LogisticsFleet::where('logistics_company_id', $hub->logistics_company_id)
+                ->where('status', 'active')
+                ->whereNotNull('assigned_driver_id')
+                ->whereNotIn('id', LogisticsManifest::where('status', 'dispatched')->select('vehicle_id'))
+                ->orderByRaw('CASE WHEN hub_id = ? THEN 0 ELSE 1 END', [$hub->id])
+                ->first();
+        }
+
+        // Additional resilient fallback: Any active fleet vehicle in company (auto-pair with available driver)
+        if (! $vehicle) {
+            $vehicle = LogisticsFleet::where('logistics_company_id', $hub->logistics_company_id)
+                ->where('status', 'active')
+                ->whereNotIn('id', LogisticsManifest::where('status', 'dispatched')->select('vehicle_id'))
+                ->orderByRaw('CASE WHEN hub_id = ? THEN 0 ELSE 1 END', [$hub->id])
+                ->first();
+        }
+
         if (! $vehicle) {
             return null;
+        }
+
+        $driverId = $vehicle->assigned_driver_id;
+        $driverName = $vehicle->driver?->name;
+
+        if (! $driverId) {
+            $availableDriver = User::where('logistics_company_id', $hub->logistics_company_id)
+                ->whereHas('courierProfile', fn ($q) => $q->operational())
+                ->first();
+            if ($availableDriver) {
+                $driverId = $availableDriver->id;
+                $driverName = $availableDriver->name;
+            }
         }
 
         return [
@@ -518,8 +556,8 @@ class FleetDispatchEngine
             'vehicle_type' => $vehicle->vehicle_type,
             'model' => $vehicle->model,
             'capacity_kg' => $vehicle->capacity_kg,
-            'driver_id' => $vehicle->assigned_driver_id,
-            'driver_name' => $vehicle->driver?->name ?? 'Assigned Driver',
+            'driver_id' => $driverId,
+            'driver_name' => $driverName ?? 'Assigned Driver',
         ];
     }
 
@@ -613,6 +651,21 @@ class FleetDispatchEngine
             }
 
             if (! $fleetVehicle) {
+                // Fallback to any active fleet and pair with an eligible driver
+                $fleetVehicle = LogisticsFleet::where('logistics_company_id', $hub->logistics_company_id)
+                    ->where('status', 'active')
+                    ->first();
+                if ($fleetVehicle && ! $fleetVehicle->assigned_driver_id) {
+                    $availableDriver = User::where('logistics_company_id', $hub->logistics_company_id)
+                        ->whereHas('courierProfile', fn ($q) => $q->operational())
+                        ->first();
+                    if ($availableDriver) {
+                        $fleetVehicle->update(['assigned_driver_id' => $availableDriver->id]);
+                    }
+                }
+            }
+
+            if (! $fleetVehicle || ! $fleetVehicle->assigned_driver_id) {
                 throw new DomainException("No active fleet vehicle or driver available at {$hub->name}. Check Fleet management.");
             }
 

@@ -90,7 +90,7 @@ class RealCarousellProductSeeder extends Seeder
                     ['email' => $catData['seller_email']],
                     [
                         'name' => $catData['seller_name'],
-                        'password' => Hash::make('Password123!'),
+                        'password' => Hash::make('Password1234'),
                         'role' => 'seller',
                         'status' => 'active',
                         'kyc_status' => 'approved',

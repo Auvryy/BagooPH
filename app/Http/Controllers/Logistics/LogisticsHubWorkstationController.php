@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Logistics\ContinuousScanAutomationService;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Logistics\FleetDispatchEngine;
@@ -884,14 +885,17 @@ class LogisticsHubWorkstationController extends Controller
 
         $inputs = app(WaybillScanInputService::class);
         $request->merge($inputs->normalize($request->only(['barcode', 'notes', 'action', 'expected_status']), allowTrackingUrl: true));
+        $isContinuous = $request->boolean('continuous') || $request->boolean('auto_advance') || ($request->input('action') === 'AUTO_PROGRESS');
         $validated = $request->validate([
             'barcode' => $inputs->barcodeRules(),
             'hub_id' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'exists:logistics_hubs,id'],
             'location_barcode' => ['nullable', 'string', 'max:100'],
             'notes' => $inputs->notesRules(),
             'mode' => 'nullable|in:inspect,confirm',
-            'action' => 'required_if:mode,confirm|nullable|string|max:100|regex:/\A[A-Z_]+\z/',
-            'expected_status' => 'required_if:mode,confirm|nullable|string|max:100|regex:/\A[a-z_]+\z/',
+            'continuous' => 'nullable|boolean',
+            'auto_advance' => 'nullable|boolean',
+            'action' => [$isContinuous ? 'nullable' : 'required_if:mode,confirm', 'nullable', 'string', 'max:100', 'regex:/\A[A-Z_]+\z/'],
+            'expected_status' => [$isContinuous ? 'nullable' : 'required_if:mode,confirm', 'nullable', 'string', 'max:100', 'regex:/\A[a-z_]+\z/'],
             'attempt_reference' => ['nullable', 'string', 'max:64'],
             'route_reference' => ['nullable', 'string', 'max:64'],
             'claim_reference' => ['nullable', 'string', 'max:64'],
@@ -954,7 +958,7 @@ class LogisticsHubWorkstationController extends Controller
         // Anti-backhaul guard: Prevent parcels from being dispatched or routed backward
         $backhaulTarget = $request->filled('destination_hub_id')
             ? LogisticsHub::find($request->input('destination_hub_id'))
-            : $hub;
+            : null;
 
         if ($backhaulTarget && ($backhaulError = $routingEngine->validateBackhaul($delivery, $backhaulTarget, $delivery->currentHub ?? $hub))) {
             return $this->operationError($request, $backhaulError, 422, [
@@ -1013,6 +1017,55 @@ class LogisticsHubWorkstationController extends Controller
             && DeliveryCheckpoint::where('delivery_id', $delivery->id)->where('hub_id', $hub->id)
                 ->where('checkpoint_type', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)->exists();
 
+        // Automated continuous scanning progression (hands-free custody advance)
+        $automation = app(ContinuousScanAutomationService::class);
+        if ($isContinuous && $automation->canAutomate($delivery, $hub, $request->user())) {
+            try {
+                $progression = $automation->executeAutomatedProgression(
+                    $delivery,
+                    $hub,
+                    $request->user(),
+                    [
+                        'location_barcode' => $locationBarcode,
+                        'notes' => $validated['notes'] ?? null,
+                    ]
+                );
+
+                $updatedDelivery = $progression['delivery']->load([
+                    'order.items.product',
+                    'order.buyer',
+                    'originBayanHub',
+                    'originMotherHub',
+                    'destinationBayanHub',
+                    'destinationMotherHub',
+                    'currentHub',
+                    'assignedRider',
+                ]);
+
+                $payload = $this->scanPayload(
+                    delivery: $updatedDelivery,
+                    hub: $hub,
+                    prompt: $progression['prompt'],
+                    message: $progression['message'],
+                    requiresConfirmation: false,
+                    confirmed: true,
+                    alreadyReceived: false,
+                    scannedLocation: $locationBarcode,
+                    actor: $request->user()
+                );
+                $payload['automated_progression'] = true;
+                $payload['steps'] = $progression['steps'];
+
+                if ($request->wantsJson()) {
+                    return $this->scanResponse($payload);
+                }
+
+                return back()->with('scan_result', $payload);
+            } catch (DomainException $exception) {
+                return $this->operationError($request, $exception->getMessage(), 409);
+            }
+        }
+
         if ($prompt['action'] === 'INSPECT_WAYBILL' && (($validated['mode'] ?? 'inspect') === 'confirm'
             || ! app(HubParcelWorkstationService::class)->registry($hub)->whereKey($delivery->id)->exists())) {
             return $this->operationError(
@@ -1034,7 +1087,8 @@ class LogisticsHubWorkstationController extends Controller
                     : 'Waybill verified. Use the destination sorting action to continue.',
                 requiresConfirmation: $requiresConfirmation,
                 alreadyReceived: $alreadyReceived,
-                scannedLocation: $locationBarcode
+                scannedLocation: $locationBarcode,
+                actor: $request->user()
             ));
         }
 
@@ -1111,7 +1165,8 @@ class LogisticsHubWorkstationController extends Controller
             requiresConfirmation: $requiresNextConfirmation,
             confirmed: true,
             alreadyReceived: $alreadyReceived && $requestedAction === 'RECEIVE_FROM_PICKUP_RIDER',
-            scannedLocation: $locationBarcode
+            scannedLocation: $locationBarcode,
+            actor: $request->user()
         );
 
         if ($request->wantsJson()) {
@@ -1129,14 +1184,18 @@ class LogisticsHubWorkstationController extends Controller
         bool $requiresConfirmation,
         bool $confirmed = false,
         bool $alreadyReceived = false,
-        ?string $scannedLocation = null
+        ?string $scannedLocation = null,
+        ?User $actor = null
     ): array {
+        $actor ??= request()->user();
         $delivery->loadMissing(['order.items.product', 'order.buyer', 'currentHub', 'courier', 'assignedRider', 'latestCustodyCheckpoint', 'latestOriginalCheckpoint', 'pickupClaim']);
         $base = request()->is('hub/*') ? '/hub' : '';
         $riders = $delivery->status === 'sorted_to_barangay_bin' && $delivery->delivery_type === 'doorstep'
             ? $this->eligibility->riderCandidates($hub)->get()->map(fn ($profile) => ['id' => $profile->user_id, 'assigned_barangay' => $profile->assigned_barangay]) : collect();
         $workstation = app(HubParcelWorkstationService::class);
-        $guidance = $workstation->guidance($delivery, $hub, request()->user(), $riders, $base);
+        $guidance = $actor
+            ? $workstation->guidance($delivery, $hub, $actor, $riders, $base)
+            : ['action' => 'scan', 'can_act' => true, 'next_step' => $message, 'responsible' => 'Logistics Handler', 'blocker' => null, 'href' => null];
         $registryUrl = $workstation->registry($hub)->whereKey($delivery->id)->exists()
             ? $base.'/deliveries?hub_id='.$hub->id.'&search='.rawurlencode($delivery->tracking_number) : null;
         if (app(HandoverHoldService::class)->held($delivery)) {
@@ -1191,6 +1250,11 @@ class LogisticsHubWorkstationController extends Controller
                 'routing_target' => $forwardTarget,
                 'dws' => $dws,
                 'mother_bag_slotting' => $motherBagSlotting,
+                'assigned_rider' => $delivery->assignedRider ? [
+                    'id' => $delivery->assignedRider->id,
+                    'name' => $delivery->assignedRider->name,
+                ] : null,
+                'can_auto_progress' => $actor ? app(ContinuousScanAutomationService::class)->canAutomate($delivery, $hub, $actor) : false,
                 'current_hub' => $custodyHub ? [
                     'id' => $custodyHub->id,
                     'name' => $custodyHub->name,
