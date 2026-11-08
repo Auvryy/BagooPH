@@ -360,78 +360,93 @@ export default function CourierNavigation({
                         : 'h-[calc(100vh-140px)] min-h-[600px] w-full rounded-2xl border border-slate-200 overflow-hidden shadow-xs'
                 }`}
             >
-                {/* Top Driving HUD Overlay */}
-                <div className="absolute inset-x-0 top-0 z-[1000] p-3 sm:p-4 pointer-events-none">
-                    <div className="mx-auto max-w-3xl pointer-events-auto space-y-2.5">
-                        {/* Status & Controls Bar */}
-                        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-white/95 px-3.5 py-2.5 shadow-md backdrop-blur-md">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                                <Link
-                                    href={courierPath('/deliveries')}
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors"
-                                    aria-label="Back to deliveries"
-                                >
-                                    <ArrowLeft className="h-4 w-4" />
-                                </Link>
-                                <div className="min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                        <h1 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                                            Live Road Navigation
-                                        </h1>
-                                        <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-[#E00D42]">
-                                            AH26 Highway Prioritized
-                                        </span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-500 truncate">
-                                        {statusMessage}
-                                    </p>
-                                </div>
-                            </div>
+                {/* Minimal Slim Floating Top Bar (Clean & Non-Intrusive) */}
+                <div className="absolute inset-x-0 top-0 z-[1000] p-2.5 sm:p-3 pointer-events-none">
+                    <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 pointer-events-auto">
+                        <div className="flex items-center gap-2">
+                            <Link
+                                href={courierPath('/deliveries')}
+                                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200/90 bg-white/95 px-3 text-xs font-bold text-slate-800 shadow-sm backdrop-blur-md hover:bg-slate-50 transition-colors"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                                <span>Exit</span>
+                            </Link>
 
-                            <div className="flex items-center gap-1.5 shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={recenterRoute}
-                                    title="Recenter route"
-                                    disabled={routeLoading}
-                                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs"
-                                >
-                                    <RefreshCw
-                                        className={`h-3.5 w-3.5 ${
-                                            routeLoading ? 'animate-spin text-[#E00D42]' : ''
-                                        }`}
-                                    />
-                                    <span className="hidden sm:inline">Recenter</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={toggleFullscreen}
-                                    title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Mount View'}
-                                    className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#18181B] px-3 text-xs font-bold text-white hover:bg-zinc-800 shadow-sm transition-colors"
-                                >
-                                    {isFullscreen ? (
-                                        <>
-                                            <Minimize2 className="h-3.5 w-3.5" />
-                                            <span className="hidden sm:inline">Exit Fullscreen</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Maximize2 className="h-3.5 w-3.5" />
-                                            <span>Fullscreen</span>
-                                        </>
-                                    )}
-                                </button>
-                            </div>
+                            {activeStop && (
+                                <div className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-slate-200/90 bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur-md">
+                                    <span className="inline-flex items-center gap-1 rounded bg-[#E00D42] px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-white">
+                                        {activeStop.phase === 'pickup' ? (
+                                            <Store className="h-3 w-3" />
+                                        ) : activeStop.phase === 'hub' ? (
+                                            <Truck className="h-3 w-3" />
+                                        ) : (
+                                            <Package className="h-3 w-3" />
+                                        )}
+                                        {activeStop.phaseLabel}
+                                    </span>
+                                    <span className="text-xs font-extrabold text-slate-900 truncate max-w-[200px]">
+                                        {activeStop.targetName}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Active Target Banner */}
-                        {activeStop && (
-                            <div className="rounded-xl border border-rose-200/90 bg-white/95 p-3 sm:p-4 shadow-lg backdrop-blur-md">
+                        <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/90 px-2.5 py-1.5 text-[11px] font-extrabold text-emerald-800 shadow-sm backdrop-blur-md">
+                                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="hidden md:inline">Highways Prioritized</span>
+                                <span className="md:hidden">Highway</span>
+                            </span>
+
+                            <button
+                                type="button"
+                                onClick={recenterRoute}
+                                title="Recenter Route"
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200/90 bg-white/95 text-slate-700 shadow-sm backdrop-blur-md hover:bg-slate-50 transition-colors"
+                            >
+                                <RefreshCw className="h-4 w-4 text-[#E00D42]" />
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={toggleFullscreen}
+                                title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Mount View'}
+                                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#18181B] px-3 text-xs font-bold text-white shadow-sm hover:bg-zinc-800 transition-colors"
+                            >
+                                {isFullscreen ? (
+                                    <>
+                                        <Minimize2 className="h-3.5 w-3.5" />
+                                        <span className="hidden sm:inline">Exit</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Maximize2 className="h-3.5 w-3.5" />
+                                        <span className="hidden sm:inline">Fullscreen</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Full Viewport Leaflet Map Surface */}
+                <div
+                    ref={mapContainerRef}
+                    role="region"
+                    aria-label="Full-screen dynamic road navigation map"
+                    className="h-full w-full z-0 cursor-grab active:cursor-grabbing"
+                />
+
+                {/* Consolidated Bottom Ergonomic Cockpit & Navigation Control Dock */}
+                <div className="absolute inset-x-0 bottom-0 z-[1000] p-2.5 sm:p-4 pointer-events-none">
+                    <div className="mx-auto max-w-3xl pointer-events-auto rounded-2xl border border-slate-200/90 bg-white/95 p-3 sm:p-4 shadow-2xl backdrop-blur-md space-y-3">
+                        {/* Target Stop Header & Distance/ETA Row */}
+                        {activeStop ? (
+                            <div>
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="inline-flex items-center gap-1 rounded-md bg-[#E00D42] px-2 py-0.5 text-[10px] font-extrabold uppercase text-white tracking-wider">
+                                            <span className="inline-flex items-center gap-1 rounded bg-[#E00D42] px-2 py-0.5 text-[10px] font-extrabold uppercase text-white tracking-wider">
                                                 {activeStop.phase === 'pickup' ? (
                                                     <Store className="h-3 w-3" />
                                                 ) : activeStop.phase === 'hub' ? (
@@ -454,7 +469,7 @@ export default function CourierNavigation({
                                     </div>
 
                                     {/* Distance & ETA Metrics */}
-                                    <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 shrink-0">
+                                    <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 shrink-0 shadow-inner">
                                         <div className="text-right">
                                             <span className="block text-[10px] font-bold text-slate-400 uppercase">
                                                 Distance
@@ -462,7 +477,7 @@ export default function CourierNavigation({
                                             <span className="text-sm sm:text-base font-black text-slate-900">
                                                 {routeDetails?.distanceMeters !== undefined
                                                     ? `${(routeDetails.distanceMeters / 1000).toFixed(1)} km`
-                                                    : 'Calculating…'}
+                                                    : 'Ready'}
                                             </span>
                                         </div>
                                         <div className="h-6 w-px bg-slate-200" />
@@ -473,19 +488,19 @@ export default function CourierNavigation({
                                             <span className="text-sm sm:text-base font-black text-[#E00D42]">
                                                 {routeDetails?.durationMinutes !== undefined
                                                     ? `~${routeDetails.durationMinutes} min`
-                                                    : 'Calculating…'}
+                                                    : 'Ready'}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Quick Field Actions */}
+                                {/* Primary Action Row: Call, External Directions, Arrived & Scanner */}
                                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
                                     <div className="flex items-center gap-2">
                                         {activeStop.targetPhone && (
                                             <a
                                                 href={`tel:${activeStop.targetPhone}`}
-                                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
                                             >
                                                 <Phone className="h-3.5 w-3.5 text-emerald-600" />
                                                 <span>Call Stop</span>
@@ -496,7 +511,7 @@ export default function CourierNavigation({
                                                 href={externalDirectionsUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
                                             >
                                                 <ExternalLink className="h-3.5 w-3.5 text-sky-600" />
                                                 <span>Google Maps</span>
@@ -506,87 +521,79 @@ export default function CourierNavigation({
 
                                     <Link
                                         href={courierPath('/deliveries')}
-                                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#E00D42] px-3.5 py-1.5 text-xs font-extrabold text-white hover:bg-[#C20836] shadow-sm transition-colors"
+                                        className="inline-flex items-center gap-2 rounded-xl bg-[#E00D42] px-4 py-2.5 text-xs sm:text-sm font-black text-white hover:bg-[#C20836] shadow-md transition-colors"
                                     >
-                                        <NavigationIcon className="h-3.5 w-3.5" />
+                                        <NavigationIcon className="h-4 w-4" />
                                         <span>Arrived at Stop • Open Scanner</span>
                                     </Link>
                                 </div>
                             </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Full Viewport Leaflet Map Surface */}
-                <div
-                    ref={mapContainerRef}
-                    role="region"
-                    aria-label="Full-screen dynamic road navigation map"
-                    className="h-full w-full z-0 cursor-grab active:cursor-grabbing"
-                />
-
-                {/* Bottom Floating Stop Switcher Drawer */}
-                <div className="absolute inset-x-0 bottom-0 z-[1000] p-3 sm:p-4 pointer-events-none">
-                    <div className="mx-auto max-w-3xl pointer-events-auto rounded-xl border border-slate-200/90 bg-white/95 p-3 shadow-xl backdrop-blur-md">
-                        <div className="flex items-center justify-between gap-2 pb-2">
-                            <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-                                <Compass className="h-4 w-4 text-[#E00D42]" />
-                                Assigned Route Stops ({stops.length})
-                            </span>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[11px] font-bold text-slate-500">Vehicle:</span>
-                                <select
-                                    aria-label="Vehicle type"
-                                    value={mode}
-                                    onChange={(e) => setMode(e.target.value as RoadMode)}
-                                    className="rounded-md border-slate-200 bg-slate-50 py-1 text-xs font-bold text-slate-800 focus:ring-[#E00D42]"
-                                >
-                                    <option value="motorcycle">Motorcycle</option>
-                                    <option value="scooter">Scooter</option>
-                                    <option value="drive">Van / Car</option>
-                                </select>
+                        ) : (
+                            <div className="text-center py-2 text-xs font-semibold text-slate-500">
+                                No active stops assigned. Return to your Bayan hub to collect parcels.
                             </div>
-                        </div>
+                        )}
 
-                        {/* Horizontal Scrollable Stop Cards */}
-                        <div className="flex gap-2.5 overflow-x-auto pb-1 pt-0.5">
-                            {stops.map((stop) => {
-                                const isSelected = String(stop.id) === String(selectedId);
-                                return (
-                                    <button
-                                        key={stop.id}
-                                        type="button"
-                                        onClick={() => selectStop(stop.id)}
-                                        className={`flex flex-col text-left shrink-0 w-64 rounded-xl border p-2.5 transition-all ${
-                                            isSelected
-                                                ? 'border-[#E00D42] bg-rose-50/60 shadow-xs ring-1 ring-[#E00D42]'
-                                                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between gap-1 w-full">
-                                            <span
-                                                className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                        {/* Route Stops Selector & Vehicle Type */}
+                        {stops.length > 1 && (
+                            <div className="border-t border-slate-100 pt-2">
+                                <div className="flex items-center justify-between gap-2 pb-1.5">
+                                    <span className="text-[11px] font-extrabold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                                        <Compass className="h-3.5 w-3.5 text-[#E00D42]" />
+                                        Route Stops ({stops.length})
+                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] font-bold text-slate-500">Vehicle:</span>
+                                        <select
+                                            aria-label="Vehicle type"
+                                            value={mode}
+                                            onChange={(e) => setMode(e.target.value as RoadMode)}
+                                            className="rounded-md border-slate-200 bg-slate-50 py-0.5 px-2 text-xs font-bold text-slate-800 focus:ring-[#E00D42]"
+                                        >
+                                            <option value="motorcycle">Motorcycle</option>
+                                            <option value="scooter">Scooter</option>
+                                            <option value="drive">Van / Car</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 overflow-x-auto pb-1">
+                                    {stops.map((stop) => {
+                                        const isSelected = String(stop.id) === String(selectedId);
+                                        return (
+                                            <button
+                                                key={stop.id}
+                                                type="button"
+                                                onClick={() => selectStop(stop.id)}
+                                                className={`flex flex-col text-left shrink-0 w-56 rounded-xl border p-2 transition-all ${
                                                     isSelected
-                                                        ? 'bg-[#E00D42] text-white'
-                                                        : 'bg-slate-100 text-slate-700'
+                                                        ? 'border-[#E00D42] bg-rose-50/70 shadow-xs ring-1 ring-[#E00D42]'
+                                                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                                                 }`}
                                             >
-                                                {stop.phaseLabel}
-                                            </span>
-                                            <span className="text-[11px] font-bold text-slate-500 tabular-nums truncate max-w-[110px]">
-                                                {stop.trackingNumber}
-                                            </span>
-                                        </div>
-                                        <p className="mt-1 text-xs font-bold text-slate-900 truncate w-full">
-                                            {stop.targetName}
-                                        </p>
-                                        <p className="text-[11px] text-slate-500 truncate w-full">
-                                            {stop.targetAddress}
-                                        </p>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                                <div className="flex items-center justify-between gap-1 w-full">
+                                                    <span
+                                                        className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                                                            isSelected
+                                                                ? 'bg-[#E00D42] text-white'
+                                                                : 'bg-slate-100 text-slate-700'
+                                                        }`}
+                                                    >
+                                                        {stop.phaseLabel}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-slate-500 tabular-nums truncate max-w-[90px]">
+                                                        {stop.trackingNumber}
+                                                    </span>
+                                                </div>
+                                                <p className="mt-1 text-xs font-bold text-slate-900 truncate w-full">
+                                                    {stop.targetName}
+                                                </p>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

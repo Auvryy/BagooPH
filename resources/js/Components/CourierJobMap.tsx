@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { MapPin, Minus, Plus, RotateCcw, Route } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { Compass, MapPin, Minus, Navigation, Plus, RotateCcw, Route } from 'lucide-react';
 import type { Map as LeafletMap } from 'leaflet';
 import { CourierPanel, courierButton, courierClasses } from '@/Components/CourierUI';
-import { courierMapCoordinates, directionsUrl, type CourierMapJob } from '@/utils/courier';
+import { courierMapCoordinates, courierPath, directionsUrl, type CourierMapJob } from '@/utils/courier';
 import useCourierRoadRoute from '@/hooks/useCourierRoadRoute';
 import type { RoadMode } from '@/utils/courierRoadRoute';
 import sample from '@/data/riderDeliverySample.json';
@@ -101,7 +102,17 @@ export default function CourierJobMap({ job, embedded = false }: { job?: Courier
         else if (coordinates) map.current?.setView(coordinates, 16, { animate: false });
     };
     const content = <>
-        {!embedded && <header className="flex flex-wrap items-center justify-between gap-2 p-4 sm:px-5"><h2 className="text-base font-semibold">Delivery map</h2><span className="text-xs text-slate-500">{sampleMode ? 'Sample preview' : 'Saved stop'}</span></header>}
+        {!embedded && (
+            <header className="flex flex-wrap items-center justify-between gap-2 p-4 sm:px-5">
+                <div className="flex items-center gap-2">
+                    <Compass className="h-4 w-4 text-[#E00D42]" />
+                    <h2 className="text-base font-semibold">Delivery map</h2>
+                </div>
+                <span className="text-xs font-bold text-slate-600">
+                    {sampleMode ? 'Sample route' : 'Assigned stop route'}
+                </span>
+            </header>
+        )}
         {sampleMode || coordinates ? <div className={courierClasses('courier-map-surface relative isolate overflow-hidden rounded-[8px] border border-slate-300', !embedded && 'mx-4 sm:mx-5')}>
             <div ref={container} role="region" aria-label={`Map of ${title}`} className="h-80 w-full sm:h-96" />
             <div className="pointer-events-none absolute inset-x-3 top-3 z-[700] flex"><span className="courier-map-label inline-flex max-w-full items-center gap-2 rounded-[8px] border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800"><MapPin className="h-4 w-4 shrink-0 text-[#E00D42]" aria-hidden="true" /><span className="break-words">{sampleMode ? sample.label : job?.place.name || title}</span></span></div>
@@ -114,12 +125,31 @@ export default function CourierJobMap({ job, embedded = false }: { job?: Courier
         <div className={courierClasses('space-y-3 pt-3', !embedded && 'px-4 pb-4 sm:px-5')}>
             {sampleMode ? <div className="space-y-2"><p className="text-xs leading-relaxed text-slate-600">{sample.notice}</p><div className="flex flex-wrap gap-4 text-xs text-slate-700"><span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#18181B]" />{sample.riderLabel}</span><span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#E00D42]" />{sample.deliveryLabel}</span><span>{sample.distanceMeters.toLocaleString()} m along mapped streets</span></div></div> : job && <p className="text-sm leading-relaxed text-slate-600">{job.place.address || 'Address not provided'}</p>}
             {!sampleMode && job && !job.preview && coordinates && <div className="space-y-2 rounded-[8px] border border-slate-300 p-3">
-                <p className="text-xs text-slate-600">Starting navigation shares your current location and this stop with Geoapify while this page is open. The dark marker shows the location used to calculate the route.</p>
-                {road.configured ? <div className="flex flex-wrap items-end gap-2"><label className="text-xs font-semibold">Vehicle<select aria-label="Navigation vehicle" disabled={road.active} value={road.mode} onChange={event => road.setMode(event.target.value as RoadMode | '')} className="ml-2 rounded-[8px] border-slate-300 text-sm"><option value="">Choose vehicle</option><option value="motorcycle">Motorcycle</option><option value="scooter">Scooter</option><option value="drive">Car or van</option></select></label>{road.active ? <button type="button" className={courierButton} onClick={road.stop}>Stop navigation</button> : <button type="button" className={courierButton} onClick={road.start}>Start navigation</button>}</div>
-                    : <p className="text-xs text-amber-800">In-app road routing is not configured. Use external directions for this stop.</p>}
+                <p className="text-xs text-slate-600">Calculates turn-by-turn road route between your current location and this stop prioritizing national highways.</p>
+                <div className="flex flex-wrap items-center gap-2">
+                    <label className="text-xs font-semibold">Vehicle
+                        <select aria-label="Navigation vehicle" disabled={road.active} value={road.mode} onChange={event => road.setMode(event.target.value as RoadMode | '')} className="ml-2 rounded-[8px] border-slate-300 text-sm">
+                            <option value="">Choose vehicle</option>
+                            <option value="motorcycle">Motorcycle</option>
+                            <option value="scooter">Scooter</option>
+                            <option value="drive">Car or van</option>
+                        </select>
+                    </label>
+                    {road.active ? (
+                        <button type="button" className={courierButton} onClick={road.stop}>Stop route</button>
+                    ) : (
+                        <button type="button" className={courierButton} onClick={road.start}>Calculate route</button>
+                    )}
+                    <Link
+                        href={courierPath('/navigation')}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#E00D42] px-3 py-2 text-xs font-bold text-white hover:bg-[#C20836] shadow-xs transition-colors"
+                    >
+                        <Navigation className="h-3.5 w-3.5" />
+                        <span>Launch Fullscreen Navigation</span>
+                    </Link>
+                </div>
                 {road.message && <p role="status" className="text-xs text-slate-700">{road.message}</p>}
             </div>}
-            {job && <button type="button" className={courierButton} onClick={() => setSampleMode(v => !v)}>{sampleMode ? 'Show saved stop' : 'Try sample route'}</button>}
             <p role="status" className={status === 'error' ? 'text-sm text-amber-800' : 'sr-only'}>{status === 'loading' ? 'Loading the street map…' : status === 'error' ? 'Street tiles could not load. The route illustration and saved addresses remain available.' : 'Street map loaded.'}</p>
             {status === 'error' && <button type="button" onClick={() => setAttempt(v => v + 1)} className={courierButton}><RotateCcw className="h-4 w-4" aria-hidden="true" />Retry map</button>}
             {!embedded && !sampleMode && directions && <a href={directions} target="_blank" rel="noopener noreferrer" className={courierButton}>External directions</a>}

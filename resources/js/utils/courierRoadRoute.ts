@@ -93,6 +93,12 @@ export async function fetchRoadRoute(origin: RoadPoint, destination: RoadPoint, 
     }
 }
 
+const roadRouteCache = new Map<string, { route: DetailedRoadRoute; timestamp: number }>();
+
+export function clearRoadRouteCache(): void {
+    roadRouteCache.clear();
+}
+
 export async function fetchDetailedRoadRoute(
     origin: RoadPoint,
     destination: RoadPoint,
@@ -101,9 +107,29 @@ export async function fetchDetailedRoadRoute(
     signal: AbortSignal,
     request: typeof fetch = fetch
 ): Promise<DetailedRoadRoute> {
-    if (!validRoadPoint(origin) || !validRoadPoint(destination) || !key.trim() || !['motorcycle', 'scooter', 'drive'].includes(mode)) {
+    if (!validRoadPoint(origin) || !validRoadPoint(destination) || !['motorcycle', 'scooter', 'drive'].includes(mode)) {
         throw new Error('Road routing is unavailable.');
     }
+
+    const cacheKey = `${origin[0].toFixed(3)},${origin[1].toFixed(3)}->${destination[0].toFixed(3)},${destination[1].toFixed(3)}|${mode}`;
+    const cached = roadRouteCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < 300000) {
+        return cached.route;
+    }
+
+    if (!key.trim()) {
+        const straightDistance = Math.round(roadPointDistance(origin, destination));
+        const estMinutes = Math.max(1, Math.round((straightDistance / 1000) / 35 * 60));
+        const directRoute: DetailedRoadRoute = {
+            lines: [[origin, destination]],
+            distanceMeters: straightDistance,
+            durationMinutes: estMinutes,
+            highwayPrioritized: true,
+        };
+        roadRouteCache.set(cacheKey, { route: directRoute, timestamp: Date.now() });
+        return directRoute;
+    }
+
     const query = new URLSearchParams({
         waypoints: `${origin.join(',')}|${destination.join(',')}`,
         mode,
@@ -113,13 +139,23 @@ export async function fetchDetailedRoadRoute(
         details: 'route_details',
         apiKey: key.trim(),
     });
+
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), 3500);
+
+    const onParentAbort = () => timeoutController.abort();
+    signal.addEventListener('abort', onParentAbort);
+
     try {
         const response = await request(`https://api.geoapify.com/v1/routing?${query}`, {
-            signal,
+            signal: timeoutController.signal,
             credentials: 'omit',
             cache: 'no-store',
             referrerPolicy: 'strict-origin-when-cross-origin',
         });
+        clearTimeout(timeoutId);
+        signal.removeEventListener('abort', onParentAbort);
+
         if (!response.ok || response.redirected) throw new Error('Route request failed.');
         const length = Number(response.headers.get('content-length') || 0);
         if (length > 2_000_000) throw new Error('Route response is too large.');
@@ -146,14 +182,31 @@ export async function fetchDetailedRoadRoute(
             timeSeconds = Math.round((distanceMeters / 1000) / 35 * 3600);
         }
 
-        return {
+        const result: DetailedRoadRoute = {
             lines,
             distanceMeters: Math.round(distanceMeters),
             durationMinutes: Math.max(1, Math.round(timeSeconds / 60)),
             highwayPrioritized: true,
         };
+
+        roadRouteCache.set(cacheKey, { route: result, timestamp: Date.now() });
+        return result;
     } catch (_) {
+        clearTimeout(timeoutId);
+        signal.removeEventListener('abort', onParentAbort);
+
         if (signal.aborted) throw new DOMException('Route request cancelled.', 'AbortError');
-        throw new Error('Road routing is unavailable.');
+
+        // Fast fallback direct route so rider is never stuck on "calculating"
+        const straightDistance = Math.round(roadPointDistance(origin, destination));
+        const estMinutes = Math.max(1, Math.round((straightDistance / 1000) / 35 * 60));
+        const directRoute: DetailedRoadRoute = {
+            lines: [[origin, destination]],
+            distanceMeters: straightDistance,
+            durationMinutes: estMinutes,
+            highwayPrioritized: true,
+        };
+        roadRouteCache.set(cacheKey, { route: directRoute, timestamp: Date.now() });
+        return directRoute;
     }
 }

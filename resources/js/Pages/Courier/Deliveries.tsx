@@ -410,7 +410,22 @@ export default function CourierDeliveries({ scope, isOnline = false, stats, queu
                     </Link>
                 </div>
 
-                <details className="rounded-[8px] border border-slate-200 bg-white p-4" open={sampleMapOpen} onToggle={(event) => setSampleMapOpen(event.currentTarget.open)}><summary className="cursor-pointer py-2 text-sm font-semibold">Sample delivery map</summary>{sampleMapOpen && <div className="pt-3"><CourierJobMap /></div>}</details>
+                <details className="rounded-[8px] border border-slate-200 bg-white p-4" open={sampleMapOpen} onToggle={(event) => setSampleMapOpen(event.currentTarget.open)}>
+                    <summary className="cursor-pointer py-2 text-sm font-semibold flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                            <Compass className="h-4 w-4 text-[#E00D42]" />
+                            <span>Route Map Preview (Next Stop)</span>
+                        </span>
+                        <span className="text-xs font-normal text-slate-500">
+                            {selectedMapJob ? selectedMapJob.stopLabel : mapJobs[0] ? mapJobs[0].stopLabel : 'Active assignment'}
+                        </span>
+                    </summary>
+                    {sampleMapOpen && (
+                        <div className="pt-3">
+                            <CourierJobMap job={selectedMapJob || mapJobs[0]} />
+                        </div>
+                    )}
+                </details>
                 <div className="flex flex-wrap justify-end gap-2"><button type="button" disabled={loadingId !== null} onClick={() => {
                     if (pending.current) return;
                     pending.current = true; setLoadingId(-1); setErrors({});
