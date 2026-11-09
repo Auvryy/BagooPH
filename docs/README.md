@@ -86,8 +86,9 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 
 ## Historical and Original Sources
 
+- [Outdated and Superseded Documentation Policy](OUTDATED_AND_SUPERSEDED_DOCS.md) lists all historical, superseded, and already-implemented concepts that must NOT be read for implementation authority.
 - `PROGRESS.md` records historical milestones and may describe legacy states that are no longer permitted.
-- `ERP_COMPONENTS_SPECIFICATION.md`, `ERP-Components-updated.pdf`, and `ERP-Flow.pdf` preserve original curriculum/source material. Simplified flows in these files are not implementation authority.
+- `ERP_COMPONENTS_SPECIFICATION.md`, `ERP-Components-updated.pdf`, and `ERP-Flow.pdf` preserve original curriculum/source material. Simplified flows in these files are strictly historical and not implementation authority.
 
 ## Conflict Rule
 
