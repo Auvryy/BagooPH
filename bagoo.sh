@@ -37,7 +37,8 @@ case "$cmd" in
     docker compose exec app php artisan db:seed "$@"
     ;;
   fresh)
-    docker compose exec app php artisan migrate:fresh --seed "$@"
+    docker compose exec -T db psql -U postgres -d bagoo -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;"
+    docker compose exec app php artisan migrate --seed "$@"
     ;;
   npm)
     docker compose exec app npm "$@"
