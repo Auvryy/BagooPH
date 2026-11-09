@@ -3,7 +3,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "tsc && vite build",
+        "build": "vite build",
+        "type-check": "tsc --noEmit",
         "test:courier": "node --test tests/Frontend/courier.test.mjs"
     },
     "devDependencies": {
