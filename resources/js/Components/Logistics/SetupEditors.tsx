@@ -57,37 +57,15 @@ export function CoverageEditor({ hub, hubs, url, onClose }: { hub: CoverageHub; 
 }
 
 export function TemporaryLoginEditor({ person, url, onClose }: { person: { name: string; email: string }; url: string; onClose: () => void }) {
-    const form = useForm({ current_password: '', password: '' });
-    const [visible, setVisible] = useState(false);
-    return (
-        <HubPanel title={`Replace temporary login · ${person.name}`} description={`For ${person.email}. Share the replacement privately; activation is still required.`} icon={<KeyRound className="h-4 w-4" />}>
-            <form className="space-y-4" onSubmit={event => { event.preventDefault(); form.post(url, { preserveScroll: true, onSuccess: onClose, onFinish: () => form.reset('current_password', 'password') }); }}>
-                <label className="block text-xs font-semibold text-[#121316]">
-                    Your current company-owner password
-                    <input required type="password" autoComplete="current-password" className={`${hubInput} mt-1.5`} value={form.data.current_password} onChange={event => form.setData('current_password', event.target.value)} />
-                </label>
-                <label className="block text-xs font-semibold text-[#121316]">
-                    New temporary password
-                    <div className="mt-1.5 flex gap-2">
-                        <input required autoComplete="new-password" type={visible ? 'text' : 'password'} className={hubInput} value={form.data.password} onChange={event => form.setData('password', event.target.value)} />
-                        <HubButton
-                            type="button"
-                            onClick={() => {
-                                form.setData('password', `Bg!${crypto.randomUUID()}aA8`);
-                                setVisible(true);
-                            }}
-                        >
-                            Generate
-                        </HubButton>
-                    </div>
-                </label>
-                <p className="text-xs leading-5 text-zinc-500">The old temporary login stops working. The new one expires after seven days.</p>
-                {Object.values(form.errors).map((message, index) => <p key={index} role="alert" className="text-xs text-rose-700">{message}</p>)}
-                <div className="flex gap-2">
-                    <HubButton primary disabled={form.processing}>Replace temporary login</HubButton>
-                    <HubButton type="button" onClick={onClose}>Cancel</HubButton>
-                </div>
-            </form>
-        </HubPanel>
-    );
+    const form = useForm({ current_password: '' });
+    return <HubPanel title={`Resend invitation · ${person.name}`} description={`A fresh setup code will be emailed to ${person.email}. The worker chooses their own password.`} icon={<KeyRound className="h-4 w-4" />}>
+        <form className="space-y-4" onSubmit={event => { event.preventDefault(); form.post(url, { preserveScroll: true, onSuccess: onClose, onFinish: () => form.reset('current_password') }); }}>
+            <label className="block text-xs font-semibold text-slate-800">Your current company-owner password
+                <input required type="password" maxLength={128} autoComplete="current-password" className={`${hubInput} mt-1.5`} value={form.data.current_password} onChange={event => form.setData('current_password', event.target.value)} />
+            </label>
+            <p className="text-xs leading-5 text-slate-600">Only pending invitations can be renewed. Activated workers use normal password recovery.</p>
+            {Object.values(form.errors).map((message, index) => <p key={index} role="alert" className="text-xs text-rose-700">{message}</p>)}
+            <div className="flex gap-2"><HubButton primary disabled={form.processing}>Email new setup code</HubButton><HubButton type="button" onClick={onClose}>Cancel</HubButton></div>
+        </form>
+    </HubPanel>;
 }

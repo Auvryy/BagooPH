@@ -26,7 +26,9 @@
                     <tr>
                         <td style="padding: 32px;">
                             <h2 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #0F172A;">
-                                @if($purpose === 'password_reset')
+                                @if($purpose === 'company_staff_activation')
+                                    Set up your work account
+                                @elseif($purpose === 'password_reset')
                                     Password Reset Verification Code
                                 @elseif($purpose === 'account_sessions')
                                     Confirm device sign-out
@@ -35,7 +37,9 @@
                                 @endif
                             </h2>
                             <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #475569;">
-                                @if($purpose === 'password_reset')
+                                @if($purpose === 'company_staff_activation')
+                                    Your logistics company invited you to a work assignment. Open <a href="{{ route('staff.invitation.show') }}">work account setup</a>, choose Operator or Rider, and enter this code. Review the company and hub, then set your own password. Your company does not need to know your password:
+                                @elseif($purpose === 'password_reset')
                                     We received a request to reset your BagooPH account password. Use the single-use 6-digit code below to verify your identity:
                                 @elseif($purpose === 'account_email')
                                     Use this single-use code to add this email to your BagooPH account for contact and recovery. Your original sign-in email stays the same:

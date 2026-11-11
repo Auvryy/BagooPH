@@ -2,18 +2,19 @@
 
 namespace Tests\Feature\Logistics;
 
+use App\Mail\OtpVerificationMail;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\User;
 use App\Services\Logistics\CompanySetupService;
-use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\RoutingCheckoutSeeder;
 use Tests\TestCase;
 
 class NewEraCompanySetupTest extends TestCase
@@ -29,7 +30,8 @@ class NewEraCompanySetupTest extends TestCase
         config(['filesystems.disks.local.root' => $this->fixtureStorage.'/private', 'filesystems.disks.public.root' => $this->fixtureStorage.'/public']);
         Storage::forgetDisk('local');
         Storage::forgetDisk('public');
-        $this->seed(DatabaseSeeder::class);
+        Mail::fake();
+        $this->seed(RoutingCheckoutSeeder::class);
     }
 
     protected function tearDown(): void
@@ -47,7 +49,7 @@ class NewEraCompanySetupTest extends TestCase
     {
         return ['kind' => $kind, 'hub_id' => LogisticsHub::where('code', 'BH-LBN-01')->sole()->id,
             'first_name' => 'Maya', 'last_name' => 'Santos', 'birthday' => '1995-04-12',
-            'email' => 'CREW-QA@BAGOO.TEST', 'phone' => '09175551831', 'password' => 'Temporary-QA!4825'];
+            'email' => 'CREW-QA@BAGOO.TEST', 'phone' => '09175551831'];
     }
 
     public function test_company_map_payload_keeps_saved_coordinates_and_excludes_another_company(): void
@@ -71,7 +73,7 @@ class NewEraCompanySetupTest extends TestCase
             }));
     }
 
-    public function test_owner_creates_a_scoped_operator_and_initial_password_and_email_checks_gate_work(): void
+    public function test_owner_invites_a_scoped_operator_and_email_setup_gates_work(): void
     {
         $company = $this->company();
         $owner = $company->user;
@@ -80,25 +82,22 @@ class NewEraCompanySetupTest extends TestCase
         $staff = User::where('email', 'crew-qa@bagoo.test')->sole();
         $this->assertSame('logistics', $staff->role);
         $this->assertSame($company->id, $staff->provisioned_company_id);
-        $this->assertTrue(Hash::check($input['password'], $staff->password));
         $this->assertTrue($staff->must_change_password);
         $this->assertFalse($staff->canAccessPortal());
         $this->assertDatabaseHas('hub_handlers', ['user_id' => $staff->id, 'hub_id' => $input['hub_id'], 'logistics_company_id' => $company->id]);
+        $this->flushSession();
         $this->actingAs($staff)->get('/hub/dashboard')->assertRedirect('/staff/activate');
-        $this->get('/staff/activate')->assertOk();
-        $this->postJson('/staff/activate', ['current_password' => 'wrong', 'password' => 'My-New-Secret!4826', 'password_confirmation' => 'My-New-Secret!4826', 'assignment_confirmed' => true])->assertUnprocessable();
-        $this->assertTrue($staff->fresh()->must_change_password);
-        $this->post('/staff/activate', ['current_password' => $input['password'], 'password' => 'My-New-Secret!4826', 'password_confirmation' => 'My-New-Secret!4826', 'assignment_confirmed' => true])
-            ->assertSessionHasNoErrors()->assertRedirect(route('verification.notice'));
-        $this->assertFalse($staff->fresh()->must_change_password);
-        $this->assertFalse($staff->fresh()->canAccessPortal());
-        $this->get('/verify-email')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->component('Auth/VerifyEmail'));
-        $this->get('/hub/dashboard')->assertRedirect(route('verification.notice'));
-        $this->getJson('/auth/session')->assertOk()->assertJsonPath('redirect', '/verify-email');
-        $url = URL::temporarySignedRoute('verification.verify', now()->addMinutes(15), ['id' => $staff->id, 'hash' => sha1($staff->email)]);
-        $this->get($url)->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+        $identity = ['email' => $staff->email, 'kind' => 'operator'];
+        $code = Mail::sent(OtpVerificationMail::class)->last()->otpCode;
+        $verified = $this->postJson('/work-account/verify', [...$identity, 'code' => $code])->assertOk();
+        $this->postJson('/work-account/activate', [...$identity, 'token' => $verified->json('token'),
+            'assignment_token' => $verified->json('assignment_token'), 'assignment_confirmed' => true,
+            'password' => 'My-New-Secret!4826', 'password_confirmation' => 'My-New-Secret!4826'])->assertOk();
+        $this->assertTrue(Hash::check('My-New-Secret!4826', $staff->fresh()->password));
         $this->assertTrue($staff->fresh()->canAccessPortal());
         $this->assertDatabaseHas('company_staff_provisions', ['user_id' => $staff->id, 'actor_id' => $owner->id]);
+        $this->assertGuest();
+        $this->post('/login', ['email' => $staff->email, 'password' => 'My-New-Secret!4826', 'role' => 'logistics'])->assertSessionHasNoErrors();
         $this->get('/hub/company-setup')->assertForbidden();
     }
 
@@ -143,7 +142,7 @@ class NewEraCompanySetupTest extends TestCase
     }
 
     #[DataProvider('invalidTemporaryPasswords')]
-    public function test_temporary_password_writers_reject_missing_symbols_and_hidden_controls(string $password): void
+    public function test_owners_cannot_choose_or_reset_worker_passwords(string $password): void
     {
         $company = $this->company();
         $owner = $company->user;
@@ -190,22 +189,20 @@ class NewEraCompanySetupTest extends TestCase
         $this->assertDatabaseCount('logistics_tariff_events', 1);
     }
 
-    public function test_expired_temporary_logins_need_owner_confirmation_and_a_new_hashed_password(): void
+    public function test_expired_invitations_need_owner_confirmation_before_resending(): void
     {
         $company = $this->company();
         $staff = app(CompanySetupService::class)->staff($company->user, $company->id, $this->person());
+        $originalHash = $staff->password;
         $this->travel(8)->days();
-        $this->actingAs($staff)->postJson('/staff/activate', ['current_password' => $this->person()['password'],
-            'password' => 'Worker-New-Secret!8826', 'password_confirmation' => 'Worker-New-Secret!8826', 'assignment_confirmed' => true])
-            ->assertUnprocessable()->assertJsonValidationErrors('current_password');
-        $replacement = 'Replacement-QA!9283';
+        $this->postJson('/work-account/verify', ['email' => $staff->email, 'kind' => 'operator', 'code' => '123456'])->assertUnprocessable();
         $url = '/hub/company-setup/'.$company->id.'/staff/'.$staff->id.'/temporary-password';
-        $this->actingAs($company->user)->postJson($url, ['current_password' => 'wrong', 'password' => $replacement])->assertUnprocessable();
-        $this->post($url, ['current_password' => 'Password1234', 'password' => $replacement])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->actingAs($company->user)->postJson($url, ['current_password' => 'wrong'])->assertUnprocessable();
+        $this->post($url, ['current_password' => 'Password1234'])->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertTrue($staff->fresh()->must_change_password);
         $this->assertTrue($staff->fresh()->temporary_password_expires_at->isFuture());
-        $this->assertTrue(Hash::check($replacement, $staff->fresh()->password));
-        $this->assertFalse(Hash::check($this->person()['password'], $staff->fresh()->password));
+        $this->assertNotSame($originalHash, $staff->fresh()->password);
+        Mail::assertSent(OtpVerificationMail::class, fn ($mail) => $mail->hasTo($staff->email));
         $this->assertDatabaseCount('company_staff_login_resets', 1);
     }
 
