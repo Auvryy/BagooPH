@@ -30,7 +30,7 @@ The seller confirms the order, records packing, prints the purchased waybill and
 
 Packed catalogue dimensions are per purchased unit. Aggregate actual grams and aggregate volumetric grams across quantities. Volumetric kilograms equal `length_cm * width_cm * height_cm / 3500`. Billable weight is the greater total. The saved calculation records the divisor, actual/volumetric/billable grams, tariff version, included grams, base cents and additional started kilograms.
 
-The default tariff is PHP 60. The source supplies no excess-weight price, so the default additional-kilogram surcharge is zero. An owner or platform admin may configure a published surcharge for future quotes. A weight-priced quote requires actual weight and all dimensions; missing measurements must not silently undercharge bulky items. The flat baseline can retain explicitly unknown legacy measurements. Self-pickup retains its existing zero doorstep charge. Product subtotal alone never grants free shipping; funded shipping offers remain separate.
+The November 11 user-selected default tariff is PHP 50 including 1 kg, plus PHP 20 per started extra kilogram. Existing published company tariffs are retained; an owner or platform admin may publish supported rates for future quotes. A weight-priced quote requires actual weight and all dimensions; missing measurements must not silently undercharge bulky items. An explicitly configured flat tariff can retain explicitly unknown legacy measurements. Self-pickup retains its existing zero doorstep charge. Product subtotal alone never grants free shipping; funded shipping offers remain separate.
 
 ## Mother Bags and transport
 
@@ -62,8 +62,8 @@ Product proceeds before original funding/return adjustments are 90% seller and 1
 
 | Model | Pickup | Delivery | Company |
 |---|---:|---:|---:|
-| Standard, PHP 60 | PHP 0 | PHP 30 | PHP 30 |
-| Dedicated fleet, PHP 60 | PHP 10 | PHP 25 | PHP 25 |
+| Standard, PHP 50 | PHP 0 | PHP 25 | PHP 25 |
+| Dedicated fleet, PHP 50 | PHP 8.33 | PHP 20.83 | PHP 20.84 |
 
 Dedicated pickup earnings require actual origin intake. Valid completion releases seller/platform and company entitlements. Delivery earnings are available immediately for prepaid orders; COD rider earnings become available only after counted, acknowledged hub remittance. A shortage, pending offer or unresolved rider discrepancy prevents release and duty closure. The company's remainder conserves every shipping cent when a fee is not exactly divisible.
 

@@ -29,12 +29,12 @@ The PDF's example calls its route Laguna-to-Batangas while naming Biñan and Pag
 | Mother Bag aggregation | Owned open bag → scanned membership → numbered seal → manifest bag scan → atomic parcel departures → verified seal opening and individual receipt. Prevent simultaneous active container membership. |
 | Daily COD reconciliation | Use actual collection and acknowledged remittance events for the rider's shift; unresolved held cash, offers and differences prevent duty closure. |
 
-Product proceeds remain 90% seller and 10% Bagoo before original funded promotions/returns. Shipping is a separate source pool. The default example tariff is PHP 60, with no automatic merchandise-based free shipping. The PDF does not supply an excess-weight surcharge: the configured tariff exposes the included weight and additional-kilogram fee, with a zero default surcharge preserving its flat PHP 60 baseline. The weight calculation is retained even under a flat tariff. A configured surcharge applies to each started kilogram above the included weight. Self-pickup retains its separate no-doorstep-charge option.
+Product proceeds remain 90% seller and 10% Bagoo before original funded promotions/returns. Shipping is a separate source pool. The user's November 11 pricing amendment replaces the earlier PHP 60 default: new company defaults are PHP 50 including 1 kg, plus PHP 20 per started extra kilogram. Explicitly published company tariffs and original purchases retain their own terms; owners may publish different supported rates for future quotes. Billable weight remains the greater of actual and volumetric weight using divisor 3,500. A selected weight-priced carrier requires packed measurements. Self-pickup retains its separate no-doorstep-charge option, and product value alone never grants free shipping. See [B04](../brainstorming/B04_MONEY_AND_LIABILITY.md) for the selected money decisions and later refund rollout boundary.
 
 Two company-selected shipping models are supported and frozen at checkout:
 
-- Standard: 50% company and 50% delivery rider (PHP 30 / PHP 30 from PHP 60).
-- Dedicated fleet: one sixth pickup rider, five twelfths delivery rider, remainder company (PHP 10 / PHP 25 / PHP 25 from PHP 60). Integer-cent allocation conserves the original shipping pool.
+- Standard: 50% company and 50% delivery rider (PHP 25 / PHP 25 from PHP 50).
+- Dedicated fleet: one sixth pickup rider, five twelfths delivery rider, remainder company (PHP 8.33 / PHP 20.83 / PHP 20.84 from PHP 50). Integer-cent allocation conserves the original shipping pool.
 
 Pickup earnings accrue on actual origin receipt. Company and final-mile earnings accrue on valid delivery; COD rider amounts become available after acknowledged cash remittance. Seller and platform proceeds are released automatically from valid delivery evidence. A ledger release is recorded automatically; a real bank/cash payment still needs its actual transfer reference and proof. Wallet orders use their existing prepaid virtual journal and collect no cash.
 
