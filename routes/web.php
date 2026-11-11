@@ -407,6 +407,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::get('/manifests', [LogisticsManifestController::class, 'index']);
         Route::get('/mother-bags', [MotherBagController::class, 'index']);
         Route::post('/mother-bags', [MotherBagController::class, 'store'])->middleware('throttle:30,1');
+        Route::post('/mother-bags/pack', [MotherBagController::class, 'pack'])->middleware('throttle:60,1');
         Route::post('/mother-bags/{bag}/{action}', [MotherBagController::class, 'command'])->whereUuid('bag')->where('action', 'add|remove|seal|reopen|load|unload|open')->middleware('throttle:60,1');
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest');
         Route::post('/manifests', [LogisticsManifestController::class, 'store']);
@@ -907,6 +908,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/manifests', [LogisticsManifestController::class, 'index'])->name('manifests.index');
         Route::get('/mother-bags', [MotherBagController::class, 'index'])->name('mother-bags.index');
         Route::post('/mother-bags', [MotherBagController::class, 'store'])->middleware('throttle:30,1')->name('mother-bags.store');
+        Route::post('/mother-bags/pack', [MotherBagController::class, 'pack'])->middleware('throttle:60,1');
         Route::post('/mother-bags/{bag}/{action}', [MotherBagController::class, 'command'])->whereUuid('bag')->where('action', 'add|remove|seal|reopen|load|unload|open')->middleware('throttle:60,1')->name('mother-bags.command');
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest')->name('manifests.show');
         Route::post('/manifests', [LogisticsManifestController::class, 'store'])->name('manifests.store');

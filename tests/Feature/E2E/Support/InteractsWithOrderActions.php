@@ -324,7 +324,9 @@ trait InteractsWithOrderActions
     {
         $service = app(MotherBagService::class);
         $bag = $service->create($handler, ['source_hub_id' => $manifest->source_hub_id, 'destination_hub_id' => $manifest->destination_hub_id, 'creation_token' => (string) Str::uuid()]);
-        $bag = $service->command($bag, $handler, 'add', ['version' => $bag->version, 'barcode' => $delivery->tracking_number]);
+        $bag = $service->command($bag, $handler, 'add', ['version' => $bag->version, 'barcode' => $delivery->tracking_number,
+            // Simulated outer-package observation for this generated test parcel, separate from its purchased unit sizes.
+            'handling' => ['weight_kg' => 1, 'length_cm' => 20, 'width_cm' => 20, 'height_cm' => 20, 'confirmed' => true]]);
         $bag = $service->command($bag, $handler, 'seal', ['version' => $bag->version, 'seal_number' => 'QA-SEAL-'.Str::upper(Str::random(12))]);
 
         return $service->command($bag, $handler, 'load', ['version' => $bag->version, 'barcode' => $bag->reference, 'seal_number' => $bag->seal_number, 'manifest_id' => $manifest->id]);

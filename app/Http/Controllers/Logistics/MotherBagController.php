@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\MotherBag;
+use App\Services\Logistics\CargoHandlingService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\MotherBagService;
 use DomainException;
@@ -25,13 +26,16 @@ class MotherBagController extends Controller
         $hubs = LogisticsHub::eligible()->whereIn('logistics_company_id', $stations->pluck('logistics_company_id'))->get();
         $query = $service->readable($actor)->with(['source', 'destination'])->withCount(['parcels' => fn ($q) => $q->whereNull('removed_at')]);
         $selected = $request->filled('bag') ? (clone $query)->findOrFail($request->query('bag')) : null;
+        $handling = app(CargoHandlingService::class);
         $summary = fn (MotherBag $bag) => $bag->only(['id', 'reference', 'status', 'seal_number', 'version', 'source_hub_id', 'destination_hub_id', 'manifest_id', 'parcels_count'])
-            + ['source' => $bag->source->only(['id', 'name', 'code', 'tier', 'latitude', 'longitude']), 'destination' => $bag->destination->only(['id', 'name', 'code', 'tier', 'latitude', 'longitude'])];
+            + ['physical_tag' => $bag->physical_tag, 'packing_policy_version' => $bag->packing_policy_version,
+                'capacity' => $handling->available() ? $handling->capacity($bag) : null,
+                'source' => $bag->source->only(['id', 'name', 'code', 'tier', 'latitude', 'longitude']), 'destination' => $bag->destination->only(['id', 'name', 'code', 'tier', 'latitude', 'longitude'])];
         $detail = $selected ? $summary($selected) + [
             'canPack' => $eligibility->canScan($actor, $selected->source),
             'canOpen' => $eligibility->canScan($actor, $selected->destination),
             'parcels' => $selected->parcels()->with('delivery')->get()->map(fn ($member) => [
-                'id' => $member->delivery_id, 'tracking_number' => $member->delivery->tracking_number,
+                'handling' => $member->handling_snapshot, 'id' => $member->delivery_id, 'tracking_number' => $member->delivery->tracking_number,
                 'status' => $member->delivery->status, 'removed' => $member->removed_at !== null, 'received' => $member->received_at !== null,
             ]),
             'events' => DB::table('mother_bag_events')->join('users', 'users.id', '=', 'mother_bag_events.actor_id')
@@ -45,6 +49,7 @@ class MotherBagController extends Controller
             'manifests' => LogisticsManifest::whereIn('source_hub_id', $stations->pluck('id'))->where('status', 'draft')
                 ->with(['vehicle', 'driver'])->get()->map(fn ($manifest) => $manifest->only(['id', 'reference', 'source_hub_id', 'destination_hub_id'])
                     + ['vehicle_plate' => $manifest->vehicle?->plate_number, 'driver_name' => $manifest->driver?->name]),
+            'packingAvailable' => $handling->available(), 'packingToken' => (string) Str::uuid(), 'commandToken' => (string) Str::uuid(),
             'creationToken' => (string) Str::uuid(), 'basePath' => $request->is('hub/*') ? '/hub/mother-bags' : '/mother-bags',
         ]);
     }
@@ -54,18 +59,36 @@ class MotherBagController extends Controller
         try {
             $bag = $service->create($request->user(), $request->all());
         } catch (DomainException $error) {
-            return back()->withErrors(['bag' => $error->getMessage()]);
+            return $request->expectsJson() ? response()->json(['message' => $error->getMessage()], 409) : back()->withErrors(['bag' => $error->getMessage()]);
         }
 
         return redirect(($request->is('hub/*') ? '/hub/mother-bags' : '/mother-bags').'?bag='.$bag->id)->with('success', 'Mother Bag created. Scan its parcels before sealing.');
     }
 
+    public function pack(Request $request, MotherBagService $service)
+    {
+        try {
+            $bag = $service->pack($request->user(), $request->all());
+        } catch (DomainException $error) {
+            return $request->expectsJson() ? response()->json(['message' => $error->getMessage()], 409) : back()->withErrors(['packing' => $error->getMessage()]);
+        }
+        if ($request->expectsJson()) {
+            return response()->json(['bag' => $bag->only(['id', 'reference', 'status', 'version', 'physical_tag']), 'capacity' => app(CargoHandlingService::class)->capacity($bag)]);
+        }
+
+        return redirect(($request->is('hub/*') ? '/hub/mother-bags' : '/mother-bags').'?bag='.$bag->id)->with('success', 'Parcel assigned to its open bag. Place it inside before sealing.');
+    }
+
     public function command(Request $request, MotherBag $bag, string $action, MotherBagService $service)
     {
         try {
-            $service->command($bag, $request->user(), $action, $request->all());
+            $bag = $service->command($bag, $request->user(), $action, $request->all());
         } catch (DomainException $error) {
-            return back()->withErrors(['bag' => $error->getMessage()]);
+            return $request->expectsJson() ? response()->json(['message' => $error->getMessage()], 409) : back()->withErrors(['bag' => $error->getMessage()]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['bag' => $bag->only(['id', 'reference', 'status', 'version', 'physical_tag'])]);
         }
 
         return back()->with('success', match ($action) {

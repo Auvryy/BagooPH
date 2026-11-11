@@ -10,12 +10,12 @@ class LogisticsManifestParcel extends Model
 {
     protected $guarded = ['id'];
 
-    protected $casts = ['route_snapshot' => 'array', 'source_state' => 'array', 'included' => 'boolean', 'received_at' => 'datetime'];
+    protected $casts = ['route_snapshot' => 'array', 'handling_snapshot' => 'array', 'source_state' => 'array', 'included' => 'boolean', 'received_at' => 'datetime'];
 
     protected static function booted(): void
     {
         static::updating(function (self $parcel) {
-            if ($parcel->isDirty(['manifest_id', 'delivery_id', 'tracking_number_snapshot', 'route_snapshot', 'source_state', 'created_at'])) {
+            if ($parcel->isDirty(['manifest_id', 'delivery_id', 'tracking_number_snapshot', 'route_snapshot', 'source_state', 'created_at', 'cargo_mode', 'handling_snapshot'])) {
                 throw new LogicException('Manifest membership identity must be retained.');
             }
         });
