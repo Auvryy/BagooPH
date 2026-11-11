@@ -49,6 +49,8 @@ Confirm company/hub boundaries, named workers, rider joining/activation and cred
 
 **Source topics:** 5, 11–14, 17, 20, 25, 27. **Prerequisites:** B01, B02.
 
+Shared decisions, existing field mappings, compatibility boundaries and later-package ownership are in [the B03 contract](B03_SHIPMENT_CUSTODY_PRIVACY.md). It retains Q1 routing and B02 identities; mixed transport execution remains B12.
+
 Define identifiers and events for forward parcels, returns, bags, loose cargo, staging, handovers and corrections before expanding the scanner. Specify actor, recipient, route version and idempotency fields. Define address visibility and protected waybill lookup.
 
 **Exit gate:** A forward parcel and a return can share transport without sharing identity or money state. Sensitive addresses require authorized server access; QR possession alone grants no access. Physical observations, commercial status and cash custody remain distinguishable.

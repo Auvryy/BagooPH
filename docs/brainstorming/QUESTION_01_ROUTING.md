@@ -1,6 +1,6 @@
 # Question 1: automatic parcel route planning
 
-Decision: accepted with the clarifications below. Implementation is locally verified on `feat/brainstorm-routing-feedback`; publication and merge remain pending.
+Decision: accepted with the clarifications below. Implementation was verified on `feat/brainstorm-routing-feedback` and merged in web PR #160 (`464831d`). The acceptance evidence below records that delivery's checks and limits.
 
 ## What the buyer and backend do
 
@@ -45,7 +45,7 @@ Scoped engineering assessment: route planning consistency and checkout feedback 
 - `786437f`: shared backend route validation, previews, frozen paths and isolated regression fixtures.
 - `340ad77`: checkout route feedback and frontend checks.
 
-The decision/checklist/roadmap record is committed separately after these implementation commits. The PR description is a local draft; no PR or deployment is published by this delivery.
+The decision/checklist/roadmap record was committed separately after these implementation commits. The user subsequently published and merged web PR #160; merge alone does not establish deployment.
 
 ## Next work
 

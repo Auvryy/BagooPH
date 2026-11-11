@@ -1,6 +1,6 @@
 # B02: named logistics workers and scanner accounts
 
-Decision date: November 11, 2026. Delivery remains on `feat/brainstorm-routing-feedback`, together with Q1. The logistics scanner repository uses the same branch name; separate Git repositories require separate PRs when published. No extra web branch is needed.
+Decision date: November 11, 2026. Delivery used `feat/brainstorm-routing-feedback`, together with Q1. The user merged web PR #160 (`464831d`) and logistics scanner PR #1 (`661f84f`) into their respective repositories. The acceptance evidence below records that delivery's checks and limits; merge alone does not establish deployment or device acceptance.
 
 ## Accepted behavior
 
@@ -59,4 +59,4 @@ Continuous parcel scanning inspects first, then sends the server's action and ex
 5. In the logistics scanner, enter the configured backend origin. Choose Activate an invited work account for a pending operator; otherwise sign in. Multiple assignments show a chooser. A courier account cannot sign into the operator scanner.
 6. Inspect a real assigned parcel, then confirm its offered action. Check that an unassigned hub and stale/expired session are rejected and that repeating an intake does not add another custody checkpoint.
 
-Deploy the web endpoints before distributing the updated scanner. Existing migrations already contain the invitation/session fields; B02 adds no migration. Existing pending temporary-password accounts retain their legacy route and can also request the new email setup flow when their invitation is still eligible. Publication and merge remain pending until the user pushes and reviews the two repositories.
+Deploy the web endpoints before distributing the updated scanner. Existing migrations already contain the invitation/session fields; B02 adds no migration. Existing pending temporary-password accounts retain their legacy route and can also request the new email setup flow when their invitation is still eligible. Both repository PRs are now merged; deployment remains a separate action.
