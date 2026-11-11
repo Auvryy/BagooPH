@@ -77,6 +77,10 @@ class CheckoutQuoteService
                 ->sum(fn ($segment) => CodMoney::cents(number_format($segment['unit_price'], 2, '.', '')) * $segment['quantity']));
             $shippingQuote = app(LogisticsRateService::class)->quote($group, $company);
             $doorstep = $shippingQuote['shipping_cents'];
+            $payable = $deliveryType === 'hub_self_pickup' ? 0 : $doorstep;
+            $shippingQuote += ['delivery_type' => $deliveryType, 'payable_shipping_cents' => $payable,
+                'earnings_terms_version' => 1,
+                'earnings_split_cents' => app(LogisticsRateService::class)->shippingSplit($payable, $shippingQuote['earnings_model'])];
 
             return ['shop_id' => $shopId, 'shop_name' => $group->first()->product->shop->name, 'subtotal' => $subtotal,
                 'doorstep_shipping' => $doorstep, 'shipping' => $deliveryType === 'hub_self_pickup' ? 0 : $doorstep,

@@ -23,7 +23,7 @@ class LogisticsEarningsService
         if ($order->logistics_flow_version < 2 || ! $parcel->courier_id || $checkpoint->checkpoint_type !== 'arrived_at_origin_hub') {
             return;
         }
-        $split = app(LogisticsRateService::class)->shippingSplit(CodMoney::cents($order->shipping_fee), $order->shipping_quote['earnings_model'] ?? 'dedicated_fleet');
+        $split = app(LogisticsRateService::class)->purchasedShippingSplit($order);
         if ($split['pickup'] > 0) {
             $this->accrue($parcel, $checkpoint, 'pickup', $parcel->courier_id, $split['pickup'], $split['pickup'], true);
         }
@@ -32,7 +32,7 @@ class LogisticsEarningsService
     public function completed(Delivery $parcel, DeliveryCheckpoint $checkpoint): void
     {
         $order = $parcel->order;
-        $split = app(LogisticsRateService::class)->shippingSplit(CodMoney::cents($order->shipping_fee), $order->shipping_quote['earnings_model'] ?? 'dedicated_fleet');
+        $split = app(LogisticsRateService::class)->purchasedShippingSplit($order);
         $product = SellerSettlementService::split(CodMoney::cents($order->subtotal));
         $promotions = app(VoucherFundingService::class)->amounts($order);
         if ($promotions['promotion_blockers']) {

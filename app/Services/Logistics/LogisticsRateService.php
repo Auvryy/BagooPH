@@ -4,6 +4,9 @@ namespace App\Services\Logistics;
 
 use App\Exceptions\CheckoutException;
 use App\Models\LogisticsCompany;
+use App\Models\Order;
+use App\Services\Finance\CodMoney;
+use DomainException;
 use Illuminate\Support\Collection;
 
 class LogisticsRateService
@@ -59,9 +62,32 @@ class LogisticsRateService
     /** Exact integer-cent allocation; the company receives the rounding remainder. */
     public function shippingSplit(int $cents, string $model): array
     {
+        if ($cents < 0 || ! in_array($model, ['standard', 'dedicated_fleet'], true)) {
+            throw new DomainException('The original shipping amount and earnings model need review.');
+        }
         $pickup = $model === 'dedicated_fleet' ? intdiv($cents, 6) : 0;
-        $delivery = $model === 'dedicated_fleet' ? intdiv($cents * 5, 12) : intdiv($cents, 2);
+        $delivery = $model === 'dedicated_fleet'
+            ? intdiv($cents, 12) * 5 + intdiv(($cents % 12) * 5, 12) : intdiv($cents, 2);
 
         return ['pickup' => $pickup, 'delivery' => $delivery, 'company' => $cents - $pickup - $delivery];
+    }
+
+    /** New purchases retain exact entitlements; earlier quotes keep their original named model. */
+    public function purchasedShippingSplit(Order $order): array
+    {
+        $quote = $order->shipping_quote ?? [];
+        $cents = CodMoney::cents($order->shipping_fee);
+        if (! array_key_exists('earnings_split_cents', $quote)) {
+            return $this->shippingSplit($cents, $quote['earnings_model'] ?? 'dedicated_fleet');
+        }
+        $split = $quote['earnings_split_cents'];
+        if (($quote['earnings_terms_version'] ?? null) !== 1 || ! is_array($split)
+            || count($split) !== 3 || array_diff(['pickup', 'delivery', 'company'], array_keys($split))
+            || collect($split)->contains(fn ($part) => ! is_int($part) || $part < 0 || $part > $cents)
+            || array_sum($split) !== $cents || ($quote['payable_shipping_cents'] ?? null) !== $cents) {
+            throw new DomainException('The original shipping earnings allocation needs review.');
+        }
+
+        return $split;
     }
 }
