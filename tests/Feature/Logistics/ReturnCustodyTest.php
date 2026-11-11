@@ -241,7 +241,12 @@ class ReturnCustodyTest extends TestCase
     {
         $shop = $this->createE2EShop($this->createApprovedUser('seller'), ['city' => 'Santa Cruz']);
         $order = $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop);
+        $this->assertSame(1, $order->logistics_flow_version);
         $parcel = $this->flowDelivery($order, 'out_for_delivery');
+        $this->assertFalse($parcel->same_hub_bypass);
+        $this->assertSame([
+            $parcel->origin_bayan_hub_id, $parcel->origin_mother_hub_id, $parcel->destination_bayan_hub_id,
+        ], LogisticsManifest::orderBy('id')->pluck('source_hub_id')->push($parcel->destination_bayan_hub_id)->all());
         $this->assertSame($parcel->origin_bayan_hub_id, $parcel->destination_bayan_hub_id);
         $this->reportFlowFailure($parcel, 'Customer refused');
         $this->receiveFailureFlow($parcel);

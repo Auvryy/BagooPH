@@ -395,6 +395,22 @@ class LogisticsRoutingEngine
         $originBayanId = $delivery->origin_bayan_hub_id;
         $originMotherId = $delivery->origin_mother_hub_id;
 
+        // Historical same-child purchases still have an outward Mother-Hub loop.
+        // Its endpoints coincide, so hub identity alone cannot establish backhaul.
+        if ($delivery->order?->logistics_flow_version === 1
+            && $originBayanId && $originBayanId === $destBayanId
+            && $originMotherId && $originMotherId === $destMotherId) {
+            $outward = $currentHubId === $originBayanId
+                && $delivery->status === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB
+                && $targetHub->id === $originMotherId;
+            $inward = $currentHubId === $originMotherId
+                && in_array($delivery->status, [OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB, OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL], true)
+                && $targetHub->id === $destBayanId;
+            if ($outward || $inward) {
+                return null;
+            }
+        }
+
         // Is parcel at destination_mother_hub or destination_bayan_hub?
         $isAtDestMother = false;
         if ($destMotherId) {
