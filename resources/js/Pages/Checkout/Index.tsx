@@ -1148,6 +1148,8 @@ export default function CheckoutIndex({
                                 </div>
                             )}
 
+                            {quote.shops.some(shop => shop.shipping_quote?.cancellation_policy_version === 2) && <p className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-slate-700">Cancel directly before seller acceptance. After acceptance, request cancellation before pickup readiness; the seller has 24 hours to respond. Expiry leaves the order unchanged.</p>}
+
                             <button
                                 type="submit"
                                 disabled={processing || bestBusy || !canShowQuote || !pricing.ready || kycStatus !== 'approved'}

@@ -311,6 +311,7 @@ export interface OrderTracking {
 }
 
 export interface ShippingCalculation {
+    cancellation_policy_version?: number;
     company_name: string | null;
     actual_weight_grams: number;
     volumetric_weight_grams: number;
@@ -327,6 +328,12 @@ export interface ShippingCalculation {
 }
 
 export interface Order {
+    recipient_details_available?: boolean;
+    shipping_province?: string | null;
+    fulfillment_feedback?: { code: string; message: string };
+    cancellation_request?: import('@/Components/OrderCancellationFeedback').CancellationRequest | null;
+    cancellation_feedback?: import('@/Components/OrderCancellationFeedback').CancellationFeedback;
+
     logistics_flow_version?: number;
     shipping_quote?: ShippingCalculation | null;
     delivery_type?: 'doorstep' | 'hub_self_pickup';

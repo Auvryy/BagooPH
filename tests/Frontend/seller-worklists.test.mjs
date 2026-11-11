@@ -8,7 +8,7 @@ import { build } from 'esbuild';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-seller-worklists-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.sellerWorklistHarness; delete globalThis.route; delete globalThis.window; });
 const result = await build({
-    stdin: { contents: "export { default as Orders } from '@/Pages/Seller/Orders'; export { default as Reviews } from '@/Pages/Seller/Reviews'; export { default as Tags } from '@/Pages/Seller/StoreTags'; export { default as Listings } from '@/Pages/Seller/Products'; export { default as ProductCard } from '@/Components/ProductCard'; export { default as Detail } from '@/Pages/Buyer/ProductDetail'; export { default as ListingDetails, emptyListingDetails } from '@/Components/SellerListingDetails'; export { declaredParcelWeight } from '@/utils/declaredParcelWeight';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: "export { default as BuyerCancel } from '@/Components/BuyerCancelOrder'; export { default as CancelReview } from '@/Components/OrderCancellationReview'; export { default as CancelFeedback } from '@/Components/OrderCancellationFeedback'; export { default as Orders } from '@/Pages/Seller/Orders'; export { default as Reviews } from '@/Pages/Seller/Reviews'; export { default as Tags } from '@/Pages/Seller/StoreTags'; export { default as Listings } from '@/Pages/Seller/Products'; export { default as ProductCard } from '@/Components/ProductCard'; export { default as Detail } from '@/Pages/Buyer/ProductDetail'; export { default as ListingDetails, emptyListingDetails } from '@/Components/SellerListingDetails'; export { declaredParcelWeight } from '@/utils/declaredParcelWeight';", resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'seller-worklist-hooks', setup(builder) {
         builder.onResolve({ filter: /^react-dom$/ }, () => ({ path: 'portal', namespace: 'seller-portal' }));
@@ -32,7 +32,7 @@ const result = await build({
     } }],
 });
 const file = join(temporary, 'worklists.mjs'); writeFileSync(file, result.outputFiles[0].text);
-const { Orders, Reviews, Tags, Listings, ProductCard, Detail, ListingDetails, emptyListingDetails, declaredParcelWeight } = await import(pathToFileURL(file).href);
+const { BuyerCancel, CancelReview, CancelFeedback, Orders, Reviews, Tags, Listings, ProductCard, Detail, ListingDetails, emptyListingDetails, declaredParcelWeight } = await import(pathToFileURL(file).href);
 globalThis.route = name => '/' + name.replaceAll('.', '/');
 globalThis.window = { location: new URL('https://bagoo.test/seller/orders?status=to_pack&page=2') };
 function harness(Component, props) {
@@ -354,4 +354,67 @@ test('listing tags await relevance approval and retain rejected input', async ()
         assert.equal(props.data.tag_draft, 'hollow blocks');
         assert.match(text(h.render()), /Tag does not fit/);
     } finally { globalThis.fetch = previousFetch; globalThis.document = previousDocument; }
+});
+
+
+const cancelRequest = { id: 12, reference: 'OCR-ORIGINAL', version: 1, status: 'pending', reason: 'Ordered by mistake', notes: null, respond_by: '2026-11-12T00:00:00Z', decision_reason: null, can_review: true, approve_url: '/seller/orders/30/cancellation-requests/12/approve', reject_url: '/seller/orders/30/cancellation-requests/12/reject' };
+
+test('buyer request explains review and unchanged expiry, submits once, and retains reason on failure', () => {
+    const h = harness(BuyerCancel, { url: '/orders/30/cancellation-requests', reasons: ['Ordered by mistake'], mode: 'request', paymentMessage: 'No COD payment was collected.' });
+    let tree = h.render();
+    assert.match(text(tree), /Request cancellation/); assert.match(text(tree), /24 hours/); assert.match(text(tree), /expiry leaves your order and payment unchanged/);
+    const form = h.forms[0]; form.data.reason = 'Ordered by mistake'; form.data.notes = 'Please cancel my duplicate order.';
+    tree = h.render(); const submit = nodes(tree, n => n.type === 'form')[0].props.onSubmit;
+    submit({ preventDefault() {} }); submit({ preventDefault() {} });
+    assert.equal(h.requests.length, 1); assert.equal(h.requests[0][0], '/orders/30/cancellation-requests');
+    const token = h.requests[0][1].request_token;
+    form.errors.cancellation_request = 'The order is now ready for pickup.';
+    h.requests[0][2].onFinish(); tree = h.render();
+    assert.match(text(tree), /now ready for pickup/); assert.equal(form.data.notes, 'Please cancel my duplicate order.');
+    nodes(tree, n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[1][1].request_token, token);
+    h.requests[1][2].onSuccess(); h.requests[1][2].onFinish(); h.render();
+    assert.notEqual(h.forms[0].data.request_token, token);
+});
+
+test('seller cancellation review uses the bound version, explicit reason and duplicate-submit guard', () => {
+    const h = harness(CancelReview, { request: cancelRequest });
+    let tree = h.render();
+    nodes(tree, n => n.type === 'button' && text(n) === 'Approve cancellation')[0].props.onClick();
+    tree = h.render(); assert.match(text(tree), /restores its reserved stock/);
+    const reason = nodes(tree, n => n.type === 'textarea')[0];
+    assert.equal(reason.props.minLength, 10); assert.equal(reason.props.maxLength, 1000);
+    reason.props.onChange({ target: { value: 'The original parcel is still with our shop.' } });
+    tree = h.render(); const submit = nodes(tree, n => n.type === 'form')[0].props.onSubmit;
+    submit({ preventDefault() {} }); submit({ preventDefault() {} });
+    assert.equal(h.requests.length, 1); assert.equal(h.requests[0][0], cancelRequest.approve_url);
+    assert.equal(h.requests[0][1].expected_version, 1);
+    h.forms[0].errors.cancellation_request = 'The response window has expired. The order is unchanged.';
+    h.requests[0][2].onFinish(); tree = h.render();
+    assert.match(text(tree), /response window has expired/);
+    assert.equal(h.forms[0].data.decision_reason, 'The original parcel is still with our shop.');
+});
+
+test('declining explains an active order and a closed request exposes no review controls', () => {
+    const h = harness(CancelReview, { request: cancelRequest }); let tree = h.render();
+    nodes(tree, n => n.type === 'button' && text(n) === 'Decline request')[0].props.onClick();
+    tree = h.render(); assert.match(text(tree), /keeps this order active/);
+    h.forms[0].data.decision_reason = 'The original parcel status was reviewed.';
+    nodes(tree, n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+    assert.equal(h.requests[0][0], cancelRequest.reject_url);
+    assert.equal(harness(CancelReview, { request: { ...cancelRequest, can_review: false, status: 'expired' } }).render(), null);
+});
+
+test('cancellation feedback displays the saved decision and only a recorded Wallet refund', () => {
+    const feedback = { code: 'pending', message: 'The order remains active.', payment_message: 'Payment unchanged.', request: cancelRequest, refund: null };
+    let tree = CancelFeedback({ feedback }); assert.match(text(tree), /OCR-ORIGINAL/); assert.doesNotMatch(text(tree), /Wallet refund/);
+    tree = CancelFeedback({ feedback: { ...feedback, code: 'cancelled', request: { ...cancelRequest, status: 'approved', decision_reason: 'The original cancellation was approved.' }, refund: { reference: 'WT-ORIGINAL', amount_cents: 12550, created_at: '2026-11-11T12:00:00Z' } } });
+    assert.match(text(tree), /Wallet refund: ₱125.50/); assert.match(text(tree), /WT-ORIGINAL/); assert.match(text(tree), /original cancellation was approved/);
+});
+
+
+test('direct cancellation keeps the server-provided original policy explanation', () => {
+    const h = harness(BuyerCancel, { url: '/orders/30/cancel', reasons: ['Ordered by mistake'], mode: 'direct', description: 'This original purchase permits cancellation before readiness.' });
+    const tree = h.render(); assert.match(text(tree), /original purchase permits cancellation before readiness/);
+    assert.doesNotMatch(text(tree), /seller reviews your request/);
 });

@@ -4,6 +4,7 @@ import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
 import BuyerOrderPackage from '@/Components/BuyerOrderPackage';
 import BuyerCancelOrder from '@/Components/BuyerCancelOrder';
+import OrderCancellationFeedback, { type CancellationFeedback } from '@/Components/OrderCancellationFeedback';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import BuyAgainButton from '@/Components/BuyAgainButton';
 import OrderTrackingPanel, { trackingDate } from '@/Components/OrderTrackingPanel';
@@ -19,6 +20,8 @@ interface Props {
     buyAgainToken?: string | null;
     cancelOrderUrl?: string | null;
     cancellationReasons?: string[];
+    cancellationRequestUrl?: string | null;
+    cancellationFeedback?: CancellationFeedback;
     cancellationReason?: string | null;
     canConfirmReceipt: boolean;
     returnAvailability?: { can_request: boolean; until: string | null; reason: string | null } | null;
@@ -30,7 +33,7 @@ interface Props {
     orderNotices: BuyerOrderNotice[];
 }
 
-export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buyAgainToken, cancelOrderUrl, cancellationReasons = [], cancellationReason, canConfirmReceipt, returnAvailability, buyerReturns = [], pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [] }: Props) {
+export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buyAgainToken, cancelOrderUrl, cancellationRequestUrl, cancellationFeedback, cancellationReasons = [], cancellationReason, canConfirmReceipt, returnAvailability, buyerReturns = [], pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [] }: Props) {
     const { auth } = usePage<PageProps>().props;
     const adminOversight = auth.user?.role === 'admin';
     const [pickupCode,setPickupCode] = useState<string | null>(null);
@@ -68,11 +71,18 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
     const refreshTracking = () => {
         if (refreshPending.current || codePending.current || receiptPending.current) return;
         refreshPending.current = true; setTrackingRefreshing(true); setTrackingError('');
-        router.reload({ only: ['order', 'canUsePortal', 'buyAgainUrl', 'buyAgainToken', 'cancelOrderUrl', 'cancellationReasons', 'cancellationReason', 'canConfirmReceipt', 'returnAvailability', 'buyerReturns', 'pickupClaim', 'pickupHub', 'pickupCodeUrl', 'pickupCodeAvailable', 'orderNotices', 'auth', 'flash'],
+        router.reload({ only: ['order', 'canUsePortal', 'buyAgainUrl', 'buyAgainToken', 'cancelOrderUrl', 'cancellationRequestUrl', 'cancellationFeedback', 'cancellationReasons', 'cancellationReason', 'canConfirmReceipt', 'returnAvailability', 'buyerReturns', 'pickupClaim', 'pickupHub', 'pickupCodeUrl', 'pickupCodeAvailable', 'orderNotices', 'auth', 'flash'],
             onError: errors => setTrackingError(Object.values(errors).join(' ') || 'Tracking could not refresh. Try again.'),
             onFinish: () => { refreshPending.current = false; setTrackingRefreshing(false); },
         });
     };
+    useEffect(() => {
+        const request = cancellationFeedback?.request;
+        if (request?.status !== 'pending') return;
+        const delay = Date.parse(request.respond_by) - Date.now();
+        const timer = window.setTimeout(() => refreshTracking(), Math.min(2147483647, Math.max(0, delay) + 100));
+        return () => window.clearTimeout(timer);
+    }, [order.id, cancellationFeedback?.request?.reference, cancellationFeedback?.request?.status]);
     const showPickupCode = async () => {
         if (!pickupCodeUrl || codePending.current || refreshPending.current || receiptPending.current || !pickupCodeAvailable || !pickupClaim || claimWindow(pickupClaim, Date.now()) !== 'ready' || pickupClaim.code_issued_at || pickupCode) return;
         codePending.current = true;
@@ -213,7 +223,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
                             </button>
                         )}
                         {canUsePortal && buyAgainUrl && buyAgainToken && <BuyAgainButton url={buyAgainUrl} token={buyAgainToken} disabled={trackingRefreshing || receiptBusy || codeBusy} />}
-                        {canUsePortal && cancelOrderUrl && <BuyerCancelOrder url={cancelOrderUrl} reasons={cancellationReasons} disabled={trackingRefreshing || receiptBusy || codeBusy} />}
+                        {canUsePortal && (cancelOrderUrl || cancellationRequestUrl) && <BuyerCancelOrder url={(cancellationRequestUrl || cancelOrderUrl)!} mode={cancellationRequestUrl ? 'request' : 'direct'} description={cancellationFeedback?.message} paymentMessage={cancellationFeedback?.payment_message} reasons={cancellationReasons} disabled={trackingRefreshing || receiptBusy || codeBusy} />}
                         {order.status === 'completed' && (
                             <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-xl flex items-center gap-1.5">
                                 <Check className="w-4 h-4 text-emerald-600" />
@@ -227,6 +237,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
 
                 {order.payment_method === 'wallet' && order.wallet_payment && <section aria-label="Wallet payment" className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-300 bg-white p-4"><div><h2 className="text-sm font-bold text-slate-900">Bagoo Wallet · virtual credits</h2><p className="mt-1 text-xs leading-6 text-slate-600">{order.payment_status === 'paid' ? 'This order was paid with virtual credits. No cash is due at delivery.' : order.payment_status === 'refunded' ? 'The original payment was returned to your wallet.' : order.payment_status === 'cancelled' ? 'This unpaid wallet order is closed.' : 'Complete payment within one hour of placing the order. The seller can prepare it after payment.'}</p></div><Link href={`/wallet/payments/${order.wallet_payment.id}`} className="rounded-lg border border-slate-300 px-4 py-2.5 text-xs font-semibold text-[#C20836]">{order.payment_status === 'pending' ? 'Pay with wallet' : 'View payment'}</Link></section>}
 
+                <OrderCancellationFeedback feedback={cancellationFeedback} />
                 {order.status === 'cancelled' && cancellationReason && <p role="status" className="rounded-xl border border-slate-300 bg-white p-4 text-sm text-slate-700">Cancellation reason: {cancellationReason}</p>}
                 <OrderTrackingPanel variant="buyer" tracking={order.tracking} buyerOrder={order} notices={orderNotices}
                     onReview={canUsePortal && order.status === 'completed' && reviewableItems.length > 0 ? openReview : undefined}
