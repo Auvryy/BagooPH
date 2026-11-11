@@ -1,6 +1,6 @@
 # Sorting Center and Logistics Flow
 
-The current routing, bagging, company setup and financial contract is [Master Logistics Specification](MASTER_LOGISTICS_SPECIFICATION.md), based on the user-selected [version-two source](new-docs-era/LOGISTICS_SPECIFICATION_V2.pdf). For in-depth automated hardware specifications, physical tamper seal lifecycles, continuous scanning, DWS stations, and conveyor chute splitting, consult [Mother Bag & Parcel Scanning Automation](MOTHER_BAG_AND_PARCEL_SCANNING_AUTOMATION.md). “Child Hub” and the existing “Bayan Hub” label refer to the same municipal facility. Existing database and API names are retained for compatibility.
+The current routing, bagging, company setup and financial contract is [Master Logistics Specification](MASTER_LOGISTICS_SPECIFICATION.md), based on the user-selected [version-two source](new-docs-era/LOGISTICS_SPECIFICATION_V2.pdf). Historical hardware and throughput proposals are preserved in [Mother Bag & Parcel Scanning Automation](MOTHER_BAG_AND_PARCEL_SCANNING_AUTOMATION.md). “Child Hub” and the existing “Bayan Hub” label refer to the same municipal facility. Existing database and API names are retained for compatibility.
 
 ## Station work
 
@@ -16,7 +16,9 @@ An assigned station operator can receive and prepare manifests at that physical 
 
 ## Scanning
 
-Scan Station works directly without visiting Overview. Its prompt distinguishes inspection from a permitted confirmation. An inspection or camera preview never transfers custody. Follow the actual next action returned by the server. For a bag transfer, prepare a matching draft manifest, pack/seal in Mother Bags, scan the master tag onto that draft, seal its list and record departure. At arrival, verify/open the bag first, scan individual waybills and close the received manifest.
+The [B07 handover contract](brainstorming/B07_INDIVIDUAL_HANDOVERS.md) permits one named small-hub operator to receive, sort and dispatch, with a separate named rider/driver for physical handovers. A second sorter is not required for internal hub work. Distinct accounts do not prove distinct physical people.
+
+Scan Station works directly without visiting Overview. Its prompt distinguishes inspection from a permitted confirmation. An inspection or camera preview never transfers custody. Automatic progression flags cannot bypass confirmation. Bag lookup identifies the container only; it does not assert an intact seal or receive unseen contents. Dispatch controls open the existing manifest workflow; actual load/seal/departure evidence remains required. Follow the actual next action returned by the server. For a bag transfer, prepare a matching draft manifest, pack/seal in Mother Bags, scan the master tag onto that draft, seal its list and record departure. At arrival, verify/open the bag first, scan individual waybills and close the received manifest.
 
 The same-child optimization records local destination receipt with the original intake, then permits local sort and dispatch. It creates no transport manifest or Mother-Hub arrival. A different-child journey must traverse the configured hierarchy.
 

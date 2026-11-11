@@ -271,6 +271,9 @@ notification. Delivery retries cannot create a second notification.
 - The pickup rider may hand the parcel only to its assigned Origin Bayan Hub.
 - Pickup responsibility ends only when the expected hub scans inbound; leaving the page or marking a generic transit status does not end custody.
 - Duplicate scans are idempotent. A mismatched or damaged parcel enters an exception path without advancing the order.
+- Recheck retained source custody and the commercial/parcel stages under the original locks. New pickup requires original seller custody; origin intake requires the actual pickup rider as retained holder. A current unassigned/ready field cannot override contradictory custody.
+- One named small-hub operator may receive, sort and dispatch; the handing-over rider/driver remains separate. Ordinary inspection never performs those actions together. Bag lookup cannot open a seal or receive unseen parcels, and dispatch cannot generate physical scan evidence from database IDs. Existing actual bag/manifest commands remain available.
+- Scanner feedback identifies the original canonical event and actor. Prepared labels, supplemental aliases, inherited transport departures and derived local records cannot be counted as independent physical scans. No fixed scan-count limit may skip an original required hub.
 
 ### Final-Mile Outcome
 

@@ -79,6 +79,8 @@ Seller cancellation is allowed only before pickup and before any rider has claim
 
 New purchases with cancellation policy 2 permit direct buyer cancellation before seller acceptance. Accepted or packed orders require a seller-reviewed request before readiness, with a 24-hour response window; expiry leaves the order and payment unchanged. Pending requests hold preparation and pickup. Historical purchases without that field retain policy 1. Before acceptance, sellers see items and city/province, while recipient street, phone, map pin, notes and printable waybill remain private. Acceptance reveals the original purchased snapshot. See [B06](brainstorming/B06_ACCEPTANCE_CANCELLATION.md) for retry, payment and disclosure boundaries.
 
+The selected [B07 individual-handover contract](brainstorming/B07_INDIVIDUAL_HANDOVERS.md) keeps web/native inspection separate from explicit custody confirmation, rechecks the retained holder and permits one small-hub operator for internal work with a separate rider/driver for physical handovers. Bag identification and generated labels never prove seal verification, member receipt or departure.
+
 ### Custody Handoffs
 
 | Current custodian | Handoff evidence | Next custodian |

@@ -1,5 +1,6 @@
 # Bagoo Enterprise Logistics: Mother Bag & Parcel Scanning Automation Specification
 
+> Current online authority: [B07 individual handovers](brainstorming/B07_INDIVIDUAL_HANDOVERS.md). The automatic receipt, inferred seal, single-click dispatch and throughput claims below are historical proposals, not the active online workflow or measured guarantees. Use the existing explicit bag/manifest actions.
 > **Classification**: Authoritative Engineering Architecture, Hardware-Software Integration & Station Operating Procedures (SOP)  
 > **Scope**: Bulk Freight Consolidation, Mother Bag Lifecycles, Tamper-Evident Physical Seals, High-Throughput Workstation Scanning, DWS Auditing, and Conveyor Chute Operations  
 > **Target Facilities**: Regional Mother Hubs (DCs) & Local Bayan / Child Hubs  

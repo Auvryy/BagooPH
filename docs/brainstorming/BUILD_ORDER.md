@@ -87,7 +87,7 @@ The selected [B06 contract](B06_ACCEPTANCE_CANCELLATION.md) permits direct cance
 
 **Source topics:** 14, 20; handover part of 25. **Prerequisites:** B02, B03, B06.
 
-Complete one online parcel handover at a time before adding batch/offline behavior. Validate actor, next hub, current holder, receipt evidence and recovery. Derive scan counts from the chosen route and actions.
+The [B07 contract](B07_INDIVIDUAL_HANDOVERS.md) uses one explicit online custody action at a time. Validate actor, frozen next hub, current holder, receipt evidence and supervised recovery. One small-hub operator may receive, sort and dispatch, with a separate physical rider/driver. Derive evidence counts from the stored route and actual actions; inspection, bag lookup and generated labels cannot manufacture movement. B01–B07 continuity is verified across COD/Wallet and local/shared-Mother/cross-Mother journeys.
 
 **Exit gate:** Duplicate scans, competing receivers, wrong hubs, stale custody and a failed transaction do not duplicate or invent movement. The agreed independent handover rule supports legitimate small-hub operations. Fixed 4/6/8 scan totals are examples, not universal limits.
 

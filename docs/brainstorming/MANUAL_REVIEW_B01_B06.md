@@ -1,4 +1,4 @@
-# B01–B06 manual review for later
+# B01–B07 manual review for later
 
 All boxes below mean **user manual acceptance**, currently pending. Prior automated checks and merged code do not check these boxes. This guide is prepared for a later review session; phone, email inbox and real physical handover checks require their own session.
 
@@ -53,6 +53,16 @@ All boxes below mean **user manual acceptance**, currently pending. Prior automa
 - [ ] Buyer cancellation is unavailable from ready-for-pickup; seller cancellation fails once rider claim or retained handover exists.
 - [ ] Refresh, double click and an uncertain response do not create another cancellation, refund or stock restoration.
 - [ ] Historical purchases retain their original cancellation policy; unknown purchased versions require review.
+
+## B07 — Actual individual handovers
+
+- [ ] Inspect a waybill without changing custody; confirm only the displayed next action.
+- [ ] One named small-hub operator can receive, pack and dispatch, with a separate rider/driver.
+- [ ] Duplicate confirmation retains the same event reference/time; a competing receiver cannot appropriate it.
+- [ ] A stale ready/unassigned status cannot replace a different recorded holder; wrong-hub and stale-source messages show the correct recovery path.
+- [ ] Bag lookup opens seal verification; it cannot receive unseen contents. Manifest preparation requires actual load/seal/departure evidence.
+- [ ] Scan evidence shows the named actor and reference. Derived local records and transport departures are distinguished from submitted checkpoint records.
+- [ ] Complete the connected local/shared-Mother/cross-Mother checkout → acceptance → cancellation decline → pickup → destination-sort journey for COD and Wallet.
 
 ## Environment prerequisite
 

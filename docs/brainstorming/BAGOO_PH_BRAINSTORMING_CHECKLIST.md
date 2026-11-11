@@ -17,7 +17,7 @@ For each package, record **decision:** pending/accepted/changed/deferred/rejecte
 - [x] **B04 — Decide tariffs, liability and original payment allocations.** Topics: 7, 8, 17, 25–27. Requires: B00, B01, B03. Decision: user selected PHP 50/1 kg plus PHP 20 per extra started kg, seller-fault item-plus-shipping refunds, funded courier review and buyer shipping liability for in-transit change-of-mind refusal; delivery: decisions defined and tariff/allocation changes locally verified on the existing B03 branch, merged in PR #161; user manual acceptance pending; evidence: [B04 money contract](B04_MONEY_AND_LIABILITY.md) and the roadmap. Successor refund execution retains B11–B13 activation gates; this check completes the decision package, not those later features.
 - [x] **B05 — Verify checkout quotes and freeze purchased terms.** Topics: 1, 2, 26; measurements and voucher part of 27. Requires: B01, B03, B04. Decision: preserve selected company/route, original money terms and supported policy versions; delivery: implemented and locally verified on the existing B03 branch, merged in PR #161; user manual acceptance pending; evidence: [B05 checkout contract](B05_PURCHASED_CHECKOUT_TERMS.md) and the roadmap. Combined B03–B05 gate: 409 backend tests / 13,986 assertions and 15 frontend checks passed, with TypeScript/build/formatting. Physical PostgreSQL concurrency and the successor refund workflow retain separate acceptance.
 - [x] **B06 — Align seller acceptance and cancellation boundaries.** Topics: 6, 11–13. Requires: B03–B05. Decision: direct cancel before acceptance, seller review within 24 hours afterward, recipient disclosure after acceptance; delivery: implemented and automatically verified on `feat/brainstorm-b06-cancellation-feedback`, not yet published; evidence: [B06 contract](B06_ACCEPTANCE_CANCELLATION.md) and roadmap: 258 backend tests / 7,086 assertions, 72 frontend checks, TypeScript and production build passed. User manual review remains pending in the [later-review guide](MANUAL_REVIEW_B01_B06.md).
-- [ ] **B07 — Verify individual scanning and actual custody transfer.** Topics: 14, 20; handover part of 25. Requires: B02, B03, B06. Decision: pending; delivery: not started; evidence: pending.
+- [x] **B07 — Verify individual scanning and actual custody transfer.** Topics: 14, 20; handover part of 25. Requires: B02, B03, B06. Decision: one named small-hub operator may receive/sort/dispatch, with a separate rider/driver for handovers; no automatic inspection-to-custody or fixed scan-count caps. Delivery: implemented and automatically verified on the existing B06 branch, not published. Evidence: [B07 contract](B07_INDIVIDUAL_HANDOVERS.md), six COD/Wallet route journeys, 710 combined backend cases / 27,460 assertions and a final 13-case native-link check, 106 frontend checks, TypeScript/build/formatting. User review remains pending in the [later-review guide](MANUAL_REVIEW_B01_B06.md).
 - [ ] **B08 — Verify bags, seals and loose freight membership.** Topics: 16; cargo part of 27. Requires: B03, B04, B07. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B09 — Connect sorting guidance, manifests and dispatch.** Topics: 15; local staging part of 27. Requires: B01, B02, B07, B08. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B10 — Verify delivery completion, earnings and cash reconciliation.** Topics: 8, 12, 25; baseline money from 26. Requires: B04, B05, B09. Decision: pending; delivery: not started; evidence: pending.
@@ -173,7 +173,9 @@ Proposed ideas to review:
 
 - [ ] Review/decide: High-Throughput Mobile Scanning: Workers use mobile camera/PDAs with continuous batch-scanning mode (offline-first local queue, bulk web-socket/REST payload sync) to handle hundreds of scans per minute without server bottlenecks.
 - [ ] Review/decide: Standard Hub Scan Milestones: Loose parcels are scanned once at Inbound Intake and once at Sorting/Mother Bagging. Outbound truck loading and bulk transit scans require scanning ONLY the parent Mother Bag barcode, updating all child parcels simultaneously.
-- [ ] Review/decide: Account Multi-Tenancy & Worker Sessions: Instead of shared single-account credentials, hubs use Hub Multi-Tenancy with individual worker operator IDs logged into active workstation sessions for granular audit trails and concurrent scanning.
+- [x] Review/decide: Account Multi-Tenancy & Worker Sessions: Instead of shared single-account credentials, hubs use Hub Multi-Tenancy with individual worker operator IDs logged into active workstation sessions for granular audit trails and concurrent scanning.
+
+Identity decision: **retained from B02 and verified in B07**. Named workers use their own activated accounts and assigned hub authority; no shared owner login or impersonation is introduced. One small-hub operator may perform multiple internal stages. Offline/batch throughput and scanner hardware measurements remain B17; they are not marked delivered here.
 
 ## 15. Real-Time Sorting Bin Guidance, Mother Bag Assignment, and Linehaul Dispatch
 
@@ -228,13 +230,15 @@ Proposed ideas to review:
 
 ## 20. Minimum and Maximum Scan Thresholds per Hub & End-to-End Lifecycle
 
-- [ ] Resolve the source question: in total what is the minimum + maxium scan of parcel per hub from start to finish? can we count?
+- [x] Resolve the source question: in total what is the minimum + maxium scan of parcel per hub from start to finish? can we count?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Per-Hub Touchpoints: Minimum 1 scan during bulk linehaul transit (scanning parent Mother Bag barcode only); maximum 2 scans when parcel is loose (Inbound Intake + Outbound Sort/Bagging).
-- [ ] Review/decide: End-to-End Parcel Lifecycle: Short intra-town trips require 4 scans total; medium inter-town trips require 6 scans; long cross-region trips require 7–8 scans maximum from first-mile pickup to final-mile proof of delivery.
-- [ ] Review/decide: Bulk Relay Efficiency: Direct loose parcel touches are eliminated at transit sorting hubs by moving dozens of parcels under a single consolidated Mother Bag barcode.
+- [x] Review/decide: Per-Hub Touchpoints: Minimum 1 scan during bulk linehaul transit (scanning parent Mother Bag barcode only); maximum 2 scans when parcel is loose (Inbound Intake + Outbound Sort/Bagging).
+- [x] Review/decide: End-to-End Parcel Lifecycle: Short intra-town trips require 4 scans total; medium inter-town trips require 6 scans; long cross-region trips require 7–8 scans maximum from first-mile pickup to final-mile proof of delivery.
+- [x] Review/decide: Bulk Relay Efficiency: Direct loose parcel touches are eliminated at transit sorting hubs by moving dozens of parcels under a single consolidated Mother Bag barcode.
+
+Decision: **changed in B07**. Derive the required actions from the frozen route and actual bag, manifest, delivery and exception events. Fixed four/six/eight totals and universal per-hub maxima are rejected. A bag departure may reuse its loaded membership; arrival still needs actual seal verification and individual member receipt. Canonical checkpoint counters distinguish submitted, inherited and derived evidence rather than pretending to measure physical touches. See [B07](B07_INDIVIDUAL_HANDOVERS.md).
 
 ## 21. Stagnant Parcel Auto-Flagging, SLA Timers, and Three-Way Account Penalties
 
@@ -289,7 +293,9 @@ Proposed ideas to review:
 - [ ] Review/decide: Asymmetric Transit Timers: Forward deliveries enforce a strict 48h inter-hub timeout before auto-flagging missing parcels; reverse logistics parcels in consolidation staging receive an extended 96h window to prevent premature loss claims.
 - [ ] Review/decide: Doorstep Cash Prohibition & Net-Refunds: Doorstep cash collection for returns is prohibited. For change-of-mind returns, the return shipping fee is deducted automatically from the product refund, with returns blocked if shipping exceeds item value.
 - [ ] Review/decide: Geo-Fenced SLA Penalties: Courier late-pickup fines (₱150) apply strictly within contracted, active coverage zones; orders in unserviceable or low-fleet territories auto-cancel without courier or seller penalties.
-- [ ] Review/decide: Two-Human Custody Rule: Sorter workstation scanners reject check-in scans if the current parcel custody matches the logged-in operator, preventing delivery riders from validating their own vehicle handovers.
+- [x] Review/decide: Two-Human Custody Rule: Sorter workstation scanners reject check-in scans if the current parcel custody matches the logged-in operator, preventing delivery riders from validating their own vehicle handovers.
+
+Handover decision: **accepted with corrections in B07**. The rider/driver and the hub operator are separate named participants. One operator may receive, sort and dispatch at a small hub; an internal stage is not another physical handover requiring a second sorter. Account separation does not prove physical independence. The other timer, liability and refund proposals retain their later B11–B16 decisions.
 
 ## 26. Baseline Shipping Fee Matrix, Volumetric Weight Tiers, and Cargo Surcharges
 
