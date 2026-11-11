@@ -9,6 +9,8 @@ use App\Models\DeliveryReturnRoute;
 use App\Models\HubHandler;
 use App\Models\LogisticsHub;
 use App\Models\Order;
+use App\Models\OrderCancellationEvent;
+use App\Models\OrderCancellationRequest;
 use App\Models\PickupClaim;
 use App\Models\User;
 use App\Services\Logistics\DeliveryRecoveryService;
@@ -35,6 +37,25 @@ class LifecycleNoticeService
             $this->store($recipientId, 'order-event', 'order:'.$order->id.':'.$milestone, [
                 'title' => $title, 'body' => $body, 'milestone' => $milestone, 'order_id' => $order->id,
                 'order_number' => $order->order_number, 'target' => $seller ? 'seller-orders' : 'buyer-order',
+            ]);
+        }
+    }
+
+    public function cancellationRequest(OrderCancellationRequest $request, OrderCancellationEvent $event): void
+    {
+        $order = Order::findOrFail($request->order_id);
+        [$title, $body] = match ($event->event_type) {
+            'requested' => ['Cancellation requested', 'Review the cancellation request within 24 hours. Preparation and pickup are on hold.'],
+            'approved' => ['Cancellation approved', 'The order is cancelled. Open it to review the original payment outcome.'],
+            'rejected' => ['Cancellation request declined', 'The order remains active. Open it to read the seller’s reason.'],
+            'expired' => ['Cancellation request expired', 'The seller response window ended. The order and its payment are unchanged.'],
+            default => ['Cancellation request closed', 'Open the order to review its retained cancellation outcome.'],
+        };
+        foreach ([$request->buyer_id => 'buyer-order', $request->seller_id => 'seller-orders'] as $recipient => $target) {
+            $this->store($recipient, 'order-event', 'order-cancellation:'.$event->id, [
+                'title' => $title, 'body' => $body, 'milestone' => 'cancellation_'.$event->event_type,
+                'order_id' => $order->id, 'order_number' => $order->order_number, 'target' => $target,
+                'cancellation_reference' => $request->reference,
             ]);
         }
     }

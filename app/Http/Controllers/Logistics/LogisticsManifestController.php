@@ -10,6 +10,7 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\MotherBag;
 use App\Models\User;
+use App\Services\Logistics\CargoHandlingService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\HandoverIssueService;
 use App\Services\Logistics\LogisticsEligibilityService;
@@ -67,6 +68,7 @@ class LogisticsManifestController extends Controller
             $detail = $this->summary($selected) + [
                 'motherBags' => MotherBag::where('manifest_id', $selected->id)->orderBy('created_at')
                     ->get(['id', 'reference', 'seal_number', 'status']),
+                'cargoCapacity' => app(CargoHandlingService::class)->available() ? app(CargoHandlingService::class)->manifestCapacity($selected) : null,
                 'reviewedHold' => app(HandoverHoldService::class)->manifestParcelIds($selected) !== [],
                 'canManage' => $this->service->canManageAtHub($actor, $source),
                 'canClose' => $this->service->canManageAtHub($actor, $destination),
@@ -80,7 +82,7 @@ class LogisticsManifestController extends Controller
                     $receipt = $this->service->correctiveForMember($parcel);
                     $hold = app(HandoverHoldService::class)->active($parcel->delivery);
 
-                    return ['id' => $parcel->id, 'tracking_number' => $parcel->tracking_number_snapshot, 'included' => $parcel->included,
+                    return ['cargo_mode' => $parcel->cargo_mode, 'handling' => $parcel->handling_snapshot, 'id' => $parcel->id, 'tracking_number' => $parcel->tracking_number_snapshot, 'included' => $parcel->included,
                         'status' => $parcel->delivery->status, 'received_at' => $parcel->received_at?->toIso8601String(), 'receipt_condition' => $parcel->receipt_condition,
                         'corrective_receipt' => $receipt ? ['reference' => $receipt->reference, 'received_at' => $receipt->created_at->toIso8601String()] : null,
                         'handover_hold' => $hold !== null, 'handover_issue_url' => $hold && app(HandoverIssueService::class)->readable($actor)->whereKey($hold->id)->exists()
@@ -142,7 +144,7 @@ class LogisticsManifestController extends Controller
     public function command(Request $request, LogisticsManifest $manifest, string $action): JsonResponse|RedirectResponse
     {
         try {
-            $result = $this->service->command($manifest, $request->user(), $action, $request->only(['version', 'request_token', 'notes', 'barcode', 'parcel_id', 'condition', 'kind', 'source_event_id']));
+            $result = $this->service->command($manifest, $request->user(), $action, $request->only(['version', 'request_token', 'notes', 'barcode', 'parcel_id', 'condition', 'kind', 'source_event_id', 'cargo_mode', 'handling']));
         } catch (DomainException $error) {
             return $this->conflict($request, $error);
         }

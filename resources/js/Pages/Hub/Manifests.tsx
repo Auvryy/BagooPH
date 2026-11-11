@@ -8,6 +8,7 @@ import VehiclePicker from '@/Components/Logistics/VehiclePicker';
 import HubMap from '@/Components/Logistics/HubMap';
 import { nextTransferHubs, transferSteps } from '@/utils/hubWorkspace';
 import { QRCodeSVG } from 'qrcode.react';
+import { CapacityMeter, HandlingFields, HandlingSummary, emptyHandling, type Handling } from '@/Components/Logistics/CargoHandling';
 import WaybillCamera from '@/Components/WaybillCamera';
 
 interface Hub extends HubPlace { id: number; name: string; code: string; tier: string }
@@ -21,10 +22,11 @@ interface Manifest {
     receiptCounts?: ReceiptCounts;
 }
 interface Detail extends Manifest {
+    cargoCapacity?: { weight_kg: number | null; max_weight_kg: number; loose_count: number; count: number } | null;
     motherBags?: { id: string; reference: string; seal_number: string; status: string }[];
     canManage: boolean; canClose: boolean; canLoad: boolean; canReceive: boolean;
     reviewedHold?: boolean;
-    parcels: Array<{ id: number; tracking_number: string; included: boolean; status: string; received_at: string | null; receipt_condition: string | null;
+    parcels: Array<{ cargo_mode?: string | null; handling?: Handling | null; id: number; tracking_number: string; included: boolean; status: string; received_at: string | null; receipt_condition: string | null;
         corrective_receipt?: { reference: string; received_at: string } | null; handover_hold?: boolean; handover_issue_url?: string | null }>;
     correctiveReceipts?: Array<{ reference: string; tracking_number: string; original_member_id: number | null; received_at: string; received_by: string;
         original_expected_count: number; original_received_count: number }>;
@@ -45,6 +47,8 @@ const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateSt
 export default function Manifests({ manifests, selectedManifest: selected, canCreate, creationToken, commandToken, basePath, hubs, vehicles, sourceHubIds = [], buyerReturns = [] }: Props) {
     const creation = useForm({ source_hub_id: sourceHubIds.length === 1 ? String(sourceHubIds[0]) : '', destination_hub_id: '', vehicle_id: '', direction: 'outbound', buyer_return_case_id: '', creation_token: creationToken ?? '' });
     const [barcode, setBarcode] = useState('');
+    const [cargoMode, setCargoMode] = useState('');
+    const [handling, setHandling] = useState(emptyHandling);
     const [search, setSearch] = useState('');
     const [returnSearch, setReturnSearch] = useState('');
     const selectReturn = (item: NonNullable<Props['buyerReturns']>[number]) => creation.setData({ ...creation.data, buyer_return_case_id: String(item.id), source_hub_id: String(item.source_hub_id), destination_hub_id: String(item.destination_hub_id), vehicle_id: '' });
@@ -58,20 +62,20 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
     const hasCorrections = Boolean(selected?.correctiveReceipts?.length);
     const receiptCounts = selected?.receiptCounts;
     useEffect(() => creation.setData('creation_token', creationToken ?? ''), [creationToken]);
-    useEffect(() => { setBarcode(''); setNotes(''); setErrors({}); }, [selected?.id]);
+    useEffect(() => { setBarcode(''); setNotes(''); setErrors({}); setCargoMode(''); setHandling(emptyHandling()); }, [selected?.id]);
     const sourceHub = hubs.find(hub => String(hub.id) === creation.data.source_hub_id);
     const destinationHub = hubs.find(hub => String(hub.id) === creation.data.destination_hub_id);
     const sendingHubs = hubs.filter(hub => sourceHubIds.includes(hub.id));
     const requiredVehicleType = sourceHub?.tier === 'regional_mother_hub' && destinationHub?.tier === 'regional_mother_hub' ? 'wing_truck' : 'l300_van';
     const availableVehicles = vehicles.filter(vehicle => String(vehicle.hub_id) === creation.data.source_hub_id && vehicle.vehicle_type === requiredVehicleType);
     const receivingHubs = nextTransferHubs(hubs, sourceHub);
-    const nextTitle = !selected ? '' : selected.status === 'closed' ? 'Transfer complete' : selected.reviewedHold ? 'Resolve the linked handover first' : selected.status === 'draft' ? (selected.included_count ? 'Check the loaded parcels, then seal the list' : selected.direction === 'buyer_return' ? 'Sending handler: scan the separate return barcode' : selected.direction === 'recovery' ? 'Sending handler: scan the authorized recovery parcel' : 'Load a sealed bag before departure') : selected.status === 'sealed' ? 'Sending handler: scan and record departure' : selected.status === 'dispatched' ? 'Receiving handler: verify bags, then scan each parcel' : 'Receiving manager: close the completed transfer';
+    const nextTitle = !selected ? '' : selected.status === 'closed' ? 'Transfer complete' : selected.reviewedHold ? 'Resolve the linked handover first' : selected.status === 'draft' ? (selected.included_count ? 'Check the loaded parcels, then seal the list' : selected.direction === 'buyer_return' ? 'Sending handler: scan the separate return barcode' : selected.direction === 'recovery' ? 'Sending handler: scan the authorized recovery parcel' : 'Load sealed bags or scan eligible loose cargo') : selected.status === 'sealed' ? 'Sending handler: scan and record departure' : selected.status === 'dispatched' ? 'Receiving handler: verify bags, then scan each parcel' : 'Receiving manager: close the completed transfer';
     const create = (event: FormEvent) => {
         event.preventDefault();
         if (creation.processing) return;
         creation.post(basePath, { preserveScroll: true, onSuccess: () => creation.reset('source_hub_id', 'destination_hub_id', 'vehicle_id') });
     };
-    const command = (action: string, fields: Record<string, string | number> = {}) => {
+    const command = (action: string, fields: Record<string, string | number | ReturnType<typeof emptyHandling>> = {}) => {
         if (!selected || pending.current) return;
         pending.current = true;
         setBusy(true);
@@ -79,7 +83,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
         router.post(basePath + '/' + selected.id + '/' + action, { version: selected.version, request_token: commandToken, notes, ...fields }, {
             preserveScroll: true,
             onError: (value) => setErrors(value),
-            onSuccess: () => { setBarcode(''); setNotes(''); },
+            onSuccess: () => { setBarcode(''); setNotes(''); setHandling(emptyHandling()); },
             onFinish: () => { pending.current = false; setBusy(false); },
         });
     };
@@ -91,7 +95,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
             <div className="space-y-6">
                 <HubPageHeader
                     title="Transfers & manifests"
-                    description="One manifest is one vehicle trip to the next hub. Choose the route, load sealed bags and receive each arriving parcel."
+                    description="One manifest is one vehicle trip to the next hub. Choose the route, load sealed bags or loose cargo and receive each arriving parcel."
                     icon={Truck}
                     actions={<Link className={hubButton} href={route('hub.mother-bags.index')}><Container className="h-4 w-4" />Mother Bags</Link>}
                 />
@@ -406,6 +410,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                             <div className="p-5 sm:p-6 space-y-5">
                                 <HubRoute stops={[selected.source, selected.destination]} />
+                                {selected.cargoCapacity && <section aria-label="Vehicle cargo capacity" className="rounded-xl border border-rose-200 bg-rose-50/40 p-4"><h3 className="mb-3 text-sm font-bold text-[#9F1239]">Vehicle cargo · {selected.cargoCapacity.loose_count} loose parcels</h3><CapacityMeter label="Total retained cargo weight" value={selected.cargoCapacity.weight_kg} max={selected.cargoCapacity.max_weight_kg} unit="kg" /></section>}
 
                                 {selected.recoveryUrl && (
                                     <Link href={selected.recoveryUrl} className="inline-block text-xs font-bold text-[#E00D42] hover:text-[#C20836]">
@@ -490,13 +495,17 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                 {selected.status === 'draft' && selected.canLoad && !hasCorrections && !selected.reviewedHold && (
                                     <details open={selected.direction === 'buyer_return' || Boolean(selected.recoveryUrl)} className="rounded-xl border border-zinc-200/90 bg-white overflow-hidden">
                                         <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-[#121316]">
-                                            Individual loading for historical parcels or recovery
+                                            Individual loading & loose cargo
                                         </summary>
                                         <div className="border-t border-zinc-100 p-5">
                                             <p className="mb-3 text-xs text-zinc-500">
-                                                Use Mother Bags for new-flow hub transfers. Separate buyer returns and reviewed recovery retain individual scans.
+                                                Loose cargo travels on its own waybill without a fictitious bag. Each parcel still needs an individual receipt at the next hub.
                                             </p>
-                                            <form onSubmit={event => { event.preventDefault(); command('load', { barcode }); }} className="flex flex-wrap items-end gap-3">
+                                            {selected.cargoCapacity && ['outbound', 'return'].includes(selected.direction) && <div className="mb-4 space-y-3">
+                                                <label className="block text-xs font-semibold text-slate-700">Cargo type<select className={inputClass} value={cargoMode} onChange={event => setCargoMode(event.target.value)} disabled={busy}><option value="">Historical individual parcel</option><option value="loose">Loose cargo — over 15 kg or a side over 60 cm</option></select></label>
+                                                {cargoMode === 'loose' && <HandlingFields value={handling} onChange={setHandling} disabled={busy} />}
+                                            </div>}
+                                            <form onSubmit={event => { event.preventDefault(); command('load', { barcode, ...(cargoMode ? { cargo_mode: cargoMode, handling } : {}) }); }} className="flex flex-wrap items-end gap-3">
                                                 <label className="min-w-0 flex-1 text-xs font-bold text-[#121316]">
                                                     Actual outbound waybill
                                                     <input required maxLength={255} disabled={busy} autoComplete="off" spellCheck={false} className={inputClass} value={barcode} onChange={event => setBarcode(event.target.value)} />
@@ -639,10 +648,10 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             {selected.parcels.map(parcel => (
                                                 <tr key={parcel.id} className="hover:bg-zinc-50/50 transition-colors">
                                                     <td className="px-5 py-3.5">
-                                                        <p className="break-all tabular-nums font-bold text-[#121316]">{parcel.tracking_number}</p>
+                                                        <p className="break-all tabular-nums font-bold text-[#121316]">{parcel.tracking_number}</p><span className="text-xs font-semibold text-[#C20836]">{parcel.cargo_mode === 'loose' ? 'Loose cargo · individual unloading' : parcel.cargo_mode === 'bag' ? 'Sealed bag member' : 'Original transport record'}</span><HandlingSummary value={parcel.handling} />
                                                         {!parcel.included && <p className="text-xs text-zinc-500 font-medium">Removed from draft</p>}
                                                         {parcel.included && selected.canManage && selected.status === 'draft' && !hasCorrections && !selected.reviewedHold && (
-                                                            <button disabled={busy || !notes.trim()} onClick={() => command('remove', { parcel_id: parcel.id })} className="mt-1 text-xs font-bold text-[#E00D42] hover:text-[#C20836] disabled:opacity-50">
+                                                            <button disabled={busy || !notes.trim() || parcel.cargo_mode === 'bag'} onClick={() => command('remove', { parcel_id: parcel.id })} className="mt-1 text-xs font-bold text-[#E00D42] hover:text-[#C20836] disabled:opacity-50">
                                                                 Remove with reason
                                                             </button>
                                                         )}

@@ -112,7 +112,7 @@ class OrderStateMachineService
                 } elseif (in_array($targetStatus, [self::STATUS_OUT_FOR_DELIVERY, self::STATUS_DELIVERED, self::STATUS_DELIVERY_FAILED], true)) {
                     $hubIds[] = $lockedDelivery->destination_bayan_hub_id;
                 }
-                $this->eligibility->lockNetwork((int) $lockedDelivery->logistics_company_id, [$actor->id, $scanMetadata['rider_id'] ?? null], $hubIds);
+                $this->eligibility->lockNetwork((int) $lockedDelivery->logistics_company_id, [$actor->id, $scanMetadata['rider_id'] ?? null, $lockedDelivery->courier_id, $lockedDelivery->assigned_rider_id], $hubIds);
             } else {
                 User::whereKey($actor->id)->lockForUpdate()->firstOrFail();
             }
@@ -235,6 +235,8 @@ class OrderStateMachineService
                 $barcode = $inputs->matchedBarcode($scanMetadata['barcode'] ?? null, $lockedDelivery);
             }
 
+            app(ParcelCustodyGuard::class)->assertSource($lockedDelivery, $targetStatus, $actor, $hub);
+
             $previousStatus = $lockedDelivery->status;
             $sourceState = DeliveryCheckpoint::state($lockedDelivery);
             $custodyBefore = DeliveryCheckpoint::lastCustody($lockedDelivery);
@@ -314,6 +316,9 @@ class OrderStateMachineService
         $scan = LogisticsManifestEvent::with(['manifest', 'parcel'])->find($metadata['manifest_scan_event_id']);
         $departure = in_array($status, [self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT], true);
         $manifest = $scan?->manifest;
+        if ($manifest) {
+            app(ParcelCustodyGuard::class)->independentTransport($actor, $manifest->driver_id);
+        }
         if (! $scan || ! $manifest || $scan->event_type !== ($departure ? 'parcel_dispatched' : 'parcel_received')
             || $scan->actor_id !== $actor->id || $scan->hub_id !== $hub?->id || $scan->parcel?->delivery_id !== $delivery->id
             || ! $scan->parcel->included || $scan->parcel->active_delivery_id !== $delivery->id

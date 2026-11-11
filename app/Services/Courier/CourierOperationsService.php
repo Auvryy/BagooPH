@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
+use App\Services\Logistics\ParcelCustodyGuard;
+use App\Services\Orders\OrderCancellationService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -60,6 +62,9 @@ class CourierOperationsService
             $lockedOrder = Order::whereKey($orderId)->lockForUpdate()->firstOrFail();
             $lockedDelivery = Delivery::whereKey($delivery->id)->where('order_id', $lockedOrder->id)->lockForUpdate()->firstOrFail();
             $lockedDelivery->setRelation('order', $lockedOrder);
+            if (app(OrderCancellationService::class)->livePending($lockedOrder)) {
+                throw new DomainException('The buyer’s cancellation request is awaiting seller review. This pickup is on hold.');
+            }
             $this->eligibility->lockNetwork((int) $lockedDelivery->logistics_company_id, [$rider->id], [$lockedDelivery->origin_bayan_hub_id]);
             $this->eligibility->assertBayanHub((int) $lockedDelivery->origin_bayan_hub_id);
             $rider = User::findOrFail($rider->id);
@@ -95,6 +100,8 @@ class CourierOperationsService
             ) {
                 throw new DomainException('This pickup job is outside your assigned company or origin hub.');
             }
+
+            app(ParcelCustodyGuard::class)->assertSource($lockedDelivery, 'picked_up', $rider, null);
 
             $sourceState = DeliveryCheckpoint::state($lockedDelivery);
             $custody = DeliveryCheckpoint::lastCustody($lockedDelivery);

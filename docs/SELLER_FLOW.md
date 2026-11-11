@@ -88,6 +88,10 @@ Each seller parcel has its own order and waybill. Items from another shop cannot
 
 The seller controls only `PLACED -> CONFIRMED -> PREPARING -> READY_FOR_PICKUP`. Repeated, skipped, or backward transitions are rejected. Seller cancellation is allowed only before pickup and before a rider has claimed custody; after that point, the parcel must follow delivery or return-to-sender.
 
+For cancellation policy 2, an accepted/packed order may receive a buyer cancellation request. Review it within 24 hours with a meaningful approval/decline reason. Preparation and pickup wait while the request is pending. Approval applies the original cancellation and evidenced payment outcome once; decline or expiry leaves the order active. Request expiry does not cancel the order.
+
+Before acceptance, items and city/province remain visible; recipient street, phone, map pin, notes and waybill are withheld from the response. Acceptance reveals the original purchased recipient. Printing does not mark an order ready. The [B06 contract](brainstorming/B06_ACCEPTANCE_CANCELLATION.md) defines historical cancellation compatibility and request evidence.
+
 ## 3. Waybill Requirements
 
 - Order and tracking numbers.

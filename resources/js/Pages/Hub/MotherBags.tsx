@@ -1,35 +1,42 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowRight, Box, CheckCheck, Container, LockKeyhole, Package, Printer, ScanLine, Truck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { HubBadge, HubButton, HubEmpty, HubNextStep, HubPageHeader, HubRoute, HubSearch, HubStepRail, hubButton, hubInput, type HubPlace } from '@/Components/Logistics/Workspace';
 import HubPicker from '@/Components/Logistics/HubPicker';
+import { CapacityMeter, HandlingFields, HandlingSummary, emptyHandling, type Handling } from '@/Components/Logistics/CargoHandling';
 import WaybillCamera from '@/Components/WaybillCamera';
 import { bagSteps, nextTransferHubs } from '@/utils/hubWorkspace';
 
 type Hub = HubPlace & { id: number; name: string; code: string; tier: string; logistics_company_id: number; canScan: boolean };
-type Bag = { id: string; reference: string; status: string; seal_number: string | null; version: number; source_hub_id: number; destination_hub_id: number; manifest_id: number | null; parcels_count: number; source: Pick<Hub, 'id' | 'name' | 'code'>; destination: Pick<Hub, 'id' | 'name' | 'code'> };
-type Detail = Bag & { canPack: boolean; canOpen: boolean; parcels: { id: number; tracking_number: string; status: string; removed: boolean; received: boolean }[]; events: { event_type: string; barcode_scanned: string | null; actor: string; created_at: string }[] };
-type Props = { bags: { data: Bag[]; links: { url: string | null; label: string; active: boolean }[] }; selectedBag: Detail | null; hubs: Hub[]; manifests: { id: number; reference: string; source_hub_id: number; destination_hub_id: number; vehicle_plate?: string; driver_name?: string }[]; creationToken: string; basePath: string };
+type Bag = { packing_policy_version?: number | null; physical_tag?: string | null; capacity?: { count: number; weight_kg: number | null; volume_cm3: number | null; max_count: number; max_weight_kg: number; max_volume_cm3: number } | null; id: string; reference: string; status: string; seal_number: string | null; version: number; source_hub_id: number; destination_hub_id: number; manifest_id: number | null; parcels_count: number; source: Pick<Hub, 'id' | 'name' | 'code'>; destination: Pick<Hub, 'id' | 'name' | 'code'> };
+type Detail = Bag & { canPack: boolean; canOpen: boolean; parcels: { handling?: Handling | null; id: number; tracking_number: string; status: string; removed: boolean; received: boolean }[]; events: { event_type: string; barcode_scanned: string | null; actor: string; created_at: string }[] };
+type Props = { packingAvailable?: boolean; packingToken?: string; commandToken?: string; bags: { data: Bag[]; links: { url: string | null; label: string; active: boolean }[] }; selectedBag: Detail | null; hubs: Hub[]; manifests: { id: number; reference: string; source_hub_id: number; destination_hub_id: number; vehicle_plate?: string; driver_name?: string }[]; creationToken: string; basePath: string };
 const words = (value: string) => value.replaceAll('_', ' ');
 
-export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, creationToken, basePath }: Props) {
+export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, creationToken, basePath, packingAvailable = false, packingToken = creationToken, commandToken = creationToken }: Props) {
     const [search, setSearch] = useState('');
     const [manifestScan, setManifestScan] = useState('');
     const matchingManifests = manifests.filter(item => item.source_hub_id === bag?.source_hub_id && item.destination_hub_id === bag?.destination_hub_id);
     const visibleBags = bags.data.filter(item => [item.reference, item.source.name, item.destination.name, item.seal_number, item.status].join(' ').toLowerCase().includes(search.toLowerCase()));
     const create = useForm({ source_hub_id: '', destination_hub_id: '', creation_token: creationToken });
-    const action = useForm({ version: bag?.version ?? 1, barcode: '', seal_number: '', manifest_id: '', notes: '', seal_intact: false });
-    useEffect(() => { setManifestScan(''); action.setData({ version: bag?.version ?? 1, barcode: '', seal_number: '', manifest_id: '', notes: '', seal_intact: false }); action.clearErrors(); }, [bag?.id, bag?.version]);
+    const pending = useRef(false);
+    const packing = useForm({ source_hub_id: '', barcode: '', physical_tag: '', physical_checked: false, request_token: packingToken, handling: emptyHandling() });
+    const action = useForm({ request_token: commandToken, handling: emptyHandling(), version: bag?.version ?? 1, barcode: '', seal_number: '', manifest_id: '', notes: '', seal_intact: false });
+    useEffect(() => { setManifestScan(''); action.setData({ request_token: commandToken, handling: emptyHandling(), version: bag?.version ?? 1, barcode: '', seal_number: '', manifest_id: '', notes: '', seal_intact: false }); action.clearErrors(); }, [bag?.id, bag?.version]);
     useEffect(() => create.setData('creation_token', creationToken), [creationToken]);
-    const command = (name: string) => bag && action.post(`${basePath}/${bag.id}/${name}`, { preserveScroll: true });
+    const command = (name: string) => {
+        if (!bag || pending.current) return;
+        pending.current = true;
+        action.post(`${basePath}/${bag.id}/${name}`, { preserveScroll: true, onFinish: () => { pending.current = false; } });
+    };
     const submit = (event: FormEvent, name: string) => { event.preventDefault(); command(name); };
     const source = hubs.find(hub => String(hub.id) === create.data.source_hub_id);
     const destination = hubs.find(hub => String(hub.id) === create.data.destination_hub_id);
     const receivingHubs = nextTransferHubs(hubs.filter(hub => hub.logistics_company_id === source?.logistics_company_id), source);
     const nextTitle = !bag ? '' : bag.status === 'received' ? 'Bag received: scan parcels for their next sorting step' : bag.status === 'opened' ? 'Scan every arriving parcel in the linked manifest' : bag.status === 'in_transit' ? 'Receiving handler: check the physical master tag and seal' : bag.status === 'sealed' ? bag.manifest_id ? 'Bag loaded: record actual departure in the manifest' : 'Scan the sealed master tag onto a matching draft' : 'Scan parcels into this bag, then attach a numbered seal';
-    const error = Object.values(action.errors).concat(Object.values(create.errors)).filter(Boolean);
+    const error = Object.values(action.errors).concat(Object.values(create.errors), Object.values(packing.errors)).filter(Boolean);
 
     return (
         <DashboardLayout title="Mother Bags">
@@ -42,6 +49,23 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                     icon={Container}
                     actions={<Link href={route('hub.manifests.index')} className={hubButton}><Truck className="h-4 w-4" />Manifests</Link>}
                 />
+
+                {packingAvailable ? <section className="overflow-hidden rounded-xl border border-rose-200 bg-rose-50/40 shadow-sm">
+                    <header className="border-b border-rose-200 px-5 py-4"><h2 className="font-bold text-[#9F1239]">Scan into the next open bag</h2><p className="mt-1 text-xs text-slate-600">The parcel’s stored route selects the next hub. A full bag stays open for your seal; the next parcel starts another bag.</p></header>
+                    <form className="space-y-4 p-5" onSubmit={event => { event.preventDefault(); if (pending.current) return; pending.current = true; packing.post(`${basePath}/pack`, { preserveScroll: true, onSuccess: () => { packing.reset('barcode', 'handling'); packing.setData('request_token', crypto.randomUUID()); }, onFinish: () => { pending.current = false; } }); }}>
+                        <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                            <HubPicker label="Packing hub" hubs={hubs.filter(hub => hub.canScan)} value={packing.data.source_hub_id} onChange={id => packing.setData('source_hub_id', id)} />
+                            <label className="text-xs font-semibold text-slate-700">Actual parcel waybill<input required maxLength={255} autoComplete="off" className={`${hubInput} mt-1.5`} value={packing.data.barcode} onChange={event => packing.setData('barcode', event.target.value)} /></label>
+                            <HubButton primary disabled={packing.processing || !packing.data.source_hub_id}>Find bag &amp; add parcel</HubButton>
+                        </div>
+                        <HandlingFields value={packing.data.handling} onChange={value => packing.setData('handling', value)} disabled={packing.processing} />
+                        <details className="rounded-lg border border-slate-300 bg-white p-4"><summary className="cursor-pointer text-sm font-semibold text-[#C20836]">Reusable sack tag (optional)</summary>
+                            <label className="mt-3 block text-xs font-semibold text-slate-700">Permanent sack tag<input maxLength={80} pattern="[A-Z0-9-]+" className={`${hubInput} mt-1.5`} value={packing.data.physical_tag} onChange={event => packing.setData('physical_tag', event.target.value.toUpperCase())} /></label>
+                            <label className="mt-3 flex gap-2 text-xs text-slate-700"><input type="checkbox" checked={packing.data.physical_checked} onChange={event => packing.setData('physical_checked', event.target.checked)} />I checked this permanent tag on the sack at this hub.</label>
+                        </details>
+                        <p className="text-xs text-slate-600">Over 15 kg or a side over 60 cm? Use <Link className="font-semibold text-[#C20836] underline" href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests`}>loose cargo in Manifests</Link>.</p>
+                    </form>
+                </section> : <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">Packing upgrades need the additive database migration. Existing trip history remains available.</p>}
 
                 {bag && (
                     <>
@@ -63,6 +87,11 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                     </div>
                 )}
 
+                {bag && bag.capacity && <section aria-label="Bag capacity" className="space-y-3 rounded-xl border border-slate-300 bg-white p-5 shadow-sm">
+                    <div className="flex flex-wrap justify-between gap-2"><h2 className="font-bold text-slate-800">Packing capacity</h2><span className="break-all text-xs text-slate-600">Permanent sack: <strong>{bag.physical_tag ?? 'No reusable tag recorded'}</strong></span></div>
+                    <div className="grid gap-3 sm:grid-cols-3"><CapacityMeter label="Parcels" value={bag.capacity.count} max={bag.capacity.max_count} unit="parcels" /><CapacityMeter label="Weight" value={bag.capacity.weight_kg} max={bag.capacity.max_weight_kg} unit="kg" /><CapacityMeter label="Volume" value={bag.capacity.volume_cm3 === null ? null : Number((bag.capacity.volume_cm3 / 1000000).toFixed(4))} max={0.30} unit="m³" /></div>
+                    <p className="text-xs text-slate-500">Declared sizes or operator readings guide packing. Check the actual fit before attaching the numbered seal.</p>
+                </section>}
                 <div className="grid items-start gap-6 lg:grid-cols-[360px_1fr]">
                     {/* Left Column: Unified Notion Sidebar Panel */}
                     <aside className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
@@ -193,7 +222,8 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             <QRCodeSVG value={bag.reference} size={96} />
                                             <p className="mt-2.5 text-xs tabular-nums font-bold text-[#121316]">{bag.reference}</p>
                                             <p className="mt-1 text-xs text-zinc-500 font-medium">{bag.source.code} → {bag.destination.code}</p>
-                                            {bag.seal_number && <p className="mt-1 text-xs tabular-nums text-zinc-600">Seal {bag.seal_number}</p>}
+                                            {bag.physical_tag && <p className="mt-1 break-all text-xs text-zinc-600">Sack {bag.physical_tag}</p>}
+                                            {bag.seal_number && <p className="mt-1 break-all text-xs tabular-nums text-zinc-600">Seal {bag.seal_number}</p>}
                                         </div>
                                     </div>
                                 </div>
@@ -234,6 +264,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             </label>
                                             <HubButton disabled={action.processing}>Add parcel</HubButton>
                                         </form>
+                                        {bag.packing_policy_version && <HandlingFields value={action.data.handling} onChange={value => action.setData('handling', value)} disabled={action.processing} />}
                                         <WaybillCamera onScan={value => action.setData('barcode', value)} disabled={action.processing} />
                                         <form onSubmit={event => submit(event, 'seal')} className="flex flex-wrap items-end gap-3 border-t border-zinc-100 pt-5">
                                             <label className="min-w-0 flex-1 text-xs font-bold text-[#121316]">
@@ -465,7 +496,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                     <td className="px-5 py-3.5">
                                                         <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
                                                             {item.tracking_number}
-                                                        </span>
+                                                        </span><HandlingSummary value={item.handling} />
                                                     </td>
                                                     <td className="px-5 py-3.5 text-zinc-600">
                                                         <div className="flex items-center gap-2">

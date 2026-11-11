@@ -10,6 +10,7 @@ use App\Services\Logistics\HandoverHoldService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderTrackingService;
 use App\Services\Orders\OrderWorkspaceService;
+use App\Services\Orders\SellerOrderDisclosureService;
 use App\Services\Orders\SellerOrderFilters;
 use App\Services\ShopEligibilityService;
 use DomainException;
@@ -58,6 +59,13 @@ class SellerOrderController extends Controller
             foreach (app(OrderLifecycleService::class)->sellerActionFlags($order, $eligible, $fullyOwned) as $flag => $value) {
                 $order->setAttribute($flag, $value);
             }
+            if ($review = $order->getAttribute('cancellation_request')) {
+                $base = $request->is('seller/*') ? '/seller/orders' : '/orders';
+                $review['can_review'] = $eligible && $fullyOwned && ! $order->getAttribute('handover_hold') && $review['can_review'];
+                $review['approve_url'] = $base.'/'.$order->id.'/cancellation-requests/'.$review['id'].'/approve';
+                $review['reject_url'] = $base.'/'.$order->id.'/cancellation-requests/'.$review['id'].'/reject';
+                $order->setAttribute('cancellation_request', $review);
+            }
             $delivery = $order->delivery;
             if ($delivery && in_array($delivery->status, OrderWorkspaceService::RETURN_CUSTODY, true)) {
                 $returns = app(DeliveryReturnService::class);
@@ -70,6 +78,7 @@ class SellerOrderController extends Controller
                 }
             }
             app(OrderTrackingService::class)->attach($order);
+            app(SellerOrderDisclosureService::class)->apply($order);
         }
 
         return Inertia::render('Seller/Orders', [
@@ -97,17 +106,17 @@ class SellerOrderController extends Controller
             : back()->with('success', 'Your original parcel receipt was recorded. The order is now returned.');
     }
 
-    public function accept(Request $request, Order $order): RedirectResponse
+    public function accept(Request $request, Order $order): JsonResponse|RedirectResponse
     {
         return $this->transition($request, $order, 'confirmed', "Order #{$order->order_number} confirmed. You may now pack the items.");
     }
 
-    public function pack(Request $request, Order $order): RedirectResponse
+    public function pack(Request $request, Order $order): JsonResponse|RedirectResponse
     {
         return $this->transition($request, $order, 'preparing', "Order #{$order->order_number} marked as packed. Attach the waybill before release.");
     }
 
-    public function acceptAndPack(Request $request, Order $order): RedirectResponse
+    public function acceptAndPack(Request $request, Order $order): JsonResponse|RedirectResponse
     {
         try {
             app(OrderLifecycleService::class)->sellerAcceptAndPack(
@@ -115,14 +124,14 @@ class SellerOrderController extends Controller
                 $this->getShop($request),
                 $request->user(),
             );
-        } catch (\RuntimeException $exception) {
-            return back()->with('error', $exception->getMessage());
+        } catch (\RuntimeException|DomainException $exception) {
+            return $this->conflict($request, $exception->getMessage());
         }
 
-        return back()->with('success', "Order #{$order->order_number} confirmed and packed. It can now be marked ready for pickup.");
+        return $this->saved($request, "Order #{$order->order_number} confirmed and packed. It can now be marked ready for pickup.", $order);
     }
 
-    public function readyForPickup(Request $request, Order $order): RedirectResponse
+    public function readyForPickup(Request $request, Order $order): JsonResponse|RedirectResponse
     {
         return $this->transition($request, $order, 'ready_for_pickup', "Order #{$order->order_number} is ready for an eligible pickup rider.");
     }
@@ -139,31 +148,32 @@ class SellerOrderController extends Controller
         return back()->with('error', "Order #{$order->order_number} must be scanned as picked up by its assigned rider.");
     }
 
-    public function batchReady(Request $request): RedirectResponse
+    public function batchReady(Request $request): JsonResponse|RedirectResponse
     {
         try {
             $count = app(OrderLifecycleService::class)->sellerBatchReady($request->only('order_ids'), $this->getShop($request), $request->user());
-        } catch (\RuntimeException $exception) {
-            return back()->with('error', $exception->getMessage());
+        } catch (\RuntimeException|DomainException $exception) {
+            return $this->conflict($request, $exception->getMessage());
         }
 
-        return back()->with('success', "{$count} orders scheduled for courier pickup.");
+        return $request->expectsJson() ? response()->json(['message' => "{$count} orders scheduled for courier pickup.", 'count' => $count])
+            : back()->with('success', "{$count} orders scheduled for courier pickup.");
     }
 
-    public function cancel(Request $request, Order $order): RedirectResponse
+    public function cancel(Request $request, Order $order): JsonResponse|RedirectResponse
     {
         $shop = $this->getShop($request);
 
         try {
             app(OrderLifecycleService::class)->cancelBySeller($order, $shop, $request->user(), $request->only(['reason', 'notes']));
-        } catch (\RuntimeException $exception) {
-            return back()->with('error', $exception->getMessage());
+        } catch (\RuntimeException|DomainException $exception) {
+            return $this->conflict($request, $exception->getMessage());
         }
 
-        return back()->with('success', "Order #{$order->order_number} has been cancelled and stock released.");
+        return $this->saved($request, "Order #{$order->order_number} is cancelled. Stock was restored once; any original Wallet payment follows its retained refund record.", $order);
     }
 
-    private function transition(Request $request, Order $order, string $targetStatus, string $success): RedirectResponse
+    private function transition(Request $request, Order $order, string $targetStatus, string $success): JsonResponse|RedirectResponse
     {
         try {
             app(OrderLifecycleService::class)->sellerTransition(
@@ -172,10 +182,24 @@ class SellerOrderController extends Controller
                 $request->user(),
                 $targetStatus
             );
-        } catch (\RuntimeException $exception) {
-            return back()->with('error', $exception->getMessage());
+        } catch (\RuntimeException|DomainException $exception) {
+            return $this->conflict($request, $exception->getMessage());
         }
 
-        return back()->with('success', $success);
+        return $this->saved($request, $success, $order);
+    }
+
+    private function conflict(Request $request, string $message): JsonResponse|RedirectResponse
+    {
+        return $request->expectsJson() ? response()->json(['message' => $message, 'errors' => ['fulfillment' => [$message]]], 409)
+            : back()->withErrors(['fulfillment' => $message])->with('error', $message);
+    }
+
+    private function saved(Request $request, string $message, Order $order): JsonResponse|RedirectResponse
+    {
+        return $request->expectsJson() ? response()->json(['message' => $message,
+            'order' => $order->fresh()->only(['id', 'order_number', 'status', 'payment_status']),
+            'cancellation_feedback' => app(OrderLifecycleService::class)->cancellationFeedback($order->fresh())])
+            : back()->with('success', $message);
     }
 }

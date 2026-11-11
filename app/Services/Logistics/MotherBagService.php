@@ -6,10 +6,12 @@ use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
+use App\Models\LogisticsManifestParcel;
 use App\Models\MotherBag;
 use App\Models\MotherBagParcel;
 use App\Models\Order;
 use App\Models\User;
+use App\Rules\AsciiPositiveInteger;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -29,8 +31,10 @@ class MotherBagService
     public function create(User $actor, array $input): MotherBag
     {
         $data = Validator::make($input, [
-            'source_hub_id' => 'required|integer|min:1', 'destination_hub_id' => 'required|integer|min:1|different:source_hub_id',
+            'source_hub_id' => ['required', new AsciiPositiveInteger, 'integer', 'min:1'], 'destination_hub_id' => ['required', new AsciiPositiveInteger, 'integer', 'min:1', 'different:source_hub_id'],
             'creation_token' => 'required|uuid',
+            'physical_tag' => ['nullable', 'string', 'max:80', 'regex:/\A[A-Z0-9-]+\z/'],
+            'physical_checked' => 'sometimes|boolean',
         ])->validate();
 
         return DB::transaction(function () use ($actor, $data) {
@@ -41,13 +45,19 @@ class MotherBagService
             app(LogisticsManifestService::class)->legType($source, $destination);
             $existing = MotherBag::where('created_by_id', $actor->id)->where('creation_token', $data['creation_token'])->first();
             if ($existing) {
-                if ($existing->source_hub_id !== $source->id || $existing->destination_hub_id !== $destination->id) {
+                if ($existing->source_hub_id !== $source->id || $existing->destination_hub_id !== $destination->id || ($existing->physical_tag ?? null) !== ($data['physical_tag'] ?? null)) {
                     throw new DomainException('This bag request was already used for another route. Refresh before creating another bag.');
                 }
 
                 return $existing;
             }
-            $bag = MotherBag::create(['reference' => 'BAG-'.strtoupper(Str::random(12)),
+            $extra = [];
+            if (app(CargoHandlingService::class)->available()) {
+                $extra = ['packing_policy_version' => 1, ...$this->physicalTag($source, $data)];
+            } elseif (! empty($data['physical_tag'])) {
+                throw new DomainException('Apply the additive packing migration before registering a reusable sack.');
+            }
+            $bag = MotherBag::create([...$extra, 'reference' => 'BAG-'.strtoupper(Str::random(12)),
                 'logistics_company_id' => $source->logistics_company_id, 'source_hub_id' => $source->id,
                 'destination_hub_id' => $destination->id, 'created_by_id' => $actor->id, 'creation_token' => $data['creation_token']]);
             $this->event($bag, $actor, 'created');
@@ -56,14 +66,116 @@ class MotherBagService
         });
     }
 
+    public function pack(User $actor, array $input): MotherBag
+    {
+        if (! app(CargoHandlingService::class)->available()) {
+            throw new DomainException('Apply the additive packing migration before using automatic packing.');
+        }
+        $data = Validator::make(app(WaybillScanInputService::class)->normalize($input), [
+            'source_hub_id' => ['required', new AsciiPositiveInteger, 'integer', 'min:1'], 'barcode' => 'required|string|max:255|regex:/\A[A-Za-z0-9-]+\z/',
+            'request_token' => 'required|uuid', 'physical_tag' => 'nullable|string|max:80|regex:/\A[A-Z0-9-]+\z/',
+            'physical_checked' => 'sometimes|boolean', ...app(CargoHandlingService::class)->rules(),
+        ])->validate();
+        $candidate = Delivery::where('tracking_number', $data['barcode'])->first();
+        if (! $candidate) {
+            throw new DomainException('Scan an existing parcel waybill.');
+        }
+        $source = LogisticsHub::eligible()->findOrFail($data['source_hub_id']);
+        $this->operator($actor, $source);
+        $fingerprint = hash('sha256', json_encode(['pack', $data], JSON_THROW_ON_ERROR));
+
+        return DB::transaction(function () use ($candidate, $source, $actor, $data, $fingerprint) {
+            // Include the observed lane before network locking; a competing first scan must retry, not create another bag.
+            $next = app(LogisticsManifestService::class)->nextHub($candidate);
+            $lane = hash('sha256', $source->logistics_company_id.':'.$source->id.':'.$next);
+            $observed = MotherBag::where('automatic_lane', $lane)->first();
+            $ids = collect([$candidate->id])->merge($observed?->parcels()->whereNull('removed_at')->pluck('delivery_id') ?? [])->unique()->sort();
+            Order::whereIn('id', Delivery::whereIn('id', $ids)->select('order_id'))->orderBy('id')->lockForUpdate()->get();
+            Delivery::whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
+            app(LogisticsEligibilityService::class)->lockNetwork($source->logistics_company_id, [$actor->id], [$source->id, $next]);
+            $this->operator($actor, $source->fresh());
+            if ($previous = DB::table('bag_packing_requests')->where('actor_id', $actor->id)->where('request_token', $data['request_token'])->first()) {
+                if (! hash_equals($previous->fingerprint, $fingerprint)) {
+                    throw new DomainException('This packing request was used for a different parcel or reading.');
+                }
+
+                return MotherBag::findOrFail($previous->mother_bag_id);
+            }
+            $parcel = $candidate->fresh();
+            app(HandoverHoldService::class)->assertMovable($parcel);
+            if ($parcel->current_hub_id !== $source->id || $parcel->logistics_company_id !== $source->logistics_company_id
+                || app(LogisticsManifestService::class)->nextHub($parcel) !== $next) {
+                throw new DomainException('The parcel must be held at the selected sending hub on its retained next leg.');
+            }
+            if (MotherBagParcel::where('active_delivery_id', $parcel->id)->exists() || LogisticsManifestParcel::where('active_delivery_id', $parcel->id)->exists()) {
+                throw new DomainException('This parcel already belongs to an active bag or manifest. Open its original packing record.');
+            }
+            $profile = app(CargoHandlingService::class)->profile($parcel, $actor, $data);
+            if (! $profile['baggable']) {
+                throw new DomainException('This parcel exceeds 15 kg or a 60 cm side. Load it individually as loose cargo in the manifest.');
+            }
+            $bag = MotherBag::where('automatic_lane', $lane)->lockForUpdate()->first();
+            if ($bag && ($bag->id !== $observed?->id || $bag->parcels()->whereNull('removed_at')->pluck('delivery_id')->diff($ids)->isNotEmpty())) {
+                throw new DomainException('Another packing scan opened or changed this lane. Retry your saved scan to use its current bag.');
+            }
+            if ($bag && ! empty($data['physical_tag']) && $bag->physical_tag !== $data['physical_tag']) {
+                throw new DomainException('The open lane uses a different sack. Open that bag, or prepare a separate bag with the actual sack tag.');
+            }
+            if ($bag) {
+                $c = app(CargoHandlingService::class)->capacity($bag);
+                if ($c['weight_kg'] !== null && ($c['count'] >= CargoHandlingService::BAG_PARCELS
+                    || $c['weight_kg'] + $profile['weight_kg'] > CargoHandlingService::BAG_WEIGHT_KG
+                    || $c['volume_cm3'] + $profile['volume_cm3'] > CargoHandlingService::BAG_VOLUME_CM3)) {
+                    if (! empty($data['physical_tag'])) {
+                        throw new DomainException('This sack is full for the scanned parcel. Seal its current contents, then use another physical sack.');
+                    }
+                    $bag->update(['automatic_lane' => null]);
+                    $this->event($bag, $actor, 'capacity_turnover', null, ['capacity' => $c]);
+                    $bag = null;
+                }
+            }
+            if (! $bag) {
+                $bag = $this->create($actor, ['source_hub_id' => $source->id, 'destination_hub_id' => $next,
+                    'creation_token' => $data['request_token'], 'physical_tag' => $data['physical_tag'] ?? null,
+                    'physical_checked' => $data['physical_checked'] ?? false]);
+                $bag->update(['automatic_lane' => $lane]);
+            }
+            $bag = $this->command($bag, $actor, 'add', ['version' => $bag->version, 'barcode' => $data['barcode'], ...array_intersect_key($data, ['handling' => true])]);
+            DB::table('bag_packing_requests')->insert(['actor_id' => $actor->id, 'request_token' => $data['request_token'],
+                'fingerprint' => $fingerprint, 'mother_bag_id' => $bag->id]);
+
+            return $bag;
+        });
+    }
+
+    private function physicalTag(LogisticsHub $source, array $data): array
+    {
+        if (empty($data['physical_tag'])) {
+            return [];
+        }
+        if (empty($data['physical_checked'])) {
+            throw new DomainException('Confirm the permanent tag on the physical sack before assigning it to this trip.');
+        }
+        $previous = MotherBag::where('logistics_company_id', $source->logistics_company_id)->where('physical_tag', $data['physical_tag'])->orderByDesc('created_at')->orderByDesc('id')->first();
+        if (MotherBag::where('active_physical_key', hash('sha256', $source->logistics_company_id.':'.$data['physical_tag']))->exists()) {
+            throw new DomainException('This sack is still in use. Finish its actual receipts before another trip.');
+        }
+        if ($previous && ($previous->status !== 'received' || $previous->destination_hub_id !== $source->id)) {
+            throw new DomainException('This sack is still in use or was last received at another hub. Use its actual current location.');
+        }
+
+        return ['physical_tag' => $data['physical_tag'], 'active_physical_key' => hash('sha256', $source->logistics_company_id.':'.$data['physical_tag'])];
+    }
+
     public function command(MotherBag $snapshot, User $actor, string $action, array $input): MotherBag
     {
         abort_unless($this->readable($actor)->whereKey($snapshot->id)->exists(), 403);
         $data = Validator::make(app(WaybillScanInputService::class)->normalize($input), [
-            'version' => 'required|integer|min:1',
+            'version' => ['required', new AsciiPositiveInteger, 'integer', 'min:1', 'max:2147483647'], 'request_token' => 'sometimes|uuid',
             'barcode' => ['nullable', 'string', 'max:255', 'regex:/\A[A-Za-z0-9-]+\z/'],
             'seal_number' => ['nullable', 'string', 'max:80', 'regex:/\A[A-Za-z0-9-]+\z/'],
-            'manifest_id' => 'nullable|integer|min:1', 'notes' => app(WaybillScanInputService::class)->notesRules(), 'seal_intact' => 'sometimes|boolean',
+            'manifest_id' => ['nullable', new AsciiPositiveInteger, 'integer', 'min:1'], 'notes' => app(WaybillScanInputService::class)->notesRules(), 'seal_intact' => 'sometimes|boolean',
+            ...app(CargoHandlingService::class)->rules(),
         ])->validate();
         abort_unless(in_array($action, ['add', 'remove', 'seal', 'reopen', 'load', 'unload', 'open'], true), 404);
         $candidate = in_array($action, ['add', 'remove'], true) ? Delivery::where('tracking_number', $data['barcode'] ?? '')->first() : null;
@@ -78,12 +190,29 @@ class MotherBagService
                 LogisticsManifest::whereKey($manifestId)->lockForUpdate()->firstOrFail();
             }
             $bag = MotherBag::whereKey($snapshot->id)->lockForUpdate()->firstOrFail();
+            if ($bag->parcels()->whereNull('removed_at')->pluck('delivery_id')->diff($ids)->isNotEmpty()) {
+                throw new DomainException('The bag membership changed. Refresh before continuing.');
+            }
             $hub = LogisticsHub::eligible()->findOrFail($action === 'open' ? $bag->destination_hub_id : $bag->source_hub_id);
             $this->operator($actor, $hub);
+            $fingerprint = hash('sha256', json_encode([$bag->id, $action, $data], JSON_THROW_ON_ERROR));
+            if (! empty($data['request_token']) && app(CargoHandlingService::class)->available()) {
+                if ($previous = DB::table('bag_packing_requests')->where('actor_id', $actor->id)->where('request_token', $data['request_token'])->first()) {
+                    if (! hash_equals($previous->fingerprint, $fingerprint)) {
+                        throw new DomainException('This request already recorded a different bag action. Refresh before continuing.');
+                    }
+
+                    return $bag;
+                }
+            }
             if (in_array($action, ['load', 'unload', 'open'], true)) {
                 $this->masterTag($bag, $data);
             }
             if ($action === 'add' && $candidate && $bag->parcels()->where('active_delivery_id', $candidate->id)->exists()) {
+                if ($bag->packing_policy_version && ! empty($data['request_token'])) {
+                    throw new DomainException('This waybill is already in this bag. Its original handling readings are retained; remove it with a reason before repacking.');
+                }
+
                 return $bag;
             }
             if ($action === 'open' && $bag->opened_at && hash_equals((string) $bag->seal_number, (string) ($data['seal_number'] ?? ''))) {
@@ -94,6 +223,11 @@ class MotherBagService
             }
             if ($bag->version !== (int) $data['version']) {
                 throw new DomainException('The bag changed. Refresh its list and scan again.');
+            }
+            if (in_array($action, ['add', 'remove', 'seal', 'reopen', 'load', 'unload'], true)) {
+                foreach (Delivery::whereIn('id', $ids)->get() as $held) {
+                    app(HandoverHoldService::class)->assertMovable($held);
+                }
             }
             if (in_array($action, ['add', 'remove'], true)) {
                 if ($bag->status !== 'open' || ! $candidate) {
@@ -108,7 +242,16 @@ class MotherBagService
                     if (MotherBagParcel::where('active_delivery_id', $parcel->id)->exists()) {
                         throw new DomainException('This parcel is already inside another active Mother Bag.');
                     }
-                    $bag->parcels()->updateOrCreate(['delivery_id' => $parcel->id], ['active_delivery_id' => $parcel->id,
+                    if (LogisticsManifestParcel::where('active_delivery_id', $parcel->id)->exists()) {
+                        throw new DomainException('This parcel already belongs to an active manifest. Unload it before packing.');
+                    }
+                    $handling = [];
+                    if ($bag->packing_policy_version) {
+                        $profile = app(CargoHandlingService::class)->profile($parcel, $actor, $data);
+                        app(CargoHandlingService::class)->assertFits($bag, $profile);
+                        $handling['handling_snapshot'] = $profile;
+                    }
+                    $bag->parcels()->updateOrCreate(['delivery_id' => $parcel->id], [...$handling, 'active_delivery_id' => $parcel->id,
                         'loaded_by_id' => $actor->id, 'barcode_scanned' => $data['barcode'],
                         'source_state' => DeliveryCheckpoint::state($parcel), 'removed_at' => null]);
                 } else {
@@ -122,11 +265,22 @@ class MotherBagService
                 if ($bag->status !== 'open' || ! $bag->parcels()->whereNull('removed_at')->exists() || empty($data['seal_number'])) {
                     throw new DomainException('Add parcels to the open bag and enter the numbered seal before sealing.');
                 }
+                if ($bag->packing_policy_version) {
+                    $capacity = app(CargoHandlingService::class)->capacity($bag);
+                    if ($capacity['weight_kg'] === null || $capacity['weight_kg'] > CargoHandlingService::BAG_WEIGHT_KG || $capacity['volume_cm3'] > CargoHandlingService::BAG_VOLUME_CM3 || $capacity['count'] > CargoHandlingService::BAG_PARCELS) {
+                        throw new DomainException('Recheck bag capacity and missing readings before sealing.');
+                    }
+                    foreach ($bag->parcels()->whereNull('removed_at')->with('delivery')->get() as $packed) {
+                        if ($packed->active_delivery_id !== $packed->delivery_id || ! ($packed->handling_snapshot['baggable'] ?? false) || $packed->source_state !== DeliveryCheckpoint::state($packed->delivery)) {
+                            throw new DomainException('A bag member changed. Recheck the actual contents before sealing.');
+                        }
+                    }
+                }
                 if (DB::table('mother_bag_seals')->where('logistics_company_id', $bag->logistics_company_id)->where('seal_number', $data['seal_number'])->exists()) {
                     throw new DomainException('This numbered seal was already used. Attach a new seal.');
                 }
                 DB::table('mother_bag_seals')->insert(['mother_bag_id' => $bag->id, 'logistics_company_id' => $bag->logistics_company_id, 'seal_number' => $data['seal_number']]);
-                $bag->fill(['status' => 'sealed', 'seal_number' => $data['seal_number'], 'sealed_by_id' => $actor->id, 'sealed_at' => now()]);
+                $bag->fill(['status' => 'sealed', 'seal_number' => $data['seal_number'], 'sealed_by_id' => $actor->id, 'sealed_at' => now(), ...($bag->packing_policy_version ? ['automatic_lane' => null] : [])]);
             } elseif ($action === 'reopen') {
                 if ($bag->status !== 'sealed' || $bag->manifest_id || empty(trim($data['notes'] ?? ''))) {
                     throw new DomainException('Only an unloaded sealed bag can be reopened with a reason.');
@@ -176,6 +330,9 @@ class MotherBagService
                 $payload['members'] = $this->members($bag);
             }
             $this->event($bag, $actor, $action, $data['barcode'] ?? null, $payload);
+            if (! empty($data['request_token']) && app(CargoHandlingService::class)->available()) {
+                DB::table('bag_packing_requests')->insert(['actor_id' => $actor->id, 'request_token' => $data['request_token'], 'fingerprint' => $fingerprint, 'mother_bag_id' => $bag->id]);
+            }
 
             return $bag;
         });
@@ -185,6 +342,11 @@ class MotherBagService
     {
         foreach ($parcels as $parcel) {
             if ($parcel->order->logistics_flow_version < 2 || ! in_array($manifest->direction, ['outbound', 'return'], true)) {
+                continue;
+            }
+            $cargo = $manifest->parcels()->where('delivery_id', $parcel->id)->where('included', true)->first();
+            if ($cargo?->cargo_mode === 'loose' && $cargo->handling_snapshot && ! $cargo->handling_snapshot['baggable']
+                && ! MotherBagParcel::where('active_delivery_id', $parcel->id)->exists()) {
                 continue;
             }
             $member = MotherBagParcel::where('active_delivery_id', $parcel->id)->with('bag')->first();
@@ -234,7 +396,8 @@ class MotherBagService
         $member->update(['active_delivery_id' => null, 'received_at' => now()]);
         $this->event($bag, $actor, 'parcel_received', $barcode, ['delivery_id' => $parcel->id]);
         if (! $bag->parcels()->whereNull('removed_at')->whereNull('received_at')->exists()) {
-            $bag->update(['status' => 'received', 'version' => $bag->version + 1]);
+            $bag->update(['status' => 'received', 'version' => $bag->version + 1,
+                ...($bag->packing_policy_version ? ['active_physical_key' => null, 'automatic_lane' => null] : [])]);
         }
     }
 
@@ -245,7 +408,7 @@ class MotherBagService
 
     private function members(MotherBag $bag): array
     {
-        return $bag->parcels()->whereNull('removed_at')->orderBy('delivery_id')->get(['delivery_id', 'barcode_scanned', 'source_state'])->toArray();
+        return $bag->parcels()->whereNull('removed_at')->orderBy('delivery_id')->get(['delivery_id', 'barcode_scanned', 'source_state', ...($bag->packing_policy_version ? ['handling_snapshot'] : [])])->toArray();
     }
 
     private function masterTag(MotherBag $bag, array $data): void

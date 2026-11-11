@@ -23,7 +23,7 @@ const bundle = await build({ stdin: { contents: "export {default as Camera} from
             export const Head = () => null; export const Link = 'a';
             export const usePage = () => ({props:globalThis.waybillHarness.props});
             export const usePoll = (interval,options,policy) => { globalThis.waybillHarness.poll={interval,options,policy}; return {start(){},stop(){}}; };
-            export const router = { on: (...args) => globalThis.waybillHarness.on(...args), reload: options => {globalThis.waybillHarness.reloads++; options.onSuccess?.(); options.onFinish?.();}, get(){} };
+            export const router = { on: (...args) => globalThis.waybillHarness.on(...args), reload: options => {globalThis.waybillHarness.reloads++; options.onSuccess?.(); options.onFinish?.();}, get: (...args) => globalThis.waybillHarness.visits.push(args) };
         ` }));
         builder.onResolve({ filter: /Layouts\/DashboardLayout$/ }, () => ({ path: 'layout', namespace: 'waybill-layout' }));
         builder.onLoad({ filter: /.*/, namespace: 'waybill-layout' }, () => ({ contents: 'export default props => props.children;' }));
@@ -53,7 +53,7 @@ function harness(t, Component = ui.Camera, initial = { onScan() {} }) {
     const h = {
         on(name, callback) { const list = listeners.get(name) ?? new Set(); list.add(callback); listeners.set(name,list); return () => list.delete(callback); },
         emit(name, visit) { for (const callback of listeners.get(name) ?? []) callback({detail:{visit}}); },
-        props: initial, reloads: 0, calls: [], values: [], stopped: 0, selected: [], focused: 0,
+        props: initial, reloads: 0, calls: [], visits: [], values: [], stopped: 0, selected: [], focused: 0,
         video: { readyState: 2, srcObject: null, play: async () => {} },
         state(initial) { const index = cursor++; if (!(index in slots)) slots[index] = typeof initial === 'function' ? initial() : initial; return [slots[index], value => { assert.equal(disposed, false, 'Unmounted views must not receive state updates'); slots[index] = typeof value === 'function' ? value(slots[index]) : value; }]; },
         ref(initial) { return this.state(() => ({ current: initial }))[0]; },
@@ -182,4 +182,50 @@ test('a buyer-return scan opens its actual case without offering an ordinary del
     assert.equal(link.props.children, 'Open buyer return');
     assert.equal(nodes(h.tree).some(n => n.type === 'button' && nodes(n).some(child => [child.props?.children].flat(Infinity).includes('Confirm custody action'))), false);
     assert.equal(nodes(h.tree).some(n => n.props?.guidance), false);
+});
+
+
+test('a saved continuous preference cannot make inspection automatically confirm custody', async t => {
+    const h = harness(t, ui.Scanner, props);
+    h.window.localStorage = { getItem: () => 'true' };
+    h.render(); nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: 'BGO-ONE' } }); h.render();
+    nodes(h.tree).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await tick(); h.render();
+    assert.equal(h.calls.length, 1); assert.deepEqual(h.calls[0].body, { barcode: 'BGO-ONE', mode: 'inspect', hub_id: 1 });
+    h.button('Confirm custody action');
+    assert.equal(h.reloads, 0);
+});
+
+test('bag identification opens seal verification and cannot bulk-receive unseen parcels', async t => {
+    const h = harness(t, ui.Scanner, props);
+    h.response = () => Response.json({ success: true, confirmed: false, is_master_bag: true, message: 'Bag identified.', bag: {
+        reference: 'BAG-ORIGINAL', seal_number: 'SEAL-ORIGINAL', source_hub: 'Origin hub', destination_hub: 'Mother Hub', parcel_count: 2,
+        status: 'in_transit', receiving_url: '/hub/mother-bags?hub_id=1&bag=11111111-1111-4111-8111-111111111111' } });
+    h.render(); nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: 'BAG-ORIGINAL' } }); h.render();
+    nodes(h.tree).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await tick(); h.render();
+    h.button('Open bag receiving').props.onClick();
+    assert.equal(h.calls.length, 1); assert.equal(h.visits[0][0], '/hub/mother-bags?hub_id=1&bag=11111111-1111-4111-8111-111111111111');
+    assert.ok(!nodes(h.tree).some(n => n.type === 'button' && /Ingest All|Confirm custody/.test(String(n.props.children))));
+});
+
+test('scanner shows the original actor and event reference without counting inherited departure as another submitted scan', async t => {
+    const h = harness(t, ui.Scanner, props);
+    h.response = () => Response.json({ ...reply(), scan_evidence: { route_hub_count: 3, submitted_waybill_records: 2,
+        inherited_departure_records: 1, derived_local_records: 0, latest_record: { reference: 'CP-ORIGINAL', actor: 'Ana Operator',
+            actor_role: 'logistics', type: 'arrived_at_origin_hub', provenance: 'submitted', recorded_at: '2026-11-11T10:00:00Z' } } });
+    h.render(); nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: 'BGO-ONE' } }); h.render();
+    nodes(h.tree).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await tick(); h.render();
+    const rendered = nodes(h.tree).flatMap(n => [n.props?.children].flat(Infinity)).filter(x => typeof x === 'string').join(' ');
+    assert.match(rendered, /CP-ORIGINAL/); assert.match(rendered, /Ana Operator/); assert.match(rendered, /not a count of physical touches/);
+});
+
+
+test('confirmation retains the actually inspected order alias instead of generating a different tracking scan', async t => {
+    const h = harness(t, ui.Scanner, props); h.render();
+    nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: 'BGO-ORDER-ALIAS' } }); h.render();
+    nodes(h.tree).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await tick(); h.render();
+    h.response = () => Response.json(reply(true));
+    await h.button('Confirm custody action').props.onClick(); h.render();
+    assert.equal(h.calls[0].body.barcode, 'BGO-ORDER-ALIAS');
+    assert.equal(h.calls[1].body.barcode, 'BGO-ORDER-ALIAS');
+    assert.notEqual(h.calls[1].body.barcode, reply().delivery.tracking_number);
 });

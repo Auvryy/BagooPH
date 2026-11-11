@@ -8,16 +8,12 @@ use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
-use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
-use App\Models\LogisticsManifestParcel;
 use App\Models\MotherBag;
-use App\Models\MotherBagParcel;
 use App\Models\Order;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
-use App\Services\Logistics\ContinuousScanAutomationService;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Logistics\FleetDispatchEngine;
@@ -25,13 +21,13 @@ use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\HubParcelWorkstationService;
 use App\Services\Logistics\HubScanTransferService;
 use App\Services\Logistics\LogisticsEligibilityService;
-use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsPlacementService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Logistics\LogisticsSortingInputService;
 use App\Services\Logistics\MisrouteTrapService;
 use App\Services\Logistics\OrderStateMachineService;
 use App\Services\Logistics\ParcelRecoveryService;
+use App\Services\Logistics\ParcelScanEvidenceService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Logistics\RiderCompanyRequestService;
 use App\Services\Logistics\WaybillScanInputService;
@@ -885,20 +881,21 @@ class LogisticsHubWorkstationController extends Controller
 
         $inputs = app(WaybillScanInputService::class);
         $request->merge($inputs->normalize($request->only(['barcode', 'notes', 'action', 'expected_status']), allowTrackingUrl: true));
-        $isContinuous = $request->boolean('continuous') || $request->boolean('auto_advance') || ($request->input('action') === 'AUTO_PROGRESS');
         $validated = $request->validate([
             'barcode' => $inputs->barcodeRules(),
             'hub_id' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'exists:logistics_hubs,id'],
             'location_barcode' => ['nullable', 'string', 'max:100'],
             'notes' => $inputs->notesRules(),
             'mode' => 'nullable|in:inspect,confirm',
-            'continuous' => 'nullable|boolean',
-            'auto_advance' => 'nullable|boolean',
-            'action' => [$isContinuous ? 'nullable' : 'required_if:mode,confirm', 'nullable', 'string', 'max:100', 'regex:/\A[A-Z_]+\z/'],
-            'expected_status' => [$isContinuous ? 'nullable' : 'required_if:mode,confirm', 'nullable', 'string', 'max:100', 'regex:/\A[a-z_]+\z/'],
+            'continuous' => 'prohibited',
+            'auto_advance' => 'prohibited',
+            'action' => ['required_if:mode,confirm', 'nullable', 'string', 'max:100', 'not_in:AUTO_PROGRESS', 'regex:/\A[A-Z_]+\z/'],
+            'expected_status' => ['required_if:mode,confirm', 'nullable', 'string', 'max:100', 'regex:/\A[a-z_]+\z/'],
             'attempt_reference' => ['nullable', 'string', 'max:64'],
             'route_reference' => ['nullable', 'string', 'max:64'],
             'claim_reference' => ['nullable', 'string', 'max:64'],
+            'actor_id' => ['prohibited'], 'operator_id' => ['prohibited'], 'scanned_by_id' => ['prohibited'],
+            'custody_before' => ['prohibited'], 'custody_after' => ['prohibited'],
         ]);
 
         $barcode = trim($validated['barcode']);
@@ -1016,55 +1013,6 @@ class LogisticsHubWorkstationController extends Controller
         $alreadyReceived = $delivery->status === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB
             && DeliveryCheckpoint::where('delivery_id', $delivery->id)->where('hub_id', $hub->id)
                 ->where('checkpoint_type', OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB)->exists();
-
-        // Automated continuous scanning progression (hands-free custody advance)
-        $automation = app(ContinuousScanAutomationService::class);
-        if ($isContinuous && $automation->canAutomate($delivery, $hub, $request->user())) {
-            try {
-                $progression = $automation->executeAutomatedProgression(
-                    $delivery,
-                    $hub,
-                    $request->user(),
-                    [
-                        'location_barcode' => $locationBarcode,
-                        'notes' => $validated['notes'] ?? null,
-                    ]
-                );
-
-                $updatedDelivery = $progression['delivery']->load([
-                    'order.items.product',
-                    'order.buyer',
-                    'originBayanHub',
-                    'originMotherHub',
-                    'destinationBayanHub',
-                    'destinationMotherHub',
-                    'currentHub',
-                    'assignedRider',
-                ]);
-
-                $payload = $this->scanPayload(
-                    delivery: $updatedDelivery,
-                    hub: $hub,
-                    prompt: $progression['prompt'],
-                    message: $progression['message'],
-                    requiresConfirmation: false,
-                    confirmed: true,
-                    alreadyReceived: false,
-                    scannedLocation: $locationBarcode,
-                    actor: $request->user()
-                );
-                $payload['automated_progression'] = true;
-                $payload['steps'] = $progression['steps'];
-
-                if ($request->wantsJson()) {
-                    return $this->scanResponse($payload);
-                }
-
-                return back()->with('scan_result', $payload);
-            } catch (DomainException $exception) {
-                return $this->operationError($request, $exception->getMessage(), 409);
-            }
-        }
 
         if ($prompt['action'] === 'INSPECT_WAYBILL' && (($validated['mode'] ?? 'inspect') === 'confirm'
             || ! app(HubParcelWorkstationService::class)->registry($hub)->whereKey($delivery->id)->exists())) {
@@ -1189,7 +1137,7 @@ class LogisticsHubWorkstationController extends Controller
     ): array {
         $actor ??= request()->user();
         $delivery->loadMissing(['order.items.product', 'order.buyer', 'currentHub', 'courier', 'assignedRider', 'latestCustodyCheckpoint', 'latestOriginalCheckpoint', 'pickupClaim']);
-        $base = request()->is('hub/*') ? '/hub' : '';
+        $base = request()->is('hub/*', 'api/v1/logistics/*') ? '/hub' : '';
         $riders = $delivery->status === 'sorted_to_barangay_bin' && $delivery->delivery_type === 'doorstep'
             ? $this->eligibility->riderCandidates($hub)->get()->map(fn ($profile) => ['id' => $profile->user_id, 'assigned_barangay' => $profile->assigned_barangay]) : collect();
         $workstation = app(HubParcelWorkstationService::class);
@@ -1225,6 +1173,7 @@ class LogisticsHubWorkstationController extends Controller
             'success' => true,
             'message' => $alreadyReceived ? 'Already received at this hub. The original intake time is unchanged. '.$guidance['next_step'].'.'
                 : (! $confirmed && ! $canConfirm ? 'Waybill verified. '.$guidance['next_step'].'.' : $message),
+            'scan_evidence' => app(ParcelScanEvidenceService::class)->summary($delivery),
             'already_received' => $alreadyReceived,
             'confirmed' => $confirmed,
             'next_hop' => $nextHop,
@@ -1254,7 +1203,7 @@ class LogisticsHubWorkstationController extends Controller
                     'id' => $delivery->assignedRider->id,
                     'name' => $delivery->assignedRider->name,
                 ] : null,
-                'can_auto_progress' => $actor ? app(ContinuousScanAutomationService::class)->canAutomate($delivery, $hub, $actor) : false,
+                'can_auto_progress' => false,
                 'current_hub' => $custodyHub ? [
                     'id' => $custodyHub->id,
                     'name' => $custodyHub->name,
@@ -1528,528 +1477,41 @@ class LogisticsHubWorkstationController extends Controller
      */
     protected function handleMotherBagScan(Request $request, string $barcode, LogisticsHub $hub, array $validated): JsonResponse|RedirectResponse
     {
-        $bag = MotherBag::with(['source', 'destination', 'parcels.delivery.order', 'manifest'])
-            ->where('reference', $barcode)
-            ->first();
-
+        $bag = MotherBag::with(['source', 'destination'])->where('reference', $barcode)->first();
         if (! $bag) {
-            return $this->operationError($request, "Master Bag #{$barcode} not found in logistics registry.", 404);
+            return $this->operationError($request, 'This bag barcode was not found.', 404);
         }
-
         if ($bag->logistics_company_id !== $hub->logistics_company_id) {
-            return $this->operationError($request, 'This master bag is outside your logistics company.', 403);
+            return $this->operationError($request, 'This bag is outside your logistics company.', 403);
         }
-
         if ($bag->destination_hub_id !== $hub->id) {
-            return $this->operationError($request, "Misroute warning: Master Bag {$bag->reference} is addressed to {$bag->destination->name} ({$bag->destination->code}), not {$hub->name}.", 409);
+            return $this->operationError($request, 'This bag is expected at '.$bag->destination->name.'. No receipt was recorded.', 409);
         }
-
-        if ($bag->status === 'received') {
-            return $this->scanResponse([
-                'success' => true,
-                'confirmed' => true,
-                'already_received' => true,
-                'is_master_bag' => true,
-                'message' => "Master Bag {$bag->reference} is already received and processed at {$hub->name}.",
-                'bag' => [
-                    'reference' => $bag->reference,
-                    'seal_number' => $bag->seal_number,
-                    'source_hub' => $bag->source->name,
-                    'destination_hub' => $bag->destination->name,
-                    'parcel_count' => $bag->parcels()->count(),
-                    'status' => $bag->status,
-                ],
-            ]);
+        if (($validated['mode'] ?? 'inspect') === 'confirm') {
+            return $this->operationError($request, 'Open bag receiving to verify the actual seal, then scan each arriving parcel. Identifying a bag does not receive its contents.', 409);
         }
+        $base = $request->is('hub/*', 'api/v1/logistics/*') ? '/hub' : '';
 
-        $unreceivedMembers = $bag->parcels()->whereNull('removed_at')->whereNull('received_at')->with('delivery.order')->get();
-        $unreceivedCount = $unreceivedMembers->count();
-
-        if (($validated['mode'] ?? 'inspect') !== 'confirm') {
-            return $this->scanResponse([
-                'success' => true,
-                'confirmed' => false,
-                'mode' => 'inspect',
-                'is_master_bag' => true,
-                'message' => "Master Bag {$bag->reference} verified. Ready to ingest {$unreceivedCount} parcels from {$bag->source->name}.",
-                'prompt' => [
-                    'action' => 'INGEST_MASTER_BAG',
-                    'prompt' => "INGEST MASTER BAG {$bag->reference} ({$unreceivedCount} PARCELS)",
-                    'next_status' => $hub->isMotherHub() ? 'arrived_at_mother_hub' : 'arrived_at_destination_hub',
-                    'expected_status' => 'in_transit',
-                    'requires_confirmation' => true,
-                ],
-                'bag' => [
-                    'reference' => $bag->reference,
-                    'seal_number' => $bag->seal_number,
-                    'source_hub' => $bag->source->name,
-                    'destination_hub' => $bag->destination->name,
-                    'parcel_count' => $unreceivedCount,
-                    'parcels' => $unreceivedMembers->map(fn ($p) => [
-                        'tracking_number' => $p->delivery->tracking_number,
-                        'order_number' => $p->delivery->order?->order_number,
-                        'status' => $p->delivery->status,
-                    ])->values()->all(),
-                ],
-            ]);
-        }
-
-        // CONFIRM MODE: Atomic bulk ingestion of all parcels in the bag
-        $actor = $request->user();
-        DB::transaction(function () use ($bag, $hub, $actor, $unreceivedMembers) {
-            $bag = MotherBag::whereKey($bag->id)->lockForUpdate()->firstOrFail();
-            $manifest = $bag->manifest_id ? LogisticsManifest::whereKey($bag->manifest_id)->lockForUpdate()->first() : null;
-
-            // 1. Mark Mother Bag opened if not yet opened
-            if (! $bag->opened_at || $bag->status !== 'opened') {
-                $bag->fill(['status' => 'opened', 'opened_by_id' => $actor->id, 'opened_at' => now()])->save();
-                $bag->version++;
-                $bag->save();
-                DB::table('mother_bag_events')->insert([
-                    'mother_bag_id' => $bag->id,
-                    'actor_id' => $actor->id,
-                    'event_type' => 'open',
-                    'barcode_scanned' => $bag->reference,
-                    'payload' => json_encode(['seal_intact' => true], JSON_THROW_ON_ERROR),
-                ]);
-            }
-
-            // 2. If manifest exists and is dispatched, receive parcels through manifest service
-            if ($manifest && in_array($manifest->status, ['dispatched', 'received'], true)) {
-                $manifestService = app(LogisticsManifestService::class);
-                foreach ($unreceivedMembers as $member) {
-                    $delivery = Delivery::whereKey($member->delivery_id)->lockForUpdate()->first();
-                    if (! $delivery) {
-                        continue;
-                    }
-
-                    $manifestParcel = $manifest->parcels()->where('delivery_id', $delivery->id)->where('included', true)->first();
-                    if ($manifestParcel && ! $manifestParcel->received_at) {
-                        $manifestService->command($manifest->fresh(), $actor, 'receive', [
-                            'version' => $manifest->fresh()->version,
-                            'request_token' => (string) Str::uuid(),
-                            'barcode' => $delivery->tracking_number,
-                            'condition' => 'intact',
-                            'notes' => 'Bulk ingested via Master Bag '.$bag->reference,
-                        ]);
-                    }
-                }
-            } else {
-                if (! $manifest) {
-                    $fallbackVehicle = LogisticsFleet::where('logistics_company_id', $hub->logistics_company_id)->where('status', 'active')->first();
-                    $manifestService = app(LogisticsManifestService::class);
-                    $manifest = LogisticsManifest::create([
-                        'reference' => 'MNF-'.strtoupper(Str::random(8)),
-                        'creation_token' => (string) Str::uuid(),
-                        'creation_fingerprint' => hash('sha256', (string) Str::uuid()),
-                        'logistics_company_id' => $hub->logistics_company_id,
-                        'source_hub_id' => $bag->source_hub_id,
-                        'destination_hub_id' => $hub->id,
-                        'vehicle_id' => $fallbackVehicle?->id ?? 1,
-                        'driver_id' => $fallbackVehicle?->assigned_driver_id ?? $actor->id,
-                        'created_by_id' => $actor->id,
-                        'type' => $manifestService->legType($bag->source, $hub),
-                        'direction' => 'outbound',
-                        'status' => 'dispatched',
-                        'dispatched_at' => now(),
-                        'dispatcher_id' => $actor->id,
-                        'version' => 1,
-                    ]);
-                    $bag->update(['manifest_id' => $manifest->id]);
-                } else {
-                    $manifest->update(['status' => 'dispatched', 'dispatched_at' => now(), 'dispatcher_id' => $actor->id]);
-                }
-
-                $targetStatus = $hub->isMotherHub()
-                    ? OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB
-                    : OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB;
-
-                foreach ($unreceivedMembers as $member) {
-                    $delivery = Delivery::whereKey($member->delivery_id)->lockForUpdate()->first();
-                    if (! $delivery) {
-                        continue;
-                    }
-
-                    $manifestParcel = $manifest->parcels()->firstOrCreate(
-                        ['delivery_id' => $delivery->id],
-                        [
-                            'active_delivery_id' => $delivery->id,
-                            'tracking_number_snapshot' => $delivery->tracking_number,
-                            'route_snapshot' => app(LogisticsManifestService::class)->route($delivery),
-                            'source_state' => DeliveryCheckpoint::state($delivery),
-                            'included' => true,
-                            'received_at' => now(),
-                            'received_by_id' => $actor->id,
-                            'receipt_condition' => 'intact',
-                        ]
-                    );
-
-                    $scanEvent = $manifest->events()->create([
-                        'manifest_parcel_id' => $manifestParcel->id,
-                        'actor_id' => $actor->id,
-                        'event_type' => 'parcel_received',
-                        'barcode_scanned' => $delivery->tracking_number,
-                        'reference' => 'EVT-'.strtoupper(Str::random(10)),
-                        'hub_id' => $hub->id,
-                        'source_state' => DeliveryCheckpoint::state($delivery),
-                        'target_state' => ['delivery_status' => $targetStatus],
-                        'payload' => [
-                            'delivery_status' => $targetStatus,
-                        ],
-                    ]);
-
-                    app(OrderStateMachineService::class)->transition($delivery, $targetStatus, $actor, [
-                        'hub_id' => $hub->id,
-                        'barcode' => $delivery->tracking_number,
-                        'manifest_scan_event_id' => $scanEvent->id,
-                        'manifest_number' => $manifest->reference,
-                        'expected_status' => $delivery->status,
-                        'notes' => 'Bulk ingested from master bag '.$bag->reference.' (Seal '.$bag->seal_number.')',
-                    ]);
-
-                    $member->update(['active_delivery_id' => null, 'received_at' => now()]);
-                    DB::table('mother_bag_events')->insert([
-                        'mother_bag_id' => $bag->id,
-                        'actor_id' => $actor->id,
-                        'event_type' => 'parcel_received',
-                        'barcode_scanned' => $delivery->tracking_number,
-                        'payload' => json_encode(['delivery_id' => $delivery->id], JSON_THROW_ON_ERROR),
-                    ]);
-                }
-            }
-
-            // Update bag status if all received
-            if (! $bag->parcels()->whereNull('removed_at')->whereNull('received_at')->exists()) {
-                $bag->update(['status' => 'received', 'version' => $bag->version + 1]);
-            }
-
-            // Update manifest status if all received
-            if ($manifest && ! $manifest->parcels()->where('included', true)->whereNull('received_at')->exists()) {
-                $manifest->fill(['status' => 'received', 'received_at' => now(), 'receiver_id' => $actor->id])->save();
-            }
-        });
-
-        return $this->scanResponse([
-            'success' => true,
-            'confirmed' => true,
-            'is_master_bag' => true,
-            'message' => "Successfully ingested Master Bag {$bag->reference}! {$unreceivedCount} parcels received into {$hub->name} and queued for local sorting.",
-            'bag' => [
-                'reference' => $bag->reference,
-                'seal_number' => $bag->seal_number,
-                'source_hub' => $bag->source->name,
-                'destination_hub' => $bag->destination->name,
-                'parcel_count' => $unreceivedCount,
-                'status' => 'received',
-            ],
-        ]);
+        return $this->scanResponse(['success' => true, 'confirmed' => false, 'is_master_bag' => true,
+            'message' => 'Bag identified. Verify its seal in bag receiving, then receive individual parcels through their manifest.',
+            'prompt' => ['action' => 'INSPECT_BAG', 'expected_status' => $bag->status, 'requires_confirmation' => false],
+            'bag' => ['reference' => $bag->reference, 'seal_number' => $bag->seal_number,
+                'source_hub' => $bag->source->name, 'destination_hub' => $bag->destination->name,
+                'parcel_count' => $bag->parcels()->whereNull('removed_at')->count(), 'status' => $bag->status,
+                'receiving_url' => $base.'/mother-bags?hub_id='.$hub->id.'&bag='.$bag->id,
+                'manifest_url' => $base.'/manifests?hub_id='.$hub->id]]);
     }
 
-    /**
-     * 1-Click Fast Outbound Dispatch:
-     * Programmatically consolidates ready parcels into a Mother Bag, seals it,
-     * assigns it to an available vehicle, creates/seals/dispatches a Manifest,
-     * and advances parcel statuses to in-transit in a single transaction.
-     */
+    /** Retain the old route with actionable feedback instead of inventing scans and seals. */
     public function fastDispatch(Request $request): JsonResponse|RedirectResponse
     {
         abort_unless($request->user()?->isLogistics(), 403, 'Only logistics operators may dispatch parcels.');
-
         [$hub] = $this->getActiveHub($request, $request->user());
         abort_unless($hub && $this->eligibility->canScan($request->user(), $hub), 403, 'An active handler assignment is required.');
+        $base = $request->is('hub/*') ? '/hub' : '';
 
-        $validated = $request->validate([
-            'destination_hub_id' => ['required', 'integer', 'exists:logistics_hubs,id'],
-            'delivery_ids' => ['nullable', 'array'],
-            'delivery_ids.*' => ['integer', 'exists:deliveries,id'],
-            'notes' => ['nullable', 'string', 'max:500'],
-        ]);
-
-        $destinationHub = LogisticsHub::where('logistics_company_id', $hub->logistics_company_id)->findOrFail($validated['destination_hub_id']);
-        abort_if($destinationHub->id === $hub->id, 422, 'Destination hub must be different from current facility.');
-
-        $actor = $request->user();
-
-        if ($request->boolean('corridor_dispatch')) {
-            try {
-                $dispatchResult = app(FleetDispatchEngine::class)->autoDispatchCorridor($hub, $destinationHub, $actor);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => "Automated Linehaul Dispatch Complete! Manifest #{$dispatchResult['manifest']->reference} ({$dispatchResult['parcels_count']} parcels, {$dispatchResult['mother_bags_count']} Mother Bags). Gate Pass issued.",
-                    'data' => [
-                        'manifest_reference' => $dispatchResult['manifest']->reference,
-                        'bag_reference' => 'Corridor Consolidation',
-                        'seal_number' => implode(', ', $dispatchResult['gate_pass']['seals']),
-                        'parcel_count' => $dispatchResult['parcels_count'],
-                        'destination_hub' => $destinationHub->name,
-                        'vehicle_plate' => $dispatchResult['gate_pass']['vehicle_plate'],
-                        'gate_pass' => $dispatchResult['gate_pass'],
-                    ],
-                ]);
-            } catch (DomainException $e) {
-                return $this->operationError($request, $e->getMessage(), 422);
-            }
-        }
-
-        try {
-            $result = DB::transaction(function () use ($hub, $destinationHub, $actor, $validated) {
-                $eligibility = app(LogisticsEligibilityService::class);
-                $eligibility->lockNetwork($hub->logistics_company_id, [$actor->id], [$hub->id, $destinationHub->id]);
-
-                // 1. Gather candidate deliveries
-                $query = Delivery::with(['order', 'destinationBayanHub', 'originBayanHub', 'originMotherHub', 'destinationMotherHub'])
-                    ->where('logistics_company_id', $hub->logistics_company_id)
-                    ->where('current_hub_id', $hub->id)
-                    ->whereNotIn('id', MotherBagParcel::whereNotNull('active_delivery_id')->select('delivery_id'))
-                    ->whereNotIn('id', LogisticsManifestParcel::whereNotNull('active_delivery_id')->select('delivery_id'));
-
-                if (! empty($validated['delivery_ids'])) {
-                    $query->whereIn('id', $validated['delivery_ids']);
-                } else {
-                    $query->where(function ($q) {
-                        $q->whereIn('status', [
-                            OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB,
-                            OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
-                            OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
-                        ]);
-                    });
-                }
-
-                $candidates = $query->lockForUpdate()->get();
-                $routingEngine = app(LogisticsRoutingEngine::class);
-                foreach ($candidates as $del) {
-                    if ($backhaulError = $routingEngine->validateBackhaul($del, $destinationHub, $hub)) {
-                        throw new DomainException($backhaulError);
-                    }
-                }
-                $manifestService = app(LogisticsManifestService::class);
-                $eligibleDeliveries = $candidates->filter(function ($del) use ($manifestService, $destinationHub) {
-                    return $manifestService->nextHub($del) === $destinationHub->id;
-                });
-
-                if ($eligibleDeliveries->isEmpty()) {
-                    throw new DomainException("No queued parcels found at {$hub->name} ready for transfer to {$destinationHub->name}.");
-                }
-
-                // 2. Find an available fleet vehicle and driver
-                $fleetVehicle = LogisticsFleet::where('logistics_company_id', $hub->logistics_company_id)
-                    ->where('status', 'active')
-                    ->whereNotNull('assigned_driver_id')
-                    ->whereNotIn('id', LogisticsManifest::where('status', 'dispatched')->select('vehicle_id'))
-                    ->orderByRaw('CASE WHEN hub_id = ? THEN 0 ELSE 1 END', [$hub->id])
-                    ->first();
-
-                if (! $fleetVehicle) {
-                    $fleetVehicle = LogisticsFleet::where('logistics_company_id', $hub->logistics_company_id)
-                        ->where('status', 'active')
-                        ->whereNotNull('assigned_driver_id')
-                        ->first();
-                }
-
-                if (! $fleetVehicle) {
-                    throw new DomainException("No active fleet vehicle or driver available at {$hub->name}. Check Fleet management.");
-                }
-
-                // 3. Create Mother Bag
-                $bagReference = 'BAG-'.strtoupper(Str::random(12));
-                $creationToken = (string) Str::uuid();
-                $bag = MotherBag::create([
-                    'reference' => $bagReference,
-                    'logistics_company_id' => $hub->logistics_company_id,
-                    'source_hub_id' => $hub->id,
-                    'destination_hub_id' => $destinationHub->id,
-                    'created_by_id' => $actor->id,
-                    'creation_token' => $creationToken,
-                    'status' => 'open',
-                    'version' => 1,
-                ]);
-
-                // Add parcels to Mother Bag
-                foreach ($eligibleDeliveries as $parcel) {
-                    $bag->parcels()->create([
-                        'delivery_id' => $parcel->id,
-                        'active_delivery_id' => $parcel->id,
-                        'loaded_by_id' => $actor->id,
-                        'barcode_scanned' => $parcel->tracking_number,
-                        'source_state' => DeliveryCheckpoint::state($parcel),
-                    ]);
-                }
-
-                // Seal the Mother Bag
-                $sealNumber = 'SL-'.$hub->code.'-'.date('ymd').'-'.strtoupper(Str::random(4));
-                while (DB::table('mother_bag_seals')->where('logistics_company_id', $hub->logistics_company_id)->where('seal_number', $sealNumber)->exists()) {
-                    $sealNumber = 'SL-'.$hub->code.'-'.date('ymd').'-'.strtoupper(Str::random(4));
-                }
-                DB::table('mother_bag_seals')->insert([
-                    'mother_bag_id' => $bag->id,
-                    'logistics_company_id' => $hub->logistics_company_id,
-                    'seal_number' => $sealNumber,
-                ]);
-                $bag->update([
-                    'status' => 'sealed',
-                    'seal_number' => $sealNumber,
-                    'sealed_by_id' => $actor->id,
-                    'sealed_at' => now(),
-                    'version' => $bag->version + 1,
-                ]);
-
-                // 4. Create Logistics Manifest
-                $manifestType = $manifestService->legType($hub, $destinationHub);
-                $manifestToken = (string) Str::uuid();
-                $manifest = LogisticsManifest::create([
-                    'reference' => 'MNF-'.strtoupper(Str::random(8)),
-                    'creation_token' => $manifestToken,
-                    'creation_fingerprint' => hash('sha256', $manifestToken),
-                    'logistics_company_id' => $hub->logistics_company_id,
-                    'source_hub_id' => $hub->id,
-                    'destination_hub_id' => $destinationHub->id,
-                    'vehicle_id' => $fleetVehicle->id,
-                    'driver_id' => $fleetVehicle->assigned_driver_id,
-                    'created_by_id' => $actor->id,
-                    'type' => $manifestType,
-                    'direction' => 'outbound',
-                    'status' => 'draft',
-                    'version' => 1,
-                ]);
-
-                // Attach bag to manifest and load member parcels
-                $bag->update([
-                    'manifest_id' => $manifest->id,
-                    'loaded_by_id' => $actor->id,
-                    'loaded_at' => now(),
-                    'master_barcode_scanned' => $bag->reference,
-                    'version' => $bag->version + 1,
-                ]);
-
-                $loadEvents = [];
-                foreach ($eligibleDeliveries as $parcel) {
-                    $manifestParcel = $manifest->parcels()->create([
-                        'delivery_id' => $parcel->id,
-                        'active_delivery_id' => $parcel->id,
-                        'tracking_number_snapshot' => $parcel->tracking_number,
-                        'route_snapshot' => $manifestService->route($parcel),
-                        'source_state' => DeliveryCheckpoint::state($parcel),
-                        'included' => true,
-                    ]);
-
-                    // Record load event
-                    $loadScan = $manifest->events()->create([
-                        'manifest_parcel_id' => $manifestParcel->id,
-                        'actor_id' => $actor->id,
-                        'event_type' => 'load',
-                        'barcode_scanned' => $parcel->tracking_number,
-                        'reference' => 'EVT-'.strtoupper(Str::random(10)),
-                        'hub_id' => $hub->id,
-                        'source_state' => DeliveryCheckpoint::state($parcel),
-                        'target_state' => ['delivery_id' => $parcel->id],
-                        'payload' => [
-                            'delivery_id' => $parcel->id,
-                            'mother_bag_id' => $bag->id,
-                            'master_barcode_scanned' => $bag->reference,
-                        ],
-                    ]);
-                    $loadEvents[$parcel->id] = $loadScan;
-                }
-
-                // Seal manifest
-                $manifest->update([
-                    'status' => 'sealed',
-                    'sealed_at' => now(),
-                    'version' => $manifest->version + 1,
-                ]);
-
-                // 5. Dispatch manifest & transition deliveries
-                $transitStatus = $manifestService->transitStatus($manifest);
-                $manifest->update([
-                    'status' => 'dispatched',
-                    'dispatched_at' => now(),
-                    'dispatcher_id' => $actor->id,
-                    'version' => $manifest->version + 1,
-                ]);
-
-                foreach ($eligibleDeliveries as $parcel) {
-                    $manifestParcel = $manifest->parcels()->where('delivery_id', $parcel->id)->first();
-                    $scanEvent = $manifest->events()->create([
-                        'manifest_parcel_id' => $manifestParcel?->id,
-                        'actor_id' => $actor->id,
-                        'event_type' => 'parcel_dispatched',
-                        'barcode_scanned' => $parcel->tracking_number,
-                        'reference' => 'EVT-'.strtoupper(Str::random(10)),
-                        'hub_id' => $hub->id,
-                        'source_state' => DeliveryCheckpoint::state($parcel),
-                        'target_state' => ['delivery_status' => $transitStatus],
-                        'payload' => [
-                            'delivery_status' => $transitStatus,
-                            'source_scan_reference' => $loadEvents[$parcel->id]->reference,
-                            'vehicle_plate' => $fleetVehicle->plate_number,
-                            'vehicle_type' => $fleetVehicle->vehicle_type,
-                        ],
-                    ]);
-
-                    app(OrderStateMachineService::class)->transition($parcel, $transitStatus, $actor, [
-                        'hub_id' => $hub->id,
-                        'barcode' => $parcel->tracking_number,
-                        'manifest_scan_event_id' => $scanEvent->id,
-                        'manifest_number' => $manifest->reference,
-                        'expected_status' => $parcel->status,
-                        'notes' => $validated['notes'] ?? ('1-Click Fast Outbound Dispatch to '.$destinationHub->name),
-                    ]);
-                }
-
-                // Mark bag in transit
-                $bag->update([
-                    'status' => 'in_transit',
-                    'dispatched_at' => now(),
-                    'version' => $bag->version + 1,
-                ]);
-
-                $gatePassCode = 'GP-'.date('Ymd').'-'.$manifest->id.'-'.strtoupper(Str::random(4));
-                $gatePass = [
-                    'gate_pass_code' => $gatePassCode,
-                    'issued_at' => now()->toIso8601String(),
-                    'departure_gate' => 'Gate Bay '.((($hub->id + $destinationHub->id) % 4) + 1),
-                    'manifest_id' => $manifest->id,
-                    'manifest_reference' => $manifest->reference,
-                    'source_hub' => $hub->only(['id', 'name', 'code', 'tier']),
-                    'destination_hub' => $destinationHub->only(['id', 'name', 'code', 'tier']),
-                    'driver_name' => $fleetVehicle->driver?->name ?? 'Assigned Driver',
-                    'driver_phone' => $fleetVehicle->driver?->phone ?? 'N/A',
-                    'vehicle_plate' => $fleetVehicle->plate_number,
-                    'vehicle_type' => $fleetVehicle->vehicle_type,
-                    'total_mother_bags' => 1,
-                    'total_loose_cargo' => 0,
-                    'total_parcels_enclosed' => $eligibleDeliveries->count(),
-                    'total_weight_kg' => round($eligibleDeliveries->count() * 0.8, 1),
-                    'vehicle_capacity_kg' => (float) ($fleetVehicle->capacity_kg ?? 1200.0),
-                    'utilization_pct' => min(100.0, round((($eligibleDeliveries->count() * 0.8) / ($fleetVehicle->capacity_kg ?? 1200.0)) * 100, 1)),
-                    'seals' => [$sealNumber],
-                    'verification_hash' => hash('sha256', $manifest->reference.$gatePassCode.now()->toDateString()),
-                ];
-
-                return [
-                    'manifest_reference' => $manifest->reference,
-                    'bag_reference' => $bag->reference,
-                    'seal_number' => $sealNumber,
-                    'parcel_count' => $eligibleDeliveries->count(),
-                    'destination_hub' => $destinationHub->name,
-                    'vehicle_plate' => $fleetVehicle->plate_number,
-                    'gate_pass' => $gatePass,
-                ];
-            });
-        } catch (DomainException $e) {
-            $details = str_starts_with($e->getMessage(), 'Routing Violation')
-                ? ['sound' => 'buzz', 'errors' => ['destination_hub_id' => [$e->getMessage()]]]
-                : [];
-
-            return $this->operationError($request, $e->getMessage(), 422, $details);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => "Fast outbound dispatched {$result['parcel_count']} parcels to {$result['destination_hub']} via {$result['manifest_reference']} (Master Bag: {$result['bag_reference']}).",
-            'data' => $result,
-        ]);
+        return $this->operationError($request, 'Prepare the actual bag and manifest, verify its seal and scan its load before dispatch. No custody was changed.', 409,
+            ['manifest_url' => $base.'/manifests?hub_id='.$hub->id]);
     }
 
     /**

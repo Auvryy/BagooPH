@@ -61,14 +61,15 @@ use App\Http\Controllers\Logistics\RiderCompanyOfferController;
 use App\Http\Controllers\LogisticsEarningsController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OrderCancellationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PromotionContentAssistantController;
-use App\Http\Controllers\PublicTrackingController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\RegistrationPolicyController;
 use App\Http\Controllers\Seller\ProductSaleController;
 use App\Http\Controllers\Seller\PromotionController as SellerPromotionController;
@@ -275,6 +276,8 @@ $registerSellerRoutes = function () {
         Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup']);
         Route::post('/orders/{order}/handover', [SellerOrderController::class, 'handover']);
         Route::post('/orders/{order}/cancel', [SellerOrderController::class, 'cancel']);
+        Route::post('/orders/{order}/cancellation-requests/{cancellation}/{decision}', [OrderCancellationController::class, 'decide'])
+            ->where(['order' => '[1-9][0-9]{0,17}', 'cancellation' => '[1-9][0-9]{0,17}', 'decision' => 'approve|reject'])->middleware('throttle:20,1');
         Route::post('/orders/{order}/return-receipt', [SellerOrderController::class, 'receiveReturn']);
         Route::post('/orders/batch-ready', [SellerOrderController::class, 'batchReady']);
         Route::get('/vouchers', [SellerVoucherController::class, 'index']);
@@ -404,6 +407,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::get('/manifests', [LogisticsManifestController::class, 'index']);
         Route::get('/mother-bags', [MotherBagController::class, 'index']);
         Route::post('/mother-bags', [MotherBagController::class, 'store'])->middleware('throttle:30,1');
+        Route::post('/mother-bags/pack', [MotherBagController::class, 'pack'])->middleware('throttle:60,1');
         Route::post('/mother-bags/{bag}/{action}', [MotherBagController::class, 'command'])->whereUuid('bag')->where('action', 'add|remove|seal|reopen|load|unload|open')->middleware('throttle:60,1');
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest');
         Route::post('/manifests', [LogisticsManifestController::class, 'store']);
@@ -631,6 +635,8 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
         Route::get('/orders/{order}', [OrderHistoryController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/confirm', [OrderHistoryController::class, 'confirmReceived'])->name('orders.confirm');
         Route::post('/orders/{order}/cancel', [OrderHistoryController::class, 'cancel'])->whereNumber('order')->middleware('buyer.approved')->name('orders.cancel');
+        Route::post('/orders/{order}/cancellation-requests', [OrderCancellationController::class, 'store'])
+            ->where('order', '[1-9][0-9]{0,17}')->middleware(['buyer.approved', 'throttle:20,1'])->name('orders.cancellation-request');
         Route::post('/orders/{order}/pickup-code', [PickupClaimController::class, 'issue'])->middleware('throttle:10,1')->name('orders.pickup-code');
         Route::patch('/order-notices/{notification}/read', [OrderHistoryController::class, 'readNotice'])->name('orders.notice-read');
     });
@@ -740,6 +746,9 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::post('/orders/{order}/ready', [SellerOrderController::class, 'readyForPickup'])->name('orders.ready');
     Route::post('/orders/{order}/handover', [SellerOrderController::class, 'handover'])->name('orders.handover');
     Route::post('/orders/{order}/cancel', [SellerOrderController::class, 'cancel'])->name('orders.cancel');
+    Route::post('/orders/{order}/cancellation-requests/{cancellation}/{decision}', [OrderCancellationController::class, 'decide'])
+        ->where(['order' => '[1-9][0-9]{0,17}', 'cancellation' => '[1-9][0-9]{0,17}', 'decision' => 'approve|reject'])
+        ->middleware('throttle:20,1')->name('orders.cancellation-review');
     Route::post('/orders/{order}/return-receipt', [SellerOrderController::class, 'receiveReturn'])->name('orders.return-receipt');
     Route::post('/orders/batch-ready', [SellerOrderController::class, 'batchReady'])->name('orders.batchReady');
     Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('vouchers.index');
@@ -899,6 +908,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/manifests', [LogisticsManifestController::class, 'index'])->name('manifests.index');
         Route::get('/mother-bags', [MotherBagController::class, 'index'])->name('mother-bags.index');
         Route::post('/mother-bags', [MotherBagController::class, 'store'])->middleware('throttle:30,1')->name('mother-bags.store');
+        Route::post('/mother-bags/pack', [MotherBagController::class, 'pack'])->middleware('throttle:60,1');
         Route::post('/mother-bags/{bag}/{action}', [MotherBagController::class, 'command'])->whereUuid('bag')->where('action', 'add|remove|seal|reopen|load|unload|open')->middleware('throttle:60,1')->name('mother-bags.command');
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest')->name('manifests.show');
         Route::post('/manifests', [LogisticsManifestController::class, 'store'])->name('manifests.store');

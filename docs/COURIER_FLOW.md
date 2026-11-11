@@ -32,7 +32,7 @@ Seller marks READY_FOR_PICKUP
 -> Pickup assignment complete
 ```
 
-The pickup rider may claim multiple eligible jobs from the assigned Origin Bayan Hub until the active-pickup capacity is reached. An optional pickup note is sent to the seller's delivery-linked Messages thread only after the pickup is confirmed. The rider cannot move a parcel to generic `in_transit`, assign a delivery rider, or mark it out for delivery. Each pickup assignment ends only when its assigned Origin Bayan Hub scans that parcel inbound. The hub controls all facility custody after intake.
+The pickup rider may claim multiple eligible jobs from the assigned Origin Bayan Hub until the active-pickup capacity is reached. An optional pickup note is sent to the seller's delivery-linked Messages thread only after the pickup is confirmed. The rider cannot move a parcel to generic `in_transit`, assign a delivery rider, or mark it out for delivery. Each pickup assignment ends only when its assigned Origin Bayan Hub scans that parcel inbound. Pickup claims and scans cannot overwrite a contradictory retained holder, and a live buyer cancellation review holds pickup. The hub controls all facility custody after intake.
 
 ## 3. Delivery-Rider Phase
 
@@ -63,7 +63,7 @@ Attempts one and two may be retried only after the destination hub receives the 
 
 ## 5. COD Remittance and Earnings
 
-The rider’s shift ledger distinguishes exact collected, remitted and held COD, pending offers and unresolved differences. Duty cannot close until the actual hub acknowledges the counted cash and the rider’s differences are resolved. COD rider earnings become available after that receipt. Prepaid delivery earnings release at valid delivery; dedicated pickup earnings release at actual origin intake. Standard PHP 60 shipping splits PHP 30 company/PHP 30 delivery; dedicated fleet splits PHP 25 company/PHP 25 delivery/PHP 10 pickup. Integer-cent allocations conserve the original shipping pool. These are earned ledger entitlements, separate from actual payouts. Web earnings and native trip/cash JSON read that ledger; historical cash is never treated as invented earnings.
+The rider’s shift ledger distinguishes exact collected, remitted and held COD, pending offers and unresolved differences. Duty cannot close until the actual hub acknowledges the counted cash and the rider’s differences are resolved. COD rider earnings become available after that receipt. Prepaid delivery earnings release at valid delivery; dedicated pickup earnings release at actual origin intake. For a PHP 50 purchased shipping pool, Standard splits PHP 25 company/PHP 25 delivery; dedicated fleet splits PHP 8.33 pickup/PHP 20.83 delivery/PHP 20.84 company. Explicitly published tariffs and historical purchases retain their original amounts. Integer-cent allocations conserve the original shipping pool. These are earned ledger entitlements, separate from actual payouts. Web earnings and native trip/cash JSON read that ledger; historical cash is never treated as invented earnings.
 
 ## 6. Required Rider Notifications
 

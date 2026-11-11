@@ -53,7 +53,7 @@ test('vehicle cards retain a disabled, required single selection with separate p
 });
 test('route cards escape saved hub names and distinguish the actual current hub', () => {
     const markup = renderToStaticMarkup(createElement(ui.HubRoute, { stops: [{ ...origin, name: '<script>bad</script>' }, mother], currentHubId: 1 }));
-    assert.match(markup, /&lt;script&gt;/);assert.doesNotMatch(markup, /<script>/);assert.equal((markup.match(/Current hub/g) ?? []).length, 1);
+    assert.match(markup, /&lt;script&gt;/);assert.doesNotMatch(markup, /<script>/);assert.equal((markup.match(/· Active/g) ?? []).length, 1);
 });
 
 test('rider cards show only the parcel’s server-authorized choices and never describe assignment as custody', () => {

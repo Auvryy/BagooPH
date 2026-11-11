@@ -10,7 +10,7 @@ class MotherBagParcel extends Model
 
     protected function casts(): array
     {
-        return ['source_state' => 'array', 'received_at' => 'immutable_datetime'];
+        return ['handling_snapshot' => 'array', 'source_state' => 'array', 'received_at' => 'immutable_datetime'];
     }
 
     public function delivery()

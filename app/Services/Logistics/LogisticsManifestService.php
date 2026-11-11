@@ -163,6 +163,7 @@ class LogisticsManifestService
             'notes' => $this->inputs->notesRules(), 'barcode' => $this->inputs->barcodeRules(in_array($action, ['load', 'receive'], true)),
             'parcel_id' => $action === 'remove' ? $this->idRules() : ['nullable', new AsciiPositiveInteger, 'integer'],
             'condition' => ['nullable', Rule::in(['intact', 'damaged'])],
+            'cargo_mode' => ['nullable', Rule::in(['loose'])], ...app(CargoHandlingService::class)->rules(),
             'kind' => ['nullable', Rule::in(['missing', 'extra', 'duplicate', 'damaged', 'wrong_hub'])],
             'source_event_id' => ['nullable', new AsciiPositiveInteger, 'integer', 'min:1']];
         $input = Validator::make($input, $rules)->validate() + ['notes' => null, 'barcode' => null, 'parcel_id' => null, 'condition' => null, 'kind' => null, 'source_event_id' => null];
@@ -252,15 +253,46 @@ class LogisticsManifestService
                     if (LogisticsManifestParcel::where('active_delivery_id', $delivery->id)->exists()) {
                         throw new DomainException('This parcel already belongs to an active manifest.');
                     }
+                    $handling = [];
+                    if (app(CargoHandlingService::class)->available() && $delivery->order->logistics_flow_version >= 2
+                        && in_array($manifest->direction, ['outbound', 'return'], true)) {
+                        if ($bagContext && $bagMember?->handling_snapshot) {
+                            $handling = ['cargo_mode' => 'bag', 'handling_snapshot' => $bagMember->handling_snapshot];
+                        } elseif (! $bagContext) {
+                            if (($input['cargo_mode'] ?? null) !== 'loose') {
+                                throw new DomainException('Use a sealed Mother Bag for baggable parcels, or explicitly select loose cargo for an oversized parcel.');
+                            }
+                            $profile = app(CargoHandlingService::class)->profile($delivery, $actor, $input);
+                            if ($profile['baggable']) {
+                                throw new DomainException('This parcel fits the bagging limits. Pack and seal it in Mother Bags.');
+                            }
+                            $handling = ['cargo_mode' => 'loose', 'handling_snapshot' => $profile];
+                        }
+                    } elseif (! empty($input['cargo_mode'])) {
+                        throw new DomainException('Loose cargo requires the additive packing migration and a supported purchased transport leg.');
+                    }
                     $parcel = $manifest->parcels()->where('delivery_id', $delivery->id)->first();
                     if ($parcel) {
+                        if ($handling) {
+                            $original = $parcel->handling_snapshot;
+                            $same = $parcel->cargo_mode === $handling['cargo_mode'] && $original !== null;
+                            foreach (['weight_kg', 'length_cm', 'width_cm', 'height_cm'] as $field) {
+                                $same = $same && (float) ($original[$field] ?? 0) === (float) $handling['handling_snapshot'][$field];
+                            }
+                            if (! $same) {
+                                throw new DomainException('This manifest retains its original handling readings. Prepare a new draft for changed packaging.');
+                            }
+                            $handling['handling_snapshot'] = $original;
+                        }
                         $parcel->update(['included' => true, 'active_delivery_id' => $delivery->id]);
                     } else {
-                        $parcel = $manifest->parcels()->create(['delivery_id' => $delivery->id, 'active_delivery_id' => $delivery->id,
+                        $parcel = $manifest->parcels()->create([...$handling, 'delivery_id' => $delivery->id, 'active_delivery_id' => $delivery->id,
                             'tracking_number_snapshot' => $delivery->tracking_number, 'route_snapshot' => $this->route($delivery),
                             'source_state' => DeliveryCheckpoint::state($delivery), 'included' => true]);
                     }
                     $payload = ['delivery_id' => $delivery->id, 'custody' => DeliveryCheckpoint::lastCustody($delivery)];
+                    app(CargoHandlingService::class)->assertManifestCapacity($manifest);
+                    $payload += $handling;
                     if ($bagContext) {
                         $payload += ['mother_bag_id' => $bagContext->id, 'master_barcode_scanned' => $bagContext->master_barcode_scanned];
                     }
@@ -294,6 +326,8 @@ class LogisticsManifestService
                     $this->verifyList($manifest, $deliveries);
                     app(MotherBagService::class)->assertManifest($manifest, $deliveries->only($manifest->parcels()->where('included', true)->pluck('delivery_id')->all()));
                     $vehicle = $this->vehicle($manifest->logistics_company_id, $manifest->source_hub_id, $manifest->vehicle_id, $manifest->driver_id, newWork: true, legType: $manifest->type);
+                    $manifest->setRelation('vehicle', $vehicle);
+                    app(CargoHandlingService::class)->assertManifestCapacity($manifest);
                     if (LogisticsManifest::where('status', 'dispatched')->whereKeyNot($manifest->id)
                         ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->orWhere('driver_id', $manifest->driver_id))->exists()) {
                         throw new DomainException('This vehicle or driver already has a manifest in transit.');
@@ -684,6 +718,7 @@ class LogisticsManifestService
         if ($parcels->isEmpty()) {
             throw new DomainException('Scan at least one actual parcel before sealing or dispatching.');
         }
+        app(CargoHandlingService::class)->assertManifestCapacity($manifest);
         foreach ($parcels as $parcel) {
             $delivery = $deliveries->get($parcel->delivery_id);
             if (! $delivery || $this->direction($delivery) !== $manifest->direction || $parcel->active_delivery_id !== $delivery->id || $delivery->current_hub_id !== $manifest->source_hub_id

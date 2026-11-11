@@ -59,6 +59,18 @@ export async function requestWaybill<T>(path: string, body: Record<string, unkno
         const recoveryUrl = typeof data?.recovery_url === 'string' && /^\/(?:hub\/)?parcel-recovery\/[1-9][0-9]{0,17}$/.test(data.recovery_url) ? data.recovery_url : null;
         throw new WaybillRequestError(String(message), response.status, recoveryUrl);
     }
+    if (data.is_master_bag === true) {
+        const bag = data.bag;
+        if (data.confirmed !== false || !bag || typeof bag.reference !== 'string' || !/^(?:BAG|RMB)-[A-Z0-9_-]{1,100}$/.test(bag.reference)
+            || !Number.isSafeInteger(bag.parcel_count) || bag.parcel_count < 0
+            || typeof bag.source_hub !== 'string' || typeof bag.destination_hub !== 'string'
+            || typeof bag.status !== 'string' || bag.status.length > 40
+            || (bag.seal_number !== null && (typeof bag.seal_number !== 'string' || bag.seal_number.length > 100))
+            || typeof bag.receiving_url !== 'string' || !/^\/(?:hub\/)?mother-bags\?hub_id=[1-9][0-9]{0,17}(?:&bag=[a-f0-9-]{36})?$/.test(bag.receiving_url)) {
+            throw new WaybillRequestError('The bag details were incomplete. Open bag receiving to verify the seal and individual parcels.');
+        }
+        return data as T;
+    }
     if (data.return_case) {
         const item = data.return_case;
         if (data.confirmed !== false || typeof item.reference !== 'string' || item.reference.length > 40

@@ -1,3 +1,5 @@
+import OrderCancellationFeedback from '@/Components/OrderCancellationFeedback';
+import OrderCancellationReview from '@/Components/OrderCancellationReview';
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
@@ -667,6 +669,11 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                             )}
                                         </div>
                                     </div>
+                                    {item.order.fulfillment_feedback && <p role="status" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-[#9F1239]">{item.order.fulfillment_feedback.message}</p>}
+                                    {(item.order.cancellation_request || orderStatus === 'cancelled') && <div className="mt-3 space-y-3">
+                                        <OrderCancellationFeedback feedback={item.order.cancellation_feedback} />
+                                        {item.order.cancellation_request && <OrderCancellationReview key={`${item.order.cancellation_request.id}:${item.order.cancellation_request.version}`} request={item.order.cancellation_request} disabled={isSubmitting || trackingRefreshing} />}
+                                    </div>}
                                 </div>
                             );
                         })}
@@ -741,12 +748,13 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 </span>
                                 {renderCustomerInsight(orderToAcceptAndPack.order?.buyer)}
                             </div>
-                            <p className="font-bold text-slate-900">{orderToAcceptAndPack.order?.recipient_name} ({orderToAcceptAndPack.order?.recipient_phone})</p>
-                            <p className="text-slate-600 text-xs">{orderToAcceptAndPack.order?.shipping_address}, {orderToAcceptAndPack.order?.shipping_city}</p>
+                            <p className="font-bold text-slate-900">{orderToAcceptAndPack.order?.recipient_name}{orderToAcceptAndPack.order?.recipient_details_available && ` (${orderToAcceptAndPack.order?.recipient_phone || 'No phone recorded'})`}</p>
+                            <p className="text-slate-600 text-xs">{[orderToAcceptAndPack.order?.recipient_details_available && orderToAcceptAndPack.order?.shipping_address, orderToAcceptAndPack.order?.shipping_city, orderToAcceptAndPack.order?.shipping_province].filter(Boolean).join(', ')}</p>
                         </div>
 
+                        {!orderToAcceptAndPack.order?.recipient_details_available && <p className="rounded-lg bg-rose-50 p-3 text-sm text-[#9F1239]">Street address, phone, map pin and waybill become available after acceptance.</p>}
                         {/* Thermal Waybill Preview Box */}
-                        <div className="p-4 border-2 border-dashed border-slate-300 rounded-2xl space-y-3 text-xs bg-slate-50/50 font-sans">
+                        {orderToAcceptAndPack.order?.can_print_waybill && <div className="p-4 border-2 border-dashed border-slate-300 rounded-2xl space-y-3 text-xs bg-slate-50/50 font-sans">
                             <div className="flex items-center justify-between border-b border-slate-300 pb-2">
                                 <div>
                                     <h4 className="text-sm font-black text-[#E00D42] tracking-tighter">Bagoo<span className="text-slate-900">EXPRESS</span></h4>
@@ -774,6 +782,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                             </div>
                         </div>
 
+                        }
                         {/* Action Buttons */}
                         <div className="grid grid-cols-2 gap-3 pt-2 font-sans text-xs">
                             <button
@@ -936,8 +945,8 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 {renderCustomerInsight(selectedOrderForDetails.order?.buyer)}
                             </div>
                             <p className="font-bold text-slate-900">{selectedOrderForDetails.order?.recipient_name || selectedOrderForDetails.order?.buyer?.name}</p>
-                            <p className="text-slate-600">{selectedOrderForDetails.order?.shipping_address}, {selectedOrderForDetails.order?.shipping_city}</p>
-                            <p className="text-slate-600 font-sans text-[11px]">{selectedOrderForDetails.order?.recipient_phone || selectedOrderForDetails.order?.buyer?.phone}</p>
+                            <p className="text-slate-600">{[selectedOrderForDetails.order?.recipient_details_available && selectedOrderForDetails.order?.shipping_address, selectedOrderForDetails.order?.shipping_city, selectedOrderForDetails.order?.shipping_province].filter(Boolean).join(', ')}</p>
+                            <p className="text-slate-600 font-sans text-[11px]">{selectedOrderForDetails.order?.recipient_details_available ? selectedOrderForDetails.order?.recipient_phone || 'No phone recorded' : 'Recipient details available after acceptance'}</p>
                         </div>
 
                         {/* Financial Breakdown */}

@@ -240,7 +240,10 @@ notification. Delivery retries cannot create a second notification.
 - Accept, pack, ready, batch, and cancel actions all use the same lifecycle rules; batch operations cannot bypass validation.
 - The waybill is generated from the order snapshot and assigned route. A seller cannot edit the recipient, COD amount, route, or tracking number.
 - Seller cancellation requires an allowlisted reason and optional notes, is allowed only before pickup claim/custody, and restores stock exactly once.
-- Cancellation after a pickup claim or scan is rejected even if the seller has an older page open.
+- Cancellation after a pickup claim or scan is rejected even if the seller has an older page open. Retained non-seller custody also blocks cancellation/ready when mutable delivery fields incorrectly appear unassigned.
+- New cancellation-policy-2 purchases permit direct buyer cancellation only before acceptance. Accepted/packed orders require a versioned seller-reviewed request before readiness. One active request holds preparation and pickup; a 24-hour expiry never changes the order, stock or payment.
+- Request and decision UUID retries retain original intent; changed intent, stale version, foreign ownership, changed source custody, invalid reason/text and late decisions fail without partial writes. Approval, stock/funding release and actual Wallet reversal commit together. Original request fields and event history cannot be rewritten or deleted.
+- Before acceptance, seller serialization omits street, phone, pin, notes and barcode; UI controls cannot print a waybill. Read-only redaction never overwrites the purchased recipient. Acceptance exposes the original snapshot. Historical purchased cancellation policy 1 is retained; unknown versions fail for review.
 - A canceled order does not silently return or move its allocated voucher discount to sibling orders.
 - The seller cannot mark `PICKED_UP`, `DELIVERED`, `COMPLETED`, or `RETURNED` without the actor-specific custody/receipt event.
 
@@ -268,6 +271,9 @@ notification. Delivery retries cannot create a second notification.
 - The pickup rider may hand the parcel only to its assigned Origin Bayan Hub.
 - Pickup responsibility ends only when the expected hub scans inbound; leaving the page or marking a generic transit status does not end custody.
 - Duplicate scans are idempotent. A mismatched or damaged parcel enters an exception path without advancing the order.
+- Recheck retained source custody and the commercial/parcel stages under the original locks. New pickup requires original seller custody; origin intake requires the actual pickup rider as retained holder. A current unassigned/ready field cannot override contradictory custody.
+- One named small-hub operator may receive, sort and dispatch; the handing-over rider/driver remains separate. Ordinary inspection never performs those actions together. Bag lookup cannot open a seal or receive unseen parcels, and dispatch cannot generate physical scan evidence from database IDs. Existing actual bag/manifest commands remain available.
+- Scanner feedback identifies the original canonical event and actor. Prepared labels, supplemental aliases, inherited transport departures and derived local records cannot be counted as independent physical scans. No fixed scan-count limit may skip an original required hub.
 
 ### Final-Mile Outcome
 

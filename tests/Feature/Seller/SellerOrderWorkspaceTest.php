@@ -175,14 +175,14 @@ class SellerOrderWorkspaceTest extends TestCase
         $this->assertSame('placed', $order->fresh()->status);
     }
 
-    public function test_restricted_shop_history_keeps_owned_orders_and_the_existing_waybill_without_new_work(): void
+    public function test_restricted_shop_history_keeps_owned_orders_but_hides_unaccepted_waybill(): void
     {
         $order = $this->order();
         $this->shop->update(['status' => 'suspended']);
         $this->actingAs($this->seller)->get(route('seller.orders.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('shopEligible', false)->has('orders.data', 1)->where('orders.data.0.id', $order->id)
             ->where('orders.data.0.can_accept_and_pack', false)->where('orders.data.0.can_cancel', false)
-            ->where('orders.data.0.can_print_waybill', true));
+            ->where('orders.data.0.can_print_waybill', false));
         $this->post(route('seller.orders.acceptAndPack', $order))->assertRedirect()->assertSessionHas('error');
         $this->assertSame('placed', $order->fresh()->status);
     }
@@ -297,7 +297,7 @@ class SellerOrderWorkspaceTest extends TestCase
         $this->post(route('seller.orders.cancel', $order), ['reason' => 'Other reason', 'notes' => 'The parcel was damaged before pickup.'])->assertSessionHas('success');
         $this->assertSame('Other reason: The parcel was damaged before pickup.', $order->fresh()->notes);
         $this->assertSame(12, $this->product->fresh()->stock);
-        $this->post(route('seller.orders.cancel', $order), ['reason' => 'Other reason', 'notes' => 'The parcel was damaged before pickup.'])->assertSessionHas('error');
+        $this->post(route('seller.orders.cancel', $order), ['reason' => 'Other reason', 'notes' => 'The parcel was damaged before pickup.'])->assertSessionHas('success');
         $this->assertSame(12, $this->product->fresh()->stock);
         $this->assertSame('cancelled', $order->delivery->fresh()->status);
         $this->assertSame(1, DB::table('notifications')->where('data->milestone', 'cancelled')->count());

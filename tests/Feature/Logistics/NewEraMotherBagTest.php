@@ -40,7 +40,7 @@ class NewEraMotherBagTest extends TestCase
 
     private function command(MotherBag $bag, string $action, array $extra = []): MotherBag
     {
-        return app(MotherBagService::class)->command($bag->fresh(), $this->flowHandler($bag->source), $action, ['version' => $bag->fresh()->version, ...$extra]);
+        return app(MotherBagService::class)->command($bag->fresh(), $this->flowHandler($bag->source), $action, ['version' => $bag->fresh()->version, ...($action === 'add' ? ['handling' => ['weight_kg' => 1, 'length_cm' => 20, 'width_cm' => 20, 'height_cm' => 20, 'confirmed' => true]] : []), ...$extra]);
     }
 
     private function manifest(Delivery $parcel): LogisticsManifest

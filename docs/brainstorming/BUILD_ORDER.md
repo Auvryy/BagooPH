@@ -79,7 +79,7 @@ Recheck coverage and eligibility at confirmation; store route, address/measureme
 
 **Source topics:** 6, 11–13. **Prerequisites:** B03–B05.
 
-Map pending, accepted, packed, pickup and in-transit states to permitted cancellation, disclosure and refund actions. Keep ready status and a printed waybill distinct if current behavior permits printing earlier.
+The selected [B06 contract](B06_ACCEPTANCE_CANCELLATION.md) permits direct cancellation before acceptance and seller review afterward, with unchanged-order expiry at 24 hours. Recipient details and printing are withheld until acceptance. Printing remains separate from readiness. Historical purchased terms retain their original boundary. User acceptance for B01–B06 is tracked separately in the [later-review guide](MANUAL_REVIEW_B01_B06.md).
 
 **Exit gate:** The last permitted cancellation and first prohibited cancellation are demonstrated, including simultaneous pickup/cancel, timeout, stock restoration and once-only prepaid reversal. No cancellation fabricates a physical return or COD repayment.
 
@@ -87,7 +87,7 @@ Map pending, accepted, packed, pickup and in-transit states to permitted cancell
 
 **Source topics:** 14, 20; handover part of 25. **Prerequisites:** B02, B03, B06.
 
-Complete one online parcel handover at a time before adding batch/offline behavior. Validate actor, next hub, current holder, receipt evidence and recovery. Derive scan counts from the chosen route and actions.
+The [B07 contract](B07_INDIVIDUAL_HANDOVERS.md) uses one explicit online custody action at a time. Validate actor, frozen next hub, current holder, receipt evidence and supervised recovery. One small-hub operator may receive, sort and dispatch, with a separate physical rider/driver. Derive evidence counts from the stored route and actual actions; inspection, bag lookup and generated labels cannot manufacture movement. B01–B07 continuity is verified across COD/Wallet and local/shared-Mother/cross-Mother journeys.
 
 **Exit gate:** Duplicate scans, competing receivers, wrong hubs, stale custody and a failed transaction do not duplicate or invent movement. The agreed independent handover rule supports legitimate small-hub operations. Fixed 4/6/8 scan totals are examples, not universal limits.
 
@@ -95,7 +95,7 @@ Complete one online parcel handover at a time before adding batch/offline behavi
 
 **Source topics:** 16; cargo part of 27. **Prerequisites:** B03, B04, B07.
 
-Define automatic open-bag creation, physical reusable bag versus trip seal identity, capacity, numbered seals and atomic membership. Support non-baggable parcels as explicit manifest cargo without fictitious bags.
+The [B08 contract](B08_BAGS_SEALS_AND_LOOSE_CARGO.md) defines explicit automatic-lane packing, permanent sack versus trip/seal identities, retained handling readings, enforced bag capacity and individual loose freight. Packing assignment cannot imply sealing, dispatch or receipt. Original purchased shipping terms remain unchanged.
 
 **Exit gate:** A parcel has at most one active container/manifest membership. Concurrent first scans cannot create competing bags; sealed membership cannot change. Weight/size limits and individual loose-cargo unloading are enforced.
 

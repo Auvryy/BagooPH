@@ -22,17 +22,23 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
-use Tests\Concerns\InteractsWithCodCollection;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
+use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\TestCase;
 
 class CourierOperationsHardeningTest extends TestCase
 {
     use CreatesE2EOrders;
-    use InteractsWithCodCollection;
+    use InteractsWithOrderActions;
     use InteractsWithRoles;
     use RefreshDatabase;
+
+    // The retained retry cases use the historical buyer-confirmation contract.
+    protected function flowContractVersion(): int
+    {
+        return 1;
+    }
 
     private User $buyer;
 
@@ -711,13 +717,11 @@ class CourierOperationsHardeningTest extends TestCase
     {
         Storage::fake('public');
         Storage::fake('local');
-        $this->rider->courierProfile->update([
-            'assigned_hub_id' => $this->destinationHub->id,
-            'assigned_barangay' => 'Poblacion III',
-        ]);
-        $delivery = $this->createDelivery('out_for_delivery', $this->rider);
+        $delivery = $this->flowDelivery($this->newFlowOrder(), 'out_for_delivery');
+        $rider = $delivery->assignedRider;
+        $checkpointCount = $delivery->checkpoints()->count();
 
-        $this->actingAs($this->rider)
+        $this->actingAs($rider)
             ->patch(route('courier.updateStatus', $delivery), [
                 ...$this->codCollectionInput($delivery),
                 'status' => 'delivered',
@@ -725,7 +729,7 @@ class CourierOperationsHardeningTest extends TestCase
             ])
             ->assertSessionHas('success');
 
-        $this->actingAs($this->rider)
+        $this->actingAs($rider)
             ->patch(route('courier.updateStatus', $delivery), [
                 ...$this->codCollectionInput($delivery),
                 'status' => 'delivered',
@@ -734,7 +738,7 @@ class CourierOperationsHardeningTest extends TestCase
 
         $this->assertSame('delivered', $delivery->fresh()->status);
         $this->assertCount(1, Storage::disk('local')->allFiles('delivery-proofs'));
-        $this->assertDatabaseCount('delivery_checkpoints', 1);
+        $this->assertSame($checkpointCount + 1, $delivery->checkpoints()->count());
     }
 
     public function test_terminal_orders_cannot_resume_rider_custody_even_with_active_delivery_rows(): void
@@ -813,8 +817,9 @@ class CourierOperationsHardeningTest extends TestCase
     {
         Storage::fake('public');
         Storage::fake('local');
-        $rider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
-        $delivery = $this->createDelivery('out_for_delivery', $rider);
+        $delivery = $this->flowDelivery($this->newFlowOrder(), 'out_for_delivery');
+        $rider = $delivery->assignedRider;
+        $checkpointCount = $delivery->checkpoints()->count();
         $this->actingAs($rider)->patch(route('courier.updateStatus', $delivery), [
             ...$this->codCollectionInput($delivery),
             'status' => 'delivered', 'courier_notes' => 'Original handoff note',
@@ -829,7 +834,7 @@ class CourierOperationsHardeningTest extends TestCase
         ])->assertSessionHas('error');
         $this->assertSame($before, $delivery->fresh()->getAttributes());
         $this->assertSame('completed', $delivery->order->fresh()->status);
-        $this->assertDatabaseCount('delivery_checkpoints', 1);
+        $this->assertSame($checkpointCount + 1, $delivery->checkpoints()->count());
         $this->assertCount(1, Storage::disk('local')->allFiles('delivery-proofs'));
     }
 
@@ -837,8 +842,10 @@ class CourierOperationsHardeningTest extends TestCase
     {
         Storage::fake('public');
         Storage::fake('local');
-        $rider = $this->createScopedRider($this->destinationHub, 'Poblacion III');
-        $delivery = $this->createDelivery('out_for_delivery', $rider, ['courier_notes' => 'Original handoff note']);
+        $delivery = $this->flowDelivery($this->newFlowOrder(), 'out_for_delivery');
+        $rider = $delivery->assignedRider;
+        $checkpointCount = $delivery->checkpoints()->count();
+        $delivery->update(['courier_notes' => 'Original handoff note']);
         $originalProof = '/storage/'.UploadedFile::fake()->create('original.jpg', 20, 'image/jpeg')->store('delivery-proofs', 'public');
         $service = app(OrderStateMachineService::class);
         $service->transition($delivery, 'delivered', $rider, $this->codCollectionInput($delivery) + [
@@ -851,7 +858,7 @@ class CourierOperationsHardeningTest extends TestCase
         ])->assertSessionHas('error');
         $this->assertSame($originalProof, $delivery->fresh()->proof_image);
         $this->assertSame('Original handoff note', $delivery->fresh()->courier_notes);
-        $this->assertDatabaseCount('delivery_checkpoints', 1);
+        $this->assertSame($checkpointCount + 1, $delivery->checkpoints()->count());
         $this->assertCount(1, Storage::disk('public')->allFiles('delivery-proofs'));
         $this->assertSame([], Storage::disk('local')->allFiles('delivery-proofs'));
         $this->assertDatabaseCount('commission_ledgers', 0);

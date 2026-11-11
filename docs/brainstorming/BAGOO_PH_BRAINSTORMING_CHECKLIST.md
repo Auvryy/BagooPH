@@ -13,12 +13,12 @@ For each package, record **decision:** pending/accepted/changed/deferred/rejecte
 - [ ] **B00 — Inventory existing behavior and settle shared decisions.** Topics: All 27; especially 7–9, 18, 21, 25–27. Requires: None. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B01 — Verify hub topology and forward route planning.** Topics: 1–4. Requires: B00. Decision: current route contract accepted for Q1; delivery: Q1 merged in web PR #160 (`464831d`); evidence: [Q1 routing record](QUESTION_01_ROUTING.md). Full package remains open for any additional topology decisions.
 - [x] **B02 — Confirm company roles, operator identities and rider placement.** Topics: 23, 24; identity part of 14. Requires: B01. Decision: accepted with corrections; delivery: selected account/scanner scope merged in web PR #160 and logistics-mobile PR #1 (`661f84f`); evidence: [worker accounts and scanner decision](QUESTION_23_24_WORKER_ACCOUNTS.md). Owner-only provisioning retained; emergency impersonation and device acceptance remain separate.
-- [x] **B03 — Define shared shipment, custody and privacy contracts.** Topics: 5, 11–14, 17, 20, 25, 27. Requires: B01, B02; uses their accepted Q1 route and named-worker contracts. Decision: retain existing identity, route, evidence and privacy boundaries with explicit future transport compatibility; delivery: contract defined and locally verified on `feat/brainstorm-b03-custody-contracts`, publication pending; evidence: [B03 contract](B03_SHIPMENT_CUSTODY_PRIVACY.md) and [roadmap results](../CORE_FLOW_ROADMAP.md#b03-shipment-custody-and-privacy-contract--november-11-2026). The 259 focused tests pass; later operational packages and remaining B00/B01 decisions retain their own gates. Mixed transport execution remains B12.
-- [x] **B04 — Decide tariffs, liability and original payment allocations.** Topics: 7, 8, 17, 25–27. Requires: B00, B01, B03. Decision: user selected PHP 50/1 kg plus PHP 20 per extra started kg, seller-fault item-plus-shipping refunds, funded courier review and buyer shipping liability for in-transit change-of-mind refusal; delivery: decisions defined and tariff/allocation changes locally verified on the existing B03 branch, publication pending; evidence: [B04 money contract](B04_MONEY_AND_LIABILITY.md) and the roadmap. Successor refund execution retains B11–B13 activation gates; this check completes the decision package, not those later features.
-- [x] **B05 — Verify checkout quotes and freeze purchased terms.** Topics: 1, 2, 26; measurements and voucher part of 27. Requires: B01, B03, B04. Decision: preserve selected company/route, original money terms and supported policy versions; delivery: implemented and locally verified on the existing B03 branch, publication pending; evidence: [B05 checkout contract](B05_PURCHASED_CHECKOUT_TERMS.md) and the roadmap. Combined B03–B05 gate: 409 backend tests / 13,986 assertions and 15 frontend checks passed, with TypeScript/build/formatting. Physical PostgreSQL concurrency and the successor refund workflow retain separate acceptance.
-- [ ] **B06 — Align seller acceptance and cancellation boundaries.** Topics: 6, 11–13. Requires: B03–B05. Decision: pending; delivery: not started; evidence: pending.
-- [ ] **B07 — Verify individual scanning and actual custody transfer.** Topics: 14, 20; handover part of 25. Requires: B02, B03, B06. Decision: pending; delivery: not started; evidence: pending.
-- [ ] **B08 — Verify bags, seals and loose freight membership.** Topics: 16; cargo part of 27. Requires: B03, B04, B07. Decision: pending; delivery: not started; evidence: pending.
+- [x] **B03 — Define shared shipment, custody and privacy contracts.** Topics: 5, 11–14, 17, 20, 25, 27. Requires: B01, B02; uses their accepted Q1 route and named-worker contracts. Decision: retain existing identity, route, evidence and privacy boundaries with explicit future transport compatibility; delivery: contract defined and locally verified on `feat/brainstorm-b03-custody-contracts`, merged in PR #161; user manual acceptance pending; evidence: [B03 contract](B03_SHIPMENT_CUSTODY_PRIVACY.md) and [roadmap results](../CORE_FLOW_ROADMAP.md#b03-shipment-custody-and-privacy-contract--november-11-2026). The 259 focused tests pass; later operational packages and remaining B00/B01 decisions retain their own gates. Mixed transport execution remains B12.
+- [x] **B04 — Decide tariffs, liability and original payment allocations.** Topics: 7, 8, 17, 25–27. Requires: B00, B01, B03. Decision: user selected PHP 50/1 kg plus PHP 20 per extra started kg, seller-fault item-plus-shipping refunds, funded courier review and buyer shipping liability for in-transit change-of-mind refusal; delivery: decisions defined and tariff/allocation changes locally verified on the existing B03 branch, merged in PR #161; user manual acceptance pending; evidence: [B04 money contract](B04_MONEY_AND_LIABILITY.md) and the roadmap. Successor refund execution retains B11–B13 activation gates; this check completes the decision package, not those later features.
+- [x] **B05 — Verify checkout quotes and freeze purchased terms.** Topics: 1, 2, 26; measurements and voucher part of 27. Requires: B01, B03, B04. Decision: preserve selected company/route, original money terms and supported policy versions; delivery: implemented and locally verified on the existing B03 branch, merged in PR #161; user manual acceptance pending; evidence: [B05 checkout contract](B05_PURCHASED_CHECKOUT_TERMS.md) and the roadmap. Combined B03–B05 gate: 409 backend tests / 13,986 assertions and 15 frontend checks passed, with TypeScript/build/formatting. Physical PostgreSQL concurrency and the successor refund workflow retain separate acceptance.
+- [x] **B06 — Align seller acceptance and cancellation boundaries.** Topics: 6, 11–13. Requires: B03–B05. Decision: direct cancel before acceptance, seller review within 24 hours afterward, recipient disclosure after acceptance; delivery: implemented and automatically verified on `feat/brainstorm-b06-cancellation-feedback`, not yet published; evidence: [B06 contract](B06_ACCEPTANCE_CANCELLATION.md) and roadmap: 258 backend tests / 7,086 assertions, 72 frontend checks, TypeScript and production build passed. User manual review remains pending in the [later-review guide](MANUAL_REVIEW_B01_B06.md).
+- [x] **B07 — Verify individual scanning and actual custody transfer.** Topics: 14, 20; handover part of 25. Requires: B02, B03, B06. Decision: one named small-hub operator may receive/sort/dispatch, with a separate rider/driver for handovers; no automatic inspection-to-custody or fixed scan-count caps. Delivery: implemented and automatically verified on the existing B06 branch, not published. Evidence: [B07 contract](B07_INDIVIDUAL_HANDOVERS.md), six COD/Wallet route journeys, 710 combined backend cases / 27,460 assertions and a final 13-case native-link check, 106 frontend checks, TypeScript/build/formatting. User review remains pending in the [later-review guide](MANUAL_REVIEW_B01_B06.md).
+- [x] **B08 — Verify bags, seals and loose freight membership.** Topics: 16; cargo part of 27. Requires: B03, B04, B07. Decision: explicit automatic-lane packing, reusable sack/trip/seal separation, retained outer-package readings and loose manifest cargo; delivery: implemented with automated acceptance on the existing B06 branch, not published or migrated into development. Evidence: [B08 contract](B08_BAGS_SEALS_AND_LOOSE_CARGO.md) and the roadmap. Physical PostgreSQL concurrency, actual fit and later user review remain separate checks; packing does not imply sealing or custody movement.
 - [ ] **B09 — Connect sorting guidance, manifests and dispatch.** Topics: 15; local staging part of 27. Requires: B01, B02, B07, B08. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B10 — Verify delivery completion, earnings and cash reconciliation.** Topics: 8, 12, 25; baseline money from 26. Requires: B04, B05, B09. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B11 — Verify return requests and independent decisions.** Topics: 5, 8, 17, 18, 25. Requires: B03, B04, B10. Decision: pending; delivery: not started; evidence: pending.
@@ -79,12 +79,14 @@ The source provides no core-takeaway proposal for this topic.
 
 ## 6. Order Cancellation Window & Restrictions
 
-- [ ] Resolve the source question: great next question, when does the buyer able to cancel the order? and when it shouldn't be?
+- [x] Resolve the source question: great next question, when does the buyer able to cancel the order? and when it shouldn't be?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Allowed: During Pending/Unpaid (instant cancel, immediate refund) and Pre-Acceptance Processing (instant cancel with 0 seller approval before seller clicks "Accept"). Once seller clicks "Accept", cancellation requires seller approval within 24h.
-- [ ] Review/decide: Prohibited: Once status reaches Ready to Ship (waybill printed), Picked Up, In Transit, or Out for Delivery. The buyer must receive the item and file a Return/Refund instead.
+- [x] Review/decide: Allowed: During Pending/Unpaid (instant cancel, immediate refund) and Pre-Acceptance Processing (instant cancel with 0 seller approval before seller clicks "Accept"). Once seller clicks "Accept", cancellation requires seller approval within 24h.
+- [x] Review/decide: Prohibited: Once status reaches Ready to Ship (waybill printed), Picked Up, In Transit, or Out for Delivery. The buyer must receive the item and file a Return/Refund instead.
+
+Decision: **accepted with corrections in B06**. Direct cancellation is before acceptance; accepted/packed orders require seller review within 24 hours. Expiry leaves the order/payment unchanged. Printing is separate from readiness. Only an actual paid Wallet source is refunded; unpaid COD has no cash repayment. Original policy-1 purchases retain their rights. See [B06](B06_ACCEPTANCE_CANCELLATION.md).
 
 ## 7. Missing Parcel Protocol, Liability, and Terms & Conditions
 
@@ -149,15 +151,19 @@ Proposed ideas to review:
 - [ ] Review/decide: Escrow & Dispute Loss: Cash handed over off-platform is not covered by buyer or seller protection; any subsequent disputes, lost returns, or refund claims will be rejected due to lack of verifiable system proof.
 - [ ] Review/decide: Policy Violations: Bypassing official COD reconciliation protocols violates platform terms, triggering store wallet penalties and account flags for fraudulent transaction patterns.
 
+B06 boundary: no commercial cancellation can replace retained physical custody or fabricate a COD repayment. Pickup requires the canonical state and pending review holds preparation. Broader off-platform investigation, claim moderation and automatic sanctions remain B14–B16 decisions; these two source questions are not marked fully resolved.
+
 ## 13. Pre-Acceptance Address Harvesting & Shadow Delivery Bypass
 
-- [ ] Resolve the source question: suppose the thing is he didn't accept or packt he order so there is no track to be happened. what if as soon as he see someoen order he didt even accept just take down notes of the address and yeah do the illegal thing. how do we solve this?
+- [x] Resolve the source question: suppose the thing is he didn't accept or packt he order so there is no track to be happened. what if as soon as he see someoen order he didt even accept just take down notes of the address and yeah do the illegal thing. how do we solve this?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Pre-Acceptance Data Lock: Seller cannot access customer PII or generate waybill barcodes until clicking "Accept Order" within 48h.
-- [ ] Review/decide: Dual-Layer PII Masking: Thermal waybill stickers print masked recipient text (e.g., J*** D**, town-only); full street address and phone coordinates are encrypted inside the waybill QR code, decodable exclusively by authorized BagooPH rider app cameras.
+- [x] Review/decide: Pre-Acceptance Data Lock: Seller cannot access customer PII or generate waybill barcodes until clicking "Accept Order" within 48h.
+- [x] Review/decide: Dual-Layer PII Masking: Thermal waybill stickers print masked recipient text (e.g., J*** D**, town-only); full street address and phone coordinates are encrypted inside the waybill QR code, decodable exclusively by authorized BagooPH rider app cameras.
 - [ ] Review/decide: Automated Anti-Scam Check-in: Platform triggers automated in-app prompts to buyers if orders stall or if off-platform communication is detected, helping buyers identify suspicious activity early.
+
+Decision: **accepted with corrections for disclosure**. B06 withholds street, phone, pin, notes and waybill until acceptance; no 48-hour auto-cancellation is introduced. The shared-key encrypted PII QR proposal is rejected in favor of B03 authenticated lookup and private response controls. Automatic check-ins remain a later B14/B16 decision, not a delivered anti-fraud guarantee. See [B06](B06_ACCEPTANCE_CANCELLATION.md).
 
 ## 14. High-Throughput Mobile Scanning, Hub Scan Milestones, and Account Multi-Tenancy
 
@@ -167,7 +173,9 @@ Proposed ideas to review:
 
 - [ ] Review/decide: High-Throughput Mobile Scanning: Workers use mobile camera/PDAs with continuous batch-scanning mode (offline-first local queue, bulk web-socket/REST payload sync) to handle hundreds of scans per minute without server bottlenecks.
 - [ ] Review/decide: Standard Hub Scan Milestones: Loose parcels are scanned once at Inbound Intake and once at Sorting/Mother Bagging. Outbound truck loading and bulk transit scans require scanning ONLY the parent Mother Bag barcode, updating all child parcels simultaneously.
-- [ ] Review/decide: Account Multi-Tenancy & Worker Sessions: Instead of shared single-account credentials, hubs use Hub Multi-Tenancy with individual worker operator IDs logged into active workstation sessions for granular audit trails and concurrent scanning.
+- [x] Review/decide: Account Multi-Tenancy & Worker Sessions: Instead of shared single-account credentials, hubs use Hub Multi-Tenancy with individual worker operator IDs logged into active workstation sessions for granular audit trails and concurrent scanning.
+
+Identity decision: **retained from B02 and verified in B07**. Named workers use their own activated accounts and assigned hub authority; no shared owner login or impersonation is introduced. One small-hub operator may perform multiple internal stages. Offline/batch throughput and scanner hardware measurements remain B17; they are not marked delivered here.
 
 ## 15. Real-Time Sorting Bin Guidance, Mother Bag Assignment, and Linehaul Dispatch
 
@@ -181,13 +189,15 @@ Proposed ideas to review:
 
 ## 16. Automatic Mother Bag Generation, Physical Barcode Seals, and High-Speed Bulk Relay
 
-- [ ] Resolve the source question: how bag is automatically created? like thos mother bags? also we knwo we ahave parcel scaning and these motherbags, does this means there is a printed bag code they need to scan? how fast do they need this tho? how will this really works tho? ofc we now we just bag and slid it and then go per hub right? discuss this tome
+- [x] Resolve the source question: how bag is automatically created? like thos mother bags? also we knwo we ahave parcel scaning and these motherbags, does this means there is a printed bag code they need to scan? how fast do they need this tho? how will this really works tho? ofc we now we just bag and slid it and then go per hub right? discuss this tome
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Implicit Generation: Bags are automatically instantiated in the system the moment the first parcel for a destination hub is scanned at an active sorting bin.
-- [ ] Review/decide: Physical Barcode Seals: Uses heavy-duty reusable sacks with permanently stitched barcodes or disposable numbered tamper-evident zip-tie seals paired to the bin station.
-- [ ] Review/decide: High-Speed Bulk Relay: Individual parcels are scanned into the bag once (0.2–0.5s per item); subsequent linehaul truck loading and receiving requires only scanning the parent Mother Bag barcode, moving dozens of parcels in seconds.
+- [x] Review/decide: Implicit Generation: Bags are automatically instantiated in the system the moment the first parcel for a destination hub is scanned at an active sorting bin.
+- [x] Review/decide: Physical Barcode Seals: Uses heavy-duty reusable sacks with permanently stitched barcodes or disposable numbered tamper-evident zip-tie seals paired to the bin station.
+- [x] Review/decide: High-Speed Bulk Relay: Individual parcels are scanned into the bag once (0.2–0.5s per item); subsequent linehaul truck loading and receiving requires only scanning the parent Mother Bag barcode, moving dozens of parcels in seconds.
+
+Decision: first scan means an explicit authorized packing action, not inspection or a fabricated sorting-bin scan. Optional permanent sack identity, a new trip reference and a fresh numbered seal remain separate. Bag loading is atomic; arriving parcels retain individual receipts. The unmeasured 0.2–0.5 second target and bag-only receipt premise are not accepted evidence. Measured throughput stays B17; sorting-bin guidance stays B09. See the [B08 contract](B08_BAGS_SEALS_AND_LOOSE_CARGO.md).
 
 ## 17. Reverse Logistics Architecture, Return Waybills, Cost Liability Splits, and Transit SLAs
 
@@ -222,13 +232,15 @@ Proposed ideas to review:
 
 ## 20. Minimum and Maximum Scan Thresholds per Hub & End-to-End Lifecycle
 
-- [ ] Resolve the source question: in total what is the minimum + maxium scan of parcel per hub from start to finish? can we count?
+- [x] Resolve the source question: in total what is the minimum + maxium scan of parcel per hub from start to finish? can we count?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Per-Hub Touchpoints: Minimum 1 scan during bulk linehaul transit (scanning parent Mother Bag barcode only); maximum 2 scans when parcel is loose (Inbound Intake + Outbound Sort/Bagging).
-- [ ] Review/decide: End-to-End Parcel Lifecycle: Short intra-town trips require 4 scans total; medium inter-town trips require 6 scans; long cross-region trips require 7–8 scans maximum from first-mile pickup to final-mile proof of delivery.
-- [ ] Review/decide: Bulk Relay Efficiency: Direct loose parcel touches are eliminated at transit sorting hubs by moving dozens of parcels under a single consolidated Mother Bag barcode.
+- [x] Review/decide: Per-Hub Touchpoints: Minimum 1 scan during bulk linehaul transit (scanning parent Mother Bag barcode only); maximum 2 scans when parcel is loose (Inbound Intake + Outbound Sort/Bagging).
+- [x] Review/decide: End-to-End Parcel Lifecycle: Short intra-town trips require 4 scans total; medium inter-town trips require 6 scans; long cross-region trips require 7–8 scans maximum from first-mile pickup to final-mile proof of delivery.
+- [x] Review/decide: Bulk Relay Efficiency: Direct loose parcel touches are eliminated at transit sorting hubs by moving dozens of parcels under a single consolidated Mother Bag barcode.
+
+Decision: **changed in B07**. Derive the required actions from the frozen route and actual bag, manifest, delivery and exception events. Fixed four/six/eight totals and universal per-hub maxima are rejected. A bag departure may reuse its loaded membership; arrival still needs actual seal verification and individual member receipt. Canonical checkpoint counters distinguish submitted, inherited and derived evidence rather than pretending to measure physical touches. See [B07](B07_INDIVIDUAL_HANDOVERS.md).
 
 ## 21. Stagnant Parcel Auto-Flagging, SLA Timers, and Three-Way Account Penalties
 
@@ -283,7 +295,9 @@ Proposed ideas to review:
 - [ ] Review/decide: Asymmetric Transit Timers: Forward deliveries enforce a strict 48h inter-hub timeout before auto-flagging missing parcels; reverse logistics parcels in consolidation staging receive an extended 96h window to prevent premature loss claims.
 - [ ] Review/decide: Doorstep Cash Prohibition & Net-Refunds: Doorstep cash collection for returns is prohibited. For change-of-mind returns, the return shipping fee is deducted automatically from the product refund, with returns blocked if shipping exceeds item value.
 - [ ] Review/decide: Geo-Fenced SLA Penalties: Courier late-pickup fines (₱150) apply strictly within contracted, active coverage zones; orders in unserviceable or low-fleet territories auto-cancel without courier or seller penalties.
-- [ ] Review/decide: Two-Human Custody Rule: Sorter workstation scanners reject check-in scans if the current parcel custody matches the logged-in operator, preventing delivery riders from validating their own vehicle handovers.
+- [x] Review/decide: Two-Human Custody Rule: Sorter workstation scanners reject check-in scans if the current parcel custody matches the logged-in operator, preventing delivery riders from validating their own vehicle handovers.
+
+Handover decision: **accepted with corrections in B07**. The rider/driver and the hub operator are separate named participants. One operator may receive, sort and dispatch at a small hub; an internal stage is not another physical handover requiring a second sorter. Account separation does not prove physical independence. The other timer, liability and refund proposals retain their later B11–B16 decisions.
 
 ## 26. Baseline Shipping Fee Matrix, Volumetric Weight Tiers, and Cargo Surcharges
 
@@ -303,7 +317,7 @@ Decision: **user-selected amendment, November 11**: PHP 50 including 1 kg plus P
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Dual Manifest Loading: Digital trip manifests support both bulk Mother Bag barcodes and individual loose non-baggable barcodes (e.g., guitars, bulky tools), requiring individual offloading scans before manifest clearance to prevent lost freight or crushed cargo.
+- [x] Review/decide: Dual Manifest Loading: Digital trip manifests support both bulk Mother Bag barcodes and individual loose non-baggable barcodes (e.g., guitars, bulky tools), requiring individual offloading scans before manifest clearance to prevent lost freight or crushed cargo.
 - [ ] Review/decide: Intra-Hub Final Mile Staging: Intra-town orders bypass Mother Bags directly into local delivery staging shelves (STAGED_FOR_FINAL_MILE), pausing idle table timers to align with afternoon delivery shifts without raising false alarms.
 - [ ] Review/decide: Scale Verification & Negative Wallet Freezes: Discrepancies between declared and scale weight trigger automated camera scale logs and deduct overage fees from seller wallets; balances dropping below ₱0 trigger an immediate catalog visibility shadowban until debts are settled.
 - [ ] Review/decide: Proportional Voucher Split: Multi-item cart discounts are divided proportionally across all items, preventing voucher exploitation during partial returns by refunding only the net discounted item price.
