@@ -46,6 +46,8 @@ Prioritize the existing core baseline and keep optional additions deferred. Cale
 ## Planning and Current Gaps
 
 - `CORE_FLOW_ROADMAP.md` is the only current implementation audit, phase order, rating comparison, and deferred-scope list.
+- [Shared shipment, custody and privacy contract](brainstorming/B03_SHIPMENT_CUSTODY_PRIVACY.md) maps existing forward/RTS/buyer-return identities, event fields, authorized lookup and later transport compatibility onto the merged routing and worker-account foundations. Operational acceptance remains owned by the ordered brainstorming packages.
+- [Shipping money and liability decisions](brainstorming/B04_MONEY_AND_LIABILITY.md) records the selected PHP 50 weight tariff, exact pools, partial-unit examples and later refund/funding activation. [Purchased checkout terms](brainstorming/B05_PURCHASED_CHECKOUT_TERMS.md) defines confirmation locking, final source validation, original snapshots and successful replay.
 - [Cross-role readiness gap plan](READINESS_GAP_PLAN.md) traces remaining buyer, seller, rider, logistics and admin gaps to current source, separates proposed functions from verification and policy decisions, and defines six reviewable deliveries with independent implementation and defense acceptance targets.
 - [Authentication and registration improvements](auth-plan/README.md) separates access/verification recovery, shared field validation, terms acknowledgement, and combined acceptance into bounded deliveries while preserving existing account policies.
 - [Registration field review](auth-plan/REGISTRATION_FIELDS.md) maps signup and correction controls across roles, including demographics, identifier limits, passwords, private evidence and policy acknowledgement.

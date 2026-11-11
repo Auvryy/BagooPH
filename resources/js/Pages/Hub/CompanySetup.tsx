@@ -21,6 +21,16 @@ function Field({ label, error, children }: { label: string; error?: string; chil
     );
 }
 
+export function ShippingEarningsPreview({ baseFee, model }: { baseFee: string; model: string }) {
+    const baseCents = /^\d{1,6}(?:\.\d{1,2})?$/.test(baseFee) ? Math.round(Number(baseFee) * 100) : null;
+    const pickup = baseCents !== null && model === 'dedicated_fleet' ? Math.floor(baseCents / 6) : 0;
+    const delivery = baseCents === null ? 0 : model === 'dedicated_fleet' ? Math.floor(baseCents * 5 / 12) : Math.floor(baseCents / 2);
+    const peso = (cents: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(cents / 100);
+
+    return <p aria-live="polite">{baseCents === null ? 'Enter a valid base fee to preview its shares.'
+        : `${peso(baseCents)} base fee: ${peso(baseCents - pickup - delivery)} company, ${peso(delivery)} delivery rider${pickup > 0 ? ` and ${peso(pickup)} pickup rider` : ''}.`}</p>;
+}
+
 export default function CompanySetup({ company, companies, canProvision, hubs, staff, basePath }: Props) {
     const [tab, setTab] = useState('network');
     const [search, setSearch] = useState('');
@@ -388,7 +398,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                     <Field label="Shipping earnings model" error={tariff.errors.shipping_earnings_model}>
                                         <select value={tariff.data.shipping_earnings_model} onChange={event => tariff.setData('shipping_earnings_model', event.target.value)} className={hubInput}>
                                             <option value="standard">Standard: 50% company / 50% delivery</option>
-                                            <option value="dedicated_fleet">Dedicated: 25 / 25 / 10 from PHP 60</option>
+                                            <option value="dedicated_fleet">Dedicated: pickup, delivery and company shares</option>
                                         </select>
                                     </Field>
                                 </div>
@@ -400,12 +410,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                             <div className="space-y-3 text-xs leading-relaxed text-zinc-600">
                                 <p>Volumetric kg = length × width × height ÷ 3,500.</p>
                                 <p>Billable weight is the greater of actual and volumetric weight.</p>
-                                <p>
-                                    PHP 60 example:{' '}
-                                    {tariff.data.shipping_earnings_model === 'standard'
-                                        ? 'PHP 30 company and PHP 30 delivery rider.'
-                                        : 'PHP 25 company, PHP 25 delivery rider and PHP 10 pickup rider.'}
-                                </p>
+                                <ShippingEarningsPreview baseFee={tariff.data.base_fee} model={tariff.data.shipping_earnings_model} />
                                 <p>Product proceeds remain 90% seller and 10% Bagoo. COD cash stays separate from earned amounts.</p>
                             </div>
                         </HubPanel>

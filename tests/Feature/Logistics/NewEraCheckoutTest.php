@@ -70,7 +70,7 @@ class NewEraCheckoutTest extends TestCase
             ->assertSessionHasNoErrors()->assertRedirect(route('buyer.orders.index'));
         $order = Order::sole();
         $this->assertSame(2, $order->logistics_flow_version);
-        $this->assertSame('240.00', $order->shipping_fee);
+        $this->assertSame('230.00', $order->shipping_fee);
         $this->assertSame(1000, $order->shipping_quote['actual_weight_grams']);
         $this->assertSame(10000, $order->shipping_quote['volumetric_weight_grams']);
         $this->assertSame(10000, $order->shipping_quote['billable_weight_grams']);
@@ -95,14 +95,14 @@ class NewEraCheckoutTest extends TestCase
     {
         [$buyer, , $company, $cart, , $input] = $this->purchase();
         $response = $this->actingAs($buyer)->postJson(route('buyer.vouchers.apply'), $input)->assertOk();
-        $response->assertJsonPath('quote.shipping_fee', 240)->assertJsonPath('quote.shops.0.shipping_quote.billable_weight_grams', 10000)
+        $response->assertJsonPath('quote.shipping_fee', 230)->assertJsonPath('quote.shops.0.shipping_quote.billable_weight_grams', 10000)
             ->assertJsonPath('logisticsCompanies.0.id', $company->id);
         $response->assertJsonPath('quote.shops.0.shipping_quote.same_hub_bypass', false);
         $this->assertSame(['BH-LBN-01', 'MH-LAG-01', 'BH-SCZ-01'], array_column($response->json('quote.shops.0.shipping_quote.route'), 'code'));
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('deliveries', 0);
 
-        $this->postJson(route('buyer.vouchers.best'), $input)->assertOk()->assertJsonPath('quote.shipping_fee', 240);
+        $this->postJson(route('buyer.vouchers.best'), $input)->assertOk()->assertJsonPath('quote.shipping_fee', 230);
         $this->postJson(route('buyer.vouchers.choices'), $input)->assertOk();
         $items = app(CheckoutQuoteService::class)->selectedItems($buyer, $cart->items()->pluck('id')->all());
         $this->assertCount(0, app(LogisticsCheckoutService::class)->choices($items, [...$input, 'shipping_city' => 'Pagsanjan', 'shipping_postal_code' => '4008']));

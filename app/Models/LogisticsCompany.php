@@ -21,6 +21,8 @@ class LogisticsCompany extends Model
 
     protected $hidden = ['name_key', 'tin'];
 
+    protected $attributes = ['base_shipping_cents' => 5000, 'included_weight_grams' => 1000, 'additional_kg_cents' => 2000];
+
     protected static function booted(): void
     {
         static::saving(function (LogisticsCompany $company): void {

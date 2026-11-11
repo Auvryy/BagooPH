@@ -37,7 +37,7 @@ class NewEraRoutingRateTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_volumetric_weight_controls_the_tariff_and_flat_baseline_is_sixty_pesos(): void
+    public function test_volumetric_weight_controls_the_fifty_peso_base_and_started_kilogram_surcharge(): void
     {
         $product = new Product(['weight_kg' => '1.00', 'length_cm' => '70.00', 'width_cm' => '50.00', 'height_cm' => '10.00']);
         $item = new CartItem(['quantity' => 1]);
@@ -47,7 +47,7 @@ class NewEraRoutingRateTest extends TestCase
         $this->assertSame(1000, $flat['actual_weight_grams']);
         $this->assertSame(10000, $flat['volumetric_weight_grams']);
         $this->assertSame(10000, $flat['billable_weight_grams']);
-        $this->assertSame(6000, $flat['shipping_cents']);
+        $this->assertSame(23000, $flat['shipping_cents']);
         $company = new LogisticsCompany(['base_shipping_cents' => 6000, 'included_weight_grams' => 1000, 'additional_kg_cents' => 2000]);
         $weighted = $rates->quote(collect([$item]), $company);
         $this->assertSame(9, $weighted['additional_kilograms']);

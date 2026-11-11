@@ -20,6 +20,7 @@ use App\Services\Commerce\PhilippineAddressCatalog;
 use App\Services\Commerce\ProductSkuService;
 use App\Services\Commerce\SalePriceService;
 use App\Services\Logistics\LogisticsCheckoutService;
+use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsRoutingEngine;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
@@ -158,6 +159,17 @@ class CheckoutOrderService
 
             $shopGroups = $items->groupBy(fn (CartItem $item) => $item->product->shop_id)->sortKeys();
             $company = app(LogisticsCheckoutService::class)->select($items, $data, $data['logistics_company_id']);
+            try {
+                $company = app(LogisticsEligibilityService::class)->lockNetwork($company->id);
+                $routeHubIds = $shopGroups->flatMap(fn ($group) => array_column(
+                    $this->routingEngine->previewRoute($company, $group->first()->product->shop, $data)['route'], 'id'
+                ))->unique()->sort()->values()->all();
+                app(LogisticsEligibilityService::class)->lockNetwork($company->id, hubIds: $routeHubIds);
+            } catch (DomainException $exception) {
+                throw new CheckoutException($exception->getMessage(), previous: $exception);
+            }
+            $submissions->assertCurrentPrices($cart, $confirmationToken, $items);
+            $logisticsSnapshot = $submissions->logisticsSnapshot($cart);
             $deliveryType = $data['delivery_type'] ?? 'doorstep';
             $revisions = app(VoucherSelectionService::class)->resolve($data, $items, lock: true);
             $quote = app(CheckoutQuoteService::class)->quote($items, $deliveryType, $revisions, $buyer, $company);
@@ -252,6 +264,9 @@ class CheckoutOrderService
                 app(LifecycleNoticeService::class)->order($order, 'placed');
                 $orders->push($order->load('delivery', 'items'));
             }
+
+            // Keep all shop routes, measurements and rates consistent through their final writes.
+            $submissions->assertLogisticsUnchanged($cart, $logisticsSnapshot);
 
             if ($savedAddress && $data['shipping_latitude'] !== null && $data['shipping_longitude'] !== null) {
                 $savedAddress->update(['latitude' => $data['shipping_latitude'], 'longitude' => $data['shipping_longitude']]);

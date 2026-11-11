@@ -167,6 +167,8 @@ class AutomatedRoutingEngineTest extends TestCase
         $delivery->refresh();
 
         // 1. Attempt backward fast dispatch from Destination Mother Hub to Origin Bayan Hub
+        $before = $delivery->getAttributes();
+        $checkpointCount = $delivery->checkpoints()->count();
         $backhaulRes1 = $this->actingAs($net['destMotherHandler'])
             ->postJson('/hub/scan/fast-dispatch', [
                 'destination_hub_id' => $net['originBayan']->id,
@@ -194,7 +196,7 @@ class AutomatedRoutingEngineTest extends TestCase
                 "Routing Violation: Parcel tracking {$delivery->tracking_number} cannot be routed backward to {$net['originMother']->name}. Next authorized facility is {$net['destBayan']->name}."
             );
 
-        // 3. Attempt backward intake scan: Operator at Origin Mother Hub scans parcel that is already at Dest Mother Hub
+        // Inspection may show guidance, but a manually edited status is not receiving evidence.
         $scanBackwardRes = $this->actingAs($net['originMotherHandler'])
             ->postJson('/hub/scan', [
                 'barcode' => $delivery->tracking_number,
@@ -202,12 +204,15 @@ class AutomatedRoutingEngineTest extends TestCase
                 'mode' => 'inspect',
             ]);
 
-        $scanBackwardRes->assertStatus(422)
-            ->assertJsonPath('sound', 'buzz')
-            ->assertJsonPath(
-                'error',
-                "Routing Violation: Parcel tracking {$delivery->tracking_number} cannot be routed backward to {$net['originMother']->name}. Next authorized facility is {$net['destBayan']->name}."
-            );
+        $scanBackwardRes->assertOk()->assertJsonPath('confirmed', false)
+            ->assertJsonPath('prompt.requires_confirmation', false)
+            ->assertJsonPath('delivery.guidance.can_act', false);
+        $this->postJson('/hub/scan', [
+            'barcode' => $delivery->tracking_number, 'hub_id' => $net['originMother']->id,
+            'mode' => 'confirm', 'action' => 'RECEIVE_AT_MOTHER_HUB', 'expected_status' => $delivery->status,
+        ])->assertConflict();
+        $this->assertSame($before, $delivery->fresh()->getAttributes());
+        $this->assertSame($checkpointCount, $delivery->checkpoints()->count());
     }
 
     public function test_two_way_poka_yoke_location_scan_accepts_correct_bin_and_rejects_incorrect_bin(): void

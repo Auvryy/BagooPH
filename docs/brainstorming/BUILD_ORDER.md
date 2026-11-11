@@ -10,7 +10,7 @@ Forward operations establish transport primitives before reverse logistics reuse
 
 ## Decisions to settle in B00 before affected implementation
 
-- Pricing: the brainstorming PHP 50/divisor 5,000 proposal conflicts with the current PHP 60 example/divisor 3,500 contract. Retain current rules until an explicit replacement is approved, with versioned future quotes.
+- Pricing: on November 11 the user selected PHP 50 including 1 kg plus PHP 20 per started extra kilogram, retaining divisor 3,500. Published company tariffs and original purchases keep their original terms. See B04; geography tiers and additional insurance/handling fees remain unapproved.
 - Routes: no mandatory new central/NCR facility or automatic direct route between different child hubs. Check actual configured connectivity; matching province names or a province exclusion list alone does not prove a connected service path.
 - Timing: reconcile the 48-hour return holding proposal with the 96-hour proposal and distinguish packing, acceptance, pickup, transit, staging, review and claim deadlines. Counts such as 20–30 parcels are examples pending real capacity rules.
 - Money: agree refund eligibility, amount, source, liability evidence, partial-item/voucher treatment, rider pay, shipping charges and insufficient-funds handling before enabling deductions, reimbursement or sanctions. Existing virtual credits are not an insurance fund or bank transfer.
@@ -49,6 +49,8 @@ Confirm company/hub boundaries, named workers, rider joining/activation and cred
 
 **Source topics:** 5, 11–14, 17, 20, 25, 27. **Prerequisites:** B01, B02.
 
+Shared decisions, existing field mappings, compatibility boundaries and later-package ownership are in [the B03 contract](B03_SHIPMENT_CUSTODY_PRIVACY.md). It retains Q1 routing and B02 identities; mixed transport execution remains B12.
+
 Define identifiers and events for forward parcels, returns, bags, loose cargo, staging, handovers and corrections before expanding the scanner. Specify actor, recipient, route version and idempotency fields. Define address visibility and protected waybill lookup.
 
 **Exit gate:** A forward parcel and a return can share transport without sharing identity or money state. Sensitive addresses require authorized server access; QR possession alone grants no access. Physical observations, commercial status and cash custody remain distinguishable.
@@ -57,6 +59,8 @@ Define identifiers and events for forward parcels, returns, bags, loose cargo, s
 
 **Source topics:** 7, 8, 17, 25–27. **Prerequisites:** B00, B01, B03.
 
+The user-selected PHP 50/1 kg plus PHP 20 per extra started kg amendment, original-cent allocations and successor refund/liability decisions are in [B04](B04_MONEY_AND_LIABILITY.md). The refund successor retains B11–B13 activation and funding gates.
+
 Agree pricing, dimensions, surcharges, cancellation/return liability, voucher allocation, rider earnings and refund sources. Define original-unit refundable amounts and who funds any lost-parcel compensation.
 
 **Exit gate:** Integer-cent examples balance for COD, Wallet, multi-item discounts, partial returns and bulky/overweight cargo. No proposed insurance pool, negative-wallet restriction, unconditional rider pay or automatic fine is assumed to exist.
@@ -64,6 +68,8 @@ Agree pricing, dimensions, surcharges, cancellation/return liability, voucher al
 ### B05. Verify checkout quotes and freeze purchased terms
 
 **Source topics:** 1, 2, 26; measurements and voucher part of 27. **Prerequisites:** B01, B03, B04.
+
+Confirmation locking, final source checks, exact earnings terms, original replay and additive rollout are in [B05](B05_PURCHASED_CHECKOUT_TERMS.md).
 
 Recheck coverage and eligibility at confirmation; store route, address/measurement snapshots, tariff version, promotions and relevant earnings terms. Use existing services where they already satisfy the decisions.
 

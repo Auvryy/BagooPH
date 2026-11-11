@@ -180,6 +180,6 @@ class NewEraMotherBagTest extends TestCase
                 $this->assertStringContainsString('retained', $exception->getMessage());
             }
         }
-        $this->assertDatabaseHas('logistics_earnings', ['delivery_id' => $parcel->id, 'amount_cents' => 1000]);
+        $this->assertDatabaseHas('logistics_earnings', ['delivery_id' => $parcel->id, 'role' => 'pickup', 'amount_cents' => 833]);
     }
 }

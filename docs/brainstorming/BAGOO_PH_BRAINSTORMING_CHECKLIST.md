@@ -11,11 +11,11 @@ Follow [BUILD_ORDER.md](BUILD_ORDER.md) for prerequisites, scope and exit gates.
 For each package, record **decision:** pending/accepted/changed/deferred/rejected; **delivery:** not started/in progress/implemented/verified/merged; and **evidence:** branch/PR, checks, remaining limits. Mark its package checkbox only when its exit gate is met, or record an approved deferral and its impact on dependents.
 
 - [ ] **B00 — Inventory existing behavior and settle shared decisions.** Topics: All 27; especially 7–9, 18, 21, 25–27. Requires: None. Decision: pending; delivery: not started; evidence: pending.
-- [ ] **B01 — Verify hub topology and forward route planning.** Topics: 1–4. Requires: B00. Decision: current route contract accepted for Q1; delivery: locally verified for Q1, merge pending; evidence: [Q1 routing record](QUESTION_01_ROUTING.md). Full package remains open for any additional topology decisions.
-- [x] **B02 — Confirm company roles, operator identities and rider placement.** Topics: 23, 24; identity part of 14. Requires: B01. Decision: accepted with corrections; delivery: locally verified for the selected account/scanner scope, merge pending; evidence: [worker accounts and scanner decision](QUESTION_23_24_WORKER_ACCOUNTS.md). Owner-only provisioning retained; emergency impersonation deferred.
-- [ ] **B03 — Define shared shipment, custody and privacy contracts.** Topics: 5, 11–14, 17, 20, 25, 27. Requires: B01, B02. Decision: pending; delivery: not started; evidence: pending.
-- [ ] **B04 — Decide tariffs, liability and original payment allocations.** Topics: 7, 8, 17, 25–27. Requires: B00, B01, B03. Decision: pending; delivery: not started; evidence: pending.
-- [ ] **B05 — Verify checkout quotes and freeze purchased terms.** Topics: 1, 2, 26; measurements and voucher part of 27. Requires: B01, B03, B04. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B01 — Verify hub topology and forward route planning.** Topics: 1–4. Requires: B00. Decision: current route contract accepted for Q1; delivery: Q1 merged in web PR #160 (`464831d`); evidence: [Q1 routing record](QUESTION_01_ROUTING.md). Full package remains open for any additional topology decisions.
+- [x] **B02 — Confirm company roles, operator identities and rider placement.** Topics: 23, 24; identity part of 14. Requires: B01. Decision: accepted with corrections; delivery: selected account/scanner scope merged in web PR #160 and logistics-mobile PR #1 (`661f84f`); evidence: [worker accounts and scanner decision](QUESTION_23_24_WORKER_ACCOUNTS.md). Owner-only provisioning retained; emergency impersonation and device acceptance remain separate.
+- [x] **B03 — Define shared shipment, custody and privacy contracts.** Topics: 5, 11–14, 17, 20, 25, 27. Requires: B01, B02; uses their accepted Q1 route and named-worker contracts. Decision: retain existing identity, route, evidence and privacy boundaries with explicit future transport compatibility; delivery: contract defined and locally verified on `feat/brainstorm-b03-custody-contracts`, publication pending; evidence: [B03 contract](B03_SHIPMENT_CUSTODY_PRIVACY.md) and [roadmap results](../CORE_FLOW_ROADMAP.md#b03-shipment-custody-and-privacy-contract--november-11-2026). The 259 focused tests pass; later operational packages and remaining B00/B01 decisions retain their own gates. Mixed transport execution remains B12.
+- [x] **B04 — Decide tariffs, liability and original payment allocations.** Topics: 7, 8, 17, 25–27. Requires: B00, B01, B03. Decision: user selected PHP 50/1 kg plus PHP 20 per extra started kg, seller-fault item-plus-shipping refunds, funded courier review and buyer shipping liability for in-transit change-of-mind refusal; delivery: decisions defined and tariff/allocation changes locally verified on the existing B03 branch, publication pending; evidence: [B04 money contract](B04_MONEY_AND_LIABILITY.md) and the roadmap. Successor refund execution retains B11–B13 activation gates; this check completes the decision package, not those later features.
+- [x] **B05 — Verify checkout quotes and freeze purchased terms.** Topics: 1, 2, 26; measurements and voucher part of 27. Requires: B01, B03, B04. Decision: preserve selected company/route, original money terms and supported policy versions; delivery: implemented and locally verified on the existing B03 branch, publication pending; evidence: [B05 checkout contract](B05_PURCHASED_CHECKOUT_TERMS.md) and the roadmap. Combined B03–B05 gate: 409 backend tests / 13,986 assertions and 15 frontend checks passed, with TypeScript/build/formatting. Physical PostgreSQL concurrency and the successor refund workflow retain separate acceptance.
 - [ ] **B06 — Align seller acceptance and cancellation boundaries.** Topics: 6, 11–13. Requires: B03–B05. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B07 — Verify individual scanning and actual custody transfer.** Topics: 14, 20; handover part of 25. Requires: B02, B03, B06. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B08 — Verify bags, seals and loose freight membership.** Topics: 16; cargo part of 27. Requires: B03, B04, B07. Decision: pending; delivery: not started; evidence: pending.
@@ -98,14 +98,16 @@ Proposed ideas to review:
 
 ## 8. Shipping Fee Liability on Returns, Damages, and Failed Deliveries
 
-- [ ] Resolve the source question: we know we have shipping fee in the process when it is perfect?, however when some product breaks or returned or missing we know it is returned for whatever reason but who handles the shipping back to it? if we knwo there is shipping fee from going from seller to me and i didn't want the proudct so i have 0php wasted, how about the shipping fee? what happend and also what happened if it is gonna return?
+- [x] Resolve the source question: we know we have shipping fee in the process when it is perfect?, however when some product breaks or returned or missing we know it is returned for whatever reason but who handles the shipping back to it? if we knwo there is shipping fee from going from seller to me and i didn't want the proudct so i have 0php wasted, how about the shipping fee? what happend and also what happened if it is gonna return?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Seller Fault (Defective/Wrong/Fake): Buyer gets 100% refund (product + shipping); seller pays the return shipping fee deducted from store wallet.
-- [ ] Review/decide: Courier Fault (Lost/Damaged in Transit): Buyer gets 100% refund; seller gets full item reimbursement; courier absorbs shipping fee loss and damage cost.
-- [ ] Review/decide: Buyer Fault (Change of Mind / Joy Reserving): Buyer pays return shipping; original shipping is non-refundable. Repeated rejected COD orders trigger account restrictions.
-- [ ] Review/decide: Riders: Always get paid for completed trips regardless of parcel outcome.
+- [x] Review/decide: Seller Fault (Defective/Wrong/Fake): Buyer gets 100% refund (product + shipping); seller pays the return shipping fee deducted from store wallet.
+- [x] Review/decide: Courier Fault (Lost/Damaged in Transit): Buyer gets 100% refund; seller gets full item reimbursement; courier absorbs shipping fee loss and damage cost.
+- [x] Review/decide: Buyer Fault (Change of Mind / Joy Reserving): Buyer pays return shipping; original shipping is non-refundable. Repeated rejected COD orders trigger account restrictions.
+- [x] Review/decide: Riders: Always get paid for completed trips regardless of parcel outcome.
+
+Decision: **accepted with corrections for the successor policy**. Seller-fault returns include net item plus allocated buyer-paid shipping; courier fault needs funded review; buyer refusal after shipment carries actual shipping liability. Voluntary post-delivery change of mind remains excluded. Earned rider amounts require actual milestones, not unconditional pay. See [B04](B04_MONEY_AND_LIABILITY.md); new refund execution remains B11–B13, while policy 1 remains operational.
 
 ## 9. SLA Timeouts, Expected Delivery Calculation, and Seller Fulfillment T&C
 
@@ -285,13 +287,15 @@ Proposed ideas to review:
 
 ## 26. Baseline Shipping Fee Matrix, Volumetric Weight Tiers, and Cargo Surcharges
 
-- [ ] Resolve the source question: great wait before i add that is how about the shippping prices? what is the best baseline shipping fee? suppose 50php? then how can it vary depending on types or weights etc what are those beofre we accept that idea!
+- [x] Resolve the source question: great wait before i add that is how about the shippping prices? what is the best baseline shipping fee? suppose 50php? then how can it vary depending on types or weights etc what are those beofre we accept that idea!
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Baseline Tiering: ₱50 baseline for packages up to 1.0 kg within the same local hub zone; regional transit scales to ₱70–₱80, and cross-region linehaul scales to ₱100–₱120.
-- [ ] Review/decide: Dimensional & Overage Pricing: Heavy parcels incur +₱15–₱20 per kilogram beyond the 1.0 kg threshold; bulky items are charged using volumetric dimensional weight (L × W × H / 5,000) whenever it exceeds physical scale weight.
-- [ ] Review/decide: Special Cargo Surcharges: Applies optional/conditional fees for high-care fragile handling (+₱20–₱30), irregular non-baggable freight (+₱50), declared value transit insurance (1% above ₱1,000), and cash-on-delivery remittance handling (1.5%–2%).
+- [x] Review/decide: Baseline Tiering: ₱50 baseline for packages up to 1.0 kg within the same local hub zone; regional transit scales to ₱70–₱80, and cross-region linehaul scales to ₱100–₱120.
+- [x] Review/decide: Dimensional & Overage Pricing: Heavy parcels incur +₱15–₱20 per kilogram beyond the 1.0 kg threshold; bulky items are charged using volumetric dimensional weight (L × W × H / 5,000) whenever it exceeds physical scale weight.
+- [x] Review/decide: Special Cargo Surcharges: Applies optional/conditional fees for high-care fragile handling (+₱20–₱30), irregular non-baggable freight (+₱50), declared value transit insurance (1% above ₱1,000), and cash-on-delivery remittance handling (1.5%–2%).
+
+Decision: **user-selected amendment, November 11**: PHP 50 including 1 kg plus PHP 20 per extra started kg, divisor 3,500. Keep explicitly published company tariffs and original orders. Geography tiers and extra fragile/insurance/COD charges are deferred. See [B04](B04_MONEY_AND_LIABILITY.md) and [B05](B05_PURCHASED_CHECKOUT_TERMS.md). These checks record reviewed decisions, not completion of later cargo or refund packages.
 
 ## 27. Non-Baggable Freight Loading, Local Shift Staging, Scale Auditing, and Proportional Voucher Splits
 
