@@ -1,5 +1,26 @@
 # BagooPH Core Flow Roadmap
 
+## November 11 brainstorming question 1: route planning and checkout feedback
+
+The selected company's hub plan is now previewed per shop in a compact checkout
+route disclosure. Carrier eligibility, previews and final placement share the
+same route resolver; unsupported/ambiguous configurations cannot leave a stale
+route displayed. Confirmed version-two paths cannot be silently recalculated
+before pickup after network changes. Version-one behavior remains covered.
+
+Route consistency/checkout feedback: **5/10 → 8/10**. Isolated SQLite routing,
+checkout and Mother Bag suites passed 26 tests / 403 assertions; focused route
+rendering, whole-checkout feedback and address-disclosure checks passed, as did
+TypeScript, the isolated Vite build and PHP formatting. Three old buyer-voucher
+frontend assertions also fail on unchanged main. Eight broader local-flow tests
+are blocked by host GD image-fixture support and are not counted as passes.
+No development database or connected phone was used. See the
+[Q1 decision and evidence](brainstorming/QUESTION_01_ROUTING.md) for the exact
+scope, preserved rules and limits. Backend commit `786437f` and frontend commit
+`340ad77` are local; the dependency plan is retained in `0cba318`. Publication and
+merge remain pending.
+
+
 This document is the single source for current implementation gaps and delivery order across buyer, seller, courier, logistics, and admin. Stable business rules remain authoritative in `SYSTEM_FLOW_AND_SPECIFICATIONS.md`; physical custody rules remain authoritative in `SORTING_CENTER_LOGISTICS_FLOW.md`.
 
 ## Project Delivery Target: October 4, 2026

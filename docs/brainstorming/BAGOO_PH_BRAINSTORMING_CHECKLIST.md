@@ -11,7 +11,7 @@ Follow [BUILD_ORDER.md](BUILD_ORDER.md) for prerequisites, scope and exit gates.
 For each package, record **decision:** pending/accepted/changed/deferred/rejected; **delivery:** not started/in progress/implemented/verified/merged; and **evidence:** branch/PR, checks, remaining limits. Mark its package checkbox only when its exit gate is met, or record an approved deferral and its impact on dependents.
 
 - [ ] **B00 — Inventory existing behavior and settle shared decisions.** Topics: All 27; especially 7–9, 18, 21, 25–27. Requires: None. Decision: pending; delivery: not started; evidence: pending.
-- [ ] **B01 — Verify hub topology and forward route planning.** Topics: 1–4. Requires: B00. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B01 — Verify hub topology and forward route planning.** Topics: 1–4. Requires: B00. Decision: current route contract accepted for Q1; delivery: locally verified for Q1, merge pending; evidence: [Q1 routing record](QUESTION_01_ROUTING.md). Full package remains open for any additional topology decisions.
 - [ ] **B02 — Confirm company roles, operator identities and rider placement.** Topics: 23, 24; identity part of 14. Requires: B01. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B03 — Define shared shipment, custody and privacy contracts.** Topics: 5, 11–14, 17, 20, 25, 27. Requires: B01, B02. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B04 — Decide tariffs, liability and original payment allocations.** Topics: 7, 8, 17, 25–27. Requires: B00, B01, B03. Decision: pending; delivery: not started; evidence: pending.
@@ -35,13 +35,15 @@ Start with **B00**, then **B01 (question 1 together with questions 2–4)**. Kee
 
 ## 1. Parcel Route Automation Calculation
 
-- [ ] Resolve the source question: first question for me what is the best way to calculate the parcel automation track meaning the first thing that the buyer does is to place order right? what could possiblely the automated route calculation for the hubs like from seller preparing parcel to hubs going to hubns etc?
+- [x] Resolve the source question: first question for me what is the best way to calculate the parcel automation track meaning the first thing that the buyer does is to place order right? what could possiblely the automated route calculation for the hubs like from seller preparing parcel to hubs going to hubns etc?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Pre-calculated at checkout using Seller's Barangay (Origin Hub) and Buyer's Address (Destination Hub).
-- [ ] Review/decide: Relay flow: Seller → Origin Local Hub → (Regional Mother Hub if needed) → Destination Local Hub → Buyer.
-- [ ] Review/decide: Small parcels are consolidated into sealed Mother Bags; barcode scanning at every station validates the route and prevents misrouting.
+- [x] Review/decide: Pre-calculated at checkout using Seller's Barangay (Origin Hub) and Buyer's Address (Destination Hub).
+- [x] Review/decide: Relay flow: Seller → Origin Local Hub → (Regional Mother Hub if needed) → Destination Local Hub → Buyer.
+- [x] Review/decide: Small parcels are consolidated into sealed Mother Bags; barcode scanning at every station validates the route and prevents misrouting.
+
+Decision: **accepted with corrections**. Use full company-scoped address coverage, preserve the confirmed route, and retain actual scan-based custody. The bag sentence uses the existing seal/manifest rules; further throughput changes remain in B08/B17. See [the implementation and verification record](QUESTION_01_ROUTING.md).
 
 ## 2. Delivery Distance Scenarios (Short vs. Medium vs. Long)
 
