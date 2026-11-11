@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\OrderStateMachineService;
+use App\Services\Logistics\ParcelCustodyGuard;
 use App\Services\Orders\OrderCancellationService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
@@ -99,6 +100,8 @@ class CourierOperationsService
             ) {
                 throw new DomainException('This pickup job is outside your assigned company or origin hub.');
             }
+
+            app(ParcelCustodyGuard::class)->assertSource($lockedDelivery, 'picked_up', $rider, null);
 
             $sourceState = DeliveryCheckpoint::state($lockedDelivery);
             $custody = DeliveryCheckpoint::lastCustody($lockedDelivery);

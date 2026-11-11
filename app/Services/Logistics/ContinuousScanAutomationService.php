@@ -4,7 +4,6 @@ namespace App\Services\Logistics;
 
 use App\Models\CourierProfile;
 use App\Models\Delivery;
-use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestParcel;
@@ -31,19 +30,9 @@ class ContinuousScanAutomationService
      */
     public function canAutomate(Delivery $delivery, LogisticsHub $hub, User $actor): bool
     {
-        if (! $actor->isLogistics() || ! $this->eligibility->canScan($actor, $hub)) {
-            return false;
-        }
-
-        if ($delivery->logistics_company_id !== $hub->logistics_company_id) {
-            return false;
-        }
-
-        if (app(HandoverHoldService::class)->held($delivery)) {
-            return false;
-        }
-
-        return true;
+        // Online scans require one explicit action and its current source evidence.
+        // Batch progression must first satisfy the B17 evidence and replay contract.
+        return false;
     }
 
     /**
@@ -60,7 +49,7 @@ class ContinuousScanAutomationService
             throw new DomainException('This parcel is not eligible for continuous automated progression.');
         }
 
-        return DB::transaction(function () use ($delivery, $hub, $actor, $options) {
+        return DB::transaction(function () use ($delivery, $hub, $actor) {
             // Lock the order and delivery records to prevent race conditions
             Order::whereKey($delivery->order_id)->lockForUpdate()->first();
             $delivery = Delivery::whereKey($delivery->id)->lockForUpdate()->firstOrFail();
