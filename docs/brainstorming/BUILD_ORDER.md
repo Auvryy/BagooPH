@@ -79,7 +79,7 @@ Recheck coverage and eligibility at confirmation; store route, address/measureme
 
 **Source topics:** 6, 11–13. **Prerequisites:** B03–B05.
 
-Map pending, accepted, packed, pickup and in-transit states to permitted cancellation, disclosure and refund actions. Keep ready status and a printed waybill distinct if current behavior permits printing earlier.
+The selected [B06 contract](B06_ACCEPTANCE_CANCELLATION.md) permits direct cancellation before acceptance and seller review afterward, with unchanged-order expiry at 24 hours. Recipient details and printing are withheld until acceptance. Printing remains separate from readiness. Historical purchased terms retain their original boundary. User acceptance for B01–B06 is tracked separately in the [later-review guide](MANUAL_REVIEW_B01_B06.md).
 
 **Exit gate:** The last permitted cancellation and first prohibited cancellation are demonstrated, including simultaneous pickup/cancel, timeout, stock restoration and once-only prepaid reversal. No cancellation fabricates a physical return or COD repayment.
 

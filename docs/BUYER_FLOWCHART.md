@@ -115,8 +115,7 @@ handover, the physical parcel is `DELIVERED` and a new version-two order becomes
 confirmation. Actual external cash settlement also requires platform-level COD reconciliation.
 Wallet proceeds and refunds use their separate original virtual payment evidence.
 
-An active approved buyer may cancel their own unpaid COD or eligible pending/paid wallet order before
-`READY_FOR_PICKUP`, with a reason and details when selecting Other reason. A rider
+An active approved buyer may cancel their own unpaid COD or eligible pending/paid wallet order directly before seller acceptance. For a new purchase with cancellation policy 2, an accepted/packed order instead requires a seller-reviewed cancellation request before `READY_FOR_PICKUP`. The seller has 24 hours to respond; expiry leaves order and payment unchanged. Pending requests hold preparation and pickup. Historical policy-1 purchases retain direct cancellation before readiness. Every action requires a reason and details when selecting Other reason. A rider
 claim, recorded handover or handover hold blocks this action. A recorded COD
 payment also blocks it; a paid wallet cancellation instead refunds the original
 credits atomically under the wallet contract.

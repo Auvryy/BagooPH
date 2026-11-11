@@ -77,6 +77,8 @@ The following rules apply across every portal:
 
 Seller cancellation is allowed only before pickup and before any rider has claimed parcel custody. Cancellation is a terminal commercial outcome and cannot replace a delivery or return scan.
 
+New purchases with cancellation policy 2 permit direct buyer cancellation before seller acceptance. Accepted or packed orders require a seller-reviewed request before readiness, with a 24-hour response window; expiry leaves the order and payment unchanged. Pending requests hold preparation and pickup. Historical purchases without that field retain policy 1. Before acceptance, sellers see items and city/province, while recipient street, phone, map pin, notes and printable waybill remain private. Acceptance reveals the original purchased snapshot. See [B06](brainstorming/B06_ACCEPTANCE_CANCELLATION.md) for retry, payment and disclosure boundaries.
+
 ### Custody Handoffs
 
 | Current custodian | Handoff evidence | Next custodian |
