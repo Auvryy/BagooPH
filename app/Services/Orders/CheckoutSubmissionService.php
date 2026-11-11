@@ -73,10 +73,35 @@ class CheckoutSubmissionService
                 $shown?->getAttribute('checkout_price_context') ?? ($item->product ? app(SalePriceService::class)->context($item->product) : null)];
         })->all();
 
-        $tariffs = LogisticsCompany::eligible()->orderBy('id')->get(['id', 'tariff_version', 'base_shipping_cents', 'included_weight_grams', 'additional_kg_cents', 'shipping_earnings_model'])->toArray();
-        $network = LogisticsHub::eligible()->orderBy('id')->get(['id', 'logistics_company_id', 'tier', 'parent_hub_id', 'province', 'city_municipality', 'coverage_barangays', 'postal_codes', 'allows_self_pickup', 'operating_hours'])->toArray();
+        [$tariffs, $network] = $this->networkTerms();
 
         return substr(hash('sha256', json_encode([$rows, $tariffs, $network], JSON_THROW_ON_ERROR)), 0, 32);
+    }
+
+    /** Track logistics sources separately from sale capacity consumed by this purchase. */
+    public function logisticsSnapshot(Cart $cart): string
+    {
+        $measurements = $cart->items()->with('product')->orderBy('id')->get()->map(fn ($item) => [
+            $item->id, $item->product_id, $item->product?->weight_kg,
+            $item->product?->length_cm, $item->product?->width_cm, $item->product?->height_cm,
+        ])->all();
+
+        return hash('sha256', json_encode([$measurements, ...$this->networkTerms()], JSON_THROW_ON_ERROR));
+    }
+
+    public function assertLogisticsUnchanged(Cart $cart, string $snapshot): void
+    {
+        if (! hash_equals($snapshot, $this->logisticsSnapshot($cart))) {
+            throw ValidationException::withMessages(['checkout_token' => 'Delivery coverage, rates or packed measurements changed. Reload checkout and review your order again.']);
+        }
+    }
+
+    private function networkTerms(): array
+    {
+        return [
+            LogisticsCompany::eligible()->orderBy('id')->get(['id', 'tariff_version', 'base_shipping_cents', 'included_weight_grams', 'additional_kg_cents', 'shipping_earnings_model'])->toArray(),
+            LogisticsHub::eligible()->orderBy('id')->get(['id', 'logistics_company_id', 'tier', 'parent_hub_id', 'province', 'city_municipality', 'coverage_barangays', 'postal_codes', 'allows_self_pickup', 'operating_hours'])->toArray(),
+        ];
     }
 
     public function fingerprint(array $data, int $version = 2): string
