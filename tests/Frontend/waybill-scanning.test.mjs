@@ -113,3 +113,20 @@ test('scanner recovery navigation requires a specific relative observation URL s
         }
     } finally { globalThis.fetch = fetch; globalThis.document = document; }
 });
+
+
+test('bag identification accepts only a read-only result with a bounded local receiving destination', async () => {
+    const previousFetch = globalThis.fetch; const previousDocument = globalThis.document;
+    globalThis.document = { cookie: '', querySelector: () => ({ content: 'rendered' }) };
+    const bag = { reference: 'BAG-ORIGINAL', seal_number: 'SEAL-ORIGINAL', parcel_count: 2, source_hub: 'Origin hub', destination_hub: 'Mother Hub', status: 'in_transit', receiving_url: '/hub/mother-bags?hub_id=2&bag=11111111-1111-4111-8111-111111111111' };
+    try {
+        globalThis.fetch = async () => Response.json({ success: true, confirmed: false, is_master_bag: true, bag });
+        assert.equal((await ui.requestWaybill('/hub/scan', { mode: 'inspect' }, new AbortController().signal)).bag.reference, bag.reference);
+        for (const changes of [{ receiving_url: 'https://untrusted.invalid/receive' }, { receiving_url: '//untrusted.invalid/receive' }, { receiving_url: '/hub/mother-bags?hub_id=0' }, { parcel_count: -1 }, { parcel_count: 1.5 }, { reference: 'BRT-OTHER' }]) {
+            globalThis.fetch = async () => Response.json({ success: true, confirmed: false, is_master_bag: true, bag: { ...bag, ...changes } });
+            await assert.rejects(ui.requestWaybill('/hub/scan', { mode: 'inspect' }, new AbortController().signal), /bag details were incomplete/);
+        }
+        globalThis.fetch = async () => Response.json({ success: true, confirmed: true, is_master_bag: true, bag });
+        await assert.rejects(ui.requestWaybill('/hub/scan', { mode: 'inspect' }, new AbortController().signal), /bag details were incomplete/);
+    } finally { globalThis.fetch = previousFetch; globalThis.document = previousDocument; }
+});

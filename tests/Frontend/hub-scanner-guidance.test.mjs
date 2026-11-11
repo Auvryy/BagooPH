@@ -24,7 +24,7 @@ const bundle = await build({
                     globalThis.scannerResult.previewApplied = true;
                     return [globalThis.scannerResult.previewSearch, state[1]];
                 }
-                if (value === null && !globalThis.scannerResult.applied) {
+                if (value === null && ++globalThis.scannerResult.nullStates === 2 && !globalThis.scannerResult.applied) {
                     globalThis.scannerResult.applied = true;
                     return [globalThis.scannerResult.value, state[1]];
                 }
@@ -52,7 +52,7 @@ const result = { confirmed: false,
         order: { order_number: 'BGO-ORDER', total_amount: 950, payment_method: 'cod', items: [] }, guidance } };
 
 async function render(value, basePath = '/hub', Component = Scanner, overrides = {}, previewSearch = null) {
-    globalThis.scannerResult = { applied: false, value, previewSearch, previewApplied: false };
+    globalThis.scannerResult = { applied: false, nullStates: 0, value, previewSearch, previewApplied: false };
     try {
         let view;
         const response = await createInertiaApp({

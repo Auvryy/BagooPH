@@ -239,6 +239,14 @@ interface ScannedDeliveryResult {
     } | null;
 }
 
+interface ScanEvidence {
+    route_hub_count: number;
+    submitted_waybill_records: number;
+    inherited_departure_records: number;
+    derived_local_records: number;
+    latest_record: { reference: string; type: string; provenance: string; actor: string | null; actor_role: string | null; recorded_at: string | null } | null;
+}
+
 interface MasterBagScanResult {
     reference: string;
     seal_number: string;
@@ -246,6 +254,8 @@ interface MasterBagScanResult {
     destination_hub: string;
     parcel_count: number;
     status: string;
+    receiving_url?: string;
+    manifest_url?: string;
     parcels?: Array<{
         tracking_number: string;
         order_number?: string;
@@ -267,35 +277,16 @@ export default function ScanStation({
     const [activeTab, setActiveTab] = useState<'scan' | 'counter' | 'logs'>('scan');
     const [barcodeInput, setBarcodeInput] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [fastDispatching, setFastDispatching] = useState(false);
     const [audioEnabled, setAudioEnabled] = useState(true);
     const [activeGatePass, setActiveGatePass] = useState<DigitalGatePass | null>(null);
-    const [autoConfirm, setAutoConfirm] = useState(() => {
-        try {
-            return typeof window !== 'undefined' && window.localStorage?.getItem('hub_continuous_scan') === 'true';
-        } catch {
-            return false;
-        }
-    });
-
-    const toggleAutoConfirm = () => {
-        setAutoConfirm((prev) => {
-            const next = !prev;
-            try {
-                window.localStorage?.setItem('hub_continuous_scan', String(next));
-            } catch {}
-            return next;
-        });
-    };
-
     // Dynamic prompt state
     const [lastResult, setLastResult] = useState<{
         prompt: DynamicPrompt;
         delivery: ScannedDeliveryResult;
         confirmed: boolean;
         alreadyReceived?: boolean;
-        automated_progression?: boolean;
-        steps?: string[];
+        scanEvidence?: ScanEvidence;
+        scannedBarcode: string;
     } | null>(null);
     const [masterBagResult, setMasterBagResult] = useState<MasterBagScanResult | null>(null);
     const [scanError, setScanError] = useState<string | null>(null);
@@ -372,12 +363,11 @@ export default function ScanStation({
                 confirmed: boolean;
                 message: string;
                 already_received?: boolean;
+                scan_evidence?: ScanEvidence;
                 is_master_bag?: boolean;
                 bag?: MasterBagScanResult;
                 return_case?: { reference: string; barcode: string; href: string; status: string };
-                automated_progression?: boolean;
-                steps?: string[];
-            }>(
+                            }>(
                 `${basePath}/scan`, { ...body, hub_id: activeHub.id }, request.signal,
             );
             if (pendingRequest.current !== request || request.signal.aborted) return;
@@ -400,28 +390,15 @@ export default function ScanStation({
                     delivery: data.delivery,
                     confirmed: Boolean(data.confirmed),
                     alreadyReceived: data.already_received,
-                    automated_progression: Boolean(data.automated_progression),
-                    steps: data.steps,
+                    scanEvidence: data.scan_evidence,
+                    scannedBarcode: String(body.barcode ?? ''),
                 });
-                playSound((data.confirmed || data.automated_progression) ? 'success' : 'beep');
+                playSound(data.confirmed ? 'success' : 'beep');
 
-                if (autoConfirm && !confirming && !data.automated_progression && data.prompt.requires_confirmation && data.delivery.guidance?.can_act && data.delivery.guidance?.action === 'scan') {
-                    setScanMessage('Auto-confirming custody action…');
-                    void runScan({
-                        barcode: data.delivery.tracking_number,
-                        mode: 'confirm',
-                        action: data.prompt.action,
-                        expected_status: data.prompt.expected_status,
-                        attempt_reference: data.prompt.attempt_reference ?? undefined,
-                        route_reference: data.prompt.route_reference ?? undefined,
-                        claim_reference: data.prompt.claim_reference ?? undefined,
-                    }, true);
-                    return;
-                }
             }
             setScanMessage(data.message);
             setBarcodeInput('');
-            if (confirming || data.automated_progression) {
+            if (confirming) {
                 try { await refreshPage(); }
                 catch { if (!request.signal.aborted) setScanError('The custody action was saved, but the queue could not refresh. Reload this scanner to see the latest records.'); }
             }
@@ -444,16 +421,13 @@ export default function ScanStation({
 
     const handleBarcodeProcess = (barcode: string) => {
         const code = waybillCode(barcode, window.location.origin) ?? barcode;
-        if (autoConfirm) {
-            return runScan({ barcode: code, mode: 'inspect', continuous: true, auto_advance: true });
-        }
         return runScan({ barcode: code, mode: 'inspect' });
     };
 
     const confirmScanAction = () => {
-        if (!lastResult?.prompt.requires_confirmation || !lastResult.delivery.guidance.can_act || lastResult.delivery.guidance.action !== 'scan') return;
+        if (!lastResult?.scannedBarcode || !lastResult.prompt.requires_confirmation || !lastResult.delivery.guidance.can_act || lastResult.delivery.guidance.action !== 'scan') return;
         return runScan({
-            barcode: lastResult.delivery.tracking_number, mode: 'confirm',
+            barcode: lastResult.scannedBarcode, mode: 'confirm',
             action: lastResult.prompt.action, expected_status: lastResult.prompt.expected_status,
             attempt_reference: lastResult.prompt.attempt_reference ?? undefined,
             route_reference: lastResult.prompt.route_reference ?? undefined,
@@ -461,62 +435,17 @@ export default function ScanStation({
         }, true);
     };
 
-    const confirmMasterBagIngestion = () => {
-        if (!masterBagResult) return;
-        return runScan({
-            barcode: masterBagResult.reference,
-            mode: 'confirm',
-            action: 'INGEST_MASTER_BAG',
-            expected_status: 'in_transit',
-        }, true);
+    const openBagReceiving = () => {
+        if (!masterBagResult || isSubmitting) return;
+        router.get(masterBagResult.receiving_url || `${basePath}/mother-bags?hub_id=${activeHub?.id}`);
     };
 
-    const triggerFastDispatch = async (destinationHubId?: number, isCorridor = false) => {
-        const destId = destinationHubId || lastResult?.delivery?.routing_target?.id;
-        if (!destId || !activeHub || fastDispatching) return;
-
-        setFastDispatching(true);
-        setScanError(null);
-        setScanMessage(null);
-
-        try {
-            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content
-                || ((window as unknown as { csrfToken?: string }).csrfToken ?? '');
-
-            const response = await fetch(`${basePath}/scan/fast-dispatch`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                body: JSON.stringify({
-                    destination_hub_id: destId,
-                    corridor_dispatch: isCorridor,
-                    delivery_ids: (!isCorridor && lastResult?.delivery?.id) ? [lastResult.delivery.id] : undefined,
-                }),
-            });
-
-            const data = await response.json();
-            if (!response.ok || !data.success) {
-                throw new Error(data.error || data.message || 'Fast dispatch failed');
-            }
-
-            playSound('dispatch');
-            setScanMessage(data.message);
-            if (data.data?.gate_pass) {
-                setActiveGatePass(data.data.gate_pass);
-            }
-            setLastResult(null);
-            setMasterBagResult(null);
-            await refreshPage();
-        } catch (err) {
-            playSound('error');
-            setScanError(err instanceof Error ? err.message : 'Fast dispatch failed');
-        } finally {
-            setFastDispatching(false);
-        }
+    const triggerFastDispatch = (destinationHubId?: number, _isCorridor = false) => {
+        if (!activeHub || isSubmitting) return;
+        const destination = destinationHubId || lastResult?.delivery?.routing_target?.id;
+        const query = new URLSearchParams({ hub_id: String(activeHub.id) });
+        if (destination) query.set('destination_hub_id', String(destination));
+        router.get(`${basePath}/manifests?${query}`);
     };
 
     // Industrial Hardware Wedge Scanner Hook
@@ -530,7 +459,7 @@ export default function ScanStation({
             if (code === 'CMD-CONFIRM') {
                 scannerAudio.playCommand();
                 if (masterBagResult && masterBagResult.status !== 'received') {
-                    confirmMasterBagIngestion();
+                    openBagReceiving();
                 } else if (lastResult?.prompt.requires_confirmation) {
                     confirmScanAction();
                 }
@@ -754,21 +683,6 @@ export default function ScanStation({
                                         </label>
 
                                         <div className="flex items-center gap-2">
-                                            {/* Rapid Auto-Intake Continuous Scan Toggle */}
-                                            <button
-                                                type="button"
-                                                onClick={toggleAutoConfirm}
-                                                className={`px-3 py-1.5 rounded-lg border transition shadow-2xs flex items-center gap-1.5 text-xs font-semibold font-sans cursor-pointer ${
-                                                    autoConfirm
-                                                        ? 'bg-[#E00D42] border-[#E00D42] text-white shadow-xs'
-                                                        : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100'
-                                                }`}
-                                                title={autoConfirm ? 'Continuous Scan Active: Auto-confirms custody on scan without clicking' : 'Click to enable continuous scan mode'}
-                                            >
-                                                <Zap className="w-3.5 h-3.5" />
-                                                <span>{autoConfirm ? 'Continuous Scan: ON' : 'Continuous Scan: OFF'}</span>
-                                            </button>
-
                                             {/* Audio Feedback Toggle */}
                                             <button
                                                 type="button"
@@ -890,25 +804,10 @@ export default function ScanStation({
                                         </p>
                                     </div>
 
-                                    {masterBagResult.status !== 'received' ? (
-                                        <div className="space-y-2">
-                                            <button
-                                                type="button"
-                                                disabled={isSubmitting}
-                                                onClick={confirmMasterBagIngestion}
-                                                className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white px-5 py-3 text-sm font-bold shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
-                                            >
-                                                <Zap className="h-4 w-4 fill-current text-white" />
-                                                <span>{isSubmitting ? 'Ingesting Nested Parcels…' : `Ingest All ${masterBagResult.parcel_count} Nested Parcels`}</span>
-                                            </button>
-                                            <p className="text-center text-xs text-zinc-500 tabular-nums">or scan hardware barcode [CMD-CONFIRM]</p>
-                                        </div>
-                                    ) : (
-                                        <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3.5 text-xs text-emerald-900 flex items-center gap-2">
-                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                                            <span>All parcels received into hub custody and queued for local sorting.</span>
-                                        </div>
-                                    )}
+                                    <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                                        <p className="text-sm text-slate-700">Bag identified. Check the actual seal, then scan each parcel at receiving.</p>
+                                        <button type="button" disabled={isSubmitting} onClick={openBagReceiving} className="w-full rounded-lg bg-[#E00D42] px-4 py-3 text-sm font-bold text-white hover:bg-[#C20836] disabled:opacity-50">Open bag receiving</button>
+                                    </div>
 
                                     {masterBagResult.parcels && masterBagResult.parcels.length > 0 && (
                                         <div className="border-t border-zinc-100 pt-3 space-y-1.5">
@@ -966,7 +865,7 @@ export default function ScanStation({
                                                 <div className="flex items-center gap-2">
                                                     <Scale className="h-4 w-4 text-[#E00D42]" />
                                                     <span className="text-xs font-bold text-zinc-900 uppercase tracking-wider font-sans">
-                                                        Automated DWS Induction Profile
+                                                        Handling estimate
                                                     </span>
                                                 </div>
                                                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-100 border border-zinc-200/80 px-2.5 py-1 text-xs font-bold text-zinc-800">
@@ -976,13 +875,13 @@ export default function ScanStation({
                                             </div>
                                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 text-xs">
                                                 <div className="rounded-lg bg-zinc-50 p-2.5 border border-zinc-100">
-                                                    <span className="text-[10px] uppercase font-bold text-zinc-400 block">Dimensions</span>
+                                                    <span className="text-[10px] uppercase font-bold text-zinc-400 block">Est. dimensions</span>
                                                     <span className="font-bold text-zinc-800 tabular-nums">
                                                         {lastResult.delivery.dws.length_cm}×{lastResult.delivery.dws.width_cm}×{lastResult.delivery.dws.height_cm} cm
                                                     </span>
                                                 </div>
                                                 <div className="rounded-lg bg-zinc-50 p-2.5 border border-zinc-100">
-                                                    <span className="text-[10px] uppercase font-bold text-zinc-400 block">Actual Weight</span>
+                                                    <span className="text-[10px] uppercase font-bold text-zinc-400 block">Est. weight</span>
                                                     <span className="font-bold text-zinc-800 tabular-nums">
                                                         {lastResult.delivery.dws.actual_weight_kg.toFixed(2)} kg
                                                     </span>
@@ -1048,7 +947,7 @@ export default function ScanStation({
                                                 <span className="font-medium text-zinc-500">
                                                     {lastResult.delivery.mother_bag_slotting.seal_number
                                                         ? `Seal: ${lastResult.delivery.mother_bag_slotting.seal_number}`
-                                                        : 'Auto-Seal upon departure cut-off'}
+                                                        : 'Numbered seal required before departure'}
                                                 </span>
                                             </div>
                                         </div>
@@ -1062,31 +961,6 @@ export default function ScanStation({
                                             Status: {lastResult.delivery.status.replace(/_/g, ' ')}
                                         </span>
                                     </div>
-
-                                    {/* Automated Scan Progression Trail */}
-                                    {lastResult.steps && lastResult.steps.length > 0 && (
-                                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 space-y-2">
-                                            <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
-                                                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                                                <span>Automated Scan Progression Complete</span>
-                                            </div>
-                                            <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                                                {lastResult.steps.map((step, idx) => (
-                                                    <span key={step} className="inline-flex items-center gap-1 rounded-md bg-white border border-emerald-300 text-emerald-900 px-2 py-0.5 font-semibold shadow-2xs">
-                                                        {step === 'bag_unsealed' && 'Bag Unsealed'}
-                                                        {step === 'manifest_received' && 'Manifest Received'}
-                                                        {step === 'manifest_closed' && 'Manifest Auto-Closed'}
-                                                        {step === 'received_at_origin_hub' && 'Origin Intake'}
-                                                        {step === 'sorted_to_line_haul' && 'Line-Haul Staged'}
-                                                        {step === 'sorted_to_barangay_bin' && `Bin: ${lastResult.delivery.destination_bin || 'Sorted'}`}
-                                                        {step === 'rider_assigned' && `Rider: ${lastResult.delivery.assigned_rider?.name || 'Assigned'}`}
-                                                        {step === 'staged_for_counter_pickup' && 'Counter Staged'}
-                                                        {idx < lastResult.steps!.length - 1 && <ArrowRight className="h-3 w-3 text-emerald-600" />}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
 
                                     {/* Assigned Final-Mile Rider Badge */}
                                     {lastResult.delivery.assigned_rider && (
@@ -1135,12 +1009,12 @@ export default function ScanStation({
                                                 <div className="flex flex-wrap items-center gap-3">
                                                     <button
                                                         type="button"
-                                                        disabled={fastDispatching || isSubmitting}
+                                                        disabled={isSubmitting}
                                                         onClick={() => triggerFastDispatch(lastResult.delivery.routing_target?.id)}
                                                         className="inline-flex items-center gap-2 rounded-xl bg-[#E00D42] px-5 py-3 text-sm font-bold text-white shadow-xs hover:bg-[#C20836] transition cursor-pointer active:scale-98 disabled:opacity-50"
                                                     >
                                                         <Zap className="h-4 w-4 fill-current text-white" />
-                                                        <span>{fastDispatching ? 'Creating Bag & Manifest…' : `1-Click Fast Dispatch to ${lastResult.delivery.routing_target?.code || 'Next Hub'}`}</span>
+                                                        <span>{`Prepare manifest to ${lastResult.delivery.routing_target?.code || 'next hub'}`}</span>
                                                     </button>
                                                     <span className="text-xs text-zinc-500 tabular-nums">or scan [CMD-DISPATCH]</span>
                                                 </div>
@@ -1158,33 +1032,6 @@ export default function ScanStation({
                                     )}
 
                                     {lastResult.delivery.guidance.action !== 'scan' && lastResult.delivery.guidance.action !== 'manifest' && <HubParcelAction guidance={lastResult.delivery.guidance} />}
-
-                                    {/* 1-Click Automated Custody Advance (Manual Fallback) */}
-                                    {lastResult.delivery.can_auto_progress && !lastResult.confirmed && !lastResult.automated_progression && (
-                                        <div className="rounded-xl border border-emerald-300 bg-emerald-50/80 p-5 shadow-xs space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                                                    <Zap className="h-4 w-4 text-emerald-600" />
-                                                    1-Click Automated Custody Advance
-                                                </span>
-                                                <span className="text-[11px] bg-emerald-200/90 text-emerald-900 px-2 py-0.5 rounded font-bold">
-                                                    Fast Track
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-emerald-900">
-                                                Automatically process inbound receipt, sort to bin, and assign available on-duty rider in one step.
-                                            </p>
-                                            <button
-                                                type="button"
-                                                onClick={() => runScan({ barcode: lastResult.delivery.tracking_number, mode: 'confirm', action: 'AUTO_PROGRESS', continuous: true }, true)}
-                                                disabled={isSubmitting}
-                                                className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:bg-zinc-300 shadow-xs cursor-pointer transition flex items-center justify-center gap-2"
-                                            >
-                                                <Zap className="h-4 w-4 fill-current" />
-                                                <span>{isSubmitting ? 'Processing Progression...' : '1-Click Auto-Progress (Receive ➔ Sort ➔ Assign Rider)'}</span>
-                                            </button>
-                                        </div>
-                                    )}
 
                                     {lastResult.prompt.requires_confirmation && lastResult.delivery.guidance.can_act && lastResult.delivery.guidance.action === 'scan' && (
                                         <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-5 shadow-xs">
@@ -1223,7 +1070,7 @@ export default function ScanStation({
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2 text-xs font-bold text-zinc-900">
                                                 <Scale className="h-4 w-4 text-[#E00D42]" />
-                                                <span>DWS Weight & Dimension Verification</span>
+                                                <span>Weight and size calculator</span>
                                             </div>
                                             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
                                                 Dimension Sizing
@@ -1347,6 +1194,15 @@ export default function ScanStation({
                                         </div>
                                     </div>
 
+                                    {lastResult.scanEvidence && <details className="rounded-lg border border-rose-200 bg-rose-50/60 p-3 text-xs text-slate-700">
+                                        <summary className="cursor-pointer font-semibold text-[#9F1239]">Scan evidence · {lastResult.scanEvidence.route_hub_count} route hub(s)</summary>
+                                        <div className="mt-3 space-y-2">
+                                            {lastResult.scanEvidence.latest_record && <><p className="break-all font-semibold">{lastResult.scanEvidence.latest_record.reference}</p><p>{lastResult.scanEvidence.latest_record.actor || 'No named actor recorded'} · {lastResult.scanEvidence.latest_record.type.replaceAll('_', ' ')} · {lastResult.scanEvidence.latest_record.recorded_at ? new Date(lastResult.scanEvidence.latest_record.recorded_at).toLocaleString('en-PH') : 'Time not recorded'}</p></>}
+                                            <p>{lastResult.scanEvidence.submitted_waybill_records} submitted waybill record(s) · {lastResult.scanEvidence.inherited_departure_records} departure record(s) using retained load evidence · {lastResult.scanEvidence.derived_local_records} local route record(s)</p>
+                                            <p>Aliases and prepared labels are excluded. These are recorded events, not a count of physical touches.</p>
+                                        </div>
+                                    </details>}
+
                                     <div className="pt-1 flex items-center gap-1.5 text-zinc-600 text-xs font-sans">
                                         <ShieldCheck className="w-4 h-4 text-zinc-700" />
                                         <span>
@@ -1469,7 +1325,7 @@ export default function ScanStation({
                                                     </span>
                                                     {corridor.sizing.is_upgrade && (
                                                         <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-amber-50 text-amber-800 border border-amber-300">
-                                                            Capacity Auto-Upgraded
+                                                            Suggested capacity upgrade
                                                         </span>
                                                     )}
                                                 </div>
@@ -1505,19 +1361,19 @@ export default function ScanStation({
                                                         </div>
                                                     </div>
                                                     <div className="text-[11px] text-zinc-600 flex items-center justify-between pt-0.5 border-t border-zinc-200/60">
-                                                        <span>Vehicle: <strong className="text-zinc-800">{corridor.matched_vehicle?.plate_number || 'Auto-Allocating'}</strong></span>
-                                                        <span className="truncate max-w-[100px] text-zinc-500">{corridor.matched_vehicle?.driver_name || 'Driver on Duty'}</span>
+                                                        <span>Vehicle: <strong className="text-zinc-800">{corridor.matched_vehicle?.plate_number || 'Choose a vehicle'}</strong></span>
+                                                        <span className="truncate max-w-[100px] text-zinc-500">{corridor.matched_vehicle?.driver_name || 'Choose a driver'}</span>
                                                     </div>
                                                 </div>
 
                                                 <button
                                                     type="button"
-                                                    disabled={fastDispatching || isSubmitting || !corridor.can_dispatch}
+                                                    disabled={isSubmitting || !corridor.can_dispatch}
                                                     onClick={() => triggerFastDispatch(corridor.destination_hub.id, true)}
                                                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#E00D42] px-5 py-3 text-xs font-bold text-white shadow-xs hover:bg-[#C20836] active:scale-98 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                                                 >
                                                     <Zap className="h-4 w-4 fill-current text-white" />
-                                                    <span>{fastDispatching ? 'Generating Gate Pass…' : '1-Click Fleet Dispatch'}</span>
+                                                    <span>Prepare manifest</span>
                                                 </button>
                                             </div>
                                         </div>
