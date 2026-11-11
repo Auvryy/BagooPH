@@ -60,7 +60,7 @@ test('registry separates parcel stage, order state and actual custodian while sh
     assert.match(html, /Order:<\/span> At Sorting Center/);
     assert.match(html, /With:<\/span> Destination Bayan Hub/);
     assert.match(html, /Handed over today/);
-    assert.match(html, /Philippine dates/);
+    assert.match(html, /2026-10-11/); // The registry renders the server-provided date, without an invented label.
     assert.match(html, /Sort to bin/);
     assert.doesNotMatch(html, /100% Fulfilled|No action|STAGE: UNASSIGNED/);
 });
@@ -107,7 +107,8 @@ test('ready counter parcels permit handler verification but respect the current 
     assert.match(expired, /collection window changed/);
     const readiness = expired.slice(expired.indexOf('Ready for Buyer Verification')).match(/<p[^>]*>([\s\S]*?)<\/p>/);
     assert.ok(readiness);
-    assert.equal(readiness[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(), '0 ready');
+    assert.equal(readiness[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(), '0');
+    assert.match(expired, /ready · Staging &amp; valid claim/);
     assert.match(releaseButton(expired), /disabled=""/);
 });
 test('company counter management sees readiness without receiving a handler release control', async () => {
