@@ -1,5 +1,59 @@
 # BagooPH Core Flow Roadmap
 
+## November 11 brainstorming B02: worker invitations and native scanner accounts
+
+Company owners now invite named operators and riders by email; workers verify
+OTP, review their assigned company/hub and choose their own password. Pending
+invitations can be renewed with owner password confirmation. Mail failure keeps
+one pending account and truthful retry feedback. Existing rider joining/consent,
+fixed roles and owner-only provisioning remain intact; impersonation is deferred.
+
+The logistics scanner now uses a dedicated operator bearer API, active assigned
+hubs, platform secure token storage and server-authorized parcel inspection and
+confirmation. HTML, missing tokens and revoked sessions cannot become demo
+success. Bag identification does not bypass physical receiving evidence.
+
+Scoped onboarding/scanner integration assessment: **2/10 → 8/10**. Final focused
+worker/provisioning/native tests passed **23 tests / 268 assertions**; invitation
+and account-session frontend checks passed **33 tests**. Existing rider company
+application/offer/native API checks passed **252 tests / 2,357 assertions**. The
+earlier combined routing/checkout/bag/session run passed **96 tests / 1,119
+assertions**; these overlapping runs must not be summed as unique coverage.
+TypeScript, isolated Vite build, PHP formatting, Flutter analysis, **13 Flutter
+tests** and the Android arm64 debug APK build passed.
+
+Six broader scanner/counter frontend expectations also fail on the unchanged
+pre-B02 HEAD snapshot: four scanner render assumptions, registry date copy and
+counter readiness copy. The entire frontend suite is not claimed green. Real
+mailbox delivery and device camera/keystore behavior still need deployment/device
+acceptance. No real database or connected phone was used. See the
+[B02 decision and review steps](brainstorming/QUESTION_23_24_WORKER_ACCOUNTS.md).
+Q1 and B02 remain on the same web feature branch; the separate logistics scanner
+repository has the matching branch. Publication/merge remain pending. Local implementation commits: `10b2004`
+(worker invitations) and `4313bc0` (operator API and session integration).
+
+
+## November 11 brainstorming question 1: route planning and checkout feedback
+
+The selected company's hub plan is now previewed per shop in a compact checkout
+route disclosure. Carrier eligibility, previews and final placement share the
+same route resolver; unsupported/ambiguous configurations cannot leave a stale
+route displayed. Confirmed version-two paths cannot be silently recalculated
+before pickup after network changes. Version-one behavior remains covered.
+
+Route consistency/checkout feedback: **5/10 → 8/10**. Isolated SQLite routing,
+checkout and Mother Bag suites passed 26 tests / 403 assertions; focused route
+rendering, whole-checkout feedback and address-disclosure checks passed, as did
+TypeScript, the isolated Vite build and PHP formatting. Three old buyer-voucher
+frontend assertions also fail on unchanged main. Eight broader local-flow tests
+are blocked by host GD image-fixture support and are not counted as passes.
+No development database or connected phone was used. See the
+[Q1 decision and evidence](brainstorming/QUESTION_01_ROUTING.md) for the exact
+scope, preserved rules and limits. Backend commit `786437f` and frontend commit
+`340ad77` are local; the dependency plan is retained in `0cba318`. Publication and
+merge remain pending.
+
+
 This document is the single source for current implementation gaps and delivery order across buyer, seller, courier, logistics, and admin. Stable business rules remain authoritative in `SYSTEM_FLOW_AND_SPECIFICATIONS.md`; physical custody rules remain authoritative in `SORTING_CENTER_LOGISTICS_FLOW.md`.
 
 ## Project Delivery Target: October 4, 2026

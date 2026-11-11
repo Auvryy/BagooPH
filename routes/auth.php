@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\OtpVerificationController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\StaffInvitationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,11 @@ Route::post('auth/google/native/register', [NativeGoogleController::class, 'regi
 
 Route::get('auth/session', [AuthenticatedSessionController::class, 'session'])
     ->middleware('throttle:60,1,guest-session')->name('auth.session');
+
+Route::get('work-account/setup', [StaffInvitationController::class, 'show'])->name('staff.invitation.show');
+Route::post('work-account/send', [StaffInvitationController::class, 'send'])->middleware('throttle:5,1');
+Route::post('work-account/verify', [StaffInvitationController::class, 'verify'])->middleware('throttle:10,1');
+Route::post('work-account/activate', [StaffInvitationController::class, 'activate'])->middleware('throttle:5,1');
 
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])

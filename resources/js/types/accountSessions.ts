@@ -2,7 +2,7 @@ import type { PaginatedData } from '@/types';
 
 export interface AccountSession {
     id: string;
-    channel: 'web' | 'rider';
+    channel: 'web' | 'rider' | 'logistics';
     method: string;
     device: string;
     device_type: 'computer' | 'phone' | 'tablet' | 'unknown';

@@ -7,6 +7,7 @@ use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\User;
 use App\Services\Logistics\CompanySetupService;
+use App\Services\Logistics\StaffInvitationService;
 use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,12 +51,15 @@ class CompanySetupController extends Controller
     public function staff(Request $request, LogisticsCompany $company, CompanySetupService $service)
     {
         try {
-            $service->staff($request->user(), $company->id, $request->all());
+            $staff = $service->staff($request->user(), $company->id, $request->all());
+            $delivery = app(StaffInvitationService::class)->send($staff);
         } catch (DomainException $error) {
             return back()->withErrors(['setup' => $error->getMessage()]);
         }
 
-        return back()->with('success', 'Work account created. Share its email and temporary password privately; the worker must replace it and verify their email.');
+        return back()->with($delivery['success'] ? 'success' : 'error', $delivery['success']
+            ? 'Work account created. A setup code was emailed to the worker so they can accept their assignment and set their own password.'
+            : 'Work account created, but the setup email could not be sent. Use Resend invitation to try again.');
     }
 
     public function tariff(Request $request, LogisticsCompany $company, CompanySetupService $service)
@@ -73,7 +77,9 @@ class CompanySetupController extends Controller
     {
         $service->resetTemporaryPassword($request->user(), $company->id, $staff, $request->all());
 
-        return back()->with('success', 'A new temporary login is ready. Share it privately with the account owner.');
+        $delivery = app(StaffInvitationService::class)->send($staff->fresh());
+
+        return back()->with($delivery['success'] ? 'success' : 'error', $delivery['success'] ? 'A new setup code was emailed to the worker.' : 'The invitation was renewed, but its email could not be sent. Try again shortly.');
     }
 
     public function coverage(Request $request, LogisticsCompany $company, LogisticsHub $hub, CompanySetupService $service)

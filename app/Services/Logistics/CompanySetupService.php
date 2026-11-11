@@ -3,6 +3,7 @@
 namespace App\Services\Logistics;
 
 use App\Models\CourierProfile;
+use App\Models\EmailOtp;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
@@ -17,8 +18,8 @@ use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class CompanySetupService
@@ -81,7 +82,7 @@ class CompanySetupService
             'last_name' => ['required', 'string', new ApplicationText('name', 2, 100)],
             'birthday' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.app(BirthDateEligibility::class)->limits()['adult_maximum']],
             'email' => 'required|string|email:rfc|max:255', 'phone' => ['required', 'string', new PhilippineContact],
-            'password' => ['required', 'string', 'max:128', Password::min(12)->mixedCase()->numbers()->symbols()->rules(['regex:/[\p{S}\p{P}]/u', 'not_regex:/\p{C}/u'])],
+            'password' => ['prohibited'],
         ])->validate();
         $role = $data['kind'] === 'rider' ? 'courier' : 'logistics';
         $email = strtolower(trim($data['email']));
@@ -96,7 +97,7 @@ class CompanySetupService
             }
             $user = new User(['first_name' => $data['first_name'], 'last_name' => $data['last_name'],
                 'name' => $data['first_name'].' '.$data['last_name'], 'birthday' => $data['birthday'], 'email' => $email,
-                'phone' => $data['phone'], 'password' => $data['password'], 'role' => $role,
+                'phone' => $data['phone'], 'password' => Str::random(64), 'role' => $role,
                 'status' => 'active', 'kyc_status' => 'approved', 'kyc_reviewed_at' => now(),
                 'city' => $hub->city_municipality, 'province' => $hub->province]);
             $user->forceFill(['must_change_password' => true, 'provisioned_by_id' => $actor->id,
@@ -142,7 +143,7 @@ class CompanySetupService
     public function resetTemporaryPassword(User $actor, int $companyId, User $staff, array $input): void
     {
         $data = Validator::make($input, ['current_password' => 'required|string|max:128',
-            'password' => ['required', 'string', 'max:128', Password::min(12)->mixedCase()->numbers()->symbols()->rules(['regex:/[\p{S}\p{P}]/u', 'not_regex:/\p{C}/u'])]])->validate();
+            'password' => ['prohibited']])->validate();
         DB::transaction(function () use ($actor, $companyId, $staff, $data) {
             $company = $this->owner($actor, $companyId);
             User::whereIn('id', [$actor->id, $staff->id])->orderBy('id')->lockForUpdate()->get();
@@ -152,10 +153,12 @@ class CompanySetupService
                 throw ValidationException::withMessages(['current_password' => 'Enter your current company-owner password.']);
             }
             abort_unless($staff->provisioned_company_id === $company->id && $staff->must_change_password && $staff->closed_at === null, 403,
-                'Only an unactivated company-created account can receive another temporary password.');
+                'Only a pending company-created account can receive another setup invitation.');
             $expires = now()->addDays(7);
-            $staff->forceFill(['password' => $data['password'], 'temporary_password_expires_at' => $expires])->save();
+            $staff->forceFill(['password' => Str::random(64), 'temporary_password_expires_at' => $expires])->save();
             app(AccountSessionService::class)->passwordChanged($staff);
+            EmailOtp::where('user_id', $staff->id)->where('purpose', StaffInvitationService::PURPOSE)
+                ->update(['expires_at' => now(), 'verified_at' => now(), 'token' => null]);
             DB::table('company_staff_login_resets')->insert(['logistics_company_id' => $company->id, 'user_id' => $staff->id,
                 'actor_id' => $actor->id, 'expires_at' => $expires]);
         });

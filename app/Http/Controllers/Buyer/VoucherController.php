@@ -59,7 +59,7 @@ class VoucherController extends Controller
                 throw new CheckoutException('The selected company does not serve this address. Choose another company or address.');
             }
             $preview = app(VoucherPreviewService::class)->preview($buyer, $items, $data['delivery_type'] ?? 'doorstep', $selection, $company);
-            $quote = $preview['quote'];
+            $quote = app(LogisticsCheckoutService::class)->withRoutes($preview['quote'], $items, $company, $data);
             $available = $quotes->offers($items, $data['delivery_type'] ?? 'doorstep', buyer: $buyer, selected: $preview['revisions'], company: $company);
             $message = $quote['voucher_error'] ?? ($quote['vouchers']
                 ? 'Vouchers applied: -₱'.number_format($quote['discount'], 2).'.'
@@ -133,6 +133,10 @@ class VoucherController extends Controller
             $choices = app(VoucherChoiceService::class);
             $result = $best ? $choices->best($buyer, $items, $data['delivery_type'] ?? 'doorstep', $company)
                 : $choices->options($buyer, $items, $data['delivery_type'] ?? 'doorstep', $request->all(), isset($data['shop_id']) ? (int) $data['shop_id'] : null, $company);
+
+            if (isset($result['quote'])) {
+                $result['quote'] = app(LogisticsCheckoutService::class)->withRoutes($result['quote'], $items, $company, $data);
+            }
 
             return response()->json($result);
         } catch (CheckoutException $exception) {

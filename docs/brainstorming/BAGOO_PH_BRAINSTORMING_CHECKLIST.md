@@ -4,15 +4,46 @@ Work through the source questions and proposed ideas one at a time. These are br
 
 Source: [BAGOO_PH_BRAINSTORMING.md](BAGOO_PH_BRAINSTORMING.md) (27 topics). Every source question and every listed core-takeaway bullet is represented below.
 
+## Dependency order and delivery tracker
+
+Follow [BUILD_ORDER.md](BUILD_ORDER.md) for prerequisites, scope and exit gates. Original topic numbers below remain unchanged. All packages start unchecked: prior code or a completed task record is not proof that the brainstorming proposal was approved or fully verified.
+
+For each package, record **decision:** pending/accepted/changed/deferred/rejected; **delivery:** not started/in progress/implemented/verified/merged; and **evidence:** branch/PR, checks, remaining limits. Mark its package checkbox only when its exit gate is met, or record an approved deferral and its impact on dependents.
+
+- [ ] **B00 — Inventory existing behavior and settle shared decisions.** Topics: All 27; especially 7–9, 18, 21, 25–27. Requires: None. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B01 — Verify hub topology and forward route planning.** Topics: 1–4. Requires: B00. Decision: current route contract accepted for Q1; delivery: locally verified for Q1, merge pending; evidence: [Q1 routing record](QUESTION_01_ROUTING.md). Full package remains open for any additional topology decisions.
+- [x] **B02 — Confirm company roles, operator identities and rider placement.** Topics: 23, 24; identity part of 14. Requires: B01. Decision: accepted with corrections; delivery: locally verified for the selected account/scanner scope, merge pending; evidence: [worker accounts and scanner decision](QUESTION_23_24_WORKER_ACCOUNTS.md). Owner-only provisioning retained; emergency impersonation deferred.
+- [ ] **B03 — Define shared shipment, custody and privacy contracts.** Topics: 5, 11–14, 17, 20, 25, 27. Requires: B01, B02. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B04 — Decide tariffs, liability and original payment allocations.** Topics: 7, 8, 17, 25–27. Requires: B00, B01, B03. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B05 — Verify checkout quotes and freeze purchased terms.** Topics: 1, 2, 26; measurements and voucher part of 27. Requires: B01, B03, B04. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B06 — Align seller acceptance and cancellation boundaries.** Topics: 6, 11–13. Requires: B03–B05. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B07 — Verify individual scanning and actual custody transfer.** Topics: 14, 20; handover part of 25. Requires: B02, B03, B06. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B08 — Verify bags, seals and loose freight membership.** Topics: 16; cargo part of 27. Requires: B03, B04, B07. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B09 — Connect sorting guidance, manifests and dispatch.** Topics: 15; local staging part of 27. Requires: B01, B02, B07, B08. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B10 — Verify delivery completion, earnings and cash reconciliation.** Topics: 8, 12, 25; baseline money from 26. Requires: B04, B05, B09. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B11 — Verify return requests and independent decisions.** Topics: 5, 8, 17, 18, 25. Requires: B03, B04, B10. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B12 — Verify reverse custody and directional co-loading.** Topics: 5, 17–19; cargo part of 27. Requires: B03, B08, B09, B11. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B13 — Verify refund execution and financial adjustments.** Topics: 7, 8, 17, 25; voucher/debt part of 27. Requires: B04, B10–B12. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B14 — Add ETA and state-aware monitoring.** Topics: 9, 18, 20, 21, 25; staging part of 27. Requires: B06–B13. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B15 — Add dispatch recovery and missing-parcel investigation.** Topics: 7, 9, 10, 18, 21, 25. Requires: B02, B09, B13, B14. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B16 — Apply evidence-based restrictions and review moderation.** Topics: 11–13, 21, 22, 25; debt restrictions part of 27. Requires: B02–B04, B11, B13–B15. Decision: pending; delivery: not started; evidence: pending.
+- [ ] **B17 — Optimize scanning throughput and complete acceptance.** Topics: 14–16, 19, 20; all topics for regression. Requires: B07–B16. Decision: pending; delivery: not started; evidence: pending.
+
+Start with **B00**, then **B01 (question 1 together with questions 2–4)**. Keep every original question/idea checkbox below as a separate decision record. No application implementation is started by adding this plan.
+
+## Original questions and idea decisions
+
 ## 1. Parcel Route Automation Calculation
 
-- [ ] Resolve the source question: first question for me what is the best way to calculate the parcel automation track meaning the first thing that the buyer does is to place order right? what could possiblely the automated route calculation for the hubs like from seller preparing parcel to hubs going to hubns etc?
+- [x] Resolve the source question: first question for me what is the best way to calculate the parcel automation track meaning the first thing that the buyer does is to place order right? what could possiblely the automated route calculation for the hubs like from seller preparing parcel to hubs going to hubns etc?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Pre-calculated at checkout using Seller's Barangay (Origin Hub) and Buyer's Address (Destination Hub).
-- [ ] Review/decide: Relay flow: Seller → Origin Local Hub → (Regional Mother Hub if needed) → Destination Local Hub → Buyer.
-- [ ] Review/decide: Small parcels are consolidated into sealed Mother Bags; barcode scanning at every station validates the route and prevents misrouting.
+- [x] Review/decide: Pre-calculated at checkout using Seller's Barangay (Origin Hub) and Buyer's Address (Destination Hub).
+- [x] Review/decide: Relay flow: Seller → Origin Local Hub → (Regional Mother Hub if needed) → Destination Local Hub → Buyer.
+- [x] Review/decide: Small parcels are consolidated into sealed Mother Bags; barcode scanning at every station validates the route and prevents misrouting.
+
+Decision: **accepted with corrections**. Use full company-scoped address coverage, preserve the confirmed route, and retain actual scan-based custody. The bag sentence uses the existing seal/manifest rules; further throughput changes remain in B08/B17. See [the implementation and verification record](QUESTION_01_ROUTING.md).
 
 ## 2. Delivery Distance Scenarios (Short vs. Medium vs. Long)
 
@@ -219,23 +250,27 @@ Proposed ideas to review:
 
 ## 23. Rider Fleet Onboarding, Logistics Company Hierarchy, and KYC Verification
 
-- [ ] Resolve the source question: next is rider eligeabllility . we knwo we can create account for rider and the rider have fresh account for example. do we have a dropdown of chocies for them to submit application for logistics company or what? they are the rider so is there even registering from logistic or seller aside from platform?
+- [x] Resolve the source question: next is rider eligeabllility . we knwo we can create account for rider and the rider have fresh account for example. do we have a dropdown of chocies for them to submit application for logistics company or what? they are the rider so is there even registering from logistic or seller aside from platform?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Multi-Tenant Fleet Association: Riders register on the central platform but select their Logistics Company and Base Operating Hub via dropdowns; riders never register under individual sellers.
-- [ ] Review/decide: Mandatory KYC Verification: Riders upload professional driver's licenses, motorcycle OR/CR, and NBI/police clearances before activation.
-- [ ] Review/decide: Decentralized Activation: Local hub managers verify credentials and vehicle details before granting active shift status, unlocking live pickup pools and scanner functionality.
+- [x] Review/decide: Multi-Tenant Fleet Association: Riders register on the central platform but select their Logistics Company and Base Operating Hub via dropdowns; riders never register under individual sellers.
+- [x] Review/decide: Mandatory KYC Verification: Riders upload professional driver's licenses, motorcycle OR/CR, and NBI/police clearances before activation.
+- [x] Review/decide: Decentralized Activation: Local hub managers verify credentials and vehicle details before granting active shift status, unlocking live pickup pools and scanner functionality.
+
+Decision: **retain existing rider registration, company joining/consent and eligibility rules**; company-created riders receive email setup invitations. The listed NBI requirement and automatic shift activation are not added. See [B02](QUESTION_23_24_WORKER_ACCOUNTS.md). These checkmarks record decisions.
 
 ## 24. Multi-Tier Logistics Account Delegation, Password Security, and Dual Impersonation Auditing
 
-- [ ] Resolve the source question: is it good because currently my creation of account in logistic is like this a company will create an account and approved by the admin and the rest is the logistic account of that or the main account can put mother hubs, local hubs and and mimic other hubs so he can control other hubs too if there something went wrong on the other such such as creating or managing as if they are the thing. and he can create password for them etc. and base on the previous idea, the normal hubs account such as motherhub and local theycan also create accounts for scanner workers? so they wont just open the account for the hub? is this idea right or you want to clarify or fix/
+- [x] Resolve the source question: is it good because currently my creation of account in logistic is like this a company will create an account and approved by the admin and the rest is the logistic account of that or the main account can put mother hubs, local hubs and and mimic other hubs so he can control other hubs too if there something went wrong on the other such such as creating or managing as if they are the thing. and he can create password for them etc. and base on the previous idea, the normal hubs account such as motherhub and local theycan also create accounts for scanner workers? so they wont just open the account for the hub? is this idea right or you want to clarify or fix/
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Delegated Role Hierarchy: Logistics Master Admin manages Hub Managers; Hub Managers create separate operator accounts for floor sorters and scanner staff, eliminating shared credentials.
-- [ ] Review/decide: Secure Credential Delegation: Managers invite workers via staff ID and phone number with self-service password creation via OTP/invite links, ensuring individual accountability for lost packages.
-- [ ] Review/decide: Audited Impersonation Control: Master admins can control subordinate hubs during emergencies under a persistent visual banner, logging dual audit trails (operator_id + impersonated_by) for all dispatched manifests and route changes.
+- [x] Review/decide: Delegated Role Hierarchy: Logistics Master Admin manages Hub Managers; Hub Managers create separate operator accounts for floor sorters and scanner staff, eliminating shared credentials.
+- [x] Review/decide: Secure Credential Delegation: Managers invite workers via staff ID and phone number with self-service password creation via OTP/invite links, ensuring individual accountability for lost packages.
+- [x] Review/decide: Audited Impersonation Control: Master admins can control subordinate hubs during emergencies under a persistent visual banner, logging dual audit trails (operator_id + impersonated_by) for all dispatched manifests and route changes.
+
+Decision: **accept named email invitations and personal passwords; retain owner-only provisioning; defer impersonation**. Existing managerial visibility does not grant scanner authority. See [B02](QUESTION_23_24_WORKER_ACCOUNTS.md) for implementation, corrections and remaining acceptance limits.
 
 ## 25. Operational Transit Integrity, Net-Refund Calculations, Geo-Fenced SLAs, and Two-Human Custody
 

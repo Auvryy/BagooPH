@@ -152,14 +152,15 @@ class AccountSessionService
         return DB::transaction(function () use ($user, $token, $request, $signIn) {
             $owner = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             $token = $owner->tokens()->whereKey($token->id)->first();
-            if (! $token || ! str_starts_with($token->name, 'rider:') || ! $token->expires_at || ! $token->expires_at->isFuture()
+            $channel = $token && str_starts_with($token->name, 'logistics:') ? 'logistics' : 'rider';
+            if (! $token || (! str_starts_with($token->name, 'rider:') && ! str_starts_with($token->name, 'logistics:')) || ! $token->expires_at || ! $token->expires_at->isFuture()
                 || ! hash_equals((string) $token->credential_fingerprint, $this->fingerprint($owner))) {
                 return null;
             }
             $record = AccountLoginSession::firstOrCreate(['native_token_id' => $token->id], [
-                'user_id' => $owner->id, 'channel' => 'rider', 'method' => $signIn ? 'password' : 'existing',
+                'user_id' => $owner->id, 'channel' => $channel, 'method' => $signIn ? 'password' : 'existing',
                 'session_version' => (int) $owner->session_version, 'credential_fingerprint' => $this->fingerprint($owner),
-                ...$this->devices->metadata($signIn ? $request : new Request, 'rider', substr($token->name, 6)),
+                ...$this->devices->metadata($signIn ? $request : new Request, $channel, substr($token->name, strlen($channel) + 1)),
                 'signed_in_at' => $signIn ? $token->created_at : null,
                 'last_seen_at' => $token->last_used_at, 'expires_at' => $token->expires_at,
             ]);
@@ -227,7 +228,7 @@ class AccountSessionService
             || $record->session_version !== (int) $user->session_version || ! hash_equals($record->credential_fingerprint, $this->fingerprint($user))) {
             return false;
         }
-        if ($record->channel === 'rider') {
+        if (in_array($record->channel, ['rider', 'logistics'], true)) {
             $token = $record->nativeToken;
 
             return $token && $token->tokenable_type === $user->getMorphClass() && (int) $token->tokenable_id === $user->id
@@ -254,7 +255,7 @@ class AccountSessionService
                     }
                 });
         }
-        $user->tokens()->where('name', 'like', 'rider:%')->where('expires_at', '>', now())
+        $user->tokens()->where(fn ($query) => $query->where('name', 'like', 'rider:%')->orWhere('name', 'like', 'logistics:%'))->where('expires_at', '>', now())
             ->where('credential_fingerprint', $this->fingerprint($user))->orderBy('id')->chunkById(100, function ($tokens) use ($user, $request) {
                 foreach ($tokens as $token) {
                     $this->native($user, $token, $request);

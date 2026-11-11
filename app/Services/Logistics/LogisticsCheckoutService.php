@@ -81,6 +81,26 @@ class LogisticsCheckoutService
         ])->values()->all();
     }
 
+    /** Add a company-scoped route to each shop's current quote without creating a parcel. */
+    public function withRoutes(array $quote, Collection $items, ?LogisticsCompany $company, array $address): array
+    {
+        if (! $company || empty($address['shipping_province']) || empty($address['shipping_city'])
+            || (($address['delivery_type'] ?? 'doorstep') === 'hub_self_pickup' && empty($address['pickup_hub_id']))) {
+            return $quote;
+        }
+        $shops = $items->pluck('product.shop')->keyBy('id');
+        try {
+            foreach ($quote['shops'] as &$shopQuote) {
+                $plan = app(LogisticsRoutingEngine::class)->previewRoute($company, $shops->get($shopQuote['shop_id']), $address);
+                $shopQuote['shipping_quote'] = [...$shopQuote['shipping_quote'], ...$plan];
+            }
+        } catch (DomainException $exception) {
+            throw new CheckoutException($exception->getMessage(), previous: $exception);
+        }
+
+        return $quote;
+    }
+
     private function logoUrl(LogisticsCompany $company): ?string
     {
         $logo = $company->logo;

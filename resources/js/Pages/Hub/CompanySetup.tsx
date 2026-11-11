@@ -29,10 +29,9 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
     const [editingHub, setEditingHub] = useState<Hub | null>(null);
     const [resetPerson, setResetPerson] = useState<Props['staff'][number] | null>(null);
     const [creating, setCreating] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
     const [postalText, setPostalText] = useState('');
     const facility = useForm({ name: '', code: '', tier: 'local_bayan_hub', parent_hub_id: '', province: '', city_municipality: '', barangay: '', address: '', latitude: null as number | null, longitude: null as number | null, postal_codes: [] as string[], coverage_barangays: [] as string[], capacity: 500, allows_self_pickup: true, operating_hours: '' });
-    const worker = useForm({ kind: 'operator', hub_id: '', first_name: '', last_name: '', birthday: '', email: '', phone: '', password: '' });
+    const worker = useForm({ kind: 'operator', hub_id: '', first_name: '', last_name: '', birthday: '', email: '', phone: '' });
     const tariff = useForm({ version: company.tariff_version, base_fee: (company.base_shipping_cents / 100).toFixed(2), additional_kg_fee: (company.additional_kg_cents / 100).toFixed(2), included_weight_grams: company.included_weight_grams, shipping_earnings_model: company.shipping_earnings_model });
     const sharedErrors = [...Object.entries(facility.errors), ...Object.entries(worker.errors), ...Object.entries(tariff.errors)].filter(([key]) => !Object.keys(facility.data).includes(key) && !Object.keys(worker.data).includes(key) && !Object.keys(tariff.data).includes(key));
     const tabs = [{ key: 'network', label: 'Hub network', icon: Warehouse }, { key: 'staff', label: 'People & access', icon: Users }, { key: 'rates', label: 'Shipping & earnings', icon: CircleDollarSign }];
@@ -291,12 +290,12 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                         <p className="mt-3 text-xs text-zinc-600">{person.kind === 'operator' ? 'Hub operator' : 'Rider'} · {person.hub_name}</p>
                                         <div className="mt-3">
                                             <HubBadge tone={person.must_change_password || !person.email_verified_at ? 'warning' : 'success'}>
-                                                {person.must_change_password ? 'Temporary password' : !person.email_verified_at ? 'Verify email' : 'Activated'}
+                                                {person.must_change_password ? 'Invitation pending' : !person.email_verified_at ? 'Verify email' : 'Activated'}
                                             </HubBadge>
                                         </div>
                                         {canProvision && person.must_change_password && (
                                             <div className="mt-4">
-                                                <HubButton onClick={() => setResetPerson(person)}>Replace temporary login</HubButton>
+                                                <HubButton onClick={() => setResetPerson(person)}>Resend invitation</HubButton>
                                             </div>
                                         )}
                                     </article>
@@ -312,14 +311,13 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                         )}
 
                         {creating && canProvision && (
-                            <HubPanel title="Create a work account" description="Share the email and temporary password privately. The worker must replace it and verify their email." icon={<KeyRound className="h-4 w-4" />}>
+                            <HubPanel title="Create a work account" description="A setup code is emailed directly to the worker. They review the assignment and set their own password." icon={<KeyRound className="h-4 w-4" />}>
                                 <form
                                     onSubmit={event => {
                                         event.preventDefault();
                                         worker.post(`${basePath}/${company.id}/staff`, {
                                             preserveScroll: true,
                                             onSuccess: () => { worker.reset(); setCreating(false); },
-                                            onFinish: () => worker.reset('password'),
                                         });
                                     }}
                                     className="grid gap-4 md:grid-cols-2"
@@ -346,29 +344,17 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                             <input
                                                 required
                                                 type={field === 'birthday' ? 'date' : field === 'email' ? 'email' : 'text'}
+                                                maxLength={field === 'email' ? 255 : field === 'phone' ? 20 : field === 'birthday' ? undefined : 100}
+                                                autoComplete={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'off'}
                                                 value={worker.data[field]}
                                                 onChange={event => worker.setData(field, event.target.value)}
                                                 className={hubInput}
                                             />
                                         </Field>
                                     ))}
-                                    <Field label="Temporary password" error={worker.errors.password}>
-                                        <div className="flex gap-2">
-                                            <input required autoComplete="new-password" type={showPassword ? 'text' : 'password'} value={worker.data.password} onChange={event => worker.setData('password', event.target.value)} className={hubInput} />
-                                            <HubButton
-                                                type="button"
-                                                onClick={() => {
-                                                    worker.setData('password', `Bg!${crypto.randomUUID()}aA8`);
-                                                    setShowPassword(true);
-                                                }}
-                                            >
-                                                Generate
-                                            </HubButton>
-                                        </div>
-                                    </Field>
-                                    <p className="text-xs leading-5 text-zinc-500 md:col-span-2">Temporary login expires after seven days. Existing registered accounts and roles are kept separately.</p>
+                                    <p className="text-xs leading-5 text-zinc-600 md:col-span-2">Use an email the worker can access. Invitations last seven days; each setup code expires after 10 minutes.</p>
                                     <div className="md:col-span-2">
-                                        <HubButton primary disabled={worker.processing}>Create assigned account</HubButton>
+                                        <HubButton primary disabled={worker.processing}>Create account & email invitation</HubButton>
                                     </div>
                                 </form>
                             </HubPanel>

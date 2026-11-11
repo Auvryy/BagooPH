@@ -28,6 +28,7 @@ class OtpVerificationMail extends Mailable
     public function envelope(): Envelope
     {
         $subject = match ($this->purpose) {
+            'company_staff_activation' => 'Set up your BagooPH work account',
             'account_sessions' => 'Confirm your BagooPH device sign-out',
             'password_reset' => "Your BagooPH Password Reset Code: {$this->otpCode}",
             default => "Your BagooPH Verification Code: {$this->otpCode}",
