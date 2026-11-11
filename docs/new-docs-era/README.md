@@ -40,7 +40,7 @@ Pickup earnings accrue on actual origin receipt. Company and final-mile earnings
 
 ## Provisioning and interface
 
-The platform approves a registered logistics company. Its company owner creates child/Mother hubs with explicit parent and service coverage, configures its shipping model/rates, and creates named operator/rider accounts assigned to that company's hub. Temporary credentials require an initial password change; account roles and company ownership remain fixed, and credentials are never saved as plaintext.
+The platform approves a registered logistics company. Its company owner creates child/Mother hubs with explicit parent and service coverage, configures its shipping model/rates, and creates named operator/rider accounts assigned to that company's hub. New workers receive an email OTP invitation, review their assigned company/hub and choose their own password before working. Company owners do not select or share worker passwords. Existing temporary-password accounts retain the legacy activation path. Account roles and company ownership remain fixed, and credentials are never saved as plaintext. See the [B02 account decision](../brainstorming/QUESTION_23_24_WORKER_ACCOUNTS.md).
 
 Logistics uses a restrained shadcn-style workspace with Plus Jakarta Sans, Bagoo red, white raised panels, readable slate borders, 8px controls, compact status badges, consistent tables, clear scanner feedback and dedicated loading/empty/error states. Company setup, parcel scan, bags, manifests, staff and earnings remain reachable from the same shell.
 

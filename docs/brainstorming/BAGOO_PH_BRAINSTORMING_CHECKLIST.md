@@ -12,7 +12,7 @@ For each package, record **decision:** pending/accepted/changed/deferred/rejecte
 
 - [ ] **B00 — Inventory existing behavior and settle shared decisions.** Topics: All 27; especially 7–9, 18, 21, 25–27. Requires: None. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B01 — Verify hub topology and forward route planning.** Topics: 1–4. Requires: B00. Decision: current route contract accepted for Q1; delivery: locally verified for Q1, merge pending; evidence: [Q1 routing record](QUESTION_01_ROUTING.md). Full package remains open for any additional topology decisions.
-- [ ] **B02 — Confirm company roles, operator identities and rider placement.** Topics: 23, 24; identity part of 14. Requires: B01. Decision: pending; delivery: not started; evidence: pending.
+- [x] **B02 — Confirm company roles, operator identities and rider placement.** Topics: 23, 24; identity part of 14. Requires: B01. Decision: accepted with corrections; delivery: locally verified for the selected account/scanner scope, merge pending; evidence: [worker accounts and scanner decision](QUESTION_23_24_WORKER_ACCOUNTS.md). Owner-only provisioning retained; emergency impersonation deferred.
 - [ ] **B03 — Define shared shipment, custody and privacy contracts.** Topics: 5, 11–14, 17, 20, 25, 27. Requires: B01, B02. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B04 — Decide tariffs, liability and original payment allocations.** Topics: 7, 8, 17, 25–27. Requires: B00, B01, B03. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B05 — Verify checkout quotes and freeze purchased terms.** Topics: 1, 2, 26; measurements and voucher part of 27. Requires: B01, B03, B04. Decision: pending; delivery: not started; evidence: pending.
@@ -250,23 +250,27 @@ Proposed ideas to review:
 
 ## 23. Rider Fleet Onboarding, Logistics Company Hierarchy, and KYC Verification
 
-- [ ] Resolve the source question: next is rider eligeabllility . we knwo we can create account for rider and the rider have fresh account for example. do we have a dropdown of chocies for them to submit application for logistics company or what? they are the rider so is there even registering from logistic or seller aside from platform?
+- [x] Resolve the source question: next is rider eligeabllility . we knwo we can create account for rider and the rider have fresh account for example. do we have a dropdown of chocies for them to submit application for logistics company or what? they are the rider so is there even registering from logistic or seller aside from platform?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Multi-Tenant Fleet Association: Riders register on the central platform but select their Logistics Company and Base Operating Hub via dropdowns; riders never register under individual sellers.
-- [ ] Review/decide: Mandatory KYC Verification: Riders upload professional driver's licenses, motorcycle OR/CR, and NBI/police clearances before activation.
-- [ ] Review/decide: Decentralized Activation: Local hub managers verify credentials and vehicle details before granting active shift status, unlocking live pickup pools and scanner functionality.
+- [x] Review/decide: Multi-Tenant Fleet Association: Riders register on the central platform but select their Logistics Company and Base Operating Hub via dropdowns; riders never register under individual sellers.
+- [x] Review/decide: Mandatory KYC Verification: Riders upload professional driver's licenses, motorcycle OR/CR, and NBI/police clearances before activation.
+- [x] Review/decide: Decentralized Activation: Local hub managers verify credentials and vehicle details before granting active shift status, unlocking live pickup pools and scanner functionality.
+
+Decision: **retain existing rider registration, company joining/consent and eligibility rules**; company-created riders receive email setup invitations. The listed NBI requirement and automatic shift activation are not added. See [B02](QUESTION_23_24_WORKER_ACCOUNTS.md). These checkmarks record decisions.
 
 ## 24. Multi-Tier Logistics Account Delegation, Password Security, and Dual Impersonation Auditing
 
-- [ ] Resolve the source question: is it good because currently my creation of account in logistic is like this a company will create an account and approved by the admin and the rest is the logistic account of that or the main account can put mother hubs, local hubs and and mimic other hubs so he can control other hubs too if there something went wrong on the other such such as creating or managing as if they are the thing. and he can create password for them etc. and base on the previous idea, the normal hubs account such as motherhub and local theycan also create accounts for scanner workers? so they wont just open the account for the hub? is this idea right or you want to clarify or fix/
+- [x] Resolve the source question: is it good because currently my creation of account in logistic is like this a company will create an account and approved by the admin and the rest is the logistic account of that or the main account can put mother hubs, local hubs and and mimic other hubs so he can control other hubs too if there something went wrong on the other such such as creating or managing as if they are the thing. and he can create password for them etc. and base on the previous idea, the normal hubs account such as motherhub and local theycan also create accounts for scanner workers? so they wont just open the account for the hub? is this idea right or you want to clarify or fix/
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Delegated Role Hierarchy: Logistics Master Admin manages Hub Managers; Hub Managers create separate operator accounts for floor sorters and scanner staff, eliminating shared credentials.
-- [ ] Review/decide: Secure Credential Delegation: Managers invite workers via staff ID and phone number with self-service password creation via OTP/invite links, ensuring individual accountability for lost packages.
-- [ ] Review/decide: Audited Impersonation Control: Master admins can control subordinate hubs during emergencies under a persistent visual banner, logging dual audit trails (operator_id + impersonated_by) for all dispatched manifests and route changes.
+- [x] Review/decide: Delegated Role Hierarchy: Logistics Master Admin manages Hub Managers; Hub Managers create separate operator accounts for floor sorters and scanner staff, eliminating shared credentials.
+- [x] Review/decide: Secure Credential Delegation: Managers invite workers via staff ID and phone number with self-service password creation via OTP/invite links, ensuring individual accountability for lost packages.
+- [x] Review/decide: Audited Impersonation Control: Master admins can control subordinate hubs during emergencies under a persistent visual banner, logging dual audit trails (operator_id + impersonated_by) for all dispatched manifests and route changes.
+
+Decision: **accept named email invitations and personal passwords; retain owner-only provisioning; defer impersonation**. Existing managerial visibility does not grant scanner authority. See [B02](QUESTION_23_24_WORKER_ACCOUNTS.md) for implementation, corrections and remaining acceptance limits.
 
 ## 25. Operational Transit Integrity, Net-Refund Calculations, Geo-Fenced SLAs, and Two-Human Custody
 
