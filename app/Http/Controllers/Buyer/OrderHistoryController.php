@@ -91,6 +91,9 @@ class OrderHistoryController extends Controller
             'cancelOrderUrl' => $ownedBuyerOrder && app(OrderLifecycleService::class)->canBuyerCancel($order, $user)
                 ? route('buyer.orders.cancel', $order, absolute: false) : null,
             'cancellationReasons' => OrderLifecycleService::BUYER_CANCELLATION_REASONS,
+            'cancellationFeedback' => $ownedBuyerOrder ? app(OrderLifecycleService::class)->cancellationFeedback($order, $user) : null,
+            'cancellationRequestUrl' => $ownedBuyerOrder && app(OrderLifecycleService::class)->canBuyerRequestCancellation($order, $user)
+                ? route('buyer.orders.cancellation-request', $order, absolute: false) : null,
             'cancellationReason' => $ownedBuyerOrder && $order->status === 'cancelled'
                 ? $order->delivery?->checkpoints()->where('checkpoint_type', 'cancelled')->value('notes') ?? $order->notes : null,
             'pickupClaim' => $pickupClaim,
@@ -129,18 +132,26 @@ class OrderHistoryController extends Controller
         return back()->with('success', 'Order confirmed as received! Thank you for shopping with Bagoo.');
     }
 
-    public function cancel(Request $request, Order $order): RedirectResponse
+    public function cancel(Request $request, Order $order): JsonResponse|RedirectResponse
     {
         try {
-            app(OrderLifecycleService::class)->cancelByBuyer($order, $request->user(), $request->all());
+            $order = app(OrderLifecycleService::class)->cancelByBuyer($order, $request->user(), $request->all());
         } catch (ValidationException|AuthorizationException|HttpExceptionInterface $error) {
             throw $error;
         } catch (Throwable $error) {
             Log::warning('Buyer cancellation could not be saved.', ['order_id' => $order->id, 'exception' => $error::class]);
 
-            return back()->withErrors(['reason' => 'We could not cancel this order. Your order is unchanged; try again.']);
+            $message = 'We could not confirm the cancellation. Reload the saved order status before retrying.';
+
+            return $request->expectsJson() ? response()->json(['message' => $message, 'errors' => ['reason' => [$message]]], 500)
+                : back()->withErrors(['reason' => $message]);
         }
 
-        return back()->with('success', 'Your order is cancelled. Its delivery will not proceed.');
+        $message = 'Your order is cancelled. Its delivery will not proceed.';
+        $feedback = app(OrderLifecycleService::class)->cancellationFeedback($order, $request->user());
+
+        return $request->expectsJson() ? response()->json(['message' => $message,
+            'order' => $order->only(['id', 'order_number', 'status', 'payment_status']), 'cancellation_feedback' => $feedback])
+            : back()->with('success', $message);
     }
 }

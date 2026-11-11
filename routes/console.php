@@ -2,9 +2,10 @@
 
 use App\Services\AccountSessions\AccountSessionService;
 use App\Services\Advertisements\AdvertisementMeasurementService;
-use App\Services\Commerce\SaleReminderService;
 use App\Services\Commerce\BuyerProductViewTracker;
+use App\Services\Commerce\SaleReminderService;
 use App\Services\Logistics\RiderCompanyOfferService;
+use App\Services\Orders\OrderCancellationService;
 use App\Services\Wallet\WalletPaymentService;
 use App\Services\Wallet\WalletSettlementService;
 use Illuminate\Foundation\Inspiring;
@@ -91,3 +92,16 @@ Artisan::command('account-security:minimise-metadata', function () {
 })->purpose('Minimise old sign-in metadata without reopening revoked sessions');
 
 Schedule::command('account-security:minimise-metadata')->daily()->withoutOverlapping();
+
+Artisan::command('orders:expire-cancellation-requests {--limit=100}', function () {
+    $limit = filter_var($this->option('limit'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 1000]]);
+    if ($limit === false) {
+        $this->error('Use a limit from 1 to 1000.');
+
+        return 2;
+    }
+    $count = app(OrderCancellationService::class)->expireDue($limit);
+    $this->info("Expired {$count} cancellation requests. Orders and payments were unchanged.");
+})->purpose('Close unanswered cancellation requests after their response deadline');
+
+Schedule::command('orders:expire-cancellation-requests')->everyMinute()->withoutOverlapping();

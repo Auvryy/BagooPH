@@ -6,6 +6,7 @@ use App\Models\CheckoutSubmission;
 use App\Models\Delivery;
 use App\Models\LogisticsCompany;
 use App\Models\Order;
+use App\Services\Orders\OrderCancellationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
@@ -91,5 +92,25 @@ class PurchasedCheckoutTermsTest extends TestCase
         foreach ($products as $product) {
             $this->assertSame(9, $product->fresh()->stock);
         }
+    }
+
+    public function test_unsubmitted_confirmation_must_refresh_when_cancellation_policy_activates(): void
+    {
+        $legacy = \Mockery::mock(OrderCancellationService::class)->makePartial();
+        $legacy->shouldReceive('available')->andReturn(false);
+        $this->app->instance(OrderCancellationService::class, $legacy);
+        [$buyer, $products, $input] = $this->selection('cod');
+        $this->app->forgetInstance(OrderCancellationService::class);
+        $this->actingAs($buyer)->postJson('/checkout', $input)->assertUnprocessable()->assertJsonValidationErrors('checkout_token');
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('checkout_submissions', 0);
+        $input['checkout_token'] = $this->checkoutToken($buyer);
+        $this->post('/checkout', $input)->assertSessionHas('success');
+        foreach (Order::all() as $order) {
+            $this->assertSame(2, $order->shipping_quote['cancellation_policy_version']);
+            $this->assertSame(1, $order->shipping_quote['refund_policy_version']);
+        }
+        $this->post('/checkout', $input)->assertSessionHas('success');
+        $this->assertDatabaseCount('orders', 2);
     }
 }

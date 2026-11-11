@@ -73,9 +73,7 @@ class CheckoutSubmissionService
                 $shown?->getAttribute('checkout_price_context') ?? ($item->product ? app(SalePriceService::class)->context($item->product) : null)];
         })->all();
 
-        [$tariffs, $network] = $this->networkTerms();
-
-        return substr(hash('sha256', json_encode([$rows, $tariffs, $network], JSON_THROW_ON_ERROR)), 0, 32);
+        return substr(hash('sha256', json_encode([$rows, ...$this->networkTerms()], JSON_THROW_ON_ERROR)), 0, 32);
     }
 
     /** Track logistics sources separately from sale capacity consumed by this purchase. */
@@ -101,6 +99,7 @@ class CheckoutSubmissionService
         return [
             LogisticsCompany::eligible()->orderBy('id')->get(['id', 'tariff_version', 'base_shipping_cents', 'included_weight_grams', 'additional_kg_cents', 'shipping_earnings_model'])->toArray(),
             LogisticsHub::eligible()->orderBy('id')->get(['id', 'logistics_company_id', 'tier', 'parent_hub_id', 'province', 'city_municipality', 'coverage_barangays', 'postal_codes', 'allows_self_pickup', 'operating_hours'])->toArray(),
+            ['cancellation_policy_version' => app(OrderCancellationService::class)->available() ? 2 : 1],
         ];
     }
 
