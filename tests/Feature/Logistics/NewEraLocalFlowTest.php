@@ -68,8 +68,8 @@ class NewEraLocalFlowTest extends TestCase
         $this->assertSame('paid', $order->fresh()->payment_status);
         $this->assertDatabaseHas('logistics_earnings', ['delivery_id' => $parcel->id, 'role' => 'seller', 'amount_cents' => 90000]);
         $this->assertDatabaseHas('logistics_earnings', ['delivery_id' => $parcel->id, 'role' => 'platform', 'amount_cents' => 10000]);
-        $this->assertDatabaseHas('logistics_earnings', ['delivery_id' => $parcel->id, 'role' => 'company', 'amount_cents' => 3000]);
-        $this->assertDatabaseHas('logistics_earnings', ['delivery_id' => $parcel->id, 'role' => 'delivery', 'amount_cents' => 3000, 'released_at' => null]);
+        $this->assertDatabaseHas('logistics_earnings', ['delivery_id' => $parcel->id, 'role' => 'company', 'amount_cents' => 2500]);
+        $this->assertDatabaseHas('logistics_earnings', ['delivery_id' => $parcel->id, 'role' => 'delivery', 'amount_cents' => 2500, 'released_at' => null]);
         $this->assertDatabaseMissing('logistics_earnings', ['delivery_id' => $parcel->id, 'role' => 'pickup']);
     }
 
@@ -175,12 +175,12 @@ class NewEraLocalFlowTest extends TestCase
             'expected_version' => $cash->fresh()->version, 'request_token' => (string) Str::uuid(), 'receipt_confirmed' => true,
             'evidence_reference' => 'SYNTHETIC-COUNT-001', 'reason' => 'Isolated test: count and review the original physical cash.',
         ]);
-        $offer = $command($rider, 'offer', ['holder_id' => $rider->id, 'recipient_id' => $handler->id, 'amount' => '1060.00']);
-        $receipt = $command($handler, 'receive', ['offer_reference' => $offer->reference, 'received_amount' => '1059.00']);
+        $offer = $command($rider, 'offer', ['holder_id' => $rider->id, 'recipient_id' => $handler->id, 'amount' => '1050.00']);
+        $receipt = $command($handler, 'receive', ['offer_reference' => $offer->reference, 'received_amount' => '1049.00']);
         $earning = LogisticsEarning::where('delivery_id', $parcel->id)->where('role', 'delivery')->sole();
         $this->assertNull($earning->released_at);
-        $this->assertSame(106000, $shift->ledger($rider)['collected_cents']);
-        $this->assertSame(105900, $shift->ledger($rider)['remitted_cents']);
+        $this->assertSame(105000, $shift->ledger($rider)['collected_cents']);
+        $this->assertSame(104900, $shift->ledger($rider)['remitted_cents']);
         $this->assertFalse($shift->ledger($rider)['can_close']);
         $offer = $command($rider, 'offer', ['holder_id' => $rider->id, 'recipient_id' => $handler->id, 'amount' => '1.00']);
         $recovery = $command($handler, 'receive', ['offer_reference' => $offer->reference, 'received_amount' => '1.00']);
@@ -189,9 +189,9 @@ class NewEraLocalFlowTest extends TestCase
         $command($this->createApprovedUser('admin'), 'adjust', ['source_reference' => $receipt->reference,
             'adjustment_type' => 'shortage_recovered', 'amount' => '1.00', 'evidence_reference' => $recovery->reference]);
         $this->assertNotNull($earning->fresh()->released_at);
-        $this->assertSame(106000, $shift->ledger($rider)['remitted_cents']);
+        $this->assertSame(105000, $shift->ledger($rider)['remitted_cents']);
         $closed = $shift->close($rider);
-        $this->assertSame(106000, $closed->closing_snapshot['collected_cents']);
+        $this->assertSame(105000, $closed->closing_snapshot['collected_cents']);
         $this->assertNull($shift->close($rider));
         $this->assertNotSame($closed->id, $shift->open($rider)->id);
         $this->assertSame(0, $shift->ledger($rider)['collected_cents']);
@@ -227,7 +227,7 @@ class NewEraLocalFlowTest extends TestCase
         $money->command($admin, $case, 'refund-wallet', $refund);
         $money->command($admin, $case, 'refund-wallet', $refund);
         $this->assertSame(0, WalletAccount::where('user_id', $seller->id)->sole()->balance_cents);
-        $this->assertSame(194000, WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents);
+        $this->assertSame(195000, WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents);
         $this->assertSame(0, (int) WalletEntry::sum('delta_cents'));
         $earnings = app(LogisticsEarningsService::class);
         $this->assertSame('0', $earnings->summary($seller)['confirmed_cents']);

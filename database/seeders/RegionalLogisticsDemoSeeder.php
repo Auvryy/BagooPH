@@ -25,7 +25,7 @@ class RegionalLogisticsDemoSeeder extends Seeder
                 'user_id' => $owner->id, 'name' => 'Bagoo Regional Express', 'slug' => 'bagoo-regional-express',
                 'service_areas' => ['NCR', 'Region IV-A', 'CAR'], 'contact_email' => 'regional.owner@bagoo.test',
                 'address' => 'Calamba City, Laguna', 'status' => 'active', 'is_active' => true,
-                'base_shipping_cents' => 6000, 'included_weight_grams' => 1000, 'additional_kg_cents' => 2000,
+                'base_shipping_cents' => 5000, 'included_weight_grams' => 1000, 'additional_kg_cents' => 2000,
             ]);
             if ($company->user_id !== $owner->id || ! LogisticsCompany::eligible()->whereKey($company->id)->exists()) {
                 throw new RuntimeException('Reserved regional demo company is restricted or has conflicting ownership.');

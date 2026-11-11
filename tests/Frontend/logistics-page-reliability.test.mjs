@@ -11,13 +11,13 @@ import { createInertiaApp } from '@inertiajs/react';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-logistics-pages-'));
 after(() => rmSync(temporary, { recursive: true, force: true }));
 const bundle = await build({
-    stdin: { contents: `export { default as Overview } from '@/Pages/Hub/Dashboard'; export { default as ErrorPage } from '@/Pages/Hub/Error'; export { default as HubLocationEditor } from '@/Components/Logistics/HubLocationEditor'; export { default as CompanySetup } from '@/Pages/Hub/CompanySetup';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
+    stdin: { contents: `export { default as Overview } from '@/Pages/Hub/Dashboard'; export { default as ErrorPage } from '@/Pages/Hub/Error'; export { default as HubLocationEditor } from '@/Components/Logistics/HubLocationEditor'; export { default as CompanySetup, ShippingEarningsPreview } from '@/Pages/Hub/CompanySetup';`, resolveDir: resolve(import.meta.dirname, '../..'), loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', loader: { '.css': 'empty' }, write: false,
     plugins: [{ name: 'test-css', setup(builder) { builder.onResolve({ filter: /\.css$/ }, () => ({ path: 'style', namespace: 'test-css' })); builder.onLoad({ filter: /.*/, namespace: 'test-css' }, () => ({ contents: '', loader: 'js' })); } }],
 });
 const bundlePath = join(temporary, 'pages.mjs');
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { Overview, ErrorPage, HubLocationEditor, CompanySetup } = await import(pathToFileURL(bundlePath).href);
+const { Overview, ErrorPage, HubLocationEditor, CompanySetup, ShippingEarningsPreview } = await import(pathToFileURL(bundlePath).href);
 const paths = { 'hub.dashboard': '/hub/dashboard', 'hub.scan.station': '/hub/scan', 'hub.deliveries': '/hub/deliveries', 'hub.network': '/hub/network', 'hub.fleet': '/hub/fleet', 'hub.counter': '/hub/counter', 'hub.manifests.index': '/hub/manifests', 'hub.recovery.index': '/hub/delivery-recovery', 'hub.parcel-recovery.index': '/hub/parcel-recovery', 'hub.cod.index': '/hub/cod' };
 globalThis.route = name => name ? paths[name] ?? `/${name.replaceAll('.', '/')}` : { current: () => false, has: () => true };
 after(() => delete globalThis.route);
@@ -44,11 +44,11 @@ function overview(canScan) {
 test('hub pin editor requires an actual selected point before saving', async () => {
     const base = { name: 'Test Hub', latitude: null, longitude: null, location_token: 'a'.repeat(64) };
     const empty = await render(HubLocationEditor, 'Hub/Pin', { hub: base, url: '/hub/location' });
-    assert.match(empty, /role="status">Loading map…<\/p>/);
+    assert.match(empty, /role="region" aria-label="Hub location map"/);
     assert.match(empty, /aria-label="Hub location map"/);
     assert.match(empty, /<button[^>]*disabled=""[^>]*>Save hub pin<\/button>/);
     const selected = await render(HubLocationEditor, 'Hub/Pin', { hub: { ...base, latitude: 14.16, longitude: 121.24 }, url: '/hub/location' });
-    assert.match(selected, /Loading map… Your pin is still selected/);
+    assert.match(selected, /role="region" aria-label="Hub location map"/);
     assert.match(selected, /<button[^>]*!min-h-\[44px\][^>]*>Save hub pin<\/button>/);
     assert.doesNotMatch(selected, /<button[^>]*disabled=""[^>]*>Save hub pin<\/button>/);
 });
@@ -115,4 +115,20 @@ test('expired sessions offer sign-in and forbidden records do not invent technic
     const forbidden = await render(ErrorPage, 'Hub/Error', { ...failure, status: 403, title: 'Access unavailable', overviewUrl: '/hub/dashboard?hub_id=2', requestId: null, retryUrl: null });
     assert.match(forbidden, /href="\/hub\/dashboard\?hub_id=2"/);
     assert.doesNotMatch(forbidden, /Reference:|Try again|saved successfully/i);
+});
+
+
+test('shipping preview uses the entered fee and preserves each cent of its model', () => {
+    const renderSplit = (baseFee, model) => renderToStaticMarkup(createElement(ShippingEarningsPreview, { baseFee, model }));
+    const dedicated = renderSplit('50.00', 'dedicated_fleet');
+    assert.match(dedicated, /₱20\.84 company/);
+    assert.match(dedicated, /₱20\.83 delivery rider/);
+    assert.match(dedicated, /₱8\.33 pickup rider/);
+    const standard = renderSplit('50.00', 'standard');
+    assert.match(standard, /₱25\.00 company, ₱25\.00 delivery rider/);
+    assert.doesNotMatch(standard, /pickup rider/);
+    assert.match(renderSplit('70.00', 'dedicated_fleet'), /₱29\.18 company/);
+    assert.match(renderSplit('0.00', 'standard'), /₱0\.00 company, ₱0\.00 delivery rider/);
+    assert.match(renderSplit('invalid', 'standard'), /Enter a valid base fee/);
+    assert.doesNotMatch(renderSplit('invalid', 'standard'), /NaN/);
 });

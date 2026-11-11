@@ -184,7 +184,7 @@ class CheckoutReplayTest extends TestCase
             $this->assertSame('pending', $order->payment_status);
             $this->assertSame('200.00', $order->subtotal);
             $this->assertSame('20.00', $order->voucher_discount);
-            $this->assertSame('240.00', $order->total_amount);
+            $this->assertSame('230.00', $order->total_amount);
             $this->assertNotNull($order->delivery->origin_mother_hub_id);
             $this->assertNotNull($order->delivery->destination_mother_hub_id);
         }
@@ -394,7 +394,7 @@ class CheckoutReplayTest extends TestCase
         $order = Order::with('delivery')->firstOrFail();
         $this->assertSame('Maria Santos', $order->recipient_name);
         $this->assertSame('+639171234567', $order->recipient_phone);
-        $this->assertSame('260.00', $order->total_amount);
+        $this->assertSame('250.00', $order->total_amount);
         $this->assertSame('cod', $order->payment_method);
         $this->assertSame('placed', $order->status);
         $this->assertSame($buyer->id, $order->buyer_id);

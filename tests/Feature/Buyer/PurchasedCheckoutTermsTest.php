@@ -75,7 +75,8 @@ class PurchasedCheckoutTermsTest extends TestCase
         $orders = Order::orderBy('id')->get();
         $snapshots = $orders->map(fn ($order) => [$order->getAttributes(), $order->delivery->getAttributes()])->all();
         foreach ($orders as $order) {
-            $this->assertSame(6000, array_sum($order->shipping_quote['earnings_split_cents']));
+            $this->assertSame(5000, array_sum($order->shipping_quote['earnings_split_cents']));
+            $this->assertSame(1, $order->shipping_quote['refund_policy_version']);
             $this->assertSame($order->delivery->route_hub_ids, array_column($order->shipping_quote['route'], 'id'));
             $this->assertEquals('10.00', $order->shipping_quote['measurements'][0]['length_cm']);
         }

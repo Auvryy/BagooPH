@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Category;
 use App\Models\IdentityCorrectionRequest;
 use App\Models\KycDecision;
 use App\Models\Product;
@@ -60,6 +59,8 @@ class SellerDemoSeeder extends Seeder
                     unset($data['images'], $data['category']);
                     $product = Product::firstOrCreate(['shop_id' => $shop->id, 'sku' => $data['sku']], $data + [
                         'category_id' => $shop->root_category_id, 'featured_image' => $images[0]['url'],
+                        // Packed dimensions for newly created demonstration products only.
+                        'length_cm' => 40.00, 'width_cm' => 30.00, 'height_cm' => 15.00,
                         'status' => 'active', 'rating' => 0, 'sales_count' => 0,
                     ]);
                     // Fixture products keep their old department as audit history while current

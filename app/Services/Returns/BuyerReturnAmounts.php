@@ -34,6 +34,8 @@ class BuyerReturnAmounts
 
     public function original(Order $order): array
     {
+        abort_unless(($order->shipping_quote['refund_policy_version'] ?? 1) === 1, 409,
+            'The purchased refund policy needs its supported review and funding workflow. Do not substitute older refund terms.');
         $funding = app(VoucherFundingService::class)->amounts($order);
         abort_if($funding['promotion_blockers'] !== [], 409, implode(' ', $funding['promotion_blockers']));
         $units = [];
