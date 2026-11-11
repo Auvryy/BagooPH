@@ -419,3 +419,25 @@ test('unavailable carrier has one short blocking status without checkout tutoria
         assert.doesNotMatch(html, /No approved logistics|No eligible logistics|One offer per shop|Click or tap the map to place a pin/);
     } finally { delete globalThis.voucherQuoteState; }
 });
+
+
+test('checkout shows the current per-shop route and hides it while delivery details are changing', async () => {
+    const routeQuote = { ...quote, shops: quote.shops.map(shop => ({ ...shop, shipping_quote: {
+        route: [{ id: 101, code: 'BH-TEST', name: 'Current destination hub', tier: 'local_bayan_hub' }],
+        same_hub_bypass: true,
+    } })) };
+    try {
+        globalThis.voucherQuoteState = { quote: routeQuote, offers: [], current: true, pending: false, failure: '', ready: true };
+        const html = await render(ui.Checkout, 'Checkout/Index', checkoutProps);
+        assert.match(html, /Planned delivery route/);
+        assert.match(html, /Current destination hub/);
+        globalThis.voucherQuoteState = { quote: routeQuote, offers: [], current: false, pending: true, failure: '', ready: false };
+        const pending = await render(ui.Checkout, 'Checkout/Index', checkoutProps);
+        assert.match(pending, /Checking delivery route/);
+        assert.doesNotMatch(pending, /Current destination hub/);
+        globalThis.voucherQuoteState = { quote: routeQuote, offers: [], current: true, pending: false, failure: 'Route unavailable', ready: false };
+        const failed = await render(ui.Checkout, 'Checkout/Index', checkoutProps);
+        assert.doesNotMatch(failed, /Current destination hub/);
+        assert.match(failed, /Route unavailable/);
+    } finally { delete globalThis.voucherQuoteState; }
+});

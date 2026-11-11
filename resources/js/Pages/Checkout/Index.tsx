@@ -7,6 +7,7 @@ import BuyerLayout from '@/Layouts/BuyerLayout';
 import BuyerPaymentChoice from '@/Components/BuyerPaymentChoice';
 import PhoneInput from '@/Components/PhoneInput';
 import ShippingCalculation from '@/Components/ShippingCalculation';
+import CheckoutRoutePreview from '@/Components/CheckoutRoutePreview';
 import LocationPinPicker from '@/Components/LocationPinPicker';
 import useCheckoutGps from '@/hooks/useCheckoutGps';
 import { changedDeliveryAddress, withDoorstepDelivery, validDeliveryPin, defaultLogisticsCompanyId, type CheckoutAddressField } from '@/utils/checkoutLocation';
@@ -623,6 +624,8 @@ export default function CheckoutIndex({
                                     <span className="mt-1 block text-xs text-rose-700">{errors.logistics_company_id}</span>
                                 )}
                             </div>
+                            {selectedCompany && <CheckoutRoutePreview shops={quote.shops} ready={canShowQuote}
+                                pending={pricing.pending} selfPickup={data.delivery_type === 'hub_self_pickup'} />}
                             <fieldset className="min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <legend className="sr-only">Delivery method</legend>
                                 {/* Option 1: Doorstep Delivery */}
