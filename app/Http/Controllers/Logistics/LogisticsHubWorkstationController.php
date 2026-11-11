@@ -1137,7 +1137,7 @@ class LogisticsHubWorkstationController extends Controller
     ): array {
         $actor ??= request()->user();
         $delivery->loadMissing(['order.items.product', 'order.buyer', 'currentHub', 'courier', 'assignedRider', 'latestCustodyCheckpoint', 'latestOriginalCheckpoint', 'pickupClaim']);
-        $base = request()->is('hub/*') ? '/hub' : '';
+        $base = request()->is('hub/*', 'api/v1/logistics/*') ? '/hub' : '';
         $riders = $delivery->status === 'sorted_to_barangay_bin' && $delivery->delivery_type === 'doorstep'
             ? $this->eligibility->riderCandidates($hub)->get()->map(fn ($profile) => ['id' => $profile->user_id, 'assigned_barangay' => $profile->assigned_barangay]) : collect();
         $workstation = app(HubParcelWorkstationService::class);
@@ -1490,7 +1490,7 @@ class LogisticsHubWorkstationController extends Controller
         if (($validated['mode'] ?? 'inspect') === 'confirm') {
             return $this->operationError($request, 'Open bag receiving to verify the actual seal, then scan each arriving parcel. Identifying a bag does not receive its contents.', 409);
         }
-        $base = $request->is('hub/*') ? '/hub' : '';
+        $base = $request->is('hub/*', 'api/v1/logistics/*') ? '/hub' : '';
 
         return $this->scanResponse(['success' => true, 'confirmed' => false, 'is_master_bag' => true,
             'message' => 'Bag identified. Verify its seal in bag receiving, then receive individual parcels through their manifest.',
