@@ -1,4 +1,4 @@
-# B01–B07 manual review for later
+# B01–B08 manual review for later
 
 All boxes below mean **user manual acceptance**, currently pending. Prior automated checks and merged code do not check these boxes. This guide is prepared for a later review session; phone, email inbox and real physical handover checks require their own session.
 
@@ -64,6 +64,19 @@ All boxes below mean **user manual acceptance**, currently pending. Prior automa
 - [ ] Scan evidence shows the named actor and reference. Derived local records and transport departures are distinguished from submitted checkpoint records.
 - [ ] Complete the connected local/shared-Mother/cross-Mother checkout → acceptance → cancellation decline → pickup → destination-sort journey for COD and Wallet.
 
+## B08 — Packing, seals and loose cargo
+
+- [ ] In Mother Bags, choose the actual hub and scan into the next open bag; another eligible waybill reuses its lane.
+- [ ] Try a multi-item parcel without outer-package readings; its values remain available for correction and no empty bag is created.
+- [ ] Check the 15 kg/60 cm parcel boundary and the 25 kg/0.30 m³/50-parcel bag limits; a rejected scan cannot partly pack or move cargo.
+- [ ] Fill an automatic lane; the next eligible parcel opens another bag while the first remains unsealed.
+- [ ] Check permanent sack tag, trip reference and numbered seal separately; a used seal cannot be reused.
+- [ ] Receive every bag member individually before reusing its permanent sack tag at the actual destination hub.
+- [ ] In Manifests, choose loose cargo for an oversized/heavy parcel; check vehicle capacity without a fake bag or seal.
+- [ ] Remove loose cargo individually before departure with a reason; receive each loose waybill separately after departure. One receipt cannot finish a partial arrival.
+- [ ] Confirm a bag member cannot be split using an individual manifest removal control.
+- [ ] Retry uncertain submissions and double click; check the original request and unchanged purchased shipping amount.
+
 ## Environment prerequisite
 
-Use the feature branch's normal migration/build/start workflow in the chosen local environment before reviewing B06. Merely pulling code does not add its new tables. This delivery intentionally leaves existing development data intact. Keep PostgreSQL race testing, real payment, live delivery and device checks distinct from the SQLite and rendered-component evidence in the roadmap.
+Use the feature branch's normal migration/build/start workflow in the chosen local environment before reviewing B06–B08. Merely pulling code does not add its new tables. This delivery intentionally leaves existing development data intact. Keep PostgreSQL race testing, real payment, live delivery and device checks distinct from the SQLite and rendered-component evidence in the roadmap.

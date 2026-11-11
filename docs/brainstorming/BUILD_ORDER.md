@@ -95,7 +95,7 @@ The [B07 contract](B07_INDIVIDUAL_HANDOVERS.md) uses one explicit online custody
 
 **Source topics:** 16; cargo part of 27. **Prerequisites:** B03, B04, B07.
 
-Define automatic open-bag creation, physical reusable bag versus trip seal identity, capacity, numbered seals and atomic membership. Support non-baggable parcels as explicit manifest cargo without fictitious bags.
+The [B08 contract](B08_BAGS_SEALS_AND_LOOSE_CARGO.md) defines explicit automatic-lane packing, permanent sack versus trip/seal identities, retained handling readings, enforced bag capacity and individual loose freight. Packing assignment cannot imply sealing, dispatch or receipt. Original purchased shipping terms remain unchanged.
 
 **Exit gate:** A parcel has at most one active container/manifest membership. Concurrent first scans cannot create competing bags; sealed membership cannot change. Weight/size limits and individual loose-cargo unloading are enforced.
 
