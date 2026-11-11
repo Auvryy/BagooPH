@@ -14,13 +14,13 @@ use App\Models\Shop;
 use App\Models\User;
 use App\Services\Logistics\LogisticsCheckoutService;
 use App\Services\Orders\CheckoutQuoteService;
-use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\RegionalLogisticsDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia;
 use Tests\Concerns\InteractsWithCheckoutSubmission;
+use Tests\Support\RoutingCheckoutSeeder;
 use Tests\TestCase;
 
 class NewEraCheckoutTest extends TestCase
@@ -35,7 +35,7 @@ class NewEraCheckoutTest extends TestCase
         $this->testStoragePath = sys_get_temp_dir().'/bagoo-new-era-tests-'.getmypid().'-'.bin2hex(random_bytes(5));
         app()->useStoragePath($this->testStoragePath);
         Storage::fake('local');
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(RoutingCheckoutSeeder::class);
     }
 
     protected function tearDown(): void
@@ -97,6 +97,11 @@ class NewEraCheckoutTest extends TestCase
         $response = $this->actingAs($buyer)->postJson(route('buyer.vouchers.apply'), $input)->assertOk();
         $response->assertJsonPath('quote.shipping_fee', 240)->assertJsonPath('quote.shops.0.shipping_quote.billable_weight_grams', 10000)
             ->assertJsonPath('logisticsCompanies.0.id', $company->id);
+        $response->assertJsonPath('quote.shops.0.shipping_quote.same_hub_bypass', false);
+        $this->assertSame(['BH-LBN-01', 'MH-LAG-01', 'BH-SCZ-01'], array_column($response->json('quote.shops.0.shipping_quote.route'), 'code'));
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('deliveries', 0);
+
         $this->postJson(route('buyer.vouchers.best'), $input)->assertOk()->assertJsonPath('quote.shipping_fee', 240);
         $this->postJson(route('buyer.vouchers.choices'), $input)->assertOk();
         $items = app(CheckoutQuoteService::class)->selectedItems($buyer, $cart->items()->pluck('id')->all());
@@ -232,5 +237,38 @@ class NewEraCheckoutTest extends TestCase
         $hub->update(['operating_hours' => null]);
         $this->post(route('checkout.store'), $input)->assertSessionHasNoErrors();
         $this->assertSame($order->id, Order::sole()->id);
+    }
+
+    public function test_route_preview_is_invalidated_when_the_parent_hub_becomes_inactive_before_purchase(): void
+    {
+        [$buyer, $product, $company, $cart, , $input] = $this->purchase();
+        $this->actingAs($buyer)->postJson(route('buyer.vouchers.apply'), $input)->assertOk()
+            ->assertJsonCount(3, 'quote.shops.0.shipping_quote.route');
+        LogisticsHub::where('code', 'MH-LAG-01')->update(['is_active' => false]);
+        $this->postJson(route('buyer.vouchers.apply'), $input)->assertUnprocessable()
+            ->assertJsonPath('success', false)->assertJsonMissingPath('quote.shops.0.shipping_quote.route');
+        $this->postJson(route('checkout.store'), $input)->assertUnprocessable();
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('deliveries', 0);
+        $this->assertSame(20, $product->fresh()->stock);
+        $this->assertSame(1, $cart->items()->count());
+    }
+
+    public function test_each_shop_gets_an_owned_route_preview_without_creating_orders(): void
+    {
+        [$buyer, $product, , $cart, $line, $input] = $this->purchase();
+        $shop = Shop::factory()->approved()->create(['city' => 'Los Banos, Laguna',
+            'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030', 'root_category_id' => $product->shop->root_category_id]);
+        $other = Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $shop->root_category_id, 'stock' => 5,
+            'weight_kg' => '1.00', 'length_cm' => '10.00', 'width_cm' => '10.00', 'height_cm' => '10.00']);
+        $second = CartItem::create(['cart_id' => $cart->id, 'product_id' => $other->id, 'quantity' => 1, 'unit_price' => $other->price]);
+        $response = $this->actingAs($buyer)->postJson(route('buyer.vouchers.apply'), [...$input,
+            'item_ids' => [$line->id, $second->id]])->assertOk()->assertJsonCount(2, 'quote.shops');
+        foreach ($response->json('quote.shops') as $quote) {
+            $this->assertSame(['BH-LBN-01', 'MH-LAG-01', 'BH-SCZ-01'], array_column($quote['shipping_quote']['route'], 'code'));
+            $this->assertFalse($quote['shipping_quote']['same_hub_bypass']);
+        }
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('deliveries', 0);
     }
 }

@@ -11,13 +11,31 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\Logistics\LogisticsRateService;
 use App\Services\Logistics\LogisticsRoutingEngine;
-use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
+use Tests\Support\RoutingCheckoutSeeder;
 use Tests\TestCase;
 
 class NewEraRoutingRateTest extends TestCase
 {
     use RefreshDatabase;
+
+    private string $testStoragePath;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->testStoragePath = sys_get_temp_dir().'/bagoo-route-tests-'.bin2hex(random_bytes(6));
+        app()->useStoragePath($this->testStoragePath);
+        Storage::fake('local');
+    }
+
+    protected function tearDown(): void
+    {
+        File::deleteDirectory($this->testStoragePath);
+        parent::tearDown();
+    }
 
     public function test_volumetric_weight_controls_the_tariff_and_flat_baseline_is_sixty_pesos(): void
     {
@@ -52,7 +70,7 @@ class NewEraRoutingRateTest extends TestCase
 
     public function test_same_child_route_omits_mother_hubs_and_freezes_one_hop(): void
     {
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(RoutingCheckoutSeeder::class);
         $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
         $hub = LogisticsHub::where('code', 'BH-LBN-01')->sole();
         $order = Order::factory()->create(['shipping_city' => $hub->city_municipality, 'shipping_province' => $hub->province, 'shipping_postal_code' => '4030', 'destination_barangay' => 'Batong Malake', 'logistics_flow_version' => 2]);
@@ -67,7 +85,7 @@ class NewEraRoutingRateTest extends TestCase
 
     public function test_postal_coverage_and_explicit_parent_determine_the_regional_path(): void
     {
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(RoutingCheckoutSeeder::class);
         $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
         $origin = LogisticsHub::where('code', 'BH-LBN-01')->sole();
         $destination = LogisticsHub::where('code', 'BH-SCZ-01')->sole();
@@ -85,7 +103,7 @@ class NewEraRoutingRateTest extends TestCase
 
     public function test_cross_region_routes_retain_both_explicit_mothers_and_cannot_skip_between_children(): void
     {
-        $this->seed(DatabaseSeeder::class);
+        $this->seed(RoutingCheckoutSeeder::class);
         $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
         $origin = LogisticsHub::where('code', 'BH-LBN-01')->sole();
         $mother = LogisticsHub::create(['logistics_company_id' => $origin->logistics_company_id, 'code' => 'QA-CAV-MH', 'name' => 'Cavite Mother',
@@ -99,11 +117,99 @@ class NewEraRoutingRateTest extends TestCase
             'status' => 'unassigned', 'courier_id' => null, 'assigned_rider_id' => null, 'current_hub_id' => null]);
         app(LogisticsRoutingEngine::class)->planDeliveryRoute($parcel, $order, $shop);
         $this->assertSame([$origin->id, $origin->parent_hub_id, $mother->id, $destination->id], $parcel->route_hub_ids);
+        $preview = app(LogisticsRoutingEngine::class)->previewRoute($origin->company, $shop, $order->only([
+            'shipping_city', 'shipping_province', 'shipping_postal_code', 'destination_barangay',
+        ]));
+        $this->assertSame($parcel->route_hub_ids, array_column($preview['route'], 'id'));
+
         $this->assertFalse($parcel->same_hub_bypass);
         $this->assertSame('QA-CAV-MH', app(LogisticsRoutingEngine::class)->forwardSortTarget($parcel, LogisticsHub::findOrFail($origin->parent_hub_id))['code']);
         $before = $parcel->route_hub_ids;
         $destination->update(['parent_hub_id' => $origin->parent_hub_id]);
         $this->assertSame($before, $parcel->fresh()->route_hub_ids);
         $this->assertSame(4, count($order->fresh()->shipping_quote['route']));
+        try {
+            app(LogisticsRoutingEngine::class)->planDeliveryRoute($parcel, $order, $shop);
+            $this->fail('A confirmed route must not be silently recalculated after a parent hub edit.');
+        } catch (\DomainException $exception) {
+            $this->assertStringContainsString('controlled recovery', $exception->getMessage());
+        }
+        $this->assertSame($before, $parcel->fresh()->route_hub_ids);
+        $this->assertSame(4, count($order->fresh()->shipping_quote['route']));
+
+    }
+
+    public function test_preview_has_no_custody_side_effects_and_matches_the_confirmed_route(): void
+    {
+        $this->seed(RoutingCheckoutSeeder::class);
+        $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
+        $origin = LogisticsHub::where('code', 'BH-LBN-01')->sole();
+        $address = ['shipping_province' => 'Laguna', 'shipping_city' => 'Santa Cruz',
+            'shipping_postal_code' => '4009', 'destination_barangay' => 'Poblacion III'];
+        $engine = app(LogisticsRoutingEngine::class);
+        $preview = $engine->previewRoute($origin->company, $shop, $address);
+        $this->assertSame(['BH-LBN-01', 'MH-LAG-01', 'BH-SCZ-01'], array_column($preview['route'], 'code'));
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('deliveries', 0);
+        $order = Order::factory()->create([...$address, 'logistics_flow_version' => 2]);
+        $parcel = Delivery::factory()->create(['order_id' => $order->id, 'logistics_company_id' => $origin->logistics_company_id,
+            'status' => 'unassigned', 'courier_id' => null, 'assigned_rider_id' => null, 'current_hub_id' => null]);
+        $engine->planDeliveryRoute($parcel, $order, $shop);
+        $this->assertSame($preview['route'], $order->fresh()->shipping_quote['route']);
+        $this->assertSame('unassigned', $parcel->status);
+        $this->assertSame(0, $parcel->checkpoints()->count());
+    }
+
+    public function test_local_preview_does_not_require_an_active_mother_and_foreign_pickup_is_rejected(): void
+    {
+        $this->seed(RoutingCheckoutSeeder::class);
+        $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
+        $origin = LogisticsHub::where('code', 'BH-LBN-01')->sole();
+        LogisticsHub::whereKey($origin->parent_hub_id)->update(['is_active' => false]);
+        $address = ['shipping_province' => 'Laguna', 'shipping_city' => 'Los Baños',
+            'shipping_postal_code' => '4030', 'destination_barangay' => 'Batong Malake'];
+        $engine = app(LogisticsRoutingEngine::class);
+        $plan = $engine->previewRoute($origin->company, $shop, $address);
+        $this->assertTrue($plan['same_hub_bypass']);
+        $this->assertSame([$origin->id], array_column($plan['route'], 'id'));
+        $this->assertFalse($engine->serves($origin->company, $shop, [...$address,
+            'delivery_type' => 'hub_self_pickup', 'pickup_hub_id' => 2147483647]));
+        $this->assertFalse($engine->serves($origin->company, $shop, [...$address,
+            'shipping_city' => 'Santa Cruz', 'shipping_postal_code' => '4009', 'destination_barangay' => 'Poblacion III']));
+    }
+
+    public function test_ambiguous_or_inactive_company_routes_are_unavailable(): void
+    {
+        $this->seed(RoutingCheckoutSeeder::class);
+        $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
+        $origin = LogisticsHub::where('code', 'BH-LBN-01')->sole();
+        $destination = LogisticsHub::where('code', 'BH-SCZ-01')->sole();
+        $address = ['shipping_province' => 'Laguna', 'shipping_city' => 'Santa Cruz',
+            'shipping_postal_code' => '4009', 'destination_barangay' => 'Poblacion III'];
+        $duplicate = $destination->replicate();
+        $duplicate->code = 'QA-AMBIGUOUS';
+        $duplicate->save();
+        $engine = app(LogisticsRoutingEngine::class);
+        $this->assertFalse($engine->serves($origin->company, $shop, $address));
+        $duplicate->delete();
+        $company = $origin->company;
+        $company->update(['is_active' => false]);
+        $this->assertFalse($engine->serves($company, $shop, $address));
+    }
+
+    public function test_legacy_same_child_orders_keep_their_original_mother_hub_requirement(): void
+    {
+        $this->seed(RoutingCheckoutSeeder::class);
+        $shop = User::where('email', 'seller@bagoo.test')->sole()->shop;
+        $hub = LogisticsHub::where('code', 'BH-LBN-01')->sole();
+        $order = Order::factory()->create(['shipping_city' => $hub->city_municipality, 'shipping_province' => $hub->province,
+            'shipping_postal_code' => '4030', 'destination_barangay' => 'Batong Malake', 'logistics_flow_version' => 1]);
+        $parcel = Delivery::factory()->create(['order_id' => $order->id, 'logistics_company_id' => $hub->logistics_company_id,
+            'status' => 'unassigned', 'courier_id' => null, 'assigned_rider_id' => null, 'current_hub_id' => null]);
+        app(LogisticsRoutingEngine::class)->planDeliveryRoute($parcel, $order, $shop);
+        $this->assertFalse($parcel->same_hub_bypass);
+        $this->assertSame($hub->parent_hub_id, $parcel->origin_mother_hub_id);
+        $this->assertSame($hub->parent_hub_id, $parcel->destination_mother_hub_id);
+        $this->assertNull($parcel->route_hub_ids);
     }
 }
