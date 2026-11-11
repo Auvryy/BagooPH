@@ -36,7 +36,7 @@ class LogisticsEligibilityService
     public function hubContext(Request $request, bool $strict = false): array
     {
         $hubs = $this->accessibleHubs($request->user())->orderBy('tier')->orderBy('name')->orderBy('id')->get();
-        $id = $request->input('hub_id') ?? $request->session()->get('active_hub_id');
+        $id = $request->input('hub_id') ?? ($request->hasSession() ? $request->session()->get('active_hub_id') : null);
         if ($id !== null) {
             $valid = (is_int($id) || is_string($id)) && preg_match('/\A[1-9][0-9]*\z/', (string) $id) === 1;
             $hub = $valid ? $hubs->firstWhere('id', $id) : null;

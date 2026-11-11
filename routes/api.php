@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\LogisticsAuthController;
+use App\Http\Controllers\Api\LogisticsScanController;
 use App\Http\Controllers\Api\RiderAuthController;
 use App\Http\Controllers\Api\RiderCashController;
 use App\Http\Controllers\Api\RiderCompanyController;
@@ -10,7 +12,9 @@ use App\Http\Controllers\Api\RiderOperationsController;
 use App\Http\Controllers\Api\RiderParcelController;
 use App\Http\Controllers\Api\RiderSettingsController;
 use App\Http\Controllers\Api\RiderTripController;
+use App\Http\Controllers\Auth\StaffInvitationController;
 use App\Http\Controllers\PublicTrackingController;
+use App\Http\Middleware\EnsureLogisticsAccountToken;
 use App\Http\Middleware\EnsureRiderAccountToken;
 use App\Http\Middleware\PrivateRiderResponse;
 use Illuminate\Support\Facades\Route;
@@ -97,4 +101,14 @@ Route::prefix('v1')->middleware([PrivateRiderResponse::class, 'throttle:rider-ap
         Route::patch('emails/{id}/preferred', [RiderSettingsController::class, 'prefer'])->where('id', '[1-9][0-9]*')->middleware([EnsureRiderAccountToken::class.':settings:emails', 'throttle:10,1']);
         Route::delete('emails/{id}', [RiderSettingsController::class, 'destroy'])->where('id', '[1-9][0-9]*')->middleware([EnsureRiderAccountToken::class.':settings:emails', 'throttle:10,1']);
     });
+});
+
+Route::prefix('v1/logistics')->middleware(PrivateRiderResponse::class)->group(function () {
+    Route::post('auth/tokens', [LogisticsAuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('activation/send', [StaffInvitationController::class, 'send'])->middleware('throttle:5,1');
+    Route::post('activation/verify', [StaffInvitationController::class, 'verify'])->middleware('throttle:10,1');
+    Route::post('activation/complete', [StaffInvitationController::class, 'activate'])->middleware('throttle:5,1');
+    Route::get('session', [LogisticsAuthController::class, 'me'])->middleware(EnsureLogisticsAccountToken::class.':account');
+    Route::delete('auth/token', [LogisticsAuthController::class, 'logout'])->middleware(EnsureLogisticsAccountToken::class.':logout');
+    Route::post('scan', [LogisticsScanController::class, 'scan'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:120,1']);
 });

@@ -38,7 +38,9 @@ class DeviceDescription
             default => 'Browser',
         };
         $reported = $this->text($name, 80);
-        $label = $channel === 'rider' ? 'Rider app'.($reported ? ' · '.$reported : ($os ? ' on '.$os : '')) : $browser.($os ? ' on '.$os : '');
+        $label = in_array($channel, ['rider', 'logistics'], true)
+            ? ($channel === 'logistics' ? 'Logistics scanner' : 'Rider app').($reported ? ' · '.$reported : ($os ? ' on '.$os : ''))
+            : $browser.($os ? ' on '.$os : '');
         $ip = $request->ip();
 
         return ['device_label' => $label, 'device_type' => $os === 'iPad' ? 'tablet'

@@ -91,7 +91,7 @@ class LogisticsHubWorkstationController extends Controller
     protected function getActiveHub(Request $request, ?User $user): array
     {
         [$hub, $hubs] = $this->eligibility->hubContext($request, strict: true);
-        if ($hub) {
+        if ($hub && $request->hasSession()) {
             $request->session()->put('active_hub_id', $hub->id);
         }
 
