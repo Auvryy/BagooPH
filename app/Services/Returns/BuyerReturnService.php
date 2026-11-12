@@ -2,6 +2,7 @@
 
 namespace App\Services\Returns;
 
+use App\Models\BuyerReturnAdjustment;
 use App\Models\BuyerReturnCase;
 use App\Models\BuyerReturnEvent;
 use App\Models\BuyerReturnEvidence;
@@ -224,6 +225,12 @@ class BuyerReturnService
         if ($actor->isAdmin() && $actor->canAccessPortal() && $actor->email_verified_at && $case->status === 'escalated') {
             array_push($actions, 'approve', 'reject');
         }
+        if ($actor->isAdmin() && $actor->canAccessPortal() && $actor->email_verified_at
+            && ! in_array($actor->id, [$case->buyer_id, $case->seller_id], true)
+            && in_array($case->status, ['approved', 'at_destination_hub', 'in_transit', 'ready_for_seller', 'seller_received', 'condition_review'], true)
+            && ! BuyerReturnAdjustment::where('buyer_return_case_id', $case->id)->exists()) {
+            $actions[] = 'review-fault';
+        }
         if (($actor->id === $case->buyer_id || $actor->id === $case->seller_id || $actor->isAdmin() && $actor->canAccessPortal())
             && (($case->status === 'approved' && $case->dropoff_until && now()->greaterThan($case->dropoff_until))
                 || ($case->status === 'rejected' && $case->appeal_until && now()->greaterThan($case->appeal_until)))) {
@@ -241,6 +248,8 @@ class BuyerReturnService
         $data = Validator::make($input, ['request_token' => ['required', 'uuid'],
             'expected_version' => ['required', new AsciiPositiveInteger, 'integer'],
             'reason' => ['required', new ApplicationText('notes', 10, 1000)],
+            'fault' => ['nullable', Rule::in(['seller', 'courier'])],
+            'fault_evidence' => ['nullable', new ApplicationText('notes', 10, 1000)],
             'amount' => ['prohibited'], 'status' => ['prohibited'], 'buyer_id' => ['prohibited'], 'seller_id' => ['prohibited'],
         ])->validate();
         $data['expected_version'] = (int) $data['expected_version'];
@@ -265,11 +274,21 @@ class BuyerReturnService
             if ($action === 'reject' && $actor->isSeller()) {
                 Validator::make($data, ['reason' => [new ApplicationText('notes', 10, 300)]])->validate();
             }
+            $context = [];
+            if (in_array($action, ['approve', 'review-fault'], true)) {
+                if ($action === 'review-fault' && empty($data['fault'])) {
+                    throw ValidationException::withMessages(['fault' => 'Choose the evidenced fault for this independent review.']);
+                }
+                $context['fault_review'] = app(ReturnFaultReviewService::class)->review($this->current($actor), $case, $data);
+            } else {
+                abort_if(! empty($data['fault']) || ! empty($data['fault_evidence']), 422, 'Fault details belong to an approval or independent fault review.');
+            }
             $source = $case->status;
             $case->status = match ($action) {
                 'withdraw' => 'withdrawn', 'escalate' => 'escalated', 'approve' => 'approved',
                 'reject' => $this->current($actor)->isAdmin() ? 'denied' : 'rejected',
                 'close-period' => $source === 'rejected' ? 'denied' : 'expired',
+                'review-fault' => $source,
             };
             if ($action === 'approve') {
                 $case->dropoff_until = now()->addDays(7);
@@ -283,7 +302,7 @@ class BuyerReturnService
                 DB::table('buyer_return_unit_claims')->where('buyer_return_case_id', $case->id)->delete();
             }
 
-            $event = $this->append($case, $this->current($actor), $action, $source, $data['reason'], $token, $fingerprint);
+            $event = $this->append($case, $this->current($actor), $action, $source, $data['reason'], $token, $fingerprint, $context);
             if ($action === 'approve') {
                 app(BuyerReturnCustodyService::class)->prepare($case, $event);
             }
@@ -328,6 +347,8 @@ class BuyerReturnService
             'response_until', 'appeal_until', 'dropoff_until', 'created_at']) + [
                 'order' => $case->order->only(['id', 'order_number']), 'actions' => $this->actions($actor, $case),
                 'custody' => app(BuyerReturnCustodyService::class)->presentation($actor, $case),
+                'fault_review' => $actor->isLogistics() ? null : app(ReturnFaultReviewService::class)->current($case),
+                'refund_policy_version' => $case->order->shipping_quote['refund_policy_version'] ?? 1,
                 'money' => app(BuyerReturnMoneyService::class)->presentation($actor, $case),
                 'items' => $case->items->map(fn ($item) => ['id' => $item->id, 'quantity' => $item->quantity, 'purchase' => $item->purchase_snapshot])->all(),
                 'evidence' => $case->evidence->map(fn ($photo) => ['id' => $photo->id,

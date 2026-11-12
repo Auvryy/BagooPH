@@ -58,7 +58,7 @@ class BuyerReturnController extends Controller
 
     public function action(Request $request, BuyerReturnCase $case, BuyerReturnService $returns): RedirectResponse
     {
-        $data = $request->validate(['action' => ['required', 'string', Rule::in(['approve', 'reject', 'escalate', 'withdraw', 'close-period'])]]);
+        $data = $request->validate(['action' => ['required', 'string', Rule::in(['approve', 'review-fault', 'reject', 'escalate', 'withdraw', 'close-period'])]]);
         try {
             $returns->command($request->user(), $case, $data['action'], $request->all());
         } catch (ValidationException|AuthorizationException|HttpExceptionInterface $error) {
