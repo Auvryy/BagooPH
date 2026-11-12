@@ -101,13 +101,53 @@ master/seal check before the original manifest receives individual returns.
 Failed forms keep their scans and retry identity, including after a validation
 redirect refreshes the page's command token.
 
+## Wrong-hub buyer returns
+
+The Scan Station recognizes the separate return barcode at an eligible hub in
+the original company. An unexpected-hub inspection retains an observation on
+the original manifest and links a recovery review. Inspection does not receive
+the parcel, move the recorded holder or decide financial fault. A company owner
+or independent platform administrator reviews the original source and proposed
+corridor. A stale source or changed corridor requires a fresh review. An
+unreceived observation can be withdrawn without changing custody.
+
+After authorization, the actual observed-hub handler scans the separate return
+barcode and supplies a real private intake photo and bounded handover details.
+The original dispatcher cannot acknowledge this receiving handover. Intake
+retains the original manifest and sack membership as unreceived history, then
+records the actual new hub holder. Any extracted sack member remains linked to
+its original physical sack and seal; the sack is not silently emptied, opened
+or relocated.
+
+Recovery follows the actual child and Mother Hub corridor to the original
+expected hub. It uses new, dedicated manifests and vehicle trips, actual package
+readings, sack/loose classification and individual departure/receipt scans.
+There is no direct shortcut between different child hubs. Each corrective leg
+has its own authority; the original return route and cursor stay unchanged
+until actual receipt at the expected hub proves the complete recovery chain.
+That receipt advances the original route once and resolves the original
+observation. The successful forward delivery remains unchanged.
+
+A recovered parcel can resume its original route before its original outer
+sack arrives. The physical sack reservation and original transport resources
+remain held until its actual arrival and seal verification account for the
+sack separately. The manifests, driver candidates and placement guards use the
+same outstanding physical-receipt check. Parcel recovery cannot impersonate an
+outer-sack arrival or release the original driver prematurely.
+
+The return case links **Open route recovery**. The company reviewer chooses
+**Authorize recovery route** or **Withdraw observation**. The observed-hub
+handler chooses **Receive actual parcel**. Once held, open the return case to
+save its actual package readings, then choose the marked **Authorized recovery**
+entry under **Manifests → Buyer item return**. Sending and receiving handlers
+continue the recorded manifest and sack controls. Review and intake forms keep
+failed input and their retry identity; links respect the account's facility
+scope on root and hub-subdomain pages.
+
 ## Remaining package boundaries
 
-The shared-trip, package-reading and sack implementations are not evidence that
-buyer-return wrong-hub recovery has been completed. That remains in the same
-B11–B13 delivery. Existing dedicated return
-transport, original bag limits and supervised RTS/forward recovery remain
-enforced while their extensions are implemented and verified. Consolidation
+Current implementation evidence, regression limitations and the remaining
+B11–B13 delivery are recorded in the roadmap. Consolidation
 must not refuse a valid physical return merely because a vehicle or bag is not
 full. Automatic clock execution remains B14; no timeout proves loss or pays a
 refund.
