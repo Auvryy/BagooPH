@@ -74,6 +74,7 @@ export interface User {
     addresses?: Address[];
     canManageResources?: boolean;
     canSetupCompany?: boolean;
+    canManageReturnLiabilities?: boolean;
     canScanParcels?: boolean;
     canViewFinancialOversight?: boolean;
     resourceGovernanceUrl?: string;
