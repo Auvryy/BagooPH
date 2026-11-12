@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -16,6 +18,20 @@ class LogisticsManifest extends Model
     protected $hidden = ['creation_token', 'creation_fingerprint'];
 
     protected $casts = ['sealed_at' => 'datetime', 'dispatched_at' => 'datetime', 'received_at' => 'datetime', 'closed_at' => 'datetime', 'version' => 'integer', 'recovery_leg_index' => 'integer'];
+
+    public function scopeAwaitingPhysicalReceipt(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query) {
+            $query->where('logistics_manifests.status', 'dispatched');
+            if (Schema::hasColumn('mother_bags', 'return_trip_id')) {
+                $query->orWhereExists(fn ($held) => $held->selectRaw('1')->from('logistics_trip_manifests as tm')
+                    ->join('logistics_transport_trips as t', 't.id', '=', 'tm.trip_id')
+                    ->join('mother_bags as s', 's.return_trip_id', '=', 't.id')
+                    ->whereColumn('tm.manifest_id', 'logistics_manifests.id')->where('t.status', 'dispatched')
+                    ->whereNotIn('s.status', ['received', 'emptied_at_source']));
+            }
+        });
+    }
 
     protected static function booted(): void
     {
@@ -73,14 +89,27 @@ class LogisticsManifest extends Model
         return $this->hasOne(BuyerReturnManifestRoute::class, 'manifest_id');
     }
 
+    public function buyerReturnRecoveryRoute(): HasOne
+    {
+        return $this->hasOne(BuyerReturnRecoveryRoute::class, 'manifest_id');
+    }
+
+    public function getBuyerReturnRecoveryIdAttribute(): ?int
+    {
+        return $this->direction === 'buyer_return' && Schema::hasTable('buyer_return_recovery_routes')
+            ? $this->buyerReturnRecoveryRoute?->recovery_id : null;
+    }
+
     public function getBuyerReturnCaseIdAttribute(): ?int
     {
-        return $this->direction === 'buyer_return' ? $this->buyerReturnRoute?->buyer_return_case_id : null;
+        return $this->direction === 'buyer_return' ? ($this->buyerReturnRoute?->buyer_return_case_id
+            ?? ($this->buyer_return_recovery_id ? $this->buyerReturnRecoveryRoute->recovery->buyer_return_case_id : null)) : null;
     }
 
     public function getBuyerReturnLegIndexAttribute(): ?int
     {
-        return $this->direction === 'buyer_return' ? $this->buyerReturnRoute?->leg_index : null;
+        return $this->direction === 'buyer_return' ? ($this->buyerReturnRoute?->leg_index
+            ?? ($this->buyer_return_recovery_id ? $this->buyerReturnRecoveryRoute->leg_index : null)) : null;
     }
 
     public function recoveryCase(): BelongsTo

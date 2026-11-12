@@ -38,6 +38,7 @@ use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\BuyerReturnController;
 use App\Http\Controllers\BuyerReturnCustodyController;
 use App\Http\Controllers\BuyerReturnMoneyController;
+use App\Http\Controllers\BuyerReturnRecoveryController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CodCashController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
@@ -63,12 +64,12 @@ use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderCancellationController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\PromotionContentAssistantController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\PromotionContentAssistantController;
 use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\RegistrationPolicyController;
 use App\Http\Controllers\Seller\ProductSaleController;
@@ -573,6 +574,11 @@ Route::get('/about', [MarketplaceController::class, 'index'])->name('about');
 */
 Route::get('/track/{tracking_number?}', [PublicTrackingController::class, 'show'])->middleware('throttle:public-tracking')->name('track.show');
 
+Route::middleware('auth')->prefix('buyer-return-recoveries')->group(function () {
+    Route::get('/{recovery}', [BuyerReturnRecoveryController::class, 'show'])->whereNumber('recovery');
+    Route::post('/{recovery}/{action}', [BuyerReturnRecoveryController::class, 'command'])->whereNumber('recovery')
+        ->whereIn('action', ['authorize', 'withdraw', 'intake'])->middleware('throttle:30,1');
+});
 Route::middleware('auth')->prefix('buyer-returns')->name('buyer-returns.')->group(function () {
     Route::get('/', [BuyerReturnController::class, 'index'])->name('index');
     Route::get('/orders/{order}/create', [BuyerReturnController::class, 'create'])->where('order', '[1-9][0-9]{0,17}')->name('create');

@@ -20,6 +20,7 @@ use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsTripService;
 use App\Services\Logistics\ParcelRecoveryService;
 use App\Services\Returns\BuyerReturnBagService;
+use App\Services\Returns\BuyerReturnRecoveryService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -153,15 +154,20 @@ class LogisticsManifestController extends Controller
             'sharedTrip' => $trip, 'tripCandidates' => $tripCandidates,
             'buyerReturns' => $sourceHubs->isNotEmpty() ? BuyerReturnParcel::whereIn('logistics_company_id', $companyIds)->whereIn('current_hub_id', $sourceHubIds)->where('status', 'at_hub')
                 ->whereHas('returnCase', fn ($query) => $query->whereIn('status', ['at_destination_hub', 'in_transit']))->with('returnCase')->orderBy('id')->get()
-                ->filter(fn ($parcel) => isset($parcel->hub_ids[$parcel->route_position + 1]))
-                ->map(fn ($parcel) => ['id' => $parcel->buyer_return_case_id, 'reference' => $parcel->returnCase->reference, 'barcode' => $parcel->barcode,
-                    'source_hub_id' => $parcel->current_hub_id, 'destination_hub_id' => $parcel->hub_ids[$parcel->route_position + 1], 'weight_grams' => $parcel->weight_grams])->values() : [],
+                ->map(function ($parcel) {
+                    $physical = app(BuyerReturnRecoveryService::class)->context($parcel);
+
+                    return isset($physical['hub_ids'][$physical['position'] + 1]) ? [
+                        'id' => $parcel->buyer_return_case_id, 'reference' => $parcel->returnCase->reference, 'barcode' => $parcel->barcode,
+                        'source_hub_id' => $parcel->current_hub_id, 'destination_hub_id' => $physical['hub_ids'][$physical['position'] + 1],
+                        'recovery_id' => $physical['recovery_id'], 'weight_grams' => $parcel->weight_grams] : null;
+                })->filter()->values() : [],
             'hubs' => LogisticsHub::eligible()->whereIn('logistics_company_id', $companyIds)->orderBy('name')->get(['id', 'name', 'code', 'tier', 'logistics_company_id', 'parent_hub_id', 'latitude', 'longitude', 'address', 'city_municipality', 'province']),
             'sourceHubIds' => $sourceHubIds,
             'preparationRoute' => $preparationRoute,
             'vehicles' => $sourceHubs->isNotEmpty() ? LogisticsFleet::ready()->whereIn('vehicle_type', ['l300_van', 'wing_truck'])->whereIn('logistics_company_id', $companyIds)->whereIn('hub_id', $sourceHubIds)->whereNotNull('assigned_driver_id')
                 ->whereHas('driver.courierProfile', fn ($profile) => $profile->operational()->where('is_available', true))
-                ->whereNotIn('assigned_driver_id', LogisticsManifest::where('status', 'dispatched')->select('driver_id'))
+                ->whereNotIn('assigned_driver_id', LogisticsManifest::awaitingPhysicalReceipt()->select('driver_id'))
                 ->with('driver')->orderBy('plate_number')->get()->reject(fn ($fleet) => Delivery::riderHasActiveWork($fleet->assigned_driver_id))->values()->map(fn ($fleet) => ['id' => $fleet->id, 'hub_id' => $fleet->hub_id,
                     'plate_number' => $fleet->plate_number, 'vehicle_type' => $fleet->vehicle_type, 'driver_name' => $fleet->driver->name, 'capacity_kg' => $fleet->capacity_kg]) : [],
             'basePath' => $request->is('hub/*') ? '/hub/manifests' : '/manifests',
@@ -171,7 +177,7 @@ class LogisticsManifestController extends Controller
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         try {
-            $manifest = $this->service->create($request->user(), $request->only(['source_hub_id', 'destination_hub_id', 'vehicle_id', 'creation_token', 'direction', 'parcel_recovery_case_id', 'buyer_return_case_id']),
+            $manifest = $this->service->create($request->user(), $request->only(['source_hub_id', 'destination_hub_id', 'vehicle_id', 'creation_token', 'direction', 'parcel_recovery_case_id', 'buyer_return_case_id', 'buyer_return_recovery_id']),
                 $request->session()->get('manifest_creation_token'));
             $request->session()->forget('manifest_creation_token');
         } catch (DomainException $error) {

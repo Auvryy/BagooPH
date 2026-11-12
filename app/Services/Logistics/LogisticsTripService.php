@@ -41,6 +41,8 @@ class LogisticsTripService
             $first = $manifests->first();
             $this->authorize($actor, $first->source_hub_id);
             $this->requireState($manifests->count() > 1 || $first->direction === 'buyer_return', 'Choose at least two compatible manifests, or the single buyer-return load requiring its own sack or loose-cargo trip.');
+            $this->requireState(! $manifests->contains(fn ($manifest) => $manifest->buyer_return_recovery_id !== null) || $manifests->count() === 1,
+                'An authorized return recovery uses its own dedicated physical trip.');
             $previous = LogisticsTransportTrip::where('created_by_id', $actor->id)->where('creation_token', $data['request_token'])->first();
             if ($previous) {
                 $this->requireState(hash_equals($previous->creation_fingerprint, $fingerprint), 'This request already prepared a different trip.');
@@ -112,6 +114,7 @@ class LogisticsTripService
                 }
                 app(BuyerReturnBagService::class)->departed($trip, $actor);
             } elseif ($action === 'close') {
+                app(BuyerReturnBagService::class)->assertClose($trip);
                 foreach ($manifests as $manifest) {
                     $this->requireState(in_array($manifest->status, ['received', 'closed'], true)
                         && app(LogisticsManifestService::class)->receiptCounts($manifest)['outstanding'] === 0

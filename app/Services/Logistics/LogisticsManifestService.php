@@ -72,6 +72,7 @@ class LogisticsManifestService
             'direction' => ['required', Rule::in(['outbound', 'return', 'recovery', 'buyer_return'])],
             'parcel_recovery_case_id' => ['exclude_unless:direction,recovery', ...$this->idRules()],
             'buyer_return_case_id' => ['exclude_unless:direction,buyer_return', ...$this->idRules()],
+            'buyer_return_recovery_id' => ['exclude_unless:direction,buyer_return', 'nullable', new AsciiPositiveInteger, 'integer'],
         ])->validate();
         if ($input['direction'] === 'buyer_return') {
             return app(BuyerReturnManifestService::class)->create($actor, $input, $issuedToken);
@@ -329,7 +330,7 @@ class LogisticsManifestService
                     $vehicle = $this->vehicle($manifest->logistics_company_id, $manifest->source_hub_id, $manifest->vehicle_id, $manifest->driver_id, newWork: true, legType: $manifest->type);
                     $manifest->setRelation('vehicle', $vehicle);
                     app(CargoHandlingService::class)->assertManifestCapacity($manifest);
-                    if (LogisticsManifest::where('status', 'dispatched')->whereKeyNot($manifest->id)
+                    if (LogisticsManifest::awaitingPhysicalReceipt()->whereKeyNot($manifest->id)
                         ->whereNotIn('id', app(LogisticsTripService::class)->departingManifestIds())
                         ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->orWhere('driver_id', $manifest->driver_id))->exists()) {
                         throw new DomainException('This vehicle or driver already has a manifest in transit.');

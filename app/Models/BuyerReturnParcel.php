@@ -40,6 +40,11 @@ class BuyerReturnParcel extends Model
         return $this->belongsTo(LogisticsHub::class, 'current_hub_id');
     }
 
+    public function recoveries(): HasMany
+    {
+        return $this->hasMany(BuyerReturnRecovery::class);
+    }
+
     public function state(): array
     {
         return $this->only(['id', 'barcode', 'status', 'version', 'current_hub_id', 'route_position', 'weight_grams', 'custody']);

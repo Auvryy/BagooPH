@@ -5,8 +5,10 @@ namespace App\Services\Returns;
 use App\Models\BuyerReturnCargoReading;
 use App\Models\BuyerReturnManifestParcel;
 use App\Models\BuyerReturnParcel;
+use App\Models\BuyerReturnRecovery;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
+use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsTransportTrip;
 use App\Models\MotherBag;
 use App\Models\MotherBagReturnParcel;
@@ -130,6 +132,9 @@ class BuyerReturnBagService
             $bag->version++;
             $bag->save();
             $this->event($bag, $actor, 'return-'.$action, $data['barcode'], $payload);
+            if ($action === 'open') {
+                $this->finishSack($bag, $actor);
+            }
             $this->request($bag, $actor, $data['request_token'], $hash);
 
             return $bag;
@@ -211,8 +216,40 @@ class BuyerReturnBagService
             && ($receipt->payload['return_member_id'] ?? null) === $original->id, 'Use the return’s actual opened sack and original receiving manifest.');
         $member->update(['active_return_parcel_id' => null, 'received_at' => now(), 'received_by_id' => $actor->id]);
         $this->event($bag, $actor, 'return-received', $parcel->barcode, ['return_member_id' => $member->id]);
-        if (! $bag->returnParcels()->whereNull('removed_at')->whereNull('received_at')->exists()) {
+        $this->finishSack($bag, $actor);
+    }
+
+    public function recovered(BuyerReturnRecovery $recovery, BuyerReturnParcel $parcel, User $actor, LogisticsManifestEvent $receipt): void
+    {
+        if (! $recovery->original_bag_member_id) {
+            return;
+        }
+        abort_unless(DB::transactionLevel() > 0, 409);
+        $member = MotherBagReturnParcel::whereKey($recovery->original_bag_member_id)->lockForUpdate()->firstOrFail();
+        $bag = MotherBag::whereKey($member->mother_bag_id)->lockForUpdate()->firstOrFail();
+        $this->requireState($recovery->state === 'completed' && $member->buyer_return_parcel_id === $parcel->id
+            && $member->buyer_return_manifest_parcel_id === $recovery->original_member_id && $receipt->actor_id === $actor->id
+            && $receipt->hub_id === $bag->destination_hub_id && ($receipt->payload['return_recovery_id'] ?? null) === $recovery->id
+            && DB::table('buyer_return_bag_extractions')->where('original_bag_member_id', $member->id)->where('recovery_id', $recovery->id)->exists(),
+            'Link the actual completed recovery and expected receipt before accounting for its original sack member.');
+        $member->update(['received_at' => now(), 'received_by_id' => $actor->id]);
+        $this->event($bag, $actor, 'return-recovered', $parcel->barcode, ['return_recovery_id' => $recovery->id, 'original_receipt_reference' => $receipt->reference]);
+        $this->finishSack($bag, $actor);
+    }
+
+    private function finishSack(MotherBag $bag, User $actor): void
+    {
+        if ($bag->status === 'opened' && $bag->opened_at && ! $bag->returnParcels()->whereNull('removed_at')->whereNull('received_at')->exists()) {
             $bag->update(['status' => 'received', 'active_physical_key' => null, 'version' => $bag->version + 1]);
+            $this->event($bag, $actor, 'return-sack-received', $bag->reference, ['all_members_accounted' => true]);
+        }
+    }
+
+    public function assertClose(LogisticsTransportTrip $trip): void
+    {
+        if ($this->available()) {
+            $this->requireState(! MotherBag::where('return_trip_id', $trip->id)->whereNotIn('status', ['received', 'emptied_at_source'])->exists(),
+                'Verify the actual arriving return sacks before closing this trip. Recovered parcels do not prove their original outer sack arrived.');
         }
     }
 
@@ -232,7 +269,10 @@ class BuyerReturnBagService
         }
         $parcels = BuyerReturnManifestParcel::whereIn('manifest_id', $trip->manifests()->select('logistics_manifests.id'))->where('included', true)->with('parcel')->get()
             ->map(function ($member) {
-                $reading = BuyerReturnCargoReading::where('buyer_return_parcel_id', $member->buyer_return_parcel_id)->where('route_position', $member->leg_index)->latest('id')->first();
+                $manifest = $member->manifest;
+                $reading = BuyerReturnCargoReading::where('buyer_return_parcel_id', $member->buyer_return_parcel_id)
+                    ->where('route_position', $member->source_state['route_position'])->where('hub_id', $manifest->source_hub_id)
+                    ->when(Schema::hasColumn('buyer_return_cargo_readings', 'recovery_id'), fn ($query) => $query->where('recovery_id', $manifest->buyer_return_recovery_id))->latest('id')->first();
 
                 return ['barcode' => $member->barcode_snapshot, 'status' => $member->parcel->status, 'baggable' => $reading?->profile['baggable'] ?? null,
                     'weight_kg' => $reading?->profile['weight_kg'] ?? null, 'manifest_id' => $member->manifest_id];
@@ -285,10 +325,11 @@ class BuyerReturnBagService
             'This sack exceeds its actual parcel, weight or volume limit.');
         foreach ($bag->returnParcels()->whereNull('removed_at')->with('parcel')->get() as $member) {
             $profile = app(BuyerReturnCargoService::class)->profile($member->parcel);
+            $physical = app(BuyerReturnRecoveryService::class)->context($member->parcel);
             $this->requireState($member->active_return_parcel_id === $member->buyer_return_parcel_id && $profile['baggable']
                 && $member->handling_snapshot === $profile && $member->source_state === $member->parcel->state()
                 && $member->parcel->current_hub_id === $bag->source_hub_id
-                && ($member->parcel->hub_ids[$member->parcel->route_position + 1] ?? null) === $bag->destination_hub_id,
+                && ($physical['hub_ids'][$physical['position'] + 1] ?? null) === $bag->destination_hub_id,
                 'A return changed from this sack’s retained physical contents. Recheck it before sealing or departure.');
         }
     }

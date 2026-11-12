@@ -25,9 +25,10 @@ class BuyerReturnCargoService
         if (! $this->available()) {
             throw new DomainException('Apply the additive return-handling migration before saving readings.');
         }
+        $context = app(BuyerReturnRecoveryService::class)->context($parcel);
         if ($parcel->status !== 'at_hub' || ($parcel->custody['kind'] ?? null) !== 'hub'
-            || $parcel->current_hub_id !== ($parcel->hub_ids[$parcel->route_position] ?? null)
-            || ! isset($parcel->hub_ids[$parcel->route_position + 1])
+            || $parcel->current_hub_id !== ($context['hub_ids'][$context['position']] ?? null)
+            || ! isset($context['hub_ids'][$context['position'] + 1])
             || BuyerReturnManifestParcel::where('active_return_parcel_id', $parcel->id)->exists()) {
             throw new DomainException('Measure the actual return at its recorded sending hub before packing or loading.');
         }
@@ -40,6 +41,7 @@ class BuyerReturnCargoService
 
         return $profile + ['source' => 'operator_reading', 'actor_id' => $actor->id, 'recorded_at' => now()->toIso8601String(),
             'intake_weight_grams' => $parcel->weight_grams, 'supersedes_reading_id' => $this->reading($parcel)?->id,
+            ...($context['recovery_id'] ? ['recovery_id' => $context['recovery_id']] : []),
             'volume_cm3' => (int) ceil($profile['length_cm'] * $profile['width_cm'] * $profile['height_cm']),
             'baggable' => $profile['weight_kg'] <= CargoHandlingService::PARCEL_WEIGHT_KG
                 && max($profile['length_cm'], $profile['width_cm'], $profile['height_cm']) <= CargoHandlingService::PARCEL_SIDE_CM];
@@ -52,20 +54,25 @@ class BuyerReturnCargoService
 
         return BuyerReturnCargoReading::create(['buyer_return_parcel_id' => $parcel->id, 'buyer_return_event_id' => $event->id,
             'hub_id' => $parcel->current_hub_id, 'route_position' => $parcel->route_position,
+            ...(! empty($profile['recovery_id']) ? ['recovery_id' => $profile['recovery_id']] : []),
             'actor_id' => $actor->id, 'profile' => $profile, 'created_at' => now()]);
     }
 
     public function reading(BuyerReturnParcel $parcel): ?BuyerReturnCargoReading
     {
+        $context = app(BuyerReturnRecoveryService::class)->context($parcel);
+
         return $this->available() ? BuyerReturnCargoReading::where('buyer_return_parcel_id', $parcel->id)
-            ->where('route_position', $parcel->route_position)->latest('id')->first() : null;
+            ->where('hub_id', $context['hub_ids'][$context['position']] ?? 0)->where('route_position', $parcel->route_position)
+            ->when(Schema::hasColumn('buyer_return_cargo_readings', 'recovery_id'), fn ($query) => $query->where('recovery_id', $context['recovery_id']))->latest('id')->first() : null;
     }
 
     public function profile(BuyerReturnParcel $parcel): array
     {
         $reading = $this->reading($parcel);
         $event = $reading ? BuyerReturnEvent::find($reading->buyer_return_event_id) : null;
-        if (! $reading || $reading->hub_id !== ($parcel->hub_ids[$parcel->route_position] ?? null)
+        $context = app(BuyerReturnRecoveryService::class)->context($parcel);
+        if (! $reading || $reading->hub_id !== ($context['hub_ids'][$context['position']] ?? null)
             || $event?->event_type !== 'return-measure' || $event->actor_id !== $reading->actor_id || $event->actor_role !== 'logistics'
             || $event->buyer_return_case_id !== $parcel->buyer_return_case_id || ($event->context['handling'] ?? null) !== $reading->profile
             || $reading->profile['intake_weight_grams'] !== $parcel->weight_grams) {
