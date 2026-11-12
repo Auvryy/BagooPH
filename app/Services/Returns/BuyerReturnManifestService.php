@@ -200,7 +200,11 @@ class BuyerReturnManifestService
                     $manifest->fill(['status' => 'dispatched', 'dispatched_at' => now(), 'dispatcher_id' => $actor->id]);
                     $parcel->fill(['status' => 'in_transit', 'current_hub_id' => null,
                         'custody' => ['kind' => 'manifest', 'manifest_id' => $manifest->id, 'driver_id' => $manifest->driver_id]]);
-                    $payload += ['return_member_id' => $member->id, 'weight_grams' => $parcel->weight_grams];
+                    $cargo = app(BuyerReturnCargoService::class);
+                    $handling = $cargo->reading($parcel) ? $cargo->profile($parcel) : null;
+                    $payload += ['return_member_id' => $member->id,
+                        'weight_grams' => $handling ? (int) round($handling['weight_kg'] * 1000) : $parcel->weight_grams,
+                        ...($handling ? ['handling' => $handling, 'intake_weight_grams' => $parcel->weight_grams] : [])];
                     break;
                 case 'receive':
                     $this->status($manifest, 'dispatched');
@@ -311,8 +315,10 @@ class BuyerReturnManifestService
 
     private function capacity(LogisticsFleet $vehicle, BuyerReturnParcel $parcel): void
     {
-        if (! $parcel->weight_grams || ! is_finite($vehicle->capacity_kg) || $vehicle->capacity_kg <= 0
-            || $parcel->weight_grams > (int) round($vehicle->capacity_kg * 1000)) {
+        $cargo = app(BuyerReturnCargoService::class);
+        $grams = $cargo->reading($parcel) ? (int) round($cargo->profile($parcel)['weight_kg'] * 1000) : $parcel->weight_grams;
+        if (! $grams || ! is_finite($vehicle->capacity_kg) || $vehicle->capacity_kg <= 0
+            || $grams > (int) round($vehicle->capacity_kg * 1000)) {
             throw new DomainException('The vehicle must have enough recorded capacity for the actual accepted return weight.');
         }
     }

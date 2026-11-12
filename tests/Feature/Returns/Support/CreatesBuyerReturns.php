@@ -70,6 +70,16 @@ trait CreatesBuyerReturns
         return $manifest;
     }
 
+    private function measureReturn(BuyerReturnCase $case, array $reading = []): void
+    {
+        $parcel = $case->parcel->fresh();
+        $hub = LogisticsHub::findOrFail($parcel->current_hub_id);
+        $this->actingAs($this->flowHandler($hub))->post('/buyer-returns/'.$case->id.'/custody', $this->custodyPayload($case, 'measure', [
+            'hub_id' => $hub->id, 'handling' => array_replace(['weight_kg' => (string) ($parcel->weight_grams / 1000),
+                'length_cm' => '20', 'width_cm' => '20', 'height_cm' => '20', 'confirmed' => true], $reading),
+        ]))->assertSessionHasNoErrors();
+    }
+
     private function leg(BuyerReturnCase $case, bool $close = true): LogisticsManifest
     {
         $manifest = $this->prepareLeg($case);

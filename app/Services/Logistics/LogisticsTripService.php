@@ -11,6 +11,7 @@ use App\Models\LogisticsTransportTrip;
 use App\Models\Order;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Returns\BuyerReturnCargoService;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -175,8 +176,8 @@ class LogisticsTripService
             if ($manifest->direction === 'buyer_return') {
                 $members = $manifest->buyerReturnParcels()->where('included', true)->with('parcel')->get();
                 foreach ($members as $member) {
-                    $this->requireState($member->parcel->weight_grams > 0, 'Measure each actual return before co-loading.');
-                    $grams += $member->parcel->weight_grams;
+                    $profile = app(BuyerReturnCargoService::class)->profile($member->parcel);
+                    $grams += (int) round($profile['weight_kg'] * 1000);
                     $count++;
                 }
             } else {

@@ -5,6 +5,7 @@ namespace App\Services\Returns;
 use App\Models\BuyerReturnCase;
 use App\Models\BuyerReturnEvent;
 use App\Models\BuyerReturnEvidence;
+use App\Models\BuyerReturnManifestParcel;
 use App\Models\BuyerReturnManifestRoute;
 use App\Models\BuyerReturnParcel;
 use App\Models\Delivery;
@@ -16,6 +17,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Logistics\CargoHandlingService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\WaybillScanInputService;
@@ -72,10 +74,12 @@ class BuyerReturnCustodyService
         unset($input['action']);
         $input = $inputs->normalize($input);
         $data = Validator::make(array_replace($input, ['action' => $action, 'photo' => $photo]), [
-            'action' => ['required', 'string', Rule::in(['prepare-label', 'intake', 'stage', 'seller-receive'])],
+            'action' => ['required', 'string', Rule::in(['prepare-label', 'intake', 'measure', 'stage', 'seller-receive'])],
             'request_token' => ['required', 'uuid'], 'expected_version' => ['required', new AsciiPositiveInteger, 'integer'],
             'barcode' => $inputs->barcodeRules($action !== 'prepare-label'),
-            'hub_id' => [$action === 'intake' || $action === 'stage' ? 'required' : 'nullable', new AsciiPositiveInteger, 'integer'],
+            'hub_id' => [in_array($action, ['intake', 'measure', 'stage'], true) ? 'required' : 'nullable', new AsciiPositiveInteger, 'integer'],
+            ...app(CargoHandlingService::class)->rules(),
+            'handling' => [$action === 'measure' ? 'required' : 'prohibited', 'array:weight_kg,length_cm,width_cm,height_cm,confirmed'],
             'reason' => ['required', new ApplicationText('notes', 10, 1000)],
             'weight_kg' => [$action === 'intake' ? 'required' : 'prohibited', 'string', 'regex:/\A(?:0|[1-9][0-9]{0,4})(?:\.[0-9]{1,3})?\z/'],
             'condition' => [$action === 'intake' || $action === 'seller-receive' ? 'required' : 'nullable', Rule::in(['accepted', 'disputed', 'intact', 'damaged'])],
@@ -96,7 +100,7 @@ class BuyerReturnCustodyService
                 Order::whereKey($case->order_id)->lockForUpdate()->firstOrFail();
                 Delivery::whereKey($case->delivery_id)->lockForUpdate()->firstOrFail();
                 $actor = app(BuyerReturnService::class)->current($actor);
-                $network = in_array($action, ['intake', 'stage'], true);
+                $network = in_array($action, ['intake', 'measure', 'stage'], true);
                 if ($network) {
                     $this->eligibility->lockNetwork($case->route_snapshot['forward_route']['logistics_company_id'], [$actor->id], [$data['hub_id']]);
                     $actor = User::findOrFail($actor->id);
@@ -128,6 +132,7 @@ class BuyerReturnCustodyService
                 }
                 $before = $parcel->state();
                 $source = $case->status;
+                $profile = null;
                 if ($action === 'intake') {
                     abort_unless($case->status === 'approved' && $parcel->status === 'awaiting_dropoff' && $case->dropoff_until
                         && now()->lessThanOrEqualTo($case->dropoff_until), 409, 'This return is not awaiting a timely first drop-off. Check its saved intake or review history.');
@@ -140,6 +145,9 @@ class BuyerReturnCustodyService
                     $parcel->fill(['status' => 'at_hub', 'current_hub_id' => $data['hub_id'], 'weight_grams' => $grams,
                         'custody' => ['kind' => 'hub', 'hub_id' => $data['hub_id'], 'received_by_id' => $actor->id]]);
                     $case->status = 'at_destination_hub';
+                } elseif ($action === 'measure') {
+                    abort_unless($data['hub_id'] === $parcel->current_hub_id, 403);
+                    $profile = app(BuyerReturnCargoService::class)->prepare($parcel, $actor, $data);
                 } elseif ($action === 'stage') {
                     $this->assertFinishedRoute($case, $parcel);
                     abort_unless($parcel->status === 'at_hub' && $data['hub_id'] === $parcel->current_hub_id, 409, 'Only the actual origin-hub holder may stage this fully received return.');
@@ -154,14 +162,18 @@ class BuyerReturnCustodyService
                     $parcel->fill(['status' => 'seller_received', 'current_hub_id' => null, 'custody' => ['kind' => 'seller', 'user_id' => $actor->id]]);
                     $case->status = $data['condition'] === 'accepted' ? 'seller_received' : 'condition_review';
                 }
-                if ($action !== 'prepare-label') {
+                if (! in_array($action, ['prepare-label', 'measure'], true)) {
                     $parcel->version++;
                     $parcel->save();
                 }
                 $case->version++;
                 $case->save();
                 $event = app(BuyerReturnService::class)->append($case, $actor, 'return-'.$action, $source, $data['reason'], $token, $hash,
-                    ['barcode' => $parcel->barcode, 'source_state' => $before, 'target_state' => $parcel->state(), 'condition' => $data['condition'] ?? null]);
+                    ['barcode' => $parcel->barcode, 'source_state' => $before, 'target_state' => $parcel->state(), 'condition' => $data['condition'] ?? null,
+                        ...($profile ? ['handling' => $profile] : [])]);
+                if ($profile) {
+                    app(BuyerReturnCargoService::class)->record($parcel, $actor, $event, $profile);
+                }
                 if ($photo && $info) {
                     $paths[] = $path = app(BuyerReturnFiles::class)->store($photo, $info);
                     BuyerReturnEvidence::create(['buyer_return_case_id' => $case->id, 'buyer_return_event_id' => $event->id, 'purpose' => $action,
@@ -247,6 +259,11 @@ class BuyerReturnCustodyService
                 if ($parcel->status === 'at_hub' && $parcel->route_position === count($parcel->hub_ids) - 1 && $hub->id === $parcel->current_hub_id) {
                     $options[] = ['action' => 'stage', 'hub_id' => $hub->id, 'label' => 'Stage for seller collection'];
                 }
+                if ($parcel->status === 'at_hub' && $hub->id === $parcel->current_hub_id && isset($parcel->hub_ids[$parcel->route_position + 1])
+                    && app(BuyerReturnCargoService::class)->available()
+                    && ! BuyerReturnManifestParcel::where('active_return_parcel_id', $parcel->id)->exists()) {
+                    $options[] = ['action' => 'measure', 'hub_id' => $hub->id, 'label' => 'Save actual package readings'];
+                }
             }
         }
         if ($actor->isSeller() && $actor->isKycApproved() && $actor->id === $case->seller_id && $actor->email_verified_at
@@ -259,6 +276,7 @@ class BuyerReturnCustodyService
             && app(LogisticsManifestService::class)->readable($actor)->whereKey($manifest->id)->exists();
 
         return ['barcode' => $parcel->barcode, 'status' => $parcel->status, 'position' => $parcel->route_position,
+            'handling' => $actor->isLogistics() ? app(BuyerReturnCargoService::class)->reading($parcel)?->profile : null,
             'weight_grams' => $parcel->weight_grams, 'custody' => $parcel->custody, 'actions' => $options,
             'hubs' => array_map(fn ($id) => $hubs->get($id)?->only(['id', 'name', 'code', 'address', 'operating_hours']), $parcel->hub_ids),
             'can_dropoff' => $case->status === 'approved' && $case->dropoff_until && now()->lessThanOrEqualTo($case->dropoff_until),

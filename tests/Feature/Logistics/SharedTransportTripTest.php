@@ -36,6 +36,7 @@ class SharedTransportTripTest extends TestCase
     {
         $case = $this->approvedReturn();
         $this->intake($case);
+        $this->measureReturn($case);
         $reverse = $this->prepareLeg($case);
         $source = $reverse->sourceHub;
         $handler = $this->flowHandler($source);
