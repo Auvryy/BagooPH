@@ -8,6 +8,7 @@ use App\Models\Delivery;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
+use App\Models\LogisticsTransportTrip;
 use App\Models\MotherBag;
 use App\Models\User;
 use App\Services\Logistics\CargoHandlingService;
@@ -16,11 +17,14 @@ use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\HandoverIssueService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
+use App\Services\Logistics\LogisticsTripService;
 use App\Services\Logistics\ParcelRecoveryService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -71,10 +75,32 @@ class LogisticsManifestController extends Controller
         $manifestQuery = fn () => $query->clone()->with(['sourceHub', 'destinationHub', 'vehicle', 'driver'])->withCount(['parcels as included_count' => fn ($query) => $query->where('included', true)]);
         $list = $manifestQuery()->latest('id')->paginate(20)->through(fn (LogisticsManifest $manifest) => $this->summary($manifest));
         $detail = null;
+        $trip = null;
+        $tripCandidates = [];
         if ($selected) {
             $selected = $manifestQuery()->findOrFail($selected->id);
             $source = $selected->sourceHub;
             $destination = $selected->destinationHub;
+            if (Schema::hasTable('logistics_trip_manifests')) {
+                $tripId = DB::table('logistics_trip_manifests')->where('manifest_id', $selected->id)->orderByDesc('id')->value('trip_id');
+                $shared = $tripId ? LogisticsTransportTrip::findOrFail($tripId) : null;
+                if ($shared && $shared->status !== 'cancelled') {
+                    $trip = $shared->only(['id', 'reference', 'status', 'version']) + [
+                        'canManage' => $this->service->canManageAtHub($actor, $source),
+                        'canDepart' => $actor->isLogistics() && $this->eligibility->canScan($actor, $source),
+                        'canClose' => $this->service->canManageAtHub($actor, $destination),
+                        'manifests' => $shared->manifests()->orderBy('logistics_manifests.id')->get()->map(fn ($member) => [
+                            'id' => $member->id, 'reference' => $member->reference, 'direction' => $member->direction, 'status' => $member->status,
+                            'outstanding' => $this->service->receiptCounts($member)['outstanding'],
+                        ]),
+                    ];
+                } elseif ($selected->status === 'sealed' && $this->service->canManageAtHub($actor, $source)) {
+                    $tripCandidates = $query->clone()->where($selected->only(['logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id']))
+                        ->where('status', 'sealed')->whereIn('direction', ['outbound', 'return', 'buyer_return'])
+                        ->whereNotIn('id', DB::table('logistics_trip_manifests')->whereNotNull('active_manifest_id')->select('manifest_id'))
+                        ->orderBy('id')->limit(100)->get(['id', 'reference', 'direction']);
+                }
+            }
             $discrepancies = $this->service->openDiscrepancies($selected);
             $readableRecoveryIds = app(ParcelRecoveryService::class)->observations($actor)
                 ->whereIn('id', $discrepancies->pluck('id'))->pluck('id')->all();
@@ -122,6 +148,7 @@ class LogisticsManifestController extends Controller
         return Inertia::render('Hub/Manifests', [
             'manifests' => $list, 'selectedManifest' => $detail, 'canCreate' => $sourceHubs->isNotEmpty(), 'creationToken' => $token,
             'commandToken' => (string) Str::uuid(),
+            'sharedTrip' => $trip, 'tripCandidates' => $tripCandidates,
             'buyerReturns' => $sourceHubs->isNotEmpty() ? BuyerReturnParcel::whereIn('logistics_company_id', $companyIds)->whereIn('current_hub_id', $sourceHubIds)->where('status', 'at_hub')
                 ->whereHas('returnCase', fn ($query) => $query->whereIn('status', ['at_destination_hub', 'in_transit']))->with('returnCase')->orderBy('id')->get()
                 ->filter(fn ($parcel) => isset($parcel->hub_ids[$parcel->route_position + 1]))
@@ -153,6 +180,29 @@ class LogisticsManifestController extends Controller
         }
 
         return redirect(($request->is('hub/*') ? '/hub/manifests/' : '/manifests/').$manifest->id)->with('success', 'Manifest draft prepared. Scan its actual outbound parcels before sealing.');
+    }
+
+    public function storeTrip(Request $request, LogisticsTripService $trips): JsonResponse|RedirectResponse
+    {
+        try {
+            $trip = $trips->create($request->user(), $request->only(['manifest_ids', 'request_token']));
+        } catch (DomainException $error) {
+            return $this->conflict($request, $error);
+        }
+
+        return $request->expectsJson() ? response()->json(['trip' => $trip], $trip->wasRecentlyCreated ? 201 : 200)
+            : back()->with('success', 'Shared trip prepared. Cargo remains at its recorded source hub.');
+    }
+
+    public function tripCommand(Request $request, LogisticsTransportTrip $trip, string $action, LogisticsTripService $trips): JsonResponse|RedirectResponse
+    {
+        try {
+            $trip = $trips->command($trip, $request->user(), $action, $request->only(['version', 'request_token']));
+        } catch (DomainException $error) {
+            return $this->conflict($request, $error);
+        }
+
+        return $request->expectsJson() ? response()->json(['trip' => $trip]) : back()->with('success', 'The shared trip update was saved.');
     }
 
     public function command(Request $request, LogisticsManifest $manifest, string $action): JsonResponse|RedirectResponse

@@ -18,6 +18,7 @@ use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
+use App\Services\Logistics\LogisticsTripService;
 use App\Services\Logistics\WaybillScanInputService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -139,6 +140,7 @@ class BuyerReturnManifestService
             if ($manifest->version !== $data['version']) {
                 throw new DomainException('This manifest changed. Reload its current list and receipts.');
             }
+            app(LogisticsTripService::class)->assertManifestCommand($manifest, $action);
             app(BuyerReturnCustodyService::class)->assertSource($case, $parcel);
             $before = $manifest->state();
             $parcelBefore = $parcel->state();
@@ -191,6 +193,7 @@ class BuyerReturnManifestService
                     $vehicle = $this->manifests->vehicle($manifest->logistics_company_id, $manifest->source_hub_id, $manifest->vehicle_id, $manifest->driver_id, true, $manifest->type);
                     $this->capacity($vehicle, $parcel);
                     if (LogisticsManifest::where('status', 'dispatched')->whereKeyNot($manifest->id)
+                        ->whereNotIn('id', app(LogisticsTripService::class)->departingManifestIds())
                         ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->orWhere('driver_id', $manifest->driver_id))->exists()) {
                         throw new DomainException('This driver or vehicle already has transport in progress.');
                     }

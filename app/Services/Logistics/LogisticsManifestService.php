@@ -210,6 +210,7 @@ class LogisticsManifestService
 
                 return ['manifest' => $manifest, 'event' => $original];
             }
+            app(LogisticsTripService::class)->assertManifestCommand($manifest, $action);
             if ($manifest->version !== (int) $input['version']) {
                 throw new DomainException('The manifest changed. Refresh its current list and state before continuing.');
             }
@@ -329,6 +330,7 @@ class LogisticsManifestService
                     $manifest->setRelation('vehicle', $vehicle);
                     app(CargoHandlingService::class)->assertManifestCapacity($manifest);
                     if (LogisticsManifest::where('status', 'dispatched')->whereKeyNot($manifest->id)
+                        ->whereNotIn('id', app(LogisticsTripService::class)->departingManifestIds())
                         ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->orWhere('driver_id', $manifest->driver_id))->exists()) {
                         throw new DomainException('This vehicle or driver already has a manifest in transit.');
                     }
@@ -782,7 +784,11 @@ class LogisticsManifestService
             || $vehicle->vehicle_type !== ($legType === 'line_haul' ? 'wing_truck' : 'l300_van')) {
             throw new DomainException('Choose an active source-hub closed van for feeder transport or wing truck for line-haul, with its current responsible driver.');
         }
-        $this->eligibility->assertCourierScope($profile, $companyId, $hubId, newWork: $newWork);
+        $this->eligibility->assertCourierScope($profile, $companyId, $hubId,
+            newWork: $newWork && ! app(LogisticsTripService::class)->departingVehicle($vehicleId));
+        if ($newWork && ! $profile?->is_available) {
+            throw new DomainException('The assigned driver must be available before accepting transport.');
+        }
         if ($newWork && Delivery::riderHasActiveWork($driverId)) {
             throw new DomainException('This driver must finish the existing pickup or final-mile work before accepting manifest transport.');
         }
