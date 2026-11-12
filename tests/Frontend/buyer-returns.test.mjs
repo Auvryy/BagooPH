@@ -186,6 +186,30 @@ test('hub return guidance names the next handler and stages the parcel before as
     assert.doesNotMatch(buyer, /Barcode and QR for this return|Open transfers/);
 });
 
+test('return-package readings submit actual bounded dimensions separately from intake and preserve errors', async () => {
+    const h = globalThis.returnHarness = new Harness();
+    try {
+        const measured = { ...custody, status: 'at_hub', custody: {kind: 'hub'}, actions: [{action:'measure',hub_id:3,label:'Save actual package readings'}] };
+        await render(ui.Custody, {custody:measured,caseId:11,version:3}, 'logistics');
+        h.control(node => node.type === 'input' && node.props.type === 'radio').onChange();
+        const html = await render(ui.Custody, {custody:measured,caseId:11,version:3}, 'logistics');
+        assert.match(html,/Actual outer package/); assert.equal((html.match(/type="number"/g) ?? []).length,4);
+        assert.match(html,/min="0.001" max="10000" step="0.001"/);
+        assert.match(html.match(/<input[^>]+type="checkbox"[^>]*>/)?.[0] ?? '',/required=""/);
+        h.form.data.barcode=custody.barcode; h.form.data.reason='The actual outer package was measured at the recorded hub.';
+        h.form.data.handling={weight_kg:'2.500',length_cm:'20',width_cm:'30',height_cm:'40',confirmed:true};
+        let transform; h.form.transform=fn=>{transform=fn;};
+        const post=h.form.post; h.form.post=(url,options)=>{const actual=transform(h.form.data);post(url,options);h.posts.at(-1).data=structuredClone(actual);};
+        h.submit(); assert.equal(h.posts.length,1); assert.deepEqual(h.posts[0].data.handling,h.form.data.handling);
+        assert.equal(h.posts[0].data.action,'measure'); assert.equal(h.posts[0].data.hub_id,3);
+        assert.equal('photo' in h.posts[0].data,false); assert.equal('weight_kg' in h.posts[0].data,false);
+        h.form.processing=false;h.posts[0].options.onFinish();h.form.errors={custody:'The intake weight needs evidenced review.'};
+        const failed=await render(ui.Custody,{custody:measured,caseId:11,version:3},'logistics');
+        assert.match(failed,/intake weight needs evidenced review/);assert.equal(h.form.data.handling.width_cm,'30');
+        h.submit();assert.equal(h.posts[1].data.request_token,h.posts[0].data.request_token);
+    } finally {delete globalThis.returnHarness;}
+});
+
 test('actual handover validates its separate code and photo, submits the scoped hub and keeps a retry token', async () => {
     const h = globalThis.returnHarness = new Harness();
     try {
