@@ -145,6 +145,8 @@ The [B12 shared-trip protocol](B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md) groups
 
 Apply approved refunds and recovery charges only on their required evidence. Preserve original discounts, shipping liability and earned amounts; record adjustment entries. Define insufficient-funds handling before enabling any debt collection or restriction.
 
+The [B13 execution and funding contract](B13_REFUND_EXECUTION_AND_FUNDING.md) separates original entitlement, actual COD receipts, balanced virtual reserves, loss/refusal outcomes and activation. Verification and remaining integration stay in the roadmap.
+
 **Exit gate:** Seller fault, buyer fault, courier fault and lost-parcel outcomes balance for COD and Wallet. Partial/voucher returns cannot exceed original paid units or refund twice. An admin decision does not falsely claim a real cash/bank refund occurred.
 
 ### B14. Add ETA and state-aware monitoring
