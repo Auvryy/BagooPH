@@ -8733,3 +8733,40 @@ Local code commits:
 - `9427e27` — `fix(earnings): show original receipts beside released and held shares`
 
 The combined PR title/body is a local draft at `storage/framework/testing/b0910-pr.md`; GitHub publication remains pending. The final documentation commit is reported in the branch handoff.
+
+
+### B11–B13 returns/refunds batch — November 12, 2026 (in progress)
+
+**State: B11 review, initial B12 shared trips and actual return-package readings implemented and automatically verified; full B12/B13 delivery remains open. Not pushed, deployed or manually accepted.** The feature branch is `feat/brainstorm-b11-b13-returns-refunds`, based on origin/main `8570c9c`, the user-merged B09/B10 PR #163. That merge is now verified; the preceding dated B09/B10 entry retains its original local handoff state.
+
+[B11](brainstorming/B11_RETURN_REQUESTS_AND_REVIEW.md) retains original-unit quantities, seven-day request/drop-off windows, seller review and appeal boundaries. It adds retained seller-fault findings and independent admin review of courier fault, with bounded evidence and original-company/checkpoint references. Review cannot move a parcel, repeat authorization or pay money. Version-two return eligibility requires B10 persisted handover/payment evidence. The case page now loads the original order internally so purchased policy and Wallet controls remain accurate, while returning only the public order reference to the browser.
+
+The first [B12 transport delivery](brainstorming/B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md) groups sealed forward, RTS and buyer-return manifests on a shared vehicle only for the same company, actual sending hub and exact next hub, vehicle and driver. It rechecks total recorded weight and current fleet eligibility, freezes grouped lists, dispatches atomically, retains individual receipts and handles partial arrival. Cancelling an unstarted group releases its reservation without movement; completed trip links remain readable. Original shipment routes, commercial states and money remain separate.
+
+Verification so far:
+
+- B11 request/review gate: **44 tests / 3,807 assertions passed**. The later focused run also passed the added purchased-policy reader check (seven fault-review cases total).
+- Transport/bag/return-custody regression: **111 tests / 9,351 assertions passed** using isolated SQLite `:memory:` and test storage. Its later focused run passed all eight shared-trip cases, including completed-trip visibility, root/subdomain controls, recoverable errors, source-history retention and rollback after the second manifest fails.
+- **22 frontend checks passed** for returns and shared-trip controls. TypeScript, the isolated production build and PHP formatting passed. These are automated component/source checks; no visible browser, device, phone or physical sack acceptance is claimed.
+- The final historical Wallet suite passed **10 tests / 1,354 assertions** with new real-page checks for virtual refund controls. Its original examples assumed a flat PHP 60 tariff while inheriting the new platform price/weight default; they now declare a company-specific historical tariff explicitly. The platform PHP 50 tariff and overweight rules were not changed. Earlier failing runs were not counted as passes, and overlapping runs must not be summed.
+
+**Still required before this goal is complete:** return sack membership/loose handling integration, buyer-return wrong-hub recovery and consolidation boundaries; B13 original-unit paid-shipping allocations, explicit fault/liability funding, seller/courier/lost/refusal outcomes for COD and Wallet, balanced journals, UI, boundary/regression checks, rollout audit and combined manual-review/PR draft. Checkout continues freezing refund policy one. Successor policy two is not activated by this progress entry. B14 monitoring, B15 wider investigation automation, B16 restrictions and B01–B08 user manual acceptance retain their own scopes.
+
+Scoped engineering assessments: **return decision traceability 6/10 → 8/10; explicit shared-trip coordination 0/10 → 7/10**. The scores cover the verified changes above, not completion of all reverse logistics, refunds or overall thesis readiness. The current task-tracking login remains unavailable; no external task status or time record is claimed. No live database reset/seed, mobile repository change or paid service was used.
+
+Local implementation commits:
+
+- `9a90abc` — `feat(returns): retain independent fault findings before repayment`
+- `3b8de09` — `feat(returns): present fault findings and bounded review controls`
+- `8388873` — `feat(logistics): co-load compatible manifests on one retained trip`
+- `0668277` — `feat(hub): prepare and inspect shared vehicle trips`
+- `cde94d9` — `fix(returns): read purchased policy and payment mode on case pages`
+
+Return-package follow-up: **36 tests / 3,994 assertions passed** across actual package observations, shared trips and original return custody. Observations retain named actors and original case evidence; corrections append before loading without changing custody, original intake or purchased prices. Aggregate and dedicated-manifest capacity now use the actual retained weight. The package form has four bounded measurements, explicit confirmation, failure recovery and separate request data. The final frontend gate passed **23 checks**; TypeScript, production build and PHP formatting passed. These runs overlap earlier suites and are not added as unique tests.
+
+Additional local commits:
+
+- `2606f44` — `feat(returns): retain actual package readings before shared transport`
+- `9ed404c` — `feat(hub): capture measured return-package dimensions`
+
+No combined GitHub PR has been published for this unfinished batch. A combined title/body and final verification inventory remain part of its required handoff.
