@@ -6,6 +6,7 @@ use App\Models\BuyerReturnAdjustment;
 use App\Models\BuyerReturnCase;
 use App\Models\Delivery;
 use App\Models\Order;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Models\VoucherOrderAllocation;
 use App\Models\VoucherRevisionBalance;
@@ -15,6 +16,7 @@ use App\Models\WalletTransaction;
 use App\Rules\ApplicationText;
 use App\Services\AccountRestrictionService;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Finance\ShipmentRefusalMoney;
 use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Returns\BuyerReturnAmounts;
 use App\Services\ShopEligibilityService;
@@ -40,6 +42,9 @@ class WalletSettlementService
 
     public function basis(Order $order): array
     {
+        if (Schema::hasTable('shipment_financial_plans') && ($plan = ShipmentFinancialPlan::where('order_id', $order->id)->where('kind', 'buyer_refusal')->first())) {
+            return app(ShipmentRefusalMoney::class)->walletBasis($plan);
+        }
         $amounts = app(BuyerReturnAmounts::class);
         $policy = $order->shipping_quote['refund_policy_version'] ?? 1;
         $source = $policy === 2 ? $amounts->successorOriginal($order) : $amounts->original($order);
@@ -67,6 +72,19 @@ class WalletSettlementService
     {
         $order->loadMissing('items.shop.user', 'delivery');
         $payment = $order->walletPayment;
+        if (Schema::hasTable('shipment_financial_plans') && ($plan = ShipmentFinancialPlan::where('order_id', $order->id)->where('kind', 'buyer_refusal')->first())) {
+            $basis = app(ShipmentRefusalMoney::class)->walletBasis($plan);
+            $event = $plan->events()->whereIn('event_type', ['wallet-refund', 'zero-refund-assessed'])->first();
+
+            return ['order_id' => $order->id, 'order_number' => $order->order_number, 'shop_name' => $order->items->first()?->shop?->name,
+                'seller_id' => $plan->seller_id, 'payment_reference' => $payment?->reference,
+                'status' => $event ? ($event->amount_cents > 0 ? 'refunded' : 'closed without buyer refund') : 'reviewed refusal',
+                'can_settle' => false, 'can_refund_delivery' => false, 'consent' => '', 'settlement_reference' => null,
+                'refund_reference' => $event?->amount_cents > 0 && $event->wallet_transaction_id ? WalletTransaction::find($event->wallet_transaction_id)?->reference : null,
+                'resolution_reference' => $event?->wallet_transaction_id ? WalletTransaction::find($event->wallet_transaction_id)?->reference : null,
+                'payment_cents' => $payment?->amount_cents,
+                'blockers' => $event ? [] : ['The approved refusal needs its original-source financial execution.'], ...$basis];
+        }
         if ($payment?->status === 'refunded') {
             $refund = WalletTransaction::where('order_id', $order->id)->whereIn('kind', ['wallet_delivery_refund', 'wallet_cancellation_refund'])->latest('id')->first();
 

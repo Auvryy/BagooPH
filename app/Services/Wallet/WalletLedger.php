@@ -33,7 +33,7 @@ class WalletLedger
 
     public function platform(string $kind): WalletAccount
     {
-        abort_unless(in_array($kind, ['demo_issuance', 'escrow', 'commission', 'shipping', 'promotion', 'return_reserve'], true), 409);
+        abort_unless(in_array($kind, ['demo_issuance', 'escrow', 'commission', 'shipping', 'promotion', 'return_reserve', 'reverse_shipping'], true), 409);
 
         $account = WalletAccount::firstOrCreate(['account_key' => 'platform:'.$kind], ['kind' => $kind, 'balance_cents' => 0]);
         abort_unless($account->user_id === null && $account->kind === $kind, 409, 'This virtual platform account needs review.');
