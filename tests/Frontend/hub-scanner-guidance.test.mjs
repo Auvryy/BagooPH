@@ -65,6 +65,44 @@ async function render(value, basePath = '/hub', Component = Scanner, overrides =
     } finally { delete globalThis.scannerResult; }
 }
 
+const corridor = { corridor_id: '2-3', source_hub_id: 2,
+    destination_hub: { id: 3, name: 'Laguna Mother Hub', code: 'MH-LAG', tier: 'regional_mother_hub' },
+    leg_type: 'feeder', sealed_bags_count: 1, open_bags_count: 0, loose_cargo_count: 0, unpacked_count: 0,
+    unknown_readings_count: 0, total_containers: 1, total_parcels: 2, total_weight_kg: 7.125, total_cbm: 0.015,
+    sizing: { required_type: 'l300_van', vehicle_name: 'Closed van', max_payload_kg: 100, max_cbm: null,
+        payload_utilization_pct: 7.1, volume_utilization_pct: null, is_upgrade: false },
+    matched_vehicle: { id: 9, plate_number: 'QA-VAN-901', driver_name: 'Mara Driver', capacity_kg: 100 },
+    can_dispatch: true, blocker: null };
+
+test('staging shows retained package values and an eligible vehicle without claiming departure', async () => {
+    const html = await render(result, '/hub', Scanner, { corridorStaging: [corridor] });
+    assert.match(html, /Outbound staging/);
+    assert.match(html, /7\.125 kg/);
+    assert.match(html, /QA-VAN-901/);
+    assert.match(html, /Prepare manifest/);
+    assert.doesNotMatch(html, /Auto-upgraded|Algorithmic payload|scheduled linehaul vehicle assignment/);
+});
+
+test('unknown readings render an actionable blocked state without a fabricated zero weight or capacity', async () => {
+    const html = await render(result, '/hub', Scanner, { corridorStaging: [{ ...corridor, total_weight_kg: null,
+        total_cbm: null, matched_vehicle: null, can_dispatch: false, unknown_readings_count: 1,
+        sizing: { ...corridor.sizing, payload_utilization_pct: null }, blocker: 'Complete outer-package readings.' }] });
+    assert.match(html, /Needs readings/);
+    assert.match(html, /No eligible match/);
+    assert.match(html, /Complete outer-package readings/);
+    assert.match(html, /href="\/hub\/mother-bags\?hub_id=2"/);
+    assert.match(html, /<button[^>]*disabled=""[^>]*>[\s\S]*?Prepare manifest/);
+    assert.doesNotMatch(html, /NaN|0\.000 kg/);
+});
+
+test('local final-mile shelf is separate from a regional packing suggestion', async () => {
+    const html = await render({ ...result, delivery: { ...result.delivery,
+        next_hop: { hub_id: 2, recommended_bin: 'LOC-BIN-04' } } });
+    assert.match(html, /Local delivery staging/);
+    assert.match(html, /LOC-BIN-04/);
+    assert.doesNotMatch(html, /Suggested packing|New bag required/);
+});
+
 test('actual scanner result separates arrival, commercial state, custody and missing shelf information', async () => {
     const html = await render(result);
     assert.match(html, /Shelf not recorded/);

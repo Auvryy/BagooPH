@@ -57,15 +57,18 @@ export interface CorridorStagingItem {
     loose_cargo_count: number;
     total_containers: number;
     total_parcels: number;
-    total_weight_kg: number;
-    total_cbm: number;
+    total_weight_kg: number | null;
+    total_cbm: number | null;
+    unpacked_count: number;
+    unknown_readings_count: number;
+    blocker: string | null;
     sizing: {
         required_type: string;
         vehicle_name: string;
-        max_payload_kg: number;
-        max_cbm: number;
-        payload_utilization_pct: number;
-        volume_utilization_pct: number;
+        max_payload_kg: number | null;
+        max_cbm: number | null;
+        payload_utilization_pct: number | null;
+        volume_utilization_pct: number | null;
         is_upgrade: boolean;
         recommendation_reason: string;
     };
@@ -174,6 +177,7 @@ interface DynamicPrompt {
 
 interface ScannedDeliveryResult {
     guidance: ParcelGuidance;
+    next_hop?: { hub_id: number; recommended_bin: string } | null;
     registry_url?: string | null;
     routing_target?: { id: number; name: string; code: string; tier: string } | null;
     id: number;
@@ -234,7 +238,8 @@ interface ScannedDeliveryResult {
         parcel_count?: number;
         max_parcels?: number;
         capacity_pct?: number;
-        estimated_weight_kg?: number;
+        estimated_weight_kg?: number | null;
+        weight_kg?: number | null;
         auto_seal_triggered?: boolean;
     } | null;
 }
@@ -858,6 +863,11 @@ export default function ScanStation({
                                         </div>
                                     )}
 
+                                    {lastResult.delivery.next_hop && lastResult.delivery.next_hop.hub_id === activeHub?.id && <div className="rounded-lg border border-rose-200 bg-rose-50 p-4">
+                                        <p className="text-xs font-semibold uppercase text-[#C20836]">Local delivery staging</p>
+                                        <p className="mt-1 font-semibold text-slate-900">{lastResult.delivery.next_hop.recommended_bin}</p>
+                                    </div>}
+
                                     {/* AUTOMATED DWS INDUCTION PROFILE & CHUTE DISPLAY */}
                                     {lastResult.delivery.dws && (
                                         <div className="rounded-xl border border-zinc-200 bg-white p-4.5 shadow-xs space-y-3">
@@ -913,17 +923,18 @@ export default function ScanStation({
                                     )}
 
                                     {/* MOTHER BAG AUTO-SLOTTING PROGRESS CARD */}
-                                    {lastResult.delivery.mother_bag_slotting && (
+                                    {lastResult.delivery.mother_bag_slotting?.classification !== 'mother_bag' && lastResult.delivery.mother_bag_slotting?.reason && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{lastResult.delivery.mother_bag_slotting.reason}</p>}
+                                    {lastResult.delivery.mother_bag_slotting?.classification === 'mother_bag' && (
                                         <div className="rounded-xl border border-rose-200/90 bg-rose-50/40 p-4.5 shadow-xs space-y-3">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <Boxes className="h-4 w-4 text-[#E00D42]" />
                                                     <span className="text-xs font-bold text-zinc-900 uppercase tracking-wider font-sans">
-                                                        Mother Bag Allocation
+                                                        {lastResult.delivery.mother_bag_slotting.bagged ? 'Recorded packing' : 'Suggested packing'}
                                                     </span>
                                                 </div>
                                                 <span className="text-xs font-bold text-[#E00D42] bg-white border border-rose-200 px-2.5 py-0.5 rounded-lg tabular-nums">
-                                                    {lastResult.delivery.mother_bag_slotting.reference || 'PREVIEW SACK'}
+                                                    {lastResult.delivery.mother_bag_slotting.reference || 'New bag required'}
                                                 </span>
                                             </div>
                                             <div>
@@ -943,7 +954,7 @@ export default function ScanStation({
                                                 </div>
                                             </div>
                                             <div className="flex items-center justify-between text-[11px] text-zinc-600 pt-1">
-                                                <span>Est. Sack Weight: <strong>{lastResult.delivery.mother_bag_slotting.estimated_weight_kg || 0.6} kg</strong> / 25.0 kg</span>
+                                                <span>Retained package weight: <strong>{lastResult.delivery.mother_bag_slotting.weight_kg == null ? 'Needs readings' : `${lastResult.delivery.mother_bag_slotting.weight_kg.toFixed(3)} kg`}</strong> / 25.0 kg</span>
                                                 <span className="font-medium text-zinc-500">
                                                     {lastResult.delivery.mother_bag_slotting.seal_number
                                                         ? `Seal: ${lastResult.delivery.mother_bag_slotting.seal_number}`
@@ -1293,10 +1304,10 @@ export default function ScanStation({
                                     </div>
                                     <div>
                                         <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900">
-                                            Automated Corridor Staging & Vehicle Sizing (TMS)
+                                            Outbound staging
                                         </h3>
                                         <p className="text-[11px] text-zinc-500 font-medium">
-                                            Algorithmic payload bin-packing & scheduled linehaul vehicle assignment
+                                            Purchased next hubs and retained package readings
                                         </p>
                                     </div>
                                 </div>
@@ -1331,9 +1342,10 @@ export default function ScanStation({
                                                 </div>
                                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-600">
                                                     <span>Mother Bags: <strong className="text-zinc-900 font-semibold">{corridor.sealed_bags_count} sealed</strong> ({corridor.open_bags_count} packing)</span>
-                                                    <span>Loose Cargo: <strong className="text-zinc-900 font-semibold">{corridor.loose_cargo_count}</strong></span>
-                                                    <span>Enclosed Parcels: <strong className="text-zinc-900 font-semibold">{corridor.total_parcels}</strong></span>
-                                                    <span>Payload: <strong className="text-zinc-900 font-semibold">{corridor.total_weight_kg.toFixed(1)} kg</strong> ({corridor.total_cbm.toFixed(2)} CBM)</span>
+                                                    <span>Loose cargo: <strong className="text-zinc-900 font-semibold">{corridor.loose_cargo_count}</strong></span>
+                                                    <span>Parcels: <strong className="text-zinc-900 font-semibold">{corridor.total_parcels}</strong></span>
+                                                    <span>Package weight: <strong className="text-zinc-900 font-semibold">{corridor.total_weight_kg == null ? 'Needs readings' : `${corridor.total_weight_kg.toFixed(3)} kg`}</strong>{corridor.total_cbm != null && ` (${corridor.total_cbm.toFixed(3)} m³)`}</span>
+                                                    <span>Unpacked: <strong>{corridor.unpacked_count}</strong></span>
                                                 </div>
                                             </div>
 
@@ -1341,31 +1353,35 @@ export default function ScanStation({
                                             <div className="flex flex-col sm:flex-row sm:items-center gap-3 shrink-0">
                                                 <div className="rounded-xl border border-zinc-200/90 bg-zinc-50 p-3 min-w-[210px] space-y-1.5">
                                                     <div className="flex items-center justify-between text-xs">
-                                                        <span className="text-zinc-500 font-medium">Assigned Class:</span>
+                                                        <span className="text-zinc-500 font-medium">Required vehicle:</span>
                                                         <span className="font-bold text-zinc-900">{corridor.sizing.vehicle_name}</span>
                                                     </div>
                                                     <div>
                                                         <div className="flex items-center justify-between text-[11px] text-zinc-500 mb-1">
-                                                            <span>Capacity Utilization</span>
-                                                            <span className="font-bold text-zinc-800 tabular-nums">{corridor.sizing.payload_utilization_pct}%</span>
+                                                            <span>Configured kg capacity</span>
+                                                            <span className="font-bold text-zinc-800 tabular-nums">{corridor.sizing.payload_utilization_pct == null ? 'No eligible match' : `${corridor.sizing.payload_utilization_pct}%`}</span>
                                                         </div>
                                                         <div className="w-full bg-zinc-200 rounded-full h-1.5 overflow-hidden">
                                                             <div
                                                                 className={`h-1.5 rounded-full ${
-                                                                    corridor.sizing.payload_utilization_pct > 90
+                                                                    (corridor.sizing.payload_utilization_pct ?? 0) > 90
                                                                         ? 'bg-amber-500'
                                                                         : 'bg-[#E00D42]'
                                                                 }`}
-                                                                style={{ width: `${Math.min(100, Math.max(8, corridor.sizing.payload_utilization_pct))}%` }}
+                                                                style={{ width: `${Math.min(100, Math.max(0, corridor.sizing.payload_utilization_pct ?? 0))}%` }}
                                                             />
                                                         </div>
                                                     </div>
                                                     <div className="text-[11px] text-zinc-600 flex items-center justify-between pt-0.5 border-t border-zinc-200/60">
-                                                        <span>Vehicle: <strong className="text-zinc-800">{corridor.matched_vehicle?.plate_number || 'Choose a vehicle'}</strong></span>
-                                                        <span className="truncate max-w-[100px] text-zinc-500">{corridor.matched_vehicle?.driver_name || 'Choose a driver'}</span>
+                                                        <span>Vehicle: <strong className="text-zinc-800">{corridor.matched_vehicle?.plate_number || 'No eligible match'}</strong></span>
+                                                        <span className="truncate max-w-[100px] text-zinc-500">{corridor.matched_vehicle?.driver_name || ''}</span>
                                                     </div>
                                                 </div>
 
+                                                {corridor.blocker && <div className="max-w-xs text-xs text-amber-800">
+                                                    <p>{corridor.blocker}</p>
+                                                    <Link className="mt-2 inline-flex rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 font-semibold text-[#C20836] hover:bg-[#E00D42] hover:text-white" href={`${basePath}/mother-bags?hub_id=${activeHub?.id}`}>Open packing</Link>
+                                                </div>}
                                                 <button
                                                     type="button"
                                                     disabled={isSubmitting || !corridor.can_dispatch}
