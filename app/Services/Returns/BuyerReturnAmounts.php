@@ -86,6 +86,38 @@ class BuyerReturnAmounts
             'shipping_discount_cents' => $allocations->sum('shipping_discount_cents')];
     }
 
+    /** Original paid shipping allocations do not grant a refund or change purchased policy. */
+    public function shipping(Order $order): array
+    {
+        $source = $this->original($order);
+        $paid = $source['shipping_cents'] - $source['shipping_discount_cents'];
+        $net = array_column($source['units'], 'buyer_cents');
+        abort_unless($paid >= 0 && $source['shipping_discount_cents'] >= 0
+            && array_sum($net) + $paid === CodMoney::cents($order->total_amount), 409,
+            'The original buyer-paid shipping and merchandise must match the purchased total.');
+        $weights = array_sum($net) > 0 ? $net : array_column($source['units'], 'gross_cents');
+        $allocations = $this->allocate($paid, $weights);
+        $units = [];
+        foreach ($source['units'] as $index => $unit) {
+            $units[] = $unit + ['buyer_paid_shipping_cents' => $allocations[$index]];
+        }
+
+        return ['units' => $units, 'shipping_cents' => $source['shipping_cents'], 'shipping_discount_cents' => $source['shipping_discount_cents'],
+            'buyer_paid_shipping_cents' => $paid, 'allocation_basis' => array_sum($net) > 0 ? 'net_merchandise' : 'gross_merchandise'];
+    }
+
+    public function shippingForCase(BuyerReturnCase $case): array
+    {
+        $basis = $this->forCase($case);
+        $source = $this->shipping($case->order);
+        $wanted = array_fill_keys(array_map(fn ($unit) => $unit['order_item_id'].':'.$unit['unit_position'], $basis['unit_snapshot']), true);
+        $units = array_values(array_filter($source['units'], fn ($unit) => isset($wanted[$unit['order_item_id'].':'.$unit['unit_position']])));
+        abort_unless(count($units) === count($wanted), 409, 'Retain the original claimed shipping units before reviewing liability.');
+
+        return ['buyer_paid_shipping_cents' => array_sum(array_column($units, 'buyer_paid_shipping_cents')), 'unit_snapshot' => $units,
+            'source_snapshot' => array_diff_key($source, ['units' => true])];
+    }
+
     public function forCase(BuyerReturnCase $case): array
     {
         $source = $this->original($case->order);
