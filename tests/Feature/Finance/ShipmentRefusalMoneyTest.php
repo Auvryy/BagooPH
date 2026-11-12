@@ -13,7 +13,9 @@ use App\Models\VoucherOrderAllocation;
 use App\Models\VoucherRevisionBalance;
 use App\Models\WalletAccount;
 use App\Models\WalletTransaction;
+use App\Services\AccountClosureService;
 use App\Services\Finance\CodMoney;
+use App\Services\Finance\ShipmentRefusalLiability;
 use App\Services\Finance\ShipmentRefusalMoney;
 use App\Services\Finance\ShipmentRefusalReview;
 use App\Services\Wallet\WalletCreditService;
@@ -244,6 +246,96 @@ class ShipmentRefusalMoneyTest extends TestCase
             $this->assertStringContainsString('Retain', $error->getMessage());
         }
         $this->assertSame(1, WalletTransaction::where('kind', 'wallet_refusal_refund')->count());
+    }
+
+    public function test_unpaid_cod_shipping_debt_clears_only_after_the_named_admin_receives_the_actual_buyer_transfer(): void
+    {
+        [$order, $admin] = $this->refused('cod');
+        $plan = app(ShipmentRefusalReview::class)->approve($admin, $order, $this->approval($order, $admin), UploadedFile::fake()->image('reverse-cost.png'));
+        app(ShipmentRefusalMoney::class)->execute($admin, $plan, $this->execution($plan));
+        $service = app(ShipmentRefusalLiability::class);
+        $this->assertSame(9000, $service->state($plan)['remaining_cents']);
+        $this->assertContains('shipment_shipping_liability', array_column(app(AccountClosureService::class)->state($order->buyer)['blockers'], 'code'));
+        $input = ['expected_version' => 2, 'request_token' => (string) Str::uuid(), 'amount' => '90.00', 'recipient_id' => $admin->id,
+            'cash_reference' => 'ACTUAL-BUYER-SHIPPING-001', 'payment_confirmed' => true,
+            'reason' => 'The buyer made this actual transfer for the reviewed original shipping obligation.'];
+        $proof = UploadedFile::fake()->image('actual-buyer-transfer.png');
+        $offer = $service->command($order->buyer, $plan, 'offer-shipping-payment', $input, $proof);
+        $this->assertSame($offer->id, $service->command($order->buyer, $plan, 'offer-shipping-payment', $input, $proof)->id);
+        $this->assertSame(9000, $service->state($plan)['remaining_cents']);
+        $this->assertSame(0, $service->state($plan)['received_cents']);
+        $this->assertContains('shipment_shipping_receipt', array_column(app(AccountClosureService::class)->state($admin)['blockers'], 'code'));
+        $receipt = ['expected_version' => 3, 'request_token' => (string) Str::uuid(), 'source_event_id' => $offer->id, 'payment_confirmed' => true,
+            'reason' => 'The named admin checked the actual original incoming buyer transfer and its private receipt.'];
+        try {
+            $service->command($this->createApprovedUser('admin'), $plan, 'receive-shipping-payment', $receipt, UploadedFile::fake()->image('wrong-receiver.png'));
+            $this->fail('Another admin cannot claim to have received the named original transfer.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $proof = UploadedFile::fake()->image('actual-receipt.png');
+        $received = $service->command($admin, $plan, 'receive-shipping-payment', $receipt, $proof);
+        $this->assertSame($received->id, $service->command($admin, $plan, 'receive-shipping-payment', $receipt, $proof)->id);
+        $this->assertSame(0, $service->state($plan)['remaining_cents']);
+        $this->assertSame(5000, $received->context['outbound_received_cents']);
+        $this->assertSame(4000, $received->context['reverse_received_cents']);
+        $this->assertNotContains('shipment_shipping_liability', array_column(app(AccountClosureService::class)->state($order->buyer)['blockers'], 'code'));
+        $this->assertNotContains('shipment_shipping_receipt', array_column(app(AccountClosureService::class)->state($admin)['blockers'], 'code'));
+        $this->assertDatabaseCount('cod_accounts', 0);
+        $this->assertDatabaseCount('wallet_transactions', 0);
+        $this->assertDatabaseCount('commission_ledgers', 0);
+        $this->assertSame('pending', $order->fresh()->payment_status);
+    }
+
+    public function test_prepaid_excess_shipping_is_a_separate_voluntary_wallet_transfer_without_an_automatic_debit_or_second_refund(): void
+    {
+        [$order, $admin] = $this->refused();
+        $plan = app(ShipmentRefusalReview::class)->approve($admin, $order, $this->approval($order, $admin, '600.00'), UploadedFile::fake()->image('reverse-cost.png'));
+        $buyerBefore = WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents;
+        $execution = $this->execution($plan);
+        $event = app(ShipmentRefusalMoney::class)->execute($admin, $plan, $execution);
+        $this->assertSame(0, $event->amount_cents);
+        $this->assertNull($event->recipient_id);
+        $this->assertSame($buyerBefore, WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents);
+        $service = app(ShipmentRefusalLiability::class);
+        $this->assertSame(10000, $service->state($plan)['remaining_cents']);
+        $this->assertContains('shipment_shipping_liability', array_column(app(AccountClosureService::class)->state($order->buyer)['blockers'], 'code'));
+        $input = ['expected_version' => 2, 'request_token' => (string) Str::uuid(), 'amount' => '100.00', 'payment_confirmed' => true,
+            'reason' => 'I approve this separate transfer of my available virtual credits to settle my reviewed excess reverse fee.'];
+        $payment = $service->command($order->buyer, $plan, 'pay-wallet-shipping', $input);
+        $this->assertSame($payment->id, $service->command($order->buyer, $plan, 'pay-wallet-shipping', $input)->id);
+        $this->assertSame($buyerBefore - 10000, WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents);
+        $this->assertSame(60000, WalletAccount::where('kind', 'reverse_shipping')->sole()->balance_cents);
+        $this->assertSame(0, $service->state($plan)['remaining_cents']);
+        $this->assertNotContains('shipment_shipping_liability', array_column(app(AccountClosureService::class)->state($order->buyer)['blockers'], 'code'));
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_refusal_refund')->count());
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_refusal_shipping_payment')->count());
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
+    }
+
+    public function test_shipping_payment_cannot_make_a_wallet_negative_and_keeps_the_original_retry_after_insufficient_credits(): void
+    {
+        [$order, $admin] = $this->refused();
+        $plan = app(ShipmentRefusalReview::class)->approve($admin, $order, $this->approval($order, $admin, '1000.00'), UploadedFile::fake()->image('reverse-cost.png'));
+        app(ShipmentRefusalMoney::class)->execute($admin, $plan, $this->execution($plan));
+        $service = app(ShipmentRefusalLiability::class);
+        $input = ['expected_version' => 2, 'request_token' => (string) Str::uuid(), 'amount' => '500.00', 'payment_confirmed' => true,
+            'reason' => 'Attempt to settle only the original reviewed shipping debt with actual available virtual credits.'];
+        $before = [WalletTransaction::count(), DB::table('wallet_entries')->count(), $service->state($plan)];
+        try {
+            $service->command($order->buyer, $plan, 'pay-wallet-shipping', $input);
+            $this->fail('Insufficient credits must not create an automatic negative balance.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $this->assertSame($before, [WalletTransaction::count(), DB::table('wallet_entries')->count(), $service->state($plan)]);
+        $credits = app(WalletCreditService::class);
+        $topup = $credits->request($order->buyer, ['amount' => '50.00', 'reason' => 'Review additional original virtual credits before paying the shipping debt.', 'request_token' => (string) Str::uuid()]);
+        $credits->review($admin, $topup, ['decision' => 'approved', 'reason' => 'Reviewed the original available credits and explicit demonstration request.', 'demo_credit_confirmed' => true, 'request_token' => (string) Str::uuid()]);
+        $event = $service->command($order->buyer, $plan, 'pay-wallet-shipping', $input);
+        $this->assertSame($event->id, $service->command($order->buyer, $plan, 'pay-wallet-shipping', $input)->id);
+        $this->assertSame(0, WalletAccount::where('user_id', $order->buyer_id)->sole()->balance_cents);
+        $this->assertSame(0, $service->state($plan)['remaining_cents']);
     }
 
     public function test_failed_refusal_approval_retains_no_orphan_private_file_or_financial_plan(): void

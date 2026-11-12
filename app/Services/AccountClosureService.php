@@ -16,12 +16,15 @@ use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestParcel;
 use App\Models\Order;
+use App\Models\ShipmentFinancialEvent;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\Shop;
 use App\Models\User;
 use App\Models\WalletRefundCreditRequest;
 use App\Rules\ApplicationText;
 use App\Services\Finance\CodCashViewService;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Finance\ShipmentRefusalLiability;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Notifications\GovernanceNoticeService;
 use App\Services\Returns\BuyerReturnLiabilityBalance;
@@ -204,6 +207,29 @@ class AccountClosureService
             if ($pendingCredits) {
                 $add('wallet_return_funding_request', 'A demonstration return-funding credit request is awaiting review.',
                     'Finish the independent funding-credit review before closing this liable account.', $pendingCredits);
+            }
+        }
+        if (Schema::hasTable('shipment_financial_plans')) {
+            $pendingPlans = ShipmentFinancialPlan::where('kind', 'buyer_refusal')
+                ->where(fn ($query) => $query->where('buyer_id', $subject->id)->orWhere('seller_id', $subject->id)
+                    ->orWhere('actor_id', $subject->id)->orWhereIn('logistics_company_id', $companyIds))
+                ->whereDoesntHave('events', fn ($events) => $events->whereIn('event_type', ['wallet-refund', 'zero-refund-assessed']))->pluck('id')->all();
+            if ($pendingPlans) {
+                $add('shipment_financial_review', 'An approved shipment financial review still needs execution.',
+                    'Resolve the original refund or zero-refund assessment before closing an account responsible for it.', $pendingPlans);
+            }
+            $shippingDebt = ShipmentFinancialPlan::where('kind', 'buyer_refusal')->where('buyer_id', $subject->id)->get()
+                ->filter(fn ($plan) => app(ShipmentRefusalLiability::class)->state($plan)['remaining_cents'] > 0)->modelKeys();
+            if ($shippingDebt) {
+                $add('shipment_shipping_liability', 'Reviewed shipping liability remains outstanding.',
+                    'Settle the reviewed original shipping balance and its actual receipt before closing this buyer account.', $shippingDebt);
+            }
+            $shippingTransfers = ShipmentFinancialEvent::where('event_type', 'offer-shipping-payment')
+                ->where(fn ($query) => $query->where('actor_id', $subject->id)->orWhere('recipient_id', $subject->id))
+                ->whereNotIn('id', ShipmentFinancialEvent::whereNotNull('consumed_source_id')->select('consumed_source_id'))->pluck('id')->all();
+            if ($shippingTransfers) {
+                $add('shipment_shipping_receipt', 'An actual shipping transfer is awaiting receipt.',
+                    'The named receiving admin must acknowledge the original incoming transfer before either participant can close.', $shippingTransfers);
             }
         }
         $returnCustody = BuyerReturnParcel::whereHas('returnCase', fn ($query) => $query->whereNotIn('status', BuyerReturnCase::TERMINAL))

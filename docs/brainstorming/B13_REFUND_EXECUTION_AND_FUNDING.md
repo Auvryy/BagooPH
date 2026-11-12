@@ -116,6 +116,34 @@ a separately reviewed shipping liability. Excess charges are a separate
 reviewed balance, never a negative refund or automatic Wallet debit.
 Voluntary post-delivery change of mind remains excluded.
 
+The refusal review retains the actual original failed attempt, its private
+proof, the linked destination-hub return receipt, every reverse leg and the
+owning seller's final receipt. An independent admin confirms conformity and
+the evidenced reverse-cost reference, then approves the displayed original
+amounts. Approval moves no money and cannot substitute for those physical
+records. Undelivered orders have one exclusive financial authority; a partial
+buyer-return loss retains its separate original claim identity.
+
+For an unspent Wallet payment, execution refunds only original net merchandise
+less the reverse fee, with a zero lower bound. Original paid outbound shipping
+and its funded subsidy go to the outbound shipping pool; the actual withheld
+reverse fee goes to a separate reverse-shipping payable pool linked to the
+original company. No seller proceeds or merchandise commission are earned by
+this unrealized sale. Unused product-voucher commitments are released, while
+the actually used outbound shipping subsidy is spent. Neither action restores
+the buyer's voucher use automatically. The original quote, payment receipt and
+physical return history remain retained.
+
+Uncollected COD has zero buyer repayment and a reviewed shipping liability,
+never a fabricated merchandise collection. A buyer's actual cash transfer
+retains its private receipt and named receiving admin; only that admin can
+acknowledge receipt once. An offer is not received money. For Wallet charges
+above the refundable merchandise, a separate buyer-authorized transfer uses
+only available credits; it cannot create a negative balance. These receipts
+clear the buyer's reviewed obligation without claiming a bank transfer or
+automatic carrier payout. Outstanding liability, an unfinished financial
+review and unreceived transfers retain account-closure guards.
+
 ## Privacy and activation
 
 Financial access identifies the original buyer, seller, liable company and
