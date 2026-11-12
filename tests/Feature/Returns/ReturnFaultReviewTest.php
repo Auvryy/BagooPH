@@ -55,6 +55,17 @@ class ReturnFaultReviewTest extends TestCase
         $this->get('/buyer-returns/'.$case->id)->assertInertia(fn (AssertableInertia $page) => $page->where('returnCase.fault_review.fault', 'seller'));
     }
 
+    public function test_the_return_page_reads_its_purchased_policy_without_exposing_the_order_snapshot(): void
+    {
+        $case = $this->requestCase();
+        // This presentation fixture exercises the successor reader before checkout activation.
+        $order = $case->order;
+        $order->shipping_quote = array_replace($order->shipping_quote, ['refund_policy_version' => 2]);
+        $order->save();
+        $this->actingAs(User::findOrFail($case->seller_id))->get('/buyer-returns/'.$case->id)->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('returnCase.refund_policy_version', 2)->missing('returnCase.order.shipping_quote'));
+    }
+
     public function test_only_independent_admin_review_can_assign_the_original_courier_company(): void
     {
         $case = $this->requestCase();

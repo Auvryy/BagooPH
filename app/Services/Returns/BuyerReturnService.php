@@ -341,7 +341,7 @@ class BuyerReturnService
 
     public function present(User $actor, BuyerReturnCase $case): array
     {
-        $case = $this->owned($actor, $case)->load(['items', 'evidence', 'events', 'order:id,order_number']);
+        $case = $this->owned($actor, $case)->load(['items', 'evidence', 'events', 'order']);
 
         return $case->only(['id', 'reference', 'status', 'version', 'reason', 'description', 'delivered_at', 'request_until',
             'response_until', 'appeal_until', 'dropoff_until', 'created_at']) + [
