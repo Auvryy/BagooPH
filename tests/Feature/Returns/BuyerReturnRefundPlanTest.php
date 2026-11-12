@@ -5,9 +5,11 @@ namespace Tests\Feature\Returns;
 use App\Models\LogisticsHub;
 use App\Models\Voucher;
 use App\Services\Returns\BuyerReturnAmounts;
+use App\Services\Returns\BuyerReturnPlanApproval;
 use App\Services\Returns\BuyerReturnRefundPlan;
 use App\Services\Returns\BuyerReturnService;
 use App\Services\Wallet\WalletCreditService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -183,5 +185,75 @@ class BuyerReturnRefundPlanTest extends TestCase
         } catch (HttpException $error) {
             $this->assertSame(409, $error->getStatusCode());
         }
+    }
+
+    #[DataProvider('findings')]
+    public function test_plan_approval_freezes_original_amounts_without_payment_and_only_seller_fault_reduces_seller_proceeds(string $fault): void
+    {
+        [$case, $admin] = $this->received(fault: $fault);
+        $before = [$case->order->getAttributes(), $case->order->delivery->getAttributes(), DB::table('wallet_entries')->get()->map(fn ($row) => (array) $row)->all()];
+        $service = app(BuyerReturnPlanApproval::class);
+        $preview = $service->preview($admin, $case);
+        $input = ['expected_version' => $case->version, 'request_token' => (string) Str::uuid(),
+            'reason' => 'Reviewed the original units, actual seller receipt and independent fault before retaining this financial plan.', 'review_token' => $preview['review_token']];
+        $plan = $service->approve($admin, $case, $input);
+        $this->assertSame($preview['snapshot'], $plan->snapshot);
+        $this->assertSame($plan->id, $service->approve($admin, $case, $input)->id);
+        $this->assertSame(0, $plan->approval->amount_cents);
+        $this->assertTrue($plan->approval->context['no_money_moved']);
+        $this->assertSame('repayment_ready', $case->fresh()->status);
+        $this->assertSame(10000, $plan->adjustment->buyer_cents);
+        $this->assertGreaterThan($plan->adjustment->buyer_cents, $plan->snapshot['buyer_refund_cents']);
+        $basis = app(BuyerReturnAmounts::class)->sellerBasis($case->order, 18000);
+        $this->assertSame($fault === 'seller' ? 9000 : 18000, $basis['payable_seller_cents']);
+        $this->assertSame($fault === 'seller' ? 9000 : 0, $basis['return_seller_cents']);
+        $this->assertSame($fault === 'seller' ? 1000 : 0, app(BuyerReturnAmounts::class)->adjustmentFinancials($case->order)['commission_cents']);
+        $this->assertDatabaseCount('buyer_return_repayment_plans', 1);
+        $this->assertDatabaseCount('buyer_return_adjustments', 1);
+        $this->assertDatabaseCount('buyer_return_money_events', 1);
+        $this->assertSame($before, [$case->order->fresh()->getAttributes(), $case->order->delivery->fresh()->getAttributes(), DB::table('wallet_entries')->get()->map(fn ($row) => (array) $row)->all()]);
+        foreach ([['snapshot' => json_encode(['buyer_refund_cents' => 999999])], ['actor_id' => $case->seller_id]] as $changes) {
+            try {
+                DB::table('buyer_return_repayment_plans')->where('id', $plan->id)->update($changes);
+                $this->fail('Retain the originally approved repayment basis.');
+            } catch (QueryException $error) {
+                $this->assertStringContainsString('Retain', $error->getMessage());
+            }
+        }
+    }
+
+    public function test_plan_approval_rejects_stale_sources_unauthorized_actors_and_conflicting_retries(): void
+    {
+        [$case, $admin] = $this->received();
+        $service = app(BuyerReturnPlanApproval::class);
+        $preview = $service->preview($admin, $case);
+        $input = ['expected_version' => $case->version, 'request_token' => (string) Str::uuid(),
+            'reason' => 'Review this exact retained original plan and its private actual receipt.', 'review_token' => $preview['review_token']];
+        foreach ([$case->order->buyer, $case->order->shop->user, $this->createApprovedUser('logistics')] as $actor) {
+            try {
+                $service->approve($actor, $case, $input);
+                $this->fail('Only an independent current approved admin may approve this plan.');
+            } catch (HttpException $error) {
+                $this->assertSame(403, $error->getStatusCode());
+            }
+        }
+        foreach ([['expected_version' => 999], ['review_token' => str_repeat('0', 64)]] as $changes) {
+            try {
+                $service->approve($admin, $case, [...$input, ...$changes]);
+                $this->fail('A stale source or review must not approve new amounts.');
+            } catch (HttpException $error) {
+                $this->assertSame(409, $error->getStatusCode());
+            }
+        }
+        $this->assertDatabaseCount('buyer_return_repayment_plans', 0);
+        $plan = $service->approve($admin, $case, $input);
+        try {
+            $service->approve($admin, $case, [...$input, 'reason' => 'A different financial reason cannot replace the original approval retry.']);
+            $this->fail('Retain the exact original approval for a used request token.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $this->assertSame($plan->id, $service->approve($admin, $case, $input)->id);
+        $this->assertDatabaseCount('buyer_return_money_events', 1);
     }
 }
