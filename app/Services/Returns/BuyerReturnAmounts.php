@@ -34,7 +34,12 @@ class BuyerReturnAmounts
 
     public function original(Order $order): array
     {
-        abort_unless(($order->shipping_quote['refund_policy_version'] ?? 1) === 1, 409,
+        return $this->purchased($order, 1);
+    }
+
+    private function purchased(Order $order, int $policy): array
+    {
+        abort_unless(($order->shipping_quote['refund_policy_version'] ?? 1) === $policy, 409,
             'The purchased refund policy needs its supported review and funding workflow. Do not substitute older refund terms.');
         $funding = app(VoucherFundingService::class)->amounts($order);
         abort_if($funding['promotion_blockers'] !== [], 409, implode(' ', $funding['promotion_blockers']));
@@ -89,7 +94,11 @@ class BuyerReturnAmounts
     /** Original paid shipping allocations do not grant a refund or change purchased policy. */
     public function shipping(Order $order): array
     {
-        $source = $this->original($order);
+        return $this->shippingSource($order, $this->original($order));
+    }
+
+    private function shippingSource(Order $order, array $source): array
+    {
         $paid = $source['shipping_cents'] - $source['shipping_discount_cents'];
         $net = array_column($source['units'], 'buyer_cents');
         abort_unless($paid >= 0 && $source['shipping_discount_cents'] >= 0
@@ -108,8 +117,11 @@ class BuyerReturnAmounts
 
     public function shippingForCase(BuyerReturnCase $case): array
     {
-        $basis = $this->forCase($case);
-        $source = $this->shipping($case->order);
+        return $this->claimedShipping($this->forCase($case), $this->shipping($case->order));
+    }
+
+    private function claimedShipping(array $basis, array $source): array
+    {
         $wanted = array_fill_keys(array_map(fn ($unit) => $unit['order_item_id'].':'.$unit['unit_position'], $basis['unit_snapshot']), true);
         $units = array_values(array_filter($source['units'], fn ($unit) => isset($wanted[$unit['order_item_id'].':'.$unit['unit_position']])));
         abort_unless(count($units) === count($wanted), 409, 'Retain the original claimed shipping units before reviewing liability.');
@@ -120,7 +132,22 @@ class BuyerReturnAmounts
 
     public function forCase(BuyerReturnCase $case): array
     {
-        $source = $this->original($case->order);
+        return $this->caseBasis($case, $this->original($case->order));
+    }
+
+    /** Preparation only: existing policy-one payment consumers still reject policy two. */
+    public function successorForCase(BuyerReturnCase $case): array
+    {
+        $source = $this->purchased($case->order, 2);
+        $basis = $this->caseBasis($case, $source);
+        $shipping = $this->claimedShipping($basis, $this->shippingSource($case->order, $source));
+
+        return $basis + ['buyer_paid_shipping_cents' => $shipping['buyer_paid_shipping_cents'],
+            'shipping_unit_snapshot' => $shipping['unit_snapshot'], 'shipping_source_snapshot' => $shipping['source_snapshot']];
+    }
+
+    private function caseBasis(BuyerReturnCase $case, array $source): array
+    {
         $wanted = [];
         foreach ($case->items as $line) {
             $item = $case->order->items()->findOrFail($line->order_item_id);
