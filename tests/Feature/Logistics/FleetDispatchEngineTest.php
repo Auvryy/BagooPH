@@ -8,7 +8,9 @@ use App\Models\LogisticsFleet;
 use App\Models\MotherBag;
 use App\Models\User;
 use App\Services\Logistics\FleetDispatchEngine;
+use App\Services\Logistics\MotherBagService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
@@ -94,7 +96,8 @@ class FleetDispatchEngineTest extends TestCase
         $this->assertArrayHasKey('is_baggable', $dws);
         $this->assertArrayHasKey('chute', $dws);
         $this->assertTrue($dws['is_baggable']);
-        $this->assertStringStartsWith('CHUTE-', $dws['chute']);
+        $this->assertSame('BIN-'.$setup['originMother']->code, $dws['chute']);
+        $this->assertSame($setup['originMother']->name, $dws['next_facility_name']);
     }
 
     public function test_automated_mother_bag_slotting(): void
@@ -102,12 +105,8 @@ class FleetDispatchEngineTest extends TestCase
         $setup = $this->createLogisticsSetup();
         $engine = app(FleetDispatchEngine::class);
 
-        $result = $engine->slotIntoMotherBag(
-            $setup['delivery'],
-            $setup['originBayan'],
-            $setup['originMother'],
-            $setup['handler']
-        );
+        $bag = $this->pack($setup);
+        $result = $engine->previewMotherBagSlotting($setup['delivery']->fresh(), $setup['originBayan'], $setup['originMother']);
 
         $this->assertTrue($result['bagged']);
         $this->assertEquals('mother_bag', $result['classification']);
@@ -132,12 +131,8 @@ class FleetDispatchEngineTest extends TestCase
         $engine = app(FleetDispatchEngine::class);
 
         // Slot delivery into mother bag
-        $engine->slotIntoMotherBag(
-            $setup['delivery'],
-            $setup['originBayan'],
-            $setup['originMother'],
-            $setup['handler']
-        );
+        $bag = $this->pack($setup);
+        app(MotherBagService::class)->command($bag, $setup['handler'], 'seal', ['version' => $bag->version, 'seal_number' => 'QA-FLEET-SEAL']);
 
         $summaries = $engine->corridorStagingSummary($setup['originBayan']);
         $this->assertNotEmpty($summaries);
@@ -151,7 +146,7 @@ class FleetDispatchEngineTest extends TestCase
         $this->assertTrue($targetCorridor['can_dispatch']);
     }
 
-    public function test_automated_corridor_dispatch_and_gate_pass_generation(): void
+    public function test_obsolete_fast_dispatch_cannot_generate_a_gate_pass_or_custody(): void
     {
         $setup = $this->createLogisticsSetup();
 
@@ -178,32 +173,18 @@ class FleetDispatchEngineTest extends TestCase
                 'corridor_dispatch' => true,
             ]);
 
-        $dispatchRes->assertOk()
-            ->assertJsonPath('success', true)
-            ->assertJsonStructure([
-                'data' => [
-                    'manifest_reference',
-                    'parcel_count',
-                    'destination_hub',
-                    'vehicle_plate',
-                    'gate_pass' => [
-                        'gate_pass_code',
-                        'issued_at',
-                        'departure_gate',
-                        'manifest_reference',
-                        'driver_name',
-                        'vehicle_plate',
-                        'total_parcels_enclosed',
-                        'total_weight_kg',
-                        'utilization_pct',
-                        'seals',
-                        'verification_hash',
-                    ],
-                ],
-            ]);
+        $dispatchRes->assertConflict()->assertJsonPath('manifest_url', '/hub/manifests?hub_id='.$setup['originBayan']->id);
+        $this->assertSame('arrived_at_origin_hub', $setup['delivery']->fresh()->status);
+        $this->assertDatabaseCount('logistics_manifests', 0);
+        $this->assertDatabaseCount('mother_bag_seals', 0);
+    }
 
-        // Verify parcel transitioned to in-transit status
-        $setup['delivery']->refresh();
-        $this->assertStringContainsString('in_transit', $setup['delivery']->status);
+    private function pack(array $setup): MotherBag
+    {
+        return app(MotherBagService::class)->pack($setup['handler'], [
+            'source_hub_id' => $setup['originBayan']->id, 'barcode' => $setup['delivery']->tracking_number,
+            'request_token' => (string) Str::uuid(), 'handling' => ['weight_kg' => 1.25, 'length_cm' => 20,
+                'width_cm' => 20, 'height_cm' => 20, 'confirmed' => true],
+        ]);
     }
 }
