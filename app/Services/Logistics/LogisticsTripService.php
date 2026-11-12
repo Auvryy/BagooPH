@@ -11,6 +11,7 @@ use App\Models\LogisticsTransportTrip;
 use App\Models\Order;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Returns\BuyerReturnBagService;
 use App\Services\Returns\BuyerReturnCargoService;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -26,7 +27,7 @@ class LogisticsTripService
 
     public function create(User $actor, array $input): LogisticsTransportTrip
     {
-        $data = Validator::make($input, ['manifest_ids' => 'required|array|min:2|max:100',
+        $data = Validator::make($input, ['manifest_ids' => 'required|array|min:1|max:100',
             'manifest_ids.*' => ['required', new AsciiPositiveInteger, 'integer', 'distinct'],
             'request_token' => 'required|uuid'])->validate();
         $ids = collect($data['manifest_ids'])->map(fn ($id) => (int) $id)->sort()->values()->all();
@@ -35,10 +36,11 @@ class LogisticsTripService
         return DB::transaction(function () use ($actor, $data, $ids, $fingerprint) {
             $manifests = LogisticsManifest::whereIn('id', $ids)->orderBy('id')->get();
             abort_unless($manifests->count() === count($ids), 404);
-            $this->lock($actor, $manifests);
+            $this->lockCargo($actor, $manifests);
             $manifests = LogisticsManifest::whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
             $first = $manifests->first();
             $this->authorize($actor, $first->source_hub_id);
+            $this->requireState($manifests->count() > 1 || $first->direction === 'buyer_return', 'Choose at least two compatible manifests, or the single buyer-return load requiring its own sack or loose-cargo trip.');
             $previous = LogisticsTransportTrip::where('created_by_id', $actor->id)->where('creation_token', $data['request_token'])->first();
             if ($previous) {
                 $this->requireState(hash_equals($previous->creation_fingerprint, $fingerprint), 'This request already prepared a different trip.');
@@ -78,7 +80,7 @@ class LogisticsTripService
 
         return DB::transaction(function () use ($snapshot, $actor, $action, $data, $fingerprint) {
             $manifests = $snapshot->manifests()->orderBy('logistics_manifests.id')->get();
-            $this->lock($actor, $manifests);
+            $this->lockCargo($actor, $manifests);
             $trip = LogisticsTransportTrip::whereKey($snapshot->id)->lockForUpdate()->firstOrFail();
             $manifests = $trip->manifests()->orderBy('logistics_manifests.id')->lockForUpdate()->get();
             $this->authorize($actor, $action === 'close' ? $trip->destination_hub_id : $trip->source_hub_id);
@@ -92,6 +94,7 @@ class LogisticsTripService
             $context = [];
             if ($action === 'dispatch') {
                 $context['capacity'] = $this->capacity($manifests);
+                app(BuyerReturnBagService::class)->assertReady($trip);
                 $first = $manifests->firstOrFail();
                 app(LogisticsManifestService::class)->vehicle($trip->logistics_company_id, $trip->source_hub_id, $trip->vehicle_id, $trip->driver_id, true, $first->type);
                 $this->departing = $manifests->pluck('id')->all();
@@ -107,6 +110,7 @@ class LogisticsTripService
                 } finally {
                     $this->departing = [];
                 }
+                app(BuyerReturnBagService::class)->departed($trip, $actor);
             } elseif ($action === 'close') {
                 foreach ($manifests as $manifest) {
                     $this->requireState(in_array($manifest->status, ['received', 'closed'], true)
@@ -114,6 +118,8 @@ class LogisticsTripService
                         && app(LogisticsManifestService::class)->openDiscrepancies($manifest)->isEmpty(),
                         'Record every original parcel receipt and resolve observations before closing the shared trip.');
                 }
+            } elseif ($action === 'cancel') {
+                app(BuyerReturnBagService::class)->assertCancellable($trip);
             }
             $trip->update(['status' => match ($action) {
                 'dispatch' => 'dispatched', 'cancel' => 'cancelled', 'close' => 'closed'
@@ -145,8 +151,9 @@ class LogisticsTripService
         return $this->departing !== [] && LogisticsManifest::whereIn('id', $this->departing)->where('vehicle_id', $vehicleId)->count() === count($this->departing);
     }
 
-    private function lock(User $actor, Collection $manifests): void
+    public function lockCargo(User $actor, Collection $manifests): void
     {
+        abort_unless(DB::transactionLevel() > 0, 409);
         $this->requireState($manifests->isNotEmpty(), 'Select the original manifests for this trip.');
         abort_unless($manifests->pluck('logistics_company_id')->unique()->count() === 1, 403);
         $ids = $manifests->pluck('id');

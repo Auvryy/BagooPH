@@ -7,6 +7,8 @@ use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
+use App\Models\LogisticsTransportTrip;
+use App\Models\MotherBag;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Returns\BuyerReturnService;
@@ -77,7 +79,30 @@ trait CreatesBuyerReturns
         $this->actingAs($this->flowHandler($hub))->post('/buyer-returns/'.$case->id.'/custody', $this->custodyPayload($case, 'measure', [
             'hub_id' => $hub->id, 'handling' => array_replace(['weight_kg' => (string) ($parcel->weight_grams / 1000),
                 'length_cm' => '20', 'width_cm' => '20', 'height_cm' => '20', 'confirmed' => true], $reading),
-        ]))->assertSessionHasNoErrors();
+        ]))->assertRedirect('/buyer-returns/'.$case->id)->assertSessionHasNoErrors();
+    }
+
+    private function sealTripReturn(LogisticsTransportTrip $trip, User $handler, string $barcode, string $base = '/hub/manifests'): MotherBag
+    {
+        $response = $this->actingAs($handler)->postJson($base.'/trips/'.$trip->id.'/return-sacks', [
+            'version' => $trip->fresh()->version, 'request_token' => (string) Str::uuid(), 'barcode' => $barcode,
+            'physical_tag' => 'RETURN-SACK-'.$trip->id, 'physical_checked' => true,
+        ])->assertOk();
+        $bag = MotherBag::findOrFail($response->json('bag.id'));
+        $this->postJson($base.'/trips/'.$trip->id.'/return-sacks/'.$bag->id.'/seal', [
+            'version' => $trip->fresh()->version, 'bag_version' => $bag->version, 'request_token' => (string) Str::uuid(),
+            'barcode' => $bag->reference, 'seal_number' => 'RETURN-SEAL-'.$trip->id.'-'.$bag->version,
+        ])->assertOk();
+
+        return $bag->fresh();
+    }
+
+    private function openTripReturn(LogisticsTransportTrip $trip, MotherBag $bag, User $receiver, string $base = '/hub/manifests'): void
+    {
+        $this->actingAs($receiver)->postJson($base.'/trips/'.$trip->id.'/return-sacks/'.$bag->id.'/open', [
+            'version' => $trip->fresh()->version, 'bag_version' => $bag->fresh()->version, 'request_token' => (string) Str::uuid(),
+            'barcode' => $bag->reference, 'seal_number' => $bag->seal_number, 'seal_intact' => true,
+        ])->assertOk();
     }
 
     private function leg(BuyerReturnCase $case, bool $close = true): LogisticsManifest

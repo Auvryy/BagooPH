@@ -16,6 +16,7 @@ use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -25,7 +26,8 @@ class MotherBagService
     {
         $hubs = app(LogisticsEligibilityService::class)->accessibleHubs($actor)->pluck('id');
 
-        return MotherBag::query()->where(fn ($q) => $q->whereIn('source_hub_id', $hubs)->orWhereIn('destination_hub_id', $hubs));
+        return MotherBag::query()->when(Schema::hasColumn('mother_bags', 'return_trip_id'), fn ($query) => $query->whereNull('return_trip_id'))
+            ->where(fn ($q) => $q->whereIn('source_hub_id', $hubs)->orWhereIn('destination_hub_id', $hubs));
     }
 
     public function create(User $actor, array $input): MotherBag
@@ -160,7 +162,8 @@ class MotherBagService
         if (MotherBag::where('active_physical_key', hash('sha256', $source->logistics_company_id.':'.$data['physical_tag']))->exists()) {
             throw new DomainException('This sack is still in use. Finish its actual receipts before another trip.');
         }
-        if ($previous && ($previous->status !== 'received' || $previous->destination_hub_id !== $source->id)) {
+        if ($previous && ! (($previous->status === 'received' && $previous->destination_hub_id === $source->id)
+            || ($previous->status === 'emptied_at_source' && $previous->source_hub_id === $source->id))) {
             throw new DomainException('This sack is still in use or was last received at another hub. Use its actual current location.');
         }
 

@@ -95,6 +95,7 @@ class SharedTransportTripTest extends TestCase
             ->where('sharedTrip.id', $trip->id)->has('sharedTrip.manifests', 3));
         $this->postJson('/hub/manifests/'.$reverse->id.'/dispatch', $this->flowManifestPayload($reverse))->assertConflict();
         $this->postJson('/hub/manifests/'.$outbound->id.'/reopen', $this->flowManifestPayload($outbound, ['notes' => 'Change the grouped load.']))->assertConflict();
+        $bag = $this->sealTripReturn($trip, $handler, $case->parcel->barcode);
         $payload = $this->tripPayload($trip);
         $this->postJson('/hub/manifests/trips/'.$trip->id.'/dispatch', $payload)->assertOk();
         $this->postJson('/hub/manifests/trips/'.$trip->id.'/dispatch', $payload)->assertOk();
@@ -105,6 +106,7 @@ class SharedTransportTripTest extends TestCase
         $this->assertSame('return_in_transit', $returning->fresh()->status);
         $this->assertSame('delivery_failed', $returning->order->fresh()->status);
         $receiver = $this->flowHandler($reverse->destinationHub);
+        $this->openTripReturn($trip, $bag, $receiver);
         $this->actingAs($receiver)->postJson('/hub/manifests/'.$reverse->id.'/receive', $this->flowManifestPayload($reverse, ['barcode' => $case->parcel->barcode]))->assertOk();
         $this->assertSame('dispatched', $outbound->fresh()->status);
         $this->assertSame('in_transit_to_mother_hub', $forward->fresh()->status);
@@ -166,6 +168,7 @@ class SharedTransportTripTest extends TestCase
     {
         [$reverse, $outbound, $case, $forward, $handler] = $this->cargo();
         $trip = LogisticsTransportTrip::findOrFail($this->actingAs($handler)->postJson('/hub/manifests/trips', $this->grouping($reverse, $outbound))->assertCreated()->json('trip.id'));
+        $bag = $this->sealTripReturn($trip, $handler, $case->parcel->barcode);
         $before = [$case->parcel->fresh()->getAttributes(), $forward->fresh()->getAttributes(), LogisticsManifestEvent::count()];
         Event::listen('eloquent.creating: '.LogisticsManifestEvent::class, function (LogisticsManifestEvent $event) use ($outbound) {
             if ($event->manifest_id === $outbound->id && $event->event_type === 'parcel_dispatched') {
@@ -177,6 +180,7 @@ class SharedTransportTripTest extends TestCase
         $this->assertSame('sealed', $reverse->fresh()->status);
         $this->assertSame('sealed', $outbound->fresh()->status);
         $this->assertSame('ready', $trip->fresh()->status);
+        $this->assertSame('sealed', $bag->fresh()->status);
     }
 
     public function test_a_different_next_leg_is_rejected_and_stale_departure_keeps_both_manifests_sealed(): void
@@ -189,6 +193,7 @@ class SharedTransportTripTest extends TestCase
         $this->postJson('/hub/manifests/trips/'.$trip->id.'/dispatch', [...$this->tripPayload($trip), 'version' => 2])->assertConflict();
         $this->assertSame('sealed', $reverse->fresh()->status);
         $this->assertSame('sealed', $outbound->fresh()->status);
+        $this->sealTripReturn($trip, $handler, $case->parcel->barcode);
         $this->postJson('/hub/manifests/trips/'.$trip->id.'/dispatch', $this->tripPayload($trip))->assertOk();
         $this->postJson('/hub/manifests/trips/'.$trip->id.'/cancel', $this->tripPayload($trip))->assertConflict();
     }

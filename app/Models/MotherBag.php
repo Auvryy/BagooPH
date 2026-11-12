@@ -23,6 +23,11 @@ class MotherBag extends Model
         return $this->hasMany(MotherBagParcel::class);
     }
 
+    public function returnParcels()
+    {
+        return $this->hasMany(MotherBagReturnParcel::class);
+    }
+
     public function source()
     {
         return $this->belongsTo(LogisticsHub::class, 'source_hub_id');

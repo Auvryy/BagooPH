@@ -208,6 +208,7 @@ class BuyerReturnManifestService
                     break;
                 case 'receive':
                     $this->status($manifest, 'dispatched');
+                    app(BuyerReturnBagService::class)->assertReceipt($manifest, $parcel);
                     $this->barcode($parcel, $data);
                     $this->route($manifest, $case, $parcel);
                     if (! $member?->included || $member->received_at || $member->active_return_parcel_id !== $parcel->id
@@ -276,6 +277,9 @@ class BuyerReturnManifestService
                 $parcel->save();
                 $type = $action === 'dispatch' ? 'buyer-return-departed' : 'buyer-return-received';
                 $scan = $this->record($manifest, $actor, $type, $parcelBefore, $parcel->state(), $payload, null, $parcel->barcode, $hubId);
+                if ($action === 'receive') {
+                    app(BuyerReturnBagService::class)->received($manifest, $parcel, $actor);
+                }
                 $source = $case->status;
                 $case->status = $action === 'receive' && $parcel->route_position === count($parcel->hub_ids) - 1 ? 'at_origin_hub' : 'in_transit';
                 $case->version++;

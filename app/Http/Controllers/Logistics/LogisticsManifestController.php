@@ -19,6 +19,7 @@ use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsTripService;
 use App\Services\Logistics\ParcelRecoveryService;
+use App\Services\Returns\BuyerReturnBagService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -89,11 +90,12 @@ class LogisticsManifestController extends Controller
                         'canManage' => $this->service->canManageAtHub($actor, $source),
                         'canDepart' => $actor->isLogistics() && $this->eligibility->canScan($actor, $source),
                         'canClose' => $this->service->canManageAtHub($actor, $destination),
+                        'canReceive' => $actor->isLogistics() && $this->eligibility->canScan($actor, $destination),
                         'manifests' => $shared->manifests()->orderBy('logistics_manifests.id')->get()->map(fn ($member) => [
                             'id' => $member->id, 'reference' => $member->reference, 'direction' => $member->direction, 'status' => $member->status,
                             'outstanding' => $this->service->receiptCounts($member)['outstanding'],
                         ]),
-                    ];
+                    ] + app(BuyerReturnBagService::class)->presentation($shared);
                 } elseif ($selected->status === 'sealed' && $this->service->canManageAtHub($actor, $source)) {
                     $tripCandidates = $query->clone()->where($selected->only(['logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id']))
                         ->where('status', 'sealed')->whereIn('direction', ['outbound', 'return', 'buyer_return'])
@@ -217,6 +219,30 @@ class LogisticsManifestController extends Controller
         }
 
         return back()->with('success', 'The manifest action was recorded.');
+    }
+
+    public function packReturnSack(Request $request, LogisticsTransportTrip $trip, BuyerReturnBagService $bags): JsonResponse|RedirectResponse
+    {
+        try {
+            $bag = $bags->pack($trip, $request->user(), $request->only(['version', 'request_token', 'barcode', 'physical_tag', 'physical_checked']));
+        } catch (DomainException $error) {
+            return $this->conflict($request, $error);
+        }
+
+        return $request->expectsJson() ? response()->json(['bag' => $bag->only(['id', 'reference', 'version', 'status', 'physical_tag', 'seal_number'])])
+            : back()->with('success', 'The scanned return was packed in its actual sack.');
+    }
+
+    public function returnSackCommand(Request $request, LogisticsTransportTrip $trip, MotherBag $bag, string $bagAction, BuyerReturnBagService $bags): JsonResponse|RedirectResponse
+    {
+        try {
+            $bag = $bags->command($trip, $bag, $request->user(), $bagAction, $request->only(['version', 'bag_version', 'request_token', 'barcode', 'return_barcode', 'seal_number', 'seal_intact', 'notes']));
+        } catch (DomainException $error) {
+            return $this->conflict($request, $error);
+        }
+
+        return $request->expectsJson() ? response()->json(['bag' => $bag->only(['id', 'reference', 'version', 'status', 'physical_tag', 'seal_number'])])
+            : back()->with('success', 'The actual return-sack update was saved.');
     }
 
     private function summary(LogisticsManifest $manifest): array
