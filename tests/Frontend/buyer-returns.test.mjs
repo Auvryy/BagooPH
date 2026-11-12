@@ -46,6 +46,44 @@ class Harness {
     submit() { this.control(node => node.type === 'form').onSubmit({ preventDefault() {} }); }
 }
 
+test('seller approval can record item fault without offering a courier-liability verdict', async () => {
+    const h=globalThis.returnHarness=new Harness();
+    try {
+        const supplied={returnCase:{...caseData,status:'requested',actions:['approve','reject']}};
+        await render(ui.Show,supplied,'seller'); h.form.data.action='approve';
+        const html=await render(ui.Show,supplied,'seller');
+        assert.match(html,/Seller \/ item fault/); assert.doesNotMatch(html,/value="courier"/);
+        h.form.data.fault='seller'; h.form.data.reason='The original item and photos establish an item defect.';
+        h.submit(); assert.equal(h.posts[0].data.fault,'seller'); assert.equal(h.posts.length,1);
+    } finally { delete globalThis.returnHarness; }
+});
+
+test('independent courier review asks for bounded evidence and retains input after rejection', async () => {
+    const h=globalThis.returnHarness=new Harness();
+    try {
+        const supplied={returnCase:{...caseData,status:'approved',actions:['review-fault']}};
+        await render(ui.Show,supplied,'admin'); h.form.data.action='review-fault'; h.form.data.fault='courier';
+        h.form.data.fault_evidence='The retained destination receipt records damage.';
+        let html=await render(ui.Show,supplied,'admin');
+        assert.match(html,/Supporting transit evidence/);
+        const evidence=h.control(node=>node.type==='textarea'&&node.props.value===h.form.data.fault_evidence);
+        assert.equal(evidence.minLength,10); assert.equal(evidence.maxLength,1000); assert.equal(evidence.required,true);
+        h.form.errors={fault_evidence:'Identify the actual observations.'};
+        html=await render(ui.Show,supplied,'admin'); assert.match(html,/Identify the actual observations/);
+        assert.equal(h.form.data.fault_evidence,'The retained destination receipt records damage.');
+    } finally { delete globalThis.returnHarness; }
+});
+
+test('changing away from fault review clears stale fault-only fields', async () => {
+    const h=globalThis.returnHarness=new Harness();
+    try {
+        await render(ui.Show,{returnCase:{...caseData,actions:['approve','reject']}},'seller');
+        h.form.data.fault='seller';h.form.data.fault_evidence='A previous evidence note.';
+        h.control(node=>node.type==='select'&&node.props.value===h.form.data.action).onChange({target:{value:'reject'}});
+        assert.equal(h.form.data.fault,''); assert.equal(h.form.data.fault_evidence,'');
+    } finally { delete globalThis.returnHarness; }
+});
+
 test('request form explains the selected window, original items, private photos and real upload limits', async () => {
     const html = await render(ui.Create, props);
     assert.match(html, /including after confirming receipt|Confirming receipt does not end this window/);
@@ -184,7 +222,7 @@ test('manifest preparation selects an actual accepted buyer return and retains o
         h.control(node => node.type === 'input' && node.props.name === 'buyer-return-case' && String(node.props.value) === '11').onChange();
         html = await render(ui.Manifests, data, 'logistics');
         assert.equal(h.form.data.source_hub_id, '3'); assert.equal(h.form.data.destination_hub_id, '2'); assert.equal(h.form.data.buyer_return_case_id, '11');
-        const hubs = [...html.matchAll(/<input\b[^>]*role="combobox"[^>]*>/g)].map(match => match[0]);
+        const hubs = [...html.matchAll(/<select\b[^>]*disabled=""[^>]*>/g)].map(match => match[0]);
         assert.equal(hubs.length, 2); assert.ok(hubs.every(input => /\bdisabled(?:=|\s|>)/.test(input)));
         h.control(node => node.type === 'input' && node.props.name === 'transfer-vehicle' && String(node.props.value) === '5').onChange();
         h.submit();
