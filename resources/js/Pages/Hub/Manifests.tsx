@@ -40,7 +40,7 @@ interface Props {
     selectedManifest: Detail | null; canCreate: boolean; creationToken: string | null; commandToken: string; basePath: string;
     sourceHubIds?: number[]; hubs: Hub[]; vehicles: Array<{ id: number; hub_id: number; plate_number: string; vehicle_type: string; driver_name: string; capacity_kg?: number }>;
     preparationRoute?: { source_hub_id: number; destination_hub_id: number } | null;
-    buyerReturns?: Array<{ id: number; reference: string; barcode: string; source_hub_id: number; destination_hub_id: number; weight_grams: number }>;
+    buyerReturns?: Array<{ id: number; reference: string; barcode: string; source_hub_id: number; destination_hub_id: number; weight_grams: number; recovery_id?: number | null }>;
 }
 const inputClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-[#121316] font-medium shadow-2xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors';
 const buttonClass = 'inline-flex items-center justify-center rounded-lg border border-rose-200 bg-rose-50/85 px-4 py-2 text-xs font-semibold text-[#C20836] shadow-2xs hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';
@@ -48,13 +48,13 @@ const words = (value: string) => value.replaceAll('_', ' ').replaceAll('-', ' ')
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' });
 
 export default function Manifests({ manifests, selectedManifest: selected, canCreate, creationToken, commandToken, basePath, hubs, vehicles, sourceHubIds = [], buyerReturns = [], preparationRoute = null, sharedTrip = null, tripCandidates = [] }: Props) {
-    const creation = useForm({ source_hub_id: preparationRoute ? String(preparationRoute.source_hub_id) : sourceHubIds.length === 1 ? String(sourceHubIds[0]) : '', destination_hub_id: preparationRoute ? String(preparationRoute.destination_hub_id) : '', vehicle_id: '', direction: 'outbound', buyer_return_case_id: '', creation_token: creationToken ?? '' });
+    const creation = useForm({ source_hub_id: preparationRoute ? String(preparationRoute.source_hub_id) : sourceHubIds.length === 1 ? String(sourceHubIds[0]) : '', destination_hub_id: preparationRoute ? String(preparationRoute.destination_hub_id) : '', vehicle_id: '', direction: 'outbound', buyer_return_case_id: '', buyer_return_recovery_id: '', creation_token: creationToken ?? '' });
     const [barcode, setBarcode] = useState('');
     const [cargoMode, setCargoMode] = useState('');
     const [handling, setHandling] = useState(emptyHandling);
     const [search, setSearch] = useState('');
     const [returnSearch, setReturnSearch] = useState('');
-    const selectReturn = (item: NonNullable<Props['buyerReturns']>[number]) => creation.setData({ ...creation.data, buyer_return_case_id: String(item.id), source_hub_id: String(item.source_hub_id), destination_hub_id: String(item.destination_hub_id), vehicle_id: '' });
+    const selectReturn = (item: NonNullable<Props['buyerReturns']>[number]) => creation.setData({ ...creation.data, buyer_return_case_id: String(item.id), buyer_return_recovery_id: item.recovery_id ? String(item.recovery_id) : '', source_hub_id: String(item.source_hub_id), destination_hub_id: String(item.destination_hub_id), vehicle_id: '' });
     const visibleManifests = manifests.data.filter(item => [item.reference, item.source.name, item.destination.name, item.vehicle_plate, item.driver_name, item.status].join(' ').toLowerCase().includes(search.toLowerCase()));
     const [notes, setNotes] = useState('');
     const [kind, setKind] = useState('missing');
@@ -155,6 +155,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                         ...creation.data,
                                                         direction: option.value,
                                                         buyer_return_case_id: '',
+                                                        buyer_return_recovery_id: '',
                                                         source_hub_id: sourceHubIds.length === 1 ? String(sourceHubIds[0]) : '',
                                                         destination_hub_id: '',
                                                         vehicle_id: '',
@@ -214,7 +215,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                         <span className="block text-xs sm:text-sm font-bold text-[#121316]">Return #{item.id}</span>
                                                         <span className="mt-1 block break-words text-xs tabular-nums text-zinc-600">{item.barcode}</span>
                                                         <span className="mt-1 block text-xs text-zinc-500">
-                                                            {item.reference} · {(item.weight_grams / 1000).toFixed(3)} kg
+                                                            {item.reference} · {(item.weight_grams / 1000).toFixed(3)} kg{item.recovery_id ? ' · Authorized recovery' : ''}
                                                         </span>
                                                     </span>
                                                 </label>
@@ -229,6 +230,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                         Scanning selects the return. Choose its vehicle and prepare its exact next leg below.
                                     </p>
                                     {fieldError(creation.errors.buyer_return_case_id)}
+                                    {fieldError(creation.errors.buyer_return_recovery_id)}
                                 </fieldset>
                             )}
 

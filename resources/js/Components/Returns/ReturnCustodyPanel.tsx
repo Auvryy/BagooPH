@@ -12,6 +12,7 @@ export interface ReturnCustody {
     barcode: string | null; status: string; position: number; weight_grams: number | null;
     custody: { kind: string }; current_hub_name: string | null; manifest_reference: string | null; manifest_url: string | null;
     manifest_pending?: boolean;
+    recovery?: { reference: string; state: string; active_route: boolean; url: string | null } | null;
     handling?: Handling | null;
     hubs: Array<{ id: number; name: string; code: string; address: string; operating_hours: string | null }>;
     actions: Array<{ action: string; hub_id: number | null; label: string }>;
@@ -57,6 +58,7 @@ export default function ReturnCustodyPanel({ custody, caseId, version }: { custo
     return <section className="rounded-2xl border border-slate-300 bg-white p-5 sm:p-6" aria-label="Actual return custody">
         <div className="flex items-center gap-2"><PackageCheck className="h-5 w-5 text-[#E00D42]" aria-hidden="true" /><h2 className="text-lg font-bold text-slate-900">{logistics ? 'Return handover' : 'Return parcel'}</h2></div>
         {logistics && <p className="mt-4 text-sm leading-6 text-slate-700">{holderText}</p>}
+        {custody.recovery && <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50/50 p-4"><p className="text-sm font-semibold text-[#9F1239]">Route recovery · {custody.recovery.state.replaceAll('_', ' ')}</p><p className="mt-1 text-xs leading-5 text-slate-600">{custody.recovery.active_route ? 'The authorized recovery path is shown below. The original return route resumes at its expected hub.' : ['observed', 'authorized'].includes(custody.recovery.state) ? 'An unexpected-hub observation is under review. Physical custody has not changed.' : 'The retained recovery history is available with this return.'}</p>{custody.recovery.url && <Link className={`${hubButton} mt-3`} href={custody.recovery.url}>Open route recovery</Link>}</div>}
         {logistics && custody.handling && <div className="mt-3 rounded-lg bg-rose-50 p-3"><HandlingSummary value={custody.handling} /></div>}
         {logistics && custody.custody.kind === 'hub' && custody.hubs.length > 0 && <div className="mt-4"><HubNextStep title={nextHub ? `Next hub: ${nextHub.name}` : needsSellerStaging ? 'Next: stage for seller collection' : 'Next: seller records receipt'} action={nextHub && <Link href={pendingTransfer ? custody.manifest_url! : route('hub.manifests.index')} className={hubButton}>{pendingTransfer ? 'Continue transfer' : 'Open transfers'}</Link>}>
             {nextHub ? (pendingTransfer ? `${custody.manifest_reference ?? 'The original transfer'} is already prepared. ${currentHubName}’s sending handler records the actual outbound scan and departure on that manifest.`
@@ -67,7 +69,7 @@ export default function ReturnCustodyPanel({ custody, caseId, version }: { custo
         {logistics && custody.custody.kind === 'manifest' && nextHub && <div className="mt-4"><HubNextStep title={`Next: receipt at ${nextHub.name}`} action={custody.manifest_url && <Link href={custody.manifest_url} className={hubButton}>Open arrival manifest</Link>}>
             {nextHub.name}’s receiving handler checks the separate return barcode and actual parcel condition, then records its receipt on the original manifest.
         </HubNextStep></div>}
-        {logistics && custody.hubs.length > 0 && <div className="mt-5"><HubRoute stops={custody.hubs} currentHubId={custody.custody.kind === 'hub' ? custody.hubs[custody.position]?.id : null} label="Saved return route" /></div>}
+        {logistics && custody.hubs.length > 0 && <div className="mt-5"><HubRoute stops={custody.hubs} currentHubId={custody.custody.kind === 'hub' ? custody.hubs[custody.position]?.id : null} label={custody.recovery?.active_route ? 'Authorized recovery route' : 'Saved return route'} /></div>}
         {custody.barcode && <div className="mt-4 rounded-xl border border-slate-300 bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-600">Separate return barcode</p><p className="mt-2 break-all text-base font-bold text-slate-900">{custody.barcode}</p><p className="mt-2 text-xs leading-5 text-slate-600">Show this reference with the returned items. The original delivery waybill cannot record this return.</p></div>}
         {custody.barcode && (logistics ? <details className="mt-4 rounded-lg border border-slate-200 p-3"><summary className="cursor-pointer text-sm font-semibold text-slate-700">Barcode and QR for this return</summary><div className="mt-4 max-w-sm"><WaybillCodes trackingNumber={custody.barcode} compact /></div></details> : <div className="mt-4 max-w-sm"><WaybillCodes trackingNumber={custody.barcode} compact /></div>)}
         {!logistics && <p className="mt-4 text-sm leading-6 text-slate-700">{holderText}</p>}
