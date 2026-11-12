@@ -18,6 +18,7 @@ use App\Models\LogisticsManifestParcel;
 use App\Models\Order;
 use App\Models\Shop;
 use App\Models\User;
+use App\Models\WalletRefundCreditRequest;
 use App\Rules\ApplicationText;
 use App\Services\Finance\CodCashViewService;
 use App\Services\Finance\SellerSettlementService;
@@ -197,6 +198,13 @@ class AccountClosureService
         if ($pendingTransfers) {
             $add('buyer_return_cash_receipt', 'An actual return transfer is awaiting receipt.',
                 'The named receiving admin must confirm the actual incoming money before either responsible account can close.', $pendingTransfers);
+        }
+        if (Schema::hasTable('wallet_refund_credit_requests')) {
+            $pendingCredits = WalletRefundCreditRequest::where('actor_id', $subject->id)->where('status', 'pending')->pluck('id')->all();
+            if ($pendingCredits) {
+                $add('wallet_return_funding_request', 'A demonstration return-funding credit request is awaiting review.',
+                    'Finish the independent funding-credit review before closing this liable account.', $pendingCredits);
+            }
         }
         $returnCustody = BuyerReturnParcel::whereHas('returnCase', fn ($query) => $query->whereNotIn('status', BuyerReturnCase::TERMINAL))
             ->where(function ($query) use ($subject, $resources) {

@@ -60,6 +60,15 @@ An explicitly approved demonstration advance uses the retained demonstration
 issuance journal, is labelled virtual and remains separate from liable-party
 recovery. It is not a cash payment, bank refund or insurance fund.
 
+An original liable seller or company without sufficient credits may request
+a bounded demonstration grant. A separate current admin reviews the original
+request and its remaining need before issuing credits to that account's own
+Wallet. Approval retains the exact grant journal and final review. It does not
+fund the refund reserve or clear liability: the account separately transfers
+its own available credits into the reserve. Pending requests block account
+closure; rejection moves no credits. Repeated requests cannot exceed the
+original obligation or duplicate an outstanding request.
+
 Each authority has its own reserve entries linked to the exact actual Wallet
 transaction, reserve account and signed journal delta. Funding one case cannot
 finance another case's refund. The named liable user actually transfers their
@@ -115,6 +124,13 @@ grant private funding receipts. Existing liabilities need financial access
 even when an operational portal is restricted. Account closure must retain
 unreceived transfers and actual outstanding liabilities; a buyer's completed
 refund does not clear an advance-funded company or seller debt.
+
+The financial queue is separate from physical return handling. A company
+owner sees only its original approved liabilities and financial records,
+without the buyer's address, phone, return photos or operational parcel access.
+Private source receipts remain with their source account and reviewing admins.
+Buyer history retains approval and repayment evidence, while internal funding,
+demonstration requests and grant reviews remain private to their participants.
 
 Policy one retains its purchased merchandise-only execution. Unknown versions
 require review. Policy two can be issued only after original-unit amounts,

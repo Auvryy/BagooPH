@@ -21,6 +21,7 @@ use App\Services\Finance\CodMoney;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\Notifications\NotificationDeliveryService;
 use App\Services\Wallet\WalletReturnMoneyService;
+use App\Services\Wallet\WalletSuccessorReturnMoneyService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -29,8 +30,10 @@ use Throwable;
 
 class BuyerReturnMoneyService
 {
-    public const ACTIONS = ['approve-repayment', 'offer-recovery', 'receive-recovery', 'offer-funding', 'receive-funding',
+    private const LEGACY_ACTIONS = ['approve-repayment', 'offer-recovery', 'receive-recovery', 'offer-funding', 'receive-funding',
         'record-repayment', 'confirm-receipt', 'report-nonreceipt', 'resolve-nonreceipt', 'close-zero-return', 'refund-wallet'];
+
+    public const ACTIONS = [...self::LEGACY_ACTIONS, 'offer-compensation', 'receive-compensation', 'reserve-wallet-original', 'fund-wallet-liability', 'advance-wallet-funding'];
 
     public function __construct(private readonly BuyerReturnAmounts $amounts) {}
 
@@ -56,6 +59,9 @@ class BuyerReturnMoneyService
 
     public function backing(Order $order): array
     {
+        if (($order->shipping_quote['refund_policy_version'] ?? 1) === 2 && $order->payment_method === 'cod') {
+            return app(BuyerReturnCashExecution::class)->backing($order);
+        }
         $source = $this->amounts->original($order);
         $cash = $this->cashEvidence($order);
         $payment = app(SellerSettlementService::class)->verifiedPayment($order->sellerSettlement);
@@ -86,6 +92,14 @@ class BuyerReturnMoneyService
 
     public function actions(User $actor, BuyerReturnCase $case): array
     {
+        $policy = $case->order->shipping_quote['refund_policy_version'] ?? 1;
+        if ($policy === 2) {
+            return $case->order->payment_method === 'wallet' ? app(WalletSuccessorReturnMoneyService::class)->actions($actor, $case)
+                : app(BuyerReturnCashExecution::class)->actions($actor, $case);
+        }
+        if ($policy !== 1) {
+            return [];
+        }
         if ($case->order->payment_method === 'wallet') {
             return app(WalletReturnMoneyService::class)->actions($actor, $case);
         }
@@ -123,12 +137,18 @@ class BuyerReturnMoneyService
 
     public function command(User $actor, BuyerReturnCase $case, string $action, array $input, ?UploadedFile $proof = null): BuyerReturnMoneyEvent
     {
+        $policy = $case->order->shipping_quote['refund_policy_version'] ?? 1;
+        if ($policy === 2) {
+            return $case->order->payment_method === 'wallet' ? app(WalletSuccessorReturnMoneyService::class)->command($actor, $case, $action, $input, $proof)
+                : app(BuyerReturnCashExecution::class)->command($actor, $case, $action, $input, $proof);
+        }
+        abort_unless($policy === 1 && in_array($action, self::LEGACY_ACTIONS, true), 409, 'Use the original supported purchased refund workflow.');
         if ($case->order->payment_method === 'wallet') {
             abort_if($proof !== null, 422, 'A virtual wallet refund uses its saved ledger reference, not a cash receipt.');
 
             return app(WalletReturnMoneyService::class)->command($actor, $case, $action, $input);
         }
-        abort_unless(in_array($action, self::ACTIONS, true), 404);
+        abort_unless(in_array($action, self::LEGACY_ACTIONS, true), 404);
         $needsProof = in_array($action, ['offer-recovery', 'receive-recovery', 'offer-funding', 'receive-funding', 'record-repayment', 'resolve-nonreceipt'], true);
         $offer = in_array($action, ['offer-recovery', 'offer-funding'], true);
         $receipt = in_array($action, ['receive-recovery', 'receive-funding'], true);
@@ -293,8 +313,16 @@ class BuyerReturnMoneyService
 
     public function presentation(User $actor, BuyerReturnCase $case): ?array
     {
+        $policy = $case->order->shipping_quote['refund_policy_version'] ?? 1;
+        if ($policy === 2) {
+            return app(BuyerReturnMoneyPresentation::class)->present($actor, $case);
+        }
         if (! $actor->isBuyer() && ! $actor->isSeller() && ! $actor->isAdmin()) {
             return null;
+        }
+        if ($policy !== 1) {
+            return ['policy_version' => $policy, 'mode' => $case->order->payment_method === 'wallet' ? 'wallet' : 'cod', 'actions' => [], 'adjustment' => null, 'history' => [],
+                'blockers' => ['The original purchased refund terms need review before money can move.']];
         }
         if ($case->order->payment_method === 'wallet') {
             return app(WalletReturnMoneyService::class)->presentation($actor, $case);

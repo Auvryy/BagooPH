@@ -34,6 +34,11 @@ class BuyerReturnCase extends Model
         return $this->belongsTo(Order::class);
     }
 
+    public function repaymentPlan(): HasOne
+    {
+        return $this->hasOne(BuyerReturnRepaymentPlan::class, 'buyer_return_case_id');
+    }
+
     public function delivery(): BelongsTo
     {
         return $this->belongsTo(Delivery::class);
@@ -52,6 +57,11 @@ class BuyerReturnCase extends Model
     public function events(): HasMany
     {
         return $this->hasMany(BuyerReturnEvent::class)->orderBy('sequence');
+    }
+
+    public function moneyEvents(): HasMany
+    {
+        return $this->hasMany(BuyerReturnMoneyEvent::class, 'buyer_return_case_id')->orderBy('sequence');
     }
 
     public function parcel(): HasOne

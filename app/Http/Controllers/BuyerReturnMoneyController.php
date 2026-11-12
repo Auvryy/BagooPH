@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\BuyerReturnCase;
 use App\Models\BuyerReturnMoneyEvent;
+use App\Services\Returns\BuyerReturnFinancialScope;
 use App\Services\Returns\BuyerReturnMoneyService;
+use App\Services\Returns\BuyerReturnMoneyVisibility;
 use App\Services\Returns\BuyerReturnService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -31,16 +33,24 @@ class BuyerReturnMoneyController extends Controller
             return back()->withErrors(['payment' => 'This payment update could not be confirmed. Reload its saved history before retrying.']);
         }
 
-        return redirect('/buyer-returns/'.$case->id)->with('success', 'The payment update was saved. Check its actual receipt status.');
+        $target = $request->user()->isLogistics() && ($case->order->shipping_quote['refund_policy_version'] ?? 1) === 2
+            ? '/return-liabilities/'.$case->id : '/buyer-returns/'.$case->id;
+
+        return redirect($target)->with('success', 'The payment update was saved. Check its actual receipt status.');
     }
 
     public function proof(Request $request, BuyerReturnCase $case, BuyerReturnMoneyEvent $event, BuyerReturnService $returns)
     {
         $actor = $returns->current($request->user());
-        $returns->owned($actor, $case);
-        abort_unless($event->buyer_return_case_id === $case->id && $event->proof_path
-            && ($actor->isAdmin() || $actor->isSeller() && ! in_array($event->event_type, ['offer-funding', 'receive-funding'], true)
-                || $actor->isBuyer() && in_array($event->event_type, ['record-repayment', 'resolve-nonreceipt'], true)), 404);
+        if (($case->order->shipping_quote['refund_policy_version'] ?? 1) === 2) {
+            abort_unless(app(BuyerReturnFinancialScope::class)->query($actor)->whereKey($case->id)->exists()
+                && app(BuyerReturnMoneyVisibility::class)->proof($actor, $case, $event), 404);
+        } else {
+            $returns->owned($actor, $case);
+            abort_unless($event->buyer_return_case_id === $case->id && $event->proof_path
+                && ($actor->isAdmin() || $actor->isSeller() && ! in_array($event->event_type, ['offer-funding', 'receive-funding'], true)
+                    || $actor->isBuyer() && in_array($event->event_type, ['record-repayment', 'resolve-nonreceipt'], true)), 404);
+        }
         $disk = Storage::disk('local');
         abort_unless(preg_match('/\Abuyer-return-money\/[a-f0-9-]+\.(?:jpg|png|webp|pdf)\z/', $event->proof_path)
             && $disk->exists($event->proof_path) && hash_equals($event->proof_hash, hash('sha256', $disk->get($event->proof_path))), 404,

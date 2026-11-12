@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Returns;
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\BuyerReturnCase;
 use App\Models\BuyerReturnMoneyEvent;
 use App\Models\BuyerReturnRepaymentPlan;
@@ -12,6 +13,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Models\WalletAccount;
+use App\Models\WalletRefundCreditRequest;
 use App\Models\WalletRefundReserveEntry;
 use App\Models\WalletTransaction;
 use App\Services\AccountClosureService;
@@ -23,6 +25,7 @@ use App\Services\Returns\BuyerReturnPlanApproval;
 use App\Services\Returns\BuyerReturnRefundPlan;
 use App\Services\Returns\BuyerReturnService;
 use App\Services\Wallet\WalletCreditService;
+use App\Services\Wallet\WalletRefundCreditService;
 use App\Services\Wallet\WalletReturnReserve;
 use App\Services\Wallet\WalletSettlementService;
 use App\Services\Wallet\WalletSuccessorReturnMoneyService;
@@ -160,7 +163,8 @@ class BuyerReturnRefundPlanTest extends TestCase
             }
         }
         $this->actingAs($admin)->post('/buyer-returns/'.$case->id.'/money', ['action' => 'approve-repayment', 'expected_version' => $case->version,
-            'request_token' => (string) Str::uuid(), 'reason' => 'A policy-one writer must not substitute its older terms for this successor plan.'], ['Accept' => 'application/json'])->assertConflict();
+            'request_token' => (string) Str::uuid(), 'reason' => 'A legacy approval payload must not bypass review of the successor purchased terms.'], ['Accept' => 'application/json'])
+            ->assertUnprocessable()->assertJsonValidationErrors('review_token');
         $this->assertDatabaseCount('buyer_return_adjustments', 0);
     }
 
@@ -821,6 +825,232 @@ class BuyerReturnRefundPlanTest extends TestCase
         $this->assertSame(0, $reserve->summary($plan)['liability_remaining_cents']);
         $this->assertSame(0, $reserve->summary($plan)['advance_outstanding_cents']);
         $this->assertNotContains('buyer_return_recovery', array_column(app(AccountClosureService::class)->state($order->shop->user)['blockers'], 'code'));
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
+    }
+
+    private function fundingCreditInput(BuyerReturnCase $case, int $amount, array $extra = []): array
+    {
+        return ['expected_version' => $case->fresh()->version, 'request_token' => (string) Str::uuid(), 'amount' => SellerSettlementService::pesos($amount),
+            'reason' => 'Request independently reviewed demonstration credits for this original unfunded company liability.', ...$extra];
+    }
+
+    private function financialHeaders(): array
+    {
+        return ['X-Inertia' => 'true', 'X-Inertia-Version' => app(HandleInertiaRequests::class)->version(request()) ?? ''];
+    }
+
+    public function test_public_wallet_funding_uses_financial_only_company_access_and_keeps_buyer_history_private(): void
+    {
+        [$case, $admin, , $plan] = $this->approvedWallet('courier');
+        $company = LogisticsCompany::findOrFail($case->parcel->logistics_company_id)->user;
+        $company->update(['status' => 'suspended']);
+        $url = '/return-liabilities/'.$case->id;
+        $page = $this->actingAs($company)->getJson($url, $this->financialHeaders())->assertOk();
+        $page->assertJsonPath('component', 'Returns/Liability')->assertJsonPath('props.financialCase.canViewReturn', false)
+            ->assertJsonPath('props.auth.user.canManageReturnLiabilities', true);
+        $financial = $page->json('props.financialCase');
+        $this->assertSame(['id', 'order_number'], array_keys($financial['order']));
+        foreach (['buyer', 'items', 'evidence', 'parcel', 'shipping_address', 'source_snapshot'] as $private) {
+            $this->assertArrayNotHasKey($private, $financial);
+        }
+        $this->assertContains('fund-wallet-liability', $financial['money']['actions']);
+        $this->getJson('/return-liabilities', $this->financialHeaders())->assertOk()->assertJsonPath('props.cases.data.0.id', $case->id);
+        $this->getJson('/return-liabilities?search='.urlencode($case->reference), $this->financialHeaders())->assertOk()->assertJsonPath('props.cases.total', 1);
+        $this->getJson('/return-liabilities?search=%25', $this->financialHeaders())->assertOk()->assertJsonPath('props.cases.total', 0);
+        $this->getJson('/return-liabilities?page=0')->assertUnprocessable()->assertJsonValidationErrors('page');
+        $this->getJson('/return-liabilities?search='.str_repeat('a', 81))->assertUnprocessable()->assertJsonValidationErrors('search');
+        $request = $this->postJson('/buyer-returns/'.$case->id.'/wallet-funding-credits', $this->fundingCreditInput($case, $plan->snapshot['company_funding_due_cents']))
+            ->assertCreated()->json('request');
+        $funding = WalletRefundCreditRequest::findOrFail($request['id']);
+        $this->postJson('/buyer-returns/'.$case->id.'/wallet-funding-credits/'.$funding->id.'/review', $this->fundingReviewInput($funding))->assertForbidden();
+        $this->actingAs($admin)->postJson('/buyer-returns/'.$case->id.'/wallet-funding-credits/'.$funding->id.'/review', $this->fundingReviewInput($funding))
+            ->assertOk()->assertJsonPath('request.status', 'approved');
+        $moneyUrl = '/buyer-returns/'.$case->id.'/money';
+        $this->actingAs($company)->post($moneyUrl, $this->cashInput($case, ['action' => 'fund-wallet-liability',
+            'amount' => SellerSettlementService::pesos($plan->snapshot['company_funding_due_cents']), 'wallet_funding_confirmed' => true]))
+            ->assertRedirect($url)->assertSessionHasNoErrors();
+        $buyerPage = $this->actingAs($case->order->buyer)->getJson('/buyer-returns/'.$case->id, $this->financialHeaders())->assertOk();
+        $money = $buyerPage->json('props.returnCase.money');
+        $this->assertArrayNotHasKey('reserve', $money);
+        $this->assertArrayNotHasKey('funding_credit_requests', $money);
+        $this->assertArrayNotHasKey('company_funding_due_cents', $money['plan']);
+        $this->assertSame(['approve-repayment'], array_column($money['history'], 'event_type'));
+        $this->assertNotContains('money-fund-wallet-liability', array_column($buyerPage->json('props.returnCase.history'), 'event_type'));
+        $this->assertNotContains('wallet-credit-approved', array_column($buyerPage->json('props.returnCase.history'), 'event_type'));
+        $this->actingAs($admin)->post($moneyUrl, $this->cashInput($case, ['action' => 'refund-wallet', 'wallet_refund_confirmed' => true]))
+            ->assertRedirect('/buyer-returns/'.$case->id)->assertSessionHasNoErrors();
+        $this->assertSame('repaid', $case->fresh()->status);
+        $floor = $this->flowHandler(LogisticsHub::findOrFail($case->parcel->hub_ids[0]));
+        if ($floor->id === $company->id) {
+            $floor = $this->createApprovedUser('logistics');
+        }
+        $this->actingAs($floor)->getJson($url, $this->financialHeaders())->assertNotFound();
+        $this->actingAs($this->createApprovedUser('logistics'))->getJson($url, $this->financialHeaders())->assertNotFound();
+        $this->actingAs($this->createApprovedUser('courier'))->getJson($url, $this->financialHeaders())->assertForbidden();
+    }
+
+    public function test_public_cod_company_receipts_are_private_to_the_source_and_never_mistaken_for_buyer_payment(): void
+    {
+        [$case, $admin, $cash, $plan] = $this->approvedCash();
+        $company = LogisticsCompany::findOrFail($case->parcel->logistics_company_id)->user;
+        $moneyUrl = '/buyer-returns/'.$case->id.'/money';
+        $this->actingAs($company)->post($moneyUrl, $this->cashInput($case, ['action' => 'offer-compensation',
+            'amount' => SellerSettlementService::pesos($plan->snapshot['company_funding_due_cents']), 'recipient_id' => $admin->id,
+            'cash_reference' => 'PUBLIC-COMPANY-TRANSFER', 'payment_confirmed' => true, 'proof' => UploadedFile::fake()->image('company.png')]))
+            ->assertRedirect('/return-liabilities/'.$case->id)->assertSessionHasNoErrors();
+        $offer = BuyerReturnMoneyEvent::where('event_type', 'offer-compensation')->sole();
+        $proof = '/buyer-returns/'.$case->id.'/money/'.$offer->id.'/proof';
+        $this->get($proof)->assertOk();
+        $this->assertSame(0, $cash->funding($case)['compensation_received_cents']);
+        $this->actingAs($case->order->buyer)->get($proof)->assertNotFound();
+        $this->actingAs($case->order->shop->user)->get($proof)->assertNotFound();
+        $this->actingAs($admin)->post($moneyUrl, $this->cashInput($case, ['action' => 'receive-compensation', 'source_event_id' => $offer->id,
+            'payment_confirmed' => true, 'proof' => UploadedFile::fake()->image('received.png')]))->assertSessionHasNoErrors();
+        $this->post($moneyUrl, $this->cashInput($case, ['action' => 'record-repayment', 'cash_reference' => 'PUBLIC-BUYER-REPAYMENT',
+            'payment_confirmed' => true, 'proof' => UploadedFile::fake()->image('buyer.png')]))->assertSessionHasNoErrors();
+        $repayment = BuyerReturnMoneyEvent::where('event_type', 'record-repayment')->sole();
+        $buyerPage = $this->actingAs($case->order->buyer)->getJson('/buyer-returns/'.$case->id, $this->financialHeaders())->assertOk();
+        $this->assertSame(['approve-repayment', 'record-repayment'], array_column($buyerPage->json('props.returnCase.money.history'), 'event_type'));
+        $this->get('/buyer-returns/'.$case->id.'/money/'.$repayment->id.'/proof')->assertOk();
+        $this->post($moneyUrl, $this->cashInput($case, ['action' => 'confirm-receipt', 'source_event_id' => $repayment->id]))->assertSessionHasNoErrors();
+        $this->assertSame('repaid', $case->fresh()->status);
+    }
+
+    public function test_public_successor_approval_requires_the_displayed_review_and_keeps_unknown_policies_closed(): void
+    {
+        [$case, $admin] = $this->received();
+        $url = '/buyer-returns/'.$case->id;
+        $page = $this->actingAs($admin)->getJson($url, $this->financialHeaders())->assertOk();
+        $page->assertJsonPath('props.returnCase.money.plan.is_preview', true);
+        $review = $page->json('props.returnCase.money.review_token');
+        $this->assertMatchesRegularExpression('/\A[a-f0-9]{64}\z/', $review);
+        $this->postJson($url.'/money', $this->cashInput($case, ['action' => 'approve-repayment']))->assertUnprocessable()->assertJsonValidationErrors('review_token');
+        $this->post($url.'/money', $this->cashInput($case, ['action' => 'approve-repayment', 'review_token' => $review]))->assertSessionHasNoErrors();
+        $this->assertSame('repayment_ready', $case->fresh()->status);
+        $case->order->update(['shipping_quote' => [...$case->order->shipping_quote, 'refund_policy_version' => 99]]);
+        $this->postJson($url.'/money', $this->cashInput($case, ['action' => 'record-repayment']))->assertConflict();
+        $this->assertSame(0, BuyerReturnMoneyEvent::where('event_type', 'record-repayment')->count());
+    }
+
+    private function fundingReviewInput(WalletRefundCreditRequest $request, array $extra = []): array
+    {
+        return ['version' => $request->fresh()->version, 'request_token' => (string) Str::uuid(), 'decision' => 'approved',
+            'reason' => 'Reviewed the original virtual liability, available credits and remaining demonstration budget.', 'demo_credit_confirmed' => true, ...$extra];
+    }
+
+    public function test_original_company_requests_reviewed_demo_credits_and_clears_liability_only_after_actual_reserve_funding(): void
+    {
+        [$case, $admin, $reserve, $plan] = $this->approvedWallet('courier');
+        $company = LogisticsCompany::findOrFail($case->parcel->logistics_company_id)->user;
+        $credits = app(WalletRefundCreditService::class);
+        $amount = $plan->snapshot['company_funding_due_cents'];
+        $before = WalletTransaction::count();
+        $input = $this->fundingCreditInput($case, $amount);
+        $request = $credits->request($company, $case, $input);
+        $this->assertSame($request->id, $credits->request($company, $case, $input)->id);
+        $this->assertContains('wallet_return_funding_request', array_column(app(AccountClosureService::class)->state($company)['blockers'], 'code'));
+        $this->assertSame($before, WalletTransaction::count());
+        $this->assertSame($amount, $reserve->summary($plan)['liability_remaining_cents']);
+        $reviewInput = $this->fundingReviewInput($request);
+        try {
+            $credits->review($company, $request, $reviewInput);
+            $this->fail('The liable account cannot grant its own funding credits.');
+        } catch (HttpException $error) {
+            $this->assertSame(403, $error->getStatusCode());
+        }
+        $reviewed = $credits->review($admin, $request, $reviewInput);
+        $this->assertSame('approved', $reviewed->status);
+        $this->assertNotContains('wallet_return_funding_request', array_column(app(AccountClosureService::class)->state($company)['blockers'], 'code'));
+        $this->assertNotNull($reviewed->wallet_transaction_id);
+        $this->assertSame($amount, WalletAccount::where('user_id', $company->id)->sole()->balance_cents);
+        $this->assertSame(0, $reserve->summary($plan)['balance_cents']);
+        $this->assertSame($amount, $reserve->summary($plan)['liability_remaining_cents']);
+        $this->assertContains('buyer_return_compensation', array_column(app(AccountClosureService::class)->state($company)['blockers'], 'code'));
+        $money = app(WalletSuccessorReturnMoneyService::class);
+        $money->command($company, $case, 'fund-wallet-liability', $this->cashInput($case, ['amount' => SellerSettlementService::pesos($amount), 'wallet_funding_confirmed' => true]));
+        $this->assertSame(0, $reserve->summary($plan)['liability_remaining_cents']);
+        $money->command($admin, $case, 'refund-wallet', $this->cashInput($case, ['wallet_refund_confirmed' => true]));
+        $this->assertSame('repaid', $case->fresh()->status);
+        $this->assertSame(18000, WalletAccount::where('user_id', $case->seller_id)->sole()->balance_cents);
+        $this->assertSame(5000, WalletAccount::where('kind', 'shipping')->sole()->balance_cents);
+        $this->assertNotContains('buyer_return_compensation', array_column(app(AccountClosureService::class)->state($company)['blockers'], 'code'));
+        $this->assertSame($reviewed->id, $credits->review($admin, $request, $reviewInput)->id);
+        $this->assertSame(1, WalletTransaction::where('kind', 'demo_return_funding_credit')->count());
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
+    }
+
+    public function test_demo_funding_requests_reject_other_parties_excess_budget_duplicate_pending_requests_and_source_changes(): void
+    {
+        [$case, $admin, , $plan] = $this->approvedWallet('courier');
+        $company = LogisticsCompany::findOrFail($case->parcel->logistics_company_id)->user;
+        $credits = app(WalletRefundCreditService::class);
+        $amount = $plan->snapshot['company_funding_due_cents'];
+        foreach ([$case->order->buyer, $case->order->shop->user, $admin] as $wrongActor) {
+            try {
+                $credits->request($wrongActor, $case, $this->fundingCreditInput($case, $amount));
+                $this->fail('Only the original liable account can request this budget.');
+            } catch (HttpException $error) {
+                $this->assertSame(403, $error->getStatusCode());
+            }
+        }
+        try {
+            $credits->request($company, $case, $this->fundingCreditInput($case, $amount + 1));
+            $this->fail('The original unpaid liability bounds the budget.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $request = $credits->request($company, $case, $this->fundingCreditInput($case, $amount));
+        try {
+            $credits->request($company, $case, $this->fundingCreditInput($case, $amount));
+            $this->fail('A second pending request cannot duplicate the original budget.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        try {
+            DB::table('wallet_refund_credit_requests')->where('id', $request->id)->update(['amount_cents' => $amount + 1]);
+            $this->fail('Raw SQL must retain the original requested amount.');
+        } catch (QueryException $error) {
+            $this->assertStringContainsString('Retain', $error->getMessage());
+        }
+        $company->update(['kyc_status' => 'rejected']);
+        try {
+            $credits->review($admin, $request, $this->fundingReviewInput($request));
+            $this->fail('Changed original funding eligibility requires review before new credit.');
+        } catch (HttpException $error) {
+            $this->assertSame(403, $error->getStatusCode());
+        }
+        $data = $this->fundingReviewInput($request, ['decision' => 'rejected']);
+        unset($data['demo_credit_confirmed']);
+        $this->assertSame('rejected', $credits->review($admin, $request, $data)->status);
+        $this->assertSame(0, WalletTransaction::where('kind', 'demo_return_funding_credit')->count());
+    }
+
+    public function test_demo_funding_grant_persistence_failure_rolls_back_credits_and_can_retry_exactly_once(): void
+    {
+        [$case, $admin, , $plan] = $this->approvedWallet('courier');
+        $company = LogisticsCompany::findOrFail($case->parcel->logistics_company_id)->user;
+        $credits = app(WalletRefundCreditService::class);
+        $request = $credits->request($company, $case, $this->fundingCreditInput($case, $plan->snapshot['company_funding_due_cents']));
+        $before = [WalletTransaction::count(), DB::table('wallet_entries')->count(), $case->fresh()->version];
+        $reject = true;
+        WalletRefundCreditRequest::updating(function () use (&$reject) {
+            if ($reject) {
+                throw new \RuntimeException('Simulated demonstration-credit review persistence failure.');
+            }
+        });
+        $input = $this->fundingReviewInput($request);
+        try {
+            $credits->review($admin, $request, $input);
+            $this->fail('A missing funding review must not leave credited virtual money.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('Simulated demonstration-credit review persistence failure.', $error->getMessage());
+        }
+        $reject = false;
+        $this->assertSame($before, [WalletTransaction::count(), DB::table('wallet_entries')->count(), $case->fresh()->version]);
+        $this->assertSame('pending', $request->fresh()->status);
+        $reviewed = $credits->review($admin, $request, $input);
+        $this->assertSame($reviewed->id, $credits->review($admin, $request, $input)->id);
+        $this->assertSame(1, WalletTransaction::where('kind', 'demo_return_funding_credit')->count());
         $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
     }
 }

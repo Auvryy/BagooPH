@@ -342,6 +342,8 @@ class BuyerReturnService
     public function present(User $actor, BuyerReturnCase $case): array
     {
         $case = $this->owned($actor, $case)->load(['items', 'evidence', 'events', 'order']);
+        $successor = ($case->order->shipping_quote['refund_policy_version'] ?? 1) === 2;
+        $visibleMoney = $successor ? app(BuyerReturnMoneyVisibility::class)->visible($actor, $case, $case->moneyEvents()->get())->pluck('id')->all() : [];
 
         return $case->only(['id', 'reference', 'status', 'version', 'reason', 'description', 'delivered_at', 'request_until',
             'response_until', 'appeal_until', 'dropoff_until', 'created_at']) + [
@@ -353,11 +355,20 @@ class BuyerReturnService
                 'items' => $case->items->map(fn ($item) => ['id' => $item->id, 'quantity' => $item->quantity, 'purchase' => $item->purchase_snapshot])->all(),
                 'evidence' => $case->evidence->map(fn ($photo) => ['id' => $photo->id,
                     'url' => '/buyer-returns/'.$case->id.'/evidence/'.$photo->id, 'mime' => $photo->mime, 'bytes' => $photo->bytes, 'purpose' => $photo->purpose])->all(),
-                'history' => $case->events->filter(fn ($event) => $actor->isAdmin() || ($actor->isLogistics()
+                'history' => $case->events->filter(function ($event) use ($actor, $successor, $visibleMoney) {
+                    if (str_starts_with($event->event_type, 'wallet-credit-')) {
+                        return $actor->isAdmin() || ($event->context['source_actor_id'] ?? null) === $actor->id;
+                    }
+                    if ($successor && str_starts_with($event->event_type, 'money-')) {
+                        return in_array($event->context['money_event_id'] ?? null, $visibleMoney, true);
+                    }
+
+                    return $actor->isAdmin() || ($actor->isLogistics()
                     ? ! str_starts_with($event->event_type, 'money-')
                     : ! in_array($event->event_type, $actor->isBuyer()
                         ? ['money-offer-funding', 'money-receive-funding', 'money-offer-recovery', 'money-receive-recovery']
-                        : ['money-offer-funding', 'money-receive-funding'], true)))
+                        : ['money-offer-funding', 'money-receive-funding'], true));
+                })
                     ->map(fn ($event) => $event->only(['reference', 'event_type', 'actor_role', 'reason', 'source_status', 'target_status', 'created_at']))->values()->all(),
             ];
     }

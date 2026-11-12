@@ -36,9 +36,11 @@ use App\Http\Controllers\Buyer\SavedProductController;
 use App\Http\Controllers\Buyer\ShopFollowController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\BuyerReturnController;
+use App\Http\Controllers\BuyerReturnLiabilityController;
 use App\Http\Controllers\BuyerReturnCustodyController;
 use App\Http\Controllers\BuyerReturnMoneyController;
 use App\Http\Controllers\BuyerReturnRecoveryController;
+use App\Http\Controllers\WalletRefundCreditController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CodCashController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
@@ -587,8 +589,14 @@ Route::middleware('auth')->prefix('buyer-returns')->name('buyer-returns.')->grou
     Route::post('/{case}/actions', [BuyerReturnController::class, 'action'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('action');
     Route::post('/{case}/custody', [BuyerReturnCustodyController::class, 'store'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('custody');
     Route::post('/{case}/money', [BuyerReturnMoneyController::class, 'store'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('money');
+    Route::post('/{case}/wallet-funding-credits', [WalletRefundCreditController::class, 'store'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:20,1');
+    Route::post('/{case}/wallet-funding-credits/{funding}/review', [WalletRefundCreditController::class, 'review'])->where(['case' => '[1-9][0-9]{0,17}', 'funding' => '[1-9][0-9]{0,17}'])->middleware('throttle:30,1');
     Route::get('/{case}/money/{event}/proof', [BuyerReturnMoneyController::class, 'proof'])->where(['case' => '[1-9][0-9]{0,17}', 'event' => '[1-9][0-9]{0,17}'])->name('money-proof');
     Route::get('/{case}/evidence/{evidence}', [BuyerReturnController::class, 'evidence'])->where(['case' => '[1-9][0-9]{0,17}', 'evidence' => '[1-9][0-9]{0,17}'])->name('evidence');
+});
+Route::middleware('auth')->prefix('return-liabilities')->name('return-liabilities.')->group(function () {
+    Route::get('/', [BuyerReturnLiabilityController::class, 'index'])->name('index');
+    Route::get('/{case}', [BuyerReturnLiabilityController::class, 'show'])->where('case', '[1-9][0-9]{0,17}')->name('show');
 });
 
 /*
