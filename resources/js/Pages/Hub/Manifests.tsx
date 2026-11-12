@@ -10,6 +10,7 @@ import { nextTransferHubs, transferSteps } from '@/utils/hubWorkspace';
 import { QRCodeSVG } from 'qrcode.react';
 import { CapacityMeter, HandlingFields, HandlingSummary, emptyHandling, type Handling } from '@/Components/Logistics/CargoHandling';
 import WaybillCamera from '@/Components/WaybillCamera';
+import SharedTripPanel, { type SharedTrip, type TripManifest } from '@/Components/Logistics/SharedTripPanel';
 
 interface Hub extends HubPlace { id: number; name: string; code: string; tier: string }
 interface ReceiptCounts { expected: number; normal_received: number; corrective_expected_received: number; unlisted_received: number; outstanding: number }
@@ -34,6 +35,7 @@ interface Detail extends Manifest {
     events: Array<{ id: number; reference: string; type: string; actor: string; actor_role: string; barcode: string | null; reason: string | null; created_at: string }>;
 }
 interface Props {
+    sharedTrip?: SharedTrip | null; tripCandidates?: TripManifest[];
     manifests: { data: Manifest[]; links: Array<{ url: string | null; label: string; active: boolean }> };
     selectedManifest: Detail | null; canCreate: boolean; creationToken: string | null; commandToken: string; basePath: string;
     sourceHubIds?: number[]; hubs: Hub[]; vehicles: Array<{ id: number; hub_id: number; plate_number: string; vehicle_type: string; driver_name: string; capacity_kg?: number }>;
@@ -45,7 +47,7 @@ const buttonClass = 'inline-flex items-center justify-center rounded-lg border b
 const words = (value: string) => value.replaceAll('_', ' ').replaceAll('-', ' ');
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' });
 
-export default function Manifests({ manifests, selectedManifest: selected, canCreate, creationToken, commandToken, basePath, hubs, vehicles, sourceHubIds = [], buyerReturns = [], preparationRoute = null }: Props) {
+export default function Manifests({ manifests, selectedManifest: selected, canCreate, creationToken, commandToken, basePath, hubs, vehicles, sourceHubIds = [], buyerReturns = [], preparationRoute = null, sharedTrip = null, tripCandidates = [] }: Props) {
     const creation = useForm({ source_hub_id: preparationRoute ? String(preparationRoute.source_hub_id) : sourceHubIds.length === 1 ? String(sourceHubIds[0]) : '', destination_hub_id: preparationRoute ? String(preparationRoute.destination_hub_id) : '', vehicle_id: '', direction: 'outbound', buyer_return_case_id: '', creation_token: creationToken ?? '' });
     const [barcode, setBarcode] = useState('');
     const [cargoMode, setCargoMode] = useState('');
@@ -99,11 +101,12 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
             <div className="space-y-6">
                 <HubPageHeader
                     title="Transfers & manifests"
-                    description="One manifest is one vehicle trip to the next hub. Choose the route, load sealed bags or loose cargo and receive each arriving parcel."
+                    description="Prepare cargo for its next hub. Compatible sealed manifests can share one vehicle trip."
                     icon={Truck}
                     actions={<Link className={hubButton} href={route('hub.mother-bags.index')}><Container className="h-4 w-4" />Mother Bags</Link>}
                 />
 
+                <SharedTripPanel trip={sharedTrip} candidates={tripCandidates} selectedId={selected?.id ?? null} token={commandToken} basePath={basePath} />
                 {selected && (
                     <>
                         <HubStepRail steps={transferSteps(selected.status, selected.included_count > 0)} />
@@ -541,10 +544,10 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                     {selected.canManage && selected.status === 'draft' && !hasCorrections && !selected.reviewedHold && (
                                         <button disabled={busy || !selected.included_count} onClick={() => command('seal')} className={buttonClass}>Seal parcel list</button>
                                     )}
-                                    {selected.canManage && selected.status === 'sealed' && !hasCorrections && !selected.reviewedHold && (
+                                    {selected.canManage && selected.status === 'sealed' && !hasCorrections && !selected.reviewedHold && !sharedTrip && (
                                         <button disabled={busy || !notes.trim()} onClick={() => command('reopen')} className={buttonClass}>Reopen with reason</button>
                                     )}
-                                    {selected.canLoad && selected.status === 'sealed' && !hasCorrections && !selected.reviewedHold && (
+                                    {selected.canLoad && selected.status === 'sealed' && !hasCorrections && !selected.reviewedHold && !sharedTrip && (
                                         <button disabled={busy} onClick={() => command('dispatch')} className="rounded-lg bg-[#E00D42] hover:bg-[#C20836] px-5 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99] disabled:opacity-50">
                                             Record departure
                                         </button>
