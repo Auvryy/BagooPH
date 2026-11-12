@@ -11,6 +11,7 @@ use App\Models\LogisticsManifest;
 use App\Models\MotherBag;
 use App\Models\User;
 use App\Services\Logistics\CargoHandlingService;
+use App\Services\Logistics\DispatchStagingService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\HandoverIssueService;
 use App\Services\Logistics\LogisticsEligibilityService;
@@ -47,6 +48,18 @@ class LogisticsManifestController extends Controller
         $sourceHubs = $actor->isLogistics() ? $this->eligibility->accessibleHubs($actor)->get()->filter(fn (LogisticsHub $hub) => $this->service->canManageAtHub($actor, $hub))->values() : collect();
         $companyIds = $sourceHubs->pluck('logistics_company_id')->unique();
         $sourceHubIds = $sourceHubs->pluck('id');
+        $preparationRoute = null;
+        $sourceHint = $request->query('hub_id');
+        $destinationHint = $request->query('destination_hub_id');
+        if (is_string($sourceHint) && is_string($destinationHint)
+            && preg_match('/\A[1-9][0-9]{0,18}\z/', $sourceHint) && preg_match('/\A[1-9][0-9]{0,18}\z/', $destinationHint)
+            && ($sourceHintHub = $sourceHubs->firstWhere('id', (int) $sourceHint))) {
+            $lane = app(DispatchStagingService::class)->corridors($sourceHintHub)
+                ->firstWhere('destination_hub.id', (int) $destinationHint);
+            if ($lane) {
+                $preparationRoute = ['source_hub_id' => $sourceHintHub->id, 'destination_hub_id' => $lane['destination_hub']['id']];
+            }
+        }
         $token = null;
         if ($sourceHubs->isNotEmpty()) {
             $token = $request->session()->get('manifest_creation_token');
@@ -116,6 +129,7 @@ class LogisticsManifestController extends Controller
                     'source_hub_id' => $parcel->current_hub_id, 'destination_hub_id' => $parcel->hub_ids[$parcel->route_position + 1], 'weight_grams' => $parcel->weight_grams])->values() : [],
             'hubs' => LogisticsHub::eligible()->whereIn('logistics_company_id', $companyIds)->orderBy('name')->get(['id', 'name', 'code', 'tier', 'logistics_company_id', 'parent_hub_id', 'latitude', 'longitude', 'address', 'city_municipality', 'province']),
             'sourceHubIds' => $sourceHubIds,
+            'preparationRoute' => $preparationRoute,
             'vehicles' => $sourceHubs->isNotEmpty() ? LogisticsFleet::ready()->whereIn('vehicle_type', ['l300_van', 'wing_truck'])->whereIn('logistics_company_id', $companyIds)->whereIn('hub_id', $sourceHubIds)->whereNotNull('assigned_driver_id')
                 ->whereHas('driver.courierProfile', fn ($profile) => $profile->operational()->where('is_available', true))
                 ->whereNotIn('assigned_driver_id', LogisticsManifest::where('status', 'dispatched')->select('driver_id'))

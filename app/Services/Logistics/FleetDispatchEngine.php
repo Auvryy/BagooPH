@@ -147,6 +147,10 @@ class FleetDispatchEngine
             return null;
         }
         $cargo = app(CargoHandlingService::class);
+        if (! $cargo->available()) {
+            return ['bagged' => false, 'classification' => 'packing_unavailable',
+                'reason' => 'Apply the existing additive packing migration before preparing this bag.'];
+        }
         $member = MotherBagParcel::where('active_delivery_id', $delivery->id)->with('bag')->first();
         try {
             $profile = $member?->handling_snapshot ?? $cargo->profile($delivery, $currentHub->company->user);
@@ -160,8 +164,10 @@ class FleetDispatchEngine
         }
         $bag = $member?->bag;
         if (! $bag) {
+            $lane = hash('sha256', $currentHub->logistics_company_id.':'.$currentHub->id.':'.$destinationHub->id);
             $bag = MotherBag::where('logistics_company_id', $currentHub->logistics_company_id)
                 ->where('source_hub_id', $currentHub->id)->where('destination_hub_id', $destinationHub->id)
+                ->where('automatic_lane', $lane)
                 ->where('status', 'open')->whereNull('manifest_id')->orderBy('id')->get()->first(function ($candidate) use ($cargo, $profile) {
                     try {
                         $cargo->assertFits($candidate, $profile);

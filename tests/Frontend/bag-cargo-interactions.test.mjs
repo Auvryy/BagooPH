@@ -82,6 +82,21 @@ test('readings show their provenance and never pretend a declaration is a scale 
 });
 const manifest={id:1,reference:'MF-ONE',type:'feeder',direction:'outbound',status:'draft',version:2,included_count:1,source:hub,destination,vehicle_plate:'QA-ONE',driver_name:'Named driver',dispatched_at:null,received_at:null,canManage:true,canLoad:true,canClose:false,canReceive:false,parcels:[{id:9,tracking_number:'BGO-LOOSE',included:true,status:'arrived_at_origin_hub',received_at:null,receipt_condition:null,cargo_mode:'loose'}],events:[],discrepancies:[],cargoCapacity:{weight_kg:20,max_weight_kg:1000,loose_count:1,count:1}};
 function manifestProps(selected=manifest){return {manifests:{data:[selected],links:[]},selectedManifest:selected,canCreate:false,creationToken:null,commandToken:'MANIFEST-TOKEN',basePath:'/hub/manifests',hubs:[hub,destination],vehicles:[],sourceHubIds:[1]};}
+
+test('a verified staging link preselects its purchased hubs while leaving the actual driver and submission explicit',t=>{
+    const reassignedSource={...hub,parent_hub_id:3};
+    const newerMother={...destination,id:3,name:'New parent setting',code:'MH3'};
+    const h=harness(t,ui.Manifests,{...manifestProps(),manifests:{data:[],links:[]},selectedManifest:null,canCreate:true,
+        creationToken:'CREATE-TRIP',hubs:[reassignedSource,destination,newerMother],
+        preparationRoute:{source_hub_id:1,destination_hub_id:2}});
+    h.render();
+    assert.equal(h.forms[0].data.source_hub_id,'1');
+    assert.equal(h.forms[0].data.destination_hub_id,'2');
+    assert.equal(h.forms[0].data.vehicle_id,'');
+    assert.equal(h.posts.length,0);
+    const picker=nodes(h.tree).find(n=>n.props?.label==='Receiving hub');
+    assert.ok(picker.props.hubs.some(item=>item.id===2),'The original purchased Mother Hub must stay selectable');
+});
 test('loose cargo loading submits the selected treatment and actual handling readings once',t=>{
     const h=harness(t,ui.Manifests,manifestProps());h.render();
     nodes(h.tree).find(n=>n.type==='select'&&nodes(n).some(c=>c.props?.value==='loose')).props.onChange({target:{value:'loose'}});h.render();

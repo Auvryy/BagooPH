@@ -13,6 +13,7 @@ use App\Services\Logistics\MotherBagService;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithOrderActions;
@@ -160,5 +161,64 @@ class DispatchStagingTest extends TestCase
                 $this->assertDatabaseCount('logistics_manifests', 0);
             }
         }
+    }
+
+    public function test_packing_suggestion_skips_a_bag_that_cannot_fit_the_original_single_package(): void
+    {
+        $first = $this->parcel();
+        $fullForNext = $this->pack($first, 14);
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'));
+        $product = $this->createE2EProduct($shop, ['weight_kg' => 12, 'length_cm' => 20, 'width_cm' => 20, 'height_cm' => 20]);
+        $order = $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop, [['product' => $product, 'quantity' => 1]]);
+        $parcel = $this->flowDelivery($order, 'arrived_at_origin_hub');
+        $actor = $this->flowHandler($parcel->currentHub);
+        $manual = app(MotherBagService::class)->create($actor, ['source_hub_id' => $parcel->current_hub_id,
+            'destination_hub_id' => $parcel->origin_mother_hub_id, 'creation_token' => (string) Str::uuid()]);
+        $preview = app(FleetDispatchEngine::class)->previewMotherBagSlotting($parcel, $parcel->currentHub, $parcel->originMotherHub);
+        $this->assertSame('mother_bag', $preview['classification']);
+        $this->assertFalse($preview['bagged']);
+        $this->assertNull($preview['mother_bag_id']);
+        $this->assertSame(1, $preview['parcel_count']);
+        $this->assertSame(12.0, $preview['weight_kg']);
+        $this->assertSame(1, $fullForNext->parcels()->count());
+        $this->assertDatabaseCount('mother_bags', 2);
+        $actual = app(MotherBagService::class)->pack($actor, ['source_hub_id' => $parcel->current_hub_id,
+            'barcode' => $parcel->tracking_number, 'request_token' => (string) Str::uuid()]);
+        $this->assertNotSame($manual->id, $actual->id);
+        $this->assertNotSame($fullForNext->id, $actual->id);
+        $this->assertSame('open', $fullForNext->fresh()->status);
+    }
+
+    public function test_declared_oversized_freight_is_a_loose_candidate_without_a_fictitious_bag_or_departure(): void
+    {
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'));
+        $product = $this->createE2EProduct($shop, ['weight_kg' => 2, 'length_cm' => 70, 'width_cm' => 20, 'height_cm' => 20]);
+        $parcel = $this->flowDelivery($this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop, [['product' => $product, 'quantity' => 1]]), 'arrived_at_origin_hub');
+        $this->vehicle($parcel);
+        $lane = app(DispatchStagingService::class)->corridors($parcel->currentHub)->sole();
+        $this->assertSame(1, $lane['loose_cargo_count']);
+        $this->assertSame(2.0, $lane['total_weight_kg']);
+        $this->assertTrue($lane['can_dispatch']);
+        $preview = app(FleetDispatchEngine::class)->previewMotherBagSlotting($parcel, $parcel->currentHub, $parcel->originMotherHub);
+        $this->assertSame('loose_cargo', $preview['classification']);
+        $this->assertSame('arrived_at_origin_hub', $parcel->fresh()->status);
+        $this->assertDatabaseCount('mother_bags', 0);
+        $this->assertDatabaseCount('logistics_manifests', 0);
+    }
+
+    public function test_manifest_preparation_link_retains_only_an_authorized_actual_corridor_and_never_creates_a_trip(): void
+    {
+        $parcel = $this->parcel();
+        $handler = $this->flowHandler($parcel->currentHub);
+        $path = '/hub/manifests?hub_id='.$parcel->current_hub_id.'&destination_hub_id=';
+        $this->actingAs($handler)->get($path.$parcel->origin_mother_hub_id)->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('preparationRoute.source_hub_id', $parcel->current_hub_id)
+            ->where('preparationRoute.destination_hub_id', $parcel->origin_mother_hub_id));
+        $this->get($path.$parcel->destination_bayan_hub_id)->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('preparationRoute', null));
+        $this->get('/hub/manifests?hub_id='.$parcel->destination_bayan_hub_id.'&destination_hub_id='.$parcel->origin_mother_hub_id)
+            ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('preparationRoute', null));
+        $this->get('/hub/manifests?hub_id[]=1&destination_hub_id[]=2')->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('preparationRoute', null));
+        $this->assertDatabaseCount('logistics_manifests', 0);
     }
 }

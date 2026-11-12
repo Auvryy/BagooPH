@@ -175,12 +175,12 @@ class AutomatedRoutingEngineTest extends TestCase
                 'delivery_ids' => [$delivery->id],
             ]);
 
-        $backhaulRes1->assertStatus(422)
-            ->assertJsonPath('sound', 'buzz')
-            ->assertJsonPath(
-                'error',
-                "Routing Violation: Parcel tracking {$delivery->tracking_number} cannot be routed backward to {$net['originBayan']->name}. Next authorized facility is {$net['destBayan']->name}."
-            );
+        $backhaulRes1->assertConflict()->assertJsonPath('manifest_url', '/hub/manifests?hub_id='.$net['destMother']->id);
+        $routing = app(LogisticsRoutingEngine::class);
+        $this->assertSame(
+            "Routing Violation: Parcel tracking {$delivery->tracking_number} cannot be routed backward to {$net['originBayan']->name}. Next authorized facility is {$net['destBayan']->name}.",
+            $routing->validateBackhaul($delivery, $net['originBayan'], $net['destMother'])
+        );
 
         // 2. Attempt backward fast dispatch from Destination Mother Hub to Origin Mother Hub
         $backhaulRes2 = $this->actingAs($net['destMotherHandler'])
@@ -189,12 +189,11 @@ class AutomatedRoutingEngineTest extends TestCase
                 'delivery_ids' => [$delivery->id],
             ]);
 
-        $backhaulRes2->assertStatus(422)
-            ->assertJsonPath('sound', 'buzz')
-            ->assertJsonPath(
-                'error',
-                "Routing Violation: Parcel tracking {$delivery->tracking_number} cannot be routed backward to {$net['originMother']->name}. Next authorized facility is {$net['destBayan']->name}."
-            );
+        $backhaulRes2->assertConflict()->assertJsonPath('manifest_url', '/hub/manifests?hub_id='.$net['destMother']->id);
+        $this->assertSame(
+            "Routing Violation: Parcel tracking {$delivery->tracking_number} cannot be routed backward to {$net['originMother']->name}. Next authorized facility is {$net['destBayan']->name}.",
+            $routing->validateBackhaul($delivery, $net['originMother'], $net['destMother'])
+        );
 
         // Inspection may show guidance, but a manually edited status is not receiving evidence.
         $scanBackwardRes = $this->actingAs($net['originMotherHandler'])
