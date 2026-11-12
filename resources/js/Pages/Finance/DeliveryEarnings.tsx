@@ -52,6 +52,7 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
                                         <p className="text-xs capitalize text-zinc-600">{entry.role.replaceAll('_', ' ')} · {entry.pool.replaceAll('_', ' ')} · {entry.virtual_only ? 'Virtual credits' : 'COD'}</p>
                                         <HubBadge tone={entry.status === 'Released' ? 'success' : 'warning'}>{entry.status}</HubBadge>
                                     </div>
+                                    <p className="mt-2 break-all text-xs text-zinc-500">Receipt: {entry.source_reference}</p>
                                     {entry.amount_cents !== entry.net_amount_cents && <p className="mt-2 text-xs text-zinc-500">Before adjustments: {money(entry.amount_cents)}</p>}
                                 </article>
                             ))}
@@ -74,7 +75,7 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
                                             <p className="font-semibold text-[#121316]">{entry.order_number}</p>
                                             <p className="mt-0.5 tabular-nums text-xs text-zinc-500">{entry.tracking_number}</p>
                                         </td>
-                                        <td className="py-3.5 pr-4 capitalize text-zinc-700">{entry.role}</td>
+                                        <td className="py-3.5 pr-4 text-zinc-700"><span className="capitalize">{entry.role}</span><p className="mt-1 break-all text-xs text-zinc-500">Receipt: {entry.source_reference}</p></td>
                                         <td className="py-3.5 pr-4 text-zinc-600">{entry.pool.replaceAll('_', ' ')}{entry.virtual_only ? ' · Virtual' : ' · COD'}</td>
                                         <td className="py-3.5 pr-4 tabular-nums font-semibold tabular-nums text-[#121316]">
                                             {money(entry.net_amount_cents)}

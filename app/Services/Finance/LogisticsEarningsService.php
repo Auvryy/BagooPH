@@ -3,6 +3,7 @@
 namespace App\Services\Finance;
 
 use App\Models\BuyerReturnAdjustment;
+use App\Models\CodAccount;
 use App\Models\CodCashEvent;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
@@ -10,6 +11,7 @@ use App\Models\LogisticsEarning;
 use App\Models\User;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsRateService;
+use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Vouchers\VoucherFundingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -19,9 +21,22 @@ class LogisticsEarningsService
 {
     public function originReceipt(Delivery $parcel, DeliveryCheckpoint $checkpoint): void
     {
+        $parcel = Delivery::with('order')->findOrFail($parcel->id);
         $order = $parcel->order;
         if ($order->logistics_flow_version < 2 || ! $parcel->courier_id || $checkpoint->checkpoint_type !== 'arrived_at_origin_hub') {
             return;
+        }
+        $checkpoint = DeliveryCheckpoint::whereKey($checkpoint->id)->where('delivery_id', $parcel->id)
+            ->where('checkpoint_type', 'arrived_at_origin_hub')->whereNull('source_checkpoint_id')->first();
+        if (! $checkpoint || $checkpoint->actor_role !== 'logistics' || ! $checkpoint->scanned_by_id
+            || $checkpoint->hub_id !== $parcel->origin_bayan_hub_id
+            || ! in_array($checkpoint->barcode_scanned, [$parcel->tracking_number, $order->order_number], true)
+            || ($checkpoint->source_state['delivery_status'] ?? null) !== 'picked_up'
+            || ($checkpoint->custody_before['kind'] ?? null) !== 'courier'
+            || ($checkpoint->custody_before['user_id'] ?? null) !== $parcel->courier_id
+            || ($checkpoint->custody_after['kind'] ?? null) !== 'hub'
+            || ($checkpoint->custody_after['hub_id'] ?? null) !== $parcel->origin_bayan_hub_id) {
+            throw new \DomainException('Pickup earnings require the saved origin-hub receipt from the actual pickup rider.');
         }
         $split = app(LogisticsRateService::class)->purchasedShippingSplit($order);
         if ($split['pickup'] > 0) {
@@ -31,7 +46,13 @@ class LogisticsEarningsService
 
     public function completed(Delivery $parcel, DeliveryCheckpoint $checkpoint): void
     {
+        $parcel = Delivery::with('order')->findOrFail($parcel->id);
         $order = $parcel->order;
+        $completion = app(AutomaticDeliveryCompletionService::class)->evidence($order);
+        if (! $completion || $completion->id !== $checkpoint->id) {
+            throw new \DomainException('Earnings require the saved completion from the original recipient handover and payment.');
+        }
+        $checkpoint = $completion;
         $split = app(LogisticsRateService::class)->purchasedShippingSplit($order);
         $product = SellerSettlementService::split(CodMoney::cents($order->subtotal));
         $promotions = app(VoucherFundingService::class)->amounts($order);
@@ -70,12 +91,26 @@ class LogisticsEarningsService
 
     public function cashReceived(CodCashEvent $event): void
     {
+        DB::transaction(function () use ($event) {
+            $saved = CodCashEvent::find($event->id);
+            if (! $saved) {
+                return;
+            }
+            $account = CodAccount::whereKey($saved->cod_account_id)->lockForUpdate()->firstOrFail();
+            // Replays use persisted evidence and the current locked ledger, including later differences.
+            $saved->setRelation('account', $account);
+            $this->releaseFromCash($saved);
+        });
+    }
+
+    private function releaseFromCash(CodCashEvent $event): void
+    {
         if (! in_array($event->event_type, ['handover_received', 'adjustment'], true)) {
             return;
         }
         $account = $event->account;
         $riderId = $account->collector_id;
-        $state = $event->target_state;
+        $state = $account->state;
         $acknowledged = (int) $account->events()->where('event_type', 'handover_received')->where('from_user_id', $riderId)
             ->where('from_stage', 'rider')->where('to_stage', 'hub')->sum('amount_cents');
         if (! $riderId || $acknowledged < $account->expected_cents || ($state['balances']['rider:'.$riderId] ?? 0) !== 0

@@ -368,6 +368,7 @@ class CourierDeliveryController extends Controller
                 'id' => $entry->id, 'order_number' => $entry->order->order_number, 'role' => $entry->role,
                 'amount_cents' => (int) $entry->net_amount_cents, 'released' => $entry->released_at !== null,
                 'virtual_only' => $entry->snapshot['virtual_only'],
+                'source_reference' => $entry->snapshot['source_reference'] ?? null,
             ]),
             'scope' => $this->scopePayload($profile),
             'isOnline' => (bool) $profile?->is_available,

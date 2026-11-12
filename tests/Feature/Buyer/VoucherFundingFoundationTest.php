@@ -431,7 +431,9 @@ class VoucherFundingFoundationTest extends TestCase
         $this->assertSame(1, $balance->redemption_count);
         $this->assertSame(1, $revision->voucher->fresh()->used_count);
         $this->assertSame($sibling, $orders[1]->fresh()->getAttributes());
-        $this->post(route('seller.orders.cancel', $orders[0]), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('error');
+        $retained = [$orders[0]->fresh()->getAttributes(), $balance->fresh()->getAttributes(), $revision->voucher->fresh()->getAttributes()];
+        $this->post(route('seller.orders.cancel', $orders[0]), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('success');
+        $this->assertSame($retained, [$orders[0]->fresh()->getAttributes(), $balance->fresh()->getAttributes(), $revision->voucher->fresh()->getAttributes()]);
         $this->assertSame(1, VoucherFundingEntry::where('event_type', 'release')->count());
         $this->actingAs($buyer)->post('/checkout', $input)->assertSessionHas('success');
         $this->assertSame('cancelled', $orders[0]->fresh()->status);

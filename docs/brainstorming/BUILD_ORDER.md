@@ -103,6 +103,8 @@ The [B08 contract](B08_BAGS_SEALS_AND_LOOSE_CARGO.md) defines explicit automatic
 
 **Source topics:** 15; local staging part of 27. **Prerequisites:** B01, B02, B07, B08.
 
+The [B09 contract](B09_SORTING_AND_DISPATCH.md) connects retained next-hop bins, checked packing previews, actual staging readings and eligible source-hub vehicles to the existing manifest commands. Local final-mile shelves remain separate from outbound transport.
+
 Derive bin, next bag and vehicle choices from the stored next hop and cargo constraints. Separate local final-mile shelves from linehaul staging. Keep route topology separate from optional road/GPS display.
 
 **Exit gate:** Local orders skip Mother Bag transport; different hubs follow the stored corridor. Departure, partial arrival, seal exceptions and recovery preserve actual custody. Animation, a generated manifest or a GPS dot cannot mark a parcel received.
@@ -110,6 +112,8 @@ Derive bin, next bag and vehicle choices from the stored next hop and cargo cons
 ### B10. Verify delivery completion, earnings and cash reconciliation
 
 **Source topics:** 8, 12, 25; baseline money from 26. **Prerequisites:** B04, B05, B09.
+
+The [B10 contract](B10_DELIVERY_COMPLETION_AND_CASH.md) binds completion to persisted original proof/payment, retains separate product/shipping pools and verifies current counted COD state before rider release. See the [combined manual review](MANUAL_REVIEW_B09_B10.md).
 
 Use the approved proof/payment event to complete the versioned order and release eligible ledger amounts. Keep COD collection/remittance distinct from Wallet delivery and from actual bank/cash payout.
 

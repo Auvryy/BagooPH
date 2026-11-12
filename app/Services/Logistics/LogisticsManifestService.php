@@ -550,6 +550,26 @@ class LogisticsManifestService
             || ! $source || ($custody['kind'] ?? null) !== 'hub' || ($custody['hub_id'] ?? null) !== $delivery->current_hub_id) {
             throw new DomainException('Recorded source-hub custody is required before manifest loading.');
         }
+        if ($delivery->order->logistics_flow_version >= 2) {
+            $path = $delivery->route_hub_ids ?? [];
+            $position = array_search($source->id, $path, true);
+            $nextId = $position !== false ? ($path[$position + 1] ?? null) : null;
+            $next = $nextId ? LogisticsHub::eligible()->where('logistics_company_id', $delivery->logistics_company_id)->find($nextId) : null;
+            if (! $next) {
+                throw new DomainException('This parcel has no further purchased hub transfer. Continue local sorting or review its retained route.');
+            }
+            $this->legType($source, $next);
+            if ($source->isMotherHub()) {
+                if (! in_array($delivery->status, ['arrived_at_mother_hub', 'sorted_to_line_haul'], true)
+                    || (! $this->actualHubReceipt($delivery, $source->id) && ! $this->historicalHubReceipt($delivery, $source->id))) {
+                    throw new DomainException('The Mother Hub needs its actual manifest receipt before further departure.');
+                }
+            } elseif ($delivery->status !== OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB || $position !== 0) {
+                throw new DomainException('Complete the expected origin receipt before its purchased next transfer.');
+            }
+
+            return $next->id;
+        }
         if ($delivery->status === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB && $delivery->current_hub_id === $delivery->origin_bayan_hub_id && $source->tier === 'local_bayan_hub') {
             return $this->expectedHub($delivery, $delivery->origin_mother_hub_id, 'regional_mother_hub');
         }

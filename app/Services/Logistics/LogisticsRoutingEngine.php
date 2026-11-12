@@ -298,6 +298,29 @@ class LogisticsRoutingEngine
      */
     public function computeNextHop(Delivery $delivery, LogisticsHub $hub): ?array
     {
+        // Current purchases use their retained corridor, never a newly configured topology.
+        if ($delivery->order?->logistics_flow_version >= 2) {
+            if ($hub->logistics_company_id !== $delivery->logistics_company_id
+                || in_array($delivery->status, ['return_to_sender', 'return_in_transit', 'returned', 'parcel_recovery_held', 'parcel_recovery_in_transit', 'delivered', 'customer_collected', 'cancelled'], true)) {
+                return null;
+            }
+            $path = $delivery->route_hub_ids ?? [];
+            $position = array_search($hub->id, $path, true);
+            if ($position === false) {
+                return null;
+            }
+            $nextId = $path[$position + 1] ?? null;
+            if ($nextId === null && $hub->id !== $delivery->destination_bayan_hub_id) {
+                return null;
+            }
+            $next = $nextId ? LogisticsHub::where('logistics_company_id', $delivery->logistics_company_id)->find($nextId) : $hub;
+
+            return $next ? [
+                'hub_id' => $next->id, 'hub_name' => $next->name, 'hub_code' => $next->code, 'tier' => $next->tier,
+                'recommended_bin' => $nextId ? 'BIN-'.$next->code : ($delivery->destination_bin
+                    ?: ($delivery->delivery_type === 'hub_self_pickup' ? 'SHELF-A1' : 'LOC-BIN-01')),
+            ] : null;
+        }
         $originBayanId = $delivery->origin_bayan_hub_id;
         $originMotherId = $delivery->origin_mother_hub_id;
         $destMotherId = $delivery->destination_mother_hub_id;

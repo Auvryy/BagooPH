@@ -20,6 +20,7 @@ const bundle = buildSync({
             export { default as WaybillCamera } from '@/Components/WaybillCamera';
             export { default as Profile } from '@/Pages/Courier/Profile';
             export { default as Trips } from '@/Pages/Courier/Earnings';
+            export { default as DeliveryEarnings } from '@/Pages/Finance/DeliveryEarnings';
             export { default as Messages } from '@/Pages/Courier/Messages';
             export { CourierDutySwitch } from '@/Components/CourierDutyControl';
             export { CourierSidebarToggle } from '@/Components/CourierSidebar';
@@ -49,6 +50,37 @@ function directionDestinations(html) {
     return [...new Set([...html.matchAll(/href="(https:\/\/www\.google\.com\/maps\/dir\/[^\"]+)"/g)]
         .map((match) => new URL(match[1].replaceAll('&amp;', '&')).searchParams.get('destination')))];
 }
+
+test('rider earnings show original receipt references, separate cash holds and virtual release status', async () => {
+    const html = await renderPage(ui.Trips, 'Earnings', { scope, isOnline: true,
+        summary: { completedDeliveries: 1, completedToday: 1 }, trips: [],
+        earningsSummary: { confirmed_cents: '3500', pending_cents: '3500' },
+        shift: { held_cents: 33900, can_close: false, pending_handovers: 1, unresolved_differences: 0 },
+        earningEntries: [{ id: '1', order_number: 'ORDER-COD', role: 'delivery', amount_cents: 3500, released: false, virtual_only: false, source_reference: 'CP-ORIGINAL-COD' },
+            { id: '2', order_number: 'ORDER-WALLET', role: 'delivery', amount_cents: 3500, released: true, virtual_only: true, source_reference: 'CP-ORIGINAL-WALLET' }],
+    });
+    assert.match(html, /Receipt: CP-ORIGINAL-COD/);
+    assert.match(html, /Receipt: CP-ORIGINAL-WALLET/);
+    assert.match(html, /Awaiting hub cash receipt/);
+    assert.match(html, /Virtual/);
+    assert.match(html, /Recorded COD still held: ₱339\.00/);
+    assert.match(html, /COD cash handovers/);
+});
+
+test('company earnings expose the original receipt on both layouts and escape retained references', async () => {
+    const previous = globalThis.route;
+    globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: () => false, has: () => true };
+    try {
+        const html = await renderPage(ui.DeliveryEarnings, 'DeliveryEarnings', { summary: { confirmed_cents: '3500', pending_cents: '0' },
+            entries: { data: [{ id: '1', order_number: 'ORDER-COD', tracking_number: 'BGO-ORIGINAL', role: 'company', pool: 'shipping',
+                amount_cents: 3500, net_amount_cents: 3500, status: 'Released', virtual_only: false,
+                source_reference: 'CP-<retained>', earned_at: '2026-11-12T01:00:00Z' }], links: [] } },
+            { auth: { user: { id: 4, name: 'Company Owner', role: 'logistics' } } });
+        assert.equal((html.match(/Receipt: CP-&lt;retained&gt;/g) ?? []).length, 2);
+        assert.doesNotMatch(html, /<retained>/);
+        assert.match(html, /Released earnings are recorded entitlements/);
+    } finally { if (previous === undefined) delete globalThis.route; else globalThis.route = previous; }
+});
 const companyPage = (data = [], extra = {}) => ({ data, current_page: 1, last_page: 1, total: data.length, prev_page_url: null, next_page_url: null, ...extra });
 const sharedRider = { name: 'Ana Rider', email: 'rider@bagoo.test', phone: '09171234567', city: 'Santa Cruz', province: 'Laguna', vehicle_type: 'motorcycle', approval_status: 'approved' };
 const acceptingCompany = { id: '3', name: 'Bagoo Local Fleet', logo: null, intake_version: 1, areas: [{ city: 'Santa Cruz', province: 'Laguna' }] };
@@ -554,7 +586,7 @@ test('trips retain tracking details, payment filters, and bounded history pagina
     assert.match(html, /option value="other"/);
     assert.equal([...html.matchAll(/aria-label="Copy tracking number BGO-TRIP-/g)].length, 10);
     assert.match(html, /Page 1 of 2/);
-    assert.match(html, /buyer receipt, cash remittance, or a rider payout/);
+    assert.match(html, /COD handovers and payouts have separate receipts/);
     assert.doesNotMatch(html, /aria-label="Copy tracking number BGO-TRIP-11"/);
 });
 

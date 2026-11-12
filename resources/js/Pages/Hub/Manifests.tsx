@@ -37,6 +37,7 @@ interface Props {
     manifests: { data: Manifest[]; links: Array<{ url: string | null; label: string; active: boolean }> };
     selectedManifest: Detail | null; canCreate: boolean; creationToken: string | null; commandToken: string; basePath: string;
     sourceHubIds?: number[]; hubs: Hub[]; vehicles: Array<{ id: number; hub_id: number; plate_number: string; vehicle_type: string; driver_name: string; capacity_kg?: number }>;
+    preparationRoute?: { source_hub_id: number; destination_hub_id: number } | null;
     buyerReturns?: Array<{ id: number; reference: string; barcode: string; source_hub_id: number; destination_hub_id: number; weight_grams: number }>;
 }
 const inputClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-[#121316] font-medium shadow-2xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors';
@@ -44,8 +45,8 @@ const buttonClass = 'inline-flex items-center justify-center rounded-lg border b
 const words = (value: string) => value.replaceAll('_', ' ').replaceAll('-', ' ');
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' });
 
-export default function Manifests({ manifests, selectedManifest: selected, canCreate, creationToken, commandToken, basePath, hubs, vehicles, sourceHubIds = [], buyerReturns = [] }: Props) {
-    const creation = useForm({ source_hub_id: sourceHubIds.length === 1 ? String(sourceHubIds[0]) : '', destination_hub_id: '', vehicle_id: '', direction: 'outbound', buyer_return_case_id: '', creation_token: creationToken ?? '' });
+export default function Manifests({ manifests, selectedManifest: selected, canCreate, creationToken, commandToken, basePath, hubs, vehicles, sourceHubIds = [], buyerReturns = [], preparationRoute = null }: Props) {
+    const creation = useForm({ source_hub_id: preparationRoute ? String(preparationRoute.source_hub_id) : sourceHubIds.length === 1 ? String(sourceHubIds[0]) : '', destination_hub_id: preparationRoute ? String(preparationRoute.destination_hub_id) : '', vehicle_id: '', direction: 'outbound', buyer_return_case_id: '', creation_token: creationToken ?? '' });
     const [barcode, setBarcode] = useState('');
     const [cargoMode, setCargoMode] = useState('');
     const [handling, setHandling] = useState(emptyHandling);
@@ -69,6 +70,9 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
     const requiredVehicleType = sourceHub?.tier === 'regional_mother_hub' && destinationHub?.tier === 'regional_mother_hub' ? 'wing_truck' : 'l300_van';
     const availableVehicles = vehicles.filter(vehicle => String(vehicle.hub_id) === creation.data.source_hub_id && vehicle.vehicle_type === requiredVehicleType);
     const receivingHubs = nextTransferHubs(hubs, sourceHub);
+    const purchasedNextHub = preparationRoute && sourceHub?.id === preparationRoute.source_hub_id
+        ? hubs.find(hub => hub.id === preparationRoute.destination_hub_id) : null;
+    if (purchasedNextHub && !receivingHubs.some(hub => hub.id === purchasedNextHub.id)) receivingHubs.push(purchasedNextHub);
     const nextTitle = !selected ? '' : selected.status === 'closed' ? 'Transfer complete' : selected.reviewedHold ? 'Resolve the linked handover first' : selected.status === 'draft' ? (selected.included_count ? 'Check the loaded parcels, then seal the list' : selected.direction === 'buyer_return' ? 'Sending handler: scan the separate return barcode' : selected.direction === 'recovery' ? 'Sending handler: scan the authorized recovery parcel' : 'Load sealed bags or scan eligible loose cargo') : selected.status === 'sealed' ? 'Sending handler: scan and record departure' : selected.status === 'dispatched' ? 'Receiving handler: verify bags, then scan each parcel' : 'Receiving manager: close the completed transfer';
     const create = (event: FormEvent) => {
         event.preventDefault();
