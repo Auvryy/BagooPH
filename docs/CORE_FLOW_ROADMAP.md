@@ -8737,7 +8737,7 @@ The combined PR title/body is a local draft at `storage/framework/testing/b0910-
 
 ### B11–B13 returns/refunds batch — November 12, 2026 (in progress)
 
-**State: B11 review, initial B12 shared trips and actual return-package readings implemented and automatically verified; full B12/B13 delivery remains open. Not pushed, deployed or manually accepted.** The feature branch is `feat/brainstorm-b11-b13-returns-refunds`, based on origin/main `8570c9c`, the user-merged B09/B10 PR #163. That merge is now verified; the preceding dated B09/B10 entry retains its original local handoff state.
+**State: B11 review, B12 shared trips, package readings and actual return sacks implemented and automatically verified; full B12/B13 delivery remains open. Not pushed, deployed or manually accepted.** The feature branch is `feat/brainstorm-b11-b13-returns-refunds`, based on origin/main `8570c9c`, the user-merged B09/B10 PR #163. That merge is now verified; the preceding dated B09/B10 entry retains its original local handoff state.
 
 [B11](brainstorming/B11_RETURN_REQUESTS_AND_REVIEW.md) retains original-unit quantities, seven-day request/drop-off windows, seller review and appeal boundaries. It adds retained seller-fault findings and independent admin review of courier fault, with bounded evidence and original-company/checkpoint references. Review cannot move a parcel, repeat authorization or pay money. Version-two return eligibility requires B10 persisted handover/payment evidence. The case page now loads the original order internally so purchased policy and Wallet controls remain accurate, while returning only the public order reference to the browser.
 
@@ -8750,7 +8750,7 @@ Verification so far:
 - **22 frontend checks passed** for returns and shared-trip controls. TypeScript, the isolated production build and PHP formatting passed. These are automated component/source checks; no visible browser, device, phone or physical sack acceptance is claimed.
 - The final historical Wallet suite passed **10 tests / 1,354 assertions** with new real-page checks for virtual refund controls. Its original examples assumed a flat PHP 60 tariff while inheriting the new platform price/weight default; they now declare a company-specific historical tariff explicitly. The platform PHP 50 tariff and overweight rules were not changed. Earlier failing runs were not counted as passes, and overlapping runs must not be summed.
 
-**Still required before this goal is complete:** return sack membership/loose handling integration, buyer-return wrong-hub recovery and consolidation boundaries; B13 original-unit paid-shipping allocations, explicit fault/liability funding, seller/courier/lost/refusal outcomes for COD and Wallet, balanced journals, UI, boundary/regression checks, rollout audit and combined manual-review/PR draft. Checkout continues freezing refund policy one. Successor policy two is not activated by this progress entry. B14 monitoring, B15 wider investigation automation, B16 restrictions and B01–B08 user manual acceptance retain their own scopes.
+**Still required before this goal is complete:** buyer-return wrong-hub recovery and consolidation boundaries; B13 original-unit paid-shipping allocations, explicit fault/liability funding, seller/courier/lost/refusal outcomes for COD and Wallet, balanced journals, UI, boundary/regression checks, rollout audit and combined manual-review/PR draft. Checkout continues freezing refund policy one. Successor policy two is not activated by this progress entry. B14 monitoring, B15 wider investigation automation, B16 restrictions and B01–B08 user manual acceptance retain their own scopes.
 
 Scoped engineering assessments: **return decision traceability 6/10 → 8/10; explicit shared-trip coordination 0/10 → 7/10**. The scores cover the verified changes above, not completion of all reverse logistics, refunds or overall thesis readiness. The current task-tracking login remains unavailable; no external task status or time record is claimed. No live database reset/seed, mobile repository change or paid service was used.
 
@@ -8770,3 +8770,15 @@ Additional local commits:
 - `9ed404c` — `feat(hub): capture measured return-package dimensions`
 
 No combined GitHub PR has been published for this unfinished batch. A combined title/body and final verification inventory remain part of its required handoff.
+
+
+Return-sack follow-up — November 12: **133 tests / 12,829 assertions passed** across the new return sacks/readings, shared trips and existing return custody, ordinary bag/loose cargo and manifest paths. Final-source PHP gate: `storage/framework/testing/b12-sack-gate.log` / `.xml`, PHP 8.4.24, SQLite `:memory:`, 5m34s, test-process peak 105 MB. The 50/51 case uses 51 separate original-unit claims from one real isolated checkout, each with approval, physical intake, measurement and manifest loading. It respects the existing scan throttle using simulated time; HTTP helpers now require the actual success redirect. This is a capacity/custody check, not measured hardware throughput.
+
+Return sacks share the existing permanent physical identity and globally unique numbered seals, with separate return-member rows and raw-query retention. B08 count/kg/side/volume limits apply; oversized cargo remains individual. The actual destination opens the verified seal before each original manifest records its return receipt. Partial arrival cannot empty another member; only actual complete receipts or recorded source unpacking release the physical sack. A single return may dispatch without waiting for a consolidation minimum.
+
+The final **30 frontend checks**, TypeScript, isolated production build and PHP formatting passed. Source/destination forms have bounded tags, explicit physical confirmations, safe action-specific payloads and failure recovery. Shared-trip selection now survives a validation redirect's refreshed page token; a hook-effect test covers the actual retry identity. Scoped return packing assessment: **0/10 → 8/10**, supported by the automated scenarios above; physical devices, people, visual acceptance and PostgreSQL concurrency remain unverified. These checks overlap earlier runs.
+
+- `623f048` — `feat(returns): enforce sack membership and individual arrival evidence`
+- `94e52ee` — `feat(hub): pack and verify return sacks on vehicle trips`
+
+The full B11–B13 goal remains open. No live PostgreSQL migration, account mutation, seed, mobile change or GitHub push was performed.

@@ -44,6 +44,8 @@ The November 11 user-selected default tariff is PHP 50 including 1 kg, plus PHP 
 
 An undeparted draft may unload the complete sealed bag with its actual tag, seal and reason. An unloaded sealed bag may be reopened with a reason, corrected and given a new seal. Departed membership cannot be silently edited. Historical individual-manifest parcels and separately authorized recovery/buyer-return manifests retain their own protocol.
 
+Compatible sealed forward, RTS and buyer-return manifests may share an explicit vehicle trip only for the same company, actual source, exact next hub, vehicle and driver. Departure revalidates their combined recorded load atomically; each original manifest retains its own route, identity and individual receipt. Buyer-return sacks use separate typed members, the same physical sack/seal identities and B08 capacity limits. Opening a verified sack does not receive its members. See [B12](brainstorming/B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md) for the protected controls; sharing transport creates no collection, refund or new earnings.
+
 ## Misroutes, failures and returns
 
 Every hub scan checks the actual station against the expected next stop. A wrong receiving hub for a dispatched parcel records a retained misroute observation and blocks ordinary movement. Set the parcel aside and use Parcel recovery. The company authorizes the evidence-backed route; the actual observing operator records intake. Recovery goes through the relevant Mother Hub(s), receives at the originally expected hub and resumes the frozen forward route. It does not erase original transport or invent arrival from a note.

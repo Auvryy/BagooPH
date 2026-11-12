@@ -43,6 +43,31 @@ Grouping, departure, receipt and closure create no buyer collection, refund,
 seller recovery, compensation or new earnings on their own. Original purchased
 money terms and physical proof remain authoritative.
 
+## Actual return sacks
+
+Baggable returns on a vehicle trip use the existing physical Mother Bag/sack
+identity with separate typed return-member rows. A sack retains at most 50
+parcels, 25 kg and 0.30 cubic metres; a baggable parcel is at most 15 kg with no
+side above 60 cm. Outer-package readings determine these limits, not the item
+count or declared product dimensions alone. Oversized returns stay individually
+identified loose cargo. A single return can prepare a trip; no minimum batch
+count delays an eligible return.
+
+Packing requires an actual return barcode and confirmed permanent sack tag.
+It does not move custody. A physical sack has one active trip; its last actual
+received location governs reuse. An unstarted sack can also be emptied at its
+recorded source with reasons, retaining that location instead of inventing an
+arrival. Numbered seals cannot be reused. Sealed membership is retained, and
+unpacking requires reopening before departure. Cancelling the trip requires
+actual unpacking first.
+
+The assigned destination operator verifies the master tag and intact numbered
+seal before opening. Opening does not receive the listed parcels. Each return
+still needs its own original manifest receipt; the sack's physical reservation
+is released only when all its actual contents have their receipts. Damaged,
+wrong or unconfirmed seals do not manufacture a successful opening or receipt.
+Forward/RTS and return-member numeric IDs remain in their separate tables.
+
 ## Operator controls
 
 For a buyer return, first open its case at the actual sending hub and choose
@@ -66,11 +91,21 @@ list's outstanding receipt count. An authorized destination manager can choose
 Failed requests retain selections and show the actual conflict. Root and hub
 subdomain pages use their own existing manifest paths.
 
+Within the trip, **Return sacks and loose cargo** lists the actual handling
+classification. **Pack one actual return** asks for its separate barcode and
+permanent sack tag. Each sack shows its master tag, numbered seal, retained
+load and parcel codes. Use **Sack action → Seal sack** after the physical scan;
+before departure, **Reopen before departure** and **Unpack a return** require a
+reason. At destination, **Verify and open at destination** requires the actual
+master/seal check before the original manifest receives individual returns.
+Failed forms keep their scans and retry identity, including after a validation
+redirect refreshes the page's command token.
+
 ## Remaining package boundaries
 
-The shared-trip and package-reading implementations are not evidence that
-return sack membership or buyer-return wrong-hub recovery have been completed.
-Those remain in the same B11–B13 delivery. Existing dedicated return
+The shared-trip, package-reading and sack implementations are not evidence that
+buyer-return wrong-hub recovery has been completed. That remains in the same
+B11–B13 delivery. Existing dedicated return
 transport, original bag limits and supervised RTS/forward recovery remain
 enforced while their extensions are implemented and verified. Consolidation
 must not refuse a valid physical return merely because a vehicle or bag is not
