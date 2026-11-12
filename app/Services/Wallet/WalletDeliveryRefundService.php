@@ -20,7 +20,8 @@ class WalletDeliveryRefundService
     public function eligible(Order $order): bool
     {
         $parcel = $order->delivery;
-        if ($order->status !== 'returned' || $parcel?->status !== 'returned' || $parcel->current_hub_id !== null
+        if (($order->shipping_quote['refund_policy_version'] ?? 1) !== 1
+            || $order->status !== 'returned' || $parcel?->status !== 'returned' || $parcel->current_hub_id !== null
             || ! app(WalletPaymentService::class)->paid($order) || $order->walletPayment?->settlement_transaction_id
             || $order->buyerReturns()->exists()) {
             return false;

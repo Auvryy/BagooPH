@@ -23,6 +23,7 @@ use App\Services\Finance\CodCashViewService;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Notifications\GovernanceNoticeService;
+use App\Services\Returns\BuyerReturnLiabilityBalance;
 use App\Services\Returns\BuyerReturnMoneyService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -181,7 +182,16 @@ class AccountClosureService
             $add('buyer_return_recovery', 'Actual seller recovery remains outstanding.',
                 'Record the remaining original recovery and its receiving confirmation before closing this account.', $returnDebt);
         }
-        $pendingTransfers = BuyerReturnMoneyEvent::whereIn('event_type', ['offer-recovery', 'offer-funding'])
+        $companyIds = LogisticsCompany::where('user_id', $subject->id)->pluck('id');
+        if ($companyIds->isNotEmpty()) {
+            $companyDebt = BuyerReturnCase::whereHas('parcel', fn ($query) => $query->whereIn('logistics_company_id', $companyIds))->get()
+                ->filter(fn ($case) => (app(BuyerReturnLiabilityBalance::class)->forCase($case)['compensation_remaining_cents'] ?? 0) > 0)->modelKeys();
+            if ($companyDebt) {
+                $add('buyer_return_compensation', 'Actual original company compensation remains outstanding.',
+                    'Settle the approved original company liability and its actual receipt before closing this account. A platform advance does not clear it.', $companyDebt);
+            }
+        }
+        $pendingTransfers = BuyerReturnMoneyEvent::whereIn('event_type', ['offer-recovery', 'offer-compensation', 'offer-funding'])
             ->where(fn ($query) => $query->where('actor_id', $subject->id)->orWhere('recipient_id', $subject->id))
             ->whereNotIn('id', BuyerReturnMoneyEvent::whereNotNull('consumed_source_id')->select('consumed_source_id'))->pluck('id')->all();
         if ($pendingTransfers) {

@@ -11,6 +11,10 @@ use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Models\WalletAccount;
+use App\Models\WalletRefundReserveEntry;
+use App\Models\WalletTransaction;
+use App\Services\AccountClosureService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\Returns\BuyerReturnAmounts;
@@ -19,6 +23,9 @@ use App\Services\Returns\BuyerReturnPlanApproval;
 use App\Services\Returns\BuyerReturnRefundPlan;
 use App\Services\Returns\BuyerReturnService;
 use App\Services\Wallet\WalletCreditService;
+use App\Services\Wallet\WalletReturnReserve;
+use App\Services\Wallet\WalletSettlementService;
+use App\Services\Wallet\WalletSuccessorReturnMoneyService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -38,6 +45,13 @@ class BuyerReturnRefundPlanTest extends TestCase
 {
     use CreatesBuyerReturns, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
+    private int $contractVersion = 2;
+
+    protected function flowContractVersion(): int
+    {
+        return $this->contractVersion;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -46,7 +60,7 @@ class BuyerReturnRefundPlanTest extends TestCase
         Storage::fake('public');
     }
 
-    private function received(string $mode = 'cod', string $fault = 'seller', bool $shippingVoucher = false, bool $finish = true, bool $sellerPaid = false): array
+    private function received(string $mode = 'cod', string $fault = 'seller', bool $shippingVoucher = false, bool $finish = true, bool $sellerPaid = false, bool $productVoucher = false): array
     {
         $buyer = $this->createApprovedUser('buyer');
         $admin = $this->createApprovedUser('admin');
@@ -54,6 +68,10 @@ class BuyerReturnRefundPlanTest extends TestCase
         $shipping = ['payment_method' => $mode];
         if ($shippingVoucher) {
             $voucher = Voucher::factory()->funded()->create(['code' => 'PLAN_SHIPPING', 'discount_type' => 'free_shipping', 'discount_value' => 0, 'min_spend' => 0, 'max_discount' => 20]);
+            $shipping['platform_voucher_revision_id'] = $voucher->current_revision_id;
+        }
+        if ($productVoucher) {
+            $voucher = Voucher::factory()->funded()->create(['code' => 'PLAN_PRODUCT', 'discount_type' => 'fixed', 'discount_value' => 40, 'min_spend' => 0]);
             $shipping['platform_voucher_revision_id'] = $voucher->current_revision_id;
         }
         $order = $this->checkoutFlowOrder($buyer, $shop, [['product' => $this->createE2EProduct($shop, ['price' => '100.00']), 'quantity' => 2]], shipping: $shipping);
@@ -389,12 +407,14 @@ class BuyerReturnRefundPlanTest extends TestCase
         $this->assertSame('repaid', $case->fresh()->status);
         $this->assertSame($amount, $service->funding($case)['compensation_remaining_cents']);
         $company = LogisticsCompany::findOrFail($case->parcel->logistics_company_id)->user;
+        $this->assertContains('buyer_return_compensation', array_column(app(AccountClosureService::class)->state($company)['blockers'], 'code'));
         $company->update(['status' => 'suspended']);
         $offer = $service->command($company, $case, 'offer-compensation', $this->cashInput($case, ['amount' => SellerSettlementService::pesos($amount),
             'recipient_id' => $admin->id, 'cash_reference' => 'COMPANY-REPAYS-ADVANCE', 'payment_confirmed' => true]), UploadedFile::fake()->image('actual-company-recovery.png'));
         $this->assertSame($amount, $service->funding($case)['compensation_remaining_cents']);
         $service->command($admin, $case, 'receive-compensation', $this->cashInput($case, ['source_event_id' => $offer->id, 'payment_confirmed' => true]), UploadedFile::fake()->image('company-received.png'));
         $this->assertSame(0, $service->funding($case)['compensation_remaining_cents']);
+        $this->assertNotContains('buyer_return_compensation', array_column(app(AccountClosureService::class)->state($company->fresh())['blockers'], 'code'));
         $this->assertSame($amount, $service->backing($case->order->fresh())['outgoing_cents']);
         $this->assertSame(1, DB::table('buyer_return_money_events')->where('event_type', 'record-repayment')->count());
     }
@@ -524,5 +544,283 @@ class BuyerReturnRefundPlanTest extends TestCase
         }
         $this->assertSame(0, $service->funding($case)['received_backing_cents']);
         $this->assertDatabaseCount('buyer_return_money_events', 1);
+    }
+
+    private function approvedWallet(string $fault = 'seller', bool $settled = true, bool $productVoucher = false): array
+    {
+        $this->contractVersion = $settled ? 2 : 1;
+        [$case, $admin] = $this->received(mode: 'wallet', fault: $fault, productVoucher: $productVoucher);
+        $approval = app(BuyerReturnPlanApproval::class);
+        $preview = $approval->preview($admin, $case);
+        $plan = $approval->approve($admin, $case, ['expected_version' => $case->version, 'request_token' => (string) Str::uuid(),
+            'reason' => 'Reviewed the actual return and original virtual sources before approving its retained plan.', 'review_token' => $preview['review_token']]);
+
+        return [$case, $admin, app(WalletReturnReserve::class), $plan];
+    }
+
+    public function test_actual_seller_virtual_funding_is_reserved_once_and_refund_does_not_debit_seller_again(): void
+    {
+        [$case, $admin, $reserve, $plan] = $this->approvedWallet();
+        $seller = $case->order->shop->user;
+        $reason = 'The named participant reviewed this actual approved virtual reserve and its original source.';
+        $originalToken = (string) Str::uuid();
+        $original = DB::transaction(fn () => $reserve->original($admin, $case, $reason, $originalToken));
+        $this->assertSame($original->id, DB::transaction(fn () => $reserve->original($admin, $case, $reason, $originalToken))->id);
+        $this->assertSame(1000, $original->amount_cents);
+        $this->assertSame(18000, WalletAccount::where('user_id', $seller->id)->sole()->balance_cents);
+        $amount = $plan->snapshot['seller_recovery_due_cents'];
+        $token = (string) Str::uuid();
+        $funding = DB::transaction(fn () => $reserve->liability($seller, $case, $amount, $reason, $token));
+        $this->assertSame($funding->id, DB::transaction(fn () => $reserve->liability($seller, $case, $amount, $reason, $token))->id);
+        $balance = WalletAccount::where('user_id', $seller->id)->sole()->balance_cents;
+        $this->assertSame(18000 - $amount, $balance);
+        $buyerBefore = WalletAccount::where('user_id', $case->buyer_id)->sole()->balance_cents;
+        $token = (string) Str::uuid();
+        $refund = DB::transaction(fn () => $reserve->refund($admin, $case, $reason, $token));
+        $this->assertSame($refund->id, DB::transaction(fn () => $reserve->refund($admin, $case, $reason, $token))->id);
+        $this->assertSame($plan->snapshot['buyer_refund_cents'], $refund->amount_cents);
+        $this->assertSame($balance, WalletAccount::where('user_id', $seller->id)->sole()->balance_cents);
+        $this->assertSame($buyerBefore + $refund->amount_cents, WalletAccount::where('user_id', $case->buyer_id)->sole()->balance_cents);
+        $this->assertSame(5000, WalletAccount::where('kind', 'shipping')->sole()->balance_cents);
+        $this->assertSame(1000, WalletAccount::where('kind', 'commission')->sole()->balance_cents);
+        $this->assertSame(9000, app(WalletSettlementService::class)->basis($case->order->fresh())['seller_cents']);
+        $this->assertSame(0, app(WalletSettlementService::class)->basis($case->order->fresh())['escrow_cents']);
+        $this->assertSame(0, $reserve->summary($plan)['balance_cents']);
+        $this->assertSame(0, $reserve->summary($plan)['liability_remaining_cents']);
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
+        $this->assertDatabaseCount('wallet_refund_reserve_entries', 3);
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_return_refund')->count());
+    }
+
+    public function test_received_demonstration_advance_refunds_courier_fault_without_reducing_original_virtual_seller_or_carrier_earnings(): void
+    {
+        [$case, $admin, $reserve, $plan] = $this->approvedWallet('courier');
+        $reason = 'Explicit approved demonstration funding for the original reviewed company liability.';
+        $company = LogisticsCompany::findOrFail($case->parcel->logistics_company_id)->user;
+        try {
+            DB::transaction(fn () => $reserve->liability($company, $case, $plan->snapshot['company_funding_due_cents'], $reason, (string) Str::uuid()));
+            $this->fail('A company cannot transfer an unbacked or negative virtual balance.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $amount = $plan->snapshot['company_funding_due_cents'];
+        DB::transaction(fn () => $reserve->advance($admin, $case, $amount, $reason, (string) Str::uuid()));
+        $refund = DB::transaction(fn () => $reserve->refund($admin, $case, $reason, (string) Str::uuid()));
+        $this->assertSame($amount, $refund->amount_cents);
+        $this->assertSame(18000, WalletAccount::where('user_id', $case->seller_id)->sole()->balance_cents);
+        $this->assertSame(2000, WalletAccount::where('kind', 'commission')->sole()->balance_cents);
+        $this->assertSame(5000, WalletAccount::where('kind', 'shipping')->sole()->balance_cents);
+        $this->assertSame($amount, $reserve->summary($plan)['liability_remaining_cents']);
+        $this->assertSame($amount, $reserve->summary($plan)['advance_outstanding_cents']);
+        $this->assertSame(18000, app(WalletSettlementService::class)->basis($case->order->fresh())['seller_cents']);
+        $this->assertSame(2000, app(WalletSettlementService::class)->basis($case->order->fresh())['commission_cents']);
+        $this->assertSame(0, $reserve->summary($plan)['balance_cents']);
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
+    }
+
+    public function test_before_settlement_only_original_item_escrow_is_reserved_and_external_shipping_refund_does_not_reduce_it_twice(): void
+    {
+        [$case, $admin, $reserve, $plan] = $this->approvedWallet(settled: false);
+        $reason = 'Review the original unsettled item escrow and separately approved virtual shipping advance.';
+        $this->assertNull($plan->snapshot['source_snapshot']['seller_payment']);
+        DB::transaction(fn () => $reserve->original($admin, $case, $reason, (string) Str::uuid()));
+        $this->assertSame(10000, (int) WalletRefundReserveEntry::where('source_kind', 'original_escrow')->sum('delta_cents'));
+        $this->assertSame(15000, WalletAccount::where('kind', 'escrow')->sole()->balance_cents);
+        DB::transaction(fn () => $reserve->advance($admin, $case, $plan->snapshot['seller_recovery_due_cents'], $reason, (string) Str::uuid()));
+        $refund = DB::transaction(fn () => $reserve->refund($admin, $case, $reason, (string) Str::uuid()));
+        $this->assertSame(12500, $refund->amount_cents);
+        $this->assertSame(15000, WalletAccount::where('kind', 'escrow')->sole()->balance_cents);
+        $this->assertSame(0, $reserve->summary($plan)['balance_cents']);
+        $this->assertSame(2500, $reserve->summary($plan)['liability_remaining_cents']);
+        $basis = app(WalletSettlementService::class)->basis($case->order->fresh());
+        $this->assertSame(12500, $basis['refunded_cents']);
+        $this->assertSame(10000, $basis['original_escrow_reserved_cents']);
+        $this->assertSame(15000, $basis['escrow_cents']);
+        $this->assertSame(9000, $basis['seller_cents']);
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
+    }
+
+    public function test_signed_original_product_subsidy_is_restored_from_actual_reserve_without_resetting_campaign_funding(): void
+    {
+        [$case, $admin, $reserve, $plan] = $this->approvedWallet(productVoucher: true);
+        $reason = 'Retain the original signed promotion contribution and actual separate reserve funding.';
+        $before = [DB::table('voucher_funding_entries')->get()->map(fn ($row) => (array) $row)->all(),
+            DB::table('voucher_redemptions')->get()->map(fn ($row) => (array) $row)->all()];
+        $this->assertSame(2000, $plan->snapshot['promotion_reversal_cents']);
+        $this->assertSame(10500, $plan->snapshot['buyer_refund_cents']);
+        DB::transaction(fn () => $reserve->original($admin, $case, $reason, (string) Str::uuid()));
+        DB::transaction(fn () => $reserve->liability($case->order->shop->user, $case, $plan->snapshot['seller_recovery_due_cents'], $reason, (string) Str::uuid()));
+        $promotionBefore = WalletAccount::where('kind', 'promotion')->sole()->balance_cents;
+        $refund = DB::transaction(fn () => $reserve->refund($admin, $case, $reason, (string) Str::uuid()));
+        $this->assertSame(10500, $refund->amount_cents);
+        $this->assertSame($promotionBefore + 2000, WalletAccount::where('kind', 'promotion')->sole()->balance_cents);
+        $this->assertSame(0, $reserve->summary($plan)['balance_cents']);
+        $this->assertSame(5000, WalletAccount::where('kind', 'shipping')->sole()->balance_cents);
+        $this->assertSame($before, [DB::table('voucher_funding_entries')->get()->map(fn ($row) => (array) $row)->all(),
+            DB::table('voucher_redemptions')->get()->map(fn ($row) => (array) $row)->all()]);
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
+    }
+
+    public function test_actual_late_seller_funding_retires_only_the_received_demonstration_advance_without_another_buyer_credit(): void
+    {
+        [$case, $admin, $reserve, $plan] = $this->approvedWallet();
+        $reason = 'Review the original paid virtual advance and the seller actual separate recovery transfer.';
+        DB::transaction(fn () => $reserve->original($admin, $case, $reason, (string) Str::uuid()));
+        $amount = $plan->snapshot['seller_recovery_due_cents'];
+        DB::transaction(fn () => $reserve->advance($admin, $case, $amount, $reason, (string) Str::uuid()));
+        $refund = DB::transaction(fn () => $reserve->refund($admin, $case, $reason, (string) Str::uuid()));
+        $this->assertSame($amount, $reserve->summary($plan)['liability_remaining_cents']);
+        $issued = WalletAccount::where('kind', 'demo_issuance')->sole()->balance_cents;
+        $buyer = WalletAccount::where('user_id', $case->buyer_id)->sole()->balance_cents;
+        $token = (string) Str::uuid();
+        $funding = DB::transaction(fn () => $reserve->liability($case->order->shop->user, $case, $amount, $reason, $token));
+        $this->assertSame($funding->id, DB::transaction(fn () => $reserve->liability($case->order->shop->user, $case, $amount, $reason, $token))->id);
+        $state = $reserve->summary($plan);
+        $this->assertSame(0, $state['balance_cents']);
+        $this->assertSame(0, $state['liability_remaining_cents']);
+        $this->assertSame(0, $state['advance_outstanding_cents']);
+        $this->assertSame($amount, $state['advance_retired_cents']);
+        $this->assertSame($issued + $amount, WalletAccount::where('kind', 'demo_issuance')->sole()->balance_cents);
+        $this->assertSame($buyer, WalletAccount::where('user_id', $case->buyer_id)->sole()->balance_cents);
+        $this->assertSame($refund->amount_cents, (int) WalletTransaction::where('kind', 'wallet_return_refund')->sum('amount_cents'));
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_return_advance_retirement')->count());
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
+    }
+
+    public function test_one_original_virtual_reserve_cannot_fund_another_case_and_its_source_record_is_immutable(): void
+    {
+        [$first, $admin, $reserve, $plan] = $this->approvedWallet();
+        $reason = 'Retain each named original virtual reserve and its separate reviewed financial authority.';
+        DB::transaction(fn () => $reserve->original($admin, $first, $reason, (string) Str::uuid()));
+        DB::transaction(fn () => $reserve->liability($first->order->shop->user, $first, $plan->snapshot['seller_recovery_due_cents'], $reason, (string) Str::uuid()));
+        $firstBalance = $reserve->summary($plan)['balance_cents'];
+        [$second, $otherAdmin] = $this->approvedWallet();
+        $buyer = WalletAccount::where('user_id', $second->buyer_id)->sole()->balance_cents;
+        try {
+            DB::transaction(fn () => $reserve->refund($otherAdmin, $second, $reason, (string) Str::uuid()));
+            $this->fail('Another original case’s reserved credits cannot back this buyer refund.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $this->assertSame($firstBalance, $reserve->summary($plan)['balance_cents']);
+        $this->assertSame($buyer, WalletAccount::where('user_id', $second->buyer_id)->sole()->balance_cents);
+        $entry = WalletRefundReserveEntry::firstOrFail();
+        $attributes = $entry->getAttributes();
+        unset($attributes['id']);
+        try {
+            DB::transaction(fn () => WalletRefundReserveEntry::create([...$attributes, 'delta_cents' => $entry->delta_cents + 1]));
+            $this->fail('A reserve source record must equal its actual journal entry.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        try {
+            DB::table('wallet_refund_reserve_entries')->where('id', $entry->id)->update(['delta_cents' => 1]);
+            $this->fail('Raw SQL must preserve the original actual reserve.');
+        } catch (QueryException $error) {
+            $this->assertStringContainsString('Retain', $error->getMessage());
+        }
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
+    }
+
+    public function test_failed_virtual_reserve_record_rolls_back_the_actual_transaction_and_all_cached_balances(): void
+    {
+        [$case, $admin, $reserve] = $this->approvedWallet();
+        $accounts = fn () => DB::table('wallet_accounts')->orderBy('id')->get()->map(fn ($row) => (array) $row)->all();
+        $before = [$accounts(), DB::table('wallet_transactions')->count(), DB::table('wallet_entries')->count()];
+        $reject = true;
+        WalletRefundReserveEntry::creating(function () use (&$reject) {
+            if ($reject) {
+                throw new \RuntimeException('Simulated virtual reserve-source persistence failure.');
+            }
+        });
+        $reason = 'Check the exact original virtual source and roll back incomplete reserve evidence.';
+        $token = (string) Str::uuid();
+        try {
+            DB::transaction(fn () => $reserve->original($admin, $case, $reason, $token));
+            $this->fail('A missing reserve-source record cannot leave a debit or credited reserve.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('Simulated virtual reserve-source persistence failure.', $error->getMessage());
+        }
+        $reject = false;
+        $this->assertSame($before, [$accounts(), DB::table('wallet_transactions')->count(), DB::table('wallet_entries')->count()]);
+        $this->assertDatabaseCount('wallet_refund_reserve_entries', 0);
+        DB::transaction(fn () => $reserve->original($admin, $case, $reason, $token));
+        $this->assertDatabaseCount('wallet_refund_reserve_entries', 1);
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
+    }
+
+    public function test_virtual_orchestrator_retains_actual_source_references_and_marks_repaid_only_after_one_buyer_credit(): void
+    {
+        [$case, $admin] = $this->received(mode: 'wallet');
+        $service = app(WalletSuccessorReturnMoneyService::class);
+        $input = fn ($extra = []) => ['expected_version' => $case->fresh()->version, 'request_token' => (string) Str::uuid(),
+            'reason' => 'The named participant reviewed this exact original virtual return and its actual reserve source.', ...$extra];
+        $review = app(BuyerReturnPlanApproval::class)->preview($admin, $case);
+        $service->command($admin, $case, 'approve-repayment', $input(['review_token' => $review['review_token']]));
+        $plan = BuyerReturnRepaymentPlan::where('buyer_return_case_id', $case->id)->sole();
+        $buyer = WalletAccount::where('user_id', $case->buyer_id)->sole()->balance_cents;
+        try {
+            $service->command($admin, $case, 'refund-wallet', $input(['wallet_refund_confirmed' => true]));
+            $this->fail('A retained plan alone cannot credit a virtual refund.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $originalInput = $input(['wallet_reserve_confirmed' => true]);
+        $source = $service->command($admin, $case, 'reserve-wallet-original', $originalInput);
+        $this->assertSame($source->id, $service->command($admin, $case, 'reserve-wallet-original', $originalInput)->id);
+        $this->assertSame('platform_refund_reserve', $source->context['recipient_kind']);
+        $this->assertSame('repayment_ready', $case->fresh()->status);
+        $this->assertSame($buyer, WalletAccount::where('user_id', $case->buyer_id)->sole()->balance_cents);
+        $seller = $case->order->shop->user;
+        $fundingInput = $input(['amount' => SellerSettlementService::pesos($plan->snapshot['seller_recovery_due_cents']), 'wallet_funding_confirmed' => true]);
+        $funding = $service->command($seller, $case, 'fund-wallet-liability', $fundingInput);
+        $this->assertSame('platform_refund_reserve', $funding->context['recipient_kind']);
+        $this->assertSame('repayment_ready', $case->fresh()->status);
+        $refundInput = $input(['wallet_refund_confirmed' => true]);
+        $refund = $service->command($admin, $case, 'refund-wallet', $refundInput);
+        $this->assertSame('repaid', $case->fresh()->status);
+        $this->assertSame('buyer_wallet', $refund->context['recipient_kind']);
+        $this->assertNotNull($refund->context['wallet_reference']);
+        $this->assertSame($buyer + $plan->snapshot['buyer_refund_cents'], WalletAccount::where('user_id', $case->buyer_id)->sole()->balance_cents);
+        $this->assertSame($refund->id, $service->command($admin, $case, 'refund-wallet', $refundInput)->id);
+        $this->assertSame($funding->id, $service->command($seller, $case, 'fund-wallet-liability', $fundingInput)->id);
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_return_refund')->count());
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
+        $this->assertDatabaseCount('buyer_return_money_events', 4);
+        $this->assertNotContains('buyer_return_recovery', array_column(app(AccountClosureService::class)->state($seller)['blockers'], 'code'));
+    }
+
+    public function test_remaining_original_proceeds_use_actual_reserved_escrow_and_late_seller_recovery_keeps_its_frozen_amount(): void
+    {
+        [$case, $admin, $reserve, $plan] = $this->approvedWallet(settled: false);
+        $service = app(WalletSuccessorReturnMoneyService::class);
+        $input = fn ($extra = []) => ['expected_version' => $case->fresh()->version, 'request_token' => (string) Str::uuid(),
+            'reason' => 'Reviewed the original unspent source, actual reserve and remaining original virtual proceeds.', ...$extra];
+        $service->command($admin, $case, 'reserve-wallet-original', $input(['wallet_reserve_confirmed' => true]));
+        $service->command($admin, $case, 'advance-wallet-funding', $input(['amount' => '25.00', 'demo_advance_confirmed' => true]));
+        $service->command($admin, $case, 'refund-wallet', $input(['wallet_refund_confirmed' => true]));
+        $this->assertSame('repaid', $case->fresh()->status);
+        $this->assertSame(15000, WalletAccount::where('kind', 'escrow')->sole()->balance_cents);
+        $order = $case->order->fresh();
+        $this->actingAs($order->buyer)->post('/buyer/orders/'.$order->id.'/confirm')->assertSessionHas('success');
+        $settlements = app(WalletSettlementService::class);
+        $view = $settlements->present($order->fresh());
+        $this->assertTrue($view['can_settle']);
+        $this->assertSame(9000, $view['seller_cents']);
+        $this->assertSame(15000, $view['escrow_cents']);
+        $settlements->settle($admin, $order, ['request_token' => (string) Str::uuid(), 'consent' => $view['consent'],
+            'credit_proceeds_confirmed' => true, 'reason' => 'Reviewed the actual remaining original escrow after the backed partial return.']);
+        $this->assertSame(9000, WalletAccount::where('user_id', $case->seller_id)->sole()->balance_cents);
+        $this->assertSame(1000, WalletAccount::where('kind', 'commission')->sole()->balance_cents);
+        $this->assertSame(5000, WalletAccount::where('kind', 'shipping')->sole()->balance_cents);
+        $this->assertSame(0, WalletAccount::where('kind', 'escrow')->sole()->balance_cents);
+        $this->assertSame(2500, $reserve->summary($plan)['liability_remaining_cents']);
+        $this->assertContains('buyer_return_recovery', array_column(app(AccountClosureService::class)->state($order->shop->user)['blockers'], 'code'));
+        $service->command($order->shop->user, $case, 'fund-wallet-liability', $input(['amount' => '25.00', 'wallet_funding_confirmed' => true]));
+        $this->assertSame(6500, WalletAccount::where('user_id', $case->seller_id)->sole()->balance_cents);
+        $this->assertSame(0, $reserve->summary($plan)['liability_remaining_cents']);
+        $this->assertSame(0, $reserve->summary($plan)['advance_outstanding_cents']);
+        $this->assertNotContains('buyer_return_recovery', array_column(app(AccountClosureService::class)->state($order->shop->user)['blockers'], 'code'));
+        $this->assertSame(0, (int) DB::table('wallet_entries')->sum('delta_cents'));
     }
 }

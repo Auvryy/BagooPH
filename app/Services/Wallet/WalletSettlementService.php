@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\VoucherOrderAllocation;
 use App\Models\VoucherRevisionBalance;
 use App\Models\WalletPayment;
+use App\Models\WalletRefundReserveEntry;
 use App\Models\WalletTransaction;
 use App\Rules\ApplicationText;
 use App\Services\AccountRestrictionService;
@@ -20,6 +21,7 @@ use App\Services\ShopEligibilityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -38,18 +40,27 @@ class WalletSettlementService
 
     public function basis(Order $order): array
     {
-        $source = app(BuyerReturnAmounts::class)->original($order);
-        $returns = BuyerReturnAdjustment::where('order_id', $order->id)->orderBy('id')->get();
+        $amounts = app(BuyerReturnAmounts::class);
+        $policy = $order->shipping_quote['refund_policy_version'] ?? 1;
+        $source = $policy === 2 ? $amounts->successorOriginal($order) : $amounts->original($order);
+        $returns = $amounts->adjustmentFinancials($order);
         $payment = WalletPayment::where('order_id', $order->id)->firstOrFail();
         $gross = array_sum(array_column($source['units'], 'gross_cents'));
         $refunded = (int) WalletTransaction::where('order_id', $order->id)->where('kind', 'wallet_return_refund')->sum('amount_cents');
+        $escrowDebited = $refunded;
+        if ($policy === 2) {
+            abort_unless(Schema::hasTable('wallet_refund_reserve_entries'), 409, 'Retain the original virtual refund source before releasing successor proceeds.');
+            $escrowDebited = (int) WalletRefundReserveEntry::where('order_id', $order->id)->where('source_kind', 'original_escrow')->sum('delta_cents');
+        }
+        abort_unless($escrowDebited >= 0 && $escrowDebited <= $payment->amount_cents, 409, 'The original escrow debit needs its actual retained source.');
 
-        return ['seller_cents' => $source['original_seller_cents'] - $returns->sum('seller_cents'),
-            'commission_cents' => SellerSettlementService::split($gross)['commission_cents'] - $returns->sum('commission_cents'),
+        return ['seller_cents' => $source['original_seller_cents'] - $returns['seller_cents'],
+            'commission_cents' => SellerSettlementService::split($gross)['commission_cents'] - $returns['commission_cents'],
             'shipping_cents' => $source['shipping_cents'], 'promotion_cents' => array_sum(array_column($source['units'], 'platform_discount_cents'))
-                - $returns->sum('platform_discount_cents') + $source['shipping_discount_cents'],
-            'escrow_cents' => $payment->amount_cents - $refunded, 'refunded_cents' => $refunded,
-            'adjustment_ids' => $returns->modelKeys(), 'gross_product_cents' => $gross];
+                - $returns['platform_discount_cents'] + $source['shipping_discount_cents'],
+            'escrow_cents' => $policy === 2 && $payment->settlement_transaction_id ? 0 : $payment->amount_cents - $escrowDebited,
+            'refunded_cents' => $refunded, 'adjustment_ids' => $returns['adjustment_ids'], 'gross_product_cents' => $gross]
+            + ($policy === 2 ? ['original_escrow_reserved_cents' => $escrowDebited] : []);
     }
 
     public function present(Order $order): array

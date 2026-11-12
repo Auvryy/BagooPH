@@ -73,6 +73,9 @@ class BuyerReturnMoneyService
 
     public function debt(BuyerReturnCase $case): array
     {
+        if ($successor = app(BuyerReturnLiabilityBalance::class)->forCase($case)) {
+            return $successor;
+        }
         $adjustment = BuyerReturnAdjustment::where('buyer_return_case_id', $case->id)->first();
         $received = BuyerReturnMoneyEvent::where('buyer_return_case_id', $case->id)->where('event_type', 'receive-recovery')->sum('amount_cents');
         $offered = BuyerReturnMoneyEvent::where('buyer_return_case_id', $case->id)->where('event_type', 'offer-recovery')->sum('amount_cents');
