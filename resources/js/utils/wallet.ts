@@ -13,4 +13,5 @@ export const walletKind = (kind: string) => ({
     wallet_refusal_refund: 'Refused parcel refund', wallet_refusal_shipping_payment: 'Reviewed shipping payment',
     wallet_loss_refund: 'Reviewed loss settlement', wallet_loss_funding: 'Reviewed loss reserve funding',
     demo_loss_funding_credit: 'Demo loss funding credits', wallet_loss_advance_retirement: 'Demo loss advance returned',
+    demo_loss_credit_return: 'Unused demo loss credits returned',
 }[kind] ?? 'Wallet transaction');

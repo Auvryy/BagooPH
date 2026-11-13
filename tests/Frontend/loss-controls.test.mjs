@@ -54,6 +54,44 @@ const action = (id, extra = {}) => ({ id, label: 'Original '+id, confirmation: '
 const choose = (h, id) => h.control(item => item.type === 'select' && item.props.children.some?.(child => child?.props?.value === '')).onChange({ target: { value: id } });
 const ready = h => { h.forms.action.data.reason = 'Checked the actual original participant, amount and private evidence.'; h.forms.action.data.confirmed = true; };
 
+test('unused grant returns require the selected original approval and owner consent without accepting a client amount', async () => {
+    const h = globalThis.lossControlsHarness = new Harness();
+    const value = { ...base, version: 7, actions: [action('return-unused-credit', { confirmation: 'unused_credit_return_confirmed', source: true,
+        sources: [{ id: 31, label: 'Original first grant', amount_cents: 3833 }, { id: 32, label: 'Original second grant', amount_cents: 2500 }] })] };
+    await render(value); choose(h, 'return-unused-credit'); let html = await render(value); ready(h);
+    assert.match(html, /Original approved grant/); assert.match(html, /I authorize returning only these unused reviewed credits from my company Wallet/);
+    assert.doesNotMatch(html, /type="file"|Amount \(PHP\)|Actual receiving admin/);
+    h.submit(); assert.equal(h.posts.length, 0); assert.ok(h.forms.action.errors.source_event_id);
+    h.control(item => item.type === 'select' && item.props.children.some?.(child => child?.props?.children === 'Select the original grant approval'))
+        .onChange({ target: { value: '31' } });
+    html = await render(value); assert.match(html, /Return [\s\S]*38\.33[\s\S]*to the original demo issuance/);
+    assert.match(html, /Company debt, paid compensation and the parcel hold remain separate/);
+    h.control(item => item.type === 'input' && item.props.type === 'checkbox').onChange({ target: { checked: false } });
+    h.submit(); assert.equal(h.posts.length, 0); assert.ok(h.forms.action.errors.confirmed);
+    h.control(item => item.type === 'input' && item.props.type === 'checkbox').onChange({ target: { checked: true } });
+    Object.assign(h.forms.action.data, { amount: '999.00', recipient_id: '999', proof: { size: 2048, type: 'image/png' }, cash_reference: 'UNRELATED' });
+    h.submit(); h.submit(); assert.equal(h.posts.length, 1);
+    assert.deepEqual(Object.keys(h.posts[0].data).sort(), ['action', 'expected_version', 'reason', 'request_token', 'source_event_id', 'unused_credit_return_confirmed']);
+    assert.equal(h.posts[0].data.source_event_id, '31'); assert.equal(h.posts[0].data.unused_credit_return_confirmed, true);
+    assert.equal(h.posts[0].data.expected_version, 7); assert.equal(h.posts[0].options.forceFormData, false);
+});
+
+test('an uncertain unused grant return keeps its original identity and resets only after the saved authority is confirmed', async () => {
+    const h = globalThis.lossControlsHarness = new Harness();
+    const value = { ...base, version: 9, actions: [action('return-unused-credit', { confirmation: 'unused_credit_return_confirmed', source: true,
+        sources: [{ id: 31, label: 'Original reviewed grant', amount_cents: 3833 }] })] };
+    await render(value); choose(h, 'return-unused-credit'); await render(value); ready(h);
+    h.submit(); const original = h.posts[0].data; h.finish();
+    await render({ ...value, version: 10 }); h.submit();
+    assert.deepEqual(h.posts[1].data, original);
+    h.posts[1].options.onSuccess({ props: { loss: { id: 11, controls: { version: 10 } } } }); h.finish();
+    await render({ ...value, version: 10, actions: [] });
+    assert.equal(h.forms.action.data.reason, ''); assert.equal(h.forms.action.data.confirmed, false);
+    assert.equal(h.forms.action.data.source_event_id, ''); assert.equal(h.forms.action.data.expected_version, 10);
+    assert.notEqual(h.forms.action.data.request_token, original.request_token);
+    assert.equal(h.handlers.some(item => item.type === 'form' && item.props['aria-label'] === 'Update original loss finances'), false);
+});
+
 test('confirmed loss accounting sends only its retained disposition consent and never uploads or pays a new amount', async () => {
     const h = globalThis.lossControlsHarness = new Harness();
     const value = { ...base, actions: [action('account-loss', { confirmation: 'loss_accounting_confirmed' })] };

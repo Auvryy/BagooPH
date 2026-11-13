@@ -40,6 +40,7 @@ const eventLabels: Record<string, string> = {
     'loss-credit-rejected': 'Funding credit request rejected', 'loss-disposition-recorded': 'Operational loss evidence recorded',
     'loss-found-quarantined': 'Found parcel placed in quarantine',
     'loss-accounted': 'Confirmed loss accounted separately from receipts',
+    'loss-return-unused-credit': 'Unused reviewed credits returned to their issuance source',
 };
 
 export default function LossOutcome({ loss }: LossOutcomeProps) {
