@@ -31,6 +31,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 /** Records an independently supported absence, never a parcel or vehicle receipt. */
 class ShipmentLossAccountingService
 {
+    public const FLOOR_REASON = 'The independently supported parcel loss was accounted for. Parcel and transport arrivals remain separate.';
+
     public function record(User $actor, ShipmentFinancialPlan $original, array $input): ShipmentLossAccounting
     {
         abort_unless(Schema::hasTable('shipment_loss_accountings'), 409, 'Apply the additive loss-accounting migration before recording this outcome.');
@@ -86,7 +88,7 @@ class ShipmentLossAccountingService
             $manifest = LogisticsManifest::findOrFail($plan->snapshot['source']['manifest_id']);
             LogisticsManifestEvent::create(['manifest_id' => $manifest->id, 'actor_id' => $admin->id, 'hub_id' => $manifest->destination_hub_id,
                 'manifest_parcel_id' => $plan->buyer_return_case_id ? null : $plan->snapshot['source']['member_id'],
-                'event_type' => 'loss-accounted', 'barcode_scanned' => null, 'reason' => $data['reason'],
+                'event_type' => 'loss-accounted', 'barcode_scanned' => null, 'reason' => self::FLOOR_REASON,
                 'source_state' => $manifest->state(), 'target_state' => $manifest->state(),
                 'payload' => ['accounting_reference' => $record->reference, 'disposition_reference' => $disposition->reference,
                     'loss_observation_id' => $plan->loss_observation_id, 'no_parcel_receipt' => true, 'no_transport_arrival' => true]]);

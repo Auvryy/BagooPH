@@ -213,7 +213,11 @@ identity and direct the participant to saved financial history before retry.
 
 Financial access identifies the original buyer, seller, liable company and
 current reviewing admins. Operational floor access does not automatically
-grant private funding receipts. Existing liabilities need financial access
+grant private funding receipts or financial review notes. Loss-accounting
+manifest history carries only its operational outcome; the original admin
+reason stays in restricted financial records. Earlier retained event notes
+must be projected with the same floor boundary without rewriting history.
+Existing liabilities need financial access
 even when an operational portal is restricted. Account closure must retain
 unreceived transfers and actual outstanding liabilities; a buyer's completed
 refund does not clear an advance-funded company or seller debt.

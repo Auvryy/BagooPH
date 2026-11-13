@@ -149,7 +149,8 @@ class LogisticsManifestController extends Controller
                 'events' => $selected->events()->with('actor')->orderBy('id')->get()->map(fn ($event) => [
                     'id' => $event->id, 'reference' => $event->reference, 'type' => $event->event_type,
                     'actor' => $event->actor->name, 'actor_role' => $event->actor_role, 'barcode' => $event->barcode_scanned,
-                    'reason' => $event->reason, 'created_at' => $event->created_at->toIso8601String(),
+                    'reason' => $event->event_type === 'loss-accounted' ? ShipmentLossAccountingService::FLOOR_REASON : $event->reason,
+                    'created_at' => $event->created_at->toIso8601String(),
                 ]),
             ];
         }
