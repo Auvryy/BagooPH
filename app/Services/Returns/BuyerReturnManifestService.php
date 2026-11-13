@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsTripService;
@@ -157,6 +158,9 @@ class BuyerReturnManifestService
             }
             if ($manifest->version !== $data['version']) {
                 throw new DomainException('This manifest changed. Reload its current list and receipts.');
+            }
+            if (in_array($action, ['load', 'remove', 'seal', 'reopen', 'dispatch', 'receive'], true)) {
+                app(ShipmentLossCustody::class)->assertMovable($parcel);
             }
             $recovery = app(BuyerReturnRecoveryService::class)->assertManifest($parcel, $manifest,
                 in_array($action, ['load', 'remove', 'seal', 'reopen', 'dispatch', 'receive'], true));

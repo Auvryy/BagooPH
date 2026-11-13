@@ -9,6 +9,7 @@ use App\Models\LogisticsManifestEvent;
 use App\Models\PickupClaimEvent;
 use App\Models\User;
 use App\Rules\PhilippineContact;
+use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Orders\OrderTrackingService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
@@ -166,6 +167,15 @@ class HubParcelWorkstationService
         ];
         $next = fn (string $step, string $responsible, string $action = 'wait', bool $canAct = false, ?string $path = null, ?string $blocker = null): array => [...$guide, 'next_step' => $step, 'responsible' => $responsible, 'action' => $action, 'can_act' => $canAct,
             'href' => $canAct && $path ? $base.$path.'?hub_id='.$hub->id : null, 'blocker' => $blocker];
+
+        if ($loss = app(ShipmentLossCustody::class)->authority($parcel)) {
+            $found = ($custody['kind'] ?? null) === 'loss_quarantine';
+
+            return [...$guide, 'stage' => $found ? 'Found parcel in quarantine' : 'Reviewed transit loss',
+                'next_step' => $found ? 'Keep the parcel on hold for independent reconciliation' : 'Record actual found-parcel intake if the parcel is present',
+                'responsible' => 'Assigned hub handler and independent reviewer', 'blocker' => 'Ordinary movement is paused during the original loss review.',
+                'action' => 'recovery', 'can_act' => $handler, 'href' => $handler ? '/loss-found/'.$loss->id.'?hub_id='.$hub->id : null];
+        }
 
         if ($held = app(HandoverHoldService::class)->active($parcel)) {
             $readable = app(HandoverIssueService::class)->readable($actor)->whereKey($held->id)->exists();
@@ -325,6 +335,8 @@ class HubParcelWorkstationService
     private function custodian(Delivery $parcel, array $custody): string
     {
         return match ($custody['kind'] ?? 'unknown') {
+            'loss_quarantine' => $parcel->currentHub && $parcel->currentHub->id === ($custody['hub_id'] ?? null)
+                ? 'Quarantine: '.$parcel->currentHub->name : 'Recorded quarantine holder; facility state needs review',
             'hub' => $parcel->currentHub && $parcel->currentHub->id === ($custody['hub_id'] ?? null)
                 ? $parcel->currentHub->name : 'Recorded hub; facility state needs review',
             'courier' => ($custody['user_id'] ?? null) === $parcel->courier_id

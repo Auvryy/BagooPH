@@ -56,6 +56,7 @@ class WalletLossCreditService
 
     private function currentSource(ShipmentFinancialPlan $plan): void
     {
+        app(ShipmentLossSource::class)->assertNotFound($plan);
         if (! app(WalletLossReserve::class)->summary($plan)['resolved']) {
             app(ShipmentLossSource::class)->assertApproved($plan);
         }
@@ -66,6 +67,7 @@ class WalletLossCreditService
         $plan = ShipmentFinancialPlan::findOrFail($plan->id);
         abort_unless($plan->kind === 'transit_loss' && $plan->snapshot['payment_method'] === 'wallet', 409);
         $owner = $this->owner($actor, $plan);
+        app(ShipmentLossSource::class)->assertNotFound($plan);
         if (! $plan->active_order_id && ! $plan->active_return_case_id) {
             return 0;
         }

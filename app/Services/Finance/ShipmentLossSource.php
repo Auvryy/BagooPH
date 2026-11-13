@@ -10,6 +10,7 @@ use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\ShipmentLossDisposition;
+use App\Models\ShipmentLossFinding;
 use App\Models\WalletEntry;
 use App\Models\WalletRefundReserveEntry;
 use App\Models\WalletTransaction;
@@ -21,9 +22,21 @@ use Illuminate\Support\Facades\Storage;
 
 class ShipmentLossSource
 {
+    public function finding(ShipmentFinancialPlan $plan): ?ShipmentLossFinding
+    {
+        return Schema::hasTable('shipment_loss_findings') ? ShipmentLossFinding::where('shipment_financial_plan_id', $plan->id)->first() : null;
+    }
+
+    public function assertNotFound(ShipmentFinancialPlan $plan): void
+    {
+        abort_if($this->finding($plan), 409,
+            'This parcel was found and quarantined. Independently reconcile its original funding and paid compensation before continuing.');
+    }
+
     public function assertApproved(ShipmentFinancialPlan $original): void
     {
         $plan = ShipmentFinancialPlan::findOrFail($original->id);
+        $this->assertNotFound($plan);
         $return = $plan->buyer_return_case_id !== null;
         abort_unless($plan->kind === 'transit_loss'
             && ($return ? $plan->active_return_case_id === $plan->buyer_return_case_id && $plan->active_order_id === null

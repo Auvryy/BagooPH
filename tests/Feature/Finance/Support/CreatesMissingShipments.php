@@ -7,8 +7,11 @@ use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
+use App\Models\ShipmentFinancialPlan;
+use App\Models\ShipmentLossFinding;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Finance\ShipmentLossReview;
 use App\Services\Returns\BuyerReturnService;
 use App\Services\Wallet\WalletCreditService;
@@ -17,6 +20,17 @@ use Illuminate\Support\Str;
 
 trait CreatesMissingShipments
 {
+    private function quarantineMissing(ShipmentFinancialPlan $plan): ShipmentLossFinding
+    {
+        $manifest = LogisticsManifest::findOrFail($plan->snapshot['source']['manifest_id']);
+        $handler = $this->flowHandler($manifest->destinationHub);
+
+        return app(ShipmentLossCustody::class)->intake($handler, $plan, $manifest->destinationHub,
+            ['expected_version' => (int) $plan->events()->max('sequence'), 'request_token' => (string) Str::uuid(),
+                'barcode' => $plan->snapshot['source']['barcode'], 'reason' => 'The original parcel was physically found and placed in the named hub quarantine pending independent reconciliation.',
+                'quarantine_confirmed' => true], UploadedFile::fake()->image('actual-found-parcel.png'));
+    }
+
     private function missing(string $mode = 'wallet', bool $buyerReturn = false, bool $shippingVoucher = false, bool $sellerPaid = false): array
     {
         $admin = $this->createApprovedUser('admin');

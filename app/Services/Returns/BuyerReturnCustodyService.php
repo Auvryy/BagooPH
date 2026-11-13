@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Logistics\CargoHandlingService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
@@ -136,6 +137,7 @@ class BuyerReturnCustodyService
                     $parcel ??= $this->prepare($case, $approval);
                 } else {
                     abort_unless($parcel && ($data['barcode'] ?? null) === $parcel->barcode, 422, 'Scan the separate return barcode shown on this case. The original delivery waybill cannot record a buyer return.');
+                    app(ShipmentLossCustody::class)->assertMovable($parcel);
                     $this->assertSource($case, $parcel);
                 }
                 $before = $parcel->state();

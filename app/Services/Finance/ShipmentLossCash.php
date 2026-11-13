@@ -205,10 +205,14 @@ class ShipmentLossCash
                 app(ShipmentRefusalReview::class)->unused($token);
                 $state = $this->state($plan);
                 abort_unless(($plan->active_order_id || $plan->active_return_case_id) && $state['version'] === $data['expected_version'], 409, 'Review the original active loss and current financial history.');
+                $found = app(ShipmentLossSource::class)->finding($plan) !== null;
+                if (! in_array($action, [...self::RECEIPTS, ...self::ACKS], true)) {
+                    app(ShipmentLossSource::class)->assertNotFound($plan);
+                }
                 if (! $state['resolved']) {
                     // A named receipt retains an already offered actual transfer, even if later custody needs reconciliation.
                     // Every new offer, beneficiary payment and resolution still requires the current approved loss source.
-                    if (! in_array($action, self::RECEIPTS, true)) {
+                    if (! in_array($action, self::RECEIPTS, true) && ! ($found && in_array($action, self::ACKS, true))) {
                         app(ShipmentLossSource::class)->assertApproved($plan);
                     }
                 } else {

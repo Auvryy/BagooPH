@@ -429,11 +429,7 @@ class ShipmentLossHttpTest extends TestCase
 
     private function actuallyFindOriginal($source, $order): void
     {
-        $manifest = $source->manifest->fresh();
-        $receiver = $this->flowHandler(LogisticsHub::findOrFail($manifest->destination_hub_id));
-        $this->openFlowMotherBags($manifest, $receiver);
-        $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest,
-            ['barcode' => $order->delivery->tracking_number, 'notes' => 'The original missing parcel was actually found and received at this hub.']))->assertOk();
+        $this->quarantineMissing(ShipmentFinancialPlan::where('loss_observation_id', $source->id)->sole());
     }
 
     public function test_public_stale_loss_credit_request_can_be_declined_and_voided_without_creating_a_grant(): void

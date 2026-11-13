@@ -7,6 +7,7 @@ use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\ShipmentLossDisposition;
+use App\Models\ShipmentLossFinding;
 use App\Models\WalletRefundCreditRequest;
 use App\Services\Finance\ShipmentLossAccess;
 use App\Services\Finance\ShipmentLossActions;
@@ -162,6 +163,21 @@ class ShipmentLossController extends Controller
 
             return ['request' => $saved->only(['id', 'reference', 'status', 'version'])];
         });
+    }
+
+    public function findingProof(Request $request, ShipmentFinancialPlan $plan)
+    {
+        $this->admin($request);
+        abort_unless(app(ShipmentLossAccess::class)->query($request->user())->whereKey($plan->id)->exists(), 404);
+        $record = ShipmentLossFinding::where('shipment_financial_plan_id', $plan->id)->firstOrFail();
+        $disk = Storage::disk('local');
+        abort_unless(preg_match('/\Ashipment-loss-findings\/[a-f0-9-]+\.(?:jpg|png|webp|pdf)\z/', $record->proof_path)
+            && $record->proof_bytes > 0 && $record->proof_bytes <= 5242880 && $disk->exists($record->proof_path)
+            && $disk->size($record->proof_path) === $record->proof_bytes
+            && hash_equals($record->proof_hash, hash_file('sha256', $disk->path($record->proof_path))), 404);
+
+        return $disk->response($record->proof_path, 'Found-parcel-evidence.'.pathinfo($record->proof_path, PATHINFO_EXTENSION),
+            ['Content-Type' => $record->proof_mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff'], 'attachment');
     }
 
     public function dispositionProof(Request $request, ShipmentFinancialPlan $plan)

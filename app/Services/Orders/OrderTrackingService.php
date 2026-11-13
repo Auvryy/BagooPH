@@ -43,6 +43,7 @@ class OrderTrackingService
     ];
 
     public const EVENTS = [
+        'loss_found_quarantine' => 'Found parcel placed on hold for reconciliation',
         'handover_fulfillment_confirmed' => 'Seller confirmed an omitted fulfillment step now',
         'handover_holder_acknowledged' => 'Rider confirmed current possession during recovery',
         'handover_recovery_received' => 'Actual recovery receipt recorded at the named hub',
@@ -131,17 +132,22 @@ class OrderTrackingService
             $notice = 'This parcel is on a reviewed handover hold. Ordinary movement is paused until its authorized recovery receipt.';
             [$step, $responsible] = ['Await supervised handover recovery and the actual receiving-hub scan.', 'Logistics company and named holder'];
         }
+        $quarantined = ($custody['kind'] ?? null) === 'loss_quarantine';
+        if ($quarantined) {
+            $notice = 'The parcel was found and is on hold while its original loss is reconciled.';
+            [$step, $responsible] = ['Await independent reconciliation before further parcel handling.', 'Logistics company and reviewing admin'];
+        }
 
         return [
             'commercial_status' => $status, 'status_label' => self::label($order, $parcel),
             'parcel_status' => $parcel?->status,
             'delivery_type' => $order->delivery_type,
             'placed_at' => $order->created_at?->toIso8601String(),
-            'stage_label' => $parcel ? (self::STAGES[$parcel->status] ?? 'Parcel stage needs review') : 'Parcel record not available',
+            'stage_label' => $quarantined ? 'Found parcel on hold' : ($parcel ? (self::STAGES[$parcel->status] ?? 'Parcel stage needs review') : 'Parcel record not available'),
             'tone' => $notice || in_array($status, ['delivery_failed', 'returned', 'cancelled', 'unknown'], true)
                 ? 'attention' : (in_array($status, ['delivered', 'completed'], true) ? 'success' : 'progress'),
             'custodian' => $this->holder($order, $parcel, $checkpoint, $custody),
-            'custody_recorded_at' => in_array($custody['kind'] ?? null, ['seller', 'courier', 'hub', 'manifest', 'buyer'], true)
+            'custody_recorded_at' => in_array($custody['kind'] ?? null, ['seller', 'courier', 'hub', 'manifest', 'buyer', 'loss_quarantine'], true)
                 ? $checkpoint?->created_at?->toIso8601String() : null,
             'next_step' => $step, 'responsible' => $responsible, 'notice' => $notice,
             'observed_at' => now()->toIso8601String(),
@@ -234,6 +240,7 @@ class OrderTrackingService
     private function holder(Order $order, ?Delivery $parcel, ?DeliveryCheckpoint $checkpoint, array $custody): string
     {
         return match ($custody['kind'] ?? 'unknown') {
+            'loss_quarantine' => 'Logistics hub quarantine (actual finding recorded)',
             'hub' => ($checkpoint?->hub_id === ($custody['hub_id'] ?? null) && $checkpoint?->hub)
                 ? $checkpoint->hub->name : 'Sorting hub (recorded handover)',
             'courier' => match (true) {

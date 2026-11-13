@@ -184,20 +184,14 @@ class ShipmentLossDispositionTest extends TestCase
     }
 
     #[DataProvider('receiptScopes')]
-    public function test_later_real_receipt_invalidates_the_disposition_source_but_exact_record_retry_keeps_its_history(bool $return): void
+    public function test_later_actual_quarantine_invalidates_the_disposition_source_but_exact_record_retry_keeps_its_history(bool $return): void
     {
         [$source, $plan, $admin] = $this->reviewed(return: $return);
         $service = app(ShipmentLossDispositionService::class);
         $input = $this->dispositionInput($plan);
         $proof = UploadedFile::fake()->image('original-disposition.png');
         $disposition = $service->record($admin, $plan, $input, $proof);
-        $manifest = $source->manifest->fresh();
-        $handler = $this->flowHandler($manifest->destinationHub);
-        if (! $return) {
-            $this->openFlowMotherBags($manifest, $handler);
-        }
-        $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/receive',
-            $this->flowManifestPayload($manifest, ['barcode' => $plan->snapshot['source']['barcode']]))->assertOk();
+        $this->quarantineMissing($plan);
         $this->assertSame($disposition->id, $service->record($admin, $plan, $input, $proof)->id);
         try {
             app(ShipmentLossSource::class)->assertApproved($plan);

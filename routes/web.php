@@ -60,18 +60,19 @@ use App\Http\Controllers\Logistics\ParcelRecoveryController;
 use App\Http\Controllers\Logistics\RestrictedCustodyRecoveryController;
 use App\Http\Controllers\Logistics\RiderCompanyIntakeController;
 use App\Http\Controllers\Logistics\RiderCompanyOfferController;
+use App\Http\Controllers\Logistics\ShipmentLossIntakeController;
 use App\Http\Controllers\LogisticsEarningsController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderCancellationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PromotionContentAssistantController;
-use App\Http\Controllers\PublicTrackingController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\RegistrationPolicyController;
 use App\Http\Controllers\Seller\ProductSaleController;
 use App\Http\Controllers\Seller\PromotionController as SellerPromotionController;
@@ -600,6 +601,12 @@ Route::middleware('auth')->prefix('return-liabilities')->name('return-liabilitie
     Route::get('/', [BuyerReturnLiabilityController::class, 'index'])->name('index');
     Route::get('/{case}', [BuyerReturnLiabilityController::class, 'show'])->where('case', '[1-9][0-9]{0,17}')->name('show');
 });
+Route::middleware('auth')->prefix('loss-found')->group(function () {
+    Route::get('/{plan}', [ShipmentLossIntakeController::class, 'show'])->where('plan', '[1-9][0-9]{0,17}');
+    Route::post('/{plan}', [ShipmentLossIntakeController::class, 'store'])->where('plan', '[1-9][0-9]{0,17}')->middleware('throttle:30,1');
+    Route::get('/{plan}/proof', [ShipmentLossIntakeController::class, 'proof'])->where('plan', '[1-9][0-9]{0,17}');
+});
+
 Route::middleware('auth')->prefix('shipment-finances')->name('shipment-finances.')->group(function () {
     Route::get('/missing/{observation}/review', [ShipmentLossController::class, 'review'])->where('observation', '[1-9][0-9]{0,17}')->name('loss-review');
     Route::post('/missing/{observation}/preview', [ShipmentLossController::class, 'preview'])->where('observation', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('loss-preview');
@@ -612,6 +619,7 @@ Route::middleware('auth')->prefix('shipment-finances')->name('shipment-finances.
     Route::post('/{plan}/wallet-funding-credits', [ShipmentLossController::class, 'requestCredits'])->where('plan', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('loss-credit-request');
     Route::post('/{plan}/wallet-funding-credits/{funding}/review', [ShipmentLossController::class, 'reviewCredits'])->where(['plan' => '[1-9][0-9]{0,17}', 'funding' => '[1-9][0-9]{0,17}'])->middleware('throttle:20,1')->name('loss-credit-review');
     Route::get('/{plan}/disposition/proof', [ShipmentLossController::class, 'dispositionProof'])->where('plan', '[1-9][0-9]{0,17}')->name('loss-disposition-proof');
+    Route::get('/{plan}/finding/proof', [ShipmentLossController::class, 'findingProof'])->where('plan', '[1-9][0-9]{0,17}')->name('loss-finding-proof');
     Route::get('/{plan}/proof', [ShipmentFinancialController::class, 'proof'])->where('plan', '[1-9][0-9]{0,17}')->name('proof');
     Route::get('/{plan}/events/{event}/proof', [ShipmentFinancialController::class, 'eventProof'])->where(['plan' => '[1-9][0-9]{0,17}', 'event' => '[1-9][0-9]{0,17}'])->name('event-proof');
 });

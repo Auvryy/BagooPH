@@ -23,8 +23,9 @@ class ShipmentLossControls
         $admin = $actor->isAdmin();
         $company = $actor->isLogistics();
         $active = (bool) ($plan->active_order_id || $plan->active_return_case_id);
+        $finding = app(ShipmentLossSource::class)->finding($plan);
         $sourceReady = false;
-        $hold = null;
+        $hold = $finding ? 'The found parcel is in quarantine. Independent reconciliation is required before new funding or compensation.' : null;
         if ($active) {
             try {
                 app(ShipmentLossSource::class)->assertApproved($plan);
@@ -57,7 +58,7 @@ class ShipmentLossControls
             }
         }
         if ($active && $wallet) {
-            if ($company && ($sourceReady || $state['resolved']) && $state['company_remaining_cents'] > 0 && $available > 0) {
+            if ($company && ! $finding && ($sourceReady || $state['resolved']) && $state['company_remaining_cents'] > 0 && $available > 0) {
                 $add('contribute-company', min($available, $state['company_remaining_cents']));
             }
             if ($admin && $sourceReady && ! $state['resolved']) {
@@ -89,7 +90,7 @@ class ShipmentLossControls
         $credits = null;
         if ($wallet && ($admin || $company)) {
             $maximum = 0;
-            if ($company && $active && ($sourceReady || $state['resolved']) && ! $requests->contains('status', 'pending')) {
+            if ($company && $active && ! $finding && ($sourceReady || $state['resolved']) && ! $requests->contains('status', 'pending')) {
                 try {
                     $maximum = app(WalletLossCreditService::class)->maximum($actor, $plan);
                 } catch (HttpExceptionInterface $error) {
@@ -102,7 +103,7 @@ class ShipmentLossControls
             $credits = ['maximum_cents' => $maximum, 'wallet_balance_cents' => $balance, 'available_for_authority_cents' => $company ? $available : null,
                 'requests' => $requests->map(fn ($request) => $request->only(['id', 'reference', 'status', 'version', 'amount_cents', 'reason', 'review_reason'])
                     + ['can_review' => $admin && $active && $request->status === 'pending' && $request->actor_id !== $actor->id,
-                        'can_approve' => $admin && $active && $request->status === 'pending' && $request->actor_id !== $actor->id && ($sourceReady || $state['resolved']),
+                        'can_approve' => $admin && $active && ! $finding && $request->status === 'pending' && $request->actor_id !== $actor->id && ($sourceReady || $state['resolved']),
                         'wallet_reference' => $request->wallet_transaction_id ? WalletTransaction::find($request->wallet_transaction_id)?->reference : null])->all()];
         }
         $offer = collect($actions)->contains('receiver', true);
@@ -112,6 +113,7 @@ class ShipmentLossControls
         return ['version' => (int) $events->max('sequence'), 'actions' => $actions, 'receivers' => $receivers, 'hold_message' => $hold,
             'credits' => $credits, 'disposition' => $admin && $disposition ? ['reference' => $disposition->reference,
                 'proof_url' => '/shipment-finances/'.$plan->id.'/disposition/proof'] : null,
+            'finding' => $admin && $finding ? ['reference' => $finding->reference, 'proof_url' => '/shipment-finances/'.$plan->id.'/finding/proof'] : null,
             'funding' => $admin || $company ? ['Available backing' => $state['balance_cents'], 'Company funding outstanding' => $active ? $state['company_remaining_cents'] : 0,
                 'Advance outstanding' => $active ? $state['advance_outstanding_cents'] : 0] : null];
     }
@@ -119,7 +121,8 @@ class ShipmentLossControls
     private function cash(User $actor, ShipmentFinancialPlan $plan, array $state, Collection $events, bool $sourceReady, callable $add, ?string &$hold): void
     {
         $admin = $actor->isAdmin();
-        $payable = $sourceReady || $state['resolved'];
+        $found = app(ShipmentLossSource::class)->finding($plan) !== null;
+        $payable = ! $found && ($sourceReady || $state['resolved']);
         if ($actor->isLogistics() && $payable && $state['company_remaining_cents'] > $state['pending_company_cents']) {
             $add('offer-company', $state['company_remaining_cents'] - $state['pending_company_cents']);
         }
@@ -170,6 +173,13 @@ class ShipmentLossControls
                     $add('resolve-cash');
                 }
             }
+            if ($found && ! $state['resolved']) {
+                foreach (['buyer', 'seller'] as $party) {
+                    if ($state[$party]['status'] === 'disputed') {
+                        $add('resolve-'.$party.'-nonreceipt', null, [['id' => $state[$party]['payment_id'], 'label' => 'Original '.$party.' payment', 'amount_cents' => $state[$party]['amount_cents']]]);
+                    }
+                }
+            }
             if ($payable && $fundingReady) {
                 $free = max(0, $state['balance_cents'] - $state['protected_remaining_cents']);
                 $sources = $events->where('event_type', 'loss-receive-advance')->map(function ($receipt) use ($actor, $events, $free, $state) {
@@ -185,7 +195,7 @@ class ShipmentLossControls
                 }
             }
         }
-        if ($sourceReady && ! $state['resolved'] && ($actor->isBuyer() || $actor->isSeller())) {
+        if (($sourceReady || $found) && ! $state['resolved'] && ($actor->isBuyer() || $actor->isSeller())) {
             $party = $actor->isBuyer() ? 'buyer' : 'seller';
             $payment = $state[$party];
             $sources = [['id' => $payment['payment_id'], 'label' => 'My original payment', 'amount_cents' => $payment['amount_cents']]];

@@ -9,6 +9,7 @@ use App\Models\HandoverRecoveryGrant;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\User;
+use App\Services\Finance\ShipmentLossCustody;
 use Illuminate\Support\Collection;
 
 class HandoverHoldService
@@ -47,6 +48,7 @@ class HandoverHoldService
 
     public function assertMovable(Delivery $parcel): void
     {
+        app(ShipmentLossCustody::class)->assertMovable($parcel);
         if ($this->held($parcel) && ! isset($this->verifiedRecoveryScopes[$parcel->id])) {
             throw new HandoverHoldException;
         }

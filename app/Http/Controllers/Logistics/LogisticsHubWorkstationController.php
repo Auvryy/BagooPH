@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Logistics\FleetDispatchEngine;
@@ -907,6 +908,10 @@ class LogisticsHubWorkstationController extends Controller
             abort_unless($return && $return->logistics_company_id === $hub->logistics_company_id, 404, 'This return barcode is not expected in your facility scope.');
             abort_unless(($validated['mode'] ?? 'inspect') === 'inspect', 409,
                 'Open the buyer return to record its required intake or actual manifest receipt. This scan only identifies it.');
+            if ($loss = app(ShipmentLossCustody::class)->authority($return)) {
+                return $this->operationError($request, ShipmentLossCustody::HOLD, 409,
+                    ['recovery_url' => '/loss-found/'.$loss->id.'?hub_id='.$hub->id]);
+            }
             try {
                 $recovery = app(BuyerReturnRecoveryService::class)->observe($request->user(), $return, $hub);
             } catch (DomainException $error) {
@@ -960,6 +965,11 @@ class LogisticsHubWorkstationController extends Controller
 
         if (! $hub || $hub->logistics_company_id !== $delivery->logistics_company_id) {
             return $this->operationError($request, 'This parcel is outside the active facility company.', 403);
+        }
+
+        if ($loss = app(ShipmentLossCustody::class)->authority($delivery)) {
+            return $this->operationError($request, ShipmentLossCustody::HOLD, 409,
+                ['recovery_url' => '/loss-found/'.$loss->id.'?hub_id='.$hub->id]);
         }
 
         $routingEngine = app(LogisticsRoutingEngine::class);

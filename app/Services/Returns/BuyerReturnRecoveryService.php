@@ -19,6 +19,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsRoutingEngine;
@@ -123,6 +124,7 @@ class BuyerReturnRecoveryService
         }
         abort_unless($actor->isLogistics() && $actor->canAccessPortal() && $hub->logistics_company_id === $snapshot->logistics_company_id
             && $this->eligibility->canScan($actor, $hub), 403);
+        app(ShipmentLossCustody::class)->assertMovable($snapshot);
         if ($active = $this->active($snapshot)) {
             abort_unless($this->scope($actor)->whereKey($active->id)->exists(), 403);
 
@@ -387,6 +389,7 @@ class BuyerReturnRecoveryService
         $this->eligibility->lockNetwork($snapshot->logistics_company_id, [$actor->id], $hubIds);
         $case = BuyerReturnCase::whereKey($sourceCase->id)->lockForUpdate()->firstOrFail();
         $parcel = BuyerReturnParcel::whereKey($snapshot->id)->lockForUpdate()->firstOrFail();
+        app(ShipmentLossCustody::class)->assertMovable($parcel);
         app(BuyerReturnCustodyService::class)->assertSource($case, $parcel);
 
         return [$case, $parcel];

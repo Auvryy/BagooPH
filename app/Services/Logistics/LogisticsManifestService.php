@@ -18,6 +18,7 @@ use App\Models\Order;
 use App\Models\ParcelRecoveryCase;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Returns\BuyerReturnManifestService;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -372,6 +373,7 @@ class LogisticsManifestService
                     if (! $delivery || $this->route($delivery) !== $parcel->route_snapshot) {
                         throw new DomainException('The parcel route changed and needs review before receipt.');
                     }
+                    app(ShipmentLossCustody::class)->assertMovable($delivery);
                     if ($this->openDiscrepancies($manifest)->contains(fn ($event) => $event->manifest_parcel_id === $parcel->id && $event->payload['kind'] === 'damaged')) {
                         $this->requireNotes($input);
                     }

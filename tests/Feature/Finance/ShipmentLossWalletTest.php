@@ -3,8 +3,6 @@
 namespace Tests\Feature\Finance;
 
 use App\Models\LogisticsCompany;
-use App\Models\LogisticsHub;
-use App\Models\LogisticsManifest;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Models\WalletAccount;
@@ -13,6 +11,7 @@ use App\Models\WalletRefundReserveEntry;
 use App\Models\WalletTransaction;
 use App\Services\AccountClosureService;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Finance\ShipmentLossControls;
 use App\Services\Finance\ShipmentLossReview;
 use App\Services\Finance\ShipmentLossWallet;
 use App\Services\Wallet\WalletFundingCredits;
@@ -121,6 +120,42 @@ class ShipmentLossWalletTest extends TestCase
         $this->assertSame(2, WalletTransaction::where('kind', 'wallet_loss_refund')->count());
         $this->assertSame(0, app(WalletLossCreditService::class)->maximum($owner, $first));
         $this->assertSame(0, app(WalletLossCreditService::class)->maximum($owner, $second));
+    }
+
+    public function test_finding_after_an_actual_advance_backed_refund_holds_new_grants_and_funding_without_erasing_paid_beneficiaries(): void
+    {
+        [$plan, $admin, $order] = $this->plan();
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $this->command($admin, $plan, 'reserve-original');
+        $this->command($admin, $plan, 'approve-advance', 18833);
+        $paidInput = $this->commandInput($plan, 'resolve-wallet');
+        $paid = app(ShipmentLossWallet::class)->command($admin, $plan, 'resolve-wallet', $paidInput);
+        $credits = app(WalletLossCreditService::class);
+        $request = $credits->request($owner, $plan, ['expected_version' => (int) $plan->events()->max('sequence'),
+            'request_token' => (string) Str::uuid(), 'amount' => '188.33', 'reason' => 'The actual original company still owes its funded original advance.']);
+        $finding = $this->quarantineMissing($plan);
+        $before = [WalletTransaction::count(), app(WalletLossReserve::class)->summary($plan), app(WalletLedger::class)->balance($order->buyer),
+            app(WalletLedger::class)->balance($order->shop->user)];
+        foreach ([fn () => $credits->maximum($owner, $plan),
+            fn () => $credits->review($admin, $request, ['version' => 1, 'request_token' => (string) Str::uuid(), 'decision' => 'approved',
+                'demo_credit_confirmed' => true, 'reason' => 'The original finding must hold this new grant even after a paid refund.']),
+            fn () => app(ShipmentLossWallet::class)->command($owner, $plan, 'contribute-company', $this->commandInput($plan, 'contribute-company', 100))] as $action) {
+            try {
+                $action();
+                $this->fail('A resolved refund cannot bypass the actual found-parcel hold.');
+            } catch (HttpException $error) {
+                $this->assertSame(409, $error->getStatusCode());
+            }
+        }
+        $this->assertSame($paid->id, app(ShipmentLossWallet::class)->command($admin, $plan, 'resolve-wallet', $paidInput)->id);
+        $this->assertSame($before, [WalletTransaction::count(), app(WalletLossReserve::class)->summary($plan), app(WalletLedger::class)->balance($order->buyer),
+            app(WalletLedger::class)->balance($order->shop->user)]);
+        $this->assertSame('pending', $request->fresh()->status);
+        $this->assertSame('loss_quarantine', $finding->custody_after['kind']);
+        $state = app(ShipmentLossControls::class)->present($owner, $plan, app(WalletLossReserve::class)->summary($plan), $plan->events()->get());
+        $this->assertNotNull($state['hold_message']);
+        $this->assertNotContains('contribute-company', array_column($state['actions'], 'id'));
+        $this->assertSame(0, $state['credits']['maximum_cents']);
     }
 
     public function test_an_earlier_owned_contribution_cannot_consume_a_later_reviewed_grant_for_another_case(): void
@@ -250,17 +285,13 @@ class ShipmentLossWalletTest extends TestCase
         $this->assertSame($order->id, $plan->fresh()->active_order_id);
     }
 
-    public function test_later_actual_receipt_stops_new_loss_money_while_exact_original_funding_retry_preserves_its_reference(): void
+    public function test_later_actual_quarantine_stops_new_loss_money_while_exact_original_funding_retry_preserves_its_reference(): void
     {
         [$plan, $admin, $order] = $this->plan();
         $service = app(ShipmentLossWallet::class);
         $input = $this->commandInput($plan, 'reserve-original');
         $event = $service->command($admin, $plan, 'reserve-original', $input);
-        $manifest = LogisticsManifest::findOrFail($plan->snapshot['source']['manifest_id']);
-        $receiver = $this->flowHandler(LogisticsHub::findOrFail($manifest->destination_hub_id));
-        $this->openFlowMotherBags($manifest, $receiver);
-        $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest,
-            ['barcode' => $order->delivery->tracking_number, 'notes' => 'The original missing parcel was actually found and received.']))->assertOk();
+        $this->quarantineMissing($plan);
         $this->assertSame($event->id, $service->command($admin, $plan, 'reserve-original', $input)->id);
         try {
             $this->command($admin, $plan, 'approve-advance', $plan->snapshot['company_funding_due_cents']);
@@ -297,11 +328,7 @@ class ShipmentLossWalletTest extends TestCase
         $input = ['expected_version' => 1, 'request_token' => (string) Str::uuid(), 'amount' => '188.33',
             'reason' => 'The original owner requests independent demonstration backing for its recorded loss liability.'];
         $request = $credits->request($owner, $plan, $input);
-        $manifest = LogisticsManifest::findOrFail($plan->snapshot['source']['manifest_id']);
-        $receiver = $this->flowHandler(LogisticsHub::findOrFail($manifest->destination_hub_id));
-        $this->openFlowMotherBags($manifest, $receiver);
-        $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest,
-            ['barcode' => $order->delivery->tracking_number, 'notes' => 'The original missing parcel was found and actually received before any new loss issuance.']))->assertOk();
+        $this->quarantineMissing($plan);
         $this->assertSame($request->id, $credits->request($owner, $plan, $input)->id);
         $before = WalletTransaction::count();
         try {
@@ -317,7 +344,7 @@ class ShipmentLossWalletTest extends TestCase
             'reason' => 'Original actual receipt invalidated the loss source; retain this rejection without issuing any credits.'];
         $credits->review($admin, $request, $reject);
         $this->assertSame('rejected', $credits->review($admin, $request, $reject)->status);
-        app(ShipmentLossReview::class)->voidUnfunded($admin, $plan, ['expected_version' => 3, 'request_token' => (string) Str::uuid(),
+        app(ShipmentLossReview::class)->voidUnfunded($admin, $plan, ['expected_version' => (int) $plan->events()->max('sequence'), 'request_token' => (string) Str::uuid(),
             'unfunded_void_confirmed' => true, 'reason' => 'The original parcel was actually found, its pending request rejected and no loss money moved.']);
         $this->assertNull($plan->fresh()->active_order_id);
         $this->assertSame($request->id, $credits->request($owner, $plan, $input)->id);

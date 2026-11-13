@@ -52,6 +52,7 @@ class WalletLossReserve
         }
         abort_unless(in_array($action, ['reserve-original', 'contribute-company', 'approve-advance', 'resolve-wallet'], true), 409);
         $state = $this->summary($plan);
+        app(ShipmentLossSource::class)->assertNotFound($plan);
         // Late own-company funding retires an actual advance without rewriting the original loss or refund.
         if (! $state['resolved']) {
             app(ShipmentLossSource::class)->assertApproved($plan);

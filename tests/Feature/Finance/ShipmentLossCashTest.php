@@ -5,7 +5,6 @@ namespace Tests\Feature\Finance;
 use App\Models\CodAccount;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
-use App\Models\LogisticsManifest;
 use App\Models\Order;
 use App\Models\ShipmentFinancialEvent;
 use App\Models\ShipmentFinancialPlan;
@@ -14,6 +13,7 @@ use App\Services\AccountClosureService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\Finance\ShipmentLossCash;
+use App\Services\Finance\ShipmentLossControls;
 use App\Services\Finance\ShipmentLossDispositionService;
 use App\Services\Finance\ShipmentLossReview;
 use App\Services\Returns\BuyerReturnRefundPlan;
@@ -269,17 +269,38 @@ class ShipmentLossCashTest extends TestCase
         $proof = UploadedFile::fake()->image('original-before-found-transfer.png');
         $service = app(ShipmentLossCash::class);
         $offer = $service->command($owner, $plan, 'offer-company', $input, $proof);
-        $manifest = LogisticsManifest::findOrFail($plan->snapshot['source']['manifest_id']);
-        $receiver = $this->flowHandler(LogisticsHub::findOrFail($manifest->destination_hub_id));
-        $this->openFlowMotherBags($manifest, $receiver);
-        $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest,
-            ['barcode' => $order->delivery->tracking_number, 'notes' => 'The original missing parcel was actually found after its earlier cash transfer offer.']))->assertOk();
+        $this->quarantineMissing($plan);
         $this->assertSame($offer->id, $service->command($owner, $plan, 'offer-company', $input, $proof)->id);
         $receipt = $this->command($admin, $plan, 'receive-company', ['source_event_id' => $offer->id]);
         $this->assertTrue($receipt->context['no_new_beneficiary_payment_authorized']);
         $this->assertSame(18833, $service->state($plan)['balance_cents']);
         $this->reject(fn () => $this->command($admin, $plan, 'record-seller-protection', ['cash_reference' => 'FOUND-PARCEL-CANNOT-USE-OLD-LOSS']));
         $this->assertSame(0, $plan->events()->where('event_type', 'loss-record-seller-protection')->count());
+        $this->assertFalse($service->state($plan)['resolved']);
+    }
+
+    public function test_actual_found_quarantine_preserves_seller_nonreceipt_review_without_another_payment_or_financial_resolution(): void
+    {
+        [$plan, $admin, $order] = $this->plan();
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $offer = $this->command($owner, $plan, 'offer-company', ['amount' => '188.33', 'recipient_id' => $admin->id, 'cash_reference' => 'BEFORE-FOUND-SELLER-FUNDING']);
+        $this->command($admin, $plan, 'receive-company', ['source_event_id' => $offer->id]);
+        $payment = $this->command($admin, $plan, 'record-seller-protection', ['cash_reference' => 'BEFORE-FOUND-ORIGINAL-SELLER-PAYMENT']);
+        $this->quarantineMissing($plan);
+        $service = app(ShipmentLossCash::class);
+        $before = $service->state($plan);
+        $this->command($order->shop->user, $plan, 'report-seller-nonreceipt', ['source_event_id' => $payment->id]);
+        $reviewer = $this->createApprovedUser('admin');
+        $controls = app(ShipmentLossControls::class)->present($reviewer, $plan, $service->state($plan), $plan->events()->get());
+        $this->assertContains('resolve-seller-nonreceipt', array_column($controls['actions'], 'id'));
+        $resolved = $this->command($reviewer, $plan, 'resolve-seller-nonreceipt', ['source_event_id' => $payment->id]);
+        $this->assertSame(0, $resolved->amount_cents);
+        $this->assertTrue($resolved->context['no_second_payment']);
+        $this->command($order->shop->user, $plan, 'confirm-seller-receipt', ['source_event_id' => $payment->id]);
+        $this->assertSame($before['balance_cents'], $service->state($plan)['balance_cents']);
+        $this->assertSame(1, $plan->events()->where('event_type', 'loss-record-seller-protection')->count());
+        $this->reject(fn () => $this->command($admin, $plan, 'record-seller-protection', ['cash_reference' => 'FOUND-NO-SECOND-PAYMENT']));
+        $this->reject(fn () => $this->command($admin, $plan, 'resolve-cash'));
         $this->assertFalse($service->state($plan)['resolved']);
     }
 

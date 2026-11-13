@@ -116,6 +116,24 @@ eligible seller protection separately. Uncollected COD has zero buyer repayment;
 seller protection cannot duplicate original seller proceeds. No fictitious
 reverse arrival or seller receipt can supply the missing loss evidence.
 
+An approved loss cannot resume through ordinary manifest receiving, hub scans
+or unexpected-hub recovery. An actual later finding uses the exact original
+typed waybill, an assigned handler at a facility of the original company,
+bounded private evidence and explicit physical quarantine confirmation.
+Retain the original missing member, route position, sale, payments and
+transport/sack accountability. Record the actual quarantine holder separately;
+do not manufacture an original manifest receipt, vehicle arrival or route
+advance. An unfunded financial void alone cannot release quarantined property.
+
+The finding holds new grants, funding, compensation and financial resolution,
+including after an advance-backed refund was already paid. Exact successful
+financial retries retain their original references. Named receipts for actual
+transfers already offered, and confirmation or nonreceipt review of actual
+beneficiary payments already recorded, may preserve those real money facts
+without paying again or releasing the parcel. Independent reconciliation must
+retain the original compensation and actual source journals before onward
+physical release. Ordinary recovery completion cannot supply that authority.
+
 After physical pickup, a buyer's refusal of a conforming shipment keeps
 outbound shipping spent. An evidenced approved reverse fee belongs to the
 buyer only when actual return transport supports it. A prepaid merchandise
