@@ -17,12 +17,13 @@ function Pages({ value, label }: { value: Page<unknown>; label: string }) {
 
 export default function LossQueue({ cases, reviewCandidates, filters }: { cases: Page<Row>;
     reviewCandidates: Page<{ id: number; reference: string; manifest_reference: string; scope: string; href: string }> | null;
-    filters: { view: string; search: string; status: string } }) {
+    filters: { view: string; search: string; status: string; order_id?: number } }) {
     const form = useForm(filters);
     const submit = (event: FormEvent) => { event.preventDefault(); if (!form.processing) form.get('/return-liabilities', { preserveState: true, preserveScroll: true }); };
     return <ReturnLayout title="Return liabilities"><Head title="Parcel loss finances" /><main className="mx-auto max-w-5xl space-y-6 py-4">
         <header><h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><ShieldCheck className="h-6 w-6 text-[#E00D42]" />Parcel loss finances</h1><p className="mt-2 text-sm text-slate-600">Reviewed loss amounts and their financial history.</p></header>
-        <FinancialCaseNav view="losses" />
+        <FinancialCaseNav view="losses" orderId={filters.order_id} />
+        {filters.order_id && <Link href="/return-liabilities?view=losses" className={button}>Show all orders</Link>}
         <form onSubmit={submit} className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-300 bg-white p-5 shadow-sm">
             <label className="min-w-48 flex-1 text-sm font-semibold text-slate-900">Reference<input maxLength={80} value={form.data.search} onChange={event => form.setData('search', event.target.value)} className={field} /></label>
             <label className="text-sm font-semibold text-slate-900">Status<select value={form.data.status} onChange={event => form.setData('status', event.target.value)} className={field}><option value="">All statuses</option>{Object.entries(lossStatuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>

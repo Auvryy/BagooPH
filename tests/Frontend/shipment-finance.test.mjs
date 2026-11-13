@@ -131,3 +131,11 @@ test('undelivered finance queue links to approved outcomes and gives admins the 
     assert.match(html, /href="\/shipment-finances\/11"/); assert.match(html, /href="\/shipment-finances\/orders\/30\/review"/);
     assert.match(html, /Shipping balance due/); assert.match(html, /Undelivered parcels/); assert.match(html, /maxLength="80"/i);
 });
+
+
+test('order financial history keeps its exact order filter across review types', async () => {
+    const cases = { data: [], current_page: 1, last_page: 1, prev_page_url: null, next_page_url: null };
+    const html = await render(ui.Queue, { cases, filters: { search: '', status: '', view: 'shipments', order_id: 41 } });
+    for (const view of ['returns', 'shipments', 'losses']) assert.ok(html.includes(`view=${view}&amp;order_id=41`));
+    assert.match(html, /Show all orders/);
+});

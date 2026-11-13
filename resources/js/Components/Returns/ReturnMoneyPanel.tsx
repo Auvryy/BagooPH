@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { useForm } from '@inertiajs/react';
+import { Link, useForm } from '@inertiajs/react';
 import { Receipt } from 'lucide-react';
 import useRequestError from '@/hooks/useCourierRequestError';
 import { returnDate } from './ReturnStatus';
@@ -25,6 +25,7 @@ const historyNames: Record<string, string> = { ...names, 'approve-repayment': 'O
     'advance-wallet-funding': 'Demonstration advance reserved', 'wallet-funding-credit': 'Demonstration credits granted to the liable account' };
 
 export interface ReturnMoney {
+    shipment_finance?: { id: number; reference: string; return_reference: string; href: string };
     mode?: 'wallet' | 'cod'; policy_version?: number; review_token?: string; blockers?: string[];
     original_payment?: { reference: string; paid_cents: number };
     original_seller_payment?: null | { reference: string; amount_cents: number };
@@ -87,6 +88,7 @@ export default function ReturnMoneyPanel({ value, caseId, version }: { value: Re
             ...(receipt ? { source_event_id: data.source_event_id } : ['confirm-receipt', 'report-nonreceipt', 'resolve-nonreceipt'].includes(action) ? { source_event_id: payment?.id } : {}) }));
         form.post(`/buyer-returns/${caseId}/money`, { preserveScroll: true, forceFormData: true, onFinish: () => { pending.current = false; } });
     };
+    if (value.shipment_finance) return <section className="space-y-4 rounded-lg border border-rose-200 bg-white p-5 shadow-sm"><h2 className="flex items-center gap-2 text-lg font-bold text-slate-900"><Receipt className="h-5 w-5 text-[#E00D42]" />Parcel loss financial review</h2><p className="text-sm leading-6 text-slate-600">This return has its own approved loss review. Its funding and payment history stay with that original claim.</p><Link href={value.shipment_finance.href} className="inline-flex rounded-lg border border-rose-200 bg-rose-50/85 px-4 py-2 text-sm font-semibold text-[#C20836] hover:bg-[#E00D42] hover:text-white">Review loss finances</Link></section>;
     const totals = value.adjustment;
     const due = value.plan?.buyer_refund_cents ?? totals?.buyer_cents ?? 0;
     const breakdown: Array<[string, number]> = value.plan ? [

@@ -6,6 +6,7 @@ export interface SettlementHistory {
 }
 
 export interface SettlementRecord {
+    shipment_finances?: import('@/Components/Finance/FinancialReviewLinks').FinancialReviews;
     order_id: number; order_number: string; reference: string | null; seller_id: number | null;
     seller_name: string | null; shop_name: string | null; currency: 'PHP';
     status: 'pending' | 'eligible' | 'authorized' | 'settled' | 'closed'; version: number;

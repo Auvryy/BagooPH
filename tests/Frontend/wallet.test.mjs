@@ -178,3 +178,22 @@ test('buyer payment history shows an actual refusal refund and links to its sepa
     assert.match(html, /Refunded to your original wallet/); assert.match(html, /460\.00/); assert.match(html, /WLT-ACTUAL-REFUND/);
     assert.match(html, /href="\/shipment-finances\/11"/);
 });
+
+test('seller loss protection is separate from buyer refunds and is not labelled credited before actual settlement', async () => {
+    const original = { ...proceeds, can_settle: false, can_refund_delivery: false, seller_cents: 0, seller_protection_cents: 18000,
+        seller_protection_paid_cents: 0, refunded_cents: 0, shipment_financial_url: '/shipment-finances/12' };
+    const supplied = record => ({ records: { ...empty, data: [record] }, canSettle: false, virtualBalanceCents: 0, requestToken: 'ORIGINAL-LOSS' });
+    const pending = await render(ui.Proceeds, supplied(original), 'seller');
+    assert.match(pending, /Approved seller protection/); assert.match(pending, /Protection credited to seller/); assert.match(pending, /180\.00/);
+    const paid = await render(ui.Proceeds, supplied({ ...original, seller_protection_paid_cents: 18000, refunded_cents: 25000,
+        refund_reference: 'BUYER-REFUND-REFERENCE', resolution_reference: 'ORIGINAL-LOSS-SETTLEMENT' }), 'seller');
+    assert.match(paid, /Loss settlement reference: ORIGINAL-LOSS-SETTLEMENT/);
+    assert.doesNotMatch(paid, /Original wallet refund reference|BUYER-REFUND-REFERENCE|Review virtual proceeds|Review returned-parcel refund/);
+});
+
+test('wallet payment retains separate links for each original partial-return financial review', async () => {
+    const records = [11, 12].map(id => ({ id, reference: `ORIGINAL-${id}`, kind: 'transit_loss', active: true, return_reference: `BRT-CLAIM-${id}`, href: `/shipment-finances/${id}` }));
+    const html = await render(ui.Payment, { payment: { ...payment, can_pay: false, shipment_finances: { records, histories: [{ kind: 'transit_loss', count: 2, href: '/return-liabilities?view=losses&order_id=4' }] } }, canUsePortal: true });
+    for (const id of [11, 12]) { assert.match(html, new RegExp(`BRT-CLAIM-${id}`)); assert.ok(html.includes(`href="/shipment-finances/${id}"`)); }
+    assert.doesNotMatch(html, /All loss reviews/);
+});

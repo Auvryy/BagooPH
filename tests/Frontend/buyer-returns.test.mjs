@@ -427,3 +427,11 @@ test('company demonstration funding requests are bounded and pending requests re
         funding_credit_requests: [{ id: 4, version: 1, reference: 'WFC-ORIGINAL', actor_name: 'Original company', amount_cents: 2500, reason: 'Company funding request.', status: 'pending', can_review: false }] }, caseId: 11, version: 11 }, 'logistics');
     assert.match(pending, /Awaiting review/); assert.doesNotMatch(pending, /Request demonstration credits|<form/);
 });
+
+
+test('an active original claim loss opens its own finances and suppresses obsolete return repayment controls', async () => {
+    const html = await render(ui.Money, { caseId: 11, version: 7, value: { ...successorMoney,
+        actions: ['approve-repayment', 'refund-wallet'], shipment_finance: { id: 23, reference: 'ORIGINAL-CLAIM-LOSS', return_reference: 'BRT-OWN-11', href: '/shipment-finances/23' } } });
+    assert.match(html, /Parcel loss financial review/); assert.match(html, /href="\/shipment-finances\/23"/);
+    assert.doesNotMatch(html, /<form|Approve original amount|Refund to Bagoo Wallet|Private receipt/);
+});

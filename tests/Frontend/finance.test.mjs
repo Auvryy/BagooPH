@@ -149,3 +149,16 @@ test('return deductions require fresh consent and zero proceeds use closure with
         return_seller_cents: 81000, needs_reauthorization: false }, can_release: true, requestToken: 'retained-closure' });
     assert.doesNotMatch(closed, /<form/);
 });
+
+
+test('cash seller proceeds expose the independent loss review while ordinary release stays blocked', async () => {
+    const record = { order_id: 7, order_number: 'BGO-ORIGINAL-LOSS', seller_name: 'Maria Santos', shop_name: 'Bagoo Crafts', status: 'pending', version: 0,
+        product_cents: 20000, seller_cents: 18000, commission_cents: 2000, shipping_cents: 5000, discount_cents: 0,
+        seller_promotion_cents: 0, platform_promotion_cents: 0, net_seller_cents: 18000, net_commission_cents: 2000,
+        return_seller_cents: 0, payable_seller_cents: 18000, paid_seller_cents: 0, needs_reauthorization: false, return_adjustment_ids: [],
+        promotion_accounting: 'verified', promotion_snapshot: [], blockers: ['The approved original loss retains its separate funded protection.'], history: [],
+        shipment_finances: { records: [{ id: 11, reference: 'REVIEW-ORIGINAL-LOSS', kind: 'transit_loss', active: true, return_reference: null, href: '/shipment-finances/11' }], histories: [] } };
+    const html = await render(SettlementDetail, 'Finance/SettlementDetail', { record, can_release: true, requestToken: 'ORIGINAL-LOSS' });
+    assert.match(html, /href="\/shipment-finances\/11"/); assert.match(html, /REVIEW-ORIGINAL-LOSS/);
+    assert.doesNotMatch(html, /<form|Authorize seller release|Confirm the existing/);
+});
