@@ -38,6 +38,9 @@ class RealWorldStandardLifecycleTest extends TestCase
     {
         $this->contractVersion = $contractVersion;
         $order = $this->newFlowOrder();
+        $item = $order->items->first();
+        $review = ['order_item_id' => $item->id, 'rating' => 5, 'comment' => 'The original purchased item arrived safely and matches its listing.'];
+        $this->actingAs($order->buyer)->postJson(route('buyer.reviews.store'), $review)->assertUnprocessable();
         $delivery = $this->flowDelivery($order, 'delivered');
         $this->assertSame($contractVersion, $order->logistics_flow_version);
         $this->assertSame($contractVersion === 1 ? 'delivered' : 'completed', $order->fresh()->status);
@@ -49,6 +52,12 @@ class RealWorldStandardLifecycleTest extends TestCase
         $this->assertSame(0, $delivery->checkpoints()->where('checkpoint_type', $contractVersion === 1 ? 'delivery_completed' : 'buyer_completed')->count());
 
         $this->assertCommissionSplit($order, null, (float) $order->shipping_fee);
+        $this->actingAs($order->buyer)->post(route('buyer.reviews.store'), $review)->assertSessionHas('success');
+        $this->post(route('buyer.reviews.store'), $review)->assertSessionHas('success');
+        $this->assertDatabaseCount('reviews', 1);
+        $this->assertDatabaseHas('reviews', ['order_item_id' => $item->id, 'order_id' => $order->id,
+            'buyer_id' => $order->buyer_id, 'product_id' => $item->product_id, 'rating' => 5]);
+        $this->assertSame('5.00', (string) $item->product->fresh()->rating);
     }
 
     public function test_t4_02_provincial_laguna_delivery_with_area_b_sorting(): void
@@ -79,7 +88,8 @@ class RealWorldStandardLifecycleTest extends TestCase
         $this->assertCount(2, $orders->pluck('delivery.tracking_number')->unique());
         $this->assertSame([3, 4], [$product1->fresh()->stock, $product2->fresh()->stock]);
         $this->assertSame([2, 2], $orders->pluck('logistics_flow_version')->all());
-        $this->assertSame(['60.00', '60.00'], $orders->pluck('shipping_fee')->all());
+        $this->assertSame(5000, $this->flowCompany->base_shipping_cents);
+        $this->assertSame(['50.00', '50.00'], $orders->pluck('shipping_fee')->all());
         $this->assertDatabaseCount('checkout_submissions', 1);
     }
 
