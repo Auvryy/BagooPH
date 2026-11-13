@@ -54,6 +54,24 @@ const action = (id, extra = {}) => ({ id, label: 'Original '+id, confirmation: '
 const choose = (h, id) => h.control(item => item.type === 'select' && item.props.children.some?.(child => child?.props?.value === '')).onChange({ target: { value: id } });
 const ready = h => { h.forms.action.data.reason = 'Checked the actual original participant, amount and private evidence.'; h.forms.action.data.confirmed = true; };
 
+test('confirmed loss accounting sends only its retained disposition consent and never uploads or pays a new amount', async () => {
+    const h = globalThis.lossControlsHarness = new Harness();
+    const value = { ...base, actions: [action('account-loss', { confirmation: 'loss_accounting_confirmed' })] };
+    await render(value); choose(h, 'account-loss'); await render(value); ready(h);
+    Object.assign(h.forms.action.data, { amount: '999.00', recipient_id: '999', proof: { size: 2048, type: 'image/png' } });
+    h.submit(); assert.equal(h.posts.length, 1);
+    assert.deepEqual(Object.keys(h.posts[0].data).sort(), ['action', 'expected_version', 'loss_accounting_confirmed', 'reason', 'request_token']);
+    assert.equal(h.posts[0].data.action, 'account-loss'); assert.equal(h.posts[0].data.loss_accounting_confirmed, true);
+    assert.equal(h.posts[0].options.forceFormData, false);
+});
+
+test('retained loss accounting explains its separate physical and money boundary without a second receipt action', async () => {
+    globalThis.lossControlsHarness = new Harness();
+    const html = await render({ ...base, accounting: { reference: 'ORIGINAL-ACCOUNTING', verified: true } });
+    assert.match(html, /accounted as a confirmed loss/); assert.match(html, /Physical arrivals and money remain separate/);
+    assert.doesNotMatch(html, /<form|Record delivery|Parcel received/);
+});
+
 test('Wallet action sends only its selected confirmation and preserves the original identity until confirmed success', async () => {
     const h = globalThis.lossControlsHarness = new Harness();
     const value = { ...base, actions: [action('reserve-original', { confirmation: 'original_reserve_confirmed' })] };

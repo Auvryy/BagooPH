@@ -13,7 +13,7 @@ import WaybillCamera from '@/Components/WaybillCamera';
 import SharedTripPanel, { type SharedTrip, type TripManifest } from '@/Components/Logistics/SharedTripPanel';
 
 interface Hub extends HubPlace { id: number; name: string; code: string; tier: string }
-interface ReceiptCounts { expected: number; normal_received: number; corrective_expected_received: number; unlisted_received: number; outstanding: number }
+interface ReceiptCounts { expected: number; normal_received: number; corrective_expected_received: number; unlisted_received: number; outstanding: number; confirmed_lost?: number }
 interface Manifest {
     id: number; reference: string; type: string; direction: string; status: string; version: number; included_count: number;
     source: Hub; destination: Hub; vehicle_plate: string; driver_name: string;
@@ -28,7 +28,7 @@ interface Detail extends Manifest {
     canManage: boolean; canClose: boolean; canLoad: boolean; canReceive: boolean;
     reviewedHold?: boolean;
     parcels: Array<{ cargo_mode?: string | null; handling?: Handling | null; id: number; tracking_number: string; included: boolean; status: string; received_at: string | null; receipt_condition: string | null;
-        corrective_receipt?: { reference: string; received_at: string } | null; handover_hold?: boolean; handover_issue_url?: string | null }>;
+        corrective_receipt?: { reference: string; received_at: string } | null; handover_hold?: boolean; handover_issue_url?: string | null; confirmed_lost?: boolean }>;
     correctiveReceipts?: Array<{ reference: string; tracking_number: string; original_member_id: number | null; received_at: string; received_by: string;
         original_expected_count: number; original_received_count: number }>;
     discrepancies: Array<{ id: number; reference: string; kind: string; parcel_id: number | null; barcode: string | null; reason: string; recoveryUrl?: string | null }>;
@@ -437,13 +437,14 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                 {receiptCounts && (
                                     <dl
                                         aria-label="Actual manifest receipts"
-                                        className="grid grid-cols-2 sm:grid-cols-5 rounded-xl border border-zinc-200/90 bg-zinc-50/40 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80 overflow-hidden shadow-2xs"
+                                        className={`grid grid-cols-2 ${receiptCounts.confirmed_lost ? 'sm:grid-cols-3 xl:grid-cols-6' : 'sm:grid-cols-5'} rounded-xl border border-zinc-200/90 bg-zinc-50/40 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80 overflow-hidden shadow-2xs`}
                                     >
                                         {[
                                             ['Original expected', receiptCounts.expected],
                                             ['Recorded receipts', receiptCounts.normal_received],
                                             ['Corrective receipts', receiptCounts.corrective_expected_received],
                                             ['Unlisted receipts', receiptCounts.unlisted_received],
+                                            ...(receiptCounts.confirmed_lost ? [['Confirmed lost', receiptCounts.confirmed_lost]] : []),
                                             ['Still awaiting', receiptCounts.outstanding],
                                         ].map(([label, value]) => (
                                             <div key={label} className="p-3.5">
@@ -554,8 +555,8 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             Record departure
                                         </button>
                                     )}
-                                    {selected.canClose && selected.status === 'received' && (
-                                        <button disabled={busy || selected.discrepancies.length > 0 || selected.reviewedHold} onClick={() => command('close')} className={buttonClass}>Close received manifest</button>
+                                    {selected.canClose && (selected.status === 'received' || selected.status === 'dispatched' && !!receiptCounts?.confirmed_lost && receiptCounts.outstanding === 0) && (
+                                        <button disabled={busy || selected.discrepancies.length > 0 || selected.reviewedHold} onClick={() => command('close')} className={buttonClass}>{receiptCounts?.confirmed_lost ? 'Close accounted manifest' : 'Close received manifest'}</button>
                                     )}
                                     {selected.canClose && selected.status !== 'closed' && hasCorrections && (
                                         <button disabled={busy || !notes.trim() || selected.discrepancies.length > 0 || receiptCounts?.outstanding !== 0 || selected.reviewedHold} onClick={() => command('close-recovery')} className={buttonClass}>
@@ -571,7 +572,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                         </summary>
                                         <div className="border-t border-zinc-200/70 p-5">
                                             <p className="text-xs text-zinc-500">
-                                                An observation preserves the current parcel state. Missing and damaged parcels need a later actual receipt. An unexpected physical parcel stays unresolved until supported handling is recorded.
+                                                Record what is actually present. A missing parcel needs an actual receipt or an independently supported loss outcome.
                                             </p>
                                             <form className="mt-3.5 space-y-3.5" onSubmit={event => { event.preventDefault(); command('report-discrepancy', { kind, ...(kind === 'missing' ? { parcel_id: parcelId } : { barcode }) }); }}>
                                                 <label className="block text-xs font-bold text-[#121316]">
@@ -588,7 +589,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                         <select required className={inputClass} value={parcelId} disabled={busy} onChange={event => setParcelId(event.target.value)}>
                                                             <option value="">Choose missing parcel</option>
                                                             {selected.parcels
-                                                                .filter(parcel => parcel.included && !parcel.received_at && !parcel.corrective_receipt)
+                                                                .filter(parcel => parcel.included && !parcel.received_at && !parcel.corrective_receipt && !parcel.confirmed_lost)
                                                                 .map(parcel => (
                                                                     <option key={parcel.id} value={parcel.id}>{parcel.tracking_number}</option>
                                                                 ))}
@@ -667,9 +668,9 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                         {parcel.handover_hold && <p className="mt-1 text-xs font-bold text-amber-800">Awaiting supervised recovery</p>}
                                                         {parcel.handover_issue_url && <Link href={parcel.handover_issue_url} className="mt-1 inline-block text-xs font-bold text-[#E00D42]">Review handover</Link>}
                                                     </td>
-                                                    <td className="px-5 py-3.5 capitalize text-zinc-600">{words(parcel.status)}</td>
+                                                    <td className="px-5 py-3.5 capitalize text-zinc-600">{parcel.confirmed_lost ? 'Confirmed lost' : words(parcel.status)}</td>
                                                     <td className="px-5 py-3.5 text-zinc-600">
-                                                        {parcel.received_at
+                                                        {parcel.confirmed_lost ? 'Accounted as lost · no receipt' : parcel.received_at
                                                             ? words(parcel.receipt_condition ?? 'received') + ' · ' + date(parcel.received_at)
                                                             : parcel.corrective_receipt
                                                               ? 'Corrective receipt · ' + date(parcel.corrective_receipt.received_at)

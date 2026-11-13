@@ -16,6 +16,7 @@ export interface LossControlState {
     version: number; actions: LossAction[]; receivers: { id: number; name: string }[]; hold_message: string | null;
     funding: Record<string, number> | null; disposition: { reference: string; proof_url: string } | null;
     finding?: { reference: string; proof_url: string } | null;
+    accounting?: { reference: string; verified: boolean } | null;
     credits: { maximum_cents: number; wallet_balance_cents: number | null; available_for_authority_cents?: number | null; requests: CreditRequest[] } | null;
 }
 const field = 'mt-2 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 focus:border-[#E00D42] focus:ring-[#E00D42]';
@@ -97,6 +98,7 @@ function ActionForm({ planId, value }: { planId: number; value: LossControlState
             {spec.proof && <label className="block text-sm font-semibold text-slate-900">Private evidence<input ref={file} required type="file" accept="image/jpeg,image/png,image/webp,application/pdf" disabled={busy} onChange={event => form.setData('proof', event.target.files?.[0] ?? null)} className={`${field} p-2 file:mr-3 file:rounded-lg file:border-0 file:bg-rose-50 file:px-3 file:py-2 file:text-[#C20836]`} /><span className="mt-2 block text-xs font-normal text-slate-600">JPG, PNG, WebP or PDF · up to 5 MB.</span></label>}
             <label className="block text-sm font-semibold text-slate-900">Reason<textarea required minLength={10} maxLength={1000} rows={3} autoComplete="off" disabled={busy} value={form.data.reason} onChange={event => form.setData('reason', event.target.value)} className={field} /></label>
             {spec.id === 'record-disposition' && <p className="text-sm text-slate-600">This records independent loss evidence. It does not confirm a parcel, vehicle or sack arrival.</p>}
+            {spec.id === 'account-loss' && <p className="text-sm text-slate-600">The retained independent disposition supports this missing parcel. Accounting moves no money, receives no parcel and confirms no vehicle or sack arrival.</p>}
             <label className="flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50/50 p-4 text-sm leading-6 text-slate-800"><input required type="checkbox" disabled={busy} checked={form.data.confirmed} onChange={event => form.setData('confirmed', event.target.checked)} className="mt-1 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" />I confirm the selected update, original participant and actual supporting evidence.</label>
         </>}
         {form.data.action && !spec && <p role="alert" className="text-sm text-amber-900">This action is no longer available. Check the saved history before starting a new update.</p>}
@@ -154,6 +156,7 @@ function CreditRequestForm({ planId, version, maximum }: { planId: number; versi
 export default function LossControls({ planId, value, summaryLabels = [] }: { planId: number; value: LossControlState; summaryLabels?: string[] }) {
     return <>
         {value.finding && <section className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-5"><h2 className="font-bold text-amber-950">Found parcel awaiting reconciliation</h2><a href={value.finding.proof_url} className={secondary}><FileText className="h-4 w-4" />Private finding evidence</a></section>}
+        {value.accounting && <p role="status" className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-slate-800">{value.accounting.verified ? 'The original missing parcel is accounted as a confirmed loss. Physical arrivals and money remain separate.' : 'Retained loss accounting needs independent source reconciliation.'}</p>}
         {value.hold_message && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{value.hold_message}</p>}
         <ActionForm key={planId} planId={planId} value={value} />
         {value.funding && <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm"><h2 className="flex items-center gap-2 font-bold text-slate-900"><Wallet className="h-5 w-5 text-[#E00D42]" />Original funding</h2><dl className="mt-4 grid gap-4 sm:grid-cols-3">{Object.entries(value.funding).filter(([label]) => !summaryLabels.includes(label)).map(([label, amount]) => <div key={label}><dt className="text-xs text-slate-600">{label}</dt><dd className="mt-1 font-bold text-slate-900">{financeMoney(amount)}</dd></div>)}</dl></section>}
