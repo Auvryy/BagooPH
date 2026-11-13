@@ -144,6 +144,26 @@ continue the recorded manifest and sack controls. Review and intake forms keep
 failed input and their retry identity; links respect the account's facility
 scope on root and hub-subdomain pages.
 
+## Recovered forward and RTS parcels
+
+An authorized unexpected forward or RTS parcel has its own actual intake scan
+and custody checkpoint. When its original sealed Mother Bag is elsewhere,
+retain a separate extraction record linked to that exact original bag member,
+recovery authority, intake event, checkpoint and handler. This releases only
+the parcel's active packing claim. It cannot change the original packing,
+seal, route or bag location, or record an unperformed original bag opening.
+
+Actual completed recovery at the originally expected hub can account for that
+parcel's original manifest and bag-member receipt. It does not establish an
+arrival for the outer bag. The physical sack reservation and original
+driver/vehicle remain held until the arriving bag's own master tag and seal are
+verified and its members are accounted for. This independent bag arrival can
+be recorded after the parcel manifest's accounting is closed. A shared trip
+also retains its original unarrived forward/RTS bags before closing.
+
+An approved financial loss retains the separate B13 finding/quarantine hold;
+ordinary route recovery cannot substitute for its independent reconciliation.
+
 ## Remaining package boundaries
 
 Current implementation evidence, regression limitations and the remaining

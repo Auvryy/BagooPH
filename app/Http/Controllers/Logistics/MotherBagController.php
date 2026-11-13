@@ -96,7 +96,7 @@ class MotherBagController extends Controller
             'seal' => 'Bag sealed. Its parcel list is locked.', 'reopen' => 'Bag reopened. Use a new seal when ready.',
             'load' => 'Master tag scanned. Every bag member is now on the manifest.',
             'unload' => 'The complete sealed bag was removed from the draft manifest.',
-            'open' => 'Seal verified and bag opened. Scan each parcel at receiving.',
+            'open' => $bag->status === 'received' ? 'Seal verified. The bag arrived and its recorded parcel receipts are complete.' : 'Seal verified and bag opened. Scan each parcel at receiving.',
         });
     }
 }

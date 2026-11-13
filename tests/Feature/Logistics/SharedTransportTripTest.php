@@ -2,12 +2,15 @@
 
 namespace Tests\Feature\Logistics;
 
+use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsTransportTrip;
 use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsTripService;
+use App\Services\Logistics\MotherBagService;
+use App\Services\Logistics\ParcelRecoveryService;
 use App\Services\Returns\BuyerReturnBagService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,7 +39,7 @@ class SharedTransportTripTest extends TestCase
         Storage::fake('public');
     }
 
-    private function cargo(bool $includeRts = false): array
+    private function cargo(bool $includeRts = false, bool $baggedForward = false): array
     {
         $case = $this->approvedReturn();
         $this->intake($case);
@@ -53,8 +56,20 @@ class SharedTransportTripTest extends TestCase
         $token = (string) Str::uuid();
         $outbound = $service->create($handler, ['source_hub_id' => $source->id, 'destination_hub_id' => $reverse->destination_hub_id,
             'vehicle_id' => $reverse->vehicle_id, 'creation_token' => $token, 'direction' => 'outbound'], $token);
-        $service->command($outbound, $handler, 'load', $this->flowManifestPayload($outbound, ['barcode' => $forward->tracking_number,
-            'cargo_mode' => 'loose', 'handling' => ['weight_kg' => 16, 'length_cm' => 70, 'width_cm' => 20, 'height_cm' => 20, 'confirmed' => true]]));
+        $forwardBag = null;
+        if ($baggedForward) {
+            $bags = app(MotherBagService::class);
+            $forwardBag = $bags->create($handler, ['source_hub_id' => $source->id, 'destination_hub_id' => $reverse->destination_hub_id,
+                'creation_token' => (string) Str::uuid(), 'physical_tag' => 'SHARED-FORWARD-'.$outbound->id, 'physical_checked' => true]);
+            $forwardBag = $bags->command($forwardBag, $handler, 'add', ['version' => $forwardBag->version, 'barcode' => $forward->tracking_number,
+                'handling' => ['weight_kg' => 1, 'length_cm' => 20, 'width_cm' => 20, 'height_cm' => 20, 'confirmed' => true]]);
+            $forwardBag = $bags->command($forwardBag, $handler, 'seal', ['version' => $forwardBag->version, 'seal_number' => 'SHARED-FORWARD-'.$outbound->id]);
+            $forwardBag = $bags->command($forwardBag, $handler, 'load', ['version' => $forwardBag->version, 'barcode' => $forwardBag->reference,
+                'seal_number' => $forwardBag->seal_number, 'manifest_id' => $outbound->id]);
+        } else {
+            $service->command($outbound, $handler, 'load', $this->flowManifestPayload($outbound, ['barcode' => $forward->tracking_number,
+                'cargo_mode' => 'loose', 'handling' => ['weight_kg' => 16, 'length_cm' => 70, 'width_cm' => 20, 'height_cm' => 20, 'confirmed' => true]]));
+        }
         $service->command($outbound->fresh(), $handler, 'seal', $this->flowManifestPayload($outbound));
 
         $rts = null;
@@ -71,7 +86,57 @@ class SharedTransportTripTest extends TestCase
             $service->command($rts->fresh(), $handler, 'seal', $this->flowManifestPayload($rts));
         }
 
-        return [$reverse->fresh(), $outbound->fresh(), $case, $forward, $handler, $rts?->fresh(), $returning?->fresh()];
+        return [$reverse->fresh(), $outbound->fresh(), $case, $forward, $handler, $rts?->fresh(), $returning?->fresh(), $forwardBag];
+    }
+
+    public function test_a_shared_trip_with_an_actual_recovered_forward_parcel_still_requires_its_original_bag_arrival(): void
+    {
+        [$reverse, $outbound, $case, $forward, $handler, , , $forwardBag] = $this->cargo(baggedForward: true);
+        $physicalKey = $forwardBag->active_physical_key;
+        $this->assertNotNull($physicalKey);
+        $trips = app(LogisticsTripService::class);
+        $trip = $trips->create($handler, $this->grouping($reverse, $outbound));
+        $returnBag = $this->sealTripReturn($trip, $handler, $case->parcel->barcode);
+        $trips->command($trip, $handler, 'dispatch', $this->tripPayload($trip));
+        $receiver = $this->flowHandler($reverse->destinationHub);
+        $other = $this->flowDelivery($this->newFlowOrder(), 'in_transit_to_mother_hub');
+        $observedManifest = LogisticsManifest::findOrFail(DeliveryCheckpoint::lastCustody($other)['manifest_id']);
+        $this->assertSame($reverse->destination_hub_id, $observedManifest->destination_hub_id);
+        $this->actingAs($receiver)->postJson('/hub/manifests/'.$observedManifest->id.'/report-discrepancy',
+            $this->flowManifestPayload($observedManifest, ['kind' => 'extra', 'barcode' => $forward->tracking_number,
+                'notes' => 'The actual separate forward parcel arrived loose with this other transport; its original sealed bag is not here.']))->assertOk();
+        $observation = $observedManifest->events()->where('event_type', 'report-discrepancy')->sole();
+        $manager = $reverse->company->user;
+        $recoveries = app(ParcelRecoveryService::class);
+        $proposal = $recoveries->proposal($manager, $observation);
+        $recovery = $recoveries->authorize($manager, $observation, ['source_token' => $proposal['source_token'], 'request_token' => (string) Str::uuid(),
+            'notes' => 'Review the actual unexpected loose parcel and its original expected receiving hub.']);
+        $recoveries->intake($receiver, $recovery, ['version' => $recovery->version, 'request_token' => (string) Str::uuid(),
+            'barcode' => $forward->tracking_number, 'notes' => 'The assigned receiving handler physically holds this separate original forward parcel.']);
+        $this->assertSame('completed', $recovery->fresh()->state);
+        $this->openTripReturn($trip, $returnBag, $receiver);
+        $this->actingAs($receiver)->postJson('/hub/manifests/'.$reverse->id.'/receive', $this->flowManifestPayload($reverse,
+            ['barcode' => $case->parcel->barcode]))->assertOk();
+        $this->assertSame('received', $outbound->fresh()->status);
+        $this->assertSame('received', $reverse->fresh()->status);
+        $this->assertSame('in_transit', $forwardBag->fresh()->status);
+        $this->assertSame($physicalKey, $forwardBag->fresh()->active_physical_key);
+        $this->postJson('/hub/manifests/trips/'.$trip->id.'/close', $this->tripPayload($trip))->assertConflict()
+            ->assertJsonPath('message', 'Record the actual arrival and member accountability of each original bag before closing the trip.');
+        $this->assertSame('dispatched', $trip->fresh()->status);
+        $this->assertTrue(LogisticsManifest::awaitingPhysicalReceipt()->whereKey($outbound->id)->exists());
+        $this->postJson('/hub/mother-bags/'.$forwardBag->id.'/open', ['version' => $forwardBag->fresh()->version,
+            'barcode' => $forwardBag->reference, 'seal_number' => $forwardBag->seal_number, 'seal_intact' => true])->assertOk();
+        $this->assertSame('received', $forwardBag->fresh()->status);
+        $this->assertNull($forwardBag->fresh()->active_physical_key);
+        $this->postJson('/hub/manifests/trips/'.$trip->id.'/close', $this->tripPayload($trip))->assertOk();
+        $this->assertSame('closed', $trip->fresh()->status);
+        $this->assertFalse(LogisticsManifest::awaitingPhysicalReceipt()->whereKey($outbound->id)->exists());
+        $reused = app(MotherBagService::class)->create($receiver, ['source_hub_id' => $reverse->destination_hub_id,
+            'destination_hub_id' => $reverse->source_hub_id, 'creation_token' => (string) Str::uuid(),
+            'physical_tag' => $forwardBag->physical_tag, 'physical_checked' => true]);
+        $this->assertSame($physicalKey, $reused->active_physical_key);
+        $this->assertNotSame($forwardBag->id, $reused->id);
     }
 
     private function grouping(LogisticsManifest $a, LogisticsManifest $b): array

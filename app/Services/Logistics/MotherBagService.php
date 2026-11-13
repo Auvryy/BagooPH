@@ -6,10 +6,13 @@ use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
+use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsManifestParcel;
 use App\Models\MotherBag;
 use App\Models\MotherBagParcel;
 use App\Models\Order;
+use App\Models\ParcelRecoveryCase;
+use App\Models\ParcelRecoveryEvent;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
 use DomainException;
@@ -321,7 +324,8 @@ class MotherBagService
             } elseif ($action === 'open') {
                 $this->masterTag($bag, $data);
                 if ($bag->status !== 'in_transit' || empty($data['seal_intact']) || ! $bag->manifest_id
-                    || ! in_array($bag->manifest?->status, ['dispatched', 'received'], true)) {
+                    || ! in_array($bag->manifest?->status, ['dispatched', 'received', 'closed'], true)
+                    || ! $bag->dispatched_at || ! $bag->manifest?->dispatched_at) {
                     throw new DomainException('Verify the arriving bag and intact seal before opening. Record a discrepancy for a broken or different seal.');
                 }
                 $bag->fill(['status' => 'opened', 'opened_by_id' => $actor->id, 'opened_at' => now()]);
@@ -333,6 +337,9 @@ class MotherBagService
                 $payload['members'] = $this->members($bag);
             }
             $this->event($bag, $actor, $action, $data['barcode'] ?? null, $payload);
+            if ($action === 'open') {
+                $this->finishReceivedBag($bag);
+            }
             if (! empty($data['request_token']) && app(CargoHandlingService::class)->available()) {
                 DB::table('bag_packing_requests')->insert(['actor_id' => $actor->id, 'request_token' => $data['request_token'], 'fingerprint' => $fingerprint, 'mother_bag_id' => $bag->id]);
             }
@@ -398,7 +405,67 @@ class MotherBagService
         }
         $member->update(['active_delivery_id' => null, 'received_at' => now()]);
         $this->event($bag, $actor, 'parcel_received', $barcode, ['delivery_id' => $parcel->id]);
-        if (! $bag->parcels()->whereNull('removed_at')->whereNull('received_at')->exists()) {
+        $this->finishReceivedBag($bag);
+    }
+
+    public function extractForRecovery(ParcelRecoveryCase $case, Delivery $parcel, User $actor, ParcelRecoveryEvent $intake, DeliveryCheckpoint $checkpoint): void
+    {
+        abort_unless(DB::transactionLevel() > 0, 409);
+        $member = MotherBagParcel::where('active_delivery_id', $parcel->id)->lockForUpdate()->first();
+        if (! $member) {
+            return;
+        }
+        abort_unless(Schema::hasTable('parcel_recovery_bag_extractions'), 409, 'Apply the additive parcel extraction migration before recovering this sealed bag member.');
+        $bag = MotherBag::whereKey($member->mother_bag_id)->lockForUpdate()->firstOrFail();
+        $original = $case->originalMember;
+        if ($case->state !== 'held' || $case->active_delivery_id !== $parcel->id || $original->delivery_id !== $parcel->id
+            || $bag->manifest_id !== $original->manifest_id || ! in_array($bag->status, ['in_transit', 'opened'], true)
+            || $member->received_at || $member->removed_at || $intake->parcel_recovery_case_id !== $case->id
+            || $intake->event_type !== 'intake' || $intake->actor_id !== $actor->id || $intake->hub_id !== $case->observed_hub_id
+            || $intake->barcode_scanned !== $member->barcode_scanned || $intake->barcode_scanned !== $parcel->tracking_number
+            || $checkpoint->delivery_id !== $parcel->id || $checkpoint->checkpoint_type !== 'parcel_recovery_intake'
+            || $checkpoint->scanned_by_id !== $actor->id || $checkpoint->hub_id !== $intake->hub_id
+            || $checkpoint->barcode_scanned !== $intake->barcode_scanned
+            || ($checkpoint->custody_after['parcel_recovery_event_reference'] ?? null) !== $intake->reference
+            || ($checkpoint->custody_after['parcel_recovery_reference'] ?? null) !== $case->reference) {
+            throw new DomainException('Retain the original bag member and the actual authorized loose-parcel intake before extraction.');
+        }
+        DB::table('parcel_recovery_bag_extractions')->insert(['original_bag_member_id' => $member->id, 'recovery_id' => $case->id,
+            'intake_event_id' => $intake->id, 'checkpoint_id' => $checkpoint->id, 'actor_id' => $actor->id, 'created_at' => now()]);
+        $member->update(['active_delivery_id' => null]);
+        $this->event($bag, $actor, 'parcel_extracted_for_recovery', $parcel->tracking_number,
+            ['parcel_recovery_reference' => $case->reference, 'intake_reference' => $intake->reference, 'no_bag_arrival' => true]);
+    }
+
+    public function recovered(ParcelRecoveryCase $case, Delivery $parcel, User $actor, LogisticsManifestEvent $receipt): void
+    {
+        abort_unless(DB::transactionLevel() > 0, 409);
+        $extraction = Schema::hasTable('parcel_recovery_bag_extractions')
+            ? DB::table('parcel_recovery_bag_extractions')->where('recovery_id', $case->id)->first() : null;
+        if (! $extraction) {
+            return;
+        }
+        $member = MotherBagParcel::whereKey($extraction->original_bag_member_id)->lockForUpdate()->firstOrFail();
+        $bag = MotherBag::whereKey($member->mother_bag_id)->lockForUpdate()->firstOrFail();
+        $original = $case->originalMember->fresh();
+        if ($case->state !== 'completed' || $case->active_delivery_id !== null || $member->delivery_id !== $parcel->id
+            || $member->active_delivery_id !== null || $member->received_at || $bag->manifest_id !== $original->manifest_id
+            || ! $original->received_at || $original->received_by_id !== $actor->id
+            || $receipt->manifest_id !== $original->manifest_id || $receipt->manifest_parcel_id !== $original->id
+            || $receipt->event_type !== 'parcel_received' || $receipt->actor_id !== $actor->id
+            || $receipt->hub_id !== $case->expected_hub_id || $receipt->barcode_scanned !== $member->barcode_scanned
+            || ($receipt->payload['parcel_recovery_reference'] ?? null) !== $case->reference) {
+            throw new DomainException('Account for this extracted parcel only after its actual completed recovery and original expected receipt.');
+        }
+        $member->update(['received_at' => $original->received_at]);
+        $this->event($bag, $actor, 'parcel_recovered', $parcel->tracking_number,
+            ['parcel_recovery_reference' => $case->reference, 'original_receipt_reference' => $receipt->reference, 'no_bag_arrival' => true]);
+        $this->finishReceivedBag($bag);
+    }
+
+    private function finishReceivedBag(MotherBag $bag): void
+    {
+        if ($bag->status === 'opened' && $bag->opened_at && ! $bag->parcels()->whereNull('removed_at')->whereNull('received_at')->exists()) {
             $bag->update(['status' => 'received', 'version' => $bag->version + 1,
                 ...($bag->packing_policy_version ? ['active_physical_key' => null, 'automatic_lane' => null] : [])]);
         }

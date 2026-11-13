@@ -23,6 +23,9 @@ class LogisticsManifest extends Model
     {
         return $query->where(function (Builder $query) {
             $query->where('logistics_manifests.status', 'dispatched');
+            $query->orWhereExists(fn ($held) => $held->selectRaw('1')->from('mother_bags as original_bag')
+                ->whereColumn('original_bag.manifest_id', 'logistics_manifests.id')->whereNotNull('original_bag.dispatched_at')
+                ->whereNotIn('original_bag.status', ['received', 'emptied_at_source']));
             if (Schema::hasColumn('mother_bags', 'return_trip_id')) {
                 $query->orWhereExists(fn ($held) => $held->selectRaw('1')->from('logistics_trip_manifests as tm')
                     ->join('logistics_transport_trips as t', 't.id', '=', 'tm.trip_id')

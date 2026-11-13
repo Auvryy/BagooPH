@@ -8,6 +8,7 @@ use App\Models\Delivery;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsTransportTrip;
+use App\Models\MotherBag;
 use App\Models\Order;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
@@ -116,6 +117,9 @@ class LogisticsTripService
             } elseif ($action === 'close') {
                 app(BuyerReturnBagService::class)->assertClose($trip);
                 foreach ($manifests as $manifest) {
+                    $this->requireState(! MotherBag::where('manifest_id', $manifest->id)->whereNotNull('dispatched_at')
+                        ->whereNotIn('status', ['received', 'emptied_at_source'])->exists(),
+                        'Record the actual arrival and member accountability of each original bag before closing the trip.');
                     $this->requireState(in_array($manifest->status, ['received', 'closed'], true)
                         && app(LogisticsManifestService::class)->receiptCounts($manifest)['outstanding'] === 0
                         && app(LogisticsManifestService::class)->openDiscrepancies($manifest)->isEmpty(),
