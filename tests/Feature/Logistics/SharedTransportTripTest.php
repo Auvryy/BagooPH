@@ -2,12 +2,16 @@
 
 namespace Tests\Feature\Logistics;
 
+use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsTransportTrip;
 use App\Services\Logistics\LogisticsManifestService;
+use App\Services\Logistics\LogisticsTripService;
+use App\Services\Returns\BuyerReturnBagService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
@@ -123,6 +127,123 @@ class SharedTransportTripTest extends TestCase
         $this->assertDatabaseCount('buyer_return_adjustments', 0);
         $this->assertDatabaseCount('buyer_return_money_events', 0);
         $this->assertSame(0, DB::table('logistics_trip_manifests')->whereNotNull('active_manifest_id')->count());
+    }
+
+    public function test_co_loaded_returns_split_at_the_common_mother_hub_and_reach_only_their_original_sellers(): void
+    {
+        $cases = [];
+        $originals = [];
+        $manifests = [];
+        $service = app(LogisticsManifestService::class);
+        foreach (['Calamba City', 'Los Baños'] as $index => $city) {
+            $shop = $this->createE2EShop($this->createApprovedUser('seller'), ['city' => $city, 'pickup_province' => 'Laguna']);
+            $order = $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop, [], 'ready_for_pickup');
+            $case = $this->approvedReturn($order, $this->createApprovedUser('courier'));
+            $this->assertCount(3, $case->parcel->hub_ids);
+            $originals[] = [$case->order->fresh()->getAttributes(), $case->delivery->fresh()->getAttributes()];
+            $this->intake($case);
+            $this->measureReturn($case);
+            if ($index === 0) {
+                $manifest = $this->prepareLeg($case);
+                $handler = $this->flowHandler($manifest->sourceHub);
+            } else {
+                $first = $manifests[0];
+                $token = (string) Str::uuid();
+                $manifest = $service->create($handler, ['source_hub_id' => $first->source_hub_id, 'destination_hub_id' => $first->destination_hub_id,
+                    'vehicle_id' => $first->vehicle_id, 'direction' => 'buyer_return', 'buyer_return_case_id' => $case->id, 'creation_token' => $token], $token);
+            }
+            foreach (['load', 'seal'] as $action) {
+                $service->command($manifest->fresh(), $handler, $action,
+                    $this->flowManifestPayload($manifest, $action === 'load' ? ['barcode' => $case->parcel->barcode] : []));
+            }
+            $cases[] = $case;
+            $manifests[] = $manifest->fresh();
+        }
+        $this->assertSame(array_slice($cases[0]->parcel->hub_ids, 0, 2), array_slice($cases[1]->parcel->hub_ids, 0, 2));
+        $this->assertNotSame($cases[0]->parcel->hub_ids[2], $cases[1]->parcel->hub_ids[2]);
+        $trip = app(LogisticsTripService::class)->create($handler, $this->grouping(...$manifests));
+        $bags = app(BuyerReturnBagService::class);
+        foreach ($cases as $case) {
+            $bag = $bags->pack($trip, $handler, ['version' => 1, 'request_token' => (string) Str::uuid(), 'barcode' => $case->parcel->barcode,
+                'physical_tag' => 'COMMON-LEG-RETURN-SACK', 'physical_checked' => true]);
+        }
+        $bag = $bags->command($trip, $bag, $handler, 'seal', ['version' => 1, 'bag_version' => $bag->version,
+            'request_token' => (string) Str::uuid(), 'barcode' => $bag->reference, 'seal_number' => 'COMMON-LEG-RETURN-SEAL']);
+        app(LogisticsTripService::class)->command($trip, $handler, 'dispatch', $this->tripPayload($trip));
+        $mother = $manifests[0]->destinationHub;
+        $this->assertTrue($mother->isMotherHub());
+        $receiver = $this->flowHandler($mother);
+        $this->openTripReturn($trip, $bag, $receiver);
+        foreach ($manifests as $index => $manifest) {
+            $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive',
+                $this->flowManifestPayload($manifest, ['barcode' => $cases[$index]->parcel->barcode]))->assertOk();
+            $this->assertSame($mother->id, $cases[$index]->parcel->fresh()->current_hub_id);
+        }
+        app(LogisticsTripService::class)->command($trip->fresh(), $receiver, 'close', $this->tripPayload($trip));
+
+        $branches = [];
+        foreach ($cases as $index => $case) {
+            $this->measureReturn($case);
+            if ($index === 0) {
+                $branch = $this->prepareLeg($case);
+                $token = (string) Str::uuid();
+                $count = LogisticsManifest::count();
+                try {
+                    $service->create($receiver, ['source_hub_id' => $mother->id, 'destination_hub_id' => $cases[1]->parcel->hub_ids[2],
+                        'vehicle_id' => $branch->vehicle_id, 'direction' => 'buyer_return', 'buyer_return_case_id' => $case->id, 'creation_token' => $token], $token);
+                    $this->fail('A common Mother Hub cannot send a return to the other seller’s original child hub.');
+                } catch (\DomainException $error) {
+                    $this->assertStringContainsString('next original reverse leg', $error->getMessage());
+                }
+                $this->assertSame($count, LogisticsManifest::count());
+                $this->actingAs($receiver)->postJson('/hub/manifests/'.$branch->id.'/load',
+                    $this->flowManifestPayload($branch, ['barcode' => $cases[1]->parcel->barcode]))->assertUnprocessable();
+                $this->assertSame(0, $branch->buyerReturnParcels()->count());
+            } else {
+                $token = (string) Str::uuid();
+                $branch = $service->create($receiver, ['source_hub_id' => $mother->id, 'destination_hub_id' => $case->parcel->hub_ids[2],
+                    'vehicle_id' => $branches[0]->vehicle_id, 'direction' => 'buyer_return', 'buyer_return_case_id' => $case->id, 'creation_token' => $token], $token);
+            }
+            foreach (['load', 'seal'] as $action) {
+                $service->command($branch->fresh(), $receiver, $action,
+                    $this->flowManifestPayload($branch, $action === 'load' ? ['barcode' => $case->parcel->barcode] : []));
+            }
+            $branches[] = $branch->fresh();
+        }
+        $this->actingAs($receiver)->postJson('/hub/manifests/trips', $this->grouping(...$branches))->assertConflict();
+        $this->assertNotSame($branches[0]->destination_hub_id, $branches[1]->destination_hub_id);
+        $this->assertSame($branches[0]->vehicle_id, $branches[1]->vehicle_id);
+        $this->assertSame('sealed', $branches[0]->fresh()->status);
+        $this->assertSame('sealed', $branches[1]->fresh()->status);
+
+        foreach ($branches as $index => $branch) {
+            $case = $cases[$index];
+            $other = $cases[1 - $index];
+            $branchTrip = app(LogisticsTripService::class)->create($receiver, ['manifest_ids' => [$branch->id], 'request_token' => (string) Str::uuid()]);
+            $branchBag = $this->sealTripReturn($branchTrip, $receiver, $case->parcel->barcode);
+            app(LogisticsTripService::class)->command($branchTrip, $receiver, 'dispatch', $this->tripPayload($branchTrip));
+            $origin = LogisticsHub::findOrFail($branch->destination_hub_id);
+            $originHandler = $this->flowHandler($origin);
+            $this->openTripReturn($branchTrip, $branchBag, $originHandler);
+            $this->actingAs($originHandler)->postJson('/hub/manifests/'.$branch->id.'/receive',
+                $this->flowManifestPayload($branch, ['barcode' => $case->parcel->barcode]))->assertOk();
+            app(LogisticsTripService::class)->command($branchTrip->fresh(), $originHandler, 'close', $this->tripPayload($branchTrip));
+            $this->assertSame($origin->id, $case->parcel->fresh()->current_hub_id);
+            $this->post('/buyer-returns/'.$case->id.'/custody', $this->custodyPayload($case, 'stage', ['hub_id' => $origin->id]))
+                ->assertRedirect('/buyer-returns/'.$case->id)->assertSessionHasNoErrors();
+            $receipt = $this->custodyPayload($case, 'seller-receive', ['condition' => 'accepted', 'photo' => UploadedFile::fake()->image('branched-return.png')]);
+            $before = [$case->fresh()->getAttributes(), $case->parcel->fresh()->getAttributes(), $case->events()->count()];
+            $this->actingAs($other->order->shop->user)->post('/buyer-returns/'.$case->id.'/custody', $receipt)
+                ->assertRedirect()->assertSessionHasErrors('custody');
+            $this->assertSame($before, [$case->fresh()->getAttributes(), $case->parcel->fresh()->getAttributes(), $case->events()->count()]);
+            $this->actingAs($case->order->shop->user)->post('/buyer-returns/'.$case->id.'/custody', $receipt)
+                ->assertRedirect('/buyer-returns/'.$case->id)->assertSessionHasNoErrors();
+            $this->assertSame('seller_received', $case->fresh()->status);
+            $this->assertSame(['kind' => 'seller', 'user_id' => $case->seller_id], $case->parcel->fresh()->custody);
+            $this->assertSame($originals[$index], [$case->order->fresh()->getAttributes(), $case->delivery->fresh()->getAttributes()]);
+        }
+        $this->assertDatabaseCount('buyer_return_adjustments', 0);
+        $this->assertDatabaseCount('buyer_return_money_events', 0);
     }
 
     public function test_combined_capacity_is_rechecked_at_departure_without_partial_dispatch(): void

@@ -175,6 +175,9 @@ class BuyerReturnManifestService
                 case 'load':
                     $this->status($manifest, 'draft');
                     $this->route($manifest, $case, $parcel);
+                    if ($recovery) {
+                        app(BuyerReturnCargoService::class)->profile($parcel);
+                    }
                     $this->barcode($parcel, $data);
                     if ($parcel->status !== 'at_hub' || $parcel->current_hub_id !== $manifest->source_hub_id || ($parcel->custody['kind'] ?? null) !== 'hub') {
                         throw new DomainException('This return must be physically recorded at the source hub before its load scan.');
@@ -210,6 +213,9 @@ class BuyerReturnManifestService
                     break;
                 case 'dispatch':
                     $this->status($manifest, 'sealed');
+                    if ($recovery && ! in_array($manifest->id, app(LogisticsTripService::class)->departingManifestIds(), true)) {
+                        throw new DomainException('Depart this recovery through its dedicated vehicle trip with actual package readings and sack or loose-cargo checks.');
+                    }
                     $this->ready($manifest, $case, $parcel, $member);
                     $vehicle = $this->manifests->vehicle($manifest->logistics_company_id, $manifest->source_hub_id, $manifest->vehicle_id, $manifest->driver_id, true, $manifest->type);
                     $this->capacity($vehicle, $parcel);

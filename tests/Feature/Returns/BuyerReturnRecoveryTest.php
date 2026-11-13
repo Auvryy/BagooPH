@@ -182,6 +182,59 @@ class BuyerReturnRecoveryTest extends TestCase
         $this->assertDatabaseCount('buyer_return_money_events', 0);
     }
 
+    #[DataProvider('cargo')]
+    public function test_recovery_requires_actual_readings_and_its_dedicated_trip_before_departure(bool $bagged): void
+    {
+        [$case, $original, , , $wrong] = $this->traveling($bagged);
+        $successful = [$case->order->getAttributes(), $case->delivery->getAttributes()];
+        $service = app(BuyerReturnRecoveryService::class);
+        $handler = $this->flowHandler($wrong);
+        $recovery = $service->observe($handler, $case->parcel, $wrong);
+        $recovery = $service->command($original->sourceHub->company->user, $recovery, 'authorize',
+            $this->payload($recovery, ['source_token' => $service->sourceToken($recovery)]));
+        $recovery = $service->command($handler, $recovery, 'intake', $this->payload($recovery, ['barcode' => $case->parcel->barcode]),
+            UploadedFile::fake()->image('dedicated-recovery-intake.png'));
+        $manifest = $this->recoveryManifest($case, $recovery);
+        $before = [$case->parcel->fresh()->getAttributes(), $recovery->fresh()->getAttributes(), $manifest->events()->count()];
+        $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/load',
+            $this->flowManifestPayload($manifest, ['barcode' => $case->parcel->barcode]))->assertConflict();
+        $this->assertSame('draft', $manifest->fresh()->status);
+        $this->assertSame(0, $manifest->buyerReturnParcels()->count());
+        $this->assertSame($before, [$case->parcel->fresh()->getAttributes(), $recovery->fresh()->getAttributes(), $manifest->events()->count()]);
+
+        $this->measureReturn($case, $bagged ? [] : ['length_cm' => '70']);
+        foreach (['load', 'seal'] as $action) {
+            $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/'.$action,
+                $this->flowManifestPayload($manifest, $action === 'load' ? ['barcode' => $case->parcel->barcode] : []))->assertOk();
+        }
+        $before = [$case->parcel->fresh()->getAttributes(), $recovery->fresh()->getAttributes(), $manifest->events()->count()];
+        $this->postJson('/hub/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertConflict();
+        $this->assertSame('sealed', $manifest->fresh()->status);
+        $this->assertSame($before, [$case->parcel->fresh()->getAttributes(), $recovery->fresh()->getAttributes(), $manifest->events()->count()]);
+
+        $trip = app(LogisticsTripService::class)->create($handler, ['manifest_ids' => [$manifest->id], 'request_token' => (string) Str::uuid()]);
+        if ($bagged) {
+            $this->postJson('/hub/manifests/trips/'.$trip->id.'/dispatch', ['version' => 1, 'request_token' => (string) Str::uuid()])->assertConflict();
+            $this->assertSame('ready', $trip->fresh()->status);
+            $this->assertSame('sealed', $manifest->fresh()->status);
+            $bag = $this->sealTripReturn($trip, $handler, $case->parcel->barcode);
+        }
+        $this->postJson('/hub/manifests/trips/'.$trip->id.'/dispatch', ['version' => 1, 'request_token' => (string) Str::uuid()])->assertOk();
+        $this->assertSame('in_transit', $case->parcel->fresh()->status);
+        $this->assertSame('in_transit', $recovery->fresh()->state);
+        $receiver = $this->flowHandler($manifest->destinationHub);
+        if ($bagged) {
+            $this->openTripReturn($trip, $bag, $receiver);
+        }
+        $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive',
+            $this->flowManifestPayload($manifest, ['barcode' => $case->parcel->barcode]))->assertOk();
+        $this->assertSame($manifest->destination_hub_id, $case->parcel->fresh()->current_hub_id);
+        $this->assertSame(0, $case->parcel->fresh()->route_position);
+        $this->assertNull($original->buyerReturnParcels()->sole()->received_at);
+        $this->assertSame($successful, [$case->order->fresh()->getAttributes(), $case->delivery->fresh()->getAttributes()]);
+        $this->assertDatabaseCount('buyer_return_money_events', 0);
+    }
+
     public function test_scanning_only_observes_and_an_unreceived_observation_can_be_withdrawn_without_moving_custody(): void
     {
         [$case, $original, , , $wrong] = $this->traveling(false);

@@ -8873,3 +8873,13 @@ Verification on the final checkpoint source:
 - TypeScript, production build and Pint passed. The build remains in ignored test storage. No browser/device acceptance, live PostgreSQL migration/seed or GitHub push occurred.
 
 Scoped engineering assessment: **public refusal review/payment flow 0/10 → 7/10**. The authorized pages and controls now have automated evidence; visual/manual acceptance remains separate. The manual confirmed-loss financial flow, cross-authority/source/finance audit, B12 final audit, future-checkout activation and combined manual-review/PR draft still remain. Checkout continues issuing policy one. The full B11–B13 goal remains active and is not ready for publication.
+
+### B12 final recovery departure and destination-branch acceptance — November 13
+
+Recovery loading now requires actual package readings, and recovery departure must run through its dedicated vehicle trip. The ordinary historical manifest path is retained. This closes a demonstrated bypass that could skip the new recovery trip and its sack or loose-cargo checks.
+
+The connected acceptance scenario sends two original returns together to their common Mother Hub, then on separate trips to their different original seller-child hubs. Wrong destination, barcode, combined destination grouping and foreign seller receipt are rejected. Each actual seller receives only its own return; original successful order/delivery records and money remain unchanged.
+
+Verification: **19 tests / 2,810 assertions passed**, PHP 8.4.24, SQLite `:memory:`, 1m29s, test-process peak 95 MB (`storage/framework/testing/b12-helper-final-pass.log` / `.xml`). Includes all buyer-return recovery and shared-trip cases. The first run's new foreign-seller assertion expected an HTTP 404; it was corrected to assert the controller's existing browser redirect/session error and unchanged custody/history. No production authorization was relaxed. Earlier five eligibility fixture failures remain separately disclosed; this is not a full-repository green result.
+
+Scoped engineering assessment: **recovery departure contract 7/10 → 8/10**. The required trip and actual readings now have direct bypass rejection and positive-path evidence. Manual operations, physical participant identity and PostgreSQL concurrency remain unverified. The full B11–B13 goal remains open while loss finances and final integration continue.
