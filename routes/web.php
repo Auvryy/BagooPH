@@ -421,6 +421,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::post('/manifests/trips/{trip}/return-sacks', [LogisticsManifestController::class, 'packReturnSack'])->whereNumber('trip')->middleware('throttle:60,1');
         Route::post('/manifests/trips/{trip}/return-sacks/{bag}/{bagAction}', [LogisticsManifestController::class, 'returnSackCommand'])->whereNumber('trip')->whereUuid('bag')->whereIn('bagAction', ['seal', 'reopen', 'remove', 'open'])->middleware('throttle:60,1');
         Route::post('/manifests/trips/{trip}/{action}', [LogisticsManifestController::class, 'tripCommand'])->whereNumber('trip')->whereIn('action', ['dispatch', 'cancel', 'close'])->middleware('throttle:30,1');
+        Route::post('/manifests/{manifest}/transport-arrival', [LogisticsManifestController::class, 'transportArrival'])->whereNumber('manifest')->middleware('throttle:30,1');
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
             ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|close-recovery|report-discrepancy|correct-discrepancy|resolve-discrepancy');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries']);
@@ -959,6 +960,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/manifests/trips/{trip}/return-sacks', [LogisticsManifestController::class, 'packReturnSack'])->whereNumber('trip')->middleware('throttle:60,1');
         Route::post('/manifests/trips/{trip}/return-sacks/{bag}/{bagAction}', [LogisticsManifestController::class, 'returnSackCommand'])->whereNumber('trip')->whereUuid('bag')->whereIn('bagAction', ['seal', 'reopen', 'remove', 'open'])->middleware('throttle:60,1');
         Route::post('/manifests/trips/{trip}/{action}', [LogisticsManifestController::class, 'tripCommand'])->whereNumber('trip')->whereIn('action', ['dispatch', 'cancel', 'close'])->middleware('throttle:30,1');
+        Route::post('/manifests/{manifest}/transport-arrival', [LogisticsManifestController::class, 'transportArrival'])->whereNumber('manifest')->middleware('throttle:30,1');
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
             ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|close-recovery|report-discrepancy|correct-discrepancy|resolve-discrepancy')->name('manifests.command');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries'])->name('deliveries');

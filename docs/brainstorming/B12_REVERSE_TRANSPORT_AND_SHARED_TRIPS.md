@@ -39,6 +39,23 @@ the same vehicle. A partially arrived group remains open until all expected
 receipts and actual discrepancies are resolved. Closing the group preserves
 its original references and per-manifest outcomes for review.
 
+For an independently accounted loss, the assigned destination handler can
+separately record the original vehicle's actual arrival. They must observe
+its exact plate and check the distinct original assigned driver. This follows
+the B07 receiving-actor rule; it does not invent a driver signature. The
+server derives the original transport identities and any active shared group,
+retaining an immutable arrival event on each grouped manifest atomically.
+An exact retry keeps that original evidence. An admin or company owner without
+the assigned floor authority cannot perform this physical receiving action.
+
+Vehicle arrival receives no parcel or outer sack, advances no recovery route
+and moves no money. Other unreceived members, unresolved observations and
+unarrived bags retain their holds. A closed loss-accounted loose load can
+finish its transport responsibility after this actual arrival; another
+vehicle's earlier transport obligation remains separate. A vehicle that has
+not actually arrived cannot use this confirmation as a timeout or financial
+write-off. Whole-transport loss still requires independent accountability.
+
 Grouping, departure, receipt and closure create no buyer collection, refund,
 seller recovery, compensation or new earnings on their own. Original purchased
 money terms and physical proof remain authoritative.

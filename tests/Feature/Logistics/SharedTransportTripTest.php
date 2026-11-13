@@ -7,6 +7,9 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsTransportTrip;
+use App\Services\Finance\ShipmentLossAccountingService;
+use App\Services\Finance\ShipmentLossDispositionService;
+use App\Services\Finance\ShipmentLossReview;
 use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsTripService;
 use App\Services\Logistics\MotherBagService;
@@ -39,7 +42,7 @@ class SharedTransportTripTest extends TestCase
         Storage::fake('public');
     }
 
-    private function cargo(bool $includeRts = false, bool $baggedForward = false): array
+    private function cargo(bool $includeRts = false, bool $baggedForward = false, bool $successorForward = false): array
     {
         $case = $this->approvedReturn();
         $this->intake($case);
@@ -52,6 +55,9 @@ class SharedTransportTripTest extends TestCase
         $service->command($reverse->fresh(), $handler, 'seal', $this->flowManifestPayload($reverse));
         $shop = $this->createE2EShop($this->createApprovedUser('seller'), ['city' => $source->city_municipality, 'province' => $source->province]);
         $order = $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop, [], 'ready_for_pickup', ['shipping_city' => $case->order->shop->city]);
+        if ($successorForward) {
+            $order->update(['shipping_quote' => [...$order->shipping_quote, 'refund_policy_version' => 2]]);
+        }
         $forward = $this->flowDelivery($order, 'arrived_at_origin_hub');
         $token = (string) Str::uuid();
         $outbound = $service->create($handler, ['source_hub_id' => $source->id, 'destination_hub_id' => $reverse->destination_hub_id,
@@ -147,6 +153,59 @@ class SharedTransportTripTest extends TestCase
     private function tripPayload(LogisticsTransportTrip $trip): array
     {
         return ['version' => $trip->fresh()->version, 'request_token' => (string) Str::uuid()];
+    }
+
+    public function test_actual_shared_vehicle_arrival_is_atomic_and_does_not_receive_the_other_return_sack_or_the_lost_forward_parcel(): void
+    {
+        [$reverse, $outbound, $case, $forward, $handler] = $this->cargo(successorForward: true);
+        $trips = app(LogisticsTripService::class);
+        $trip = $trips->create($handler, $this->grouping($reverse, $outbound));
+        $bag = $this->sealTripReturn($trip, $handler, $case->parcel->barcode);
+        $trips->command($trip, $handler, 'dispatch', $this->tripPayload($trip));
+        $receiver = $this->flowHandler($outbound->destinationHub);
+        $member = $outbound->parcels()->where('delivery_id', $forward->id)->sole();
+        $this->actingAs($receiver)->postJson('/hub/manifests/'.$outbound->id.'/report-discrepancy', $this->flowManifestPayload($outbound,
+            ['kind' => 'missing', 'parcel_id' => $member->id, 'notes' => 'One particular expected original forward parcel is missing on this departed shared physical vehicle.']))->assertOk();
+        $source = $outbound->events()->where('event_type', 'report-discrepancy')->sole();
+        $admin = $this->createApprovedUser('admin');
+        $review = app(ShipmentLossReview::class);
+        $details = ['seller_protection' => '0.00', 'investigation_reference' => 'SHARED-VEHICLE-LOSS-'.$source->id];
+        $preview = $review->preview($admin, $source, $details);
+        $plan = $review->approve($admin, $source, [...$details, 'review_token' => $preview['review_token'], 'request_token' => (string) Str::uuid(),
+            'loss_confirmed' => true, 'reason' => 'The independent actual-source investigation confirms this exact missing parcel on its original shared transport.'], UploadedFile::fake()->image('shared-original-loss.png'));
+        app(ShipmentLossDispositionService::class)->record($admin, $plan, ['expected_version' => 1, 'request_token' => (string) Str::uuid(),
+            'reason' => 'Independent operational evidence confirms this exact original missing parcel, without receiving it or the other cargo.', 'disposition_confirmed' => true], UploadedFile::fake()->image('shared-loss-disposition.png'));
+        app(ShipmentLossAccountingService::class)->record($admin, $plan, ['expected_version' => 2, 'request_token' => (string) Str::uuid(),
+            'reason' => 'Retain this independently supported loss separately from actual vehicle and sack arrival.', 'loss_accounting_confirmed' => true]);
+        $this->postJson('/hub/manifests/'.$outbound->id.'/close', $this->flowManifestPayload($outbound))->assertOk();
+        $input = ['version' => $outbound->fresh()->version, 'request_token' => (string) Str::uuid(), 'vehicle_plate' => $outbound->vehicle->plate_number,
+            'reason' => 'The original shared vehicle and distinct assigned driver physically arrived here; individual cargo remains separately unreceived.',
+            'arrival_confirmed' => true, 'driver_identity_confirmed' => true];
+        $before = [$outbound->fresh()->getAttributes(), $reverse->fresh()->getAttributes(), $forward->fresh()->getAttributes(), $case->parcel->fresh()->state(), DB::table('wallet_transactions')->count()];
+        Event::listen('eloquent.created: '.LogisticsManifestEvent::class, static function ($event) use ($outbound) {
+            if ($event->event_type === 'transport-arrived' && $event->manifest_id === $outbound->id) {
+                throw new \RuntimeException('Injected second shared arrival failure.');
+            }
+        });
+        $this->postJson('/hub/manifests/'.$outbound->id.'/transport-arrival', $input)->assertServerError();
+        $this->assertSame(0, LogisticsManifestEvent::where('event_type', 'transport-arrived')->count());
+        $this->assertSame($before, [$outbound->fresh()->getAttributes(), $reverse->fresh()->getAttributes(), $forward->fresh()->getAttributes(), $case->parcel->fresh()->state(), DB::table('wallet_transactions')->count()]);
+        Event::forget('eloquent.created: '.LogisticsManifestEvent::class);
+        $this->postJson('/hub/manifests/'.$outbound->id.'/transport-arrival', $input)->assertOk();
+        $this->postJson('/hub/manifests/'.$outbound->id.'/transport-arrival', $input)->assertOk();
+        $this->assertSame(2, LogisticsManifestEvent::where('event_type', 'transport-arrived')->count());
+        $this->assertSame($before[2], $forward->fresh()->getAttributes());
+        $this->assertSame($before[3], $case->parcel->fresh()->state());
+        $this->assertSame($before[4], DB::table('wallet_transactions')->count());
+        $this->assertNull($member->fresh()->received_at);
+        $this->assertSame('in_transit', $bag->fresh()->status);
+        $this->postJson('/hub/manifests/trips/'.$trip->id.'/close', $this->tripPayload($trip))->assertConflict();
+        $this->openTripReturn($trip, $bag, $receiver);
+        $this->postJson('/hub/manifests/trips/'.$trip->id.'/close', $this->tripPayload($trip))->assertConflict();
+        $this->postJson('/hub/manifests/'.$reverse->id.'/receive', $this->flowManifestPayload($reverse, ['barcode' => $case->parcel->barcode]))->assertOk();
+        $this->postJson('/hub/manifests/trips/'.$trip->id.'/close', $this->tripPayload($trip))->assertOk();
+        $this->postJson('/hub/manifests/'.$outbound->id.'/transport-arrival', $input)->assertOk();
+        $this->assertNull($member->fresh()->received_at);
     }
 
     public function test_a_shared_trip_keeps_separate_custody_and_partial_arrival_without_changing_money(): void

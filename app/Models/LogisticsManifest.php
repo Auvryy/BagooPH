@@ -38,7 +38,9 @@ class LogisticsManifest extends Model
                     ->whereNotExists(fn ($receipt) => $receipt->selectRaw('1')->from('logistics_manifest_events as loss_arrival')
                         ->whereColumn('loss_arrival.manifest_id', 'logistics_manifests.id')->where(fn ($actual) => $actual
                         ->where(fn ($forward) => $forward->where('loss_arrival.event_type', 'parcel_received')->whereNull('loss_arrival.payload->parcel_recovery_reference'))
-                        ->orWhere(fn ($reverse) => $reverse->where('loss_arrival.event_type', 'buyer-return-received')->whereNull('loss_arrival.payload->recovery_scan_id')))));
+                        ->orWhere(fn ($reverse) => $reverse->where('loss_arrival.event_type', 'buyer-return-received')->whereNull('loss_arrival.payload->recovery_scan_id'))
+                        ->orWhere(fn ($vehicle) => $vehicle->where('loss_arrival.event_type', 'transport-arrived')->where('loss_arrival.actor_role', 'logistics')
+                            ->whereColumn('loss_arrival.hub_id', 'logistics_manifests.destination_hub_id')->whereNull('loss_arrival.manifest_parcel_id')->whereNull('loss_arrival.barcode_scanned')))));
             }
             if (Schema::hasColumn('mother_bags', 'return_trip_id')) {
                 $query->orWhereExists(fn ($held) => $held->selectRaw('1')->from('logistics_trip_manifests as tm')

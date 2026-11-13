@@ -20,6 +20,7 @@ use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsTripService;
 use App\Services\Logistics\ParcelRecoveryService;
+use App\Services\Logistics\TransportArrivalService;
 use App\Services\Returns\BuyerReturnBagService;
 use App\Services\Returns\BuyerReturnRecoveryService;
 use DomainException;
@@ -110,6 +111,7 @@ class LogisticsManifestController extends Controller
             $readableRecoveryIds = app(ParcelRecoveryService::class)->observations($actor)
                 ->whereIn('id', $discrepancies->pluck('id'))->pluck('id')->all();
             $detail = $this->summary($selected) + [
+                'transportArrival' => app(TransportArrivalService::class)->presentation($actor, $selected),
                 'motherBags' => MotherBag::where('manifest_id', $selected->id)->orderBy('created_at')
                     ->get(['id', 'reference', 'seal_number', 'status']),
                 'cargoCapacity' => app(CargoHandlingService::class)->available() ? app(CargoHandlingService::class)->manifestCapacity($selected) : null,
@@ -204,6 +206,18 @@ class LogisticsManifestController extends Controller
 
         return $request->expectsJson() ? response()->json(['trip' => $trip], $trip->wasRecentlyCreated ? 201 : 200)
             : back()->with('success', 'Shared trip prepared. Cargo remains at its recorded source hub.');
+    }
+
+    public function transportArrival(Request $request, LogisticsManifest $manifest, TransportArrivalService $arrivals): JsonResponse|RedirectResponse
+    {
+        try {
+            $event = $arrivals->record($request->user(), $manifest, $request->except('_token'));
+        } catch (DomainException $error) {
+            return $this->conflict($request, $error);
+        }
+
+        return $request->expectsJson() ? response()->json(['event_reference' => $event->reference])
+            : back()->with('success', 'Original vehicle arrival recorded. Parcel and sack receipts remain separate.');
     }
 
     public function tripCommand(Request $request, LogisticsTransportTrip $trip, string $action, LogisticsTripService $trips): JsonResponse|RedirectResponse

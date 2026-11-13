@@ -11,6 +11,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { CapacityMeter, HandlingFields, HandlingSummary, emptyHandling, type Handling } from '@/Components/Logistics/CargoHandling';
 import WaybillCamera from '@/Components/WaybillCamera';
 import SharedTripPanel, { type SharedTrip, type TripManifest } from '@/Components/Logistics/SharedTripPanel';
+import TransportArrival, { type TransportArrivalState } from '@/Components/Logistics/TransportArrival';
 
 interface Hub extends HubPlace { id: number; name: string; code: string; tier: string }
 interface ReceiptCounts { expected: number; normal_received: number; corrective_expected_received: number; unlisted_received: number; outstanding: number; confirmed_lost?: number }
@@ -23,6 +24,7 @@ interface Manifest {
     receiptCounts?: ReceiptCounts;
 }
 interface Detail extends Manifest {
+    transportArrival?: TransportArrivalState;
     cargoCapacity?: { weight_kg: number | null; max_weight_kg: number; loose_count: number; count: number } | null;
     motherBags?: { id: string; reference: string; seal_number: string; status: string }[];
     canManage: boolean; canClose: boolean; canLoad: boolean; canReceive: boolean;
@@ -419,6 +421,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                             <div className="p-5 sm:p-6 space-y-5">
                                 <HubRoute stops={[selected.source, selected.destination]} />
+                                {selected.transportArrival && <TransportArrival value={selected.transportArrival} manifestId={selected.id} version={selected.version} driver={selected.driver_name} plate={selected.vehicle_plate} basePath={basePath} />}
                                 {selected.cargoCapacity && <section aria-label="Vehicle cargo capacity" className="rounded-xl border border-rose-200 bg-rose-50/40 p-4"><h3 className="mb-3 text-sm font-bold text-[#9F1239]">Vehicle cargo · {selected.cargoCapacity.loose_count} loose parcels</h3><CapacityMeter label="Total retained cargo weight" value={selected.cargoCapacity.weight_kg} max={selected.cargoCapacity.max_weight_kg} unit="kg" /></section>}
 
                                 {selected.recoveryUrl && (

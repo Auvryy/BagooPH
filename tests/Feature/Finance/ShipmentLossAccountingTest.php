@@ -6,6 +6,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
+use App\Models\LogisticsManifestEvent;
 use App\Models\MotherBag;
 use App\Models\ShipmentFinancialEvent;
 use App\Models\ShipmentFinancialPlan;
@@ -355,6 +356,20 @@ class ShipmentLossAccountingTest extends TestCase
             $this->assertSame($version, $trip->fresh()->version);
             $this->assertFalse(DB::table('logistics_trip_events')->where('trip_id', $trip->id)->where('event_type', 'close')->exists());
         }
+        $arrival = ['version' => $manifest->fresh()->version, 'request_token' => (string) Str::uuid(), 'vehicle_plate' => $fleet->plate_number,
+            'reason' => 'The original physical vehicle and its named distinct driver have actually arrived at this destination; the parcel remains missing.',
+            'arrival_confirmed' => true, 'driver_identity_confirmed' => true];
+        $this->actingAs($this->flowHandler($destination))->postJson('/hub/manifests/'.$manifest->id.'/transport-arrival', $arrival)->assertOk();
+        $this->postJson('/hub/manifests/'.$manifest->id.'/transport-arrival', $arrival)->assertOk();
+        $this->assertSame(1, $manifest->events()->where('event_type', 'transport-arrived')->count());
+        $this->assertFalse(LogisticsManifest::awaitingPhysicalReceipt()->whereKey($manifest->id)->exists());
+        $this->assertTrue(LogisticsManifest::awaitingPhysicalReceipt()->whereKey($original->id)->exists());
+        if ($return) {
+            $this->postJson('/hub/manifests/trips/'.$trip->id.'/close', ['version' => $trip->fresh()->version, 'request_token' => (string) Str::uuid()])->assertOk();
+            $this->postJson('/hub/manifests/'.$manifest->id.'/transport-arrival', $arrival)->assertOk();
+        }
+        $this->assertSame($before, [$order->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes(), $case?->parcel->fresh()->state(), $recovery->fresh()->getAttributes(), WalletTransaction::count()]);
+        app(ShipmentLossSource::class)->assertApproved($plan);
     }
 
     #[DataProvider('sources')]
@@ -394,6 +409,12 @@ class ShipmentLossAccountingTest extends TestCase
             $bag = MotherBag::where('manifest_id', $manifest->id)->sole();
             $this->assertSame('in_transit', $bag->status);
             $receiver = $this->flowHandler($manifest->destinationHub);
+            $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/transport-arrival', [
+                'version' => $manifest->fresh()->version, 'request_token' => (string) Str::uuid(), 'vehicle_plate' => $manifest->vehicle->plate_number,
+                'reason' => 'The original vehicle and driver arrived here, but the original sealed outer bag has not yet been verified.',
+                'arrival_confirmed' => true, 'driver_identity_confirmed' => true])->assertOk();
+            $this->assertTrue(LogisticsManifest::awaitingPhysicalReceipt()->whereKey($manifest->id)->exists());
+            $this->assertSame('in_transit', $bag->fresh()->status);
             $this->actingAs($receiver)->postJson('/hub/mother-bags/'.$bag->id.'/open', ['version' => $bag->version,
                 'barcode' => $bag->reference, 'seal_number' => $bag->seal_number, 'seal_intact' => true])->assertOk();
             $this->assertSame('received', $bag->fresh()->status);
@@ -401,6 +422,45 @@ class ShipmentLossAccountingTest extends TestCase
             $this->assertFalse(LogisticsManifest::awaitingPhysicalReceipt()->whereKey($manifest->id)->exists());
             app(ShipmentLossSource::class)->assertApproved($plan);
         }
+    }
+
+    public function test_vehicle_arrival_requires_actual_destination_authority_exact_vehicle_and_current_loss_accounting_and_rolls_back_a_failed_event(): void
+    {
+        [$observation, $plan, $admin, $order] = $this->reviewed();
+        $manifest = $observation->manifest;
+        $receiver = $this->flowHandler($manifest->destinationHub);
+        $input = ['version' => $manifest->fresh()->version, 'request_token' => (string) Str::uuid(), 'vehicle_plate' => $manifest->vehicle->plate_number,
+            'reason' => 'The distinct assigned driver and actual original vehicle were physically observed at the destination hub.',
+            'arrival_confirmed' => true, 'driver_identity_confirmed' => true];
+        $url = '/hub/manifests/'.$manifest->id.'/transport-arrival';
+        $this->actingAs($receiver)->postJson($url, $input)->assertConflict();
+        app(ShipmentLossAccountingService::class)->record($admin, $plan, $this->input($plan));
+        $input['version'] = $manifest->fresh()->version;
+        foreach ([$admin, $order->buyer, $manifest->driver, $manifest->company->user, $this->flowHandler($manifest->sourceHub)] as $wrongActor) {
+            $this->actingAs($wrongActor)->postJson($url, $input)->assertForbidden();
+        }
+        $this->actingAs($receiver);
+        foreach ([['arrival_confirmed' => false], ['driver_identity_confirmed' => false], ['reason' => 'short'], ['reason' => str_repeat('x', 1001)],
+            ['received_at' => now()->toIso8601String()], ['driver_id' => $manifest->driver_id]] as $invalid) {
+            $this->postJson($url, [...$input, ...$invalid])->assertUnprocessable();
+        }
+        $this->postJson($url, [...$input, 'vehicle_plate' => 'DIFFERENT-VEHICLE'])->assertConflict();
+        $this->postJson($url, [...$input, 'version' => $input['version'] - 1])->assertConflict();
+        $before = [$manifest->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes(), WalletTransaction::count()];
+        Event::listen('eloquent.created: '.LogisticsManifestEvent::class, static function ($event) {
+            if ($event->event_type === 'transport-arrived') {
+                throw new \RuntimeException('Injected failure after the actual arrival event insert.');
+            }
+        });
+        $this->postJson($url, $input)->assertServerError();
+        $this->assertFalse($manifest->events()->where('event_type', 'transport-arrived')->exists());
+        $this->assertSame($before, [$manifest->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes(), WalletTransaction::count()]);
+        Event::forget('eloquent.created: '.LogisticsManifestEvent::class);
+        $this->postJson($url, $input)->assertOk();
+        $this->postJson($url, $input)->assertOk();
+        $this->postJson($url, [...$input, 'reason' => 'An altered request cannot appropriate the original actual arrival.'])->assertConflict();
+        $this->assertSame(1, $manifest->events()->where('event_type', 'transport-arrived')->count());
+        $this->assertSame($before[1], $order->delivery->fresh()->getAttributes());
     }
 
     public function test_an_accounting_without_original_disposition_independent_admin_current_version_and_exact_server_identity_is_rejected(): void
