@@ -45,7 +45,7 @@ class ShipmentLossPresentation
 
             return ($buyer && in_array($event->event_type, ['loss-resolve-wallet', 'loss-assess-zero-buyer', 'loss-resolve-cash'], true))
                 || ($seller && $event->event_type === 'loss-resolve-wallet')
-                || ($company && in_array($event->event_type, ['loss-contribute-company', 'loss-credit-requested', 'loss-credit-approved', 'loss-credit-rejected'], true));
+                || ($company && in_array($event->event_type, ['loss-contribute-company', 'loss-credit-requested', 'loss-credit-approved', 'loss-credit-rejected', 'loss-return-unused-credit'], true));
         })->map(function ($event) use ($access, $actor, $plan, $admin, $seller) {
             $proof = $access->proof($actor, $plan, $event);
             // The Wallet settlement's headline amount is the buyer refund, never the seller's protection.

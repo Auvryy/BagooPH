@@ -3,14 +3,18 @@
 namespace App\Services\Finance;
 
 use App\Models\BuyerReturnManifestParcel;
+use App\Models\BuyerReturnParcel;
 use App\Models\BuyerReturnRepaymentPlan;
+use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsEarning;
 use App\Models\LogisticsManifestEvent;
+use App\Models\LogisticsManifestParcel;
 use App\Models\Order;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\ShipmentLossDisposition;
 use App\Models\ShipmentLossFinding;
+use App\Models\User;
 use App\Models\WalletEntry;
 use App\Models\WalletRefundReserveEntry;
 use App\Models\WalletTransaction;
@@ -31,6 +35,54 @@ class ShipmentLossSource
     {
         abort_if($this->finding($plan), 409,
             'This parcel was found and quarantined. Independently reconcile its original funding and paid compensation before continuing.');
+    }
+
+    public function assertQuarantined(ShipmentFinancialPlan $original): ShipmentLossFinding
+    {
+        $plan = ShipmentFinancialPlan::findOrFail($original->id);
+        $this->assertRetained($plan);
+        $finding = $this->finding($plan);
+        $return = $plan->buyer_return_case_id !== null;
+        $member = $return ? BuyerReturnManifestParcel::find($plan->snapshot['source']['member_id'])
+            : LogisticsManifestParcel::find($plan->snapshot['source']['member_id']);
+        abort_unless($finding && $finding->manifest_id === $plan->snapshot['source']['manifest_id']
+            && $member && $member->manifest_id === $finding->manifest_id && $member->included && $member->received_at === null
+            && ($return ? $member->parcel->buyer_return_case_id === $plan->buyer_return_case_id && $member->active_return_parcel_id === $member->buyer_return_parcel_id
+                && $member->barcode_snapshot === $plan->snapshot['source']['barcode']
+                : $member->delivery_id === $plan->delivery_id && $member->active_delivery_id === $plan->delivery_id
+                && $member->tracking_number_snapshot === $plan->snapshot['source']['barcode'])
+            && $finding->source_state === $plan->snapshot['source']['physical_state']
+            && $finding->barcode_scanned === $plan->snapshot['source']['barcode']
+            && ($return ? $finding->manifest_parcel_id === null && $finding->buyer_return_manifest_parcel_id === $plan->snapshot['source']['member_id']
+                : $finding->buyer_return_manifest_parcel_id === null && $finding->manifest_parcel_id === $plan->snapshot['source']['member_id'])
+            && User::whereKey($finding->actor_id)->value('role') === 'logistics'
+            && $finding->custody_after === ['kind' => 'loss_quarantine', 'hub_id' => $finding->hub_id, 'user_id' => $finding->actor_id, 'finding_reference' => $finding->reference]
+            && str_starts_with($finding->proof_path, 'shipment-loss-findings/') && ! str_contains($finding->proof_path, '..')
+            && $finding->proof_bytes > 0 && $finding->proof_bytes <= 5242880 && Storage::disk('local')->exists($finding->proof_path)
+            && Storage::disk('local')->size($finding->proof_path) === $finding->proof_bytes
+            && hash_equals($finding->proof_hash, hash_file('sha256', Storage::disk('local')->path($finding->proof_path)))
+            && $plan->events()->where('event_type', 'loss-found-quarantined')->where('actor_id', $finding->actor_id)
+                ->where('sequence', $finding->financial_version + 1)->where('amount_cents', 0)->whereNull('wallet_transaction_id')
+                ->where('request_token_hash', $finding->request_token_hash)->where('request_fingerprint', $finding->request_fingerprint)
+                ->where('context->finding_reference', $finding->reference)->exists(), 409,
+            'Retain the original independently reviewed loss and the actual privately evidenced found-parcel quarantine.');
+        $expected = $finding->source_state;
+        if ($return) {
+            $parcel = BuyerReturnParcel::where('buyer_return_case_id', $plan->buyer_return_case_id)->firstOrFail();
+            abort_unless($parcel->state() === [...$expected, 'current_hub_id' => $finding->hub_id, 'custody' => $finding->custody_after,
+                'version' => $expected['version'] + 1], 409, 'Retain this exact original return in its evidenced quarantine without route or receipt changes.');
+        } else {
+            $parcel = Delivery::findOrFail($plan->delivery_id);
+            $checkpoint = $parcel->checkpoints()->whereNull('source_checkpoint_id')->whereNotNull('custody_after')->latest('id')->first();
+            unset($expected['custody'], $expected['checkpoint_id']);
+            abort_unless(DeliveryCheckpoint::state($parcel) === [...$expected, 'current_hub_id' => $finding->hub_id]
+                && $checkpoint?->checkpoint_type === 'loss_found_quarantine' && $checkpoint->scanned_by_id === $finding->actor_id
+                && $checkpoint->hub_id === $finding->hub_id && $checkpoint->manifest_number === $plan->snapshot['source']['manifest_reference']
+                && $checkpoint->barcode_scanned === $finding->barcode_scanned && $checkpoint->custody_after === $finding->custody_after, 409,
+                'Retain this original parcel’s actual quarantine checkpoint without a fabricated receipt or route advance.');
+        }
+
+        return $finding;
     }
 
     public function assertRetained(ShipmentFinancialPlan $original): ?ShipmentLossDisposition

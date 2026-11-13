@@ -154,6 +154,17 @@ without paying again or releasing the parcel. Independent reconciliation must
 retain the original compensation and actual source journals before onward
 physical release. Ordinary recovery completion cannot supply that authority.
 
+The original company owner may voluntarily return an original reviewed
+demonstration grant's actual unused credits after an evidenced finding.
+Return only that grant's unused position to its original issuance account;
+an actual contribution consumes only earlier grants of the same authority.
+Retain the independent approval, exact finding and balanced return journal.
+Another case's grants and credits already contributed to a reserve cannot
+be returned through this action. This returns unused issuance, not company
+liability or an advance, and does not reverse paid compensation or authorize
+physical release. Restoring contributed reserve sources and independently
+reconciling the complete found outcome remain separate requirements.
+
 After physical pickup, a buyer's refusal of a conforming shipment keeps
 outbound shipping spent. An evidenced approved reverse fee belongs to the
 buyer only when actual return transport supports it. A prepaid merchandise
