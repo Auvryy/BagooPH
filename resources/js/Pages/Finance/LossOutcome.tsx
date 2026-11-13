@@ -3,6 +3,7 @@ import { ArrowLeft, FileCheck2, FileText, ShieldCheck } from 'lucide-react';
 import ReturnLayout from '@/Components/Returns/ReturnLayout';
 import { financeMoney } from '@/utils/finance';
 import { lossStatuses } from '@/Components/Finance/lossStatuses';
+import LossControls, { LossControlState } from '@/Components/Finance/LossControls';
 
 export interface LossOutcomeProps {
     loss: {
@@ -17,6 +18,7 @@ export interface LossOutcomeProps {
         review_reason: string | null;
         review_proof_url: string | null;
         source: { observation_reference: string; manifest_reference: string; barcode: string } | null;
+        controls?: LossControlState;
         history: { id: number; reference: string; event_type: string; created_at: string; amount_cents: number;
             reason: string | null; cash_reference: string | null; proof_url: string | null }[];
     };
@@ -58,6 +60,7 @@ export default function LossOutcome({ loss }: LossOutcomeProps) {
                 {loss.review_reason && <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">{loss.review_reason}</p>}
                 {loss.review_proof_url && <a href={loss.review_proof_url} className={secondary}><FileText className="h-4 w-4" />Private investigation evidence</a>}
             </section>}
+            {loss.controls && <LossControls planId={loss.id} value={loss.controls} summaryLabels={Object.keys(loss.amounts)} />}
             <section aria-labelledby="loss-history-title" className="overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm">
                 <h2 id="loss-history-title" className="border-b border-slate-300 p-5 font-bold text-slate-900">Financial history</h2>
                 <ol className="divide-y divide-slate-200">{loss.history.map(event => <li key={event.id} className="space-y-3 p-5">

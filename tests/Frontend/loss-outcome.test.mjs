@@ -64,3 +64,12 @@ test('loss queue has a concrete admin missing-source entry and keeps seller prot
     assert.match(seller, /Separate seller protection/); assert.match(seller, /180\.00/);
     assert.doesNotMatch(seller, /Buyer refund|Missing observations awaiting loss review|Company funding outstanding/);
 });
+
+test('connected outcome shows each reviewed debt once and keeps available backing distinct', async () => {
+    const html = await render({ ...loss, amounts: { 'Company funding outstanding': 10000, 'Advance outstanding': 5000 },
+        controls: { version: 1, actions: [], receivers: [], hold_message: null, credits: null, disposition: null,
+            funding: { 'Company funding outstanding': 10000, 'Advance outstanding': 5000, 'Available backing': 5000 } } }, 'admin');
+    assert.equal((html.match(/Company funding outstanding/g) ?? []).length, 1);
+    assert.equal((html.match(/Advance outstanding/g) ?? []).length, 1);
+    assert.match(html, /Available backing/);
+});
