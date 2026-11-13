@@ -46,8 +46,8 @@ class WalletViewService
         $verified = app(WalletPaymentService::class)->paid($order, allowRefunded: true);
         $last = $payment->attempts()->latest('id')->first();
         $balance = app(WalletLedger::class)->balance($buyer);
-        $refunds = WalletTransaction::where('order_id', $order->id)->whereIn('kind', ['wallet_return_refund', 'wallet_delivery_refund', 'wallet_cancellation_refund', 'wallet_refusal_refund']);
-        $refundReferences = (clone $refunds)->where(fn ($query) => $query->where('kind', '!=', 'wallet_refusal_refund')->orWhere('amount_cents', '>', 0));
+        $refunds = WalletTransaction::where('order_id', $order->id)->whereIn('kind', ['wallet_return_refund', 'wallet_delivery_refund', 'wallet_cancellation_refund', 'wallet_refusal_refund', 'wallet_loss_refund']);
+        $refundReferences = (clone $refunds)->where(fn ($query) => $query->whereNotIn('kind', ['wallet_refusal_refund', 'wallet_loss_refund'])->orWhere('amount_cents', '>', 0));
         $shipmentPlan = Schema::hasTable('shipment_financial_plans') ? ShipmentFinancialPlan::where('order_id', $order->id)->where('kind', 'buyer_refusal')->value('id') : null;
 
         return ['id' => $payment->id, 'reference' => $payment->reference, 'status' => $payment->status,

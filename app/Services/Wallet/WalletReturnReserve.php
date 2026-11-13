@@ -225,7 +225,7 @@ class WalletReturnReserve
             && $state['liability_due_cents'] <= $state['liable_received_cents'] + $state['advance_outstanding_cents']
             && $state['balance_cents'] >= $state['refund_goal_cents'], 409,
             'Reserve the actual original source and liable-party or approved demonstration funding before refunding.');
-        $already = (int) WalletTransaction::where('order_id', $case->order_id)->whereIn('kind', ['wallet_return_refund', 'wallet_delivery_refund', 'wallet_cancellation_refund', 'wallet_refusal_refund'])->sum('amount_cents');
+        $already = (int) WalletTransaction::where('order_id', $case->order_id)->whereIn('kind', ['wallet_return_refund', 'wallet_delivery_refund', 'wallet_cancellation_refund', 'wallet_refusal_refund', 'wallet_loss_refund'])->sum('amount_cents');
         abort_unless($already + $state['buyer_refund_cents'] <= $case->order->walletPayment->amount_cents, 409, 'Actual virtual buyer refunds cannot exceed the original buyer payment.');
         $deltas = [];
         if ($state['refund_goal_cents'] > 0) {
