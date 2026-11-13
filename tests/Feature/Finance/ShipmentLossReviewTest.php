@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Finance;
 
+use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\ShipmentFinancialEvent;
@@ -164,7 +165,7 @@ class ShipmentLossReviewTest extends TestCase
         $this->assertSame($plan->order_id, $plan->fresh()->active_order_id);
     }
 
-    public function test_later_actual_receipt_invalidates_the_missing_source_while_exact_approval_retry_retains_its_original_history(): void
+    public function test_a_later_actual_finding_requires_quarantine_without_receipt_while_exact_approval_retry_retains_its_original_history(): void
     {
         [$source, $admin, $order] = $this->missing();
         $review = app(ShipmentLossReview::class);
@@ -175,15 +176,44 @@ class ShipmentLossReviewTest extends TestCase
         $receiver = $this->flowHandler(LogisticsHub::findOrFail($manifest->destination_hub_id));
         $this->openFlowMotherBags($manifest, $receiver);
         $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest,
-            ['barcode' => $order->delivery->tracking_number, 'notes' => 'The expected original parcel was found and actually received.']))->assertOk();
+            ['barcode' => $order->delivery->tracking_number, 'notes' => 'An approved loss must not bypass independent found-parcel quarantine.']))->assertConflict();
+        $transactions = WalletTransaction::count();
+        $finding = $this->quarantineMissing($plan);
+        $this->assertSame($finding->custody_after, DeliveryCheckpoint::lastCustody($order->delivery->fresh()));
+        $this->assertNull($source->parcel->fresh()->received_at);
+        $this->assertFalse($manifest->events()->where('event_type', 'parcel_received')->exists());
+        $this->assertSame($transactions, WalletTransaction::count());
         $this->assertSame($plan->id, $review->approve($admin, $source, $input, $proof)->id);
         try {
             app(ShipmentLossSource::class)->snapshot($source, 18000);
-            $this->fail('A later actual receipt cannot be described as an unresolved original transit loss.');
+            $this->fail('A later actual finding cannot still be described as unchanged missing transit custody.');
         } catch (HttpException $error) {
             $this->assertSame(409, $error->getStatusCode());
         }
         $this->assertDatabaseCount('shipment_financial_plans', 1);
-        $this->assertDatabaseCount('shipment_financial_events', 1);
+        $this->assertDatabaseCount('shipment_financial_events', 2);
+    }
+
+    public function test_an_actual_receipt_before_loss_approval_rejects_the_stale_missing_source_without_creating_financial_authority(): void
+    {
+        [$source, $admin, $order] = $this->missing();
+        $review = app(ShipmentLossReview::class);
+        $input = $this->approval($source, $admin);
+        $manifest = $source->manifest->fresh();
+        $receiver = $this->flowHandler($manifest->destinationHub);
+        $this->openFlowMotherBags($manifest, $receiver);
+        $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest,
+            ['barcode' => $order->delivery->tracking_number, 'notes' => 'Actual receipt is recorded before an independent loss authority exists.']))->assertOk();
+        $this->assertNotNull($source->parcel->fresh()->received_at);
+        $transactions = WalletTransaction::count();
+        try {
+            $review->approve($admin, $source, $input, UploadedFile::fake()->image('stale-original-missing-investigation.png'));
+            $this->fail('The actual received original parcel cannot retain a stale missing-loss authority.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $this->assertDatabaseCount('shipment_financial_plans', 0);
+        $this->assertDatabaseCount('shipment_financial_events', 0);
+        $this->assertSame($transactions, WalletTransaction::count());
     }
 }
