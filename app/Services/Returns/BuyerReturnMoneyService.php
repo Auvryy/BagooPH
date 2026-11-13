@@ -11,6 +11,7 @@ use App\Models\CodAccount;
 use App\Models\Delivery;
 use App\Models\Order;
 use App\Models\SellerSettlement;
+use App\Models\ShipmentFinancialEvent;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
@@ -24,6 +25,7 @@ use App\Services\Wallet\WalletReturnMoneyService;
 use App\Services\Wallet\WalletSuccessorReturnMoneyService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Throwable;
@@ -244,7 +246,9 @@ class BuyerReturnMoneyService
                         abort_unless($amount > 0 && $amount + $prior <= CodMoney::cents($order->total_amount) + CodMoney::cents($order->voucher_discount), 422,
                             'Record positive actual funding within this original order’s total obligations.');
                     }
-                    abort_if(BuyerReturnMoneyEvent::where('cash_reference', $data['cash_reference'])->exists(), 409, 'That cash reference is already recorded. Use the actual distinct transfer reference.');
+                    abort_if(BuyerReturnMoneyEvent::where('cash_reference', $data['cash_reference'])->exists()
+                        || (Schema::hasTable('shipment_financial_events') && ShipmentFinancialEvent::where('cash_reference', $data['cash_reference'])->exists()), 409,
+                        'That cash reference is already recorded. Use the actual distinct transfer reference.');
                 } elseif ($receipt) {
                     $expected = $action === 'receive-recovery' ? 'offer-recovery' : 'offer-funding';
                     abort_unless($source->event_type === $expected && $source->actor_id !== $actor->id && $source->recipient_id === $actor->id
@@ -262,7 +266,8 @@ class BuyerReturnMoneyService
                     abort_unless($backing['verified'] && $backing['available_cents'] >= $amount && $amount > 0, 409,
                         'Repayment needs reconciled original COD and enough actual received money after protecting shipping and remaining seller proceeds. Offers and debts do not count as received cash.');
                     abort_if(BuyerReturnMoneyEvent::where('repayment_case_id', $case->id)->exists()
-                        || BuyerReturnMoneyEvent::where('cash_reference', $data['cash_reference'])->exists(), 409,
+                        || BuyerReturnMoneyEvent::where('cash_reference', $data['cash_reference'])->exists()
+                        || (Schema::hasTable('shipment_financial_events') && ShipmentFinancialEvent::where('cash_reference', $data['cash_reference'])->exists()), 409,
                         'This repayment or cash reference is already recorded. Review its original evidence instead of paying again.');
                     $context = ['backing' => $backing, 'adjustment_id' => $adjustment->id, 'original_buyer_id' => $case->buyer_id];
                 } elseif ($action === 'close-zero-return') {

@@ -28,12 +28,13 @@ use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
+use Tests\Feature\Finance\Support\CreatesShipmentCashReferences;
 use Tests\Feature\Returns\Support\CreatesBuyerReturns;
 use Tests\TestCase;
 
 class BuyerReturnMoneyTest extends TestCase
 {
-    use AssertsDeliveryCheckpoints, CreatesBuyerReturns, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
+    use AssertsDeliveryCheckpoints, CreatesBuyerReturns, CreatesE2EOrders, CreatesShipmentCashReferences, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
     private string $reviewToken = '';
 
@@ -135,6 +136,42 @@ class BuyerReturnMoneyTest extends TestCase
         $response->assertRedirect('/buyer-returns/'.$case->id)->assertSessionHasNoErrors();
 
         return BuyerReturnMoneyEvent::where('buyer_return_case_id', $case->id)->latest('sequence')->firstOrFail();
+    }
+
+    public function test_historical_return_cash_cannot_reuse_retained_shipment_transfers_and_exact_retries_keep_their_original_events(): void
+    {
+        [$case, $admin] = $this->received(paid: true);
+        $this->money($admin, $case, 'approve-repayment');
+        [$shipment, $shipmentOffer, $shipmentAdmin] = $this->shipmentCashReference('  shared-actual-shipping-transfer  ');
+        $this->assertSame('SHARED-ACTUAL-SHIPPING-TRANSFER', $shipmentOffer->cash_reference);
+        $service = app(BuyerReturnMoneyService::class);
+        $seller = $case->order->shop->user;
+        $adjustment = BuyerReturnAdjustment::where('buyer_return_case_id', $case->id)->sole();
+        $input = $this->payload($case, 'offer-recovery', ['amount' => SellerSettlementService::pesos($adjustment->recovery_due_cents),
+            'recipient_id' => $admin->id, 'cash_reference' => ' shared-actual-shipping-transfer ']);
+        $proof = $input['proof'];
+        unset($input['proof']);
+        $version = $case->fresh()->version;
+        $this->assertCashReferenceConflict(fn () => $service->command($seller, $case, 'offer-recovery', $input, $proof));
+        $this->assertSame($version, $case->fresh()->version);
+        $input['cash_reference'] = 'HISTORICAL-SELLER-RECOVERY';
+        $offer = $service->command($seller, $case, 'offer-recovery', $input, $proof);
+        $this->assertSame($offer->id, $service->command($seller, $case, 'offer-recovery', $input, $proof)->id);
+        $this->assertShipmentRejectsReturnCashReference($shipment, $shipmentAdmin, ' historical-seller-recovery ');
+        $this->money($admin, $case, 'receive-recovery', ['source_event_id' => $offer->id]);
+
+        $repayment = $this->payload($case, 'record-repayment', ['cash_reference' => ' shared-actual-shipping-transfer ']);
+        $proof = $repayment['proof'];
+        unset($repayment['proof']);
+        $version = $case->fresh()->version;
+        $this->assertCashReferenceConflict(fn () => $service->command($admin, $case, 'record-repayment', $repayment, $proof));
+        $this->assertSame($version, $case->fresh()->version);
+        $this->assertSame(0, BuyerReturnMoneyEvent::where('buyer_return_case_id', $case->id)->where('event_type', 'record-repayment')->count());
+        $repayment['cash_reference'] = 'HISTORICAL-BUYER-REPAYMENT';
+        $payment = $service->command($admin, $case, 'record-repayment', $repayment, $proof);
+        $this->assertSame($payment->id, $service->command($admin, $case, 'record-repayment', $repayment, $proof)->id);
+        $this->assertShipmentRejectsReturnCashReference($shipment, $shipmentAdmin, ' historical-buyer-repayment ');
+        $this->assertSame(1, BuyerReturnMoneyEvent::where('buyer_return_case_id', $case->id)->where('event_type', 'record-repayment')->count());
     }
 
     public function test_a_complete_return_repays_original_buyer_once_and_closes_zero_proceeds_without_a_cash_transfer(): void

@@ -38,15 +38,17 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
 use Tests\Feature\E2E\Support\CreatesE2EOrders;
 use Tests\Feature\E2E\Support\InteractsWithOrderActions;
 use Tests\Feature\E2E\Support\InteractsWithRoles;
+use Tests\Feature\Finance\Support\CreatesShipmentCashReferences;
 use Tests\Feature\Returns\Support\CreatesBuyerReturns;
 use Tests\TestCase;
 
 class BuyerReturnRefundPlanTest extends TestCase
 {
-    use CreatesBuyerReturns, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
+    use AssertsDeliveryCheckpoints, CreatesBuyerReturns, CreatesE2EOrders, CreatesShipmentCashReferences, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
     private int $contractVersion = 2;
 
@@ -395,6 +397,38 @@ class BuyerReturnRefundPlanTest extends TestCase
         $service->command($admin, $case, 'approve-repayment', $this->cashInput($case, ['review_token' => $preview['review_token']]));
 
         return [$case, $admin, $service, BuyerReturnRepaymentPlan::where('buyer_return_case_id', $case->id)->sole()];
+    }
+
+    public function test_successor_cash_cannot_reuse_retained_shipment_transfers_and_exact_retries_keep_their_original_events(): void
+    {
+        [$case, $admin, $service, $plan] = $this->approvedCash();
+        [$shipment, $shipmentOffer, $shipmentAdmin] = $this->shipmentCashReference('  shared-successor-shipping-transfer  ');
+        $this->assertSame('SHARED-SUCCESSOR-SHIPPING-TRANSFER', $shipmentOffer->cash_reference);
+        $company = LogisticsCompany::findOrFail($case->parcel->logistics_company_id)->user;
+        $input = $this->cashInput($case, ['amount' => SellerSettlementService::pesos($plan->snapshot['buyer_refund_cents']),
+            'recipient_id' => $admin->id, 'cash_reference' => ' shared-successor-shipping-transfer ', 'payment_confirmed' => true]);
+        $proof = UploadedFile::fake()->image('company-compensation.png');
+        $version = $case->fresh()->version;
+        $this->assertCashReferenceConflict(fn () => $service->command($company, $case, 'offer-compensation', $input, $proof));
+        $this->assertSame($version, $case->fresh()->version);
+        $input['cash_reference'] = 'SUCCESSOR-COMPANY-COMPENSATION';
+        $offer = $service->command($company, $case, 'offer-compensation', $input, $proof);
+        $this->assertSame($offer->id, $service->command($company, $case, 'offer-compensation', $input, $proof)->id);
+        $this->assertShipmentRejectsReturnCashReference($shipment, $shipmentAdmin, ' successor-company-compensation ');
+        $service->command($admin, $case, 'receive-compensation', $this->cashInput($case, ['source_event_id' => $offer->id, 'payment_confirmed' => true]),
+            UploadedFile::fake()->image('company-receipt.png'));
+
+        $repayment = $this->cashInput($case, ['cash_reference' => ' shared-successor-shipping-transfer ', 'payment_confirmed' => true]);
+        $proof = UploadedFile::fake()->image('buyer-refund.png');
+        $version = $case->fresh()->version;
+        $this->assertCashReferenceConflict(fn () => $service->command($admin, $case, 'record-repayment', $repayment, $proof));
+        $this->assertSame($version, $case->fresh()->version);
+        $this->assertSame(0, BuyerReturnMoneyEvent::where('buyer_return_case_id', $case->id)->where('event_type', 'record-repayment')->count());
+        $repayment['cash_reference'] = 'SUCCESSOR-BUYER-REPAYMENT';
+        $payment = $service->command($admin, $case, 'record-repayment', $repayment, $proof);
+        $this->assertSame($payment->id, $service->command($admin, $case, 'record-repayment', $repayment, $proof)->id);
+        $this->assertShipmentRejectsReturnCashReference($shipment, $shipmentAdmin, ' successor-buyer-repayment ');
+        $this->assertSame(1, BuyerReturnMoneyEvent::where('buyer_return_case_id', $case->id)->where('event_type', 'record-repayment')->count());
     }
 
     public function test_actual_platform_advance_can_fund_the_refund_while_original_company_debt_remains_until_received(): void

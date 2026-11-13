@@ -11,6 +11,7 @@ use App\Models\Delivery;
 use App\Models\LogisticsCompany;
 use App\Models\Order;
 use App\Models\SellerSettlement;
+use App\Models\ShipmentFinancialEvent;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
@@ -231,7 +232,9 @@ class BuyerReturnCashExecution
                             - BuyerReturnMoneyEvent::where('order_id', $order->id)->where('event_type', 'offer-funding')->sum('amount_cents'),
                     };
                     abort_unless($amount > 0 && $amount <= $maximum, 422, 'Offer only a positive actual transfer within its remaining original obligation.');
-                    abort_if(BuyerReturnMoneyEvent::where('cash_reference', $data['cash_reference'])->exists(), 409, 'Retain the original unique actual transfer reference.');
+                    abort_if(BuyerReturnMoneyEvent::where('cash_reference', $data['cash_reference'])->exists()
+                        || (Schema::hasTable('shipment_financial_events') && ShipmentFinancialEvent::where('cash_reference', $data['cash_reference'])->exists()), 409,
+                        'Retain the original unique actual transfer reference.');
                     if ($action === 'offer-compensation') {
                         $context['source_company_id'] = $plan['liable_company_id'];
                     }
@@ -255,7 +258,9 @@ class BuyerReturnCashExecution
                         && $funding['received_backing_cents'] >= $funding['required_backing_cents'], 409,
                         'Reconcile original COD and confirm actual liable-party or advance backing while protecting seller proceeds and earned shipping. Offers and debts are not money received.');
                     abort_if(BuyerReturnMoneyEvent::where('repayment_case_id', $case->id)->exists()
-                        || BuyerReturnMoneyEvent::where('cash_reference', $data['cash_reference'])->exists(), 409, 'Retain the original repayment; do not pay or reuse a transfer reference twice.');
+                        || BuyerReturnMoneyEvent::where('cash_reference', $data['cash_reference'])->exists()
+                        || (Schema::hasTable('shipment_financial_events') && ShipmentFinancialEvent::where('cash_reference', $data['cash_reference'])->exists()), 409,
+                        'Retain the original repayment; do not pay or reuse a transfer reference twice.');
                     $context += ['backing' => $backing, 'funding' => $funding, 'original_buyer_id' => $case->buyer_id];
                 } elseif ($action === 'close-zero-return') {
                     abort_unless($plan['buyer_refund_cents'] === 0, 409, 'Only a genuinely zero buyer repayment can close without an actual transfer.');
