@@ -15,6 +15,7 @@ interface CreditRequest {
 export interface LossControlState {
     version: number; actions: LossAction[]; receivers: { id: number; name: string }[]; hold_message: string | null;
     funding: Record<string, number> | null; disposition: { reference: string; proof_url: string } | null;
+    finding?: { reference: string; proof_url: string } | null;
     credits: { maximum_cents: number; wallet_balance_cents: number | null; available_for_authority_cents?: number | null; requests: CreditRequest[] } | null;
 }
 const field = 'mt-2 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 focus:border-[#E00D42] focus:ring-[#E00D42]';
@@ -152,6 +153,7 @@ function CreditRequestForm({ planId, version, maximum }: { planId: number; versi
 
 export default function LossControls({ planId, value, summaryLabels = [] }: { planId: number; value: LossControlState; summaryLabels?: string[] }) {
     return <>
+        {value.finding && <section className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-5"><h2 className="font-bold text-amber-950">Found parcel awaiting reconciliation</h2><a href={value.finding.proof_url} className={secondary}><FileText className="h-4 w-4" />Private finding evidence</a></section>}
         {value.hold_message && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{value.hold_message}</p>}
         <ActionForm key={planId} planId={planId} value={value} />
         {value.funding && <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm"><h2 className="flex items-center gap-2 font-bold text-slate-900"><Wallet className="h-5 w-5 text-[#E00D42]" />Original funding</h2><dl className="mt-4 grid gap-4 sm:grid-cols-3">{Object.entries(value.funding).filter(([label]) => !summaryLabels.includes(label)).map(([label, amount]) => <div key={label}><dt className="text-xs text-slate-600">{label}</dt><dd className="mt-1 font-bold text-slate-900">{financeMoney(amount)}</dd></div>)}</dl></section>}

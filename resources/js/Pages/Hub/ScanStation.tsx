@@ -651,7 +651,7 @@ export default function ScanStation({
                             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                             <div className="text-xs font-sans leading-relaxed">
                                 <span className="font-bold">Scan Routing Error:</span> {scanError}
-                                {recoveryUrl && <Link href={recoveryUrl} className="mt-2 block font-semibold underline underline-offset-4 text-red-700 hover:text-red-900">Open Parcel recovery</Link>}
+                                {recoveryUrl && <Link href={recoveryUrl} className="mt-2 block font-semibold underline underline-offset-4 text-red-700 hover:text-red-900">Open parcel review</Link>}
                                 {sessionExpired && <button type="button" onClick={() => window.location.reload()}
                                     className="mt-2 block rounded-xl border border-red-300 bg-white px-3 py-1.5 font-semibold text-red-800 shadow-xs hover:bg-red-50 transition cursor-pointer">Reload scanner</button>}
                             </div>
