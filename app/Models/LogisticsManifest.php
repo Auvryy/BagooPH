@@ -26,6 +26,20 @@ class LogisticsManifest extends Model
             $query->orWhereExists(fn ($held) => $held->selectRaw('1')->from('mother_bags as original_bag')
                 ->whereColumn('original_bag.manifest_id', 'logistics_manifests.id')->whereNotNull('original_bag.dispatched_at')
                 ->whereNotIn('original_bag.status', ['received', 'emptied_at_source']));
+            if (Schema::hasTable('shipment_loss_accounting_manifests')) {
+                $query->orWhere(fn ($held) => $held->whereExists(fn ($loss) => $loss->selectRaw('1')->from('shipment_loss_accounting_manifests as loss_transport')
+                    ->whereColumn('loss_transport.manifest_id', 'logistics_manifests.id')->whereIn('loss_transport.relation_kind', ['source', 'original']))
+                    ->whereNotExists(fn ($bag) => $bag->selectRaw('1')->from('mother_bags as arrived_loss_bag')
+                        ->whereColumn('arrived_loss_bag.manifest_id', 'logistics_manifests.id')->whereNotNull('arrived_loss_bag.opened_at'))
+                    ->whereNotExists(fn ($bag) => $bag->selectRaw('1')->from('mother_bag_return_parcels as arrived_loss_return_member')
+                        ->join('buyer_return_manifest_parcels as arrived_loss_expected_return', 'arrived_loss_expected_return.id', '=', 'arrived_loss_return_member.buyer_return_manifest_parcel_id')
+                        ->join('mother_bags as arrived_loss_return_bag', 'arrived_loss_return_bag.id', '=', 'arrived_loss_return_member.mother_bag_id')
+                        ->whereColumn('arrived_loss_expected_return.manifest_id', 'logistics_manifests.id')->whereNotNull('arrived_loss_return_bag.opened_at'))
+                    ->whereNotExists(fn ($receipt) => $receipt->selectRaw('1')->from('logistics_manifest_events as loss_arrival')
+                        ->whereColumn('loss_arrival.manifest_id', 'logistics_manifests.id')->where(fn ($actual) => $actual
+                        ->where(fn ($forward) => $forward->where('loss_arrival.event_type', 'parcel_received')->whereNull('loss_arrival.payload->parcel_recovery_reference'))
+                        ->orWhere(fn ($reverse) => $reverse->where('loss_arrival.event_type', 'buyer-return-received')->whereNull('loss_arrival.payload->recovery_scan_id')))));
+            }
             if (Schema::hasColumn('mother_bags', 'return_trip_id')) {
                 $query->orWhereExists(fn ($held) => $held->selectRaw('1')->from('logistics_trip_manifests as tm')
                     ->join('logistics_transport_trips as t', 't.id', '=', 'tm.trip_id')

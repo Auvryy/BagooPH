@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossAccountingService;
 use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
@@ -255,11 +256,17 @@ class BuyerReturnManifestService
                     $payload += ['return_member_id' => $member->id, 'condition' => $condition];
                     break;
                 case 'close':
-                    $this->status($manifest, 'received');
-                    if (! $member?->received_at || $this->manifests->openDiscrepancies($manifest)->isNotEmpty()) {
+                    $accountedLosses = app(ShipmentLossAccountingService::class)->members($manifest);
+                    if ($accountedLosses->isEmpty() || $manifest->status !== 'dispatched') {
+                        $this->status($manifest, 'received');
+                    }
+                    if ((! $member?->received_at && ! $accountedLosses->has($member?->id)) || $this->manifests->openDiscrepancies($manifest)->isNotEmpty()) {
                         throw new DomainException('Record the actual expected receipt and resolve any discrepancy before closing.');
                     }
                     $manifest->fill(['status' => 'closed', 'closed_at' => now()]);
+                    if ($accountedLosses->isNotEmpty()) {
+                        $payload['accounting_references'] = $accountedLosses->map->reference->unique()->values()->all();
+                    }
                     break;
                 case 'report-discrepancy':
                     if (! in_array($manifest->status, ['dispatched', 'received'], true)) {
@@ -322,7 +329,8 @@ class BuyerReturnManifestService
                     hash('sha256', 'buyer-return-manifest:'.$manifest->id.':'.$data['request_token']), $fingerprint,
                     ['manifest_scan_reference' => $scan->reference, 'barcode' => $parcel->barcode, 'source_state' => $parcelBefore, 'target_state' => $parcel->state()]);
             }
-            $event = $this->record($manifest, $actor, $action, $before, $manifest->state(), $payload + ['custody_scan_reference' => $scan?->reference], $data,
+            $eventType = isset($payload['accounting_references']) ? 'close-loss-accounting' : $action;
+            $event = $this->record($manifest, $actor, $eventType, $before, $manifest->state(), $payload + ['custody_scan_reference' => $scan?->reference], $data,
                 $data['barcode'] ?? null, $hubId);
 
             return ['manifest' => $manifest, 'event' => $event];

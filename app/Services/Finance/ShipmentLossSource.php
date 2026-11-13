@@ -33,10 +33,9 @@ class ShipmentLossSource
             'This parcel was found and quarantined. Independently reconcile its original funding and paid compensation before continuing.');
     }
 
-    public function assertApproved(ShipmentFinancialPlan $original): void
+    public function assertRetained(ShipmentFinancialPlan $original): ?ShipmentLossDisposition
     {
         $plan = ShipmentFinancialPlan::findOrFail($original->id);
-        $this->assertNotFound($plan);
         $return = $plan->buyer_return_case_id !== null;
         abort_unless($plan->kind === 'transit_loss'
             && ($return ? $plan->active_return_case_id === $plan->buyer_return_case_id && $plan->active_order_id === null
@@ -52,6 +51,7 @@ class ShipmentLossSource
             && Storage::disk('local')->size($plan->proof_path) === $plan->proof_bytes
             && hash_equals($plan->proof_hash, hash_file('sha256', Storage::disk('local')->path($plan->proof_path))), 409,
             'Retain the original independently reviewed private investigation evidence before continuing the loss authority.');
+        $disposition = null;
         if (Schema::hasTable('shipment_loss_dispositions') && ($disposition = ShipmentLossDisposition::where('shipment_financial_plan_id', $plan->id)->first())) {
             abort_unless($disposition->state === 'confirmed_lost' && $disposition->order_id === $plan->order_id
                 && $disposition->delivery_id === $plan->delivery_id && $disposition->buyer_return_case_id === $plan->buyer_return_case_id
@@ -70,21 +70,29 @@ class ShipmentLossSource
                 && hash_equals($disposition->proof_hash, hash_file('sha256', Storage::disk('local')->path($disposition->proof_path))), 409,
                 'Retain the exact original loss disposition, its typed identity, approved financial basis and private evidence.');
         }
-        // A disposition is not a receipt or arrival. Until explicit operational closure is supported,
-        // its retained source must still match the actual missing custody and original money terms.
+
+        return $disposition;
+    }
+
+    public function assertApproved(ShipmentFinancialPlan $original): void
+    {
+        $plan = ShipmentFinancialPlan::findOrFail($original->id);
+        $this->assertNotFound($plan);
+        $this->assertRetained($plan);
         $snapshot = $this->snapshot(LogisticsManifestEvent::findOrFail($plan->loss_observation_id), $plan->snapshot['seller_protection_cents'], $plan);
         $snapshot['investigation_reference'] = $plan->snapshot['investigation_reference'];
         abort_unless($snapshot === $plan->snapshot, 409,
             'The original missing custody, payment or approved loss basis changed. Reconcile the original review before continuing.');
     }
 
-    public function context(LogisticsManifestEvent $original): array
+    public function context(LogisticsManifestEvent $original, ?ShipmentFinancialPlan $authority = null): array
     {
         $observation = $original->fresh(['manifest', 'parcel.delivery']);
         $manifest = $observation->manifest;
         abort_unless($observation->event_type === 'report-discrepancy' && ($observation->payload['kind'] ?? null) === 'missing'
             && $observation->barcode_scanned === null && $manifest && $manifest->dispatched_at
-            && $manifest->status === 'dispatched' && $observation->hub_id === $manifest->destination_hub_id
+            && ($manifest->status === 'dispatched' || $manifest->status === 'closed' && $authority
+                && app(ShipmentLossAccountingService::class)->sourceClosed($authority)) && $observation->hub_id === $manifest->destination_hub_id
             && $observation->actor_role === 'logistics' && $observation->actor_id
             && ! $manifest->events()->where('event_type', 'resolve-discrepancy')->where('payload->source_event_id', $observation->id)->exists(), 409,
             'A reviewed transit loss requires an unresolved original missing-parcel observation on actual departed transport.');
@@ -188,7 +196,7 @@ class ShipmentLossSource
 
     public function snapshot(LogisticsManifestEvent $original, int $protection, ?ShipmentFinancialPlan $authority = null): array
     {
-        $context = $this->context($original);
+        $context = $this->context($original, $authority);
         ['observation' => $observation, 'manifest' => $manifest, 'order' => $order, 'case' => $case] = $context;
         $amounts = app(BuyerReturnAmounts::class);
         $settledCash = $authority && ! $case && $order->payment_method === 'cod'

@@ -11,6 +11,7 @@ use App\Models\LogisticsManifest;
 use App\Models\LogisticsTransportTrip;
 use App\Models\MotherBag;
 use App\Models\User;
+use App\Services\Finance\ShipmentLossAccountingService;
 use App\Services\Logistics\CargoHandlingService;
 use App\Services\Logistics\DispatchStagingService;
 use App\Services\Logistics\HandoverHoldService;
@@ -105,6 +106,7 @@ class LogisticsManifestController extends Controller
                 }
             }
             $discrepancies = $this->service->openDiscrepancies($selected);
+            $accountedLosses = app(ShipmentLossAccountingService::class)->members($selected);
             $readableRecoveryIds = app(ParcelRecoveryService::class)->observations($actor)
                 ->whereIn('id', $discrepancies->pluck('id'))->pluck('id')->all();
             $detail = $this->summary($selected) + [
@@ -119,13 +121,15 @@ class LogisticsManifestController extends Controller
                 'parcels' => $selected->direction === 'buyer_return' ? $selected->buyerReturnParcels()->with('parcel')->orderBy('id')->get()->map(fn ($member) => [
                     'id' => $member->id, 'tracking_number' => $member->barcode_snapshot, 'included' => $member->included,
                     'status' => $member->parcel->status, 'received_at' => $member->received_at?->toIso8601String(), 'receipt_condition' => $member->receipt_condition,
+                    'confirmed_lost' => $accountedLosses->has($member->id),
                     'corrective_receipt' => null, 'handover_hold' => false, 'handover_issue_url' => null,
-                ]) : $selected->parcels()->with('delivery.order')->orderBy('id')->get()->map(function ($parcel) use ($actor) {
+                ]) : $selected->parcels()->with('delivery.order')->orderBy('id')->get()->map(function ($parcel) use ($actor, $accountedLosses) {
                     $receipt = $this->service->correctiveForMember($parcel);
                     $hold = app(HandoverHoldService::class)->active($parcel->delivery);
 
                     return ['cargo_mode' => $parcel->cargo_mode, 'handling' => $parcel->handling_snapshot, 'id' => $parcel->id, 'tracking_number' => $parcel->tracking_number_snapshot, 'included' => $parcel->included,
                         'status' => $parcel->delivery->status, 'received_at' => $parcel->received_at?->toIso8601String(), 'receipt_condition' => $parcel->receipt_condition,
+                        'confirmed_lost' => $accountedLosses->has($parcel->id),
                         'corrective_receipt' => $receipt ? ['reference' => $receipt->reference, 'received_at' => $receipt->created_at->toIso8601String()] : null,
                         'handover_hold' => $hold !== null, 'handover_issue_url' => $hold && app(HandoverIssueService::class)->readable($actor)->whereKey($hold->id)->exists()
                             ? '/handover-issues/'.$hold->id : null];

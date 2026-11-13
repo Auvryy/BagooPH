@@ -120,6 +120,8 @@ class LogisticsTripService
                     $this->requireState(! MotherBag::where('manifest_id', $manifest->id)->whereNotNull('dispatched_at')
                         ->whereNotIn('status', ['received', 'emptied_at_source'])->exists(),
                         'Record the actual arrival and member accountability of each original bag before closing the trip.');
+                    $this->requireState(! LogisticsManifest::awaitingPhysicalReceipt()->whereKey($manifest->id)->exists(),
+                        'Account for the actual vehicle arrival separately; a confirmed parcel loss is not a transport receipt.');
                     $this->requireState(in_array($manifest->status, ['received', 'closed'], true)
                         && app(LogisticsManifestService::class)->receiptCounts($manifest)['outstanding'] === 0
                         && app(LogisticsManifestService::class)->openDiscrepancies($manifest)->isEmpty(),

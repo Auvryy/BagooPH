@@ -18,6 +18,7 @@ use App\Models\Order;
 use App\Models\ParcelRecoveryCase;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossAccountingService;
 use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Returns\BuyerReturnManifestService;
 use DomainException;
@@ -220,10 +221,18 @@ class LogisticsManifestService
                 throw new DomainException('Corrective receipts retain the original list and departure history. Resolve its remaining receipts and use reviewed closure.');
             }
             if (! in_array($action, ['report-discrepancy', 'correct-discrepancy', 'resolve-discrepancy'], true)) {
+                $accountedLosses = in_array($action, ['close', 'close-recovery'], true)
+                    ? app(ShipmentLossAccountingService::class)->members($manifest)->keys()->all() : [];
                 foreach ($deliveries as $parcel) {
                     if ($parcel->id === $candidate?->id || ($action !== 'receive'
                         && (in_array($parcel->id, $heldManifestIds, true) || $manifest->parcels()->where('delivery_id', $parcel->id)->where('included', true)->exists()))) {
-                        app(HandoverHoldService::class)->assertMovable($parcel);
+                        if ($manifest->parcels()->where('delivery_id', $parcel->id)->whereIn('id', $accountedLosses)->exists()) {
+                            if (app(HandoverHoldService::class)->active($parcel)) {
+                                throw new DomainException('Resolve the separate supervised handover hold before loss-accounting closure.');
+                            }
+                        } else {
+                            app(HandoverHoldService::class)->assertMovable($parcel);
+                        }
                     }
                 }
             }
@@ -500,8 +509,11 @@ class LogisticsManifestService
                     break;
                 case 'close':
                 case 'close-recovery':
+                    $accountedLosses = app(ShipmentLossAccountingService::class)->members($manifest);
                     if ($action === 'close') {
-                        $this->requireStatus($manifest, 'received');
+                        if ($accountedLosses->isEmpty() || $manifest->status !== 'dispatched') {
+                            $this->requireStatus($manifest, 'received');
+                        }
                     } else {
                         $this->requireNotes($input);
                         if (! in_array($manifest->status, ['draft', 'sealed', 'dispatched', 'received'], true) || ! $manifest->correctiveReceipts()->exists()) {
@@ -512,6 +524,9 @@ class LogisticsManifestService
                         throw new DomainException('Resolve every recorded discrepancy with supporting evidence before closure.');
                     }
                     foreach ($manifest->parcels()->where('included', true)->get() as $member) {
+                        if ($accountedLosses->has($member->id)) {
+                            continue;
+                        }
                         if ($corrective = $this->correctiveForMember($member)) {
                             continue;
                         }
@@ -526,14 +541,20 @@ class LogisticsManifestService
                         throw new DomainException('Every corrective receipt must retain its actual authorization and custody evidence.');
                     }
                     $manifest->fill(['status' => 'closed', 'closed_at' => now()]);
+                    if ($accountedLosses->isNotEmpty()) {
+                        $payload['accounting_references'] = $accountedLosses->map->reference->unique()->values()->all();
+                    }
                     foreach ($manifest->parcels()->where('included', true)->get() as $member) {
-                        $member->update(['active_delivery_id' => null]);
+                        if (! $accountedLosses->has($member->id)) {
+                            $member->update(['active_delivery_id' => null]);
+                        }
                     }
                     break;
             }
             $manifest->version++;
             $manifest->save();
-            $record = $this->event($manifest, $actor, $action, $before, $manifest->state(), $payload, $parcel,
+            $eventType = isset($payload['accounting_references']) ? 'close-loss-accounting' : $action;
+            $record = $this->event($manifest, $actor, $eventType, $before, $manifest->state(), $payload, $parcel,
                 $input['barcode'] ?? null, $hubId, $input['notes'] ?? null, $input['request_token'], $fingerprint);
 
             return ['manifest' => $manifest, 'event' => $record];
@@ -622,11 +643,12 @@ class LogisticsManifestService
 
     public function receiptCounts(LogisticsManifest $manifest): array
     {
+        $lost = app(ShipmentLossAccountingService::class)->members($manifest)->count();
         if ($manifest->direction === 'buyer_return') {
             $members = $manifest->buyerReturnParcels()->where('included', true)->get();
 
             return ['expected' => $members->count(), 'normal_received' => $members->whereNotNull('received_at')->count(),
-                'corrective_expected_received' => 0, 'unlisted_received' => 0, 'outstanding' => $members->whereNull('received_at')->count()];
+                'corrective_expected_received' => 0, 'unlisted_received' => 0, 'confirmed_lost' => $lost, 'outstanding' => $members->whereNull('received_at')->count() - $lost];
         }
         $members = $manifest->parcels()->where('included', true)->get();
         $corrective = $manifest->correctiveReceipts()->get()->filter(fn ($receipt) => $receipt->supports());
@@ -635,7 +657,7 @@ class LogisticsManifestService
 
         return ['expected' => $members->count(), 'normal_received' => $normalIds->count(), 'corrective_expected_received' => $correctiveIds->count(),
             'unlisted_received' => $corrective->whereNull('manifest_parcel_id')->count(),
-            'outstanding' => $members->count() - $normalIds->count() - $correctiveIds->count()];
+            'confirmed_lost' => $lost, 'outstanding' => $members->count() - $normalIds->count() - $correctiveIds->count() - $lost];
     }
 
     private function expectedHub(Delivery $delivery, ?int $id, string $tier): int
@@ -713,9 +735,10 @@ class LogisticsManifestService
     public function openDiscrepancies(LogisticsManifest $manifest): Collection
     {
         $resolved = $manifest->events()->where('event_type', 'resolve-discrepancy')->get()->pluck('payload.source_event_id');
+        $accounted = app(ShipmentLossAccountingService::class)->observations($manifest);
 
         return $manifest->events()->where('event_type', 'report-discrepancy')->orderBy('id')->get()
-            ->reject(fn ($event) => $resolved->contains($event->id))->values();
+            ->reject(fn ($event) => $resolved->contains($event->id) || $accounted->contains($event->id))->values();
     }
 
     private function requireArriving(LogisticsManifest $manifest): void

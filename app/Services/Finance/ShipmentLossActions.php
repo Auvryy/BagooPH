@@ -32,7 +32,7 @@ class ShipmentLossActions
     {
         $wallet = $mode === 'wallet' && isset(self::WALLET[$action]);
         $cash = $mode === 'cod' && isset(self::CASH[$action]);
-        abort_unless($wallet || $cash || in_array($action, ['void-unfunded', 'record-disposition'], true), 404);
+        abort_unless($wallet || $cash || in_array($action, ['void-unfunded', 'record-disposition', 'account-loss'], true), 404);
         $offer = $cash && in_array($action, ['offer-company', 'offer-advance'], true);
         $source = $cash && (str_starts_with($action, 'receive-') || str_contains($action, '-receipt')
             || str_contains($action, '-nonreceipt') || $action === 'retire-advance');
@@ -40,12 +40,15 @@ class ShipmentLossActions
             || in_array($action, ['retire-advance', 'resolve-buyer-nonreceipt', 'resolve-seller-nonreceipt'], true));
         $confirmation = $wallet ? self::WALLET[$action][1] : match ($action) {
             'void-unfunded' => 'unfunded_void_confirmed', 'record-disposition' => 'disposition_confirmed',
+            'account-loss' => 'loss_accounting_confirmed',
             'assess-zero-buyer' => 'zero_refund_confirmed', 'resolve-cash' => 'financial_resolution_confirmed',
             default => $proof ? 'payment_confirmed' : 'action_confirmed',
         };
 
-        return ['id' => $action, 'label' => $wallet ? self::WALLET[$action][0] : (self::CASH[$action] ?? ($action === 'void-unfunded'
-            ? 'Void an entirely unfunded review' : 'Record independent operational loss evidence')),
+        return ['id' => $action, 'label' => $wallet ? self::WALLET[$action][0] : (self::CASH[$action] ?? match ($action) {
+            'void-unfunded' => 'Void an entirely unfunded review', 'account-loss' => 'Account for the confirmed lost parcel',
+            default => 'Record independent operational loss evidence',
+        }),
             'confirmation' => $confirmation, 'proof' => $proof || $action === 'record-disposition',
             'amount' => $offer || $action === 'retire-advance' || $wallet && in_array($action, ['contribute-company', 'approve-advance'], true),
             'receiver' => $offer, 'source' => $source,
@@ -71,6 +74,11 @@ class ShipmentLossActions
         }
         if ($action === 'record-disposition') {
             $record = app(ShipmentLossDispositionService::class)->record($actor, $plan, $input, $proof);
+
+            return $plan->events()->where('request_token_hash', $record->request_token_hash)->firstOrFail();
+        }
+        if ($action === 'account-loss') {
+            $record = app(ShipmentLossAccountingService::class)->record($actor, $plan, $input);
 
             return $plan->events()->where('request_token_hash', $record->request_token_hash)->firstOrFail();
         }

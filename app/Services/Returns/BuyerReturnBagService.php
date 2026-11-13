@@ -15,6 +15,7 @@ use App\Models\MotherBagReturnParcel;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossAccountingService;
 use App\Services\Logistics\CargoHandlingService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsTripService;
@@ -237,9 +238,24 @@ class BuyerReturnBagService
         $this->finishSack($bag, $actor);
     }
 
+    public function refreshLossAccounting(LogisticsManifest $manifest, User $actor): void
+    {
+        abort_unless(DB::transactionLevel() > 0, 409);
+        $ids = MotherBagReturnParcel::where('buyer_return_manifest_parcel_id', '>', 0)
+            ->whereIn('buyer_return_manifest_parcel_id', $manifest->buyerReturnParcels()->select('id'))->pluck('mother_bag_id');
+        foreach (MotherBag::whereIn('id', $ids)->where('status', 'opened')->lockForUpdate()->get() as $bag) {
+            $this->finishSack($bag, $actor);
+        }
+    }
+
     private function finishSack(MotherBag $bag, User $actor): void
     {
-        if ($bag->status === 'opened' && $bag->opened_at && ! $bag->returnParcels()->whereNull('removed_at')->whereNull('received_at')->exists()) {
+        $outstanding = $bag->returnParcels()->whereNull('removed_at')->whereNull('received_at')->get()->reject(function ($member) {
+            $original = BuyerReturnManifestParcel::find($member->buyer_return_manifest_parcel_id);
+
+            return $original && app(ShipmentLossAccountingService::class)->members($original->manifest)->has($original->id);
+        });
+        if ($bag->status === 'opened' && $bag->opened_at && $outstanding->isEmpty()) {
             $bag->update(['status' => 'received', 'active_physical_key' => null, 'version' => $bag->version + 1]);
             $this->event($bag, $actor, 'return-sack-received', $bag->reference, ['all_members_accounted' => true]);
         }

@@ -3,6 +3,7 @@
 namespace App\Services\Finance;
 
 use App\Models\ShipmentFinancialPlan;
+use App\Models\ShipmentLossAccounting;
 use App\Models\ShipmentLossDisposition;
 use App\Models\User;
 use App\Models\WalletRefundCreditRequest;
@@ -13,6 +14,7 @@ use App\Services\Wallet\WalletFundingCredits;
 use App\Services\Wallet\WalletLedger;
 use App\Services\Wallet\WalletLossCreditService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class ShipmentLossControls
@@ -43,6 +45,8 @@ class ShipmentLossControls
                 + ['maximum_cents' => $maximum, 'sources' => $sources];
         };
         $disposition = ShipmentLossDisposition::where('shipment_financial_plan_id', $plan->id)->first();
+        $accounting = Schema::hasTable('shipment_loss_accountings')
+            ? ShipmentLossAccounting::where('shipment_financial_plan_id', $plan->id)->first() : null;
         $requests = WalletRefundCreditRequest::where('shipment_financial_plan_id', $plan->id)->whereNull('repayment_plan_id')
             ->where('authority_reference', $plan->reference)->orderByDesc('id')->get();
         $balance = $wallet && $company ? app(WalletLedger::class)->balance($actor) : null;
@@ -58,7 +62,7 @@ class ShipmentLossControls
             }
         }
         if ($active && $wallet) {
-            if ($company && ! $finding && ($sourceReady || $state['resolved']) && $state['company_remaining_cents'] > 0 && $available > 0) {
+            if ($company && $sourceReady && $state['company_remaining_cents'] > 0 && $available > 0) {
                 $add('contribute-company', min($available, $state['company_remaining_cents']));
             }
             if ($admin && $sourceReady && ! $state['resolved']) {
@@ -86,11 +90,14 @@ class ShipmentLossControls
             if ($sourceReady && ! $disposition && ! in_array($actor->id, $plan->snapshot['source_actor_ids'], true)) {
                 $add('record-disposition');
             }
+            if ($sourceReady && $disposition && ! $accounting && ! in_array($actor->id, $plan->snapshot['source_actor_ids'], true)) {
+                $add('account-loss');
+            }
         }
         $credits = null;
         if ($wallet && ($admin || $company)) {
             $maximum = 0;
-            if ($company && $active && ! $finding && ($sourceReady || $state['resolved']) && ! $requests->contains('status', 'pending')) {
+            if ($company && $active && $sourceReady && ! $requests->contains('status', 'pending')) {
                 try {
                     $maximum = app(WalletLossCreditService::class)->maximum($actor, $plan);
                 } catch (HttpExceptionInterface $error) {
@@ -103,7 +110,7 @@ class ShipmentLossControls
             $credits = ['maximum_cents' => $maximum, 'wallet_balance_cents' => $balance, 'available_for_authority_cents' => $company ? $available : null,
                 'requests' => $requests->map(fn ($request) => $request->only(['id', 'reference', 'status', 'version', 'amount_cents', 'reason', 'review_reason'])
                     + ['can_review' => $admin && $active && $request->status === 'pending' && $request->actor_id !== $actor->id,
-                        'can_approve' => $admin && $active && ! $finding && $request->status === 'pending' && $request->actor_id !== $actor->id && ($sourceReady || $state['resolved']),
+                        'can_approve' => $admin && $active && $request->status === 'pending' && $request->actor_id !== $actor->id && $sourceReady,
                         'wallet_reference' => $request->wallet_transaction_id ? WalletTransaction::find($request->wallet_transaction_id)?->reference : null])->all()];
         }
         $offer = collect($actions)->contains('receiver', true);
@@ -114,6 +121,8 @@ class ShipmentLossControls
             'credits' => $credits, 'disposition' => $admin && $disposition ? ['reference' => $disposition->reference,
                 'proof_url' => '/shipment-finances/'.$plan->id.'/disposition/proof'] : null,
             'finding' => $admin && $finding ? ['reference' => $finding->reference, 'proof_url' => '/shipment-finances/'.$plan->id.'/finding/proof'] : null,
+            'accounting' => $admin && $accounting ? ['reference' => $accounting->reference,
+                'verified' => app(ShipmentLossAccountingService::class)->verified($accounting)] : null,
             'funding' => $admin || $company ? ['Available backing' => $state['balance_cents'], 'Company funding outstanding' => $active ? $state['company_remaining_cents'] : 0,
                 'Advance outstanding' => $active ? $state['advance_outstanding_cents'] : 0] : null];
     }
@@ -122,7 +131,7 @@ class ShipmentLossControls
     {
         $admin = $actor->isAdmin();
         $found = app(ShipmentLossSource::class)->finding($plan) !== null;
-        $payable = ! $found && ($sourceReady || $state['resolved']);
+        $payable = $sourceReady;
         if ($actor->isLogistics() && $payable && $state['company_remaining_cents'] > $state['pending_company_cents']) {
             $add('offer-company', $state['company_remaining_cents'] - $state['pending_company_cents']);
         }

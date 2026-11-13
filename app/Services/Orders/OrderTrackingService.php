@@ -5,11 +5,15 @@ namespace App\Services\Orders;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\Order;
+use App\Models\ShipmentLossAccounting;
+use App\Services\Finance\ShipmentLossAccountingService;
+use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Vouchers\VoucherReceiptService;
 use App\Services\Wallet\WalletPaymentService;
+use Illuminate\Support\Facades\Schema;
 
 class OrderTrackingService
 {
@@ -133,6 +137,22 @@ class OrderTrackingService
             [$step, $responsible] = ['Await supervised handover recovery and the actual receiving-hub scan.', 'Logistics company and named holder'];
         }
         $quarantined = ($custody['kind'] ?? null) === 'loss_quarantine';
+        $confirmedLoss = false;
+        $lossAccountingHold = false;
+        if ($parcel && ! $quarantined && ($loss = app(ShipmentLossCustody::class)->authority($parcel))
+            && Schema::hasTable('shipment_loss_accountings')) {
+            $accounting = ShipmentLossAccounting::where('shipment_financial_plan_id', $loss->id)->first();
+            $confirmedLoss = $accounting && app(ShipmentLossAccountingService::class)->verified($accounting);
+            $lossAccountingHold = $accounting && ! $confirmedLoss;
+        }
+        if ($lossAccountingHold) {
+            $notice = 'The retained parcel-loss accounting needs independent source review. Ordinary movement remains paused.';
+            [$step, $responsible] = ['Await independent review of the retained loss records.', 'Reviewing admin and original logistics company'];
+        }
+        if ($confirmedLoss) {
+            $notice = 'Independent review confirmed this parcel lost. Refunds and any later finding have separate reviews.';
+            [$step, $responsible] = ['Review the approved loss outcome and its payment status.', 'Independent reviewer and original logistics company'];
+        }
         if ($quarantined) {
             $notice = 'The parcel was found and is on hold while its original loss is reconciled.';
             [$step, $responsible] = ['Await independent reconciliation before further parcel handling.', 'Logistics company and reviewing admin'];
@@ -143,10 +163,10 @@ class OrderTrackingService
             'parcel_status' => $parcel?->status,
             'delivery_type' => $order->delivery_type,
             'placed_at' => $order->created_at?->toIso8601String(),
-            'stage_label' => $quarantined ? 'Found parcel on hold' : ($parcel ? (self::STAGES[$parcel->status] ?? 'Parcel stage needs review') : 'Parcel record not available'),
+            'stage_label' => $quarantined ? 'Found parcel on hold' : ($lossAccountingHold ? 'Parcel loss under review' : ($confirmedLoss ? 'Confirmed parcel loss' : ($parcel ? (self::STAGES[$parcel->status] ?? 'Parcel stage needs review') : 'Parcel record not available'))),
             'tone' => $notice || in_array($status, ['delivery_failed', 'returned', 'cancelled', 'unknown'], true)
                 ? 'attention' : (in_array($status, ['delivered', 'completed'], true) ? 'success' : 'progress'),
-            'custodian' => $this->holder($order, $parcel, $checkpoint, $custody),
+            'custodian' => $confirmedLoss ? 'Last known transport; parcel confirmed lost' : $this->holder($order, $parcel, $checkpoint, $custody),
             'custody_recorded_at' => in_array($custody['kind'] ?? null, ['seller', 'courier', 'hub', 'manifest', 'buyer', 'loss_quarantine'], true)
                 ? $checkpoint?->created_at?->toIso8601String() : null,
             'next_step' => $step, 'responsible' => $responsible, 'notice' => $notice,

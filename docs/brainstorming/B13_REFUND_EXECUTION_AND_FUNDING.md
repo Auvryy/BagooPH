@@ -116,6 +116,26 @@ eligible seller protection separately. Uncollected COD has zero buyer repayment;
 seller protection cannot duplicate original seller proceeds. No fictitious
 reverse arrival or seller receipt can supply the missing loss evidence.
 
+An independent current admin can account for a confirmed lost parcel only
+against its retained original approval, operational disposition and private
+evidence. This is a separate zero-money record, not a parcel receipt. Preserve
+the exact forward or buyer-return member identity, including the earlier
+original member and observation when the parcel was lost during recovery.
+Report confirmed losses separately from normal and corrective receipts.
+Manifest accounting can close only when every included member has an actual
+supported receipt or this independently supported loss accounting, with no
+other unresolved discrepancy or supervised handover hold.
+
+Closing accounting does not mark the parcel received, finish its route, change
+its last actual custody, move money or prove vehicle arrival. An actual bag
+opening can finish that bag once all its members are independently accounted
+for, without giving a missing member a fictitious receipt. Retain the original
+driver, vehicle and unarrived sack reservations until their own physical
+arrival or independent transport accountability is established. New grants,
+funding and payments still require the original retained evidence after
+compensation has been paid. A later finding preserves supported historical
+loss accounting while adding its separate physical and financial hold.
+
 An approved loss cannot resume through ordinary manifest receiving, hub scans
 or unexpected-hub recovery. An actual later finding uses the exact original
 typed waybill, an assigned handler at a facility of the original company,

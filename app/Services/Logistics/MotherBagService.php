@@ -15,6 +15,7 @@ use App\Models\ParcelRecoveryCase;
 use App\Models\ParcelRecoveryEvent;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossAccountingService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -463,9 +464,23 @@ class MotherBagService
         $this->finishReceivedBag($bag);
     }
 
+    public function refreshLossAccounting(LogisticsManifest $manifest): void
+    {
+        abort_unless(DB::transactionLevel() > 0, 409);
+        foreach (MotherBag::where('manifest_id', $manifest->id)->where('status', 'opened')->lockForUpdate()->get() as $bag) {
+            $this->finishReceivedBag($bag);
+        }
+    }
+
     private function finishReceivedBag(MotherBag $bag): void
     {
-        if ($bag->status === 'opened' && $bag->opened_at && ! $bag->parcels()->whereNull('removed_at')->whereNull('received_at')->exists()) {
+        $outstanding = $bag->parcels()->whereNull('removed_at')->whereNull('received_at')->get();
+        if ($outstanding->isNotEmpty() && $bag->manifest_id) {
+            $lost = app(ShipmentLossAccountingService::class)->members($bag->manifest)->keys();
+            $deliveries = $bag->manifest->parcels()->whereIn('id', $lost)->pluck('delivery_id');
+            $outstanding = $outstanding->reject(fn ($member) => $deliveries->contains($member->delivery_id));
+        }
+        if ($bag->status === 'opened' && $bag->opened_at && $outstanding->isEmpty()) {
             $bag->update(['status' => 'received', 'version' => $bag->version + 1,
                 ...($bag->packing_policy_version ? ['active_physical_key' => null, 'automatic_lane' => null] : [])]);
         }
