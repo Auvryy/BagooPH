@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 
 trait CreatesMissingShipments
 {
-    private function missing(string $mode = 'wallet', bool $buyerReturn = false, bool $shippingVoucher = false): array
+    private function missing(string $mode = 'wallet', bool $buyerReturn = false, bool $shippingVoucher = false, bool $sellerPaid = false): array
     {
         $admin = $this->createApprovedUser('admin');
         $buyer = $this->createApprovedUser('buyer');
@@ -40,6 +40,11 @@ trait CreatesMissingShipments
         if ($buyerReturn) {
             $this->flowDelivery($order, 'delivered');
             $order = $order->fresh(['buyer', 'items']);
+            if ($sellerPaid) {
+                $this->assertSame('cod', $mode);
+                $this->flowSettlementStorageFaked = true;
+                $this->settleFlowOrder($order);
+            }
             $returns = app(BuyerReturnService::class);
             $case = $returns->request($buyer, $order, ['request_token' => $returns->form($buyer, $order)['requestToken'], 'reason' => 'damaged',
                 'description' => 'The original delivered unit fastening is broken and cannot be used.',

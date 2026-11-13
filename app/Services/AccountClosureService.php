@@ -24,6 +24,7 @@ use App\Models\WalletRefundCreditRequest;
 use App\Rules\ApplicationText;
 use App\Services\Finance\CodCashViewService;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Finance\ShipmentLossCash;
 use App\Services\Finance\ShipmentRefusalLiability;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Notifications\GovernanceNoticeService;
@@ -215,16 +216,32 @@ class AccountClosureService
                 ->where(fn ($query) => $query->whereNotNull('active_order_id')->orWhereNotNull('active_return_case_id'))
                 ->where(fn ($query) => $query->where('buyer_id', $subject->id)->orWhere('seller_id', $subject->id)
                     ->orWhere('actor_id', $subject->id)->orWhereIn('logistics_company_id', $companyIds))->get();
-            $pendingLosses = $losses->filter(fn ($plan) => ! $plan->events()->where('event_type', 'loss-resolve-wallet')->exists())->modelKeys();
+            $pendingLosses = $losses->filter(fn ($plan) => ! $plan->events()->whereIn('event_type', ['loss-resolve-wallet', 'loss-resolve-cash'])->exists())->modelKeys();
             if ($pendingLosses) {
                 $add('shipment_loss_review', 'An approved original loss still needs financial resolution.',
                     'Retain the actual original funding and finish its separate approved outcome before closing a responsible account.', $pendingLosses);
             }
             $lossDebt = $losses->filter(fn ($plan) => $companyIds->contains($plan->logistics_company_id)
-                && $plan->snapshot['payment_method'] === 'wallet' && app(WalletLossReserve::class)->summary($plan)['company_remaining_cents'] > 0)->modelKeys();
+                && ($plan->snapshot['payment_method'] === 'wallet' ? app(WalletLossReserve::class)->summary($plan)
+                    : app(ShipmentLossCash::class)->state($plan))['company_remaining_cents'] > 0)->modelKeys();
             if ($lossDebt) {
                 $add('shipment_loss_company_liability', 'Approved original loss compensation remains outstanding.',
                     'Transfer the original company’s remaining approved liability; a demonstration advance does not clear this debt.', $lossDebt);
+            }
+            $lossTransfers = ShipmentFinancialEvent::whereIn('event_type', ['loss-offer-company', 'loss-offer-advance'])
+                ->where(fn ($query) => $query->where('actor_id', $subject->id)->orWhere('recipient_id', $subject->id))
+                ->whereNotIn('id', ShipmentFinancialEvent::whereNotNull('consumed_source_id')->select('consumed_source_id'))->pluck('id')->all();
+            if ($lossTransfers) {
+                $add('shipment_loss_cash_receipt', 'An actual original loss transfer is awaiting receipt.',
+                    'The named receiving admin must confirm its actual incoming money before either participant can close.', $lossTransfers);
+            }
+            $advanceOffers = ShipmentFinancialEvent::where('event_type', 'loss-offer-advance')->where('actor_id', $subject->id)->pluck('id');
+            $lossAdvances = ShipmentFinancialEvent::where('event_type', 'loss-receive-advance')->whereIn('source_event_id', $advanceOffers)->get()
+                ->filter(fn ($receipt) => $receipt->amount_cents > (int) ShipmentFinancialEvent::where('event_type', 'loss-retire-advance')
+                    ->where('source_event_id', $receipt->id)->sum('amount_cents'))->modelKeys();
+            if ($lossAdvances) {
+                $add('shipment_loss_advance', 'An original actual loss advance still needs its recorded return.',
+                    'Retain the original source and record any actual return with its distinct transfer proof before closing this funder.', $lossAdvances);
             }
             $pendingPlans = ShipmentFinancialPlan::where('kind', 'buyer_refusal')
                 ->where(fn ($query) => $query->where('buyer_id', $subject->id)->orWhere('seller_id', $subject->id)
