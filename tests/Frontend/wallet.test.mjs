@@ -166,3 +166,15 @@ test('wallet merchandise refunds show the saved credit reference without cash pr
     assert.equal(h.posts.length, 1); assert.equal(h.posts[0].data.action, 'refund-wallet'); assert.equal(h.posts[0].data.wallet_refund_confirmed, true);
     assert.equal(h.posts[0].data.cash_reference, undefined); assert.equal(h.posts[0].data.proof, undefined);
 }));
+
+test('resolved refusal proceeds link to the separate financial outcome without a second full refund action', async () => {
+    const html = await render(ui.Proceeds, { records: { ...empty, data: [{ ...proceeds, can_settle: false, can_refund_delivery: false, status: 'closed without buyer refund', seller_cents: 0, commission_cents: 0, refunded_cents: 0, shipment_financial_url: '/shipment-finances/11' }] }, canSettle: true, virtualBalanceCents: null, requestToken: 'reviewed-request' }, 'admin');
+    assert.match(html, /href="\/shipment-finances\/11"/); assert.doesNotMatch(html, /Review returned-parcel refund|Review virtual proceeds/);
+});
+
+test('buyer payment history shows an actual refusal refund and links to its separate shipping outcome', async () => {
+    const html = await render(ui.Payment, { payment: { ...payment, status: 'paid', amount_cents: 55000, payment_reference: 'WLT-ORIGINAL', can_pay: false,
+        items: [{ id: 1, name: 'Original item', quantity: 1, unit_price: '500.00' }], refunded_cents: 46000, refund_reference: 'WLT-ACTUAL-REFUND', shipment_financial_url: '/shipment-finances/11' }, canUsePortal: true });
+    assert.match(html, /Refunded to your original wallet/); assert.match(html, /460\.00/); assert.match(html, /WLT-ACTUAL-REFUND/);
+    assert.match(html, /href="\/shipment-finances\/11"/);
+});

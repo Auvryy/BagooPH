@@ -4,11 +4,11 @@ import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { PageProps } from '@/types';
 
-export default function ReturnLayout({ children }: PropsWithChildren) {
+export default function ReturnLayout({ children, title, subtitle }: PropsWithChildren<{ title?: string; subtitle?: string }>) {
     const { auth } = usePage<PageProps>().props;
     if (auth.user?.role === 'buyer') {
         const active = auth.user.status === 'active' && ['approved', 'verified'].includes(auth.user.kyc_status ?? '');
         return <BuyerOrderAccessLayout canUsePortal={active}>{children}</BuyerOrderAccessLayout>;
     }
-    return <DashboardLayout title={auth.user?.role === 'logistics' ? 'Buyer returns' : 'Returns and refunds'} subtitle="Review the original purchase, return and repayment history.">{children}</DashboardLayout>;
+    return <DashboardLayout title={title ?? (auth.user?.role === 'logistics' ? 'Buyer returns' : 'Returns and refunds')} subtitle={subtitle ?? 'Review the original purchase, return and repayment history.'}>{children}</DashboardLayout>;
 }

@@ -73,7 +73,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const userMenuTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const user = auth.user;
-    const financialReturn = ['Returns/Liability', 'Returns/Liabilities'].includes(component);
+    const financialReturn = ['Returns/Liability', 'Returns/Liabilities', 'Finance/ShipmentReview', 'Finance/ShipmentOutcome'].includes(component);
     const role = user?.role || 'buyer';
     useBodyScrollLock(sidebarOpen && role !== 'logistics');
     const currentShop = user?.shop;
@@ -189,7 +189,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     name: 'Finances', 
                     href: '/financial-oversight',
                     icon: Banknote,
-                    current: component.startsWith('Finance/') || component === 'Seller/Reports',
+                    current: !financialReturn && component.startsWith('Finance/') || component === 'Seller/Reports',
                     children: [
                         { name: 'Overview', href: '/financial-oversight', current: component === 'Finance/Overview' || component === 'Finance/Evidence' },
                         { name: 'Payouts', href: '/seller-settlements', current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },

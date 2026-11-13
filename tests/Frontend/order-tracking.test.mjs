@@ -180,7 +180,7 @@ test('buyer refresh requests current portal access, receipt and code actions and
         globalThis.orderTrackingRefresh();
         globalThis.orderTrackingRefresh();
         assert.equal(visits.length, 1);
-        for (const key of ['order', 'canUsePortal', 'buyAgainUrl', 'canConfirmReceipt', 'pickupClaim', 'pickupCodeAvailable', 'pickupCodeUrl', 'orderNotices', 'auth']) {
+        for (const key of ['order', 'canUsePortal', 'buyAgainUrl', 'canConfirmReceipt', 'shipmentFinance', 'pickupClaim', 'pickupCodeAvailable', 'pickupCodeUrl', 'orderNotices', 'auth']) {
             assert.ok(visits[0].only.includes(key), `Refresh must include ${key}`);
         }
         visits[0].onFinish();
@@ -494,4 +494,10 @@ test('only approved completed purchases expose the fifth-step review action and 
     assert.match(saved, /Review saved/);
     assert.match(saved, /Edit review/);
     assert.doesNotMatch(saved, /Write a product review/);
+});
+
+test('buyer order details link to their approved shipment finances without offering another receipt confirmation', async () => {
+    const html = await render(ui.Detail, { ...detailProps, order: { ...order, status: 'returned' }, shipmentFinance: { id: 11, reference: 'REVIEW-ORIGINAL' } });
+    assert.match(html, /Shipping and refund review/); assert.match(html, /href="\/shipment-finances\/11"/);
+    assert.doesNotMatch(html, /I received my order/);
 });

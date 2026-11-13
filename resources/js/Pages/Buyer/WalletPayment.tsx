@@ -11,6 +11,7 @@ export interface WalletPaymentData {
     items: { id: number; name: string; quantity: number; unit_price: string }[];
     last_attempt: { outcome: string; message: string } | null;
     refunded_cents?: number; refund_reference?: string | null;
+    shipment_financial_url?: string | null;
 }
 
 export default function WalletPayment({ payment, canUsePortal = false }: { payment: WalletPaymentData; canUsePortal?: boolean }) {
@@ -46,6 +47,7 @@ export default function WalletPayment({ payment, canUsePortal = false }: { payme
                 <ul className="divide-y divide-slate-200">{payment.items.map(item => <li key={item.id} className="flex justify-between gap-3 py-3 text-sm"><span className="min-w-0 break-words font-semibold text-slate-800">{item.name}</span><span className="shrink-0 text-xs text-slate-500">Qty {item.quantity}</span></li>)}</ul>
                 <dl className="space-y-3 border-y border-slate-300 py-4 text-sm"><div className="flex justify-between gap-3"><dt className="text-slate-600">Available credits</dt><dd className="font-semibold tabular-nums">{payment.balance_cents === null ? 'Unavailable' : walletMoney(payment.balance_cents)}</dd></div><div className="flex justify-between gap-3"><dt className="font-bold text-slate-900">{paid ? 'Amount paid' : 'Exact amount to pay'}</dt><dd className="text-xl font-bold tabular-nums text-[#E00D42]">{walletMoney(payment.amount_cents)}</dd></div></dl>
                 {(payment.refunded_cents ?? 0) > 0 && <div role="status" className="space-y-2 text-xs leading-6 text-slate-700"><p className="font-semibold">Refunded to your original wallet: {walletMoney(payment.refunded_cents ?? 0)}</p><p className="break-all">Refund reference: {payment.refund_reference}</p></div>}
+                {payment.shipment_financial_url && <Link href={payment.shipment_financial_url} className="inline-flex rounded-lg border border-rose-200 bg-rose-50/85 px-3 py-2 text-sm font-semibold text-[#C20836] hover:bg-[#E00D42] hover:text-white">Review shipping and refund</Link>}
                 {paid ? <div role="status" className="space-y-2 text-sm text-slate-700"><p className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4 text-emerald-700" />Your saved payment is confirmed.</p><p className="break-all text-xs">Reference: {payment.payment_reference}</p><p className="text-xs">Paid {trackingDate(payment.paid_at)}. Reopening this page does not deduct more credits.</p></div> : <>
                     <p className="text-xs text-slate-600">Payment deadline: {trackingDate(payment.expires_at)} · Philippine time</p>
                     {!canPay && <p role="status" className="text-sm font-semibold text-amber-900">{payment.status === 'pending' ? (now >= Date.parse(payment.expires_at) ? 'The payment deadline has passed. This order cannot accept payment.' : 'Payment is unavailable for this account or saved balance. Review your account or contact support.') : `This payment is ${payment.status}. No further credits will be deducted.`}</p>}

@@ -10,4 +10,5 @@ export function creditAmountError(value: string): string | null {
 export const walletKind = (kind: string) => ({
     demo_credit: 'Demo credits added', wallet_payment: 'Order payment', wallet_cancellation_refund: 'Cancelled order refund',
     wallet_return_refund: 'Return refund', wallet_settlement: 'Virtual seller proceeds', wallet_delivery_refund: 'Returned parcel refund',
+    wallet_refusal_refund: 'Refused parcel refund', wallet_refusal_shipping_payment: 'Reviewed shipping payment',
 }[kind] ?? 'Wallet transaction');
