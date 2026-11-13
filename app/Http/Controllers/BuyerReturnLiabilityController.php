@@ -8,6 +8,8 @@ use App\Models\Order;
 use App\Models\ShipmentFinancialPlan;
 use App\Services\Finance\ShipmentFinancialAccess;
 use App\Services\Finance\ShipmentFinancialPresentation;
+use App\Services\Finance\ShipmentLossAccess;
+use App\Services\Finance\ShipmentLossQueue;
 use App\Services\Returns\BuyerReturnFinancialScope;
 use App\Services\Returns\BuyerReturnLiabilityBalance;
 use App\Services\Returns\BuyerReturnMoneyPresentation;
@@ -15,15 +17,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class BuyerReturnLiabilityController extends Controller
 {
-    public function index(Request $request, BuyerReturnFinancialScope $scope): Response
+    public function index(Request $request, BuyerReturnFinancialScope $scope): Response|HttpResponse
     {
         $shipments = $request->input('view') === 'shipments';
-        $data = $request->validate(['view' => ['nullable', 'in:returns,shipments'], 'review_page' => ['sometimes', 'integer', 'min:1', 'max:100000'],
+        $losses = $request->input('view') === 'losses';
+        $data = $request->validate(['view' => ['nullable', 'in:returns,shipments,losses'], 'review_page' => ['sometimes', 'integer', 'min:1', 'max:100000'],
             'page' => ['sometimes', 'integer', 'min:1', 'max:100000'], 'search' => ['nullable', 'string', 'max:80'],
-            'status' => ['nullable', $shipments ? 'in:awaiting_execution,shipping_due,resolved' : 'in:repayment_ready,payment_recorded,repayment_disputed,repaid,closed_no_repayment']]);
+            'status' => ['nullable', $losses ? 'in:awaiting_payment,financially_resolved,voided'
+                : ($shipments ? 'in:awaiting_execution,shipping_due,resolved' : 'in:repayment_ready,payment_recorded,repayment_disputed,repaid,closed_no_repayment')]]);
+        if ($losses) {
+            return $this->losses($request, $data);
+        }
         if ($shipments) {
             return $this->shipments($request, $data);
         }
@@ -84,6 +92,26 @@ class BuyerReturnLiabilityController extends Controller
 
         return Inertia::render('Returns/Liabilities', ['cases' => $cases, 'reviewCandidates' => $candidates,
             'filters' => ['search' => $search, 'status' => $data['status'] ?? '', 'view' => 'shipments']]);
+    }
+
+    private function losses(Request $request, array $data): HttpResponse
+    {
+        $query = app(ShipmentLossAccess::class)->query($request->user());
+        $search = trim($data['search'] ?? '');
+        if ($search !== '') {
+            $needle = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
+            $query->where(fn ($plans) => $plans->whereRaw("reference LIKE ? ESCAPE '!'", [$needle])
+                ->orWhereHas('order', fn ($orders) => $orders->whereRaw("order_number LIKE ? ESCAPE '!'", [$needle])));
+        }
+        $queue = app(ShipmentLossQueue::class);
+        $queue->filter($query, $data['status'] ?? '');
+        $cases = $query->with('order')->orderByDesc('id')->paginate(12)->withQueryString();
+        $cases->getCollection()->transform(fn ($plan) => $queue->row($request->user(), $plan));
+
+        return Inertia::render('Finance/LossQueue', ['cases' => $cases,
+            'reviewCandidates' => $request->user()->isAdmin() ? $queue->candidates($request->user(), $search) : null,
+            'filters' => ['view' => 'losses', 'search' => $search, 'status' => $data['status'] ?? '']])
+            ->toResponse($request)->header('Cache-Control', 'private, no-store');
     }
 
     public function show(Request $request, BuyerReturnCase $case, BuyerReturnFinancialScope $scope, BuyerReturnMoneyPresentation $money): Response

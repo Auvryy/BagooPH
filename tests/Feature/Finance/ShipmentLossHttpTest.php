@@ -211,4 +211,46 @@ class ShipmentLossHttpTest extends TestCase
             ->assertJsonPath('component', 'Finance/LossReview')->assertJsonPath('props.preview', null);
         $this->assertDatabaseCount('shipment_financial_plans', 1);
     }
+
+    #[DataProvider('sources')]
+    public function test_finance_queue_discovers_actual_missing_sources_and_keeps_owned_loss_amounts_and_status_filters_separate(string $mode, bool $return, int $refund): void
+    {
+        [$source, $admin, $order] = $this->missing($mode, $return);
+        $url = '/return-liabilities?view=losses';
+        $before = [$order->getAttributes(), $order->delivery->getAttributes(), WalletTransaction::count()];
+        $this->actingAs($admin)->get($url, $this->inertia())->assertOk()->assertJsonPath('component', 'Finance/LossQueue')
+            ->assertJsonCount(0, 'props.cases.data')->assertJsonCount(1, 'props.reviewCandidates.data')
+            ->assertJsonPath('props.reviewCandidates.data.0.href', '/shipment-finances/missing/'.$source->id.'/review')
+            ->assertHeader('Cache-Control', 'no-store, private');
+        $this->get($url)->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $this->get($url.'&search='.urlencode($order->order_number), $this->inertia())->assertOk()
+            ->assertJsonCount(1, 'props.reviewCandidates.data')->assertJsonPath('props.reviewCandidates.data.0.id', $source->id);
+        $plan = app(ShipmentLossReview::class)->approve($admin, $source, $this->approval($source, $admin, $return ? '0.00' : '180.00'),
+            UploadedFile::fake()->image('actual-queue-review.png'));
+        $this->get($url, $this->inertia())->assertOk()->assertJsonCount(1, 'props.cases.data')
+            ->assertJsonPath('props.cases.data.0.amount_cents', $refund)->assertJsonCount(0, 'props.reviewCandidates.data');
+        $this->get($url.'&status=awaiting_payment', $this->inertia())->assertOk()->assertJsonCount(1, 'props.cases.data');
+        $this->get($url.'&status=financially_resolved', $this->inertia())->assertOk()->assertJsonCount(0, 'props.cases.data');
+        $this->get($url.'&search='.urlencode($order->order_number), $this->inertia())->assertOk()->assertJsonCount(1, 'props.cases.data');
+        $this->get($url.'&search=%25', $this->inertia())->assertOk()->assertJsonCount(0, 'props.cases.data');
+        $this->getJson($url.'&status=shipping_due')->assertUnprocessable()->assertJsonValidationErrors('status');
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        foreach ([$order->buyer, $order->shop->user, $owner] as $actor) {
+            $page = $this->actingAs($actor)->get($url, $this->inertia())->assertOk()
+                ->assertJsonCount(1, 'props.cases.data')->assertJsonPath('props.reviewCandidates', null);
+            $row = $page->json('props.cases.data.0');
+            $seller = $actor->isSeller();
+            $this->assertSame($seller ? 'Separate seller protection' : 'Buyer refund', $row['amount_label']);
+            $this->assertSame($seller ? ($return ? 0 : 18000) : $refund, $row['amount_cents']);
+            $this->assertArrayNotHasKey('buyer_refund_cents', $row);
+            $this->assertSame($actor->isLogistics() ? $plan->snapshot['company_funding_due_cents'] : null, $row['outstanding_cents']);
+        }
+        $this->actingAs($this->createApprovedUser('buyer'))->get($url, $this->inertia())->assertOk()->assertJsonCount(0, 'props.cases.data');
+        $this->assertSame($before, [$order->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes(), WalletTransaction::count()]);
+        app(ShipmentLossReview::class)->voidUnfunded($admin, $plan, ['expected_version' => 1, 'request_token' => (string) Str::uuid(),
+            'unfunded_void_confirmed' => true, 'reason' => 'Keep the original unfunded review in history while the independently reviewed basis is corrected.']);
+        $this->actingAs($owner)->get($url.'&status=voided', $this->inertia())->assertOk()->assertJsonCount(1, 'props.cases.data')
+            ->assertJsonPath('props.cases.data.0.outstanding_cents', 0);
+        $this->get($url.'&status=awaiting_payment', $this->inertia())->assertOk()->assertJsonCount(0, 'props.cases.data');
+    }
 }

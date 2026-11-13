@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, FileCheck2, FileText, ShieldCheck } from 'lucide-react';
 import ReturnLayout from '@/Components/Returns/ReturnLayout';
 import { financeMoney } from '@/utils/finance';
+import { lossStatuses } from '@/Components/Finance/lossStatuses';
 
 export interface LossOutcomeProps {
     loss: {
@@ -22,7 +23,6 @@ export interface LossOutcomeProps {
 }
 
 const secondary = 'inline-flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50/85 px-4 py-2.5 text-sm font-bold text-[#C20836] transition-colors hover:bg-[#E00D42] hover:text-white';
-const statusLabels = { voided: 'Unfunded review voided', financially_resolved: 'Financial outcome recorded', awaiting_payment: 'Payment pending' };
 const eventLabels: Record<string, string> = {
     approved: 'Loss review approved', voided: 'Unfunded review voided', 'loss-reserve-original': 'Original funds reserved',
     'loss-contribute-company': 'Company funding received', 'loss-approve-advance': 'Virtual advance recorded',
@@ -42,10 +42,10 @@ export default function LossOutcome({ loss }: LossOutcomeProps) {
     return <ReturnLayout title="Shipment finances" subtitle={loss.order.order_number}>
         <Head title="Parcel loss outcome" />
         <main className="mx-auto max-w-4xl space-y-6 py-4">
-            <Link href="/return-liabilities?view=shipments" className={secondary}><ArrowLeft className="h-4 w-4" />Shipment finances</Link>
+            <Link href="/return-liabilities?view=losses" className={secondary}><ArrowLeft className="h-4 w-4" />Parcel losses</Link>
             <header className="space-y-3">
                 <div className="flex flex-wrap items-center gap-3"><h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><ShieldCheck className="h-6 w-6 text-[#E00D42]" />Parcel loss outcome</h1>
-                    <span className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-bold text-[#C20836]">{statusLabels[loss.status]}</span></div>
+                    <span className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-bold text-[#C20836]">{lossStatuses[loss.status]}</span></div>
                 <p className="text-sm text-slate-600">{loss.order.order_number} · {loss.company_name} · {loss.mode === 'wallet' ? 'Virtual Wallet' : 'Cash on Delivery'}</p>
                 <p className="break-all text-xs text-slate-500">Review {loss.reference}</p>
             </header>

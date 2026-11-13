@@ -154,7 +154,7 @@ export default function LossReview({ order, source, basis, preview = null, block
     return <ReturnLayout title="Shipment finances" subtitle={order.order_number}>
         <Head title="Parcel loss review" />
         <main className="mx-auto max-w-4xl space-y-6 py-4">
-            <Link href="/return-liabilities?view=shipments" className={secondary}><ArrowLeft className="h-4 w-4" />Shipment finances</Link>
+            <Link href="/return-liabilities?view=losses" className={secondary}><ArrowLeft className="h-4 w-4" />Parcel losses</Link>
             <header className="space-y-3">
                 <div className="flex flex-wrap items-center gap-3"><h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900"><ClipboardCheck className="h-6 w-6 text-[#E00D42]" />Review parcel loss</h1>
                     {source && <span className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-bold text-[#C20836]">{source.scope === 'buyer_return' ? 'Buyer return parcel' : 'Undelivered parcel'}</span>}</div>
