@@ -6,7 +6,6 @@ use App\Models\BuyerReturnCase;
 use App\Models\Delivery;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsManifest;
-use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
 use App\Models\ShipmentFinancialEvent;
 use App\Models\ShipmentFinancialPlan;
@@ -58,9 +57,7 @@ class WalletLossCreditService
     private function currentSource(ShipmentFinancialPlan $plan): void
     {
         if (! app(WalletLossReserve::class)->summary($plan)['resolved']) {
-            $snapshot = app(ShipmentLossSource::class)->snapshot(LogisticsManifestEvent::findOrFail($plan->loss_observation_id), $plan->snapshot['seller_protection_cents']);
-            $snapshot['investigation_reference'] = $plan->snapshot['investigation_reference'];
-            abort_unless($snapshot === $plan->snapshot, 409, 'The original loss source changed; reconcile its retained review before approving new credits.');
+            app(ShipmentLossSource::class)->assertApproved($plan);
         }
     }
 

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -34,6 +35,7 @@ class ShipmentFinancialPlan extends Model
                 || array_diff(array_keys($plan->getDirty()), ['active_order_id', 'active_return_case_id'])
                 || $plan->active_order_id !== null || $plan->active_return_case_id !== null
                 || ! $plan->events()->where('event_type', 'voided')->where('amount_cents', 0)->exists()
+                || (Schema::hasTable('shipment_loss_dispositions') && ShipmentLossDisposition::where('shipment_financial_plan_id', $plan->id)->exists())
                 || WalletRefundReserveEntry::where('shipment_financial_plan_id', $plan->id)->exists()
                 || $plan->events()->where(fn ($query) => $query->where('amount_cents', '>', 0)->orWhereNotNull('wallet_transaction_id'))->exists()) {
                 throw new LogicException('Retain the original shipment review; only an evidenced unfunded void may release its active claim.');

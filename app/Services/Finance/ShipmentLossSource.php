@@ -8,13 +8,61 @@ use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsEarning;
 use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
+use App\Models\ShipmentFinancialPlan;
+use App\Models\ShipmentLossDisposition;
 use App\Models\WalletTransaction;
 use App\Services\Returns\BuyerReturnAmounts;
 use App\Services\Returns\BuyerReturnCustodyService;
 use App\Services\Returns\BuyerReturnRefundPlan;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class ShipmentLossSource
 {
+    public function assertApproved(ShipmentFinancialPlan $original): void
+    {
+        $plan = ShipmentFinancialPlan::findOrFail($original->id);
+        $return = $plan->buyer_return_case_id !== null;
+        abort_unless($plan->kind === 'transit_loss'
+            && ($return ? $plan->active_return_case_id === $plan->buyer_return_case_id && $plan->active_order_id === null
+                : $plan->active_order_id === $plan->order_id && $plan->active_return_case_id === null)
+            && ($plan->snapshot['order_id'] ?? null) === $plan->order_id && ($plan->snapshot['delivery_id'] ?? null) === $plan->delivery_id
+            && ($plan->snapshot['buyer_return_case_id'] ?? null) === $plan->buyer_return_case_id
+            && ($plan->snapshot['source']['observation_id'] ?? null) === $plan->loss_observation_id
+            && $plan->events()->where('event_type', 'approved')->where('actor_id', $plan->actor_id)->where('amount_cents', 0)
+                ->where('request_token_hash', $plan->request_token_hash)->exists(), 409,
+            'Retain the active original independently approved loss authority.');
+        abort_unless(str_starts_with($plan->proof_path, 'shipment-finance/') && ! str_contains($plan->proof_path, '..')
+            && $plan->proof_bytes > 0 && $plan->proof_bytes <= 5242880 && Storage::disk('local')->exists($plan->proof_path)
+            && Storage::disk('local')->size($plan->proof_path) === $plan->proof_bytes
+            && hash_equals($plan->proof_hash, hash_file('sha256', Storage::disk('local')->path($plan->proof_path))), 409,
+            'Retain the original independently reviewed private investigation evidence before continuing the loss authority.');
+        if (Schema::hasTable('shipment_loss_dispositions') && ($disposition = ShipmentLossDisposition::where('shipment_financial_plan_id', $plan->id)->first())) {
+            abort_unless($disposition->state === 'confirmed_lost' && $disposition->order_id === $plan->order_id
+                && $disposition->delivery_id === $plan->delivery_id && $disposition->buyer_return_case_id === $plan->buyer_return_case_id
+                && $disposition->logistics_company_id === $plan->logistics_company_id
+                && $disposition->manifest_id === $plan->snapshot['source']['manifest_id'] && $disposition->loss_observation_id === $plan->loss_observation_id
+                && ($return ? $disposition->manifest_parcel_id === null && $disposition->buyer_return_manifest_parcel_id === $plan->snapshot['source']['member_id']
+                    : $disposition->buyer_return_manifest_parcel_id === null && $disposition->manifest_parcel_id === $plan->snapshot['source']['member_id'])
+                && $disposition->financial_snapshot === $plan->snapshot && $disposition->physical_snapshot === $plan->snapshot['source']['physical_state']
+                && $plan->events()->where('event_type', 'loss-disposition-recorded')->where('actor_id', $disposition->actor_id)
+                    ->where('sequence', $disposition->financial_version + 1)->where('amount_cents', 0)->whereNull('wallet_transaction_id')
+                    ->where('request_token_hash', $disposition->request_token_hash)->where('request_fingerprint', $disposition->request_fingerprint)
+                    ->where('context->disposition_reference', $disposition->reference)->exists()
+                && str_starts_with($disposition->proof_path, 'shipment-loss-dispositions/') && ! str_contains($disposition->proof_path, '..')
+                && Storage::disk('local')->exists($disposition->proof_path)
+                && Storage::disk('local')->size($disposition->proof_path) === $disposition->proof_bytes
+                && hash_equals($disposition->proof_hash, hash_file('sha256', Storage::disk('local')->path($disposition->proof_path))), 409,
+                'Retain the exact original loss disposition, its typed identity, approved financial basis and private evidence.');
+        }
+        // A disposition is not a receipt or arrival. Until explicit operational closure is supported,
+        // its retained source must still match the actual missing custody and original money terms.
+        $snapshot = $this->snapshot(LogisticsManifestEvent::findOrFail($plan->loss_observation_id), $plan->snapshot['seller_protection_cents']);
+        $snapshot['investigation_reference'] = $plan->snapshot['investigation_reference'];
+        abort_unless($snapshot === $plan->snapshot, 409,
+            'The original missing custody, payment or approved loss basis changed. Reconcile the original review before continuing.');
+    }
+
     public function context(LogisticsManifestEvent $original): array
     {
         $observation = $original->fresh(['manifest', 'parcel.delivery']);

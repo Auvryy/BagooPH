@@ -3,7 +3,6 @@
 namespace App\Services\Wallet;
 
 use App\Models\LogisticsCompany;
-use App\Models\LogisticsManifestEvent;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Models\WalletAccount;
@@ -55,9 +54,7 @@ class WalletLossReserve
         $state = $this->summary($plan);
         // Late own-company funding retires an actual advance without rewriting the original loss or refund.
         if (! $state['resolved']) {
-            $snapshot = app(ShipmentLossSource::class)->snapshot(LogisticsManifestEvent::findOrFail($plan->loss_observation_id), $plan->snapshot['seller_protection_cents']);
-            $snapshot['investigation_reference'] = $plan->snapshot['investigation_reference'];
-            abort_unless($snapshot === $plan->snapshot, 409, 'The original missing custody, payment or approved loss basis changed. Reconcile the original review before moving credits.');
+            app(ShipmentLossSource::class)->assertApproved($plan);
         } else {
             abort_unless($action === 'contribute-company', 409, 'Retain the original completed loss settlement.');
         }

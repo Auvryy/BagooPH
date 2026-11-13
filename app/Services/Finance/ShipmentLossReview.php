@@ -9,6 +9,7 @@ use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
 use App\Models\ShipmentFinancialEvent;
 use App\Models\ShipmentFinancialPlan;
+use App\Models\ShipmentLossDisposition;
 use App\Models\User;
 use App\Models\WalletPayment;
 use App\Models\WalletRefundCreditRequest;
@@ -19,6 +20,7 @@ use App\Services\AccountRestrictionService;
 use App\Services\Wallet\WalletCreditService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Throwable;
 
@@ -121,6 +123,8 @@ class ShipmentLossReview
             }
             app(ShipmentRefusalReview::class)->unused($token);
             $version = (int) $plan->events()->max('sequence');
+            abort_if(Schema::hasTable('shipment_loss_dispositions') && ShipmentLossDisposition::where('shipment_financial_plan_id', $plan->id)->exists(), 409,
+                'The original operational loss disposition retains this authority. An unfunded void cannot erase its independently recorded outcome.');
             abort_unless($version === (int) $data['expected_version'] && ($plan->active_order_id || $plan->active_return_case_id)
                 && ! WalletRefundReserveEntry::where('shipment_financial_plan_id', $plan->id)->exists()
                 && ! $plan->events()->where(fn ($events) => $events->where('amount_cents', '>', 0)->orWhereNotNull('wallet_transaction_id'))->exists()
