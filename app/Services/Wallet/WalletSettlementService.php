@@ -82,6 +82,7 @@ class WalletSettlementService
                 'can_settle' => false, 'can_refund_delivery' => false, 'consent' => '', 'settlement_reference' => null,
                 'refund_reference' => $event?->amount_cents > 0 && $event->wallet_transaction_id ? WalletTransaction::find($event->wallet_transaction_id)?->reference : null,
                 'resolution_reference' => $event?->wallet_transaction_id ? WalletTransaction::find($event->wallet_transaction_id)?->reference : null,
+                'shipment_financial_url' => '/shipment-finances/'.$plan->id,
                 'payment_cents' => $payment?->amount_cents,
                 'blockers' => $event ? [] : ['The approved refusal needs its original-source financial execution.'], ...$basis];
         }

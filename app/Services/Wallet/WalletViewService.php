@@ -3,6 +3,7 @@
 namespace App\Services\Wallet;
 
 use App\Models\Order;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Models\WalletAccount;
 use App\Models\WalletEntry;
@@ -10,6 +11,7 @@ use App\Models\WalletPayment;
 use App\Models\WalletTopUpRequest;
 use App\Models\WalletTransaction;
 use App\Services\BuyerAccessService;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class WalletViewService
@@ -44,7 +46,9 @@ class WalletViewService
         $verified = app(WalletPaymentService::class)->paid($order, allowRefunded: true);
         $last = $payment->attempts()->latest('id')->first();
         $balance = app(WalletLedger::class)->balance($buyer);
-        $refunds = WalletTransaction::where('order_id', $order->id)->whereIn('kind', ['wallet_return_refund', 'wallet_delivery_refund', 'wallet_cancellation_refund']);
+        $refunds = WalletTransaction::where('order_id', $order->id)->whereIn('kind', ['wallet_return_refund', 'wallet_delivery_refund', 'wallet_cancellation_refund', 'wallet_refusal_refund']);
+        $refundReferences = (clone $refunds)->where(fn ($query) => $query->where('kind', '!=', 'wallet_refusal_refund')->orWhere('amount_cents', '>', 0));
+        $shipmentPlan = Schema::hasTable('shipment_financial_plans') ? ShipmentFinancialPlan::where('order_id', $order->id)->where('kind', 'buyer_refusal')->value('id') : null;
 
         return ['id' => $payment->id, 'reference' => $payment->reference, 'status' => $payment->status,
             'amount_cents' => $payment->amount_cents, 'order_id' => $order->id, 'order_number' => $order->order_number,
@@ -55,7 +59,8 @@ class WalletViewService
             'can_pay' => $balance !== null && $buyer->canAccessPortal() && $buyer->email_verified_at && $payment->status === 'pending'
                 && in_array($order->status, ['placed', 'pending'], true) && $payment->expires_at->isFuture(),
             'payment_reference' => $verified ? WalletTransaction::find($payment->wallet_transaction_id)?->reference : null,
-            'refunded_cents' => (int) (clone $refunds)->sum('amount_cents'), 'refund_reference' => (clone $refunds)->latest('id')->value('reference'),
+            'refunded_cents' => (int) (clone $refunds)->sum('amount_cents'), 'refund_reference' => $refundReferences->latest('id')->value('reference'),
+            'shipment_financial_url' => $shipmentPlan ? '/shipment-finances/'.$shipmentPlan : null,
             'request_token' => (string) Str::uuid(), 'last_attempt' => $last?->only(['outcome', 'message', 'created_at'])];
     }
 }

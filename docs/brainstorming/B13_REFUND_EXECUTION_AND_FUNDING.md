@@ -144,6 +144,24 @@ clear the buyer's reviewed obligation without claiming a bank transfer or
 automatic carrier payout. Outstanding liability, an unfinished financial
 review and unreceived transfers retain account-closure guards.
 
+The web entry is **Return liabilities → Undelivered parcels**. Admins can
+open an original returned refusal for review, preview the actual cost and
+approve its exact original amounts. The saved preview is scoped to the
+current admin and order; refreshing rechecks its original sources. Only cost
+fields, amounts and their review token are retained for the preview. Private
+files, review reasons and confirmation consent are not cached there.
+
+Approved outcomes link from the buyer's original order and Wallet payment,
+seller virtual proceeds and the original admin exception review. The original
+buyer can pay a reviewed shipping balance; the named receiving admin confirms
+cash receipt. Company owners, including owners with restricted operational
+access, and original sellers have their scoped financial summary. They do not
+receive the buyer's private transfer receipts, Wallet balance or customer
+address through that summary. Review evidence is admin-only; buyer cash
+receipts and their acknowledgements remain available to that buyer and
+reviewing admins. Uncertain payment failures preserve their original request
+identity and direct the participant to saved financial history before retry.
+
 ## Privacy and activation
 
 Financial access identifies the original buyer, seller, liable company and

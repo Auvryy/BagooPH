@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Finance;
 
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Models\DeliveryAttempt;
 use App\Models\DeliveryReturnRoute;
+use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\ShipmentFinancialEvent;
@@ -21,6 +24,7 @@ use App\Services\Finance\ShipmentRefusalReview;
 use App\Services\Wallet\WalletCreditService;
 use App\Services\Wallet\WalletDeliveryRefundService;
 use App\Services\Wallet\WalletSettlementService;
+use App\Services\Wallet\WalletViewService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -153,6 +157,10 @@ class ShipmentRefusalMoneyTest extends TestCase
             $this->assertSame(5000, $view['shipping_cents']);
             $this->assertSame($refund > 0, $view['refund_reference'] !== null);
             $this->assertNotNull($view['resolution_reference']);
+            $buyerView = app(WalletViewService::class)->payment($order->buyer, $order->fresh()->walletPayment);
+            $this->assertSame($refund, $buyerView['refunded_cents']);
+            $this->assertSame($refund > 0, $buyerView['refund_reference'] !== null);
+            $this->assertSame('/shipment-finances/'.$plan->id, $buyerView['shipment_financial_url']);
             $this->assertFalse(app(WalletDeliveryRefundService::class)->eligible($order->fresh()));
         }
         if ($promotion !== '') {
@@ -403,5 +411,150 @@ class ShipmentRefusalMoneyTest extends TestCase
         $this->assertSame(0, $review['snapshot']['actual_buyer_paid_cents']);
         $this->assertSame(0, $review['snapshot']['buyer_refund_cents']);
         $this->assertDatabaseCount('shipment_financial_plans', 0);
+    }
+
+    private function financialHeaders(): array
+    {
+        return ['X-Inertia' => 'true', 'X-Inertia-Version' => app(HandleInertiaRequests::class)->version(request()) ?? ''];
+    }
+
+    public function test_public_refusal_review_previews_actual_amounts_then_scopes_zero_refund_and_wallet_debt_to_the_original_parties(): void
+    {
+        [$order, $admin] = $this->refused();
+        $root = '/shipment-finances/orders/'.$order->id;
+        $this->actingAs($admin)->getJson('/return-liabilities?view=shipments', $this->financialHeaders())->assertOk()
+            ->assertJsonPath('props.reviewCandidates.data.0.id', $order->id)->assertJsonPath('props.cases.total', 0);
+        $this->getJson($root.'/review', $this->financialHeaders())->assertOk()->assertJsonPath('component', 'Finance/ShipmentReview')
+            ->assertJsonPath('props.preview', null)->assertJsonPath('props.blocker', null);
+        $attempt = DeliveryAttempt::where('delivery_id', $order->delivery->id)->sole();
+        $this->getJson('/exceptions/attempt/'.$attempt->id)->assertOk()->assertJsonPath('exception.financialReviewUrl', $root.'/review');
+        $details = ['reverse_fee' => '600.00', 'cost_reference' => 'HTTP-REVERSE-COST'];
+        $this->post($root.'/preview', $details)->assertRedirect($root.'/review');
+        $this->assertSame(['review_token', 'input', 'amounts'], array_keys(session()->get('shipment_refusal_preview.value')));
+        $this->getJson($root.'/review', $this->financialHeaders())->assertOk()->assertJsonPath('props.preview.amounts.buyer_refund_cents', 0);
+        $this->actingAs($order->buyer)->getJson($root.'/review')->assertForbidden();
+        $preview = $this->actingAs($admin)->postJson($root.'/preview', $details)->assertOk()->assertJsonPath('preview.amounts.buyer_refund_cents', 0)
+            ->assertJsonPath('preview.amounts.buyer_liability_cents', 10000)->json('preview');
+        $input = [...$details, 'review_token' => $preview['review_token'], 'request_token' => (string) Str::uuid(),
+            'reason' => 'The current independent admin reviewed the actual original conformity and complete reverse cost evidence.',
+            'conforming_shipment_confirmed' => true, 'proof' => UploadedFile::fake()->image('reviewed-http-cost.png')];
+        $saved = $this->postJson($root.'/approve', $input)->assertCreated()->json('plan');
+        $plan = ShipmentFinancialPlan::findOrFail($saved['id']);
+        $url = '/shipment-finances/'.$plan->id;
+        $this->get($root.'/review')->assertRedirect($url);
+        $this->get($url.'/proof')->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $this->getJson($url, $this->financialHeaders())->assertOk()->assertJsonPath('props.financialPlan.actions.0', 'execute-wallet-refusal');
+        $this->postJson($url.'/actions', ['action' => 'execute-wallet-refusal', ...$this->execution($plan), 'proof' => 'guessed-existing-receipt.png'])
+            ->assertUnprocessable()->assertJsonValidationErrors('proof');
+        $this->postJson($url.'/actions', ['action' => 'execute-wallet-refusal', ...$this->execution($plan)])->assertOk()->assertJsonPath('event.amount_cents', 0);
+        $buyer = $this->actingAs($order->buyer)->getJson($url, $this->financialHeaders())->assertOk()
+            ->assertJsonPath('props.financialPlan.status', 'shipping_due')->assertJsonPath('props.financialPlan.actions.0', 'pay-wallet-shipping')
+            ->assertJsonPath('props.financialPlan.review_proof_url', null)->json('props.financialPlan');
+        $this->assertSame(['id', 'order_number'], array_keys($buyer['order']));
+        $this->assertArrayNotHasKey('snapshot', $buyer);
+        $this->assertArrayNotHasKey('source_actor_ids', $buyer);
+        $this->get($url.'/proof')->assertNotFound();
+        $this->getJson('/buyer/orders/'.$order->id, $this->financialHeaders())->assertOk()->assertJsonPath('props.shipmentFinance.id', $plan->id);
+        $payment = ['action' => 'pay-wallet-shipping', 'expected_version' => 2, 'request_token' => (string) Str::uuid(), 'amount' => '100.00',
+            'payment_confirmed' => true, 'reason' => 'The original buyer authorizes this separate actual virtual shipping payment.'];
+        $this->postJson($url.'/actions', [...$payment, 'proof' => 'guessed-wallet-receipt.png'])->assertUnprocessable()->assertJsonValidationErrors('proof');
+        $paid = $this->postJson($url.'/actions', $payment)->assertOk()->json('event.id');
+        $this->postJson($url.'/actions', $payment)->assertOk()->assertJsonPath('event.id', $paid);
+        $this->getJson('/return-liabilities?view=shipments&status=resolved', $this->financialHeaders())->assertOk()->assertJsonPath('props.cases.total', 1);
+        $this->getJson('/return-liabilities?view=shipments&status=shipping_due', $this->financialHeaders())->assertOk()->assertJsonPath('props.cases.total', 0);
+        $company = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $company->update(['status' => 'suspended']);
+        $companyPage = $this->actingAs($company)->getJson($url, $this->financialHeaders())->assertOk()->json('props.financialPlan');
+        $this->assertSame([], $companyPage['actions']);
+        $this->assertNull($companyPage['wallet_balance_cents']);
+        $this->assertNull($companyPage['review_reason']);
+        $this->assertSame(['approved', 'zero-refund-assessed'], array_column($companyPage['history'], 'event_type'));
+        $this->assertSame([null, null], array_column($companyPage['history'], 'reason'));
+        $this->postJson($url.'/actions', ['action' => 'pay-wallet-shipping', 'expected_version' => 3, 'request_token' => (string) Str::uuid(),
+            'amount' => '1.00', 'payment_confirmed' => true, 'reason' => 'A company owner must never claim to make the original buyer virtual payment.'])->assertForbidden();
+        $this->get($url.'/proof')->assertNotFound();
+        $this->actingAs($this->createApprovedUser('buyer'))->getJson($url)->assertNotFound();
+        $this->actingAs($this->createApprovedUser('seller'))->getJson($url)->assertNotFound();
+        $this->actingAs($this->createApprovedUser('logistics'))->getJson($url)->assertNotFound();
+        $this->actingAs($this->createApprovedUser('courier'))->getJson($url)->assertForbidden();
+    }
+
+    public function test_public_cod_refusal_requires_named_cash_receipt_and_keeps_private_transfers_from_sellers_and_company_owners(): void
+    {
+        [$order, $admin] = $this->refused('cod');
+        $root = '/shipment-finances/orders/'.$order->id;
+        $details = ['reverse_fee' => '40.00', 'cost_reference' => 'ACTUAL-HTTP-COD-REVERSE'];
+        $preview = $this->actingAs($admin)->postJson($root.'/preview', $details)->assertOk()->json('preview');
+        $saved = $this->postJson($root.'/approve', [...$details, 'review_token' => $preview['review_token'], 'request_token' => (string) Str::uuid(),
+            'reason' => 'Independently reviewed this original uncollected COD refusal and its actual complete reverse transport.',
+            'conforming_shipment_confirmed' => true, 'proof' => UploadedFile::fake()->image('cod-cost.png')])->assertCreated()->json('plan');
+        $plan = ShipmentFinancialPlan::findOrFail($saved['id']);
+        $url = '/shipment-finances/'.$plan->id;
+        $this->postJson($url.'/actions', ['action' => 'assess-cod-refusal', ...$this->execution($plan)])->assertOk()->assertJsonPath('event.amount_cents', 0);
+        $offer = $this->actingAs($order->buyer)->postJson($url.'/actions', ['action' => 'offer-shipping-payment', 'expected_version' => 2,
+            'request_token' => (string) Str::uuid(), 'amount' => '90.00', 'recipient_id' => $admin->id, 'cash_reference' => 'ACTUAL-HTTP-BUYER-SHIPPING',
+            'payment_confirmed' => true, 'reason' => 'I made this actual shipping transfer to the named independent receiving admin.',
+            'proof' => UploadedFile::fake()->image('actual-offer.png')])->assertOk()->json('event');
+        $proof = $url.'/events/'.$offer['id'].'/proof';
+        $this->get($proof)->assertOk();
+        $this->getJson($url, $this->financialHeaders())->assertOk()->assertJsonPath('props.financialPlan.state.remaining_cents', 9000);
+        foreach ([$order->shop->user, LogisticsCompany::findOrFail($plan->logistics_company_id)->user] as $observer) {
+            $data = $this->actingAs($observer)->getJson($url, $this->financialHeaders())->assertOk()->json('props.financialPlan');
+            $this->assertNotContains('offer-shipping-payment', array_column($data['history'], 'event_type'));
+            $this->get($proof)->assertNotFound();
+        }
+        $this->actingAs($this->createApprovedUser('admin'))->getJson($url, $this->financialHeaders())->assertOk()->assertJsonPath('props.financialPlan.pending_offers', []);
+        $receipt = ['action' => 'receive-shipping-payment', 'expected_version' => 3, 'request_token' => (string) Str::uuid(), 'source_event_id' => $offer['id'],
+            'payment_confirmed' => true, 'reason' => 'The named admin independently confirms receiving the original actual shipping transfer.',
+            'proof' => UploadedFile::fake()->image('actual-receipt.png')];
+        $this->postJson($url.'/actions', $receipt)->assertConflict();
+        $received = $this->actingAs($admin)->postJson($url.'/actions', $receipt)->assertOk()->json('event');
+        $this->postJson($url.'/actions', $receipt)->assertOk()->assertJsonPath('event.id', $received['id']);
+        $this->actingAs($order->buyer)->get($url.'/events/'.$received['id'].'/proof')->assertOk();
+        $this->getJson($url, $this->financialHeaders())->assertOk()->assertJsonPath('props.financialPlan.status', 'resolved');
+        $this->from($url)->post($url.'/actions', ['action' => 'offer-shipping-payment', 'expected_version' => 1, 'request_token' => (string) Str::uuid(),
+            'amount' => '90.00', 'recipient_id' => $admin->id, 'cash_reference' => 'STALE-TRANSFER', 'payment_confirmed' => true,
+            'reason' => 'A stale browser must return a readable error and retain the original financial case.', 'proof' => UploadedFile::fake()->image('stale.png')])
+            ->assertRedirect($url)->assertSessionHasErrors('payment');
+        $this->assertDatabaseCount('cod_accounts', 0);
+        $this->assertDatabaseCount('wallet_transactions', 0);
+        $this->assertSame('pending', $order->fresh()->payment_status);
+    }
+
+    public function test_public_refusal_review_keeps_policy_one_on_its_original_writer_and_blocks_unknown_terms(): void
+    {
+        [$order, $admin] = $this->refused();
+        $root = '/shipment-finances/orders/'.$order->id;
+        foreach ([1, 99] as $policy) {
+            $order->update(['shipping_quote' => [...$order->shipping_quote, 'refund_policy_version' => $policy]]);
+            $this->actingAs($admin)->getJson($root.'/review', $this->financialHeaders())->assertOk()
+                ->assertJsonPath('props.preview', null)->assertJsonPath('props.source', null);
+            $this->assertNotEmpty($this->getJson($root.'/review', $this->financialHeaders())->json('props.blocker'));
+            $this->postJson($root.'/preview', ['reverse_fee' => '40.00', 'cost_reference' => 'ORIGINAL-REVIEW'])->assertConflict();
+        }
+        $this->assertDatabaseCount('shipment_financial_plans', 0);
+        $this->assertSame(0, WalletTransaction::where('kind', 'wallet_refusal_refund')->count());
+    }
+
+    public function test_public_execution_failure_returns_a_safe_retry_without_partial_credits_or_a_second_refund(): void
+    {
+        [$order, $admin] = $this->refused();
+        $plan = app(ShipmentRefusalReview::class)->approve($admin, $order, $this->approval($order, $admin), UploadedFile::fake()->image('reviewed-cost.png'));
+        $before = [WalletTransaction::count(), DB::table('wallet_entries')->count(), $plan->events()->count()];
+        $reject = true;
+        ShipmentFinancialEvent::creating(function () use (&$reject) {
+            if ($reject) {
+                throw new \RuntimeException('Simulated private financial persistence detail.');
+            }
+        });
+        $input = ['action' => 'execute-wallet-refusal', ...$this->execution($plan)];
+        $url = '/shipment-finances/'.$plan->id.'/actions';
+        $failure = $this->actingAs($admin)->postJson($url, $input)->assertStatus(503);
+        $this->assertStringNotContainsString('private financial persistence detail', $failure->getContent());
+        $this->assertSame($before, [WalletTransaction::count(), DB::table('wallet_entries')->count(), $plan->events()->count()]);
+        $reject = false;
+        $event = $this->postJson($url, $input)->assertOk()->json('event.id');
+        $this->postJson($url, $input)->assertOk()->assertJsonPath('event.id', $event);
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_refusal_refund')->count());
     }
 }

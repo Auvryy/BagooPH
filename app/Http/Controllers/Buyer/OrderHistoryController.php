@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\ShipmentFinancialPlan;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyAgainService;
 use App\Services\Commerce\ReviewService;
@@ -17,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -88,6 +90,8 @@ class OrderHistoryController extends Controller
             'returnAvailability' => $ownedBuyerOrder && $canFulfillOrder
                 ? app(BuyerReturnService::class)->availability($user, $order) : null,
             'buyerReturns' => $ownedBuyerOrder ? $order->buyerReturns()->latest('id')->get(['id', 'reference', 'status'])->all() : [],
+            'shipmentFinance' => $user->email_verified_at && ($ownedBuyerOrder || $adminOversight) && Schema::hasTable('shipment_financial_plans')
+                ? ShipmentFinancialPlan::where('order_id', $order->id)->where('kind', 'buyer_refusal')->first(['id', 'reference']) : null,
             'cancelOrderUrl' => $ownedBuyerOrder && app(OrderLifecycleService::class)->canBuyerCancel($order, $user)
                 ? route('buyer.orders.cancel', $order, absolute: false) : null,
             'cancellationReasons' => OrderLifecycleService::BUYER_CANCELLATION_REASONS,

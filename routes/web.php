@@ -36,11 +36,10 @@ use App\Http\Controllers\Buyer\SavedProductController;
 use App\Http\Controllers\Buyer\ShopFollowController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\BuyerReturnController;
-use App\Http\Controllers\BuyerReturnLiabilityController;
 use App\Http\Controllers\BuyerReturnCustodyController;
+use App\Http\Controllers\BuyerReturnLiabilityController;
 use App\Http\Controllers\BuyerReturnMoneyController;
 use App\Http\Controllers\BuyerReturnRecoveryController;
-use App\Http\Controllers\WalletRefundCreditController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CodCashController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
@@ -66,13 +65,13 @@ use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderCancellationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PromotionContentAssistantController;
+use App\Http\Controllers\PublicTrackingController;
 /*
 |--------------------------------------------------------------------------
 | Subdomain Routing (bagooph.shop, seller.*, courier.*, hub.*, admin.*)
 |--------------------------------------------------------------------------
 */
-use App\Http\Controllers\PromotionContentAssistantController;
-use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\RegistrationPolicyController;
 use App\Http\Controllers\Seller\ProductSaleController;
 use App\Http\Controllers\Seller\PromotionController as SellerPromotionController;
@@ -87,11 +86,13 @@ use App\Http\Controllers\Seller\SellerStoreTagController;
 use App\Http\Controllers\Seller\SellerTagAssistantController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\SellerSettlementController;
+use App\Http\Controllers\ShipmentFinancialController;
 use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VerificationDocumentController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\WalletProceedsController;
+use App\Http\Controllers\WalletRefundCreditController;
 use App\Http\Middleware\AdvertisementResponseHeaders;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Http\Request;
@@ -597,6 +598,15 @@ Route::middleware('auth')->prefix('buyer-returns')->name('buyer-returns.')->grou
 Route::middleware('auth')->prefix('return-liabilities')->name('return-liabilities.')->group(function () {
     Route::get('/', [BuyerReturnLiabilityController::class, 'index'])->name('index');
     Route::get('/{case}', [BuyerReturnLiabilityController::class, 'show'])->where('case', '[1-9][0-9]{0,17}')->name('show');
+});
+Route::middleware('auth')->prefix('shipment-finances')->name('shipment-finances.')->group(function () {
+    Route::get('/orders/{order}/review', [ShipmentFinancialController::class, 'review'])->where('order', '[1-9][0-9]{0,17}')->name('review');
+    Route::post('/orders/{order}/preview', [ShipmentFinancialController::class, 'preview'])->where('order', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('preview');
+    Route::post('/orders/{order}/approve', [ShipmentFinancialController::class, 'approve'])->where('order', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('approve');
+    Route::get('/{plan}', [ShipmentFinancialController::class, 'show'])->where('plan', '[1-9][0-9]{0,17}')->name('show');
+    Route::post('/{plan}/actions', [ShipmentFinancialController::class, 'action'])->where('plan', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('action');
+    Route::get('/{plan}/proof', [ShipmentFinancialController::class, 'proof'])->where('plan', '[1-9][0-9]{0,17}')->name('proof');
+    Route::get('/{plan}/events/{event}/proof', [ShipmentFinancialController::class, 'eventProof'])->where(['plan' => '[1-9][0-9]{0,17}', 'event' => '[1-9][0-9]{0,17}'])->name('event-proof');
 });
 
 /*

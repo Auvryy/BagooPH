@@ -143,6 +143,9 @@ class ExceptionOversightService
             'canResolve' => filled($state['support']) && $latest?->action !== 'resolve',
             'blocker' => $state['support'] ? null : $this->blocker($kind, $context),
             'recoveryUrl' => $recoveryUrl,
+            'financialReviewUrl' => $actor->isAdmin() && $kind === 'attempt' && $context['source']->reason_code === 'customer_refused'
+                && $context['order']?->status === 'returned' && ($context['order']->shipping_quote['refund_policy_version'] ?? 1) === 2
+                ? '/shipment-finances/orders/'.$context['order']->id.'/review' : null,
             'history' => $history->map(fn ($event) => $event->only(['reference', 'action', 'reason', 'actor_name', 'actor_role', 'responsible_name', 'supporting_evidence', 'created_at']))->all(),
             'candidates' => $withCandidates ? array_values(array_filter($this->candidates($context['companyId']), fn ($candidate) => $actor->isAdmin() || $candidate['role'] !== 'admin')) : [],
         ];
