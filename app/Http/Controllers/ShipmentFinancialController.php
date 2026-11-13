@@ -7,6 +7,8 @@ use App\Models\ShipmentFinancialEvent;
 use App\Models\ShipmentFinancialPlan;
 use App\Services\Finance\ShipmentFinancialAccess;
 use App\Services\Finance\ShipmentFinancialPresentation;
+use App\Services\Finance\ShipmentLossAccess;
+use App\Services\Finance\ShipmentLossPresentation;
 use App\Services\Finance\ShipmentRefusalLiability;
 use App\Services\Finance\ShipmentRefusalMoney;
 use App\Services\Finance\ShipmentRefusalReview;
@@ -97,6 +99,11 @@ class ShipmentFinancialController extends Controller
 
     public function show(Request $request, ShipmentFinancialPlan $plan, ShipmentFinancialPresentation $presentation)
     {
+        if ($plan->kind === 'transit_loss') {
+            return Inertia::render('Finance/LossOutcome', ['loss' => app(ShipmentLossPresentation::class)->present($request->user(), $plan)])
+                ->toResponse($request)->header('Cache-Control', 'private, no-store');
+        }
+
         return Inertia::render('Finance/ShipmentOutcome', ['financialPlan' => $presentation->present($request->user(), $plan)]);
     }
 
@@ -128,6 +135,9 @@ class ShipmentFinancialController extends Controller
 
     public function proof(Request $request, ShipmentFinancialPlan $plan, ShipmentFinancialAccess $access)
     {
+        if ($plan->kind === 'transit_loss') {
+            $access = app(ShipmentLossAccess::class);
+        }
         abort_unless($access->proof($request->user(), $plan), 404);
 
         return $this->download($plan);
@@ -135,6 +145,9 @@ class ShipmentFinancialController extends Controller
 
     public function eventProof(Request $request, ShipmentFinancialPlan $plan, ShipmentFinancialEvent $event, ShipmentFinancialAccess $access)
     {
+        if ($plan->kind === 'transit_loss') {
+            $access = app(ShipmentLossAccess::class);
+        }
         abort_unless($access->proof($request->user(), $plan, $event), 404);
 
         return $this->download($event);

@@ -87,6 +87,7 @@ use App\Http\Controllers\Seller\SellerTagAssistantController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\SellerSettlementController;
 use App\Http\Controllers\ShipmentFinancialController;
+use App\Http\Controllers\ShipmentLossController;
 use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VerificationDocumentController;
@@ -600,6 +601,9 @@ Route::middleware('auth')->prefix('return-liabilities')->name('return-liabilitie
     Route::get('/{case}', [BuyerReturnLiabilityController::class, 'show'])->where('case', '[1-9][0-9]{0,17}')->name('show');
 });
 Route::middleware('auth')->prefix('shipment-finances')->name('shipment-finances.')->group(function () {
+    Route::get('/missing/{observation}/review', [ShipmentLossController::class, 'review'])->where('observation', '[1-9][0-9]{0,17}')->name('loss-review');
+    Route::post('/missing/{observation}/preview', [ShipmentLossController::class, 'preview'])->where('observation', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('loss-preview');
+    Route::post('/missing/{observation}/approve', [ShipmentLossController::class, 'approve'])->where('observation', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('loss-approve');
     Route::get('/orders/{order}/review', [ShipmentFinancialController::class, 'review'])->where('order', '[1-9][0-9]{0,17}')->name('review');
     Route::post('/orders/{order}/preview', [ShipmentFinancialController::class, 'preview'])->where('order', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('preview');
     Route::post('/orders/{order}/approve', [ShipmentFinancialController::class, 'approve'])->where('order', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('approve');
