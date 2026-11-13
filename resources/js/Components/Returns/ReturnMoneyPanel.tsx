@@ -33,7 +33,7 @@ export interface ReturnMoney {
     reserve?: { balance_cents: number; original_required_cents: number; original_reserved_cents: number; liability_due_cents: number;
         liable_received_cents: number; liability_remaining_cents: number; advance_outstanding_cents: number; refund_goal_cents: number };
     funding?: { required_backing_cents: number; received_backing_cents: number };
-    owned_wallet_balance_cents?: number; compensation_remaining_cents?: number;
+    owned_wallet_balance_cents?: number | null; owned_wallet_available_cents?: number; compensation_remaining_cents?: number;
     funding_credit_max_cents?: number;
     funding_credit_requests?: Array<{ id: number; reference: string; amount_cents: number; reason: string; status: string; version: number;
         review_reason: string | null; actor_name: string; can_review: boolean; wallet_reference: string | null }>;
@@ -105,7 +105,8 @@ export default function ReturnMoneyPanel({ value, caseId, version }: { value: Re
             ['Original funds reserved', value.reserve.original_reserved_cents], ['Original funds required', value.reserve.original_required_cents],
             ['Liable account contribution received', value.reserve.liable_received_cents], ['Liable account contribution outstanding', value.reserve.liability_remaining_cents],
             ['Platform advance outstanding', value.reserve.advance_outstanding_cents], ['Current reserve balance', value.reserve.balance_cents],
-            ...(value.owned_wallet_balance_cents !== undefined ? [['My available Wallet credits', value.owned_wallet_balance_cents]] : []),
+            ...(value.owned_wallet_balance_cents !== undefined && value.owned_wallet_balance_cents !== null ? [['My Wallet balance', value.owned_wallet_balance_cents]] : []),
+            ...(value.owned_wallet_available_cents !== undefined && value.owned_wallet_available_cents !== value.owned_wallet_balance_cents ? [['Available for this return', value.owned_wallet_available_cents]] : []),
         ].map(([label, cents]) => <div key={String(label)}><dt className="text-xs text-slate-600">{label}</dt><dd className="mt-1 text-sm font-bold">{money(Number(cents))}</dd></div>)}</dl></div>}
         {(value.funding_credit_requests || (value.funding_credit_max_cents ?? 0) > 0) && <RefundFundingCredits value={value} caseId={caseId} version={version} />}
         {value.backing && <div className="space-y-3 border-t border-slate-300 pt-4"><h3 className="text-sm font-bold text-slate-900">Actual repayment backing</h3><dl className="grid gap-3 text-sm sm:grid-cols-2">{[['Original reconciled COD', value.backing.reconciled_cents], ['Additional money received', value.backing.received_cents], ['Seller already paid', value.backing.seller_paid_cents], ['Remaining seller proceeds protected', value.backing.protected_seller_cents], ['Shipping protected', value.backing.protected_shipping_cents], ['Buyer repayments recorded', value.backing.outgoing_cents], ['Available after obligations', value.backing.available_cents]].map(([label, cents]) => <div key={String(label)}><dt className="text-xs text-slate-600">{label}</dt><dd className="mt-1 font-semibold">{money(Number(cents))}</dd></div>)}</dl>{(!value.backing.verified || value.backing.available_cents < due || value.funding && value.funding.received_backing_cents < value.funding.required_backing_cents) && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Awaiting confirmed backing. Reconcile original COD and confirm enough actual incoming funds before recording a repayment.</p>}</div>}

@@ -9,6 +9,7 @@ use App\Models\BuyerReturnRepaymentPlan;
 use App\Models\User;
 use App\Models\WalletRefundCreditRequest;
 use App\Models\WalletTransaction;
+use App\Services\Wallet\WalletFundingCredits;
 use App\Services\Wallet\WalletLedger;
 use App\Services\Wallet\WalletRefundCreditService;
 use App\Services\Wallet\WalletReturnReserve;
@@ -67,6 +68,15 @@ class BuyerReturnMoneyPresentation
                 $data['reserve'] = app(WalletReturnReserve::class)->summary($plan);
                 if (! $admin) {
                     $data['owned_wallet_balance_cents'] = app(WalletLedger::class)->balance($actor);
+                    try {
+                        $data['owned_wallet_available_cents'] = app(WalletFundingCredits::class)->available($actor, $plan->reference);
+                    } catch (HttpExceptionInterface $error) {
+                        if ($error->getStatusCode() !== 409) {
+                            throw $error;
+                        }
+                        $data['owned_wallet_available_cents'] = 0;
+                        $data['blockers'][] = $error->getMessage();
+                    }
                 }
                 if (Schema::hasTable('wallet_refund_credit_requests')) {
                     $requests = WalletRefundCreditRequest::where('repayment_plan_id', $plan->id)

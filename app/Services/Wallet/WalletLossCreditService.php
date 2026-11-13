@@ -75,7 +75,9 @@ class WalletLossCreditService
         $balance = app(WalletLedger::class)->balance($owner);
         abort_unless($balance !== null, 409, 'Review the actual owned Wallet journal before requesting additional loss funding.');
 
-        return max(0, min($state['company_remaining_cents'] - $balance, $state['company_due_cents'] - $granted,
+        $available = app(WalletFundingCredits::class)->available($owner, $plan->reference);
+
+        return max(0, min($state['company_remaining_cents'] - $available, $state['company_due_cents'] - $granted,
             WalletCreditService::MAX_TOP_UP_CENTS, WalletCreditService::MAX_GRANTED_BALANCE_CENTS - $balance));
     }
 

@@ -15,6 +15,7 @@ use App\Services\AccountClosureService;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\Finance\ShipmentLossReview;
 use App\Services\Finance\ShipmentLossWallet;
+use App\Services\Wallet\WalletFundingCredits;
 use App\Services\Wallet\WalletLedger;
 use App\Services\Wallet\WalletLossCreditService;
 use App\Services\Wallet\WalletLossReserve;
@@ -78,6 +79,7 @@ class ShipmentLossWalletTest extends TestCase
     {
         $credits = app(WalletLossCreditService::class);
         $before = app(WalletLossReserve::class)->summary($plan);
+        $ownedBefore = app(WalletLedger::class)->balance($owner);
         $input = ['expected_version' => (int) $plan->events()->max('sequence'), 'request_token' => (string) Str::uuid(),
             'amount' => SellerSettlementService::pesos($amount), 'reason' => 'The original liable company requests independently reviewed demonstration credits for its own loss debt.'];
         $count = WalletTransaction::count();
@@ -89,8 +91,60 @@ class ShipmentLossWalletTest extends TestCase
         $saved = $credits->review($admin, $request, $review);
         $this->assertSame($saved->id, $credits->review($admin, $request, $review)->id);
         $this->assertSame($before, app(WalletLossReserve::class)->summary($plan));
-        $this->assertSame($amount, app(WalletLedger::class)->balance($owner));
+        $this->assertSame($ownedBefore + $amount, app(WalletLedger::class)->balance($owner));
         $this->assertSame($amount, WalletTransaction::findOrFail($saved->wallet_transaction_id)->amount_cents);
+    }
+
+    public function test_two_actual_loss_cases_cannot_spend_the_other_original_reviewed_grant(): void
+    {
+        [$first, $admin] = $this->plan();
+        [$second] = $this->plan();
+        $this->assertSame($first->logistics_company_id, $second->logistics_company_id);
+        $owner = LogisticsCompany::findOrFail($first->logistics_company_id)->user;
+        $this->reviewedOwnerCredits($owner, $admin, 18833, $first);
+        $before = app(WalletLossReserve::class)->summary($second);
+        try {
+            app(ShipmentLossWallet::class)->command($owner, $second, 'contribute-company', $this->commandInput($second, 'contribute-company', 18833));
+            $this->fail('Credits reviewed for the first original loss cannot leave that authority unfunded by paying another loss.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $this->assertSame($before, app(WalletLossReserve::class)->summary($second));
+        $this->assertSame(18833, app(WalletLossCreditService::class)->maximum($owner, $second));
+        $this->reviewedOwnerCredits($owner, $admin, 18833, $second);
+        foreach ([$second, $first] as $plan) {
+            $this->command($owner, $plan, 'contribute-company', 18833);
+            $this->command($admin, $plan, 'reserve-original');
+            $this->command($admin, $plan, 'resolve-wallet');
+        }
+        $this->assertSame(0, app(WalletLedger::class)->balance($owner));
+        $this->assertSame(2, WalletTransaction::where('kind', 'wallet_loss_refund')->count());
+        $this->assertSame(0, app(WalletLossCreditService::class)->maximum($owner, $first));
+        $this->assertSame(0, app(WalletLossCreditService::class)->maximum($owner, $second));
+    }
+
+    public function test_an_earlier_owned_contribution_cannot_consume_a_later_reviewed_grant_for_another_case(): void
+    {
+        [$first, $admin] = $this->plan();
+        [$second] = $this->plan();
+        $owner = LogisticsCompany::findOrFail($first->logistics_company_id)->user;
+        $ledger = app(WalletLedger::class);
+        DB::transaction(fn () => $ledger->post('isolated-general-owned-before-grant', 'demo_credit', 10000,
+            [$ledger->user($owner)->id => 10000, $ledger->platform('demo_issuance')->id => -10000], $admin,
+            'Explicit balanced existing owned credits for the isolated contribution chronology check.', ['demo_only' => true]));
+        $this->command($owner, $first, 'contribute-company', 10000);
+        $this->reviewedOwnerCredits($owner, $admin, 8833, $first);
+        $this->assertSame(8833, app(WalletFundingCredits::class)->available($owner, $first->reference));
+        $this->assertSame(0, app(WalletFundingCredits::class)->available($owner, $second->reference));
+        try {
+            app(ShipmentLossWallet::class)->command($owner, $second, 'contribute-company', $this->commandInput($second, 'contribute-company', 8833));
+            $this->fail('An owned contribution made before issuance cannot consume the later original grant.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $this->command($owner, $first, 'contribute-company', 8833);
+        $this->assertSame(0, app(WalletLossReserve::class)->summary($first)['company_remaining_cents']);
+        $this->assertSame(18833, app(WalletLossCreditService::class)->maximum($owner, $second));
     }
 
     public static function originalClaims(): array

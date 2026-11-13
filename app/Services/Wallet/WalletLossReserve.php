@@ -70,6 +70,8 @@ class WalletLossReserve
         if ($action === 'contribute-company') {
             abort_unless(is_int($amount) && $amount > 0 && $amount <= $state['company_remaining_cents'], 409,
                 'Transfer only the original company’s remaining approved liability.');
+            abort_unless($amount <= app(WalletFundingCredits::class)->available($actor, $plan->reference), 409,
+                'Use credits available to this original loss. Other reviewed grants remain reserved for their own obligations.');
 
             return $this->deposit($plan, $actor, $this->ledger->user($actor), 'liable_company', $amount, $reason, $token, $actor->id);
         }

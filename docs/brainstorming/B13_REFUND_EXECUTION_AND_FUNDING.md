@@ -69,6 +69,15 @@ its own available credits into the reserve. Pending requests block account
 closure; rejection moves no credits. Repeated requests cannot exceed the
 original obligation or duplicate an outstanding request.
 
+Reviewed liability credits remain available to their original financial
+authority until that account actually contributes them or their original
+source is independently reconciled. Other unrestricted owned credits may
+fund another approved obligation. Availability follows the retained grant
+and owned-contribution journal order: a contribution made before a grant
+cannot consume that later grant. Another authority's reserved grant does
+not reduce this authority's independently reviewed shortfall. Original
+grant limits and the actual owned Wallet balance limit still apply.
+
 Each authority has its own reserve entries linked to the exact actual Wallet
 transaction, reserve account and signed journal delta. Funding one case cannot
 finance another case's refund. The named liable user actually transfers their

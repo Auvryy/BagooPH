@@ -188,6 +188,8 @@ class WalletReturnReserve
         $state = $this->summary($plan);
         abort_unless(in_array($case->status, ['repayment_ready', 'repaid', 'closed_no_repayment'], true)
             && $amount > 0 && $amount <= $state['liability_remaining_cents'], 409, 'Transfer only the remaining approved virtual liability.');
+        abort_unless($amount <= app(WalletFundingCredits::class)->available($actor, $plan->reference), 409,
+            'Use credits available to this original return. Other reviewed grants remain reserved for their own obligations.');
 
         return $this->deposit($plan, $actor, $this->ledger->user($actor), $kind, $amount, $amount, $reason, $token, $actor->id);
     }

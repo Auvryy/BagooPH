@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WalletSuccessorReturnMoneyService
 {
@@ -65,7 +66,15 @@ class WalletSuccessorReturnMoneyService
             : $actor->isLogistics() && LogisticsCompany::whereKey($plan->snapshot['liable_company_id'])->where('user_id', $actor->id)->exists();
         if ($liable && $actor->isKycApproved() && $actor->email_verified_at && $state['liability_remaining_cents'] > 0
             && in_array($case->status, ['repayment_ready', 'repaid', 'closed_no_repayment'], true)) {
-            $actions[] = 'fund-wallet-liability';
+            try {
+                if (app(WalletFundingCredits::class)->available($actor, $plan->reference) > 0) {
+                    $actions[] = 'fund-wallet-liability';
+                }
+            } catch (HttpExceptionInterface $error) {
+                if ($error->getStatusCode() !== 409) {
+                    throw $error;
+                }
+            }
         }
 
         return $actions;

@@ -25,6 +25,7 @@ use App\Services\Returns\BuyerReturnPlanApproval;
 use App\Services\Returns\BuyerReturnRefundPlan;
 use App\Services\Returns\BuyerReturnService;
 use App\Services\Wallet\WalletCreditService;
+use App\Services\Wallet\WalletLedger;
 use App\Services\Wallet\WalletRefundCreditService;
 use App\Services\Wallet\WalletReturnReserve;
 use App\Services\Wallet\WalletSettlementService;
@@ -887,7 +888,8 @@ class BuyerReturnRefundPlanTest extends TestCase
         foreach (['buyer', 'items', 'evidence', 'parcel', 'shipping_address', 'source_snapshot'] as $private) {
             $this->assertArrayNotHasKey($private, $financial);
         }
-        $this->assertContains('fund-wallet-liability', $financial['money']['actions']);
+        $this->assertNotContains('fund-wallet-liability', $financial['money']['actions']);
+        $this->assertSame(0, $financial['money']['owned_wallet_available_cents']);
         $this->getJson('/return-liabilities', $this->financialHeaders())->assertOk()->assertJsonPath('props.cases.data.0.id', $case->id);
         $this->getJson('/return-liabilities?search='.urlencode($case->reference), $this->financialHeaders())->assertOk()->assertJsonPath('props.cases.total', 1);
         $this->getJson('/return-liabilities?search=%25', $this->financialHeaders())->assertOk()->assertJsonPath('props.cases.total', 0);
@@ -899,6 +901,9 @@ class BuyerReturnRefundPlanTest extends TestCase
         $this->postJson('/buyer-returns/'.$case->id.'/wallet-funding-credits/'.$funding->id.'/review', $this->fundingReviewInput($funding))->assertForbidden();
         $this->actingAs($admin)->postJson('/buyer-returns/'.$case->id.'/wallet-funding-credits/'.$funding->id.'/review', $this->fundingReviewInput($funding))
             ->assertOk()->assertJsonPath('request.status', 'approved');
+        $funded = $this->actingAs($company)->getJson($url, $this->financialHeaders())->assertOk()->json('props.financialCase.money');
+        $this->assertContains('fund-wallet-liability', $funded['actions']);
+        $this->assertSame($plan->snapshot['company_funding_due_cents'], $funded['owned_wallet_available_cents']);
         $moneyUrl = '/buyer-returns/'.$case->id.'/money';
         $this->actingAs($company)->post($moneyUrl, $this->cashInput($case, ['action' => 'fund-wallet-liability',
             'amount' => SellerSettlementService::pesos($plan->snapshot['company_funding_due_cents']), 'wallet_funding_confirmed' => true]))
@@ -970,6 +975,33 @@ class BuyerReturnRefundPlanTest extends TestCase
     {
         return ['version' => $request->fresh()->version, 'request_token' => (string) Str::uuid(), 'decision' => 'approved',
             'reason' => 'Reviewed the original virtual liability, available credits and remaining demonstration budget.', 'demo_credit_confirmed' => true, ...$extra];
+    }
+
+    public function test_two_actual_completed_returns_keep_reviewed_company_credits_with_their_original_authority(): void
+    {
+        [$first, $admin, $reserve, $firstPlan] = $this->approvedWallet('courier');
+        [$second, , , $secondPlan] = $this->approvedWallet('courier');
+        $this->assertSame($first->parcel->logistics_company_id, $second->parcel->logistics_company_id);
+        $owner = LogisticsCompany::findOrFail($first->parcel->logistics_company_id)->user;
+        $credits = app(WalletRefundCreditService::class);
+        $grant = $credits->request($owner, $first, $this->fundingCreditInput($first, $firstPlan->snapshot['company_funding_due_cents']));
+        $credits->review($admin, $grant, $this->fundingReviewInput($grant));
+        $reason = 'The original company transfers only credits available to this independently reviewed return.';
+        try {
+            DB::transaction(fn () => $reserve->liability($owner, $second, 12500, $reason, (string) Str::uuid()));
+            $this->fail('The second return cannot consume the first original reviewed grant.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $this->assertSame(12500, $credits->maximum($owner, $second, $secondPlan));
+        $grant = $credits->request($owner, $second, $this->fundingCreditInput($second, 12500));
+        $credits->review($admin, $grant, $this->fundingReviewInput($grant));
+        foreach ([$second, $first] as $case) {
+            DB::transaction(fn () => $reserve->liability($owner, $case, 12500, $reason, (string) Str::uuid()));
+            DB::transaction(fn () => $reserve->refund($admin, $case, $reason, (string) Str::uuid()));
+        }
+        $this->assertSame(0, app(WalletLedger::class)->balance($owner));
+        $this->assertSame(2, WalletTransaction::where('kind', 'wallet_return_refund')->count());
     }
 
     public function test_original_company_requests_reviewed_demo_credits_and_clears_liability_only_after_actual_reserve_funding(): void

@@ -67,7 +67,10 @@ class WalletRefundCreditService
         $balance = app(WalletLedger::class)->balance($actor);
         abort_unless($balance !== null, 409, 'Review the actual owned Wallet journal before requesting additional demonstration funding.');
 
-        return max(0, min($state['liability_remaining_cents'] - $balance, $state['liability_due_cents'] - $granted, WalletCreditService::MAX_TOP_UP_CENTS));
+        $available = app(WalletFundingCredits::class)->available($actor, $plan->reference);
+
+        return max(0, min($state['liability_remaining_cents'] - $available, $state['liability_due_cents'] - $granted,
+            WalletCreditService::MAX_TOP_UP_CENTS, WalletCreditService::MAX_GRANTED_BALANCE_CENTS - $balance));
     }
 
     private function unused(string $token): void
