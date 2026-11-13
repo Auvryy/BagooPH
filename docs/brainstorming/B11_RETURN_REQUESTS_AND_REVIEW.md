@@ -42,6 +42,12 @@ basis has been approved. The immutable event history retains earlier findings.
 Reviewing fault does not repeat authorization, extend drop-off time, change
 custody or transfer funds.
 
+An active independent loss authority for the same original return claim is
+also an approved financial basis. Ordinary fault review cannot replace its
+finding while that authority remains active, even before a legacy merchandise
+adjustment exists. Retaining an earlier voided, unfunded review does not erase
+its history or give it authority over another current claim.
+
 Courier findings require an explicit account of the actual transit or handover
 evidence, 10–1,000 characters. The finding retains the original company,
 delivery checkpoint and private case evidence identifiers. The most recent

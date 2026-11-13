@@ -31,7 +31,7 @@ trait CreatesMissingShipments
                 'quarantine_confirmed' => true], UploadedFile::fake()->image('actual-found-parcel.png'));
     }
 
-    private function missing(string $mode = 'wallet', bool $buyerReturn = false, bool $shippingVoucher = false, bool $sellerPaid = false): array
+    private function missing(string $mode = 'wallet', bool $buyerReturn = false, bool $shippingVoucher = false, bool $sellerPaid = false, int $quantity = 2): array
     {
         $admin = $this->createApprovedUser('admin');
         $buyer = $this->createApprovedUser('buyer');
@@ -41,12 +41,12 @@ trait CreatesMissingShipments
             $voucher = Voucher::factory()->funded()->create(['min_spend' => 0, 'discount_type' => 'free_shipping', 'discount_value' => 0, 'max_discount' => 20]);
             $shipping['platform_voucher_revision_id'] = $voucher->current_revision_id;
         }
-        $order = $this->checkoutFlowOrder($buyer, $shop, [['product' => $this->createE2EProduct($shop, ['price' => '100.00']), 'quantity' => 2]], shipping: $shipping);
+        $order = $this->checkoutFlowOrder($buyer, $shop, [['product' => $this->createE2EProduct($shop, ['price' => '100.00']), 'quantity' => $quantity]], shipping: $shipping);
         // Future-policy fixture only; public checkout remains policy one until all successor consumers pass.
         $order->update(['shipping_quote' => [...$order->shipping_quote, 'refund_policy_version' => 2]]);
         if ($mode === 'wallet') {
             $credits = app(WalletCreditService::class);
-            $request = $credits->request($buyer, ['amount' => '1000.00', 'reason' => 'Demonstration credits for the actual isolated loss-source journey.', 'request_token' => (string) Str::uuid()]);
+            $request = $credits->request($buyer, ['amount' => $quantity > 2 ? '10000.00' : '1000.00', 'reason' => 'Demonstration credits for the actual isolated loss-source journey.', 'request_token' => (string) Str::uuid()]);
             $credits->review($admin, $request, ['decision' => 'approved', 'reason' => 'Independently reviewed the original demonstration credit source.', 'demo_credit_confirmed' => true, 'request_token' => (string) Str::uuid()]);
             $this->actingAs($buyer)->postJson('/wallet/payments/'.$order->walletPayment->id.'/pay', ['payment_confirmed' => true, 'request_token' => (string) Str::uuid()])->assertOk();
         }

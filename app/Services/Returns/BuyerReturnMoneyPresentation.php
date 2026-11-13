@@ -9,6 +9,7 @@ use App\Models\BuyerReturnRepaymentPlan;
 use App\Models\User;
 use App\Models\WalletRefundCreditRequest;
 use App\Models\WalletTransaction;
+use App\Services\Finance\ShipmentFinancialLinks;
 use App\Services\Wallet\WalletFundingCredits;
 use App\Services\Wallet\WalletLedger;
 use App\Services\Wallet\WalletRefundCreditService;
@@ -31,6 +32,10 @@ class BuyerReturnMoneyPresentation
         }
         $case = $snapshot->fresh(['order', 'items', 'parcel']);
         $wallet = $case->order->payment_method === 'wallet';
+        if ($loss = app(ShipmentFinancialLinks::class)->activeReturn($actor, $case)) {
+            return ['policy_version' => 2, 'mode' => $wallet ? 'wallet' : 'cod', 'actions' => [], 'plan' => null,
+                'adjustment' => null, 'history' => [], 'blockers' => [], 'shipment_finance' => $loss];
+        }
         $admin = $actor->isAdmin() && $actor->canAccessPortal() && $actor->email_verified_at;
         $plan = Schema::hasTable('buyer_return_repayment_plans') ? BuyerReturnRepaymentPlan::where('buyer_return_case_id', $case->id)->first() : null;
         $adjustment = BuyerReturnAdjustment::where('buyer_return_case_id', $case->id)->first();

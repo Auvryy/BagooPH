@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Services\Finance\ShipmentFinancialLinks;
 use App\Services\Wallet\WalletDeliveryRefundService;
 use App\Services\Wallet\WalletLedger;
 use App\Services\Wallet\WalletSettlementService;
@@ -31,7 +32,7 @@ class WalletProceedsController extends Controller
         $query = $service->scoped($request->user());
         $request->validate(['page' => 'nullable|integer|min:1|max:100000']);
         $orders = $query->with(['items.shop.user', 'walletPayment', 'delivery'])->latest('id')->paginate(12)->withQueryString()
-            ->through(fn ($order) => $service->present($order));
+            ->through(fn ($order) => $service->present($order) + ['shipment_finances' => app(ShipmentFinancialLinks::class)->forOrder($request->user(), $order)]);
 
         return Inertia::render('Finance/WalletProceeds', ['records' => $orders, 'canSettle' => $request->user()->isAdmin(),
             'virtualBalanceCents' => $request->user()->isSeller() ? app(WalletLedger::class)->balance($request->user()) : null,

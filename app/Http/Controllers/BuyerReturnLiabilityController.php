@@ -6,6 +6,7 @@ use App\Models\BuyerReturnCase;
 use App\Models\DeliveryAttempt;
 use App\Models\Order;
 use App\Models\ShipmentFinancialPlan;
+use App\Rules\AsciiPositiveInteger;
 use App\Services\Finance\ShipmentFinancialAccess;
 use App\Services\Finance\ShipmentFinancialPresentation;
 use App\Services\Finance\ShipmentLossAccess;
@@ -27,6 +28,7 @@ class BuyerReturnLiabilityController extends Controller
         $losses = $request->input('view') === 'losses';
         $data = $request->validate(['view' => ['nullable', 'in:returns,shipments,losses'], 'review_page' => ['sometimes', 'integer', 'min:1', 'max:100000'],
             'page' => ['sometimes', 'integer', 'min:1', 'max:100000'], 'search' => ['nullable', 'string', 'max:80'],
+            'order_id' => ['sometimes', new AsciiPositiveInteger, 'integer', 'max:2147483647'],
             'status' => ['nullable', $losses ? 'in:awaiting_payment,financially_resolved,voided'
                 : ($shipments ? 'in:awaiting_execution,shipping_due,resolved' : 'in:repayment_ready,payment_recorded,repayment_disputed,repaid,closed_no_repayment')]]);
         if ($losses) {
@@ -36,6 +38,7 @@ class BuyerReturnLiabilityController extends Controller
             return $this->shipments($request, $data);
         }
         $query = $scope->query($request->user());
+        $query->when(isset($data['order_id']), fn ($rows) => $rows->where('order_id', $data['order_id']));
         if (Schema::hasTable('buyer_return_repayment_plans')) {
             $query->whereHas('repaymentPlan');
         } else {
@@ -63,12 +66,14 @@ class BuyerReturnLiabilityController extends Controller
                 'kind' => 'return', 'href' => '/return-liabilities/'.$case->id];
         });
 
-        return Inertia::render('Returns/Liabilities', ['cases' => $cases, 'filters' => ['search' => $search, 'status' => $data['status'] ?? '', 'view' => 'returns']]);
+        return Inertia::render('Returns/Liabilities', ['cases' => $cases, 'filters' => ['search' => $search, 'status' => $data['status'] ?? '', 'view' => 'returns',
+            ...isset($data['order_id']) ? ['order_id' => (int) $data['order_id']] : []]]);
     }
 
     private function shipments(Request $request, array $data): Response
     {
         $query = app(ShipmentFinancialAccess::class)->query($request->user());
+        $query->when(isset($data['order_id']), fn ($rows) => $rows->where('order_id', $data['order_id']));
         $search = trim($data['search'] ?? '');
         $needle = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
         if ($search !== '') {
@@ -82,6 +87,7 @@ class BuyerReturnLiabilityController extends Controller
         $candidates = null;
         if ($request->user()->isAdmin()) {
             $orders = Order::where('status', 'returned')->where('shipping_quote->refund_policy_version', 2)
+                ->when(isset($data['order_id']), fn ($rows) => $rows->whereKey($data['order_id']))
                 ->whereNotIn('id', ShipmentFinancialPlan::whereNotNull('active_order_id')->select('active_order_id'))
                 ->whereHas('delivery', fn ($parcels) => $parcels->whereIn('id', DeliveryAttempt::where('reason_code', 'customer_refused')->select('delivery_id')));
             if ($search !== '') {
@@ -91,12 +97,14 @@ class BuyerReturnLiabilityController extends Controller
         }
 
         return Inertia::render('Returns/Liabilities', ['cases' => $cases, 'reviewCandidates' => $candidates,
-            'filters' => ['search' => $search, 'status' => $data['status'] ?? '', 'view' => 'shipments']]);
+            'filters' => ['search' => $search, 'status' => $data['status'] ?? '', 'view' => 'shipments',
+                ...isset($data['order_id']) ? ['order_id' => (int) $data['order_id']] : []]]);
     }
 
     private function losses(Request $request, array $data): HttpResponse
     {
         $query = app(ShipmentLossAccess::class)->query($request->user());
+        $query->when(isset($data['order_id']), fn ($rows) => $rows->where('order_id', $data['order_id']));
         $search = trim($data['search'] ?? '');
         if ($search !== '') {
             $needle = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
@@ -109,8 +117,9 @@ class BuyerReturnLiabilityController extends Controller
         $cases->getCollection()->transform(fn ($plan) => $queue->row($request->user(), $plan));
 
         return Inertia::render('Finance/LossQueue', ['cases' => $cases,
-            'reviewCandidates' => $request->user()->isAdmin() ? $queue->candidates($request->user(), $search) : null,
-            'filters' => ['view' => 'losses', 'search' => $search, 'status' => $data['status'] ?? '']])
+            'reviewCandidates' => $request->user()->isAdmin() && ! isset($data['order_id']) ? $queue->candidates($request->user(), $search) : null,
+            'filters' => ['view' => 'losses', 'search' => $search, 'status' => $data['status'] ?? '',
+                ...isset($data['order_id']) ? ['order_id' => (int) $data['order_id']] : []]])
             ->toResponse($request)->header('Cache-Control', 'private, no-store');
     }
 

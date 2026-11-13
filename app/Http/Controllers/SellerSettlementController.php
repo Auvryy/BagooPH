@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Finance\ShipmentFinancialLinks;
 use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -42,7 +43,8 @@ class SellerSettlementController extends Controller
     {
         $actor = $this->settlements->current($request->user());
         $source = $this->settlements->scoped($actor)->whereKey($order)->firstOrFail();
-        $payload = ['record' => $this->settlements->present($source, history: true), 'can_release' => $actor->isAdmin(),
+        $payload = ['record' => $this->settlements->present($source, history: true)
+            + ['shipment_finances' => app(ShipmentFinancialLinks::class)->forOrder($actor, $source)], 'can_release' => $actor->isAdmin(),
             'requestToken' => (string) Str::uuid()];
 
         return $request->expectsJson() ? response()->json($payload)->header('Cache-Control', 'private, no-store')

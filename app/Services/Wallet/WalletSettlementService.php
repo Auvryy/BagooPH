@@ -86,6 +86,8 @@ class WalletSettlementService
                 'can_settle' => false, 'can_refund_delivery' => false, 'consent' => '', 'settlement_reference' => null,
                 'refund_reference' => $event?->amount_cents > 0 ? $transaction?->reference : null,
                 'resolution_reference' => $transaction?->reference, 'payment_cents' => $payment?->amount_cents,
+                'shipment_financial_url' => '/shipment-finances/'.$plan->id,
+                'seller_protection_paid_cents' => $event ? $plan->snapshot['seller_protection_cents'] : 0,
                 'blockers' => ['Retain the separate approved loss, original funding and seller protection; ordinary sale proceeds are unavailable.'],
                 ...app(ShipmentLossWallet::class)->walletBasis($plan)];
         }

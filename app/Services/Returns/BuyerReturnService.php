@@ -2,7 +2,6 @@
 
 namespace App\Services\Returns;
 
-use App\Models\BuyerReturnAdjustment;
 use App\Models\BuyerReturnCase;
 use App\Models\BuyerReturnEvent;
 use App\Models\BuyerReturnEvidence;
@@ -228,7 +227,7 @@ class BuyerReturnService
         if ($actor->isAdmin() && $actor->canAccessPortal() && $actor->email_verified_at
             && ! in_array($actor->id, [$case->buyer_id, $case->seller_id], true)
             && in_array($case->status, ['approved', 'at_destination_hub', 'in_transit', 'ready_for_seller', 'seller_received', 'condition_review'], true)
-            && ! BuyerReturnAdjustment::where('buyer_return_case_id', $case->id)->exists()) {
+            && ! app(ReturnFaultReviewService::class)->hasApprovedBasis($case)) {
             $actions[] = 'review-fault';
         }
         if (($actor->id === $case->buyer_id || $actor->id === $case->seller_id || $actor->isAdmin() && $actor->canAccessPortal())

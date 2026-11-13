@@ -229,6 +229,24 @@ Private source receipts remain with their source account and reviewing admins.
 Buyer history retains approval and repayment evidence, while internal funding,
 demonstration requests and grant reviews remain private to their participants.
 
+Original purchase, Wallet payment and seller-proceeds views link to the
+appropriate approved financial records. A purchase can have multiple separate
+partial-return loss claims. Each preview identifies its original return and
+keeps active authorities ahead of voided history. Bounded previews retain an
+exact-order, access-scoped paginated history for every older review; they do
+not silently choose one claim for the entire purchase. Existing singular
+consumer links retain a compatible original authority.
+
+An active claimed-return loss opens its separate financial workflow rather
+than presenting ordinary return repayment controls. Its named original liable
+company retains financial access even when operational access is restricted.
+An old voided authority alone does not grant access to a replacement claim's
+financial workflow. Seller views distinguish approved protection from an
+actually recorded credit and never describe the buyer's headline refund
+reference as the seller's protection receipt. Admin exception discovery may
+link an actual missing source to review; discovering the source is not a loss
+decision, money transfer or physical receipt.
+
 Policy one retains its purchased merchandise-only execution. Unknown versions
 require review. Policy two can be issued only after original-unit amounts,
 all COD/Wallet funding and settlement consumers, manual loss/refusal outcomes,

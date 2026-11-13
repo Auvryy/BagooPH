@@ -4,11 +4,21 @@ namespace App\Services\Returns;
 
 use App\Models\BuyerReturnAdjustment;
 use App\Models\BuyerReturnCase;
+use App\Models\BuyerReturnRepaymentPlan;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class ReturnFaultReviewService
 {
+    public function hasApprovedBasis(BuyerReturnCase $case): bool
+    {
+        return BuyerReturnAdjustment::where('buyer_return_case_id', $case->id)->exists()
+            || Schema::hasTable('buyer_return_repayment_plans') && BuyerReturnRepaymentPlan::where('buyer_return_case_id', $case->id)->exists()
+            || Schema::hasTable('shipment_financial_plans') && ShipmentFinancialPlan::where('active_return_case_id', $case->id)->exists();
+    }
+
     public function review(User $actor, BuyerReturnCase $case, array $input): array
     {
         $policy = $case->order->shipping_quote['refund_policy_version'] ?? 1;
@@ -22,7 +32,7 @@ class ReturnFaultReviewService
             return ['policy_version' => 1, 'fault' => 'unspecified', 'company_id' => null, 'evidence' => null];
         }
         abort_unless(in_array($fault, ['seller', 'courier'], true), 422);
-        abort_if(BuyerReturnAdjustment::where('buyer_return_case_id', $case->id)->exists(), 409,
+        abort_if($this->hasApprovedBasis($case), 409,
             'The repayment basis is already approved. Its original fault and amount cannot be replaced.');
         if ($fault === 'courier') {
             abort_unless($actor->isAdmin() && $actor->canAccessPortal() && $actor->email_verified_at
