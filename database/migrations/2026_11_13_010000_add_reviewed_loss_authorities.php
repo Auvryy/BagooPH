@@ -31,6 +31,24 @@ return new class extends Migration
             });
         }
         if ($driver === 'sqlite') {
+            // Adding foreign keys rebuilds these SQLite tables and removes their original triggers.
+            foreach (['wallet_refund_reserve_entries' => ['UPDATE', 'DELETE'], 'shipment_financial_plans' => ['DELETE']] as $name => $operations) {
+                foreach ($operations as $operation) {
+                    $trigger = $name.'_retain_'.strtolower($operation);
+                    DB::unprepared("DROP TRIGGER IF EXISTS {$trigger}");
+                    DB::unprepared("CREATE TRIGGER {$trigger} BEFORE {$operation} ON {$name}
+                        BEGIN SELECT RAISE(ABORT, 'Retain the original financial authority and actual reserve evidence.'); END");
+                }
+            }
+            $fields = ['id', 'reference', 'authority_reference', 'repayment_plan_id', 'actor_id', 'amount_cents', 'reason', 'request_token_hash', 'request_fingerprint', 'created_at'];
+            $changed = implode(' OR ', array_map(fn ($field) => "NEW.{$field} IS NOT OLD.{$field}", $fields));
+            DB::unprepared('DROP TRIGGER IF EXISTS wallet_refund_credit_request_update');
+            DB::unprepared("CREATE TRIGGER wallet_refund_credit_request_update BEFORE UPDATE ON wallet_refund_credit_requests
+                WHEN OLD.status <> 'pending' OR {$changed}
+                BEGIN SELECT RAISE(ABORT, 'Retain the original demonstration funding request and final review.'); END");
+            DB::unprepared('DROP TRIGGER IF EXISTS wallet_refund_credit_request_delete');
+            DB::unprepared("CREATE TRIGGER wallet_refund_credit_request_delete BEFORE DELETE ON wallet_refund_credit_requests
+                BEGIN SELECT RAISE(ABORT, 'Retain original demonstration funding requests.'); END");
             DB::unprepared("CREATE TRIGGER wallet_refund_credit_request_shipment_authority_update BEFORE UPDATE ON wallet_refund_credit_requests
                 WHEN NEW.shipment_financial_plan_id IS NOT OLD.shipment_financial_plan_id
                 BEGIN SELECT RAISE(ABORT, 'Retain the original shipment funding-credit authority.'); END");

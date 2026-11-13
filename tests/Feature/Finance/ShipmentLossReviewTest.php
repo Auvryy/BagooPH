@@ -126,6 +126,12 @@ class ShipmentLossReviewTest extends TestCase
         $new = $review->approve($admin, $source, $this->approval($source, $admin), UploadedFile::fake()->image('fresh-investigation.png'));
         $this->assertNotSame($original->id, $new->id);
         $this->assertSame($order->id, $new->active_order_id);
+        try {
+            DB::table('shipment_financial_plans')->where('id', $original->id)->delete();
+            $this->fail('Schema extension must retain the original raw SQL deletion guard too.');
+        } catch (QueryException $error) {
+            $this->assertStringContainsString('Retain the original financial authority', $error->getMessage());
+        }
         $this->assertSame($before, [$order->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes()]);
         $this->assertDatabaseCount('wallet_transactions', 0);
         $this->assertDatabaseCount('cod_accounts', 0);
@@ -139,7 +145,7 @@ class ShipmentLossReviewTest extends TestCase
         $request = WalletRefundCreditRequest::create(['authority_reference' => $plan->reference, 'shipment_financial_plan_id' => $plan->id,
             'actor_id' => LogisticsCompany::findOrFail($plan->logistics_company_id)->user_id, 'amount_cents' => 100, 'repayment_plan_id' => null,
             'reason' => 'Isolated pending request for the named original company’s additional demonstration funding.', 'status' => 'pending', 'version' => 1,
-            'active_key' => hash('sha256', $plan->reference), 'request_token_hash' => hash('sha256', (string) Str::uuid()),
+            'active_key' => hash('sha256', $plan->reference.':'.LogisticsCompany::findOrFail($plan->logistics_company_id)->user_id), 'request_token_hash' => hash('sha256', (string) Str::uuid()),
             'request_fingerprint' => hash('sha256', 'isolated-original-loss-request')]);
         try {
             DB::table('wallet_refund_credit_requests')->where('id', $request->id)->update(['shipment_financial_plan_id' => null]);
