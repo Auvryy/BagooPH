@@ -109,6 +109,9 @@ class ShipmentFinancialController extends Controller
 
     public function action(Request $request, ShipmentFinancialPlan $plan, ShipmentFinancialAccess $access)
     {
+        if ($plan->kind === 'transit_loss') {
+            return app(ShipmentLossController::class)->action($request, $plan);
+        }
         abort_unless($access->query($request->user())->whereKey($plan->id)->exists(), 404);
         $data = $request->validate(['action' => ['required', Rule::in(['execute-wallet-refusal', 'assess-cod-refusal',
             'offer-shipping-payment', 'receive-shipping-payment', 'pay-wallet-shipping'])]]);

@@ -609,6 +609,9 @@ Route::middleware('auth')->prefix('shipment-finances')->name('shipment-finances.
     Route::post('/orders/{order}/approve', [ShipmentFinancialController::class, 'approve'])->where('order', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('approve');
     Route::get('/{plan}', [ShipmentFinancialController::class, 'show'])->where('plan', '[1-9][0-9]{0,17}')->name('show');
     Route::post('/{plan}/actions', [ShipmentFinancialController::class, 'action'])->where('plan', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('action');
+    Route::post('/{plan}/wallet-funding-credits', [ShipmentLossController::class, 'requestCredits'])->where('plan', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('loss-credit-request');
+    Route::post('/{plan}/wallet-funding-credits/{funding}/review', [ShipmentLossController::class, 'reviewCredits'])->where(['plan' => '[1-9][0-9]{0,17}', 'funding' => '[1-9][0-9]{0,17}'])->middleware('throttle:20,1')->name('loss-credit-review');
+    Route::get('/{plan}/disposition/proof', [ShipmentLossController::class, 'dispositionProof'])->where('plan', '[1-9][0-9]{0,17}')->name('loss-disposition-proof');
     Route::get('/{plan}/proof', [ShipmentFinancialController::class, 'proof'])->where('plan', '[1-9][0-9]{0,17}')->name('proof');
     Route::get('/{plan}/events/{event}/proof', [ShipmentFinancialController::class, 'eventProof'])->where(['plan' => '[1-9][0-9]{0,17}', 'event' => '[1-9][0-9]{0,17}'])->name('event-proof');
 });

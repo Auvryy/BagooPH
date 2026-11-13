@@ -5,12 +5,17 @@ namespace Tests\Feature\Finance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
+use App\Models\ShipmentFinancialEvent;
 use App\Models\ShipmentFinancialPlan;
+use App\Models\ShipmentLossDisposition;
+use App\Models\User;
+use App\Models\WalletEntry;
 use App\Models\WalletTransaction;
 use App\Services\Finance\ShipmentLossCash;
 use App\Services\Finance\ShipmentLossReview;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -252,5 +257,252 @@ class ShipmentLossHttpTest extends TestCase
         $this->actingAs($owner)->get($url.'&status=voided', $this->inertia())->assertOk()->assertJsonCount(1, 'props.cases.data')
             ->assertJsonPath('props.cases.data.0.outstanding_cents', 0);
         $this->get($url.'&status=awaiting_payment', $this->inertia())->assertOk()->assertJsonCount(0, 'props.cases.data');
+    }
+
+    private function lossInput(ShipmentFinancialPlan $plan, string $action, string $confirmation, array $extra = []): array
+    {
+        return ['action' => $action, 'expected_version' => (int) $plan->events()->max('sequence'), 'request_token' => (string) Str::uuid(),
+            'reason' => 'Checked the original actual funding, separate beneficiary and retained loss evidence.', $confirmation => true, ...$extra];
+    }
+
+    private function lossCommand(User $actor, ShipmentFinancialPlan $plan, string $action, string $confirmation, array $extra = []): array
+    {
+        $input = $this->lossInput($plan, $action, $confirmation, $extra);
+        $url = '/shipment-finances/'.$plan->id.'/actions';
+        $saved = $this->actingAs($actor)->postJson($url, $input)->assertOk()->json('event');
+        $this->postJson($url, $input)->assertOk()->assertJsonPath('event.id', $saved['id']);
+
+        return $saved;
+    }
+
+    private function available(User $actor, ShipmentFinancialPlan $plan): array
+    {
+        return $this->actingAs($actor)->get('/shipment-finances/'.$plan->id, $this->inertia())->assertOk()->json('props.loss.controls');
+    }
+
+    public static function walletJourneys(): array
+    {
+        return [[false, false], [false, true], [true, false]];
+    }
+
+    #[DataProvider('walletJourneys')]
+    public function test_public_wallet_loss_requires_an_independent_grant_and_separate_original_reserve_before_once_only_refund(bool $return, bool $voucher): void
+    {
+        [$source, $admin, $order, $case] = $this->missing('wallet', $return, $voucher);
+        $plan = app(ShipmentLossReview::class)->approve($admin, $source, $this->approval($source, $admin, $return ? '0.00' : '180.00'), UploadedFile::fake()->image('review.png'));
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $before = [$order->getAttributes(), $order->delivery->getAttributes(), $case?->getAttributes()];
+        $url = '/shipment-finances/'.$plan->id;
+        $this->assertNotContains('resolve-wallet', array_column($this->available($admin, $plan)['actions'], 'id'));
+        if (! $return) {
+            $this->lossCommand($admin, $plan, 'reserve-original', 'original_reserve_confirmed');
+        }
+        $cents = $plan->snapshot['company_funding_due_cents'];
+        $amount = number_format($cents / 100, 2, '.', '');
+        $this->assertSame($cents, $this->available($owner, $plan)['credits']['maximum_cents']);
+        $requestInput = ['expected_version' => (int) $plan->events()->max('sequence'), 'request_token' => (string) Str::uuid(),
+            'reason' => 'Request only the original company shortfall in owned demonstration funding credits.', 'amount' => $amount];
+        $funding = $this->actingAs($owner)->postJson($url.'/wallet-funding-credits', $requestInput)->assertOk()->json('request');
+        $this->postJson($url.'/wallet-funding-credits', $requestInput)->assertOk()->assertJsonPath('request.id', $funding['id']);
+        $this->assertTrue($this->available($admin, $plan)['credits']['requests'][0]['can_approve']);
+        $this->assertFalse($this->available($owner, $plan)['credits']['requests'][0]['can_review']);
+        foreach ([$order->buyer, $order->shop->user] as $other) {
+            $controls = $this->available($other, $plan);
+            $this->assertNull($controls['credits']);
+            $this->assertNull($controls['funding']);
+            $this->assertSame([], $controls['actions']);
+        }
+        $review = ['version' => 1, 'request_token' => (string) Str::uuid(), 'decision' => 'approved', 'demo_credit_confirmed' => true,
+            'reason' => 'Independently checked the original company need and its separate owned transfer requirement.'];
+        $this->actingAs($owner)->postJson($url.'/wallet-funding-credits/'.$funding['id'].'/review', $review)->assertForbidden();
+        $this->actingAs($admin)->postJson($url.'/wallet-funding-credits/'.$funding['id'].'/review', $review)->assertOk()->assertJsonPath('request.status', 'approved');
+        $this->assertSame($cents, $this->available($owner, $plan)['funding']['Company funding outstanding']);
+        $owner->update(['status' => 'suspended']);
+        $this->lossCommand($owner, $plan, 'contribute-company', 'company_transfer_confirmed', ['amount' => $amount]);
+        $this->assertSame(0, $this->available($owner, $plan)['funding']['Company funding outstanding']);
+        $resolved = $this->lossCommand($admin, $plan, 'resolve-wallet', 'loss_settlement_confirmed');
+        $this->assertSame($plan->snapshot['buyer_refund_cents'], $resolved['amount_cents']);
+        $this->assertSame(1, WalletTransaction::where('business_key', 'shipment-loss:'.$plan->id)->count());
+        $this->assertSame(0, (int) WalletEntry::sum('delta_cents'));
+        $this->assertDatabaseCount('wallet_refund_credit_requests', 1);
+        $this->assertSame($before, [$order->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes(), $case?->fresh()->getAttributes()]);
+        $this->actingAs($admin)->postJson($url.'/wallet-funding-credits/'.$funding['id'].'/review', $review)->assertOk()->assertJsonPath('request.id', $funding['id']);
+        $this->assertNotContains('resolve-wallet', array_column($this->available($admin, $plan)['actions'], 'id'));
+    }
+
+    public function test_public_unpaid_cod_loss_records_actual_advance_separate_seller_receipt_dispute_and_actual_advance_return(): void
+    {
+        [$source, $admin, $order] = $this->missing('cod');
+        $plan = app(ShipmentLossReview::class)->approve($admin, $source, $this->approval($source, $admin), UploadedFile::fake()->image('review.png'));
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $receiver = $this->createApprovedUser('admin');
+        $receipt = fn () => UploadedFile::fake()->image('actual-transfer.png');
+        $offer = $this->lossCommand($admin, $plan, 'offer-advance', 'payment_confirmed',
+            ['amount' => '188.33', 'recipient_id' => $receiver->id, 'cash_reference' => 'ACTUAL-LOSS-ADVANCE', 'proof' => $receipt()]);
+        $this->assertNotContains('record-seller-protection', array_column($this->available($admin, $plan)['actions'], 'id'));
+        $this->lossCommand($receiver, $plan, 'receive-advance', 'payment_confirmed', ['source_event_id' => $offer['id'], 'proof' => $receipt()]);
+        $pay = $this->lossCommand($admin, $plan, 'record-seller-protection', 'payment_confirmed', ['cash_reference' => 'ACTUAL-SELLER-PROTECTION', 'proof' => $receipt()]);
+        $this->lossCommand($order->shop->user, $plan, 'report-seller-nonreceipt', 'action_confirmed', ['source_event_id' => $pay['id']]);
+        $this->lossCommand($admin, $plan, 'resolve-seller-nonreceipt', 'payment_confirmed', ['source_event_id' => $pay['id'], 'proof' => $receipt()]);
+        $this->lossCommand($order->shop->user, $plan, 'confirm-seller-receipt', 'action_confirmed', ['source_event_id' => $pay['id']]);
+        $this->lossCommand($admin, $plan, 'assess-zero-buyer', 'zero_refund_confirmed');
+        $this->lossCommand($admin, $plan, 'resolve-cash', 'financial_resolution_confirmed');
+        $this->assertSame(18833, $this->available($owner, $plan)['funding']['Company funding outstanding']);
+        $own = $this->lossCommand($owner, $plan, 'offer-company', 'payment_confirmed',
+            ['amount' => '188.33', 'recipient_id' => $receiver->id, 'cash_reference' => 'ACTUAL-COMPANY-REPAYMENT', 'proof' => $receipt()]);
+        $this->lossCommand($receiver, $plan, 'receive-company', 'payment_confirmed', ['source_event_id' => $own['id'], 'proof' => $receipt()]);
+        $advanced = $plan->events()->where('event_type', 'loss-receive-advance')->sole();
+        $this->lossCommand($receiver, $plan, 'retire-advance', 'payment_confirmed',
+            ['amount' => '188.33', 'source_event_id' => $advanced->id, 'cash_reference' => 'ACTUAL-ADVANCE-RETURN', 'proof' => $receipt()]);
+        $controls = $this->available($owner, $plan);
+        $this->assertSame(0, $controls['funding']['Company funding outstanding']);
+        $this->assertSame(0, $controls['funding']['Advance outstanding']);
+        $this->assertSame(1, $plan->events()->where('event_type', 'loss-record-seller-protection')->count());
+        $this->assertFalse($plan->events()->where('event_type', 'loss-record-buyer-payment')->exists());
+        $this->assertDatabaseCount('cod_accounts', 0);
+        $this->assertDatabaseCount('seller_settlements', 0);
+        $this->assertFalse($order->delivery->checkpoints()->whereIn('checkpoint_type', ['delivered', 'seller_return_received'])->exists());
+    }
+
+    public function test_public_paid_cod_return_loss_uses_original_collection_and_keeps_repayment_private_to_the_buyer(): void
+    {
+        [$source, $admin, $order, $case] = $this->missing('cod', true, false, true);
+        $plan = app(ShipmentLossReview::class)->approve($admin, $source, $this->approval($source, $admin, '0.00'), UploadedFile::fake()->image('review.png'));
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $receiver = $this->createApprovedUser('admin');
+        $before = [$order->getAttributes(), $case->getAttributes(), $order->delivery->getAttributes()];
+        $proof = fn () => UploadedFile::fake()->image('original-actual-payment.png');
+        $offer = $this->lossCommand($owner, $plan, 'offer-company', 'payment_confirmed',
+            ['amount' => '125.00', 'recipient_id' => $receiver->id, 'cash_reference' => 'ACTUAL-RETURN-COMPANY', 'proof' => $proof()]);
+        $this->lossCommand($receiver, $plan, 'receive-company', 'payment_confirmed', ['source_event_id' => $offer['id'], 'proof' => $proof()]);
+        $event = $plan->events()->where('event_type', 'loss-receive-company')->sole();
+        $bytes = Storage::disk('local')->get($event->proof_path);
+        Storage::disk('local')->delete($event->proof_path);
+        $blocked = $this->available($admin, $plan);
+        $this->assertNotNull($blocked['hold_message']);
+        $this->assertNotContains('record-buyer-payment', array_column($blocked['actions'], 'id'));
+        Storage::disk('local')->put($event->proof_path, $bytes);
+        $pay = $this->lossCommand($admin, $plan, 'record-buyer-payment', 'payment_confirmed', ['cash_reference' => 'ACTUAL-ORIGINAL-BUYER-REFUND', 'proof' => $proof()]);
+        $privateUrl = '/shipment-finances/'.$plan->id.'/events/'.$pay['id'].'/proof';
+        $this->actingAs($order->buyer)->get($privateUrl)->assertOk();
+        $this->actingAs($owner)->get($privateUrl)->assertNotFound();
+        $this->actingAs($order->shop->user)->get($privateUrl)->assertNotFound();
+        $this->lossCommand($order->buyer, $plan, 'report-buyer-nonreceipt', 'action_confirmed', ['source_event_id' => $pay['id']]);
+        $this->lossCommand($admin, $plan, 'resolve-buyer-nonreceipt', 'payment_confirmed', ['source_event_id' => $pay['id'], 'proof' => $proof()]);
+        $this->lossCommand($order->buyer, $plan, 'confirm-buyer-receipt', 'action_confirmed', ['source_event_id' => $pay['id']]);
+        $this->lossCommand($admin, $plan, 'resolve-cash', 'financial_resolution_confirmed');
+        $this->assertSame(1, $plan->events()->where('event_type', 'loss-record-buyer-payment')->count());
+        $this->assertSame($before, [$order->fresh()->getAttributes(), $case->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes()]);
+    }
+
+    public function test_public_loss_disposition_is_independent_private_and_cannot_fake_receipt_or_release_its_authority(): void
+    {
+        [$source, $admin, $order] = $this->missing('cod');
+        $plan = app(ShipmentLossReview::class)->approve($admin, $source, $this->approval($source, $admin), UploadedFile::fake()->image('review.png'));
+        $before = [$order->getAttributes(), $order->delivery->getAttributes(), $source->manifest->getAttributes()];
+        $this->lossCommand($admin, $plan, 'record-disposition', 'disposition_confirmed', ['proof' => UploadedFile::fake()->image('independent-operational-loss.png')]);
+        $record = ShipmentLossDisposition::sole();
+        $controls = $this->available($admin, $plan);
+        $this->assertSame($record->reference, $controls['disposition']['reference']);
+        $this->assertNotContains('void-unfunded', array_column($controls['actions'], 'id'));
+        $this->actingAs($admin)->get($controls['disposition']['proof_url'])->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->actingAs($order->buyer)->get($controls['disposition']['proof_url'])->assertForbidden();
+        $this->assertSame($before, [$order->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes(), $source->manifest->fresh()->getAttributes()]);
+        $this->assertSame($order->id, $plan->fresh()->active_order_id);
+    }
+
+    public function test_public_loss_commands_reject_injected_authority_and_do_not_cache_private_failed_input(): void
+    {
+        [$source, $admin, $order] = $this->missing('cod');
+        $plan = app(ShipmentLossReview::class)->approve($admin, $source, $this->approval($source, $admin), UploadedFile::fake()->image('review.png'));
+        $url = '/shipment-finances/'.$plan->id.'/actions';
+        $input = $this->lossInput($plan, 'assess-zero-buyer', 'zero_refund_confirmed');
+        $this->actingAs($admin)->postJson($url, $input + ['amount_cents' => 999])->assertUnprocessable()->assertJsonValidationErrors('amount_cents');
+        $this->from('/shipment-finances/'.$plan->id)->post($url, [...$input, 'reason' => 'x'])
+            ->assertRedirect('/shipment-finances/'.$plan->id)->assertSessionHasErrors('reason');
+        $this->assertSame([], session()->getOldInput());
+        $this->actingAs($order->buyer)->postJson($url, $input)->assertForbidden();
+        $this->actingAs($this->createApprovedUser('admin'))->postJson($url, [...$input, 'request_token' => (string) Str::uuid(), 'expected_version' => 999])->assertStatus(409);
+        $this->assertSame(1, $plan->events()->count());
+        $this->assertDatabaseCount('wallet_refund_credit_requests', 0);
+    }
+
+    private function actuallyFindOriginal($source, $order): void
+    {
+        $manifest = $source->manifest->fresh();
+        $receiver = $this->flowHandler(LogisticsHub::findOrFail($manifest->destination_hub_id));
+        $this->openFlowMotherBags($manifest, $receiver);
+        $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest,
+            ['barcode' => $order->delivery->tracking_number, 'notes' => 'The original missing parcel was actually found and received at this hub.']))->assertOk();
+    }
+
+    public function test_public_stale_loss_credit_request_can_be_declined_and_voided_without_creating_a_grant(): void
+    {
+        [$source, $admin, $order] = $this->missing();
+        $plan = app(ShipmentLossReview::class)->approve($admin, $source, $this->approval($source, $admin), UploadedFile::fake()->image('review.png'));
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $url = '/shipment-finances/'.$plan->id;
+        $funding = $this->actingAs($owner)->postJson($url.'/wallet-funding-credits', ['expected_version' => 1,
+            'request_token' => (string) Str::uuid(), 'amount' => '188.33', 'reason' => 'Request the original liable company’s remaining virtual funding shortfall.'])->assertOk()->json('request');
+        $this->actuallyFindOriginal($source, $order);
+        $controls = $this->available($admin, $plan);
+        $this->assertNotNull($controls['hold_message']);
+        $this->assertTrue($controls['credits']['requests'][0]['can_review']);
+        $this->assertFalse($controls['credits']['requests'][0]['can_approve']);
+        $review = ['version' => 1, 'decision' => 'approved', 'request_token' => (string) Str::uuid(),
+            'demo_credit_confirmed' => true, 'reason' => 'The original source changed and must not create new virtual backing.'];
+        $this->actingAs($admin)->postJson($url.'/wallet-funding-credits/'.$funding['id'].'/review', $review)->assertStatus(409);
+        $rejection = ['version' => 1, 'decision' => 'rejected', 'request_token' => (string) Str::uuid(),
+            'reason' => 'The actual found parcel requires reconciliation rather than approval of this original funding request.'];
+        $this->postJson($url.'/wallet-funding-credits/'.$funding['id'].'/review', $rejection)->assertOk()->assertJsonPath('request.status', 'rejected');
+        $this->lossCommand($admin, $plan, 'void-unfunded', 'unfunded_void_confirmed');
+        $this->postJson($url.'/wallet-funding-credits/'.$funding['id'].'/review', $rejection)->assertOk()->assertJsonPath('request.status', 'rejected');
+        $this->assertSame(0, WalletTransaction::where('kind', 'demo_loss_funding_credit')->count());
+        $this->assertNull($plan->fresh()->active_order_id);
+    }
+
+    public function test_public_found_source_retains_only_the_named_actual_receipt_and_blocks_new_compensation(): void
+    {
+        [$source, $admin, $order] = $this->missing('cod');
+        $plan = app(ShipmentLossReview::class)->approve($admin, $source, $this->approval($source, $admin), UploadedFile::fake()->image('review.png'));
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $receiver = $this->createApprovedUser('admin');
+        $offer = $this->lossCommand($owner, $plan, 'offer-company', 'payment_confirmed', ['amount' => '188.33', 'recipient_id' => $receiver->id,
+            'cash_reference' => 'ACTUAL-OFFER-BEFORE-FOUND', 'proof' => UploadedFile::fake()->image('original-offer.png')]);
+        $this->actuallyFindOriginal($source, $order);
+        $receiverControls = $this->available($receiver, $plan);
+        $this->assertNotNull($receiverControls['hold_message']);
+        $this->assertSame(['receive-company'], array_column($receiverControls['actions'], 'id'));
+        $this->lossCommand($receiver, $plan, 'receive-company', 'payment_confirmed', ['source_event_id' => $offer['id'], 'proof' => UploadedFile::fake()->image('actual-found-source-receipt.png')]);
+        $this->assertSame([], $this->available($admin, $plan)['actions']);
+        $this->assertSame([], $this->available($owner, $plan)['actions']);
+        $this->assertFalse($plan->events()->where('event_type', 'loss-record-seller-protection')->exists());
+    }
+
+    public function test_public_uncertain_financial_write_rolls_back_private_files_and_retries_the_exact_original_request(): void
+    {
+        [$source, $admin] = $this->missing('cod');
+        $plan = app(ShipmentLossReview::class)->approve($admin, $source, $this->approval($source, $admin), UploadedFile::fake()->image('review.png'));
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $before = Storage::disk('local')->allFiles('shipment-finance');
+        $fail = true;
+        Event::listen('eloquent.creating: '.ShipmentFinancialEvent::class, static function (ShipmentFinancialEvent $event) use (&$fail): void {
+            if ($fail && $event->event_type === 'loss-offer-company') {
+                throw new \RuntimeException('Isolated uncertain original funding-event persistence.');
+            }
+        });
+        $input = $this->lossInput($plan, 'offer-company', 'payment_confirmed', ['amount' => '188.33', 'recipient_id' => $admin->id,
+            'cash_reference' => 'ACTUAL-ORIGINAL-UNCERTAIN', 'proof' => UploadedFile::fake()->image('actual-private-source.png')]);
+        $url = '/shipment-finances/'.$plan->id.'/actions';
+        $this->actingAs($owner)->postJson($url, $input)->assertStatus(503)->assertJsonPath('message',
+            'This financial update could not be confirmed. Reload its saved history before retrying.');
+        $this->assertSame($before, Storage::disk('local')->allFiles('shipment-finance'));
+        $this->assertSame(1, $plan->events()->count());
+        $fail = false;
+        $event = $this->postJson($url, $input)->assertOk()->json('event');
+        $this->postJson($url, $input)->assertOk()->assertJsonPath('event.id', $event['id']);
+        $this->assertSame(2, $plan->events()->count());
+        $this->assertCount(count($before) + 1, Storage::disk('local')->allFiles('shipment-finance'));
+        $this->assertSame(0, app(ShipmentLossCash::class)->state($plan)['company_received_cents']);
     }
 }

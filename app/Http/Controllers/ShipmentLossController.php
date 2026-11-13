@@ -6,14 +6,21 @@ use App\Models\BuyerReturnManifestParcel;
 use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
 use App\Models\ShipmentFinancialPlan;
+use App\Models\ShipmentLossDisposition;
+use App\Models\WalletRefundCreditRequest;
+use App\Services\Finance\ShipmentLossAccess;
+use App\Services\Finance\ShipmentLossActions;
 use App\Services\Finance\ShipmentLossReview;
 use App\Services\Wallet\WalletCreditService;
+use App\Services\Wallet\WalletLossCreditService;
+use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -115,6 +122,80 @@ class ShipmentLossController extends Controller
     {
         app(WalletCreditService::class)->admin($request->user());
         abort_unless(Schema::hasTable('shipment_financial_plans'), 409, 'Shipment financial reviews are currently unavailable.');
+    }
+
+    public function action(Request $request, ShipmentFinancialPlan $plan)
+    {
+        abort_unless(app(ShipmentLossAccess::class)->query($request->user())->whereKey($plan->id)->exists(), 404);
+
+        return $this->perform($request, $plan, function () use ($request, $plan) {
+            $data = $request->validate(['action' => ['required', 'string', 'max:60']]);
+            $service = app(ShipmentLossActions::class);
+            $spec = $service->definition($data['action'], $plan->snapshot['payment_method']);
+            $request->validate(['proof' => [$spec['proof'] ? 'required' : 'prohibited', 'nullable', 'file', 'max:5120']]);
+            $event = $service->execute($request->user(), $plan, $data['action'], $request->except(['action', 'proof', '_token']), $request->file('proof'));
+
+            return ['event' => $event->only(['id', 'reference', 'event_type', 'amount_cents'])];
+        });
+    }
+
+    public function requestCredits(Request $request, ShipmentFinancialPlan $plan, WalletLossCreditService $credits)
+    {
+        abort_unless(app(ShipmentLossAccess::class)->query($request->user())->whereKey($plan->id)->exists(), 404);
+
+        return $this->perform($request, $plan, function () use ($request, $plan, $credits) {
+            $request->validate(array_fill_keys(array_diff(array_keys($request->all()), ['expected_version', 'request_token', 'reason', 'amount', '_token']), ['prohibited']));
+            $saved = $credits->request($request->user(), $plan, $request->except('_token'));
+
+            return ['request' => $saved->only(['id', 'reference', 'status', 'version'])];
+        });
+    }
+
+    public function reviewCredits(Request $request, ShipmentFinancialPlan $plan, WalletRefundCreditRequest $funding, WalletLossCreditService $credits)
+    {
+        abort_unless(app(ShipmentLossAccess::class)->query($request->user())->whereKey($plan->id)->exists()
+            && $funding->shipment_financial_plan_id === $plan->id && $funding->repayment_plan_id === null, 404);
+
+        return $this->perform($request, $plan, function () use ($request, $funding, $credits) {
+            $request->validate(array_fill_keys(array_diff(array_keys($request->all()), ['version', 'request_token', 'decision', 'reason', 'demo_credit_confirmed', '_token']), ['prohibited']));
+            $saved = $credits->review($request->user(), $funding, $request->except('_token'));
+
+            return ['request' => $saved->only(['id', 'reference', 'status', 'version'])];
+        });
+    }
+
+    public function dispositionProof(Request $request, ShipmentFinancialPlan $plan)
+    {
+        $this->admin($request);
+        abort_unless(app(ShipmentLossAccess::class)->query($request->user())->whereKey($plan->id)->exists(), 404);
+        $record = ShipmentLossDisposition::where('shipment_financial_plan_id', $plan->id)->firstOrFail();
+        $disk = Storage::disk('local');
+        abort_unless(preg_match('/\Ashipment-loss-dispositions\/[a-f0-9-]+\.(?:jpg|png|webp|pdf)\z/', $record->proof_path)
+            && $record->proof_bytes > 0 && $record->proof_bytes <= 5242880 && $disk->exists($record->proof_path)
+            && $disk->size($record->proof_path) === $record->proof_bytes && hash_equals($record->proof_hash, hash('sha256', $disk->get($record->proof_path))), 404,
+            'The private loss evidence is unavailable. Its original record is retained.');
+
+        return $disk->response($record->proof_path, 'Loss-evidence-'.$record->reference.'.'.pathinfo($record->proof_path, PATHINFO_EXTENSION),
+            ['Content-Type' => $record->proof_mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff'], 'attachment');
+    }
+
+    private function perform(Request $request, ShipmentFinancialPlan $plan, Closure $operation)
+    {
+        try {
+            $saved = $operation();
+        } catch (ValidationException|HttpExceptionInterface $error) {
+            return $this->rejected($request, $error);
+        } catch (AuthorizationException|ModelNotFoundException $error) {
+            throw $error;
+        } catch (Throwable $error) {
+            Log::warning('Shipment loss financial update could not be confirmed.', ['exception_type' => $error::class]);
+            $message = 'This financial update could not be confirmed. Reload its saved history before retrying.';
+
+            return $request->expectsJson() ? response()->json(['message' => $message], 503) : back()->withErrors(['review' => $message]);
+        }
+
+        return $request->expectsJson() ? response()->json($saved)->header('Cache-Control', 'private, no-store')
+            : redirect('/shipment-finances/'.$plan->id)->with('success', 'The update was recorded. Check its actual funding and receipt status.');
     }
 
     private function order(LogisticsManifestEvent $observation): Order

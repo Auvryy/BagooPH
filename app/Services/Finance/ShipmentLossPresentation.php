@@ -62,6 +62,6 @@ class ShipmentLossPresentation
             'amounts' => $amounts, 'review_reason' => $admin ? $plan->reason : null,
             'review_proof_url' => $admin ? '/shipment-finances/'.$plan->id.'/proof' : null,
             'source' => $admin ? array_intersect_key($plan->snapshot['source'], array_flip(['observation_reference', 'manifest_reference', 'barcode'])) : null,
-            'history' => $history];
+            'history' => $history, 'controls' => app(ShipmentLossControls::class)->present($actor, $plan, $state, $events)];
     }
 }

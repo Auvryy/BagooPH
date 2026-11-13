@@ -49,7 +49,7 @@ class ShipmentLossCash
             'Retain the original private transfer evidence before using this cash source.');
     }
 
-    private function assertFundingEvidence(ShipmentFinancialPlan $plan): void
+    public function assertFundingEvidence(ShipmentFinancialPlan $plan): void
     {
         foreach ($plan->events()->whereIn('event_type', ['loss-receive-company', 'loss-receive-advance'])->get() as $receipt) {
             $offer = $plan->events()->whereKey($receipt->source_event_id)->firstOrFail();
