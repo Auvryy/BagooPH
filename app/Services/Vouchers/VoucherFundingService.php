@@ -5,6 +5,7 @@ namespace App\Services\Vouchers;
 use App\Models\CheckoutSubmission;
 use App\Models\Order;
 use App\Models\SellerSettlementEvent;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Models\VoucherOrderAllocation;
 use App\Models\VoucherRedemption;
@@ -46,8 +47,18 @@ class VoucherFundingService
         }
     }
 
-    public function amounts(Order $order): array
+    public function amounts(Order $order, ?ShipmentFinancialPlan $settledLoss = null): array
     {
+        $lossResolution = null;
+        if ($settledLoss) {
+            $lossResolution = $settledLoss->events()->where('event_type', 'loss-resolve-cash')->where('amount_cents', 0)
+                ->whereNull('wallet_transaction_id')->where('context->plan_reference', $settledLoss->reference)->first();
+            abort_unless($settledLoss->kind === 'transit_loss' && $settledLoss->order_id === $order->id
+                && $settledLoss->active_order_id === $order->id && $settledLoss->buyer_return_case_id === null
+                && $order->payment_method === 'cod' && ($order->shipping_quote['refund_policy_version'] ?? 1) === 2
+                && $settledLoss->snapshot['payment_method'] === 'cod' && $lossResolution, 409,
+                'Only the original resolved COD loss may retain its own unused promotion release.');
+        }
         $allocations = VoucherOrderAllocation::where('order_id', $order->id)->with(['redemption.revision', 'fundingEntries'])->orderBy('id')->get();
         $seller = $allocations->sum('seller_expense_cents');
         $platform = $allocations->sum('platform_expense_cents');
@@ -59,13 +70,20 @@ class VoucherFundingService
         foreach ($allocations as $allocation) {
             $commitment = $allocation->fundingEntries->firstWhere('event_type', 'commitment');
             $terms = $allocation->redemption->terms;
+            $releases = $allocation->fundingEntries->where('event_type', 'release');
+            $retainedLossRelease = $lossResolution && $commitment && $releases->count() === 1
+                && $releases->first()->source_entry_id === $commitment->id
+                && $releases->first()->amount_cents === $commitment->amount_cents
+                && $releases->first()->actor_id === $lossResolution->actor_id
+                && $releases->first()->reason === 'Unused original commitment released after reviewed loss '.$settledLoss->reference.'.'
+                && ! $allocation->fundingEntries->contains('event_type', 'expense');
             if (! $commitment || $commitment->amount_cents !== $allocation->seller_expense_cents + $allocation->platform_expense_cents
                 || $allocation->product_discount_cents + $allocation->shipping_discount_cents !== $commitment->amount_cents
                 || $allocation->delivery_id !== $order->delivery?->id || $allocation->redemption->buyer_id !== $order->buyer_id
                 || ($terms['funding_party'] === 'shop' && ($allocation->platform_expense_cents !== 0
                     || $terms['shop_id'] !== $order->items->first()?->shop_id || $allocation->shipping_discount_cents !== 0))
                 || ($terms['funding_party'] === 'platform' && $allocation->seller_expense_cents !== 0)
-                || $allocation->fundingEntries->contains('event_type', 'release')) {
+                || ($releases->isNotEmpty() && ! $retainedLossRelease)) {
                 $review[] = 'The original promotion commitment requires evidence review.';
             }
         }

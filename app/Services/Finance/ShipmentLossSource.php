@@ -10,6 +10,8 @@ use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\ShipmentLossDisposition;
+use App\Models\WalletEntry;
+use App\Models\WalletRefundReserveEntry;
 use App\Models\WalletTransaction;
 use App\Services\Returns\BuyerReturnAmounts;
 use App\Services\Returns\BuyerReturnCustodyService;
@@ -57,7 +59,7 @@ class ShipmentLossSource
         }
         // A disposition is not a receipt or arrival. Until explicit operational closure is supported,
         // its retained source must still match the actual missing custody and original money terms.
-        $snapshot = $this->snapshot(LogisticsManifestEvent::findOrFail($plan->loss_observation_id), $plan->snapshot['seller_protection_cents']);
+        $snapshot = $this->snapshot(LogisticsManifestEvent::findOrFail($plan->loss_observation_id), $plan->snapshot['seller_protection_cents'], $plan);
         $snapshot['investigation_reference'] = $plan->snapshot['investigation_reference'];
         abort_unless($snapshot === $plan->snapshot, 409,
             'The original missing custody, payment or approved loss basis changed. Reconcile the original review before continuing.');
@@ -122,12 +124,63 @@ class ShipmentLossSource
         return compact('observation', 'manifest', 'member', 'parcel', 'order', 'case', 'state', 'barcode');
     }
 
-    public function snapshot(LogisticsManifestEvent $original, int $protection): array
+    private function ownWalletSettlement(ShipmentFinancialPlan $plan, Order $order): ?int
+    {
+        abort_unless($plan->kind === 'transit_loss' && $plan->snapshot['payment_method'] === 'wallet'
+            && $plan->order_id === $order->id && $plan->buyer_return_case_id === null && $plan->active_order_id === $order->id, 409,
+            'Only the original active undelivered loss may retain its own settled Wallet source.');
+        $event = $plan->events()->where('event_type', 'loss-resolve-wallet')->first();
+        if (! $event) {
+            return null;
+        }
+        $transaction = WalletTransaction::find($event->wallet_transaction_id);
+        $snapshot = $plan->snapshot;
+        abort_unless($transaction && $transaction->kind === 'wallet_loss_refund' && $transaction->business_key === 'shipment-loss:'.$plan->id
+            && $transaction->order_id === $order->id && $transaction->buyer_return_case_id === null
+            && $transaction->actor_id === $event->actor_id && $event->amount_cents === $snapshot['buyer_refund_cents']
+            && $event->recipient_id === ($snapshot['buyer_refund_cents'] > 0 ? $plan->buyer_id : null)
+            && $transaction->request_token_hash === $event->request_token_hash
+            && $transaction->amount_cents === $snapshot['buyer_refund_cents']
+            && ($transaction->context['shipment_financial_plan_reference'] ?? null) === $plan->reference
+            && ($transaction->context['reserve_source_kind'] ?? null) === 'refund'
+            && ($transaction->context['buyer_refund_cents'] ?? null) === $snapshot['buyer_refund_cents']
+            && ($transaction->context['seller_protection_cents'] ?? null) === $snapshot['seller_protection_cents']
+            && ($transaction->context['protected_earned_shipping_cents'] ?? null) === $snapshot['protected_earned_shipping_cents'], 409,
+            'Retain only this original loss authority’s actual once-only Wallet settlement.');
+        $expected = ['platform:return_reserve' => [-$snapshot['reserve_goal_cents'], 'return_reserve', null],
+            'user:'.$plan->buyer_id => [$snapshot['buyer_refund_cents'], 'user', $plan->buyer_id],
+            'user:'.$plan->seller_id => [$snapshot['seller_protection_cents'], 'user', $plan->seller_id],
+            'platform:shipping' => [$snapshot['protected_earned_shipping_cents'], 'shipping', null]];
+        $expected = array_filter($expected, fn ($entry) => $entry[0] !== 0);
+        $actual = [];
+        foreach (WalletEntry::where('wallet_transaction_id', $transaction->id)->join('wallet_accounts', 'wallet_accounts.id', '=', 'wallet_entries.wallet_account_id')
+            ->get(['wallet_accounts.account_key', 'wallet_accounts.kind', 'wallet_accounts.user_id', 'wallet_entries.delta_cents']) as $entry) {
+            $key = $entry->account_key;
+            abort_unless(isset($expected[$key]) && $expected[$key][1] === $entry->kind && $expected[$key][2] === $entry->user_id, 409,
+                'The retained loss settlement must pay the original actual reserve, beneficiaries and shipping pool.');
+            $actual[$key] = [($actual[$key][0] ?? 0) + $entry->delta_cents, $entry->kind, $entry->user_id];
+        }
+        ksort($expected);
+        ksort($actual);
+        $reserve = WalletRefundReserveEntry::where('wallet_transaction_id', $transaction->id);
+        $retained = $snapshot['reserve_goal_cents'] > 0 ? (clone $reserve)->where('shipment_financial_plan_id', $plan->id)
+            ->whereNull('buyer_return_repayment_plan_id')->where('order_id', $order->id)->where('authority_reference', $plan->reference)
+            ->where('source_kind', 'refund')->where('delta_cents', -$snapshot['reserve_goal_cents'])->whereNull('source_user_id')->exists()
+            : ! $reserve->exists();
+        abort_unless($actual === $expected && $retained, 409,
+            'The retained settled loss requires its exact actual reserve debit and balanced original recipient journals.');
+
+        return $transaction->id;
+    }
+
+    public function snapshot(LogisticsManifestEvent $original, int $protection, ?ShipmentFinancialPlan $authority = null): array
     {
         $context = $this->context($original);
         ['observation' => $observation, 'manifest' => $manifest, 'order' => $order, 'case' => $case] = $context;
         $amounts = app(BuyerReturnAmounts::class);
-        $basis = $case ? $amounts->successorForCase($case->load('items', 'order.items')) : $amounts->successorOriginal($order);
+        $settledCash = $authority && ! $case && $order->payment_method === 'cod'
+            && $authority->events()->where('event_type', 'loss-resolve-cash')->exists() ? $authority : null;
+        $basis = $case ? $amounts->successorForCase($case->load('items', 'order.items')) : $amounts->successorOriginal($order, $settledCash);
         $units = $case ? $basis['unit_snapshot'] : $basis['units'];
         $net = array_sum(array_column($units, 'buyer_cents'));
         $paidShipping = $case ? $basis['buyer_paid_shipping_cents'] : $basis['shipping_cents'] - $basis['shipping_discount_cents'];
@@ -140,8 +193,11 @@ class ShipmentLossSource
         if ($wallet || $case) {
             $payment = $payments->payment($order);
             if (! $case) {
+                $own = $authority ? $this->ownWalletSettlement($authority, $order) : null;
+                $otherRefunds = WalletTransaction::where('order_id', $order->id)->whereIn('kind', ['wallet_return_refund', 'wallet_delivery_refund', 'wallet_cancellation_refund', 'wallet_refusal_refund', 'wallet_loss_refund'])
+                    ->when($own, fn ($query) => $query->whereKeyNot($own));
                 abort_unless(! $order->walletPayment->settlement_transaction_id && ! $sellerPayment
-                    && ! WalletTransaction::where('order_id', $order->id)->whereIn('kind', ['wallet_return_refund', 'wallet_delivery_refund', 'wallet_cancellation_refund', 'wallet_refusal_refund', 'wallet_loss_refund'])->exists(), 409,
+                    && ! $otherRefunds->exists(), 409,
                     'Review the original unspent payment; existing proceeds or refunds cannot be spent again.');
             }
         } else {

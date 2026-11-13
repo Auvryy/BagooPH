@@ -14,8 +14,10 @@ use App\Services\AccountClosureService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\Finance\ShipmentLossCash;
+use App\Services\Finance\ShipmentLossDispositionService;
 use App\Services\Finance\ShipmentLossReview;
 use App\Services\Returns\BuyerReturnRefundPlan;
+use App\Services\Vouchers\VoucherFundingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -143,6 +145,12 @@ class ShipmentLossCashTest extends TestCase
         $this->command($admin, $plan, 'resolve-seller-nonreceipt', ['source_event_id' => $payment->id]);
         $this->command($seller, $plan, 'confirm-seller-receipt', ['source_event_id' => $payment->id]);
         $this->command($admin, $plan, 'resolve-cash');
+        $count = $plan->events()->count();
+        app(ShipmentLossDispositionService::class)->record($admin, $plan, [
+            'expected_version' => (int) $plan->events()->max('sequence'), 'request_token' => (string) Str::uuid(), 'disposition_confirmed' => true,
+            'reason' => 'Separate operational evidence retains the exact original already settled cash loss without claiming any receipt or extra payment.'],
+            UploadedFile::fake()->image('original-settled-cash-disposition.png'));
+        $this->assertSame($count + 1, $plan->events()->count());
         $this->assertTrue($service->state($plan)['resolved']);
         $this->assertSame(833, $service->state($plan)['balance_cents']);
         $this->assertSame($physical, [$order->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes(), $order->delivery->checkpoints()->get()->toArray()]);
@@ -152,6 +160,7 @@ class ShipmentLossCashTest extends TestCase
         $this->assertSame(0, $plan->events()->where('event_type', 'loss-record-buyer-payment')->count());
         $this->assertSame($offer->id, $receipt->consumed_source_id);
         if ($voucher) {
+            $this->assertNotEmpty(app(VoucherFundingService::class)->amounts($order->fresh())['promotion_blockers']);
             $this->assertDatabaseHas('voucher_funding_entries', ['event_type' => 'release', 'amount_cents' => 2000]);
             $this->assertDatabaseMissing('voucher_funding_entries', ['event_type' => 'expense']);
         }

@@ -45,9 +45,9 @@ class ShipmentLossDispositionTest extends TestCase
         Storage::fake('public');
     }
 
-    private function reviewed(string $mode = 'wallet', bool $return = false): array
+    private function reviewed(string $mode = 'wallet', bool $return = false, bool $voucher = false): array
     {
-        [$source, $admin, $order, $case] = $this->missing($mode, $return);
+        [$source, $admin, $order, $case] = $this->missing($mode, $return, $voucher);
         $plan = app(ShipmentLossReview::class)->approve($admin, $source, $this->approval($source, $admin, $return ? '0.00' : '180.00'),
             UploadedFile::fake()->image('independent-loss-review.png'));
 
@@ -243,6 +243,59 @@ class ShipmentLossDispositionTest extends TestCase
         $this->assertTrue(app(WalletLossReserve::class)->summary($plan)['resolved']);
         $this->assertSame('dispatched', LogisticsManifest::findOrFail($plan->snapshot['source']['manifest_id'])->status);
         $this->assertDatabaseCount('shipment_loss_dispositions', 1);
+    }
+
+    private function settleWalletLoss(ShipmentFinancialPlan $plan, User $admin): void
+    {
+        $service = app(ShipmentLossWallet::class);
+        foreach (['reserve-original' => 'original_reserve_confirmed', 'approve-advance' => 'demo_advance_confirmed', 'resolve-wallet' => 'loss_settlement_confirmed'] as $action => $confirmation) {
+            $service->command($admin, $plan, $action, ['expected_version' => (int) $plan->events()->max('sequence'),
+                'request_token' => (string) Str::uuid(), 'reason' => 'The original actual balanced loss source funds only its approved original beneficiaries once.',
+                $confirmation => true, ...($action === 'approve-advance' ? ['amount' => SellerSettlementService::pesos($plan->snapshot['company_funding_due_cents'])] : [])]);
+        }
+    }
+
+    public static function settledWalletSources(): array
+    {
+        return [[false], [true]];
+    }
+
+    #[DataProvider('settledWalletSources')]
+    public function test_verified_original_wallet_loss_settlement_can_precede_its_distinct_disposition_without_new_money_or_fake_receipt(bool $voucher): void
+    {
+        [$source, $plan, $admin] = $this->reviewed(voucher: $voucher);
+        $this->settleWalletLoss($plan, $admin);
+        $before = $this->physical($plan);
+        $service = app(ShipmentLossDispositionService::class);
+        $input = $this->dispositionInput($plan);
+        $proof = UploadedFile::fake()->image('separate-after-settlement-disposition.png');
+        $record = $service->record($admin, $plan, $input, $proof);
+        $this->assertSame($record->id, $service->record($admin, $plan, $input, $proof)->id);
+        $this->assertSame($before, $this->physical($plan));
+        app(ShipmentLossSource::class)->assertApproved($plan);
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_loss_refund')->count());
+        $this->assertSame($plan->snapshot['buyer_refund_cents'], WalletTransaction::where('kind', 'wallet_loss_refund')->sole()->amount_cents);
+        try {
+            app(ShipmentLossSource::class)->snapshot($source, 18000);
+            $this->fail('A new preview cannot treat an already spent original payment as unspent.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+    }
+
+    public function test_an_unrelated_review_cannot_normalize_another_original_wallet_loss_settlement(): void
+    {
+        [$source, $plan, $admin] = $this->reviewed();
+        $this->settleWalletLoss($plan, $admin);
+        [, $other] = $this->reviewed('cod');
+        try {
+            app(ShipmentLossSource::class)->snapshot($source, 18000, $other);
+            $this->fail('The exact original authority must own every retained loss-settlement journal.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $this->assertDatabaseCount('shipment_loss_dispositions', 0);
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_loss_refund')->count());
     }
 
     public function test_disposition_identity_is_immutable_and_a_changed_retry_or_missing_private_proof_cannot_authorize_new_money(): void

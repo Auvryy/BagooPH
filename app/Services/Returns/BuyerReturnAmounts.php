@@ -6,6 +6,7 @@ use App\Models\BuyerReturnAdjustment;
 use App\Models\BuyerReturnCase;
 use App\Models\BuyerReturnRepaymentPlan;
 use App\Models\Order;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\VoucherOrderAllocation;
 use App\Services\Finance\CodMoney;
 use App\Services\Finance\SellerSettlementService;
@@ -39,16 +40,16 @@ class BuyerReturnAmounts
         return $this->purchased($order, 1);
     }
 
-    public function successorOriginal(Order $order): array
+    public function successorOriginal(Order $order, ?ShipmentFinancialPlan $settledLoss = null): array
     {
-        return $this->purchased($order, 2);
+        return $this->purchased($order, 2, $settledLoss);
     }
 
-    private function purchased(Order $order, int $policy): array
+    private function purchased(Order $order, int $policy, ?ShipmentFinancialPlan $settledLoss = null): array
     {
         abort_unless(($order->shipping_quote['refund_policy_version'] ?? 1) === $policy, 409,
             'The purchased refund policy needs its supported review and funding workflow. Do not substitute older refund terms.');
-        $funding = app(VoucherFundingService::class)->amounts($order);
+        $funding = app(VoucherFundingService::class)->amounts($order, $settledLoss);
         abort_if($funding['promotion_blockers'] !== [], 409, implode(' ', $funding['promotion_blockers']));
         $units = [];
         $products = [];
