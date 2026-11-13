@@ -9,6 +9,8 @@ use App\Models\BuyerReturnRepaymentPlan;
 use App\Models\Delivery;
 use App\Models\LogisticsCompany;
 use App\Models\Order;
+use App\Models\ShipmentFinancialEvent;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Models\WalletPayment;
 use App\Models\WalletRefundCreditRequest;
@@ -71,6 +73,8 @@ class WalletRefundCreditService
     private function unused(string $token): void
     {
         abort_if(BuyerReturnEvent::where('request_token_hash', $token)->exists() || BuyerReturnMoneyEvent::where('request_token_hash', $token)->exists()
+            || ShipmentFinancialPlan::where('request_token_hash', $token)->exists() || ShipmentFinancialEvent::where('request_token_hash', $token)->exists()
+            || WalletRefundCreditRequest::where('request_token_hash', $token)->orWhere('review_token_hash', $token)->exists()
             || WalletTransaction::where('request_token_hash', $token)->exists(), 409, 'This request token belongs to another original action.');
     }
 

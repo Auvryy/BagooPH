@@ -14,6 +14,7 @@ use App\Models\ShipmentFinancialEvent;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Models\WalletPayment;
+use App\Models\WalletRefundCreditRequest;
 use App\Models\WalletTransaction;
 use App\Rules\ApplicationText;
 use App\Services\AccountRestrictionService;
@@ -185,6 +186,7 @@ class ShipmentRefusalReview
     public function unused(string $token): void
     {
         abort_if(ShipmentFinancialPlan::where('request_token_hash', $token)->exists() || ShipmentFinancialEvent::where('request_token_hash', $token)->exists()
+            || WalletRefundCreditRequest::where('request_token_hash', $token)->orWhere('review_token_hash', $token)->exists()
             || WalletTransaction::where('request_token_hash', $token)->exists() || BuyerReturnEvent::where('request_token_hash', $token)->exists()
             || BuyerReturnMoneyEvent::where('request_token_hash', $token)->exists(), 409, 'This financial request token already belongs to another retained action.');
     }

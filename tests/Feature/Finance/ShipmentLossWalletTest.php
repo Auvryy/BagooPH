@@ -8,6 +8,7 @@ use App\Models\LogisticsManifest;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Models\WalletAccount;
+use App\Models\WalletRefundCreditRequest;
 use App\Models\WalletRefundReserveEntry;
 use App\Models\WalletTransaction;
 use App\Services\AccountClosureService;
@@ -15,6 +16,7 @@ use App\Services\Finance\SellerSettlementService;
 use App\Services\Finance\ShipmentLossReview;
 use App\Services\Finance\ShipmentLossWallet;
 use App\Services\Wallet\WalletLedger;
+use App\Services\Wallet\WalletLossCreditService;
 use App\Services\Wallet\WalletLossReserve;
 use App\Services\Wallet\WalletSettlementService;
 use App\Services\Wallet\WalletViewService;
@@ -72,15 +74,23 @@ class ShipmentLossWalletTest extends TestCase
         return $event;
     }
 
-    private function balancedOwnerCredits(User $owner, User $admin, int $amount): void
+    private function reviewedOwnerCredits(User $owner, User $admin, int $amount, ShipmentFinancialPlan $plan): void
     {
-        // Test-only actual balanced credit source; no grant or transfer is inferred from a request label.
-        DB::transaction(function () use ($owner, $admin, $amount) {
-            $ledger = app(WalletLedger::class);
-            $ledger->post('isolated-loss-funding:'.$owner->id, 'demo_credit', $amount,
-                [$ledger->platform('demo_issuance')->id => -$amount, $ledger->user($owner)->id => $amount], $admin,
-                'Explicit isolated demonstration issuance for the named company’s actual transfer.');
-        });
+        $credits = app(WalletLossCreditService::class);
+        $before = app(WalletLossReserve::class)->summary($plan);
+        $input = ['expected_version' => (int) $plan->events()->max('sequence'), 'request_token' => (string) Str::uuid(),
+            'amount' => SellerSettlementService::pesos($amount), 'reason' => 'The original liable company requests independently reviewed demonstration credits for its own loss debt.'];
+        $count = WalletTransaction::count();
+        $request = $credits->request($owner, $plan, $input);
+        $this->assertSame($request->id, $credits->request($owner, $plan, $input)->id);
+        $this->assertSame($count, WalletTransaction::count());
+        $review = ['version' => 1, 'request_token' => (string) Str::uuid(), 'decision' => 'approved', 'demo_credit_confirmed' => true,
+            'reason' => 'Independently checked the original named company, actual remaining need and prior grants before explicit demonstration issuance.'];
+        $saved = $credits->review($admin, $request, $review);
+        $this->assertSame($saved->id, $credits->review($admin, $request, $review)->id);
+        $this->assertSame($before, app(WalletLossReserve::class)->summary($plan));
+        $this->assertSame($amount, app(WalletLedger::class)->balance($owner));
+        $this->assertSame($amount, WalletTransaction::findOrFail($saved->wallet_transaction_id)->amount_cents);
     }
 
     public static function originalClaims(): array
@@ -143,8 +153,8 @@ class ShipmentLossWalletTest extends TestCase
         $this->assertContains('shipment_loss_company_liability', $codes);
         $buyer = app(WalletLedger::class)->balance($order->buyer);
         $seller = app(WalletLedger::class)->balance($order->items->first()->shop->user);
-        $this->balancedOwnerCredits($owner, $admin, $amount);
         $owner->update(['status' => 'suspended']);
+        $this->reviewedOwnerCredits($owner, $admin, $amount, $plan);
         $this->command($owner, $plan, 'contribute-company', $amount);
         $state = app(WalletLossReserve::class)->summary($plan);
         $this->assertSame(0, $state['company_remaining_cents']);
@@ -205,6 +215,167 @@ class ShipmentLossWalletTest extends TestCase
             $this->assertSame(409, $error->getStatusCode());
         }
         $this->assertDatabaseCount('wallet_refund_reserve_entries', 1);
+    }
+
+    public function test_reviewed_company_credits_are_separate_from_reserve_funding_and_the_actual_refund(): void
+    {
+        [$plan, $admin, $order] = $this->plan(true);
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $due = $plan->snapshot['company_funding_due_cents'];
+        $this->reviewedOwnerCredits($owner, $admin, $due, $plan);
+        $this->assertFalse(app(WalletLossReserve::class)->summary($plan)['resolved']);
+        $this->assertSame($due, app(WalletLossReserve::class)->summary($plan)['company_remaining_cents']);
+        $this->assertSame(0, app(WalletLossReserve::class)->summary($plan)['balance_cents']);
+        $this->command($owner, $plan, 'contribute-company', $due);
+        $this->assertSame(0, app(WalletLossReserve::class)->summary($plan)['company_remaining_cents']);
+        $this->command($admin, $plan, 'resolve-wallet');
+        $this->assertSame(0, app(WalletLedger::class)->balance($owner));
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_loss_refund')->count());
+        $this->assertSame(0, app(WalletLossCreditService::class)->maximum($owner, $plan));
+        $this->assertSame('completed', $order->fresh()->status);
+    }
+
+    public function test_stale_loss_credit_approval_is_rejected_but_original_pending_request_can_be_rejected_then_unfunded_review_voided(): void
+    {
+        [$plan, $admin, $order] = $this->plan();
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $credits = app(WalletLossCreditService::class);
+        $input = ['expected_version' => 1, 'request_token' => (string) Str::uuid(), 'amount' => '188.33',
+            'reason' => 'The original owner requests independent demonstration backing for its recorded loss liability.'];
+        $request = $credits->request($owner, $plan, $input);
+        $manifest = LogisticsManifest::findOrFail($plan->snapshot['source']['manifest_id']);
+        $receiver = $this->flowHandler(LogisticsHub::findOrFail($manifest->destination_hub_id));
+        $this->openFlowMotherBags($manifest, $receiver);
+        $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->flowManifestPayload($manifest,
+            ['barcode' => $order->delivery->tracking_number, 'notes' => 'The original missing parcel was found and actually received before any new loss issuance.']))->assertOk();
+        $this->assertSame($request->id, $credits->request($owner, $plan, $input)->id);
+        $before = WalletTransaction::count();
+        try {
+            $credits->review($admin, $request, ['version' => 1, 'request_token' => (string) Str::uuid(), 'decision' => 'approved', 'demo_credit_confirmed' => true,
+                'reason' => 'The actual original missing source must remain valid before any new demonstration issuance.']);
+            $this->fail('Found original custody invalidates a new loss-funding grant.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $this->assertSame($before, WalletTransaction::count());
+        $this->assertSame('pending', $request->fresh()->status);
+        $reject = ['version' => 1, 'request_token' => (string) Str::uuid(), 'decision' => 'rejected',
+            'reason' => 'Original actual receipt invalidated the loss source; retain this rejection without issuing any credits.'];
+        $credits->review($admin, $request, $reject);
+        $this->assertSame('rejected', $credits->review($admin, $request, $reject)->status);
+        app(ShipmentLossReview::class)->voidUnfunded($admin, $plan, ['expected_version' => 3, 'request_token' => (string) Str::uuid(),
+            'unfunded_void_confirmed' => true, 'reason' => 'The original parcel was actually found, its pending request rejected and no loss money moved.']);
+        $this->assertNull($plan->fresh()->active_order_id);
+        $this->assertSame($request->id, $credits->request($owner, $plan, $input)->id);
+        $this->assertSame('rejected', $credits->review($admin, $request, $reject)->status);
+        $this->assertSame($before, WalletTransaction::count());
+    }
+
+    public function test_loss_funding_requests_enforce_original_owner_single_pending_current_need_and_globally_used_request_token(): void
+    {
+        [$plan, $admin, $order] = $this->plan();
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $credits = app(WalletLossCreditService::class);
+        $input = ['expected_version' => 1, 'request_token' => (string) Str::uuid(), 'amount' => '188.33',
+            'reason' => 'The original company asks for independently reviewed demonstration funding, followed by a separate actual transfer.'];
+        foreach ([$order->buyer, $order->items->first()->shop->user, $this->createApprovedUser('logistics')] as $other) {
+            try {
+                $credits->request($other, $plan, $input);
+                $this->fail('Only the retained original company owner can request loss funding credits.');
+            } catch (HttpException $error) {
+                $this->assertSame(403, $error->getStatusCode());
+            }
+        }
+        try {
+            $credits->request($owner, $plan, [...$input, 'amount' => '188.34']);
+            $this->fail('Demonstration credit need cannot exceed the original company liability.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        $request = $credits->request($owner, $plan, $input);
+        try {
+            $credits->request($owner, $plan, [...$input, 'expected_version' => 2, 'request_token' => (string) Str::uuid()]);
+            $this->fail('Retain one pending independently reviewed request per original owner and loss plan.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+        }
+        try {
+            app(ShipmentLossWallet::class)->command($admin, $plan, 'approve-advance',
+                [...$this->commandInput($plan, 'approve-advance', 100), 'request_token' => $input['request_token']]);
+            $this->fail('A loss funding request token cannot be spent again as an advance command.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+            $this->assertStringContainsString('original loss financial request', strtolower($error->getMessage()));
+        }
+        $this->assertDatabaseCount('wallet_refund_credit_requests', 1);
+        $this->assertSame(0, app(WalletLedger::class)->balance($owner));
+        $this->assertSame('pending', $request->fresh()->status);
+    }
+
+    public function test_existing_owned_credits_reduce_new_grant_need_and_a_changed_pending_amount_requires_rejection_and_fresh_review(): void
+    {
+        [$plan, $admin] = $this->plan();
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $credits = app(WalletLossCreditService::class);
+        $request = $credits->request($owner, $plan, ['expected_version' => 1, 'request_token' => (string) Str::uuid(), 'amount' => '188.33',
+            'reason' => 'The original owner requests only the current independent demonstration need for its reviewed loss.']);
+        DB::transaction(function () use ($owner, $admin) {
+            $ledger = app(WalletLedger::class);
+            $ledger->post('isolated-preexisting-owned-credit', 'demo_credit', 10000,
+                [$ledger->platform('demo_issuance')->id => -10000, $ledger->user($owner)->id => 10000], $admin,
+                'Explicit balanced test fixture for other owned credits arriving before this pending independent review.');
+        });
+        $this->assertSame(8833, $credits->maximum($owner, $plan));
+        $before = WalletTransaction::count();
+        try {
+            $credits->review($admin, $request, ['version' => 1, 'request_token' => (string) Str::uuid(), 'decision' => 'approved', 'demo_credit_confirmed' => true,
+                'reason' => 'A pending original request must still fit actual owned credits and remaining need when independently approved.']);
+            $this->fail('A changed actual owned balance prevents an excessive stale funding grant.');
+        } catch (HttpException $error) {
+            $this->assertSame(409, $error->getStatusCode());
+            $this->assertStringContainsString('remaining need changed', $error->getMessage());
+        }
+        $this->assertSame($before, WalletTransaction::count());
+        $this->assertSame('pending', $request->fresh()->status);
+        $credits->review($admin, $request, ['version' => 1, 'request_token' => (string) Str::uuid(), 'decision' => 'rejected',
+            'reason' => 'Actual available owned credits reduced the original remaining need, so this old pending amount is declined.']);
+        $new = $credits->request($owner, $plan, ['expected_version' => 3, 'request_token' => (string) Str::uuid(), 'amount' => '88.33',
+            'reason' => 'The original owner now requests the exact remaining demonstration need after its available owned credits.']);
+        $saved = $credits->review($admin, $new, ['version' => 1, 'request_token' => (string) Str::uuid(), 'decision' => 'approved', 'demo_credit_confirmed' => true,
+            'reason' => 'Independent review confirms the reduced actual original company need and separate subsequent owned transfer.']);
+        $this->assertSame(18833, app(WalletLedger::class)->balance($owner));
+        $this->assertSame(8833, WalletTransaction::findOrFail($saved->wallet_transaction_id)->amount_cents);
+        $this->assertSame(0, $credits->maximum($owner, $plan));
+        $this->assertSame(18833, app(WalletLossReserve::class)->summary($plan)['company_remaining_cents']);
+        $this->assertSame(0, app(WalletLossReserve::class)->summary($plan)['balance_cents']);
+    }
+
+    public function test_a_late_loss_grant_store_failure_rolls_back_issuance_request_review_and_financial_history(): void
+    {
+        [$plan, $admin] = $this->plan();
+        $owner = LogisticsCompany::findOrFail($plan->logistics_company_id)->user;
+        $credits = app(WalletLossCreditService::class);
+        $request = $credits->request($owner, $plan, ['expected_version' => 1, 'request_token' => (string) Str::uuid(), 'amount' => '188.33',
+            'reason' => 'The original company requests actual independent demonstration funding before its separate repayment.']);
+        $count = WalletTransaction::count();
+        WalletRefundCreditRequest::updating(function () {
+            throw new \RuntimeException('Isolated late loss credit-store failure.');
+        });
+        try {
+            $credits->review($admin, $request, ['version' => 1, 'request_token' => (string) Str::uuid(), 'decision' => 'approved', 'demo_credit_confirmed' => true,
+                'reason' => 'The original independent approval and actual issuance must remain atomic on a late store failure.']);
+            $this->fail('A failed credit review cannot retain orphaned actual issuance.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('Isolated late loss credit-store failure.', $error->getMessage());
+        } finally {
+            WalletRefundCreditRequest::flushEventListeners();
+            WalletRefundCreditRequest::clearBootedModels();
+        }
+        $this->assertSame($count, WalletTransaction::count());
+        $this->assertSame(0, app(WalletLedger::class)->balance($owner));
+        $this->assertSame('pending', $request->fresh()->status);
+        $this->assertSame(1, $request->fresh()->version);
+        $this->assertSame(2, $plan->events()->count());
     }
 
     public static function mislabeledSources(): array
