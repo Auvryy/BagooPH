@@ -11,6 +11,7 @@ use App\Models\CodAccount;
 use App\Models\Delivery;
 use App\Models\Order;
 use App\Models\SellerSettlement;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
@@ -26,6 +27,9 @@ class BuyerReturnPlanApproval
     public function preview(User $actor, BuyerReturnCase $case): array
     {
         $this->admin($actor, $case);
+        if (Schema::hasTable('shipment_financial_plans')) {
+            abort_if(ShipmentFinancialPlan::where('active_return_case_id', $case->id)->exists(), 409, 'This original claim has an active loss review. Resolve that financial authority before approving another repayment.');
+        }
         $snapshot = app(BuyerReturnRefundPlan::class)->postDelivery($case);
 
         return ['snapshot' => $snapshot, 'review_token' => $this->reviewToken($snapshot)];
@@ -79,7 +83,7 @@ class BuyerReturnPlanApproval
             abort_if(BuyerReturnEvent::where('request_token_hash', $token)->exists(), 409, 'This token belongs to another return action.');
             abort_unless($case->version === $data['expected_version'] && in_array($case->status, ['seller_received', 'condition_review'], true)
                 && ! BuyerReturnAdjustment::where('buyer_return_case_id', $case->id)->exists(), 409, 'This return changed. Review its current financial basis.');
-            $plan = app(BuyerReturnRefundPlan::class)->postDelivery($case);
+            $plan = $this->preview($admin, $case)['snapshot'];
             abort_unless(hash_equals($this->reviewToken($plan), $data['review_token']), 409, 'The original financial source changed. Review its exact current plan.');
             $basis = app(BuyerReturnAmounts::class)->successorForCase($case->load('order', 'items'));
             $reference = (string) Str::uuid();

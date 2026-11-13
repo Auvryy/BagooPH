@@ -30,7 +30,7 @@ class ShipmentFinancialController extends Controller
     {
         app(WalletCreditService::class)->admin($request->user());
         abort_unless(Schema::hasTable('shipment_financial_plans'), 409, 'Shipment financial reviews are currently unavailable.');
-        if ($prior = ShipmentFinancialPlan::where('order_id', $order->id)->first()) {
+        if ($prior = ShipmentFinancialPlan::where('active_order_id', $order->id)->first()) {
             return redirect('/shipment-finances/'.$prior->id);
         }
         $blocker = null;

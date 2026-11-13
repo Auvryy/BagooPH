@@ -61,7 +61,7 @@ class BuyerReturnRefundPlan
                 'shipping_units' => $basis['shipping_unit_snapshot'], 'shipping' => $basis['shipping_source_snapshot']]];
     }
 
-    private function payment(Order $order): array
+    public function payment(Order $order): array
     {
         $total = CodMoney::cents($order->total_amount);
         if ($order->payment_method === 'wallet') {
@@ -83,7 +83,7 @@ class BuyerReturnRefundPlan
             'reconciliation_required' => true];
     }
 
-    private function sellerPayment(Order $order): ?array
+    public function sellerPayment(Order $order): ?array
     {
         if ($order->payment_method === 'cod') {
             $event = app(SellerSettlementService::class)->verifiedPayment($order->sellerSettlement);

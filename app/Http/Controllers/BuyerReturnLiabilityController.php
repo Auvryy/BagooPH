@@ -74,7 +74,7 @@ class BuyerReturnLiabilityController extends Controller
         $candidates = null;
         if ($request->user()->isAdmin()) {
             $orders = Order::where('status', 'returned')->where('shipping_quote->refund_policy_version', 2)
-                ->whereNotIn('id', ShipmentFinancialPlan::select('order_id'))
+                ->whereNotIn('id', ShipmentFinancialPlan::whereNotNull('active_order_id')->select('active_order_id'))
                 ->whereHas('delivery', fn ($parcels) => $parcels->whereIn('id', DeliveryAttempt::where('reason_code', 'customer_refused')->select('delivery_id')));
             if ($search !== '') {
                 $orders->whereRaw("order_number LIKE ? ESCAPE '!'", [$needle]);

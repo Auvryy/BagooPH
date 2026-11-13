@@ -157,7 +157,7 @@ class ShipmentRefusalReview
                     return $prior;
                 }
                 $this->unused($token);
-                abort_if(ShipmentFinancialPlan::where('order_id', $order->id)->exists(), 409, 'The original shipment already has a financial review.');
+                abort_if(ShipmentFinancialPlan::where('active_order_id', $order->id)->exists(), 409, 'The original shipment already has a financial review.');
                 $review = $this->preview($admin, $order, $details);
                 abort_unless(hash_equals($review['review_token'], $data['review_token']), 409, 'The original refusal or amounts changed. Review the current evidence again.');
                 $path = $files->store($proof, $info);
