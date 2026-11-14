@@ -24,8 +24,8 @@ For each package, record **decision:** pending/accepted/changed/deferred/rejecte
 - [x] **B11 — Verify return requests and independent decisions.** Topics: 5, 8, 17, 18, 25. Requires: B03, B04, B10. Decision: accepted with corrections (`BRT-` return requests over 7-day request / 3-day review / 3-day appeal / 7-day drop-off windows, explicit `seller`/`courier` fault required on policy v2 while preserving policy 1 `'unspecified'`, voluntary post-delivery change-of-mind excluded); delivery: implemented and automatically verified locally on `feat/brainstorm-b11-b13-returns-refunds` (unpublished); evidence: [B11 contract](B11_RETURN_REQUESTS_AND_REVIEW.md), [roadmap](../CORE_FLOW_ROADMAP.md), and the 207-test Returns/continuity/checkout suite. User manual testing and B14+ timers remain separate.
 - [x] **B12 — Verify reverse custody and directional co-loading.** Topics: 5, 17–19; cargo part of 27. Requires: B03, B08, B09, B11. Decision: accepted with corrections (actual intake and reversed hop custody, volumetric/50-unit return sacks without mixing forward and reverse items inside one bag, shared directional `LogisticsTransportTrip` vehicle grouping without minimum parcel-count holds, atomic arrival and quarantine recovery); delivery: implemented and automatically verified locally on `feat/brainstorm-b11-b13-returns-refunds` (unpublished); evidence: [B12 contract](B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md), `BuyerReturnBagTest`, `BuyerReturnCargoTest`, `BuyerReturnCustodyTest`, `BuyerReturnRecoveryTest`, `SharedTransportTripTest`, and `WholeTransportLossTest`. Physical fleet/device checks and B14 staging clocks remain separate.
 - [x] **B13 — Verify refund execution and financial adjustments.** Topics: 7, 8, 17, 25; voucher/debt part of 27. Requires: B04, B10–B12. Decision: accepted with corrections (`refund_policy_version => 2` active for live checkout with policy 1 compatibility preserved; cumulative item + paid-shipping allocation excluding voucher subsidies; independent loss review, whole-transport and unarrived-bag loss accountability; unused issuance/company-contribution/escrow-advance source restoration & quarantine physical release; sensitive Inertia history encryption & actor-bound form resets); delivery: implemented and automatically verified locally on `feat/brainstorm-b11-b13-returns-refunds` (unpublished); evidence: [B13 contract](B13_REFUND_EXECUTION_AND_FUNDING.md), `Finance`/`Security`/`Wallet` (390 tests / 25,717 assertions), `Returns`/continuity (207 tests), B11–B13 frontend suite (246 checks), TypeScript, Pint, and isolated Vite build. Live migration, PostgreSQL concurrency, and user manual testing remain separate; B14–B17 stay out of scope.
-- [ ] **B14 — Add ETA and state-aware monitoring.** Topics: 9, 18, 20, 21, 25; staging part of 27. Requires: B06–B13. Decision: pending; delivery: not started; evidence: pending.
-- [ ] **B15 — Add dispatch recovery and missing-parcel investigation.** Topics: 7, 9, 10, 18, 21, 25. Requires: B02, B09, B13, B14. Decision: pending; delivery: not started; evidence: pending.
+- [x] **B14 — Add ETA and state-aware monitoring.** Topics: 9, 18, 20, 21, 25; staging part of 27. Requires: B06–B13. Decision: accepted with corrections (`Asia/Manila` `16:00` cutoff + dynamic route-aware `EtaCalculationService` windows stored with `initial_min_at`/`initial_max_at`; `8` keyed `SlaClock` types paused during `STAGED_FOR_FINAL_MILE`, `HandoverHold`, `OrderCancellationRequest`, future retries, and `sla_pauses` Force Majeure without mutating immutable `pickup_claims.expires_at`; `48h` forward vs `96h` reverse asymmetric transit timers; immediate single-item return dispatch without 20–30 parcel batch holds; overdue return reminders/escalations/buyer-expiry closures without auto-approving refunds or moving money; dry-run & lock-ordered `monitoring:scan-sla`); delivery: implemented and automatically verified locally on `feat/brainstorm-b14-b15-monitoring-recovery` (unpublished); evidence: [B14 contract](B14_ETA_AND_STATE_MONITORING.md), [roadmap](../CORE_FLOW_ROADMAP.md), the **14 B14/B15 backend cases (756 assertions)** within the **175-test / 11,513-assertion** post-edit PHPUnit verification run (`EtaCalculationServiceTest`, `SlaMonitoringAndEtaTest`, `DispatchRecoveryAndInvestigationTest`, and 7 regression suites), **54 frontend checks** (`eta-monitoring-recovery`, `portal-consistency`, `checkout-route-preview`, `order-tracking`), TypeScript, Pint, and isolated Vite build. Live PostgreSQL scheduler concurrency, user manual acceptance in `/home/andy/Downloads/BAGOO_B14_B15_MANUAL_TESTING_GUIDE.md`, and `B16` sanctions / `B17` throughput remain separate.
+- [x] **B15 — Add dispatch recovery and missing-parcel investigation.** Topics: 7, 9, 10, 18, 21, 25. Requires: B02, B09, B13, B14. Decision: accepted with corrections (`no_available_rider` vs `pickup_paused` vs `no_service_coverage` coverage taxonomy; 4-step `dispatch_escalations` ladder with `Pickup Delayed — Reassigning Rider` notice at 24h, deferred unapproved surge note, hub emergency sweep, and strictly-unclaimed 72h penalty-exempt auto-cancel reversing paid Wallet/vouchers cleanly; capacity-aware first-mile & pre-departure final-mile rider reassignment keeping post-custody handovers immutable; stalled-hub & barangay density overload telemetry; non-loss `MissingParcelInvestigation` (`proves_loss = false`) auto-closing to `'recovered'` on verified physical arrival scan with Admin-only `'confirmed_lost'` confirmation and explicit `insurer_funding_status = 'deferred_no_insurer_pool'`); delivery: implemented and automatically verified locally on `feat/brainstorm-b14-b15-monitoring-recovery` (unpublished); evidence: [B15 contract](B15_DISPATCH_RECOVERY_AND_INVESTIGATION.md), [roadmap](../CORE_FLOW_ROADMAP.md), and the same **175-test / 11,513-assertion** PHPUnit + **54-check** frontend + TS/Pint/Vite gate. External insurer/security-deposit pool funding, unapproved surge payments, live PostgreSQL concurrency, manual testing, and `B16–B17` stay separate.
 - [ ] **B16 — Apply evidence-based restrictions and review moderation.** Topics: 11–13, 21, 22, 25; debt restrictions part of 27. Requires: B02–B04, B11, B13–B15. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B17 — Optimize scanning throughput and complete acceptance.** Topics: 14–16, 19, 20; all topics for regression. Requires: B07–B16. Decision: pending; delivery: not started; evidence: pending.
 
@@ -92,13 +92,15 @@ Decision: **accepted with corrections in B06**. Direct cancellation is before ac
 
 ## 7. Missing Parcel Protocol, Liability, and Terms & Conditions
 
-- [ ] Resolve the source question: next what should we should do when the buyer product is missing in the middle of the transit? or whatever progress? what should be the optimal way? and who is liable and why terms an condition will come into here?
+- [x] Resolve the source question: next what should we should do when the buyer product is missing in the middle of the transit? or whatever progress? what should be the optimal way? and who is liable and why terms an condition will come into here?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Action: If transit between hubs exceeds 48–72h, auto-flag an investigation case; buyer receives an immediate 100% refund.
-- [ ] Review/decide: Liability: Last entity that scanned custody (rider or hub handler) is held liable. Platform reimburses the seller via courier security deposit/insurance.
+- [x] Review/decide: Action: If transit between hubs exceeds 48–72h, auto-flag an investigation case; buyer receives an immediate 100% refund.
+- [x] Review/decide: Liability: Last entity that scanned custody (rider or hub handler) is held liable. Platform reimburses the seller via courier security deposit/insurance.
 - [ ] Review/decide: Terms & Conditions: Enforces declared value liability caps, exempts prohibited items, sets strict filing windows (7–14 days), and establishes digital scan receipts as the sole source of truth.
+
+Decision: **accepted with corrections in B13 and B15**. Passing transit timeout thresholds (`48h` forward / `96h` reverse) or a manifest `'missing'` discrepancy automatically opens a non-loss `MissingParcelInvestigation` (`proves_loss = false`, `liability_determined = false`) rather than immediately declaring theft or issuing an unverified refund. Genuine physical scans auto-close custody-absence cases as `'recovered'`; permanent loss (`confirmed_lost`) requires Admin confirmation with evidence and connects to B13 `ShipmentFinancialPlan` / `ShipmentLossReview` (`B04` / `B13`). External courier security-deposit/insurer pool funding remains explicitly deferred (`insurer_funding_status = 'deferred_no_insurer_pool'`), and legal T&C liability caps remain outside executable monitoring/recovery rules. See [B13](B13_REFUND_EXECUTION_AND_FUNDING.md) and [B15](B15_DISPATCH_RECOVERY_AND_INVESTIGATION.md).
 
 ## 8. Shipping Fee Liability on Returns, Damages, and Failed Deliveries
 
@@ -115,23 +117,27 @@ Decision: **accepted with corrections for the successor policy**. Seller-fault r
 
 ## 9. SLA Timeouts, Expected Delivery Calculation, and Seller Fulfillment T&C
 
-- [ ] Resolve the source question: great but when does the system flag as something when the seller is taking too long to pack? or when one role is taking too long? and who calculates the expected time of delivery how do we have the calculation for the buyer to know when will the product will come here? and should there be antoher terms and condition here too?
+- [x] Resolve the source question: great but when does the system flag as something when the seller is taking too long to pack? or when one role is taking too long? and who calculates the expected time of delivery how do we have the calculation for the buyer to know when will the product will come here? and should there be antoher terms and condition here too?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: SLA Timers: Seller packing timeout is 48h (warning at 36h, auto-cancel + store penalty at 48h). Individual rider shift timeout is 2h upon ticket acceptance; overall order pickup SLA follows the 4-step 48h ladder. Hub transit allows 48h before auto-escalation.
-- [ ] Review/decide: Estimated Delivery Formula: Pre-calculated at checkout: Seller Prep (1–2 days) + Hub Hops (1 day per hop) + Final Mile (1 day). Displayed as a date range.
-- [ ] Review/decide: Fulfillment T&C: Seller accepts 48h auto-cancel and late shipment listing penalties; Force Majeure (typhoons/disasters) pauses timers; Buyer agrees to contact responsiveness.
+- [x] Review/decide: SLA Timers: Seller packing timeout is 48h (warning at 36h, auto-cancel + store penalty at 48h). Individual rider shift timeout is 2h upon ticket acceptance; overall order pickup SLA follows the 4-step 48h ladder. Hub transit allows 48h before auto-escalation.
+- [x] Review/decide: Estimated Delivery Formula: Pre-calculated at checkout: Seller Prep (1–2 days) + Hub Hops (1 day per hop) + Final Mile (1 day). Displayed as a date range.
+- [x] Review/decide: Fulfillment T&C: Seller accepts 48h auto-cancel and late shipment listing penalties; Force Majeure (typhoons/disasters) pauses timers; Buyer agrees to contact responsiveness.
+
+Decision: **accepted with corrections in B14 (store penalties stay B16)**. `EtaCalculationService` computes route-aware `Asia/Manila` ETA min/max windows (applying the `16:00` PHT cutoff, same-hub bypass vs Mother Hub hops, active Force-Majeure pause buffers, and overdue revisions) without persisting rows on read-only checkout quote previews. `SlaClockService` tracks distinct state-aware clocks (`seller_acceptance_pack` warning at `24h`/`36h` and breach-escalating at `48h` without auto-canceling or penalizing sellers prior to `B16`, plus `pickup_dispatch_wait`, `hub_idle_sorting`, `final_mile_staging`, and `forward_interhub_transit` `48h`), while `SlaPauseService` pauses and shifts running clocks idempotently during Force-Majeure advisories (`sla_pauses`) without mutating immutable `pickup_claims.expires_at`. See [B14](B14_ETA_AND_STATE_MONITORING.md).
 
 ## 10. Unclaimed Rider Pickups and First-Mile Dispatch Stalls
 
-- [ ] Resolve the source question: my system is when proudct is ready for pickup when flag by the seller we know we have riders, what if no one dares the pickup, what should the product or our system behaves? delayed? and what if there is literally no one picking up?
+- [x] Resolve the source question: my system is when proudct is ready for pickup when flag by the seller we know we have riders, what if no one dares the pickup, what should the product or our system behaves? delayed? and what if there is literally no one picking up?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Status Change: Automatically flips to Pickup Delayed — Reassigning Rider after 24h; displays honest delay notices to both buyer and seller.
-- [ ] Review/decide: 4-Step Escalation Ladder: Open Pool broadcast (0–12h) → Direct Shift Assignment to low-load fleet rider (12–24h) → Surge bounty incentive added to trip (24–36h) → Hub manager emergency vehicle sweep (36–48h).
-- [ ] Review/decide: Fallback (Zero Coverage): If unpicked after 48–72h, auto-cancels with 100% buyer refund, 0 seller penalties, and flags the seller's barangay for pickup pausing until courier fleet coverage expands.
+- [x] Review/decide: Status Change: Automatically flips to Pickup Delayed — Reassigning Rider after 24h; displays honest delay notices to both buyer and seller.
+- [x] Review/decide: 4-Step Escalation Ladder: Open Pool broadcast (0–12h) → Direct Shift Assignment to low-load fleet rider (12–24h) → Surge bounty incentive added to trip (24–36h) → Hub manager emergency vehicle sweep (36–48h).
+- [x] Review/decide: Fallback (Zero Coverage): If unpicked after 48–72h, auto-cancels with 100% buyer refund, 0 seller penalties, and flags the seller's barangay for pickup pausing until courier fleet coverage expands.
+
+Decision: **accepted with corrections in B15**. `DispatchEscalation` tracks `open_pool` (`0–12h`), `direct_assignment` (`12–24h`), `priority_bounty_deferred` (`24–36h`, setting the `Pickup Delayed — Reassigning Rider` display label without mutating canonical 13-status invariants and recording explicit `surge_deferred_note` since unapproved monetary surge payouts remain deferred), `hub_emergency_sweep` (`36–48h`), and `unpicked_fallback` (`48–72h`, executing penalty-exempt cancellation for strictly unclaimed `ready_for_pickup` parcels at `72h` via `OrderLifecycleService` with clean Paid Wallet/voucher release). Checkout and telemetry separate `no_available_rider` from explicit `pickup_paused` (`hub_pickup_pauses`) and `no_service_coverage`. See [B15](B15_DISPATCH_RECOVERY_AND_INVESTIGATION.md).
 
 ## 11. Off-Platform Logistics Bypass and Seller Circumvention
 
@@ -219,16 +225,16 @@ Decision: **accepted with corrections in B11–B13 (transit SLAs remain B14)**. 
 
 ## 18. Return Batching Rules, Auto-Timeout Approvals, and Admin Dispute Resolution
 
-- [ ] Resolve the source question: my question is how about when to relaly abring back a product? does it wait 5 more returning products before it is returned or what? when will a product trigger this return as soon it is flag by user or someone what if someone didn't click the flagging thing what should the system throw how would the admin response to this?
+- [x] Resolve the source question: my question is how about when to relaly abring back a product? does it wait 5 more returning products before it is returned or what? when will a product trigger this return as soon it is flag by user or someone what if someone didn't click the flagging thing what should the system throw how would the admin response to this?
 
 Proposed ideas to review:
 
 - [x] Review/decide: Immediate First-Mile Pickup: Riders are dispatched individually to pick up approved returns from buyer doorsteps without waiting for batches.
-- [ ] Review/decide: Hybrid Hub Threshold: Hub-to-hub linehaul dispatches when the bag reaches capacity (20–30 items) OR hits the 48h maximum holding timeout.
-- [ ] Review/decide: Auto-Approval Timers: If a seller ignores a return request for 48h, the system auto-approves it; if a seller fails to acknowledge delivery within 48h, the buyer's refund is auto-released.
+- [x] Review/decide: Hybrid Hub Threshold: Hub-to-hub linehaul dispatches when the bag reaches capacity (20–30 items) OR hits the 48h maximum holding timeout.
+- [x] Review/decide: Auto-Approval Timers: If a seller ignores a return request for 48h, the system auto-approves it; if a seller fails to acknowledge delivery within 48h, the buyer's refund is auto-released.
 - [x] Review/decide: Admin Evidence Governance: Admins adjudicate contested claims using immutable digital logs, unboxing footage, and GPS scan timestamps.
 
-Decision: **accepted with corrections in B11–B13; automatic timeout scheduling and 48h holding timers remain B14/B15**. Single returns dispatch immediately without a minimum batch wait (hub drop-off and shared-trip dispatch support a single return parcel; sacks cap at 50 items and volume limits). Admins adjudicate appeals, faults, and loss cases from immutable logs and private image evidence without auto-approving requests or releasing funds on timer expiry. See [B11](B11_RETURN_REQUESTS_AND_REVIEW.md) and [B12](B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md).
+Decision: **accepted with corrections in B11–B14**. Single approved returns dispatch immediately on reverse manifests/shared directional trips (`>= 1` item; `reverse_consolidation_transit` carries a `96h` SLA vs `48h` forward in `B14`, rejecting 20–30 item batch holding). `StateMonitoringService` sends pre-expiry reminders and escalates overdue `72h` seller return responses to Admin review (`escalated`) while auto-closing expired `72h` buyer appeals (`denied`) and `7d` drop-off windows (`expired`, releasing unit claims) **without** auto-approving refunds or moving money (`B11`/`B13`). See [B11](B11_RETURN_REQUESTS_AND_REVIEW.md), [B12](B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md), and [B14](B14_ETA_AND_STATE_MONITORING.md).
 
 ## 19. Co-Loading Forward and Reverse Logistics in Shared Directional Mother Bags
 
@@ -260,9 +266,11 @@ Decision: **changed in B07**. Derive the required actions from the frozen route 
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Inactivity Prevention: Unloading requires driver custody clearance to prevent un-scanned drops; 2-hour idle timers flag stagnant parcels sitting unprocessed at hub sorting tables.
-- [ ] Review/decide: Automated Escalation Ladder: Automated push alerts to hub managers at 4–12h inactivity; automated backup fleet rerouting at 24h; admin dispute escalation and SLA fines at 48h.
+- [x] Review/decide: Inactivity Prevention: Unloading requires driver custody clearance to prevent un-scanned drops; 2-hour idle timers flag stagnant parcels sitting unprocessed at hub sorting tables.
+- [x] Review/decide: Automated Escalation Ladder: Automated push alerts to hub managers at 4–12h inactivity; automated backup fleet rerouting at 24h; admin dispute escalation and SLA fines at 48h.
 - [ ] Review/decide: Three-Way Penalty Matrix: Buyers face COD restrictions (30–90 days) and bans for joy reserving; sellers face search shadowbans and account termination for fulfillment failure; couriers face financial bond deductions (₱150/parcel) and route territory revocation for repeated SLA breaches.
+
+Monitoring & recovery decision: **accepted with corrections in B14 and B15 (three-way penalty matrix and financial fines remain B16)**. `hub_idle_sorting` warns at `2h`, alerts hub/company operators by `12h`, raises `24h` stalled-hub alerts (`B15` capacity-aware rider reassignment within the same corridor and explicit pickup pauses), and opens non-loss `MissingParcelInvestigation` cases at `48h` rather than silently rewriting routes or imposing unreviewed SLA fines. See [B14](B14_ETA_AND_STATE_MONITORING.md) and [B15](B15_DISPATCH_RECOVERY_AND_INVESTIGATION.md).
 
 ## 22. Verified Review Gating, Anti-Troll Filtering, and Moderation Governance
 
@@ -304,12 +312,12 @@ Decision: **accept named email invitations and personal passwords; retain owner-
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Asymmetric Transit Timers: Forward deliveries enforce a strict 48h inter-hub timeout before auto-flagging missing parcels; reverse logistics parcels in consolidation staging receive an extended 96h window to prevent premature loss claims.
+- [x] Review/decide: Asymmetric Transit Timers: Forward deliveries enforce a strict 48h inter-hub timeout before auto-flagging missing parcels; reverse logistics parcels in consolidation staging receive an extended 96h window to prevent premature loss claims.
 - [x] Review/decide: Doorstep Cash Prohibition & Net-Refunds: Doorstep cash collection for returns is prohibited. For change-of-mind returns, the return shipping fee is deducted automatically from the product refund, with returns blocked if shipping exceeds item value.
 - [ ] Review/decide: Geo-Fenced SLA Penalties: Courier late-pickup fines (₱150) apply strictly within contracted, active coverage zones; orders in unserviceable or low-fleet territories auto-cancel without courier or seller penalties.
 - [x] Review/decide: Two-Human Custody Rule: Sorter workstation scanners reject check-in scans if the current parcel custody matches the logged-in operator, preventing delivery riders from validating their own vehicle handovers.
 
-Handover decision: **accepted with corrections in B07**; return settlement decision: **accepted with corrections in B11/B13**. The rider/driver and the hub operator are separate named participants. Doorstep return cash collection is prohibited and return refunds settle net discounted item + allocated paid shipping on seller/courier fault (while post-delivery change-of-mind remains excluded and pre-delivery buyer refusal carries shipping liability). Timing timers (48h/96h) and geo-fenced SLA penalties remain in B14/B16.
+Handover decision: **accepted with corrections in B07**; return settlement decision: **accepted with corrections in B11/B13**; asymmetric forward (`48h`) and reverse (`96h`) transit timers: **accepted in B14**, paired with `B15` coverage fencing (`no_available_rider` / `pickup_paused` / `no_service_coverage`) and `72h` penalty-exempt unpicked fallback. Direct courier SLA fines remain in `B16`. See [B14](B14_ETA_AND_STATE_MONITORING.md) and [B15](B15_DISPATCH_RECOVERY_AND_INVESTIGATION.md).
 
 ## 26. Baseline Shipping Fee Matrix, Volumetric Weight Tiers, and Cargo Surcharges
 
@@ -330,8 +338,8 @@ Decision: **user-selected amendment, November 11**: PHP 50 including 1 kg plus P
 Proposed ideas to review:
 
 - [x] Review/decide: Dual Manifest Loading: Digital trip manifests support both bulk Mother Bag barcodes and individual loose non-baggable barcodes (e.g., guitars, bulky tools), requiring individual offloading scans before manifest clearance to prevent lost freight or crushed cargo.
-- [ ] Review/decide: Intra-Hub Final Mile Staging: Intra-town orders bypass Mother Bags directly into local delivery staging shelves (STAGED_FOR_FINAL_MILE), pausing idle table timers to align with afternoon delivery shifts without raising false alarms.
+- [x] Review/decide: Intra-Hub Final Mile Staging: Intra-town orders bypass Mother Bags directly into local delivery staging shelves (STAGED_FOR_FINAL_MILE), pausing idle table timers to align with afternoon delivery shifts without raising false alarms.
 - [ ] Review/decide: Scale Verification & Negative Wallet Freezes: Discrepancies between declared and scale weight trigger automated camera scale logs and deduct overage fees from seller wallets; balances dropping below ₱0 trigger an immediate catalog visibility shadowban until debts are settled.
 - [x] Review/decide: Proportional Voucher Split: Multi-item cart discounts are divided proportionally across all items, preventing voucher exploitation during partial returns by refunding only the net discounted item price.
 
-B09 retains the local final-mile shelf bypass and excludes it from outbound bag corridors. B13 verifies proportional unit voucher/shipping splits in multi-item and partial returns (`BuyerReturnAmounts`, `BuyerReturnRefundPlanTest`). Shift/staging clocks and negative-wallet catalog freeze governance remain B14/B16; this combined proposal stays open until those remaining items are verified.
+B09 retains the local final-mile shelf bypass and excludes it from outbound bag corridors. B13 verifies proportional unit voucher/shipping splits in multi-item and partial returns (`BuyerReturnAmounts`, `BuyerReturnRefundPlanTest`). B14 verifies that `sorted_to_barangay_bin` (`STAGED_FOR_FINAL_MILE`) and `ready_for_hub_pickup` pause `hub_idle_sorting` (`staged_for_final_mile` / `counter_holding`) while starting `final_mile_staging` or `counter_pickup_holding`. Negative-wallet catalog freeze governance remains B16; this combined proposal stays open until that item is verified.
