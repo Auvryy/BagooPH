@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
+use App\Services\Monitoring\SlaClockService;
 use App\Services\Notifications\NotificationDeliveryService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Database\Eloquent\Builder;
@@ -190,6 +191,7 @@ class BuyerReturnService
                         'content_hash' => $infos[$index]['content_hash'], 'mime' => $infos[$index]['mime'], 'bytes' => $infos[$index]['bytes'], 'created_at' => now()]);
                 }
                 $this->append($case, $actor, 'requested', null, $data['description'], $token, $fingerprint);
+                app(SlaClockService::class)->syncForBuyerReturnCase($case);
 
                 return $case;
             }, 3);
@@ -305,6 +307,7 @@ class BuyerReturnService
             if ($action === 'approve') {
                 app(BuyerReturnCustodyService::class)->prepare($case, $event);
             }
+            app(SlaClockService::class)->syncForBuyerReturnCase($case);
 
             return $event;
         }, 3);

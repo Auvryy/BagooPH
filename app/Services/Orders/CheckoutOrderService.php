@@ -19,9 +19,11 @@ use App\Services\Commerce\InventoryService;
 use App\Services\Commerce\PhilippineAddressCatalog;
 use App\Services\Commerce\ProductSkuService;
 use App\Services\Commerce\SalePriceService;
+use App\Services\Governance\EnforcementService;
 use App\Services\Logistics\LogisticsCheckoutService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsRoutingEngine;
+use App\Services\Monitoring\SlaClockService;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
 use App\Services\Vouchers\VoucherFundingService;
@@ -73,6 +75,11 @@ class CheckoutOrderService
         $confirmationToken = $data['checkout_token'] ?? null;
         $tokenHash = $submissions->tokenHash($buyer, $cart, $confirmationToken);
         $data = app(CommerceInputService::class)->checkout($data, $cartItemIds);
+        if ($data['payment_method'] === 'cod' && ($codRestriction = app(EnforcementService::class)->activeCodRestrictionForBuyer($buyer))) {
+            throw new CheckoutException(
+                "Cash on Delivery is currently restricted on your account ({$codRestriction->reference}): {$codRestriction->reason} Use Bagoo Wallet or submit an appeal under Account Status."
+            );
+        }
         $cartItemIds = $data['item_ids'];
         $requestHash = $submissions->fingerprint($data);
 
@@ -253,7 +260,7 @@ class CheckoutOrderService
                     'delivery_recipient_name' => $data['recipient_name'],
                     'delivery_address' => $this->deliveryAddress($data),
                     'delivery_phone' => $data['recipient_phone'],
-                    'estimated_delivery_at' => now()->addDays(3),
+                    'estimated_delivery_at' => null,
                 ]);
 
                 try {
@@ -261,6 +268,8 @@ class CheckoutOrderService
                 } catch (DomainException $exception) {
                     throw new CheckoutException($exception->getMessage(), previous: $exception);
                 }
+
+                app(SlaClockService::class)->syncForOrder($order->setRelation('delivery', $delivery));
                 app(LifecycleNoticeService::class)->order($order, 'placed');
                 $orders->push($order->load('delivery', 'items'));
             }

@@ -15,6 +15,8 @@ use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Finance\CodCashService;
+use App\Services\Monitoring\EtaCalculationService;
+use App\Services\Monitoring\SlaClockService;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Wallet\WalletPaymentService;
@@ -71,6 +73,9 @@ class PickupClaimService
                 'tracking_number_snapshot' => $parcel->tracking_number, 'ready_at' => $ready,
                 'expires_at' => $ready->timezone('Asia/Manila')->addDays(7)->utc(), 'status' => 'ready']);
             $this->record($claim, $actor, 'ready', $source, DeliveryCheckpoint::state($parcel), ['barcode_scanned' => $barcode]);
+            app(EtaCalculationService::class)->applyToDelivery($parcel, $parcel->order);
+            app(SlaClockService::class)->syncForDelivery($parcel, $parcel->order);
+            app(SlaClockService::class)->syncForPickupClaim($claim, $parcel);
             $this->notices->pickup($claim, 'ready');
 
             return $parcel;
@@ -188,6 +193,9 @@ class PickupClaimService
                 app(CodCashService::class)->collectCounter($parcel, $actor, $cash, $input['request_token']);
             }
             app(AutomaticDeliveryCompletionService::class)->complete($parcel, $handover, $actor);
+            app(EtaCalculationService::class)->applyToDelivery($parcel, $parcel->order);
+            app(SlaClockService::class)->syncForDelivery($parcel, $parcel->order);
+            app(SlaClockService::class)->syncForPickupClaim($claim, $parcel);
             $this->notices->pickup($claim, 'collected');
 
             return ['success' => true, 'delivery' => $parcel, 'message' => $walletPaid ? 'Buyer collection recorded. The parcel was prepaid with virtual wallet credits.' : 'Buyer collection and COD custody recorded.'];
@@ -207,11 +215,12 @@ class PickupClaimService
                 if ($claim->status !== 'ready') {
                     return 0;
                 }
-                if (now()->greaterThanOrEqualTo($claim->expires_at)) {
+                if (now()->greaterThanOrEqualTo(app(SlaClockService::class)->effectiveExpiresAt($claim))) {
                     $source = $claim->state();
                     $claim->status = 'expired';
                     $claim->save();
                     $this->record($claim, null, 'holding_expired', $source, $claim->state());
+                    app(SlaClockService::class)->syncForPickupClaim($claim, $claim->delivery);
                     $this->notices->pickup($claim, 'expired');
 
                     return 1;
@@ -349,7 +358,7 @@ class PickupClaimService
 
     private function assertReady(Delivery $parcel, PickupClaim $claim, bool $readOnly = false): void
     {
-        if ($claim->status !== 'ready' || now()->greaterThanOrEqualTo($claim->expires_at) || $claim->consumed_at) {
+        if ($claim->status !== 'ready' || now()->greaterThanOrEqualTo(app(SlaClockService::class)->effectiveExpiresAt($claim)) || $claim->consumed_at) {
             throw new DomainException('This pickup claim is expired or already used.');
         }
         $this->assertReadyCustody($parcel, $claim, $readOnly);

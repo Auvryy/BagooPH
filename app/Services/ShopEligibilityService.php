@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Category;
+use App\Models\EnforcementSanction;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -163,11 +165,26 @@ class ShopEligibilityService
         return $id;
     }
 
+    public function hasActiveCatalogRestriction(Shop $shop): bool
+    {
+        if (! Schema::hasTable('enforcement_sanctions')) {
+            return false;
+        }
+
+        return EnforcementSanction::active()
+            ->where('scope', 'catalog_visibility_restricted')
+            ->where(fn (Builder $q) => $q
+                ->where(fn (Builder $s) => $s->where('subject_type', 'shop')->where('subject_id', $shop->id))
+                ->orWhere(fn (Builder $s) => $s->where('subject_type', 'seller')->where('subject_id', $shop->user_id)))
+            ->exists();
+    }
+
     public function productIsEligible(Product $product): bool
     {
         $shop = Shop::find($product->shop_id);
 
         return $product->status === 'active' && ! $product->compliance_restricted && $shop && $this->isEligible($shop)
+            && ! $this->hasActiveCatalogRestriction($shop)
             && in_array((int) $product->category_id, $this->categoryIds($shop), true);
     }
 
@@ -194,7 +211,21 @@ class ShopEligibilityService
     {
         $scopes = $this->categoryScopes();
 
-        return $query->where('products.status', 'active')->where('products.compliance_restricted', false)->whereHas('shop', fn ($q) => $q->eligible())
+        return $query->where('products.status', 'active')->where('products.compliance_restricted', false)->whereHas('shop', function ($q) {
+            $q->eligible();
+            if (Schema::hasTable('enforcement_sanctions')) {
+                $q->whereNotExists(function ($sub) {
+                    $sub->selectRaw('1')
+                        ->from('enforcement_sanctions')
+                        ->where('scope', 'catalog_visibility_restricted')
+                        ->where('status', 'active')
+                        ->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+                        ->where(fn ($match) => $match
+                            ->where(fn ($m) => $m->where('subject_type', 'shop')->whereColumn('subject_id', 'shops.id'))
+                            ->orWhere(fn ($m) => $m->where('subject_type', 'seller')->whereColumn('subject_id', 'shops.user_id')));
+                });
+            }
+        })
             ->where(function ($queryScopes) use ($scopes) {
                 $queryScopes->whereRaw('1 = 0');
                 foreach ($scopes as $rootId => $categoryIds) {

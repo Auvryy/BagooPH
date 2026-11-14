@@ -10,16 +10,19 @@ use App\Models\Delivery;
 use App\Models\IdentityCorrectionRequest;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
+use App\Models\MissingParcelInvestigation;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\RestrictionAffectedWork;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\Finance\FinancialOversightService;
+use App\Services\Logistics\DispatchRecoveryService;
 use App\Services\Logistics\OrderStateMachineService;
 use Brick\Math\BigDecimal;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -154,6 +157,8 @@ class AdminOverviewService
                 'exceptions' => DB::table('deliveries')->whereIn('status', ['failed', 'delivery_failed', 'return_to_sender'])->count(),
                 'courierAccounts' => User::where('role', 'courier')->count(), 'onDutyEligibleRiders' => CourierProfile::operational()->where('is_available', true)->count()],
             'finance' => $this->finance($actor),
+            'monitoring' => Schema::hasTable('sla_clocks') ? app(DispatchRecoveryService::class)->telemetry(null, null) : null,
+            'openInvestigationsCount' => Schema::hasTable('missing_parcel_investigations') ? MissingParcelInvestigation::where('status', 'investigating')->count() : 0,
         ];
     }
 }

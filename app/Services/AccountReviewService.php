@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AccountReviewDecision;
 use App\Models\AccountReviewRequest;
+use App\Models\FinancialPenalty;
 use App\Models\KycDecision;
 use App\Models\LogisticsCompany;
 use App\Models\NotificationDelivery;
@@ -12,10 +13,12 @@ use App\Models\Shop;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\WholeNumber;
+use App\Services\Governance\EnforcementService;
 use App\Services\Notifications\AccountStatusDeliveryService;
 use App\Services\Notifications\NotificationDeliveryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class AccountReviewService
@@ -120,6 +123,14 @@ class AccountReviewService
             'can_correct_application' => in_array($user->kyc_status, ['none', 'rejected', 'pending_approval'], true) && ! $user->isAdmin(),
             'can_correct_identity' => $user->isKycApproved(), 'can_open_portal' => $user->canAccessPortal() && $sources === [],
             'email_update' => $email ? ['pending' => $email->email_delivered_at === null, 'attempts' => $email->email_attempts] : null,
+            'active_sanctions' => app(EnforcementService::class)->activeForUser($user)->values()->all(),
+            'unpaid_penalties' => Schema::hasTable('financial_penalties')
+                ? FinancialPenalty::where('subject_user_id', $user->id)
+                    ->where('status', 'unpaid_debt_hold')
+                    ->latest('id')
+                    ->get(['id', 'reference', 'category', 'amount_cents', 'outstanding_cents', 'reason', 'decided_at'])
+                    ->all()
+                : [],
         ];
     }
 

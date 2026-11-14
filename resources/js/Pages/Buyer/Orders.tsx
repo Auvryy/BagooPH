@@ -40,8 +40,18 @@ export default function BuyerOrders({ orders, canUsePortal, orderCounts, current
                     <Link key={order.id} href={route('buyer.orders.show', order.id)} className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-300 bg-white p-5 transition hover:border-[#E00D42] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
                         <div className="min-w-0 space-y-1">
                             <p className="break-words font-bold">Order {order.order_number}</p>
-                            <OrderTrackingStatus tracking={order.tracking} />
-                            <p className="text-sm text-slate-600">{new Date(order.created_at).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' })}</p>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <OrderTrackingStatus tracking={order.tracking} />
+                                {order.tracking?.dispatch_delay_label && (
+                                    <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-900">
+                                        {order.tracking.dispatch_delay_label}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-sm text-slate-600">
+                                {new Date(order.created_at).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' })}
+                                {order.tracking?.eta?.label ? ` · ETA: ${order.tracking.eta.label}` : ''}
+                            </p>
                         </div>
                         <p className="font-semibold tabular-nums">{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(order.total_amount))}</p>
                     </Link>

@@ -5,6 +5,7 @@ namespace App\Services\Wallet;
 use App\Models\BuyerReturnAdjustment;
 use App\Models\BuyerReturnCase;
 use App\Models\Delivery;
+use App\Models\FinancialPenalty;
 use App\Models\Order;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
@@ -19,6 +20,7 @@ use App\Services\Finance\SellerSettlementService;
 use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Finance\ShipmentLossWallet;
 use App\Services\Finance\ShipmentRefusalMoney;
+use App\Services\Governance\EnforcementService;
 use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Returns\BuyerReturnAmounts;
 use App\Services\ShopEligibilityService;
@@ -136,6 +138,10 @@ class WalletSettlementService
         if (! $shop || $order->items->pluck('shop_id')->unique()->count() !== 1 || ! $shop->user?->canAccessPortal()
             || ! $shop->user?->email_verified_at || ! app(ShopEligibilityService::class)->isEligible($shop)) {
             $issues[] = 'The original seller and shop must remain approved and active.';
+        }
+        if ($shop?->user && (app(EnforcementService::class)->activePayoutHoldForUser($shop->user) !== null
+            || (Schema::hasTable('financial_penalties') && FinancialPenalty::where('subject_user_id', $shop->user_id)->where('status', 'unpaid_debt_hold')->exists()))) {
+            $issues[] = 'Seller account has an active payout hold or unpaid financial penalty obligation requiring clearance.';
         }
         $consent = hash('sha256', json_encode([$payment?->reference, $basis], JSON_THROW_ON_ERROR));
         $returnRefund = app(WalletDeliveryRefundService::class)->eligible($order);

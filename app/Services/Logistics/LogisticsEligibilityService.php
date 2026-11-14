@@ -13,6 +13,7 @@ use App\Models\User;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class LogisticsEligibilityService
 {
@@ -165,5 +166,34 @@ class LogisticsEligibilityService
         if (! LogisticsHub::eligible()->whereKey($hubId)->where('tier', 'local_bayan_hub')->exists()) {
             throw new DomainException('Pickup and final-mile work require the expected active Bayan Hub.');
         }
+    }
+
+    /**
+     * Active logistics operator user IDs affiliated with a carrier (owner, provisioned staff, or eligible hub handlers).
+     *
+     * @return Collection<int, int>
+     */
+    public function companyOperatorIds(int $companyId): Collection
+    {
+        $ownerIds = LogisticsCompany::eligible()->whereKey($companyId)->pluck('user_id');
+        $staffIds = User::query()
+            ->where('role', 'logistics')
+            ->where('provisioned_company_id', $companyId)
+            ->where('status', 'active')
+            ->whereNull('closed_at')
+            ->pluck('id');
+        $handlerIds = HubHandler::eligible()->where('logistics_company_id', $companyId)->pluck('user_id');
+
+        $candidateIds = $ownerIds->merge($staffIds)->merge($handlerIds)->filter()->unique()->values();
+        if ($candidateIds->isEmpty()) {
+            return collect();
+        }
+
+        return User::query()
+            ->whereIn('id', $candidateIds)
+            ->where('role', 'logistics')
+            ->where('status', 'active')
+            ->whereNull('closed_at')
+            ->pluck('id');
     }
 }

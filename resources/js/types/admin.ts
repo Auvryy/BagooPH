@@ -57,4 +57,16 @@ export interface AdminLogisticsProps {
     statusOptions: { value: string; label: string; count: number }[];
     stats: { total: number; open: number; awaitingPickupAssignment: number; handoverStatus: number; exceptions: number; courierAccounts: number; onDutyEligibleRiders: number };
     finance: UnavailableFinance[];
+    monitoring?: {
+        counts: {
+            running_clocks: number;
+            paused_clocks: number;
+            breached_clocks: number;
+            stalled_hub_alerts: number;
+            urgent_pickups: number;
+            active_pickup_pauses: number;
+            overloaded_barangays: number;
+        };
+    } | null;
+    openInvestigationsCount?: number;
 }

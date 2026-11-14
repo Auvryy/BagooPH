@@ -5,6 +5,7 @@ namespace App\Services\Courier;
 use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\DispatchEscalation;
 use App\Models\HandoverIssue;
 use App\Models\Order;
 use App\Models\User;
@@ -16,6 +17,7 @@ use App\Services\Orders\OrderCancellationService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class CourierOperationsService
 {
@@ -36,6 +38,14 @@ class CourierOperationsService
                 ->where('origin_bayan_hub_id', $profile->assigned_hub_id)
                 ->whereHas('order', fn ($order) => $order->where('status', OrderStateMachineService::STATUS_READY_FOR_PICKUP))
                 ->when(! $this->eligibility->canReceivePickups($profile), fn ($empty) => $empty->whereRaw('1 = 0'))
+                ->when(
+                    Schema::hasTable('dispatch_escalations'),
+                    fn (Builder $q) => $q->orderByDesc(
+                        DispatchEscalation::select('is_urgent')
+                            ->whereColumn('dispatch_escalations.delivery_id', 'deliveries.id')
+                            ->limit(1)
+                    )
+                )
                 ->orderBy('created_at')->orderBy('id'),
             'pickup' => $query->where('courier_id', $rider->id)->where('origin_bayan_hub_id', $profile->assigned_hub_id)
                 ->whereRaw("deliveries.status in ('assigned', 'assigned_pickup', 'picked_up')")->orderBy('assigned_at')->orderBy('id'),

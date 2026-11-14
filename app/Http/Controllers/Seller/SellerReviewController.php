@@ -28,7 +28,7 @@ class SellerReviewController extends Controller
 
         $productIds = Product::where('shop_id', $shop?->id ?? 0)->pluck('id');
 
-        $query = Review::withPurchaseVerification()->with(['product', 'buyer:id,name,avatar', 'reply',
+        $query = Review::withPurchaseVerification()->publicVisible()->with(['product', 'buyer:id,name,avatar', 'reply', 'dispute',
             'orderItem' => fn ($item) => $item->where('shop_id', $shop->id)->whereIn('product_id', $productIds)
                 ->select(['id', 'order_id', 'product_id', 'shop_id', 'color', 'size', 'sku_snapshot']),
         ])
@@ -81,5 +81,17 @@ class SellerReviewController extends Controller
 
             return back()->with('success', 'Your reply has been saved.');
         });
+    }
+
+    public function dispute(Request $request, int $reviewId): RedirectResponse
+    {
+        $dispute = app(ReviewService::class)->disputeReview(
+            $request->user(),
+            $this->getActiveShop($request),
+            $reviewId,
+            $request->input()
+        );
+
+        return back()->with('success', "Dispute {$dispute->reference} submitted for platform moderation review.");
     }
 }

@@ -81,6 +81,30 @@ interface DashboardProps {
         timestamp: string;
         relative_time: string;
     }>;
+    monitoring?: {
+        counts: {
+            running_clocks: number;
+            paused_clocks: number;
+            breached_clocks: number;
+            stalled_hub_alerts: number;
+            urgent_pickups: number;
+            active_pickup_pauses: number;
+            overloaded_barangays: number;
+        };
+        stalled_hub_alerts: Array<{ id: number; clock_kind: string; delivery?: { tracking_number: string } | null; hub?: { name: string } | null }>;
+        escalations: Array<{ id: number; current_tier: string; is_urgent: boolean; dispatch_delay_label: string | null; delivery?: { tracking_number: string } | null }>;
+        pickup_pauses: Array<{ id: number; reference: string; barangay: string | null; reason: string; hub?: { name: string } | null }>;
+        overload_alerts: Array<{ hub_id: number; hub_name: string; barangay: string; parcel_count: number; utilization_pct?: number }>;
+    } | null;
+    activeSlaPauses?: Array<{
+        id: number;
+        reference: string;
+        title: string;
+        reason_code: string;
+        scope_type: string;
+        scope_value: string | null;
+    }>;
+    openInvestigationsCount?: number;
 }
 
 const toneClasses = {
@@ -105,6 +129,9 @@ export default function HubDashboard({
     parcelFlow,
     facilities,
     recentActivity,
+    monitoring,
+    activeSlaPauses = [],
+    openInvestigationsCount = 0,
 }: DashboardProps) {
     const activeAttention = attentionQueue.filter((item) => item.count > 0);
     const selectedHub = scope.hubs.find((hub) => hub.id === scope.selected_hub_id);
@@ -261,6 +288,79 @@ export default function HubDashboard({
                         );
                     })}
                 </section>
+
+                {(activeSlaPauses.length > 0 || monitoring) && (
+                    <section className="rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs space-y-3" aria-label="SLA & Dispatch Telemetry">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h2 className="text-sm font-semibold text-[#121316]">SLA clocks, recovery &amp; area density</h2>
+                                <p className="text-xs text-zinc-500">Live threshold monitoring, urgent seller pickups, overloaded barangays, and Force-Majeure advisories</p>
+                            </div>
+                            <PortalLink href="/governance/monitoring" className={hubButton}>
+                                Open SLA monitoring
+                            </PortalLink>
+                        </div>
+
+                        {activeSlaPauses.length > 0 && (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50/90 p-3 text-xs text-amber-900 space-y-1">
+                                <p className="font-bold">Active Force-Majeure SLA pause affecting this scope:</p>
+                                {activeSlaPauses.map((pause) => (
+                                    <p key={pause.id}>
+                                        {pause.reference} · {pause.title} ({pause.reason_code.replaceAll('_', ' ')})
+                                    </p>
+                                ))}
+                            </div>
+                        )}
+
+                        {monitoring && (
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                                {[
+                                    ['Breached SLA clocks', monitoring.counts.breached_clocks],
+                                    ['Stalled hub alerts', monitoring.counts.stalled_hub_alerts],
+                                    ['Urgent pickups', monitoring.counts.urgent_pickups],
+                                    ['Overloaded barangays', monitoring.counts.overloaded_barangays],
+                                    ['Open investigations', openInvestigationsCount],
+                                ].map(([label, value]) => (
+                                    <div key={String(label)} className="rounded-lg border border-zinc-200/80 bg-zinc-50/60 px-3.5 py-2.5">
+                                        <p className="text-[11px] font-medium text-zinc-500">{label}</p>
+                                        <p className={`mt-1 text-xl font-bold tabular-nums ${Number(value) > 0 ? 'text-[#E00D42]' : 'text-[#121316]'}`}>{value}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {monitoring && monitoring.pickup_pauses.length > 0 && (
+                            <div className="rounded-lg border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-950 space-y-2">
+                                <p className="font-bold">Active hub pickup pauses:</p>
+                                {monitoring.pickup_pauses.map((pause) => (
+                                    <div key={pause.id} className="flex flex-wrap items-center justify-between gap-2">
+                                        <span>{pause.reference} · {pause.hub?.name ?? 'Hub'} {pause.barangay ? `(${pause.barangay})` : '(All barangays)'}: {pause.reason}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => router.post(`/governance/monitoring/pickup-pauses/${pause.id}/resume`, {}, { preserveScroll: true })}
+                                            className="rounded-md border border-rose-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#C20836] hover:bg-rose-50"
+                                        >
+                                            Resume pickup
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {monitoring && monitoring.overload_alerts.length > 0 && (
+                            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
+                                <p className="font-semibold text-zinc-900 mb-1">High-density barangay zones (&gt;= 40 active parcels):</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {monitoring.overload_alerts.map((row, idx) => (
+                                        <span key={`${row.hub_id}-${row.barangay}-${idx}`} className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 font-medium">
+                                            {row.hub_name}: {row.barangay} ({row.parcel_count} parcels)
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </section>
+                )}
 
                 {/* Above-the-Fold Network Custody Pipeline (Parcel Journey) */}
                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">

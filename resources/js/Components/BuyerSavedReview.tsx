@@ -2,13 +2,16 @@ import { useForm } from '@inertiajs/react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { useRef, useState } from 'react';
 
-export default function BuyerSavedReview({ review }: { review: { id: number; rating?: number; comment?: string | null; edit_url?: string | null; edited_at?: string | null } }) {
+import ReviewModerationNotice, { type ModeratedReviewContext } from '@/Components/ReviewModerationNotice';
+
+export default function BuyerSavedReview({ review }: { review: { id: number; rating?: number; comment?: string | null; edit_url?: string | null; edited_at?: string | null } & Partial<ModeratedReviewContext> }) {
     const [open, setOpen] = useState(false);
     const busy = useRef(false);
     const form = useForm({ rating: review.rating ?? 5, comment: review.comment ?? '' });
     return <div className="space-y-1">
         <p className="text-xs font-semibold text-emerald-700">Review saved{review.edited_at ? ' · Edited' : ''}</p>
         {review.edit_url && <button type="button" onClick={() => { form.setData({ rating: review.rating ?? 5, comment: review.comment ?? '' }); setOpen(true); }} className="text-xs font-semibold text-[#C20836] underline">Edit review</button>}
+        <ReviewModerationNotice review={review} />
         <Dialog open={open} onClose={() => { if (!busy.current) setOpen(false); }} className="relative z-50">
             <div className="fixed inset-0 bg-slate-900/50" aria-hidden="true" />
             <div className="fixed inset-0 flex items-center justify-center overflow-y-auto p-4"><DialogPanel className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">

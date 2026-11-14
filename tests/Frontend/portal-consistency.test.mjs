@@ -24,7 +24,7 @@ const seller={id:7,name:'Seller',email:'seller@bagoo.test',role:'seller'};
 async function render(Component,props={},user=seller){let element;const page={component:user.role==='admin'?'Admin/Users':'Seller/Dashboard',props:{auth:{user},flash:{},...props},url:'/dashboard',version:null};const result=await createInertiaApp({page,resolve:()=>Component,setup:({App,props})=>(element=createElement(App,props)),render:()=>renderToStaticMarkup(element)});return result.body;}
 
 test('admin sections retain all destinations and open the active group with keyboard accessible buttons',async()=>{
- const names=['Dashboard','KYC Queue','Shop reviews','Users','Review requests','Products','Voucher campaigns','Advertisements','Logistics','Delivery exceptions','Buyer returns','Handover issues','COD cash','Seller proceeds','Return liabilities','Wallet credits','Virtual proceeds','Financial oversight','Governance history','Resource activity'];
+ const names=['Dashboard','KYC Queue','Shop reviews','Users','Review requests','Products','Voucher campaigns','Advertisements','Logistics','SLA monitoring','Delivery exceptions','Buyer returns','Handover issues','COD cash','Seller proceeds','Return liabilities','Wallet credits','Virtual proceeds','Financial oversight','Governance history','Resource activity'];
  const items=names.map((name,index)=>({name,href:'/destination/'+index,icon,current:name==='Users',attention:name==='Products'}));
  const html=await render(ui.Sidebar,{items},{...seller,role:'admin'});
  assert.equal((html.match(/href="\/destination\//g)??[]).length,names.length);

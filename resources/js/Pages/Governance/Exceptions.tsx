@@ -10,10 +10,12 @@ export default function Exceptions({
     exceptions,
     filters,
     sourceGaps,
+    monitoringSummary,
 }: {
     exceptions: { data: Entry[]; total: number; links: { url: string | null; label: string; active: boolean }[] };
     filters: { kind?: string; status?: string };
     sourceGaps: { total: number; data: { orderNumber: string; trackingNumber: string; reason: string }[] };
+    monitoringSummary?: { open_investigations: number; breached_clocks: number };
 }) {
     const logistics = usePage<PageProps>().props.auth.user?.role === 'logistics';
     const filter = (key: string, value: string) => router.get('/exceptions', { ...filters, [key]: value }, { preserveState: true, preserveScroll: true });
@@ -25,6 +27,20 @@ export default function Exceptions({
                 <p className="text-xs sm:text-sm leading-relaxed text-zinc-600">
                     Follow up on restrictions, failed attempts, manifest discrepancies and counter holding. Physical handovers stay with the responsible rider, hub handler or seller.
                 </p>
+
+                {monitoringSummary && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200/90 bg-white px-4 py-3 shadow-xs">
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-700">
+                            <span className="font-semibold text-zinc-900">SLA Monitoring &amp; Investigations:</span>
+                            <span>{monitoringSummary.breached_clocks} breached SLA {monitoringSummary.breached_clocks === 1 ? 'clock' : 'clocks'}</span>
+                            <span className="text-zinc-300">·</span>
+                            <span>{monitoringSummary.open_investigations} open missing-parcel {monitoringSummary.open_investigations === 1 ? 'investigation' : 'investigations'}</span>
+                        </div>
+                        <Link href="/governance/monitoring" className="rounded-lg bg-[#E00D42] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#C20836]">
+                            Open SLA monitoring
+                        </Link>
+                    </div>
+                )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs">
                     <div className="flex flex-wrap items-center gap-3">

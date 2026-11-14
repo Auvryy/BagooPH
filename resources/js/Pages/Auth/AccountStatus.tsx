@@ -3,12 +3,16 @@ import GuestLayout from '@/Layouts/GuestLayout';
 import AccountReviewRequestForm from '@/Components/AccountReviewRequestForm';
 import { reviewStatusLabels, reviewActionLabels, type ReviewRequest, type ReviewSource } from '@/types/accountReviews';
 
+import AccountEnforcementNotices, { type ActiveSanctionItem, type UnpaidPenaltyItem } from '@/Components/AccountEnforcementNotices';
+
 type Status = {
     title: string; message: string;
     account: { id: number; name: string; email: string; role: string; status: string; kyc_status: string; email_verified_at: string | null };
     sources: ReviewSource[]; requests: ReviewRequest[];
     can_correct_application: boolean; can_correct_identity: boolean; can_open_portal: boolean;
     email_update: { pending: boolean; attempts: number } | null;
+    active_sanctions?: ActiveSanctionItem[];
+    unpaid_penalties?: UnpaidPenaltyItem[];
 };
 
 export default function AccountStatus({ status }: { status: Status }) {
@@ -48,6 +52,7 @@ export default function AccountStatus({ status }: { status: Status }) {
                 <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">{source.reason}</p>
                 <AccountReviewRequestForm source={source} />
             </section>)}
+            <AccountEnforcementNotices sanctions={status.active_sanctions ?? []} penalties={status.unpaid_penalties ?? []} />
             <div className="flex flex-wrap gap-2">
                 {status.can_correct_application && <Link href={route('kyc.pending')} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">Correct application</Link>}
                 {status.can_correct_identity && !status.can_open_portal && <Link href={route('identity-corrections.own')} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">Correct reviewed details</Link>}

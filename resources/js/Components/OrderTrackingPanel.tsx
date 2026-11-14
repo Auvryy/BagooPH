@@ -33,6 +33,21 @@ export default function OrderTrackingPanel({ tracking, onRefresh, refreshing = f
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         {!tracking ? <p className="text-sm text-slate-600">Tracking details are not loaded. Refresh to check the recorded journey.</p> : buyer ? <BuyerParcelProgress tracking={tracking} order={buyerOrder} notices={notices} onReview={onReview} reviewDisabled={refreshing} /> : <>
             <OrderTrackingStatus tracking={tracking} />
+            {tracking.dispatch_delay_label && (
+                <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+                    {tracking.dispatch_delay_label}
+                </p>
+            )}
+            {tracking.eta && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 text-sm space-y-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-slate-600">Estimated delivery ({tracking.eta.status_label})</span>
+                        <span className="font-bold text-slate-900">{tracking.eta.label}</span>
+                    </div>
+                    {tracking.eta.pause_notice && <p className="text-xs font-medium text-amber-900">{tracking.eta.pause_notice}</p>}
+                    {tracking.eta.delay_notice && <p className="text-xs text-slate-600">{tracking.eta.delay_notice}</p>}
+                </div>
+            )}
             <dl className="grid gap-4 text-sm sm:grid-cols-2">
                 <div><dt className="text-xs text-slate-500">Parcel stage</dt><dd className="mt-1 font-semibold text-slate-900">{tracking.stage_label}</dd></div>
                 <div><dt className="text-xs text-slate-500">Recorded parcel holder</dt><dd className="mt-1 font-semibold text-slate-900">{tracking.custodian}</dd>{tracking.custody_recorded_at && <dd className="mt-1 text-xs text-slate-500">Holder record: {trackingDate(tracking.custody_recorded_at)}</dd>}</div>

@@ -4,6 +4,7 @@ namespace App\Services\Logistics;
 
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Services\Monitoring\EtaCalculationService;
 use App\Services\Orders\OrderTrackingService;
 
 class PublicTrackingService
@@ -81,6 +82,7 @@ class PublicTrackingService
             'delivery_phone' => $this->maskPhone($phone),
             'delivery_address' => $area !== '' ? 'Protected location, '.$area : 'Delivery area protected',
             'estimated_delivery_at' => $delivery->estimated_delivery_at?->toISOString(),
+            'eta' => app(EtaCalculationService::class)->present($delivery, $delivery->order, publicSafe: true),
             'delivered_at' => $delivery->delivered_at?->toISOString(),
             'checkpoints' => $delivery->checkpoints
                 ->filter(fn (DeliveryCheckpoint $checkpoint) => isset(self::CHECKPOINT_LOCATIONS[$checkpoint->checkpoint_type]))

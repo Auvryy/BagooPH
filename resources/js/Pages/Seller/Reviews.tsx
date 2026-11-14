@@ -132,6 +132,7 @@ export default function SellerReviews({ reviews, stats, shop, filters = { rating
                         </form> : <button type="button" disabled={reply.processing} onClick={() => beginReply(review)} className="flex items-center gap-1.5 text-xs font-bold text-[#E00D42] hover:underline disabled:opacity-50">
                             <CornerDownRight className="h-3.5 w-3.5" />{review.reply ? 'Edit saved reply' : 'Reply to review'}
                         </button>}
+                        <SellerReviewDisputeControl review={review} />
                     </article>)}
                 </div>
                 {reviews.last_page > 1 && <nav aria-label="Review pages" className="flex items-center justify-between gap-3 border-t border-slate-300 pt-4 text-xs">
@@ -143,3 +144,5 @@ export default function SellerReviews({ reviews, stats, shop, filters = { rating
         </div>
     </DashboardLayout>;
 }
+
+import SellerReviewDisputeControl from '@/Components/SellerReviewDisputeControl';

@@ -6,7 +6,7 @@ import { recordLabel } from '@/Components/GovernanceRecord';
 import type { AdminLogisticsProps } from '@/types/admin';
 import type { PageProps } from '@/types';
 
-export default function AdminLogistics({ deliveries, couriers, filters, stats, statusOptions, finance }: AdminLogisticsProps) {
+export default function AdminLogistics({ deliveries, couriers, filters, stats, statusOptions, finance, monitoring, openInvestigationsCount = 0 }: AdminLogisticsProps) {
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status);
     const { errors } = usePage<PageProps>().props;
@@ -14,7 +14,25 @@ export default function AdminLogistics({ deliveries, couriers, filters, stats, s
     return <DashboardLayout title="Logistics oversight" subtitle="Platform-wide recorded parcels, rider placement and duty">
         <Head title="Logistics oversight — Bagoo Admin" />
         <div className="space-y-6">
-            <div className="rounded-lg border border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">This view is read only. Assigned riders and eligible hub handlers record parcel custody. Platform recovery actions are unavailable until exception oversight is implemented.</div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+                <span>This view is read only. Assigned riders and eligible hub handlers record parcel custody. Manage Force-Majeure pauses, SLA breaches, and missing-parcel investigations in SLA monitoring.</span>
+                <Link href="/governance/monitoring" className="shrink-0 rounded-lg bg-[#E00D42] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#C20836]">Open SLA monitoring</Link>
+            </div>
+            {monitoring && (
+                <div className="grid gap-3 sm:grid-cols-4">
+                    {[
+                        ['Breached SLA clocks', monitoring.counts.breached_clocks],
+                        ['Paused Force Majeure clocks', monitoring.counts.paused_clocks],
+                        ['Urgent pickup escalations', monitoring.counts.urgent_pickups],
+                        ['Open missing-parcel investigations', openInvestigationsCount],
+                    ].map(([label, count]) => (
+                        <section key={String(label)} className="rounded-xl border border-slate-300 bg-white p-4">
+                            <p className="text-xs text-slate-500">{label}</p>
+                            <p className="mt-1 text-xl font-bold text-slate-900">{count}</p>
+                        </section>
+                    ))}
+                </div>
+            )}
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[
                 ['Parcel records', stats.total, 'All recorded parcels'],
                 ['Open parcels', stats.open, 'Known open pickup, hub, delivery and recovery states'],

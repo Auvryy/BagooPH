@@ -11,6 +11,7 @@ use App\Models\SubCategory;
 use App\Services\Advertisements\AdvertisementReader;
 use App\Services\Advertisements\AdvertisementRecommendationService;
 use App\Services\Commerce\BuyerDiscoveryService;
+use App\Services\Monitoring\EtaCalculationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -63,6 +64,7 @@ class BuyerHomeController extends Controller
 
         // 4. Live Flash Deals (from ProductSale with kind = 'flash' or live offers)
         $flashSaleProducts = Product::with(['shop', 'category', 'sales' => fn ($q) => $q->whereNull('ended_at')->where('ends_at', '>', now())])
+            ->availableForSale()
             ->whereHas('sales', fn ($q) => $q->where('kind', 'flash')->whereNull('ended_at')->where('starts_at', '<=', now())->where('ends_at', '>', now()))
             ->where('status', 'active')
             ->take(6)
@@ -94,6 +96,7 @@ class BuyerHomeController extends Controller
                 $product->collection_sub = $meta['sub_slug'];
                 $product->collection_title = $meta['title'];
                 $product->sales_badge = $meta['sales_badge'];
+
                 return $product;
             });
 
@@ -150,6 +153,7 @@ class BuyerHomeController extends Controller
                 ->first();
 
             if ($activeOrder && $activeOrder->delivery) {
+                $eta = app(EtaCalculationService::class)->present($activeOrder->delivery, $activeOrder);
                 $activeShipment = [
                     'order_id' => $activeOrder->id,
                     'order_number' => $activeOrder->order_number,
@@ -158,7 +162,8 @@ class BuyerHomeController extends Controller
                     'courier_name' => $activeOrder->delivery->logistics_partner,
                     'item_name' => $activeOrder->items->first()?->product?->name ?? 'Package',
                     'item_count' => $activeOrder->items->count(),
-                    'estimated_delivery' => $activeOrder->delivery->estimated_delivery_at ? $activeOrder->delivery->estimated_delivery_at->diffForHumans() : 'Within 24 Hours',
+                    'estimated_delivery' => $eta['label'] ?? 'Forecast pending',
+                    'eta' => $eta,
                 ];
             }
         }

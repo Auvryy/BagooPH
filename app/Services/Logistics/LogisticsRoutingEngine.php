@@ -5,6 +5,7 @@ namespace App\Services\Logistics;
 use App\Models\Delivery;
 use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
+use App\Models\HubPickupPause;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
@@ -13,9 +14,11 @@ use App\Models\PickupClaim;
 use App\Models\ShipmentLossReconciliation;
 use App\Models\Shop;
 use App\Services\Finance\ShipmentLossReconciliationService;
+use App\Services\Monitoring\EtaCalculationService;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -178,6 +181,7 @@ class LogisticsRoutingEngine
                 'destination_bin' => $order->delivery_type === 'hub_self_pickup'
                     ? null : 'BIN: BRGY-'.strtoupper(str_replace(' ', '-', $barangay)),
             ])->save();
+            app(EtaCalculationService::class)->applyToDelivery($parcel, $order);
             if ($order->logistics_flow_version >= 2) {
                 $routeHubs = LogisticsHub::whereIn('id', $path)->get()->keyBy('id');
                 $order->update(['shipping_quote' => [...($order->shipping_quote ?? []), 'route' => array_map(
@@ -222,9 +226,22 @@ class LogisticsRoutingEngine
     {
         [$origin, $destination, $originMother, $destinationMother, $path, $local] = $this->resolveRoute($company, $shop, $address);
         $hubs = collect([$origin, $originMother, $destinationMother, $destination])->filter()->keyBy('id');
+        $eta = app(EtaCalculationService::class)->preview(
+            $company,
+            $path,
+            $local,
+            (string) ($address['delivery_type'] ?? 'doorstep'),
+            $origin,
+            $destination,
+        );
+        $coverage = app(DispatchRecoveryService::class)->coverageAssessment($company, $origin, $shop->city);
 
-        return ['route' => array_map(fn ($id) => $hubs[$id]->only(['id', 'code', 'name', 'tier']), $path),
-            'same_hub_bypass' => $local];
+        return [
+            'route' => array_map(fn ($id) => $hubs[$id]->only(['id', 'code', 'name', 'tier']), $path),
+            'same_hub_bypass' => $local,
+            'eta' => $eta,
+            'coverage' => $coverage,
+        ];
     }
 
     public function serves(LogisticsCompany $company, Shop $shop, array $address): bool
@@ -252,6 +269,17 @@ class LogisticsRoutingEngine
             : $this->resolveDestinationBayanHub($address['shipping_province'] ?? '', $address['shipping_city'] ?? '', $address['destination_barangay'] ?? null, $company, $address['shipping_postal_code'] ?? null);
         if (! $origin || ! $destination) {
             throw new DomainException('No complete eligible hub route serves the seller and delivery address.');
+        }
+        if (Schema::hasTable('hub_pickup_pauses')) {
+            $pickupPause = HubPickupPause::query()
+                ->where('logistics_hub_id', $origin->id)
+                ->where('status', 'active')
+                ->orderByDesc('paused_at')
+                ->get()
+                ->first(fn ($pause) => $pause->matchesBarangay($shop->city));
+            if ($pickupPause) {
+                throw new DomainException("Pickup at {$origin->name} is temporarily paused: {$pickupPause->reason}");
+            }
         }
         if (! $this->matchesDestination($destination, $address['shipping_province'] ?? '', $address['shipping_city'] ?? '', $address['destination_barangay'] ?? null, $address['shipping_postal_code'] ?? null)) {
             throw new DomainException('Choose a pickup hub serving the stated delivery address.');

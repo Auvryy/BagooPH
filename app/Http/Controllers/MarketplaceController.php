@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Commerce\BuyerDiscoveryService;
 use App\Services\Commerce\ReviewService;
 use App\Services\Commerce\StoreTagService;
+use App\Services\Monitoring\EtaCalculationService;
 use App\Services\ShopEligibilityService;
 use App\Services\Vouchers\VoucherCollectionService;
 use Illuminate\Http\RedirectResponse;
@@ -140,13 +141,15 @@ class MarketplaceController extends Controller
                 ->first();
 
             if ($activeOrder && $activeOrder->delivery) {
+                $eta = app(EtaCalculationService::class)->present($activeOrder->delivery, $activeOrder);
                 $activeShipment = [
                     'order_id' => $activeOrder->id,
                     'order_number' => $activeOrder->order_number,
                     'status' => $activeOrder->status,
                     'tracking_number' => $activeOrder->delivery->tracking_number,
                     'courier_name' => $activeOrder->delivery->logistics_partner,
-                    'estimated_delivery' => $activeOrder->delivery->estimated_delivery_at ? $activeOrder->delivery->estimated_delivery_at->diffForHumans() : 'Within 24 Hours',
+                    'estimated_delivery' => $eta['label'] ?? 'Forecast pending',
+                    'eta' => $eta,
                     'item_name' => $activeOrder->items->first()?->product?->name ?? 'Ordered Package',
                     'item_count' => $activeOrder->items->count(),
                 ];

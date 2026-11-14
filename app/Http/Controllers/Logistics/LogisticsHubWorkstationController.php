@@ -6,17 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Models\BuyerReturnParcel;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\DispatchEscalation;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
+use App\Models\MissingParcelInvestigation;
 use App\Models\MotherBag;
 use App\Models\Order;
+use App\Models\SlaPause;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\DeliveryReturnService;
+use App\Services\Logistics\DispatchRecoveryService;
 use App\Services\Logistics\FleetDispatchEngine;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\HubParcelWorkstationService;
@@ -32,12 +36,15 @@ use App\Services\Logistics\ParcelScanEvidenceService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Logistics\RiderCompanyRequestService;
 use App\Services\Logistics\WaybillScanInputService;
+use App\Services\Monitoring\EtaCalculationService;
 use App\Services\Returns\BuyerReturnRecoveryService;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -139,11 +146,14 @@ class LogisticsHubWorkstationController extends Controller
             OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER,
         ])->count();
         $exceptions = $custodyQuery()->whereIn('status', $exceptionStatuses)->count();
+        $manilaToday = CarbonImmutable::now('Asia/Manila')->startOfDay();
+        $manilaWindowStart = $manilaToday->subDays(6);
+
         $dispatchedToday = DeliveryCheckpoint::query()
             ->whereIn('hub_id', $scopeHubIds)
             ->whereHas('delivery', fn ($query) => $query->where('logistics_company_id', $company?->id ?? 0))
             ->whereIn('checkpoint_type', $outboundCheckpointTypes)
-            ->whereDate('created_at', today())
+            ->whereBetween('created_at', [$manilaToday->utc(), $manilaToday->addDay()->utc()])
             ->count();
 
         $inboundCheckpointTypes = [
@@ -155,16 +165,17 @@ class LogisticsHubWorkstationController extends Controller
             ->whereIn('hub_id', $scopeHubIds)
             ->whereHas('delivery', fn ($query) => $query->where('logistics_company_id', $company?->id ?? 0))
             ->whereIn('checkpoint_type', [...$inboundCheckpointTypes, ...$outboundCheckpointTypes])
-            ->where('created_at', '>=', today()->subDays(6)->startOfDay())
+            ->where('created_at', '>=', $manilaWindowStart->utc())
             ->get(['checkpoint_type', 'created_at'])
-            ->groupBy(fn (DeliveryCheckpoint $checkpoint) => $checkpoint->created_at->toDateString());
+            ->groupBy(fn (DeliveryCheckpoint $checkpoint) => $checkpoint->created_at->timezone('Asia/Manila')->toDateString());
 
         $movement = collect(range(6, 0))->map(function (int $daysAgo) use (
             $movementCheckpoints,
+            $manilaToday,
             $inboundCheckpointTypes,
             $outboundCheckpointTypes
         ) {
-            $date = today()->subDays($daysAgo);
+            $date = $manilaToday->subDays($daysAgo);
             $dayCheckpoints = $movementCheckpoints->get($date->toDateString(), collect());
 
             return [
@@ -309,6 +320,33 @@ class LogisticsHubWorkstationController extends Controller
                 'relative_time' => $checkpoint->created_at->diffForHumans(),
             ]);
 
+        $monitoring = Schema::hasTable('sla_clocks')
+            ? app(DispatchRecoveryService::class)->telemetry($company?->id, $scopeHub?->id)
+            : null;
+        $activeSlaPauses = Schema::hasTable('sla_pauses')
+            ? SlaPause::active()->get()->filter(
+                fn (SlaPause $pause) => $pause->matchesContext(
+                    $company?->id,
+                    $scopeHubIds->all(),
+                    $accessibleHubs->pluck('province')->filter()->unique()->all()
+                )
+            )->map(fn (SlaPause $pause) => [
+                'id' => $pause->id,
+                'reference' => $pause->reference,
+                'title' => $pause->title,
+                'reason_code' => $pause->reason_code,
+                'scope_type' => $pause->scope_type,
+                'scope_value' => $pause->scope_value,
+            ])->values()
+            : [];
+        $openInvestigationsCount = Schema::hasTable('missing_parcel_investigations')
+            ? MissingParcelInvestigation::query()
+                ->where('status', 'investigating')
+                ->when($company?->id, fn ($q, $cid) => $q->where('logistics_company_id', $cid))
+                ->when($scopeHub?->id, fn ($q, $hid) => $q->where('hub_id', $hid))
+                ->count()
+            : 0;
+
         return Inertia::render('Hub/Dashboard', [
             'scope' => [
                 'mode' => $scopeHub ? 'hub' : 'company',
@@ -335,6 +373,9 @@ class LogisticsHubWorkstationController extends Controller
             'parcelFlow' => $parcelFlow,
             'facilities' => $facilities,
             'recentActivity' => $recentActivity,
+            'monitoring' => $monitoring,
+            'activeSlaPauses' => $activeSlaPauses,
+            'openInvestigationsCount' => $openInvestigationsCount,
         ]);
     }
 
@@ -582,7 +623,7 @@ class LogisticsHubWorkstationController extends Controller
         };
 
         $deliveries = function () use ($activeHub, $workstation, $user, $eligibleRiders, $basePath, $search, $statusFilter, $deliveryType) {
-            $query = $workstation->registry($activeHub)->with([
+            $withRelations = [
                 'order.buyer',
                 'order.items.product',
                 'originBayanHub',
@@ -594,7 +635,12 @@ class LogisticsHubWorkstationController extends Controller
                 'currentHub',
                 'latestCustodyCheckpoint',
                 'pickupClaim',
-            ]);
+            ];
+            if (Schema::hasTable('dispatch_escalations')) {
+                $withRelations[] = 'dispatchEscalation';
+            }
+
+            $query = $workstation->registry($activeHub)->with($withRelations);
 
             if ($search !== '') {
                 $query->where(function ($q) use ($search) {
@@ -610,11 +656,42 @@ class LogisticsHubWorkstationController extends Controller
                 $query->where('delivery_type', $deliveryType);
             }
 
-            return $query->latest()->paginate(15)->withPath($basePath.'/deliveries')->withQueryString()->through(function ($d) use ($activeHub, $workstation, $user, $eligibleRiders, $basePath) {
+            $etaService = app(EtaCalculationService::class);
+            $ridersByHub = [];
+            $isCompanyManager = $user && ($user->isAdmin() || $this->eligibility->isCompanyManager($user));
+
+            return $query->latest()->paginate(15)->withPath($basePath.'/deliveries')->withQueryString()->through(function ($d) use ($activeHub, $workstation, $user, $eligibleRiders, $basePath, $etaService, &$ridersByHub, $isCompanyManager) {
                 $isAwaitingOriginIntake = $activeHub
                     && $d->status === OrderStateMachineService::STATUS_PICKED_UP
                     && $d->origin_bayan_hub_id === $activeHub->id
                     && $d->current_hub_id === null;
+
+                $hasCourierCustody = ($d->latestCustodyCheckpoint?->custody_after['kind'] ?? null) === 'courier';
+                $isFirstMilePreHandover = ! $hasCourierCustody && in_array($d->status, ['unassigned', 'assigned', 'assigned_pickup'], true);
+                $isFinalMilePreDeparture = in_array($d->status, [
+                    OrderStateMachineService::STATUS_SORTED_TO_BARANGAY_BIN,
+                    OrderStateMachineService::STATUS_ASSIGNED_TO_RIDER,
+                ], true);
+
+                $phaseHub = $isFinalMilePreDeparture
+                    ? $d->destinationBayanHub
+                    : ($isFirstMilePreHandover ? $d->originBayanHub : null);
+
+                $canAuthorizeReassign = $user && ($isCompanyManager || ($phaseHub && $this->eligibility->canScan($user, $phaseHub)));
+                $reassignRiders = [];
+                if ($canAuthorizeReassign && $phaseHub) {
+                    if (! array_key_exists($phaseHub->id, $ridersByHub)) {
+                        $ridersByHub[$phaseHub->id] = ($activeHub && $phaseHub->id === $activeHub->id)
+                            ? $eligibleRiders()
+                            : $this->eligibility->riderCandidates($phaseHub)->get()->map(fn ($profile) => [
+                                'id' => $profile->user_id,
+                                'name' => $profile->user?->name ?? 'Rider',
+                                'assigned_barangay' => $profile->assigned_barangay,
+                                'vehicle_type' => $profile->vehicle_type,
+                            ])->values();
+                    }
+                    $reassignRiders = $ridersByHub[$phaseHub->id];
+                }
 
                 return [
                     'id' => $d->id,
@@ -634,12 +711,20 @@ class LogisticsHubWorkstationController extends Controller
                         'quantity' => $item->quantity,
                     ])->values() ?? [],
                     'destination_hub' => $d->destinationBayanHub?->name ?? 'Local Hub',
-                    'rider_name' => $d->assignedRider?->name ?? 'Unassigned',
+                    'rider_name' => $d->assignedRider?->name ?? ($d->courier?->name ?? 'Unassigned'),
+                    'first_mile_rider_name' => $d->courier?->name,
+                    'final_mile_rider_name' => $d->assignedRider?->name,
                     'total_amount' => (float) ($d->order?->total_amount ?? 0),
                     'payment_method' => $d->order?->payment_method ?? 'cod',
                     'item_count' => $d->order?->items?->count() ?? 1,
                     'created_at' => $d->created_at->format('M d, Y H:i'),
                     'guidance' => $workstation->guidance($d, $activeHub, $user, $eligibleRiders(), $basePath),
+                    'eta' => $etaService->present($d, $d->order, false),
+                    'dispatch_delay_label' => Schema::hasTable('dispatch_escalations') ? $d->dispatchEscalation?->dispatch_delay_label : null,
+                    'dispatch_escalation_tier' => Schema::hasTable('dispatch_escalations') ? $d->dispatchEscalation?->current_tier : null,
+                    'can_reassign_first_mile' => $canAuthorizeReassign && $isFirstMilePreHandover,
+                    'can_reassign_final_mile' => $canAuthorizeReassign && $isFinalMilePreDeparture,
+                    'reassign_riders' => $reassignRiders,
                 ];
             });
         };

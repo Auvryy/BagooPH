@@ -880,9 +880,14 @@ export default function BuyerProductDetail({
                                             <div className="w-7 h-7 rounded-lg bg-slate-900 text-white font-bold text-xs flex items-center justify-center">
                                                 {(rev.buyer?.name || 'V').charAt(0).toUpperCase()}
                                             </div>
-                                            <div>
+                                            <div className="flex flex-wrap items-center gap-2">
                                                 <span className="font-bold text-slate-900">{rev.buyer?.name || 'Shopper'}</span>
-                                                <span className={`text-[10px] font-bold ml-2 ${rev.verified_purchase ? 'text-emerald-700' : 'text-slate-500'}`}>{rev.verified_purchase ? 'Verified Purchase' : 'Unverified legacy review'}</span>
+                                                <span className={`text-[10px] font-bold ${rev.verified_purchase ? 'text-emerald-700' : 'text-slate-500'}`}>{rev.verified_purchase ? 'Verified Purchase' : 'Unverified legacy review'}</span>
+                                                {(rev.score_excluded || rev.moderation_status === 'excluded_courier_issue') && (
+                                                    <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-800">
+                                                        Excluded from product score (Delivery issue)
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                         <span className="text-slate-400">{rev.created_at ? new Date(rev.created_at).toLocaleDateString() : 'Recent'}</span>

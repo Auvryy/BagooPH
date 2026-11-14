@@ -29,6 +29,29 @@ export default function CheckoutRoutePreview({ shops, ready, pending, selfPickup
                     </li>)}
                     <li><span aria-hidden="true" className="mr-2 text-[#C20836]">→</span>{selfPickup ? 'Hub collection' : 'Your address'}</li>
                 </ol>
+                {shop.shipping_quote?.eta && (
+                    <div className="mt-2 space-y-1 text-xs text-slate-700">
+                        <p>
+                            <span className="font-semibold text-slate-900">Estimated arrival:</span>{' '}
+                            {shop.shipping_quote.eta.label}
+                            {shop.shipping_quote.eta.cutoff_applied && (
+                                <span className="ml-1.5 text-[11px] text-amber-800">
+                                    (After 16:00 PHT cutoff — dispatch begins next window)
+                                </span>
+                            )}
+                        </p>
+                        {shop.shipping_quote.eta.pause_notice && (
+                            <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-900">
+                                {shop.shipping_quote.eta.pause_notice}
+                            </p>
+                        )}
+                    </div>
+                )}
+                {shop.shipping_quote?.coverage?.coverage_status === 'no_available_rider' && (
+                    <p className="mt-1.5 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-[11px] text-zinc-700">
+                        {shop.shipping_quote.coverage.message}
+                    </p>
+                )}
             </div>)}
             <p className="text-xs text-slate-600">Confirmed when you place your order. Tracking updates after handover scans.</p>
         </div>

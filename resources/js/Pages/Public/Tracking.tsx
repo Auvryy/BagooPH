@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertCircle, ArrowRight, Check, Clock, Copy, MapPin, Package, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import BagooLogo from '@/Components/BagooLogo';
-import { PageProps } from '@/types';
+import { EtaPresentation, PageProps } from '@/types';
 
 interface Checkpoint {
     checkpoint_type: string;
@@ -17,6 +17,7 @@ interface ParcelData {
     delivery_phone: string;
     delivery_address: string;
     estimated_delivery_at: string | null;
+    eta?: EtaPresentation | null;
     delivered_at: string | null;
     checkpoints: Checkpoint[];
 }
@@ -153,10 +154,12 @@ export default function Tracking({ parcel, searchedNumber, notFound, validationM
                                 })} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw className="h-4 w-4" aria-hidden="true" />{searching ? 'Refreshing…' : 'Refresh tracking'}</button>
                             </div>
                             {exception && <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{parcel.status === 'delivery_failed' ? 'The latest delivery attempt was unsuccessful. Check your account for follow-up details.' : parcel.status === 'returned' ? 'The parcel has been returned to the seller.' : 'This order was cancelled.'}</p>}
+                            {parcel.eta?.pause_notice && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{parcel.eta.pause_notice}</p>}
+                            {parcel.eta?.delay_notice && !parcel.eta?.pause_notice && <p role="status" className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{parcel.eta.delay_notice}</p>}
                             {parcel.status === 'delivered' && <p className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">Delivery is recorded. The buyer can confirm receipt from their orders page.</p>}
                             <dl className="grid gap-4 border-t border-slate-300 pt-4 sm:grid-cols-3">
                                 <div><dt className="flex items-center gap-1.5 text-xs text-slate-500"><MapPin className="h-4 w-4" aria-hidden="true" />Delivery area</dt><dd className="mt-1 text-sm font-semibold">{parcel.delivery_address}</dd></div>
-                                <div><dt className="flex items-center gap-1.5 text-xs text-slate-500"><Clock className="h-4 w-4" aria-hidden="true" />Estimated delivery</dt><dd className="mt-1 text-sm font-semibold">{parcel.estimated_delivery_at ? formatDate(parcel.estimated_delivery_at) : 'Not yet scheduled'}</dd></div>
+                                <div><dt className="flex items-center gap-1.5 text-xs text-slate-500"><Clock className="h-4 w-4" aria-hidden="true" />Estimated delivery</dt><dd className="mt-1 text-sm font-semibold">{parcel.eta?.label ?? (parcel.estimated_delivery_at ? formatDate(parcel.estimated_delivery_at) : 'Not yet scheduled')}</dd></div>
                                 <div><dt className="flex items-center gap-1.5 text-xs text-slate-500"><Package className="h-4 w-4" aria-hidden="true" />Delivered at</dt><dd className="mt-1 text-sm font-semibold">{formatDate(parcel.delivered_at)}</dd></div>
                             </dl>
                         </section>

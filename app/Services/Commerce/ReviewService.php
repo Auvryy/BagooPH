@@ -2,22 +2,32 @@
 
 namespace App\Services\Commerce;
 
+use App\Models\BuyerReturnCase;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Review;
+use App\Models\ReviewDispute;
 use App\Models\ReviewReply;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\Shop;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
+use App\Services\Governance\EnforcementService;
+use App\Services\Governance\ModerationSignalService;
+use App\Services\Notifications\NotificationDeliveryService;
+use App\Services\Returns\ReturnFaultReviewService;
 use App\Services\ShopEligibilityService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -45,8 +55,14 @@ class ReviewService
                 if ($order->buyer_id !== $buyer->id) {
                     throw new AuthorizationException('This purchase belongs to another buyer.');
                 }
+                if ($sanction = app(EnforcementService::class)->activeReviewRestrictionForBuyer($buyer)) {
+                    throw new AuthorizationException("Your review privileges are currently restricted ({$sanction->reference}): {$sanction->reason}");
+                }
                 if ($order->status !== 'completed') {
                     throw ValidationException::withMessages(['order_item_id' => 'Confirm receipt of this order before reviewing its items.']);
+                }
+                if ($order->completed_at !== null && now()->gt($order->completed_at->copy()->addDays(30))) {
+                    throw ValidationException::withMessages(['order_item_id' => 'Product reviews must be submitted within 30 days of order completion.']);
                 }
                 if (! $item) {
                     $matches = $order->items()->where('product_id', $data['product_id'])->limit(2)->get();
@@ -60,6 +76,8 @@ class ReviewService
                     || (isset($data['product_id']) && (int) $data['product_id'] !== $item->product_id)) {
                     throw ValidationException::withMessages(['order_item_id' => 'The purchase identifiers do not match.']);
                 }
+                $this->assertEligibleUnderReturnPolicy($order, $item);
+                $this->assertAntiSpamContent($data['comment'] ?? null);
                 $fingerprint = hash('sha256', json_encode([$item->id, (int) $data['rating'], $data['comment'] ?? null,
                     array_map(fn ($image) => hash_file('sha256', $image->getRealPath()), $images)], JSON_THROW_ON_ERROR));
                 $existing = Review::where('order_item_id', $item->id)->first();
@@ -80,14 +98,41 @@ class ReviewService
                     }
                     $paths[] = $path;
                 }
+                $signals = app(ModerationSignalService::class);
+                $courierTerms = $signals->detectCourierTerms($data['comment'] ?? null);
+                $detectedFlags = $courierTerms !== [] ? ['possible_courier_complaint'] : [];
+
+                $velocityWindow = Review::where('product_id', $product->id)
+                    ->where('created_at', '>=', now()->subMinutes(60))
+                    ->count();
+                $burstOneStar = (int) $data['rating'] === 1
+                    ? Review::where('product_id', $product->id)->where('rating', 1)->where('created_at', '>=', now()->subMinutes(15))->count()
+                    : 0;
+
+                $isVelocityHold = $velocityWindow >= 5 || $burstOneStar >= 3;
+                $moderationStatus = $isVelocityHold ? 'held_velocity_review' : 'published';
+                $moderationReason = $isVelocityHold ? 'Held temporarily due to unusual review velocity burst.' : null;
+                if ($isVelocityHold) {
+                    $detectedFlags[] = 'velocity_burst';
+                }
+
                 $review = Review::create([
                     'order_item_id' => $item->id, 'order_id' => $order->id, 'product_id' => $item->product_id,
                     'buyer_id' => $buyer->id, 'rating' => $data['rating'], 'comment' => $data['comment'] ?? null,
                     'submission_fingerprint' => $fingerprint,
                     'images' => $paths ? array_map(fn ($path) => '/storage/'.$path, $paths) : null,
+                    'moderation_status' => $moderationStatus,
+                    'moderation_reason' => $moderationReason,
+                    'detected_flags' => $detectedFlags !== [] ? $detectedFlags : null,
                 ]);
-                $product->update(['rating' => round((float) Review::where('product_id', $product->id)->verifiedPurchase()->avg('rating'), 2)]);
-                $shop->update(['rating' => round((float) Review::verifiedPurchase()->whereHas('product', fn (Builder $query) => $query->where('shop_id', $shop->id))->avg('rating'), 2)]);
+
+                if ($isVelocityHold) {
+                    $signals->recordVelocitySignal($review, max($velocityWindow + 1, $burstOneStar + 1), $burstOneStar >= 3 ? '15m' : '60m');
+                } elseif ($courierTerms !== []) {
+                    $signals->recordCourierKeywordSignal($review, $courierTerms);
+                }
+
+                $this->recalculateRatings($product, $shop);
 
                 return $review;
             });
@@ -198,10 +243,11 @@ class ReviewService
 
     public function publicReviews(Product $product): void
     {
-        $product->load(['reviews' => fn ($reviews) => $reviews->withPurchaseVerification()
-            ->with(['buyer:id,name,avatar', 'reply.shop:id,name', 'orderItem:id,color,size'])->latest('id')]);
+        $product->load(['reviews' => fn ($reviews) => $reviews->publicVisible()->withPurchaseVerification()
+            ->with(['buyer:id,name,avatar', 'reply.shop:id,name', 'orderItem:id,color,size', 'dispute'])->latest('id')]);
         $product->setRelation('reviews', $product->reviews->map(fn (Review $review) => [
-            ...$review->only(['id', 'rating', 'comment', 'images', 'created_at', 'edited_at', 'verified_purchase']),
+            ...$review->only(['id', 'rating', 'comment', 'images', 'created_at', 'edited_at', 'verified_purchase', 'moderation_status', 'moderation_reason', 'detected_flags']),
+            'score_excluded' => $review->moderation_status === 'excluded_courier_issue',
             'buyer' => $review->buyer ? ['name' => $this->publicBuyerName($review->buyer->name), 'avatar' => $review->buyer->avatar] : null,
             'purchased_options' => $review->verified_purchase && ($review->orderItem?->color !== null || $review->orderItem?->size !== null)
                 ? $review->orderItem?->only(['color', 'size']) : null,
@@ -210,6 +256,272 @@ class ReviewService
                 'shop_name' => $review->reply->shop?->name,
             ] : null,
         ]));
+    }
+
+    public function disputeReview(User $actor, Shop $shop, int $reviewId, array $input): ReviewDispute
+    {
+        $data = Validator::make($input, [
+            'reason_code' => ['required', 'string', Rule::in(['courier_delivery_complaint', 'abusive_or_troll', 'unverified_or_false_claim', 'competitor_sabotage'])],
+            'seller_evidence' => ['required', 'string', new ApplicationText('notes', 5, 1000)],
+        ])->validate();
+
+        return DB::transaction(function () use ($actor, $shop, $reviewId, $data) {
+            $seller = User::whereKey($actor->id)->lockForUpdate()->firstOrFail();
+            $shop = Shop::whereKey($shop->id)->lockForUpdate()->firstOrFail();
+            if (! $seller->isSeller() || ! $seller->canAccessPortal() || $shop->user_id !== $seller->id) {
+                throw new AuthorizationException('Only the active approved shop owner may dispute a review.');
+            }
+            $review = Review::whereKey($reviewId)
+                ->whereHas('product', fn (Builder $product) => $product->where('shop_id', $shop->id))
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $open = ReviewDispute::where('review_id', $review->id)
+                ->whereIn('status', ['pending', 'buyer_appealed'])
+                ->exists();
+            if ($open) {
+                throw ValidationException::withMessages(['seller_evidence' => 'A review dispute is already open for this review.']);
+            }
+
+            return ReviewDispute::create([
+                'reference' => 'RVD-'.Str::upper(Str::random(10)),
+                'review_id' => $review->id,
+                'shop_id' => $shop->id,
+                'seller_id' => $seller->id,
+                'buyer_id' => $review->buyer_id,
+                'reason_code' => $data['reason_code'],
+                'seller_evidence' => trim($data['seller_evidence']),
+                'status' => 'pending',
+            ]);
+        });
+    }
+
+    public function adjudicateDispute(User $actor, ReviewDispute $dispute, array $input): ReviewDispute
+    {
+        $actor = app(EnforcementService::class)->assertVerifiedAdmin($actor);
+        $data = Validator::make($input, [
+            'outcome' => ['required', 'string', Rule::in(['upheld_excluded_courier', 'upheld_removed', 'rejected', 'release_held_review'])],
+            'adjudication_notes' => ['required', 'string', new ApplicationText('notes', 5, 1000)],
+        ])->validate();
+
+        return DB::transaction(function () use ($actor, $dispute, $data) {
+            $locked = ReviewDispute::whereKey($dispute->id)->lockForUpdate()->firstOrFail();
+            if (! in_array($locked->status, ['pending'], true)) {
+                throw ValidationException::withMessages(['outcome' => 'This review dispute has already been adjudicated.']);
+            }
+
+            $review = Review::whereKey($locked->review_id)->lockForUpdate()->firstOrFail();
+            $product = Product::whereKey($review->product_id)->lockForUpdate()->firstOrFail();
+            $shop = Shop::whereKey($product->shop_id)->lockForUpdate()->firstOrFail();
+
+            $nextReviewStatus = match ($data['outcome']) {
+                'upheld_excluded_courier' => 'excluded_courier_issue',
+                'upheld_removed' => 'removed_policy',
+                'rejected', 'release_held_review' => 'published',
+            };
+
+            $nextDisputeStatus = $data['outcome'] === 'release_held_review' ? 'rejected' : $data['outcome'];
+
+            $review->update([
+                'moderation_status' => $nextReviewStatus,
+                'moderation_reason' => trim($data['adjudication_notes']),
+                'moderated_by_id' => $actor->id,
+                'moderated_at' => now(),
+            ]);
+
+            $locked->update([
+                'status' => $nextDisputeStatus,
+                'adjudicated_by_id' => $actor->id,
+                'adjudication_notes' => trim($data['adjudication_notes']),
+                'adjudicated_at' => now(),
+            ]);
+
+            $this->recalculateRatings($product, $shop);
+
+            app(NotificationDeliveryService::class)->record(
+                $review->buyer_id,
+                'review.moderation.'.$nextReviewStatus,
+                'rvd-buyer:'.$locked->reference.':'.$nextDisputeStatus,
+                ['dispute_reference' => $locked->reference, 'moderation_status' => $nextReviewStatus]
+            );
+
+            return $locked->fresh(['review']);
+        });
+    }
+
+    public function moderateVelocityHold(User $actor, Review $review, array $input): Review
+    {
+        $actor = app(EnforcementService::class)->assertVerifiedAdmin($actor);
+        $data = Validator::make($input, [
+            'decision' => ['required', 'string', Rule::in(['release', 'remove'])],
+            'reason' => ['required', 'string', new ApplicationText('notes', 5, 1000)],
+        ])->validate();
+
+        return DB::transaction(function () use ($actor, $review, $data) {
+            $locked = Review::whereKey($review->id)->lockForUpdate()->firstOrFail();
+            $product = Product::whereKey($locked->product_id)->lockForUpdate()->firstOrFail();
+            $shop = Shop::whereKey($product->shop_id)->lockForUpdate()->firstOrFail();
+
+            $locked->update([
+                'moderation_status' => $data['decision'] === 'release' ? 'published' : 'removed_policy',
+                'moderation_reason' => trim($data['reason']),
+                'moderated_by_id' => $actor->id,
+                'moderated_at' => now(),
+            ]);
+
+            $this->recalculateRatings($product, $shop);
+
+            return $locked->fresh();
+        });
+    }
+
+    public function appealDispute(User $actor, Review $review, array $input): ReviewDispute
+    {
+        $data = Validator::make($input, [
+            'appeal_reason' => ['required', 'string', new ApplicationText('notes', 5, 1000)],
+        ])->validate();
+
+        return DB::transaction(function () use ($actor, $review, $data) {
+            $lockedReview = Review::whereKey($review->id)->lockForUpdate()->firstOrFail();
+            if ($lockedReview->buyer_id !== $actor->id) {
+                throw new AuthorizationException('Only the original reviewer can appeal this decision.');
+            }
+
+            if (! in_array($lockedReview->moderation_status, ['removed_policy', 'excluded_courier_issue', 'held_velocity_review'], true)) {
+                throw ValidationException::withMessages(['appeal_reason' => 'Only moderated, excluded, or removed reviews can be appealed.']);
+            }
+
+            $dispute = ReviewDispute::where('review_id', $lockedReview->id)->lockForUpdate()->first();
+            if (! $dispute) {
+                $shopId = Product::whereKey($lockedReview->product_id)->value('shop_id');
+                $shop = Shop::findOrFail($shopId);
+                $dispute = ReviewDispute::create([
+                    'reference' => 'RVD-'.Str::upper(Str::random(10)),
+                    'review_id' => $lockedReview->id,
+                    'shop_id' => $shop->id,
+                    'seller_id' => $shop->user_id,
+                    'buyer_id' => $lockedReview->buyer_id,
+                    'reason_code' => 'buyer_moderation_appeal',
+                    'seller_evidence' => $lockedReview->moderation_reason ?? 'Platform moderation hold',
+                    'status' => 'buyer_appealed',
+                    'buyer_appeal_reason' => trim($data['appeal_reason']),
+                    'buyer_appealed_at' => now(),
+                ]);
+
+                return $dispute;
+            }
+
+            if ($dispute->status === 'buyer_appealed') {
+                throw ValidationException::withMessages(['appeal_reason' => 'Your appeal is already awaiting independent review.']);
+            }
+
+            $dispute->update([
+                'status' => 'buyer_appealed',
+                'buyer_appeal_reason' => trim($data['appeal_reason']),
+                'buyer_appealed_at' => now(),
+            ]);
+
+            return $dispute->fresh();
+        });
+    }
+
+    public function adjudicateAppeal(User $actor, ReviewDispute $dispute, array $input): ReviewDispute
+    {
+        $actor = app(EnforcementService::class)->assertVerifiedAdmin($actor);
+        $data = Validator::make($input, [
+            'outcome' => ['required', 'string', Rule::in(['appeal_overturned', 'appeal_upheld'])],
+            'appeal_notes' => ['required', 'string', new ApplicationText('notes', 5, 1000)],
+        ])->validate();
+
+        return DB::transaction(function () use ($actor, $dispute, $data) {
+            $locked = ReviewDispute::whereKey($dispute->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'buyer_appealed') {
+                throw ValidationException::withMessages(['outcome' => 'Only an open buyer appeal can be decided here.']);
+            }
+
+            abort_if(
+                $locked->adjudicated_by_id !== null && $locked->adjudicated_by_id === $actor->id,
+                403,
+                'An independent platform admin must decide this buyer review appeal.'
+            );
+
+            $review = Review::whereKey($locked->review_id)->lockForUpdate()->firstOrFail();
+            $product = Product::whereKey($review->product_id)->lockForUpdate()->firstOrFail();
+            $shop = Shop::whereKey($product->shop_id)->lockForUpdate()->firstOrFail();
+
+            if ($data['outcome'] === 'appeal_overturned') {
+                $review->update([
+                    'moderation_status' => 'restored',
+                    'moderation_reason' => 'Restored via buyer appeal '.$locked->reference.': '.trim($data['appeal_notes']),
+                    'moderated_by_id' => $actor->id,
+                    'moderated_at' => now(),
+                ]);
+                $this->recalculateRatings($product, $shop);
+            }
+
+            $locked->update([
+                'status' => $data['outcome'],
+                'appeal_reviewed_by_id' => $actor->id,
+                'appeal_notes' => trim($data['appeal_notes']),
+                'appeal_reviewed_at' => now(),
+            ]);
+
+            return $locked->fresh(['review']);
+        });
+    }
+
+    public function recalculateRatings(Product $product, Shop $shop): void
+    {
+        $product->update(['rating' => round((float) Review::where('product_id', $product->id)->verifiedPurchase()->avg('rating'), 2)]);
+        $shop->update(['rating' => round((float) Review::verifiedPurchase()->whereHas('product', fn (Builder $query) => $query->where('shop_id', $shop->id))->avg('rating'), 2)]);
+    }
+
+    private function assertEligibleUnderReturnPolicy(Order $order, OrderItem $item): void
+    {
+        if (Schema::hasTable('shipment_financial_plans')
+            && ShipmentFinancialPlan::where('order_id', $order->id)->where('kind', 'buyer_refusal')->exists()) {
+            throw ValidationException::withMessages([
+                'order_item_id' => 'Refused COD orders cannot submit product ratings. Please submit Delivery Feedback if needed.',
+            ]);
+        }
+
+        if (! Schema::hasTable('buyer_return_cases')) {
+            return;
+        }
+
+        $cases = BuyerReturnCase::where('order_id', $order->id)
+            ->whereNotIn('status', ['withdrawn', 'expired', 'denied'])
+            ->whereHas('items', fn (Builder $q) => $q->where('order_item_id', $item->id))
+            ->get();
+
+        $faultReviews = app(ReturnFaultReviewService::class);
+        foreach ($cases as $case) {
+            $fault = $faultReviews->current($case)['fault'] ?? null;
+            if ($fault !== 'seller') {
+                throw ValidationException::withMessages([
+                    'order_item_id' => 'Returns resolved for courier fault or non-seller reasons do not affect product ratings. Submit Delivery Feedback for the courier instead.',
+                ]);
+            }
+        }
+    }
+
+    private function assertAntiSpamContent(?string $comment): void
+    {
+        if (! is_string($comment) || trim($comment) === '') {
+            return;
+        }
+
+        if (preg_match('/(?:https?:\/\/|www\.)\S+/i', $comment)) {
+            throw ValidationException::withMessages([
+                'comment' => 'External links are not permitted in verified product reviews.',
+            ]);
+        }
+
+        if (preg_match('/(.)\1{9,}/u', $comment)) {
+            throw ValidationException::withMessages([
+                'comment' => 'Please enter genuine product feedback without repeated filler characters.',
+            ]);
+        }
     }
 
     private function publicBuyerName(?string $name): string

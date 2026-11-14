@@ -121,6 +121,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Voucher campaigns', href: route('admin.vouchers.index'), icon: Tag, current: component.startsWith('Admin/Voucher') },
                 { name: 'Advertisements', href: route('admin.advertisements.index'), icon: ImagePlus, current: component.startsWith('Admin/Advertisements/') },
                 { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: component.startsWith('Admin/Logistics') || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
+                { name: 'SLA monitoring', href: '/governance/monitoring', icon: AlertTriangle, current: component === 'Governance/Monitoring', attention: Boolean(sidebarAttention?.monitoring), attentionLabel: 'Open SLA or missing-parcel monitoring alerts' },
+                { name: 'Moderation & penalties', href: '/governance/moderation', icon: ShieldCheck, current: component === 'Governance/Moderation', attention: Boolean(sidebarAttention?.moderation), attentionLabel: 'Open sanctions, appeals, or review moderation queue' },
                 { name: 'Shipping settings', href: route('hub.company-setup.index'), icon: Settings, current: component === 'Hub/CompanySetup' },
                 { name: 'Delivery earnings', href: '/delivery-earnings', icon: Banknote, current: component === 'Finance/DeliveryEarnings' },
                 { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component === 'Governance/History' || component === 'Governance/HistoryDetail' },
@@ -265,11 +267,14 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
         'Shop reviews': 'shop_reviews', 'KYC Queue': 'kyc', 'Review requests': 'review_requests',
         Advertisements: 'advertisements', 'Wallet credits': 'wallet_credits',
         Messages: 'messages', Orders: 'orders',
+        'SLA monitoring': 'monitoring', 'Moderation & penalties': 'moderation',
     };
     const navItems = getNavItems().map(item => ({ ...item,
         attention: Boolean(sidebarAttention[attentionKeys[item.name]] || (item.name === 'Messages' && unreadMessagesCount > 0)),
         attentionLabel: item.name === 'Messages' ? 'Unread messages' : item.name === 'Orders'
-            ? 'Orders ready for your next step' : 'Awaiting your review',
+            ? 'Orders ready for your next step' : item.name === 'SLA monitoring'
+                ? 'Open SLA or missing-parcel monitoring alerts' : item.name === 'Moderation & penalties'
+                    ? 'Open sanctions, appeals, or review moderation queue' : 'Awaiting your review',
     }));
     const WorkspaceLink = ['seller', 'logistics', 'admin'].includes(role) ? PortalLink : Link;
 
@@ -457,6 +462,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         { name: 'Delivery recovery', href: route('hub.recovery.index'), icon: RotateCcw, current: component === 'Hub/Recovery' || component === 'Hub/DeliveryRecovery' },
                         ...(user?.canManageResources ? [
                             ...(user.resourceGovernanceUrl ? [{ name: 'Resource activity', href: user.resourceGovernanceUrl, icon: ShieldAlert, current: component.startsWith('Governance/Resource') }] : []),
+                            { name: 'SLA monitoring', href: '/governance/monitoring', icon: AlertTriangle, current: component === 'Governance/Monitoring' },
                             { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component.startsWith('Governance/History') },
                             { name: 'Delivery exceptions', href: '/exceptions', icon: AlertTriangle, current: component.startsWith('Governance/Exception') },
                         ] : []),

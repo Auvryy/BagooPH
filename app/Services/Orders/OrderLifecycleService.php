@@ -16,6 +16,8 @@ use App\Services\Commerce\InventoryService;
 use App\Services\Commerce\SalePriceService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\PickupClaimService;
+use App\Services\Monitoring\EtaCalculationService;
+use App\Services\Monitoring\SlaClockService;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
 use App\Services\Vouchers\VoucherFundingService;
@@ -138,6 +140,10 @@ class OrderLifecycleService
                 ]
             );
         }
+        if ($order->delivery) {
+            app(EtaCalculationService::class)->applyToDelivery($order->delivery, $order);
+        }
+        app(SlaClockService::class)->syncForOrder($order);
         app(LifecycleNoticeService::class)->order($order, $targetStatus);
     }
 
@@ -480,13 +486,38 @@ class OrderLifecycleService
         return $this->cancelLocked($order, User::findOrFail($order->buyer_id), 'Unpaid wallet order expired after one hour.', automaticExpiry: true);
     }
 
-    private function cancelLocked(Order $order, User $actor, string $reason, bool $byBuyer = false, bool $automaticExpiry = false): Order
+    /**
+     * Penalty-exempt automated cancellation path for strictly unclaimed 72h unpicked orders.
+     */
+    public function cancelExpiredUnpickedOrder(Order $order, string $reason): Order
+    {
+        if (in_array($order->status, ['cancelled', 'completed', 'returned'], true)) {
+            return $order;
+        }
+
+        $seller = $order->items()->with('shop.user')->first()?->shop?->user;
+        $actor = ($seller && $seller->isSeller() && $seller->canAccessPortal())
+            ? $seller
+            : User::findOrFail($order->buyer_id);
+
+        return $this->cancelLocked($order, $actor, $reason, unpickedAutoCancel: true);
+    }
+
+    private function cancelLocked(Order $order, User $actor, string $reason, bool $byBuyer = false, bool $automaticExpiry = false, bool $unpickedAutoCancel = false): Order
     {
         // Keep product locks before funding locks, matching checkout, and restore each size once.
         $products = Product::whereIn('id', $order->items->pluck('product_id'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
         $funding = app(VoucherFundingService::class);
         if ($automaticExpiry) {
             app(WalletReservationService::class)->release($order, $reason);
+        } elseif ($unpickedAutoCancel) {
+            if ($order->payment_method === 'wallet' && $order->walletPayment?->status === 'pending') {
+                app(WalletReservationService::class)->release($order, $reason);
+            } elseif ($actor->isSeller()) {
+                $funding->releaseCancellation($order, $actor, $reason);
+            } else {
+                $funding->releaseBuyerCancellation($order, $actor, $reason);
+            }
         } elseif ($byBuyer) {
             $funding->releaseBuyerCancellation($order, $actor, $reason);
         } else {
@@ -503,10 +534,16 @@ class OrderLifecycleService
         $custody = $parcel ? DeliveryCheckpoint::lastCustody($parcel) : null;
         $order->update($byBuyer ? ['status' => 'cancelled'] : ['status' => 'cancelled', 'notes' => $reason]);
         $parcel?->update(['status' => 'cancelled']);
+        if ($parcel) {
+            app(EtaCalculationService::class)->applyToDelivery($parcel, $order);
+        }
+        app(SlaClockService::class)->syncForOrder($order->setRelation('delivery', $parcel));
         app(WalletPaymentService::class)->closeCancellation($order, $automaticExpiry ? null : $actor, $reason, $automaticExpiry);
         if ($parcel) {
             DeliveryCheckpoint::firstOrCreate(['delivery_id' => $parcel->id, 'checkpoint_type' => 'cancelled'], [
-                'location_name' => $automaticExpiry ? 'Unpaid wallet expiry' : ($byBuyer ? 'Buyer cancellation' : 'Seller cancellation'), 'notes' => $reason, 'scanned_by_id' => $automaticExpiry ? null : $actor->id,
+                'location_name' => $automaticExpiry ? 'Unpaid wallet expiry' : ($unpickedAutoCancel ? 'Unpicked timeout auto-cancel' : ($byBuyer ? 'Buyer cancellation' : 'Seller cancellation')),
+                'notes' => $reason,
+                'scanned_by_id' => ($automaticExpiry || $unpickedAutoCancel) ? null : $actor->id,
                 'scan_provenance' => 'not_scanned', 'source_state' => $source,
                 'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custody, 'custody_after' => $custody,
             ]);

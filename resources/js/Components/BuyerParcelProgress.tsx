@@ -37,6 +37,21 @@ export default function BuyerParcelProgress({ tracking, order, notices = [], onR
 
     return <div className="space-y-5">
         {tracking.notice && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{tracking.notice}</p>}
+        {tracking.dispatch_delay_label && (
+            <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+                {tracking.dispatch_delay_label} — Priority rider dispatch is underway.
+            </p>
+        )}
+        {tracking.eta && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 text-xs space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-600">Estimated arrival ({tracking.eta.status_label})</span>
+                    <span className="text-sm font-bold text-slate-900">{tracking.eta.label}</span>
+                </div>
+                {tracking.eta.pause_notice && <p className="font-medium text-amber-900">{tracking.eta.pause_notice}</p>}
+                {tracking.eta.delay_notice && <p className="text-slate-600">{tracking.eta.delay_notice}</p>}
+            </div>
+        )}
         {exception && <p role="status" className="text-sm font-semibold text-amber-900">{exception}. {tracking.next_step}</p>}
         <ol aria-label="Order milestones" className="grid grid-cols-5 gap-0 py-2 sm:py-4">
             {milestones.map((step, index) => {
