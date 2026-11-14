@@ -626,6 +626,16 @@ export default function CheckoutIndex({
                             </div>
                             {selectedCompany && <CheckoutRoutePreview shops={quote.shops} ready={canShowQuote}
                                 pending={pricing.pending} selfPickup={data.delivery_type === 'hub_self_pickup'} />}
+                            {selectedCompany && canShowQuote && !pricing.pending && quote.shops.some(shop => shop.shipping_quote?.eta?.label) && (
+                                <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-xs text-slate-700 space-y-1">
+                                    {quote.shops.map(shop => shop.shipping_quote?.eta ? (
+                                        <p key={`eta-${shop.shop_id}`} className="flex flex-wrap items-center justify-between gap-2">
+                                            <span className="font-semibold text-slate-800">{quote.shops.length > 1 ? `${shop.shop_name} ETA` : 'Estimated delivery'}</span>
+                                            <span className="font-bold text-slate-900">{shop.shipping_quote.eta.label}</span>
+                                        </p>
+                                    ) : null)}
+                                </div>
+                            )}
                             <fieldset className="min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <legend className="sr-only">Delivery method</legend>
                                 {/* Option 1: Doorstep Delivery */}

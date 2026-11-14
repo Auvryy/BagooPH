@@ -8,7 +8,8 @@ import RiderPicker from '@/Components/Logistics/RiderPicker';
 import { CourierDialog } from '@/Components/CourierUI';
 import { HubBadge, HubEmpty, HubPageHeader, hubButton, hubInput, hubPrimary } from '@/Components/Logistics/Workspace';
 import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
-import { Package, Search, Store, MapPin, ScanLine, CheckCircle2, UserRound } from 'lucide-react';
+import type { EtaPresentation } from '@/types';
+import { Package, Search, Store, MapPin, ScanLine, CheckCircle2, UserRound, RefreshCw } from 'lucide-react';
 
 interface DeliveryItem {
     id: number;
@@ -31,6 +32,17 @@ interface DeliveryItem {
     items: Array<{ name: string; quantity: number }>;
     created_at: string;
     guidance: ParcelGuidance;
+    eta?: EtaPresentation | null;
+    dispatch_delay_label?: string | null;
+    dispatch_escalation_tier?: string | null;
+    can_reassign_first_mile?: boolean;
+    can_reassign_final_mile?: boolean;
+    reassign_riders?: Array<{
+        id: number;
+        name: string;
+        assigned_barangay: string | null;
+        vehicle_type: string;
+    }>;
 }
 
 interface Props {
@@ -81,6 +93,9 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [choosingId, setChoosingId] = useState<number | null>(null);
     const [selectedRiders, setSelectedRiders] = useState<Record<number, string>>({});
+    const [reassignTarget, setReassignTarget] = useState<DeliveryItem | null>(null);
+    const [reassignRiderId, setReassignRiderId] = useState('');
+    const [reassignReason, setReassignReason] = useState('');
     const pending = useRef(false);
     const [busy, setBusy] = useState(false);
     const [readError, setReadError] = useState('');
@@ -125,6 +140,29 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
             rider_id: Number(riderId),
             hub_id: activeHub?.id,
         }, { preserveScroll: true, onSuccess: page => { const error = (page.props.flash as { error?: string } | undefined)?.error;if (error) setReadError(error);else setChoosingId(null); }, onError: errors => setReadError(Object.values(errors)[0] || 'Could not assign this rider. Refresh the list and try again.'), onFinish: finish });
+    };
+
+    const submitReassign = () => {
+        if (!reassignTarget || pending.current) return;
+        pending.current = true; setBusy(true); setReadError('');
+        router.post(`${basePath}/deliveries/${reassignTarget.id}/reassign-rider`, {
+            new_rider_id: reassignRiderId ? Number(reassignRiderId) : null,
+            reason: reassignReason,
+        }, {
+            preserveScroll: true,
+            onSuccess: page => {
+                const error = (page.props.flash as { error?: string } | undefined)?.error;
+                if (error) {
+                    setReadError(error);
+                } else {
+                    setReassignTarget(null);
+                    setReassignRiderId('');
+                    setReassignReason('');
+                }
+            },
+            onError: errors => setReadError(Object.values(errors)[0] || 'Could not reassign rider. Verify eligibility and try again.'),
+            onFinish: finish,
+        });
     };
 
     const choosing = deliveries.data.find(delivery => delivery.id === choosingId) ?? null;
@@ -280,34 +318,60 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                             <span className="text-zinc-500">Target hub:</span>
                                             <span className="font-semibold text-zinc-800 truncate">{delivery.destination_hub}</span>
                                         </p>
+                                        {delivery.eta?.label && (
+                                            <p className="flex items-center justify-between gap-2">
+                                                <span className="text-zinc-500">ETA:</span>
+                                                <span className="font-semibold text-zinc-900 truncate">{delivery.eta.label}</span>
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
+                                {delivery.dispatch_delay_label && (
+                                    <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                                        {delivery.dispatch_delay_label}{delivery.dispatch_escalation_tier ? ` · Tier: ${delivery.dispatch_escalation_tier.replaceAll('_', ' ')}` : ''}
+                                    </p>
+                                )}
+
                                 <HubParcelNextStep guidance={delivery.guidance} hideLink={['sort', 'assign'].includes(delivery.guidance.action)} />
 
-                                {delivery.guidance.can_act && delivery.guidance.action === 'sort' && (
-                                    <button
-                                        type="button"
-                                        disabled={busy}
-                                        onClick={() => sortParcel(delivery)}
-                                        className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#E00D42] bg-[#E00D42] px-4 py-2 text-xs font-bold text-white hover:bg-[#c70b3a] shadow-2xs transition cursor-pointer"
-                                    >
-                                        <Package className="h-3.5 w-3.5" />
-                                        Sort to bin
-                                    </button>
-                                )}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {delivery.guidance.can_act && delivery.guidance.action === 'sort' && (
+                                        <button
+                                            type="button"
+                                            disabled={busy}
+                                            onClick={() => sortParcel(delivery)}
+                                            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#E00D42] bg-[#E00D42] px-4 py-2 text-xs font-bold text-white hover:bg-[#c70b3a] shadow-2xs transition cursor-pointer"
+                                        >
+                                            <Package className="h-3.5 w-3.5" />
+                                            Sort to bin
+                                        </button>
+                                    )}
 
-                                {delivery.guidance.can_act && delivery.guidance.action === 'assign' && (
-                                    <button
-                                        type="button"
-                                        disabled={busy}
-                                        onClick={() => { setChoosingId(delivery.id); setReadError(''); }}
-                                        className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#E00D42] bg-[#E00D42] px-4 py-2 text-xs font-bold text-white hover:bg-[#c70b3a] shadow-2xs transition cursor-pointer"
-                                    >
-                                        <UserRound className="h-3.5 w-3.5" />
-                                        Choose delivery rider
-                                    </button>
-                                )}
+                                    {delivery.guidance.can_act && delivery.guidance.action === 'assign' && (
+                                        <button
+                                            type="button"
+                                            disabled={busy}
+                                            onClick={() => { setChoosingId(delivery.id); setReadError(''); }}
+                                            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#E00D42] bg-[#E00D42] px-4 py-2 text-xs font-bold text-white hover:bg-[#c70b3a] shadow-2xs transition cursor-pointer"
+                                        >
+                                            <UserRound className="h-3.5 w-3.5" />
+                                            Choose delivery rider
+                                        </button>
+                                    )}
+
+                                    {(delivery.can_reassign_first_mile || delivery.can_reassign_final_mile) && (
+                                        <button
+                                            type="button"
+                                            disabled={busy}
+                                            onClick={() => { setReassignTarget(delivery); setReassignRiderId(''); setReassignReason(''); setReadError(''); }}
+                                            className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 shadow-2xs transition cursor-pointer"
+                                        >
+                                            <RefreshCw className="h-3.5 w-3.5" />
+                                            {delivery.can_reassign_final_mile ? 'Reassign delivery rider' : 'Reassign pickup rider'}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </article>
                     ))}
@@ -316,5 +380,55 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
             {deliveries.last_page > 1 && <nav aria-label="Parcel pages" className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500"><span>Page {deliveries.current_page} of {deliveries.last_page} · {deliveries.total} parcels</span><div className="flex flex-wrap gap-2">{deliveries.links.map((link, index) => link.url ? <PortalLink key={index} href={link.url} only={listProps} preserveScroll preserveState aria-current={link.active ? 'page' : undefined} className={`inline-flex min-h-9 items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-xs hover:bg-zinc-50 transition cursor-pointer ${link.active ? 'border-[#E00D42] bg-[#E00D42] text-white font-bold' : ''}`}>{paginationLabel(link.label)}</PortalLink> : <span key={index} aria-disabled="true" className="px-3 py-1.5 text-zinc-400">{paginationLabel(link.label)}</span>)}</div></nav>}
         </div>
         <CourierDialog open={Boolean(choosing)} onClose={() => setChoosingId(null)} busy={busy} title="Choose delivery rider">{choosing && <div className="space-y-4"><p className="text-sm leading-6 text-zinc-600">{choosing.tracking_number} · {choosing.destination_barangay}. Only riders eligible for this parcel are listed.</p><RiderPicker riders={eligibleRiders} eligibleIds={choosing.guidance.eligible_rider_ids} value={selectedRiders[choosing.id] ?? ''} onChange={value => setSelectedRiders(current => ({ ...current, [choosing.id]: value }))} disabled={busy} />{!ridersForChoice.length && <HubEmpty title="No eligible riders available" description="Riders need the right service area and vehicle, duty enabled and acknowledged COD. Ask the rider or company manager to review readiness." icon={UserRound} action={<PortalLink href={route('hub.network')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 shadow-xs transition cursor-pointer">Review hub team</PortalLink>} />}{readError && <p role="alert" className="text-sm text-red-700">{readError}</p>}<div className="flex justify-end gap-2 border-t border-zinc-200 pt-4"><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 shadow-xs transition cursor-pointer" disabled={busy} onClick={() => setChoosingId(null)}>Cancel</button><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#E00D42] bg-[#E00D42] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#c70b3a] shadow-xs transition cursor-pointer" disabled={busy || !choosing.guidance.eligible_rider_ids.includes(Number(selectedRiders[choosing.id]))} onClick={() => assignRider(choosing)}>{busy ? 'Assigning…' : 'Assign rider'}</button></div></div>}</CourierDialog>
+        <CourierDialog open={Boolean(reassignTarget)} onClose={() => setReassignTarget(null)} busy={busy} title={reassignTarget?.can_reassign_final_mile ? 'Reassign delivery rider' : 'Reassign first-mile pickup rider'}>
+            {reassignTarget && (
+                <div className="space-y-4">
+                    <p className="text-xs leading-5 text-zinc-600">
+                        Waybill <span className="font-bold text-zinc-900">{reassignTarget.tracking_number}</span> · Current rider: <span className="font-semibold text-zinc-900">{reassignTarget.rider_name}</span>. Reassignment is permitted only before physical handover.
+                    </p>
+                    <label className="block text-xs font-semibold text-zinc-800">
+                        Replacement rider
+                        <select
+                            disabled={busy}
+                            value={reassignRiderId}
+                            onChange={(e) => setReassignRiderId(e.target.value)}
+                            className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:border-[#E00D42] focus:ring-[#E00D42]"
+                        >
+                            {reassignTarget.can_reassign_first_mile && <option value="">Return to open pickup pool</option>}
+                            {reassignTarget.can_reassign_final_mile && <option value="">Select eligible destination rider</option>}
+                            {(reassignTarget.reassign_riders ?? []).map((r) => (
+                                <option key={r.id} value={r.id}>
+                                    {r.name} ({r.vehicle_type}{r.assigned_barangay ? ` · ${r.assigned_barangay}` : ''})
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="block text-xs font-semibold text-zinc-800">
+                        Operational reason (min 5 characters)
+                        <textarea
+                            rows={2}
+                            required
+                            disabled={busy}
+                            value={reassignReason}
+                            onChange={(e) => setReassignReason(e.target.value)}
+                            placeholder="e.g. Original rider unreachable; rebalancing route"
+                            className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:border-[#E00D42] focus:ring-[#E00D42]"
+                        />
+                    </label>
+                    {readError && <p role="alert" className="text-xs text-red-700">{readError}</p>}
+                    <div className="flex justify-end gap-2 border-t border-zinc-200 pt-4">
+                        <button type="button" disabled={busy} onClick={() => setReassignTarget(null)} className={hubButton}>Cancel</button>
+                        <button
+                            type="button"
+                            disabled={busy || reassignReason.trim().length < 5 || (Boolean(reassignTarget.can_reassign_final_mile) && !reassignRiderId)}
+                            onClick={submitReassign}
+                            className={hubPrimary}
+                        >
+                            {busy ? 'Reassigning…' : 'Confirm reassignment'}
+                        </button>
+                    </div>
+                </div>
+            )}
+        </CourierDialog>
     </DashboardLayout>;
 }

@@ -1,6 +1,29 @@
 export type Role = 'admin' | 'seller' | 'buyer' | 'courier' | 'logistics';
 
-export type SidebarAttention = Partial<Record<'shop_reviews' | 'kyc' | 'review_requests' | 'advertisements' | 'wallet_credits' | 'messages' | 'orders', boolean>>;
+export type SidebarAttention = Partial<Record<'shop_reviews' | 'kyc' | 'review_requests' | 'advertisements' | 'wallet_credits' | 'messages' | 'orders' | 'monitoring', boolean>>;
+
+export interface EtaPresentation {
+    estimated_min_at: string | null;
+    estimated_max_at: string | null;
+    estimated_at: string | null;
+    label: string;
+    eta_status: 'on_track' | 'paused' | 'delayed' | 'completed' | 'cancelled' | string;
+    status_label: string;
+    cutoff_applied: boolean;
+    pause_notice: string | null;
+    delay_notice: string | null;
+    route_tier?: string | null;
+}
+
+export interface CoverageAssessment {
+    coverage_status: 'available' | 'no_available_rider' | 'pickup_paused' | 'no_service_coverage';
+    checkout_allowed: boolean;
+    origin_hub_id?: number | null;
+    origin_hub_name?: string | null;
+    operational_riders: number;
+    active_pause?: { id: number; reference: string; barangay?: string | null; reason?: string | null } | null;
+    message: string;
+}
 
 export type KycStatus = 'pending_approval' | 'approved' | 'rejected' | 'none' | 'verified';
 
@@ -309,6 +332,8 @@ export interface OrderTracking {
     observed_at: string;
     history: Array<{ id: number; type?: string; label: string; location: string; created_at: string | null }>;
     failure: { attempt_number: number; reason: string; attempted_at: string | null; retry_at: string | null } | null;
+    eta?: EtaPresentation | null;
+    dispatch_delay_label?: string | null;
 }
 
 export interface ShippingCalculation {
@@ -326,6 +351,8 @@ export interface ShippingCalculation {
     measurements?: { product_id: number | null; product_name: string | null; quantity: number; unit_weight_kg: string | null; length_cm: string | null; width_cm: string | null; height_cm: string | null }[];
     route?: { id: number; code: string; name: string; tier: string }[];
     same_hub_bypass?: boolean;
+    eta?: EtaPresentation | null;
+    coverage?: CoverageAssessment | null;
 }
 
 export interface Order {

@@ -531,7 +531,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                                 #{item.order?.order_number}
                                             </button>
                                             <span className="text-slate-400 font-sans text-[11px]">
-                                                • {item.order?.created_at ? new Date(item.order.created_at).toLocaleDateString() : 'Today'}
+                                                • {item.order?.created_at ? new Date(item.order.created_at).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' }) : 'Today'}
                                             </span>
                                             <span className="text-slate-300">•</span>
                                             <div className="flex items-center gap-1.5 text-xs text-slate-600">
@@ -555,7 +555,17 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-2 shrink-0">
+                                        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                                            {item.order?.tracking?.dispatch_delay_label && (
+                                                <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900">
+                                                    {item.order.tracking.dispatch_delay_label}
+                                                </span>
+                                            )}
+                                            {item.order?.tracking?.eta?.label && (
+                                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-medium text-slate-700">
+                                                    ETA: {item.order.tracking.eta.label}
+                                                </span>
+                                            )}
                                             {<OrderTrackingStatus tracking={item.order?.tracking} />}
                                         </div>
                                     </div>

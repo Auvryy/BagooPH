@@ -8,7 +8,7 @@ const groups = [
     { title: 'Hub transfers', names: ['Mother Bags', 'Manifests', 'Delivery recovery', 'Parcel recovery', 'Buyer returns', 'Handover issues'], defaultOpen: false },
     { title: 'Cash & earnings', names: ['COD cash', 'Delivery earnings', 'Return liabilities', 'Financial oversight'], defaultOpen: false },
     { title: 'Company & people', names: ['Facility Network', 'Fleet Management', 'Company setup'], defaultOpen: false },
-    { title: 'Review & history', names: ['Delivery exceptions', 'Resource activity', 'Governance history'], defaultOpen: false },
+    { title: 'Review & history', names: ['SLA monitoring', 'Delivery exceptions', 'Resource activity', 'Governance history'], defaultOpen: false },
     { title: 'My account', names: ['Account & security', 'Workspace guide'], defaultOpen: false },
 ];
 export default function SidebarNavigation({ items }: { items: Item[] }) {

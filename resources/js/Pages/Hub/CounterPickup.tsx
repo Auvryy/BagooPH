@@ -475,7 +475,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 <p className="text-xs text-[#E00D42] tabular-nums font-bold mt-1">
                                     {selectedParcel.tracking_number}
                                 </p>
-                                {selectedParcel.claim && <p className="mt-1 text-xs text-zinc-500">Holding deadline: {new Date(selectedParcel.claim.expires_at).toLocaleString('en-PH')} · {selectedParcel.claim.status}</p>}
+                                {selectedParcel.claim && <p className="mt-1 text-xs text-zinc-500">Holding deadline: {new Date(selectedParcel.claim.expires_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })} PHT · {selectedParcel.claim.status}</p>}
                             </div>
                             <button
                                 type="button"
