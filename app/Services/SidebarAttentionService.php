@@ -4,13 +4,17 @@ namespace App\Services;
 
 use App\Models\AccountReviewRequest;
 use App\Models\AdvertisementSubmission;
+use App\Models\DispatchEscalation;
+use App\Models\MissingParcelInvestigation;
 use App\Models\Order;
 use App\Models\Shop;
+use App\Models\SlaClock;
 use App\Models\User;
 use App\Models\WalletTopUpRequest;
 use App\Services\Advertisements\SellerPromotionService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderWorkspaceService;
+use Illuminate\Support\Facades\Schema;
 
 class SidebarAttentionService
 {
@@ -20,12 +24,20 @@ class SidebarAttentionService
             return [];
         }
         if ($user->isAdmin()) {
+            $monitoringNeedsAttention = (Schema::hasTable('missing_parcel_investigations')
+                    && MissingParcelInvestigation::where('status', 'investigating')->exists())
+                || (Schema::hasTable('sla_clocks')
+                    && SlaClock::where('status', 'running')->where('breach_at', '<=', now())->exists())
+                || (Schema::hasTable('dispatch_escalations')
+                    && DispatchEscalation::where('is_urgent', true)->whereNotIn('status', ['resolved', 'auto_cancelled'])->exists());
+
             return [
                 'shop_reviews' => Shop::where('review_status', 'pending_approval')->exists(),
                 'kyc' => User::whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])->where('kyc_status', 'pending_approval')->exists(),
                 'review_requests' => AccountReviewRequest::doesntHave('decision')->exists(),
                 'advertisements' => app(SellerPromotionService::class)->installed() && AdvertisementSubmission::doesntHave('reviews')->exists(),
                 'wallet_credits' => WalletTopUpRequest::where('status', 'pending')->exists(),
+                'monitoring' => $monitoringNeedsAttention,
             ];
         }
 

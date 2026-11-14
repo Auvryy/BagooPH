@@ -6,6 +6,7 @@ use App\Models\CourierProfile;
 use App\Models\Delivery;
 use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
+use App\Models\DispatchEscalation;
 use App\Models\HubHandler;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
@@ -15,6 +16,9 @@ use App\Services\Courier\CourierProofService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\LogisticsEarningsService;
 use App\Services\Finance\ShipmentLossReconciliationService;
+use App\Services\Monitoring\EtaCalculationService;
+use App\Services\Monitoring\SlaClockService;
+use Illuminate\Support\Facades\Schema;
 use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Wallet\WalletHandoverService;
 use App\Services\Wallet\WalletPaymentService;
@@ -156,7 +160,7 @@ class OrderStateMachineService
                 return $lockedDelivery;
             }
 
-            if ($lockedDelivery->status === $targetStatus) {
+            if ($lockedDelivery->status === $targetStatus && empty($scanMetadata['reassign'])) {
                 $existing = DeliveryCheckpoint::query()
                     ->where('delivery_id', $lockedDelivery->id)
                     ->where('checkpoint_type', $targetStatus)
@@ -283,6 +287,30 @@ class OrderStateMachineService
                     'hub_id' => $hub->id, 'barcode' => $barcode, 'expected_status' => self::STATUS_ARRIVED_AT_ORIGIN_HUB,
                     'notes' => 'Local delivery: origin and destination share this child hub. Ready for destination sorting.',
                 ]);
+            }
+            app(EtaCalculationService::class)->applyToDelivery($lockedDelivery, $lockedDelivery->order);
+            app(SlaClockService::class)->syncForDelivery($lockedDelivery, $lockedDelivery->order);
+
+            if ($targetStatus === self::STATUS_PICKED_UP && Schema::hasTable('dispatch_escalations')) {
+                DispatchEscalation::query()
+                    ->where('delivery_id', $lockedDelivery->id)
+                    ->whereNotIn('status', ['resolved', 'auto_cancelled'])
+                    ->update([
+                        'status' => 'resolved',
+                        'resolved_at' => now(),
+                        'resolution_action' => 'picked_up',
+                        'dispatch_delay_label' => null,
+                    ]);
+            }
+
+            if (in_array($targetStatus, [
+                self::STATUS_PICKED_UP,
+                self::STATUS_ARRIVED_AT_ORIGIN_HUB,
+                self::STATUS_ARRIVED_AT_MOTHER_HUB,
+                self::STATUS_ARRIVED_AT_DEST_HUB,
+                self::STATUS_RETURN_TO_SENDER,
+            ], true)) {
+                app(MissingParcelInvestigationService::class)->reconcilePhysicalScan($lockedDelivery, $actor, $targetStatus);
             }
 
             return $lockedDelivery;
@@ -451,14 +479,15 @@ class OrderStateMachineService
         }
 
         if ($targetStatus === self::STATUS_ASSIGNED_TO_RIDER) {
-            if ($delivery->status === $targetStatus && (int) $metadata['rider_id'] !== $delivery->assigned_rider_id) {
+            $reassign = (bool) ($metadata['reassign'] ?? false);
+            if ($delivery->status === $targetStatus && (int) $metadata['rider_id'] !== $delivery->assigned_rider_id && ! $reassign) {
                 throw new DomainException('The parcel already belongs to another final-mile rider.');
             }
             $rider = User::with('courierProfile')->find($metadata['rider_id']);
             $profile = $rider
                 ? CourierProfile::where('user_id', $rider->id)->lockForUpdate()->first()
                 : null;
-            $newWork = $delivery->status !== $targetStatus;
+            $newWork = $delivery->status !== $targetStatus || ($reassign && (int) $metadata['rider_id'] !== $delivery->assigned_rider_id);
             $this->eligibility->assertCourierScope($profile, (int) $delivery->logistics_company_id, (int) $delivery->destination_bayan_hub_id, newWork: $newWork);
             $barangay = trim((string) $delivery->order?->destination_barangay);
             if (

@@ -105,3 +105,5 @@ Artisan::command('orders:expire-cancellation-requests {--limit=100}', function (
 })->purpose('Close unanswered cancellation requests after their response deadline');
 
 Schedule::command('orders:expire-cancellation-requests')->everyMinute()->withoutOverlapping();
+
+Schedule::command('monitoring:scan-sla')->everyMinute()->withoutOverlapping();

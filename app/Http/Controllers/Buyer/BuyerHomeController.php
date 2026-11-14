@@ -11,6 +11,7 @@ use App\Models\SubCategory;
 use App\Services\Advertisements\AdvertisementReader;
 use App\Services\Advertisements\AdvertisementRecommendationService;
 use App\Services\Commerce\BuyerDiscoveryService;
+use App\Services\Monitoring\EtaCalculationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -150,6 +151,7 @@ class BuyerHomeController extends Controller
                 ->first();
 
             if ($activeOrder && $activeOrder->delivery) {
+                $eta = app(EtaCalculationService::class)->present($activeOrder->delivery, $activeOrder);
                 $activeShipment = [
                     'order_id' => $activeOrder->id,
                     'order_number' => $activeOrder->order_number,
@@ -158,7 +160,8 @@ class BuyerHomeController extends Controller
                     'courier_name' => $activeOrder->delivery->logistics_partner,
                     'item_name' => $activeOrder->items->first()?->product?->name ?? 'Package',
                     'item_count' => $activeOrder->items->count(),
-                    'estimated_delivery' => $activeOrder->delivery->estimated_delivery_at ? $activeOrder->delivery->estimated_delivery_at->diffForHumans() : 'Within 24 Hours',
+                    'estimated_delivery' => $eta['label'] ?? 'Forecast pending',
+                    'eta' => $eta,
                 ];
             }
         }

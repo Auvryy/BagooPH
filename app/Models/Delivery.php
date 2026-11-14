@@ -66,6 +66,9 @@ class Delivery extends Model
         'delivery_recipient_name',
         'delivery_phone',
         'estimated_delivery_at',
+        'estimated_delivery_min_at',
+        'estimated_delivery_max_at',
+        'eta_basis',
         'assigned_at',
         'picked_up_at',
         'delivered_at',
@@ -81,6 +84,9 @@ class Delivery extends Model
         'pickup_latitude' => 'float', 'pickup_longitude' => 'float',
         'route_hub_ids' => 'array', 'same_hub_bypass' => 'boolean',
         'estimated_delivery_at' => 'datetime',
+        'estimated_delivery_min_at' => 'datetime',
+        'estimated_delivery_max_at' => 'datetime',
+        'eta_basis' => 'array',
         'assigned_at' => 'datetime',
         'picked_up_at' => 'datetime',
         'delivered_at' => 'datetime',
@@ -250,5 +256,20 @@ class Delivery extends Model
     public function latestAttempt(): HasOne
     {
         return $this->hasOne(DeliveryAttempt::class)->ofMany('attempt_number', 'max');
+    }
+
+    public function slaClocks(): HasMany
+    {
+        return $this->hasMany(SlaClock::class);
+    }
+
+    public function dispatchEscalation(): HasOne
+    {
+        return $this->hasOne(DispatchEscalation::class);
+    }
+
+    public function missingParcelInvestigations(): HasMany
+    {
+        return $this->hasMany(MissingParcelInvestigation::class);
     }
 }

@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
+use App\Services\Monitoring\SlaClockService;
 use App\Services\Commerce\InventoryService;
 use App\Services\Commerce\PhilippineAddressCatalog;
 use App\Services\Commerce\ProductSkuService;
@@ -253,7 +254,7 @@ class CheckoutOrderService
                     'delivery_recipient_name' => $data['recipient_name'],
                     'delivery_address' => $this->deliveryAddress($data),
                     'delivery_phone' => $data['recipient_phone'],
-                    'estimated_delivery_at' => now()->addDays(3),
+                    'estimated_delivery_at' => null,
                 ]);
 
                 try {
@@ -261,6 +262,8 @@ class CheckoutOrderService
                 } catch (DomainException $exception) {
                     throw new CheckoutException($exception->getMessage(), previous: $exception);
                 }
+
+                app(SlaClockService::class)->syncForOrder($order->setRelation('delivery', $delivery));
                 app(LifecycleNoticeService::class)->order($order, 'placed');
                 $orders->push($order->load('delivery', 'items'));
             }

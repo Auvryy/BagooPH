@@ -63,6 +63,7 @@ use App\Http\Controllers\Logistics\RiderCompanyOfferController;
 use App\Http\Controllers\Logistics\ShipmentLossIntakeController;
 use App\Http\Controllers\LogisticsEarningsController;
 use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\Monitoring\SlaMonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderCancellationController;
 use App\Http\Controllers\ProfileController;
@@ -210,6 +211,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/exceptions/attempt/{id}/proof', [ExceptionOversightController::class, 'proof'])->whereNumber('id')->name('exceptions.proof');
     Route::get('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'show'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.show');
     Route::post('/exceptions/{kind}/{id}', [ExceptionOversightController::class, 'decide'])->whereIn('kind', ['restriction', 'attempt', 'manifest', 'pickup'])->whereNumber('id')->name('exceptions.decide');
+    Route::middleware('verified')->prefix('governance/monitoring')->name('monitoring.')->group(function () {
+        Route::get('/', [SlaMonitoringController::class, 'index'])->name('index');
+        Route::post('/pauses', [SlaMonitoringController::class, 'storePause'])->middleware('throttle:20,1')->name('pauses.store');
+        Route::post('/pauses/{pause}/resume', [SlaMonitoringController::class, 'resumePause'])->whereNumber('pause')->middleware('throttle:20,1')->name('pauses.resume');
+        Route::post('/dry-run', [SlaMonitoringController::class, 'dryRun'])->middleware('throttle:15,1')->name('dry-run');
+        Route::post('/investigations', [SlaMonitoringController::class, 'storeInvestigation'])->middleware('throttle:20,1')->name('investigations.store');
+        Route::post('/investigations/{investigation}/assign', [SlaMonitoringController::class, 'assignInvestigation'])->whereNumber('investigation')->middleware('throttle:20,1')->name('investigations.assign');
+        Route::post('/investigations/{investigation}/finding', [SlaMonitoringController::class, 'addFinding'])->whereNumber('investigation')->middleware('throttle:30,1')->name('investigations.finding');
+        Route::post('/investigations/{investigation}/recover', [SlaMonitoringController::class, 'recoverInvestigation'])->whereNumber('investigation')->middleware('throttle:20,1')->name('investigations.recover');
+        Route::post('/investigations/{investigation}/confirm-loss', [SlaMonitoringController::class, 'confirmLossInvestigation'])->whereNumber('investigation')->middleware('throttle:15,1')->name('investigations.confirm-loss');
+        Route::post('/investigations/{investigation}/close', [SlaMonitoringController::class, 'closeInvestigation'])->whereNumber('investigation')->middleware('throttle:20,1')->name('investigations.close');
+        Route::post('/pickup-pauses', [SlaMonitoringController::class, 'storePickupPause'])->middleware('throttle:20,1')->name('pickup-pauses.store');
+        Route::post('/pickup-pauses/{pause}/resume', [SlaMonitoringController::class, 'resumePickupPause'])->whereNumber('pause')->middleware('throttle:20,1')->name('pickup-pauses.resume');
+        Route::post('/deliveries/{delivery}/reassign-rider', [SlaMonitoringController::class, 'reassignRider'])->whereNumber('delivery')->middleware('throttle:30,1')->name('deliveries.reassign-rider');
+    });
     Route::get('/account/identity-corrections', [IdentityCorrectionController::class, 'show'])->name('identity-corrections.own');
     Route::get('/account/settings', [ProfileController::class, 'settings'])->name('account.settings');
     Route::get('/account/security', [AccountSessionController::class, 'index'])->name('account.security');
@@ -441,6 +457,10 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::get('/command-sheet', [LogisticsHubWorkstationController::class, 'commandSheet'])->name('logistics.command-sheet');
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay']);
         Route::post('/deliveries/{delivery}/assign-rider', [LogisticsHubWorkstationController::class, 'assignRider']);
+        Route::post('/deliveries/{delivery}/reassign-rider', [SlaMonitoringController::class, 'reassignRider'])->whereNumber('delivery')->middleware('throttle:30,1');
+        Route::post('/pickup-pauses', [SlaMonitoringController::class, 'storePickupPause'])->middleware('throttle:20,1');
+        Route::post('/pickup-pauses/{pause}/resume', [SlaMonitoringController::class, 'resumePickupPause'])->whereNumber('pause')->middleware('throttle:20,1');
+        Route::get('/monitoring', fn () => redirect('/governance/monitoring'));
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup']);
         Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap']);
         Route::get('/hub', fn () => redirect('/dashboard'));
@@ -504,6 +524,7 @@ $registerAdminRoutes = function () use ($registerResourceRestrictionRoutes, $reg
         Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show']);
         Route::post('/products/{product}/moderation', [ProductModerationController::class, 'store']);
         Route::get('/logistics', [LogisticsHubController::class, 'index']);
+        Route::get('/monitoring', fn () => redirect('/governance/monitoring'));
         Route::get('/admin/dashboard', fn () => redirect('/dashboard'));
     });
 };
@@ -916,6 +937,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/products/{product}/moderation', [ProductModerationController::class, 'show'])->name('products.moderation');
     Route::post('/products/{product}/moderation', [ProductModerationController::class, 'store'])->name('products.moderation.store');
     Route::get('/logistics', [LogisticsHubController::class, 'index'])->name('logistics');
+    Route::get('/monitoring', fn () => redirect('/governance/monitoring'))->name('monitoring');
 });
 
 /*
@@ -986,6 +1008,10 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/command-sheet', [LogisticsHubWorkstationController::class, 'commandSheet'])->name('command-sheet');
         Route::post('/sort', [LogisticsHubWorkstationController::class, 'sortBarangay'])->name('sort');
         Route::post('/deliveries/{delivery}/assign-rider', [LogisticsHubWorkstationController::class, 'assignRider'])->name('assignRider');
+        Route::post('/deliveries/{delivery}/reassign-rider', [SlaMonitoringController::class, 'reassignRider'])->whereNumber('delivery')->middleware('throttle:30,1')->name('deliveries.reassign-rider');
+        Route::post('/pickup-pauses', [SlaMonitoringController::class, 'storePickupPause'])->middleware('throttle:20,1')->name('pickup-pauses.store');
+        Route::post('/pickup-pauses/{pause}/resume', [SlaMonitoringController::class, 'resumePickupPause'])->whereNumber('pause')->middleware('throttle:20,1')->name('pickup-pauses.resume');
+        Route::get('/monitoring', fn () => redirect('/governance/monitoring'))->name('monitoring');
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup'])->name('release');
         Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap'])->name('roadmap');
     });

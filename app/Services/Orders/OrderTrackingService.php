@@ -4,6 +4,7 @@ namespace App\Services\Orders;
 
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\DispatchEscalation;
 use App\Models\Order;
 use App\Models\ShipmentLossAccounting;
 use App\Services\Finance\ShipmentLossAccountingService;
@@ -12,6 +13,7 @@ use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\PickupClaimService;
+use App\Services\Monitoring\EtaCalculationService;
 use App\Services\Vouchers\VoucherReceiptService;
 use App\Services\Wallet\WalletPaymentService;
 use Illuminate\Support\Facades\Schema;
@@ -187,6 +189,12 @@ class OrderTrackingService
                     'created_at' => $event->created_at?->toIso8601String(),
                 ])->values()->all() : [],
             'failure' => $this->failure($parcel),
+            'eta' => app(EtaCalculationService::class)->present($parcel, $order),
+            'dispatch_delay_label' => ($parcel && Schema::hasTable('dispatch_escalations'))
+                ? DispatchEscalation::where('delivery_id', $parcel->id)
+                    ->whereNotIn('status', ['resolved', 'auto_cancelled'])
+                    ->value('dispatch_delay_label')
+                : null,
         ];
     }
 

@@ -10,6 +10,8 @@ use App\Models\DeliveryRecoveryEvent;
 use App\Models\LogisticsHub;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\Monitoring\EtaCalculationService;
+use App\Services\Monitoring\SlaClockService;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -125,6 +127,8 @@ class DeliveryRecoveryService
             if ($parcel->status === 'return_to_sender') {
                 app(DeliveryReturnService::class)->begin($parcel, $actor, $checkpoint);
             }
+            app(EtaCalculationService::class)->applyToDelivery($parcel, $parcel->order);
+            app(SlaClockService::class)->syncForDelivery($parcel, $parcel->order);
 
             return $parcel;
         });
@@ -167,6 +171,8 @@ class DeliveryRecoveryService
             $this->record($parcel, $attempt, $actor, $hub, 'retry_approved', DeliveryCheckpoint::state($parcel), [
                 'notes' => $input['notes'], 'retry_at' => $retryAt, 'request_token' => $input['request_token'], 'request_fingerprint' => $fingerprint,
             ]);
+            app(EtaCalculationService::class)->applyToDelivery($parcel, $parcel->order);
+            app(SlaClockService::class)->syncForDelivery($parcel, $parcel->order);
 
             return $parcel;
         });
@@ -200,6 +206,8 @@ class DeliveryRecoveryService
             DeliveryCheckpoint::record($parcel, 'delivery_rescheduled', actor: $actor, hub: $hub, barcodeScanned: $barcode,
                 notes: 'Approved retry released for barangay sorting. Evidence: '.$event->reference,
                 evidence: ['source_state' => $source, 'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custody, 'custody_after' => $custody]);
+            app(EtaCalculationService::class)->applyToDelivery($parcel, $parcel->order);
+            app(SlaClockService::class)->syncForDelivery($parcel, $parcel->order);
 
             return $parcel;
         });

@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\DeliveryAttempt;
+use App\Models\MissingParcelInvestigation;
+use App\Models\SlaClock;
 use App\Services\ExceptionOversightService;
+use App\Services\Logistics\LogisticsEligibilityService;
 use DomainException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -19,7 +23,30 @@ class ExceptionOversightController extends Controller
     {
         $filters = $request->validate(['kind' => ['nullable', Rule::in(array_keys(ExceptionOversightService::SOURCES))],
             'status' => ['nullable', 'in:open,resolved,all'], 'page' => ['nullable', 'integer', 'min:1']]);
-        $data = ['exceptions' => $service->queue($request->user(), $filters), 'filters' => $filters, 'sourceGaps' => $service->sourceGaps($request->user())];
+        $user = $request->user();
+        $openInvestigations = Schema::hasTable('missing_parcel_investigations')
+            ? MissingParcelInvestigation::query()
+                ->where('status', 'investigating')
+                ->when(! $user->isAdmin(), fn ($q) => $q->whereIn('logistics_company_id', app(LogisticsEligibilityService::class)->managedCompanies($user)->select('id')))
+                ->count()
+            : 0;
+        $breachedClocks = Schema::hasTable('sla_clocks')
+            ? SlaClock::query()
+                ->where('status', 'running')
+                ->where('breach_at', '<=', now())
+                ->when(! $user->isAdmin(), fn ($q) => $q->whereIn('logistics_company_id', app(LogisticsEligibilityService::class)->managedCompanies($user)->select('id')))
+                ->count()
+            : 0;
+
+        $data = [
+            'exceptions' => $service->queue($user, $filters),
+            'filters' => $filters,
+            'sourceGaps' => $service->sourceGaps($user),
+            'monitoringSummary' => [
+                'open_investigations' => $openInvestigations,
+                'breached_clocks' => $breachedClocks,
+            ],
+        ];
 
         $this->encryptSensitiveHistory($request);
 

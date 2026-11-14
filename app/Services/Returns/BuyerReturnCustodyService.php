@@ -13,6 +13,7 @@ use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
+use App\Services\Monitoring\SlaClockService;
 use App\Models\Order;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\ShipmentLossReconciliation;
@@ -211,6 +212,8 @@ class BuyerReturnCustodyService
                     BuyerReturnEvidence::create(['buyer_return_case_id' => $case->id, 'buyer_return_event_id' => $event->id, 'purpose' => $action,
                         'path' => $path, 'content_hash' => $info['content_hash'], 'mime' => $info['mime'], 'bytes' => $info['bytes'], 'created_at' => now()]);
                 }
+                app(SlaClockService::class)->syncForBuyerReturnCase($case);
+                app(SlaClockService::class)->syncForBuyerReturnParcel($parcel);
 
                 return $event;
             }, 3);

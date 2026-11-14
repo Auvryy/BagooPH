@@ -559,6 +559,10 @@ class LogisticsManifestService
             $record = $this->event($manifest, $actor, $eventType, $before, $manifest->state(), $payload, $parcel,
                 $input['barcode'] ?? null, $hubId, $input['notes'] ?? null, $input['request_token'], $fingerprint);
 
+            if ($action === 'report-discrepancy' && ($input['kind'] ?? null) === 'missing') {
+                app(MissingParcelInvestigationService::class)->openFromManifestMissing($record, $actor);
+            }
+
             return ['manifest' => $manifest, 'event' => $record];
         });
     }
