@@ -2,13 +2,13 @@ import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { ArrowRight, Check, Circle, MapPin, Package, Search, type LucideIcon } from 'lucide-react';
 
 export const hubInput =
-    'w-full rounded-lg border border-zinc-300/90 bg-white px-3.5 py-2 text-sm text-[#121316] shadow-2xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 disabled:bg-zinc-100 disabled:text-zinc-400 transition-all';
+    'w-full rounded-lg border border-zinc-300/90 bg-white px-3.5 py-2 text-sm text-[#121316] shadow-2xs placeholder:text-zinc-400 focus:border-[#121316] focus:outline-none focus:ring-2 focus:ring-[#121316]/10 disabled:bg-zinc-100 disabled:text-zinc-400 transition-all';
 
 const buttonBase =
-    'inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold shadow-xs transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E00D42] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';
+    'inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold shadow-xs transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#121316] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';
 
 export const hubButton =
-    buttonBase + ' border-rose-200 bg-rose-50/85 text-[#C20836] hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] hover:shadow-sm';
+    buttonBase + ' border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-[#121316] hover:border-zinc-300 shadow-2xs';
 
 export const hubPrimary =
     buttonBase + ' border-[#E00D42] bg-[#E00D42] text-white hover:bg-[#C20836] hover:border-[#C20836] shadow-sm hover:shadow-md';
@@ -27,7 +27,7 @@ export function HubPanel({
             className={`overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs transition-all duration-150 ${className}`}
         >
             {title && (
-                <div className="flex items-start justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5 sm:px-6">
+                <div className="flex items-start justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-4 sm:px-6">
                     <div className="flex items-start gap-2.5">
                         {icon && <span className="mt-0.5 text-zinc-500">{icon}</span>}
                         <div>
@@ -47,16 +47,17 @@ export function HubBadge({
     tone = 'neutral',
 }: {
     children: ReactNode;
-    tone?: 'neutral' | 'success' | 'warning' | 'brand';
+    tone?: 'neutral' | 'success' | 'warning' | 'brand' | 'danger';
 }) {
     const tones = {
         neutral: 'border-zinc-200/90 bg-zinc-100/80 text-zinc-700',
         success: 'border-emerald-200/90 bg-emerald-50/90 text-emerald-800',
         warning: 'border-amber-200/90 bg-amber-50/90 text-amber-800',
-        brand: 'border-rose-200/90 bg-rose-50/90 text-[#C20836]',
+        brand: 'border-zinc-300/90 bg-zinc-100 text-[#121316]',
+        danger: 'border-rose-200/90 bg-rose-50/90 text-[#C20836]',
     };
     return (
-        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold tracking-tight ${tones[tone]}`}>
+        <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold tracking-tight ${tones[tone]}`}>
             {children}
         </span>
     );
@@ -80,23 +81,25 @@ export function HubPageHeader({
     description,
     icon: Icon,
     actions,
+    roleLabel,
 }: {
     title: string;
     description: ReactNode;
     icon: LucideIcon;
     actions?: ReactNode;
+    roleLabel?: string;
 }) {
     return (
         <div className="hub-page-heading flex flex-wrap items-end justify-between gap-4 border-b border-zinc-200/80 pb-5">
             <div className="min-w-0">
-                <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-md border border-zinc-200/80 bg-white px-2 py-0.5 text-[11px] font-semibold text-zinc-600 shadow-2xs">
-                    <Icon className="h-3.5 w-3.5 text-[#E00D42]" />
-                    <span>Logistics Workspace</span>
+                <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-md border border-zinc-200/80 bg-zinc-50 px-2.5 py-0.5 text-xs font-semibold text-zinc-600">
+                    <Icon className="h-3.5 w-3.5 text-zinc-500" />
+                    <span>{roleLabel ?? 'Logistics Workspace'}</span>
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-[#121316] sm:text-[26px]">{title}</h1>
-                {description && <p className="mt-1 max-w-2xl text-xs sm:text-sm leading-relaxed text-zinc-500">{description}</p>}
+                {description && <p className="mt-1.5 max-w-2xl text-xs sm:text-sm leading-relaxed text-zinc-600">{description}</p>}
             </div>
-            {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+            {actions && <div className="flex flex-wrap items-center gap-2.5">{actions}</div>}
         </div>
     );
 }
@@ -111,18 +114,20 @@ export function HubNextStep({
     title: string;
     children?: ReactNode;
     action?: ReactNode;
-    tone?: 'brand' | 'warning' | 'success';
+    tone?: 'brand' | 'warning' | 'success' | 'danger';
     icon?: LucideIcon;
 }) {
     const accents = {
-        brand: 'border-l-[#E00D42]',
+        brand: 'border-l-[#121316]',
         warning: 'border-l-amber-500',
         success: 'border-l-emerald-600',
+        danger: 'border-l-[#E00D42]',
     };
     const iconTones = {
-        brand: 'bg-rose-50 text-[#E00D42] border-rose-200/70',
+        brand: 'bg-zinc-100 text-[#121316] border-zinc-200',
         warning: 'bg-amber-50 text-amber-700 border-amber-200/70',
         success: 'bg-emerald-50 text-emerald-700 border-emerald-200/70',
+        danger: 'bg-rose-50 text-[#E00D42] border-rose-200/70',
     };
     return (
         <section
@@ -135,7 +140,7 @@ export function HubNextStep({
                 </div>
                 <div className="min-w-0">
                     <h2 className="text-sm font-semibold text-[#121316]">{title}</h2>
-                    {children && <div className="mt-0.5 text-xs sm:text-sm leading-relaxed text-zinc-500">{children}</div>}
+                    {children && <div className="mt-0.5 text-xs sm:text-sm leading-relaxed text-zinc-600">{children}</div>}
                 </div>
             </div>
             {action && (
@@ -165,7 +170,7 @@ export function HubStepRail({ steps, label = 'Transfer progress' }: { steps: Hub
         <ol
             tabIndex={0}
             aria-label={label}
-            className={`hub-step-rail grid gap-2 overflow-x-auto rounded-xl border border-zinc-200/90 bg-white p-2.5 shadow-xs ${colClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]`}
+            className={`hub-step-rail grid gap-2.5 overflow-x-auto rounded-xl border border-zinc-200/90 bg-white p-3 shadow-xs ${colClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#121316]`}
         >
             {steps.map((step, index) => {
                 const Icon = step.state === 'done' ? Check : step.icon ?? Circle;
@@ -175,21 +180,23 @@ export function HubStepRail({ steps, label = 'Transfer progress' }: { steps: Hub
                         aria-current={step.state === 'current' ? 'step' : undefined}
                         className={`relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 transition-colors ${
                             step.state === 'current'
-                                ? 'bg-rose-50 border border-rose-300 shadow-2xs'
+                                ? 'bg-zinc-100/90 border border-zinc-400 shadow-2xs'
                                 : step.state === 'done'
-                                ? 'bg-rose-50/40 border border-rose-200/70'
-                                : 'bg-zinc-50/50 border border-zinc-100'
+                                ? 'bg-emerald-50/60 border border-emerald-200/80'
+                                : step.state === 'blocked'
+                                ? 'bg-amber-50/70 border border-amber-200/80'
+                                : 'bg-zinc-50/50 border border-zinc-200/60'
                         }`}
                     >
                         <span
                             className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${
                                 step.state === 'done'
-                                    ? 'border-[#E00D42] bg-[#E00D42] text-white shadow-2xs'
+                                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-2xs'
                                     : step.state === 'current'
-                                    ? 'border-[#E00D42] bg-[#E00D42] text-white ring-4 ring-[#E00D42]/15 shadow-2xs'
+                                    ? 'border-[#121316] bg-[#121316] text-white ring-4 ring-zinc-900/10 shadow-2xs'
                                     : step.state === 'blocked'
                                     ? 'border-amber-300 bg-amber-50 text-amber-700'
-                                    : 'border-zinc-200 bg-white text-zinc-400'
+                                    : 'border-zinc-200 bg-white text-zinc-500'
                             }`}
                         >
                             {step.state === 'waiting' ? index + 1 : <Icon className="h-3.5 w-3.5" />}
@@ -197,9 +204,13 @@ export function HubStepRail({ steps, label = 'Transfer progress' }: { steps: Hub
                         <span className="min-w-0 flex-1">
                             <span
                                 className={`block truncate text-xs font-semibold ${
-                                    step.state === 'current' || step.state === 'done'
-                                        ? 'text-[#C20836]'
-                                        : 'text-zinc-500'
+                                    step.state === 'current'
+                                        ? 'text-[#121316]'
+                                        : step.state === 'done'
+                                        ? 'text-emerald-900'
+                                        : step.state === 'blocked'
+                                        ? 'text-amber-900'
+                                        : 'text-zinc-600'
                                 }`}
                             >
                                 {step.title}
@@ -208,12 +219,111 @@ export function HubStepRail({ steps, label = 'Transfer progress' }: { steps: Hub
                                     · {{ done: 'Completed', current: 'Current step', waiting: 'Waiting', blocked: 'Blocked' }[step.state]}
                                 </span>
                             </span>
-                            {step.detail && <span className="block truncate text-[11px] text-zinc-500">{step.detail}</span>}
+                            {step.detail && <span className="block truncate text-xs text-zinc-500">{step.detail}</span>}
                         </span>
                     </li>
                 );
             })}
         </ol>
+    );
+}
+
+export type LogisticsCategoryTab = {
+    id: string;
+    label: string;
+    count?: number;
+    description?: string;
+};
+
+export function HubCategoryTabs({
+    tabs,
+    activeId,
+    onChange,
+    label = 'Work categories',
+}: {
+    tabs: LogisticsCategoryTab[];
+    activeId: string;
+    onChange: (id: string) => void;
+    label?: string;
+}) {
+    return (
+        <div role="tablist" aria-label={label} className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200/90 bg-white p-1.5 shadow-2xs">
+            {tabs.map((tab) => {
+                const selected = tab.id === activeId;
+                return (
+                    <button
+                        key={tab.id}
+                        role="tab"
+                        type="button"
+                        aria-selected={selected}
+                        onClick={() => onChange(tab.id)}
+                        className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                            selected
+                                ? 'bg-[#121316] text-white shadow-2xs'
+                                : 'text-zinc-600 hover:bg-zinc-100 hover:text-[#121316]'
+                        }`}
+                    >
+                        <span>{tab.label}</span>
+                        {tab.count !== undefined && (
+                            <span
+                                className={`rounded-md px-1.5 py-0.5 text-xs font-bold tabular-nums ${
+                                    selected ? 'bg-white/15 text-white' : 'bg-zinc-100 text-zinc-700'
+                                }`}
+                            >
+                                {tab.count}
+                            </span>
+                        )}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+export function RoleNextStepCard({
+    roleTitle,
+    summary,
+    steps,
+    action,
+}: {
+    roleTitle: string;
+    summary: string;
+    steps: string[];
+    action?: ReactNode;
+}) {
+    return (
+        <section
+            aria-label="What to do next"
+            className="rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs"
+        >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-800">
+                            {roleTitle}
+                        </span>
+                        <h2 className="text-sm font-semibold text-[#121316]">What to do next</h2>
+                    </div>
+                    <p className="text-xs sm:text-sm leading-relaxed text-zinc-600">{summary}</p>
+                    {steps.length > 0 && (
+                        <ol className="mt-2 grid gap-2 sm:grid-cols-3 pt-1">
+                            {steps.map((step, index) => (
+                                <li
+                                    key={step}
+                                    className="flex items-start gap-2.5 rounded-lg border border-zinc-200/70 bg-zinc-50/70 px-3 py-2.5 text-xs text-zinc-700"
+                                >
+                                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#121316] text-xs font-bold text-white">
+                                        {index + 1}
+                                    </span>
+                                    <span className="leading-relaxed">{step}</span>
+                                </li>
+                            ))}
+                        </ol>
+                    )}
+                </div>
+                {action && <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
+            </div>
+        </section>
     );
 }
 
@@ -249,7 +359,7 @@ export function HubRoute({
                             <span
                                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
                                     stop.id === currentHubId
-                                        ? 'border-rose-200 bg-rose-50 text-[#E00D42]'
+                                        ? 'border-zinc-300 bg-zinc-100 text-[#121316]'
                                         : 'border-zinc-200 bg-zinc-50 text-zinc-500'
                                 }`}
                             >

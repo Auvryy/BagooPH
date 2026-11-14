@@ -13,8 +13,8 @@
     box-shadow: 0 1px 2px rgba(18, 19, 22, 0.03);
 }
 .logistics-workspace main {
-    background: #F7F7F5;
-    padding: 24px 32px;
+    background: #F8F9FA;
+    padding: 28px 36px;
 }
 .logistics-workspace main > div {
     max-width: 1400px;
@@ -55,9 +55,9 @@
 }
 .logistics-workspace main :where(th) {
     background: #FAFAFA;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
-    color: #71717A;
+    color: #52525B;
 }
 .logistics-workspace main :where(tbody tr):hover {
     background-color: #FAFAFA;
@@ -66,11 +66,11 @@
     border-color: #E4E4E7;
 }
 .logistics-workspace main :where(button, a, input, select, textarea):focus-visible {
-    outline: 2px solid #E00D42;
+    outline: 2px solid #121316;
     outline-offset: 2px;
 }
 .logistics-navigation-drawer :where(button, a, input, select, textarea):focus-visible {
-    outline: 2px solid #E00D42;
+    outline: 2px solid #ffffff;
     outline-offset: 2px;
 }
 .logistics-workspace .hub-step-rail {
@@ -114,13 +114,13 @@
     height: 28px;
     border: 4px solid white;
     border-radius: 50%;
-    background: #E00D42;
+    background: #18181B;
     box-shadow: 0 2px 8px rgba(18, 19, 22, 0.25);
     transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 .hub-map-mother {
     border-radius: 8px;
-    background: #9F1239;
+    background: #3F3F46;
 }
 .hub-map-selected .hub-map-pin-dot {
     background: #E00D42 !important;
@@ -138,7 +138,7 @@
     }
 }
 .hub-network-map .leaflet-marker-icon:focus-visible {
-    outline: 3px solid #E00D42;
+    outline: 3px solid #121316;
     outline-offset: 4px;
     border-radius: 50%;
 }

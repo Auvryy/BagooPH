@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import PortalLink from '@/Components/PortalLink';
 import {
@@ -15,7 +15,13 @@ import {
     Truck,
 } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { HubPageHeader, hubButton, hubPrimary } from '@/Components/Logistics/Workspace';
+import {
+    HubCategoryTabs,
+    HubPageHeader,
+    RoleNextStepCard,
+    hubButton,
+    hubPrimary,
+} from '@/Components/Logistics/Workspace';
 
 interface HubOption {
     id: number;
@@ -108,7 +114,7 @@ interface DashboardProps {
 }
 
 const toneClasses = {
-    danger: 'border-rose-200 bg-rose-50 text-[#E00D42]',
+    danger: 'border-red-200 bg-red-50 text-red-700',
     warning: 'border-amber-200 bg-amber-50 text-amber-800',
     info: 'border-zinc-200 bg-zinc-100 text-zinc-800',
     neutral: 'border-zinc-200 bg-zinc-50 text-zinc-700',
@@ -133,10 +139,12 @@ export default function HubDashboard({
     activeSlaPauses = [],
     openInvestigationsCount = 0,
 }: DashboardProps) {
+    const [activeCategory, setActiveCategory] = useState<'all' | 'urgent' | 'pipeline' | 'facilities'>('all');
     const activeAttention = attentionQueue.filter((item) => item.count > 0);
     const selectedHub = scope.hubs.find((hub) => hub.id === scope.selected_hub_id);
     const maxMovement = Math.max(1, ...movement.flatMap((day) => [day.inbound, day.outbound]));
     const hasMovement = movement.some((day) => day.inbound > 0 || day.outbound > 0);
+    const totalAttentionCount = activeAttention.reduce((acc, item) => acc + item.count, 0);
 
     const changeScope = (value: string) => {
         router.get(
@@ -173,7 +181,7 @@ export default function HubDashboard({
             value: stats.dispatched_today,
             helper: 'Verified outbound scans',
             icon: Truck,
-            accent: stats.dispatched_today > 0,
+            accent: false,
         },
     ];
 
@@ -213,6 +221,7 @@ export default function HubDashboard({
                 {/* Editorial Workspace Header with Integrated Facility Scope Selector */}
                 <HubPageHeader
                     title="Operations overview"
+                    roleLabel={scope.can_view_company ? 'Logistics Manager' : 'Assigned Facility Handler'}
                     description="Real-time parcel custody, dispatch readiness, and station telemetry for the active facility scope."
                     icon={Building2}
                     actions={
@@ -259,6 +268,42 @@ export default function HubDashboard({
                     }
                 />
 
+                <RoleNextStepCard
+                    roleTitle={scope.can_view_company ? 'Logistics Network Manager' : 'Facility Operations Handler'}
+                    summary={
+                        totalAttentionCount > 0
+                            ? `${totalAttentionCount} open attention item(s) need review across custody, SLA clocks, or dispatch readiness.`
+                            : 'Station queues are balanced. Focus on timely parcel scanning, consolidation, and on-time manifest departures.'
+                    }
+                    steps={
+                        scope.can_scan
+                            ? [
+                                  'Open Scan Station to receive incoming riders, Mother Bags, or counter pickups.',
+                                  'Check Needs Attention items for parcels waiting for sorting or rider assignment.',
+                                  'Seal Mother Bags and prepare outbound manifests before cutoff.',
+                              ]
+                            : [
+                                  'Review Needs Attention items and SLA pauses for overloaded barangays.',
+                                  'Track hub custody across Origin, Mother Hub, and Destination stages.',
+                                  'Inspect Facilities load and open Parcels or Manifests for exceptions.',
+                              ]
+                    }
+                />
+
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <HubCategoryTabs
+                        label="Operations sections"
+                        activeId={activeCategory}
+                        onChange={(id) => setActiveCategory(id as typeof activeCategory)}
+                        tabs={[
+                            { id: 'all', label: 'All Workspace' },
+                            { id: 'urgent', label: 'Needs Action Now', count: totalAttentionCount + (monitoring?.counts.breached_clocks ?? 0) },
+                            { id: 'pipeline', label: 'Parcel Pipeline', count: parcelFlow.origin_hub + parcelFlow.mother_hub_transit + parcelFlow.destination_hub },
+                            { id: 'facilities', label: 'Facilities & Logs', count: facilities.length },
+                        ]}
+                    />
+                </div>
+
                 {/* Unified Architectural 4-Column Metric Strip */}
                 <section
                     aria-label="Operational metrics"
@@ -270,14 +315,14 @@ export default function HubDashboard({
                             <div key={metric.label} className="flex flex-col justify-between p-5 transition-colors hover:bg-zinc-50/50">
                                 <div className="flex items-center justify-between gap-3">
                                     <span className="text-xs font-medium text-zinc-500">{metric.label}</span>
-                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-rose-200/80 bg-rose-50/70 text-[#E00D42]">
+                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 text-zinc-700">
                                         <Icon className="h-3.5 w-3.5" />
                                     </span>
                                 </div>
                                 <div className="mt-3 flex items-baseline justify-between gap-2">
                                     <p
                                         className={`text-3xl font-bold tracking-tight tabular-nums ${
-                                            metric.accent ? 'text-[#E00D42]' : 'text-[#121316]'
+                                            metric.accent ? 'text-red-700' : 'text-[#121316]'
                                         }`}
                                     >
                                         {metric.value}
@@ -289,7 +334,7 @@ export default function HubDashboard({
                     })}
                 </section>
 
-                {(activeSlaPauses.length > 0 || monitoring) && (
+                {(activeCategory === 'all' || activeCategory === 'urgent') && (activeSlaPauses.length > 0 || monitoring) && (
                     <section className="rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs space-y-3" aria-label="SLA & Dispatch Telemetry">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
@@ -323,14 +368,14 @@ export default function HubDashboard({
                                 ].map(([label, value]) => (
                                     <div key={String(label)} className="rounded-lg border border-zinc-200/80 bg-zinc-50/60 px-3.5 py-2.5">
                                         <p className="text-[11px] font-medium text-zinc-500">{label}</p>
-                                        <p className={`mt-1 text-xl font-bold tabular-nums ${Number(value) > 0 ? 'text-[#E00D42]' : 'text-[#121316]'}`}>{value}</p>
+                                        <p className={`mt-1 text-xl font-bold tabular-nums ${Number(value) > 0 ? 'text-amber-700' : 'text-[#121316]'}`}>{value}</p>
                                     </div>
                                 ))}
                             </div>
                         )}
 
                         {monitoring && monitoring.pickup_pauses.length > 0 && (
-                            <div className="rounded-lg border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-950 space-y-2">
+                            <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-950 space-y-2">
                                 <p className="font-bold">Active hub pickup pauses:</p>
                                 {monitoring.pickup_pauses.map((pause) => (
                                     <div key={pause.id} className="flex flex-wrap items-center justify-between gap-2">
@@ -338,7 +383,7 @@ export default function HubDashboard({
                                         <button
                                             type="button"
                                             onClick={() => router.post(`/governance/monitoring/pickup-pauses/${pause.id}/resume`, {}, { preserveScroll: true })}
-                                            className="rounded-md border border-rose-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#C20836] hover:bg-rose-50"
+                                            className="rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-zinc-800 hover:bg-zinc-50 cursor-pointer"
                                         >
                                             Resume pickup
                                         </button>
@@ -363,286 +408,300 @@ export default function HubDashboard({
                 )}
 
                 {/* Above-the-Fold Network Custody Pipeline (Parcel Journey) */}
-                <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                            <h2 className="text-sm font-semibold text-[#121316]">Parcel journey pipeline</h2>
-                            <span className="hidden sm:inline text-xs text-zinc-400">·</span>
-                            <p className="hidden sm:block text-xs text-zinc-500">Live physical custody across the hub hierarchy</p>
+                {(activeCategory === 'all' || activeCategory === 'pipeline') && (
+                    <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                                <h2 className="text-sm font-semibold text-[#121316]">Parcel journey pipeline</h2>
+                                <span className="hidden sm:inline text-xs text-zinc-400">·</span>
+                                <p className="hidden sm:block text-xs text-zinc-500">Live physical custody across the hub hierarchy</p>
+                            </div>
+                            <PortalLink
+                                href={route('hub.deliveries')}
+                                className={hubButton}
+                            >
+                                <span>View all waybills</span>
+                                <ArrowRight className="h-3.5 w-3.5" />
+                            </PortalLink>
                         </div>
-                        <PortalLink
-                            href={route('hub.deliveries')}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-1.5 text-xs font-semibold text-[#C20836] hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] transition-all shadow-2xs"
-                        >
-                            <span>View all waybills</span>
-                            <ArrowRight className="h-3.5 w-3.5" />
-                        </PortalLink>
-                    </div>
 
-                    <div className="grid grid-cols-1 divide-y divide-zinc-100 sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-5">
-                        {flowStages.map((stage) => {
-                            const Icon = stage.icon;
-                            return (
-                                <PortalLink
-                                    key={stage.label}
-                                    href={stage.href}
-                                    className="group flex items-center justify-between gap-3 p-4 transition-all hover:bg-rose-50/40 sm:flex-col sm:items-start sm:justify-between"
-                                >
-                                    <div className="flex items-center gap-2.5 sm:w-full sm:justify-between">
-                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 group-hover:text-[#C20836]">Stage {stage.step}</span>
-                                        <span className="flex h-7 w-7 items-center justify-center rounded-md border border-rose-200/80 bg-rose-50/70 text-[#E00D42] transition-colors group-hover:border-[#E00D42] group-hover:bg-[#E00D42] group-hover:text-white">
-                                            <Icon className="h-3.5 w-3.5" />
-                                        </span>
-                                    </div>
-                                    <div className="sm:mt-3">
-                                        <p className="text-2xl font-bold tracking-tight tabular-nums text-[#121316] group-hover:text-[#E00D42] transition-colors">
-                                            {stage.value}
-                                        </p>
-                                        <p className="mt-0.5 text-xs font-medium text-zinc-600 group-hover:text-[#121316]">
-                                            {stage.label}
-                                        </p>
-                                    </div>
-                                </PortalLink>
-                            );
-                        })}
-                    </div>
-                </section>
+                        <div className="grid grid-cols-1 divide-y divide-zinc-100 sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-5">
+                            {flowStages.map((stage) => {
+                                const Icon = stage.icon;
+                                return (
+                                    <PortalLink
+                                        key={stage.label}
+                                        href={stage.href}
+                                        className="group flex items-center justify-between gap-3 p-4 transition-all hover:bg-zinc-50/80 sm:flex-col sm:items-start sm:justify-between"
+                                    >
+                                        <div className="flex items-center gap-2.5 sm:w-full sm:justify-between">
+                                            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-700">Stage {stage.step}</span>
+                                            <span className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 text-zinc-700 transition-colors group-hover:border-[#121316] group-hover:bg-[#121316] group-hover:text-white">
+                                                <Icon className="h-3.5 w-3.5" />
+                                            </span>
+                                        </div>
+                                        <div className="sm:mt-3">
+                                            <p className="text-2xl font-bold tracking-tight tabular-nums text-[#121316] transition-colors">
+                                                {stage.value}
+                                            </p>
+                                            <p className="mt-0.5 text-xs font-medium text-zinc-600 group-hover:text-[#121316]">
+                                                {stage.label}
+                                            </p>
+                                        </div>
+                                    </PortalLink>
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
 
                 {/* Two-Column Operational Command Grid */}
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
                     {/* Left Column (7 cols): 7-Day Telemetry + Facilities Capacity Table */}
-                    <div className="space-y-5 xl:col-span-7">
-                        {/* 7-Day Parcel Movement */}
-                        <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                <div>
-                                    <h2 className="text-sm font-semibold text-[#121316]">Parcel movement</h2>
-                                    <p className="text-xs text-zinc-500">Verified inbound and outbound scans · last 7 days</p>
-                                </div>
-                                <div className="flex items-center gap-3 text-xs font-medium text-zinc-600">
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="h-2.5 w-2.5 rounded-xs bg-rose-300" />
-                                        Inbound
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="h-2.5 w-2.5 rounded-xs bg-[#E00D42]" />
-                                        Outbound
-                                    </span>
-                                </div>
-                            </div>
-
-                            {hasMovement ? (
-                                <div className="flex h-48 items-end gap-2 px-5 pb-4 pt-6 sm:gap-3.5">
-                                    {movement.map((day) => (
-                                        <div key={day.date} className="flex h-full min-w-0 flex-1 flex-col justify-end">
-                                            <div className="flex flex-1 items-end justify-center gap-1">
-                                                <div
-                                                    className="w-3 rounded-t-xs bg-rose-300 sm:w-4 transition-all hover:opacity-80"
-                                                    style={{ height: `${Math.max(day.inbound > 0 ? 10 : 2, (day.inbound / maxMovement) * 100)}%` }}
-                                                    title={`${day.date}: ${day.inbound} inbound`}
-                                                />
-                                                <div
-                                                    className="w-3 rounded-t-xs bg-[#E00D42] sm:w-4 transition-all hover:opacity-80"
-                                                    style={{ height: `${Math.max(day.outbound > 0 ? 10 : 2, (day.outbound / maxMovement) * 100)}%` }}
-                                                    title={`${day.date}: ${day.outbound} outbound`}
-                                                />
-                                            </div>
-                                            <div className="mt-2.5 border-t border-zinc-100 pt-2 text-center">
-                                                <p className="text-[11px] font-semibold text-zinc-600">{day.label}</p>
-                                                <p className="text-[10px] font-medium tabular-nums text-zinc-400">
-                                                    {day.inbound}/{day.outbound}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="flex items-center justify-between gap-4 px-5 py-6">
-                                    <div className="flex items-center gap-3">
-                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-[#E00D42]">
-                                            <ScanLine className="h-4 w-4" />
-                                        </span>
+                    {(activeCategory === 'all' || activeCategory === 'pipeline' || activeCategory === 'facilities') && (
+                        <div className="space-y-5 xl:col-span-7">
+                            {/* 7-Day Parcel Movement */}
+                            {(activeCategory === 'all' || activeCategory === 'pipeline') && (
+                                <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
+                                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                         <div>
-                                            <p className="text-xs font-semibold text-[#121316]">No parcel movement this week</p>
-                                            <p className="text-xs text-zinc-500">Inbound and outbound scans will populate this 7-day chart.</p>
+                                            <h2 className="text-sm font-semibold text-[#121316]">Parcel movement</h2>
+                                            <p className="text-xs text-zinc-500">Verified inbound and outbound scans · last 7 days</p>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-xs font-medium text-zinc-600">
+                                            <span className="flex items-center gap-1.5">
+                                                <span className="h-2.5 w-2.5 rounded-xs bg-zinc-300" />
+                                                Inbound
+                                            </span>
+                                            <span className="flex items-center gap-1.5">
+                                                <span className="h-2.5 w-2.5 rounded-xs bg-[#121316]" />
+                                                Outbound
+                                            </span>
                                         </div>
                                     </div>
-                                </div>
-                            )}
-                        </section>
 
-                        {/* Facilities Capacity & Load */}
-                        <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                            <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                <div>
-                                    <h2 className="text-sm font-semibold text-[#121316]">Facilities</h2>
-                                    <p className="text-xs text-zinc-500">Capacity and operational load</p>
-                                </div>
-                                <PortalLink
-                                    href={route('hub.network')}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-1.5 text-xs font-semibold text-[#C20836] hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] transition-all shadow-2xs"
-                                >
-                                    <span>Facility network</span>
-                                    <ArrowRight className="h-3.5 w-3.5" />
-                                </PortalLink>
-                            </div>
-
-                            {facilities.length === 0 ? (
-                                <div className="px-5 py-8 text-center text-xs text-zinc-500">No accessible facilities in this scope.</div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse text-left text-xs">
-                                        <thead>
-                                            <tr className="border-b border-zinc-100 bg-zinc-50/60 text-[11px] font-semibold text-zinc-500">
-                                                <th className="px-5 py-3">Facility</th>
-                                                <th className="px-4 py-3">Tier</th>
-                                                <th className="px-4 py-3 text-right">Custody</th>
-                                                <th className="px-4 py-3 text-right">Exceptions</th>
-                                                <th className="px-4 py-3 text-right">Fleet</th>
-                                                <th className="px-5 py-3 text-right">Utilization</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-zinc-100">
-                                            {facilities.map((facility) => (
-                                                <tr key={facility.id} className="transition-colors hover:bg-zinc-50/60">
-                                                    <td className="px-5 py-3">
-                                                        <p className="font-semibold text-[#121316]">{facility.name}</p>
-                                                        <p className="text-[11px] font-medium text-zinc-400">
-                                                            {facility.code} · {facility.city_municipality}
+                                    {hasMovement ? (
+                                        <div className="flex h-48 items-end gap-2 px-5 pb-4 pt-6 sm:gap-3.5">
+                                            {movement.map((day) => (
+                                                <div key={day.date} className="flex h-full min-w-0 flex-1 flex-col justify-end">
+                                                    <div className="flex flex-1 items-end justify-center gap-1">
+                                                        <div
+                                                            className="w-3 rounded-t-xs bg-zinc-300 sm:w-4 transition-all hover:opacity-80"
+                                                            style={{ height: `${Math.max(day.inbound > 0 ? 10 : 2, (day.inbound / maxMovement) * 100)}%` }}
+                                                            title={`${day.date}: ${day.inbound} inbound`}
+                                                        />
+                                                        <div
+                                                            className="w-3 rounded-t-xs bg-[#121316] sm:w-4 transition-all hover:opacity-80"
+                                                            style={{ height: `${Math.max(day.outbound > 0 ? 10 : 2, (day.outbound / maxMovement) * 100)}%` }}
+                                                            title={`${day.date}: ${day.outbound} outbound`}
+                                                        />
+                                                    </div>
+                                                    <div className="mt-2.5 border-t border-zinc-100 pt-2 text-center">
+                                                        <p className="text-[11px] font-semibold text-zinc-600">{day.label}</p>
+                                                        <p className="text-[10px] font-medium tabular-nums text-zinc-400">
+                                                            {day.inbound}/{day.outbound}
                                                         </p>
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <span className="inline-flex rounded-md border border-rose-200/80 bg-rose-50/60 px-2 py-0.5 text-[11px] font-semibold text-[#C20836]">
-                                                            {formatTier(facility.tier)}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-[#121316]">
-                                                        {facility.parcels}
-                                                    </td>
-                                                    <td
-                                                        className={`px-4 py-3 text-right font-semibold tabular-nums ${
-                                                            facility.exceptions > 0 ? 'text-[#E00D42]' : 'text-zinc-500'
-                                                        }`}
-                                                    >
-                                                        {facility.exceptions}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right tabular-nums text-zinc-600">{facility.active_fleet}</td>
-                                                    <td className="px-5 py-3 text-right">
-                                                        <span className="font-semibold tabular-nums text-[#121316]">
-                                                            {facility.utilization_rate}%
-                                                        </span>
-                                                        <span className="ml-1 text-[11px] text-zinc-400">of {facility.capacity}</span>
-                                                    </td>
-                                                </tr>
+                                                    </div>
+                                                </div>
                                             ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-between gap-4 px-5 py-6">
+                                            <div className="flex items-center gap-3">
+                                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-700">
+                                                    <ScanLine className="h-4 w-4" />
+                                                </span>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-[#121316]">No parcel movement this week</p>
+                                                    <p className="text-xs text-zinc-500">Inbound and outbound scans will populate this 7-day chart.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
                             )}
-                        </section>
-                    </div>
+
+                            {/* Facilities Capacity & Load */}
+                            {(activeCategory === 'all' || activeCategory === 'facilities') && (
+                                <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
+                                    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                        <div>
+                                            <h2 className="text-sm font-semibold text-[#121316]">Facilities</h2>
+                                            <p className="text-xs text-zinc-500">Capacity and operational load</p>
+                                        </div>
+                                        <PortalLink
+                                            href={route('hub.network')}
+                                            className={hubButton}
+                                        >
+                                            <span>Facility network</span>
+                                            <ArrowRight className="h-3.5 w-3.5" />
+                                        </PortalLink>
+                                    </div>
+
+                                    {facilities.length === 0 ? (
+                                        <div className="px-5 py-8 text-center text-xs text-zinc-500">No accessible facilities in this scope.</div>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full border-collapse text-left text-xs">
+                                                <thead>
+                                                    <tr className="border-b border-zinc-100 bg-zinc-50/60 text-[11px] font-semibold text-zinc-500">
+                                                        <th className="px-5 py-3">Facility</th>
+                                                        <th className="px-4 py-3">Tier</th>
+                                                        <th className="px-4 py-3 text-right">Custody</th>
+                                                        <th className="px-4 py-3 text-right">Exceptions</th>
+                                                        <th className="px-4 py-3 text-right">Fleet</th>
+                                                        <th className="px-5 py-3 text-right">Utilization</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-zinc-100">
+                                                    {facilities.map((facility) => (
+                                                        <tr key={facility.id} className="transition-colors hover:bg-zinc-50/60">
+                                                            <td className="px-5 py-3">
+                                                                <p className="font-semibold text-[#121316]">{facility.name}</p>
+                                                                <p className="text-[11px] font-medium text-zinc-400">
+                                                                    {facility.code} · {facility.city_municipality}
+                                                                </p>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <span className="inline-flex rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
+                                                                    {formatTier(facility.tier)}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right font-semibold tabular-nums text-[#121316]">
+                                                                {facility.parcels}
+                                                            </td>
+                                                            <td
+                                                                className={`px-4 py-3 text-right font-semibold tabular-nums ${
+                                                                    facility.exceptions > 0 ? 'text-red-700' : 'text-zinc-500'
+                                                                }`}
+                                                            >
+                                                                {facility.exceptions}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right tabular-nums text-zinc-600">{facility.active_fleet}</td>
+                                                            <td className="px-5 py-3 text-right">
+                                                                <span className="font-semibold tabular-nums text-[#121316]">
+                                                                    {facility.utilization_rate}%
+                                                                </span>
+                                                                <span className="ml-1 text-[11px] text-zinc-400">of {facility.capacity}</span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </section>
+                            )}
+                        </div>
+                    )}
 
                     {/* Right Column (5 cols): Attention Worklist + Recent Scan Activity */}
-                    <div className="space-y-5 xl:col-span-5">
-                        {/* Needs Attention Worklist */}
-                        <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                            <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                <div>
-                                    <h2 className="text-sm font-semibold text-[#121316]">Needs attention</h2>
-                                    <p className="text-xs text-zinc-500">Ready for the next handover &amp; open work</p>
-                                </div>
-                                <span className="rounded-md border border-rose-200/80 bg-rose-50/70 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-[#C20836]">
-                                    {activeAttention.reduce((acc, item) => acc + item.count, 0)} open
-                                </span>
-                            </div>
-
-                            {activeAttention.length === 0 ? (
-                                <div className="flex items-center justify-between gap-3 px-5 py-5">
-                                    <div className="flex items-center gap-3">
-                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600">
-                                            <CheckCircle2 className="h-4 w-4" />
-                                        </span>
+                    {(activeCategory === 'all' || activeCategory === 'urgent' || activeCategory === 'facilities') && (
+                        <div className="space-y-5 xl:col-span-5">
+                            {/* Needs Attention Worklist */}
+                            {(activeCategory === 'all' || activeCategory === 'urgent') && (
+                                <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
+                                    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                         <div>
-                                            <p className="text-xs font-semibold text-[#121316]">No urgent operational work</p>
-                                            <p className="text-xs text-zinc-500">No attention items are recorded in this view.</p>
+                                            <h2 className="text-sm font-semibold text-[#121316]">Needs attention</h2>
+                                            <p className="text-xs text-zinc-500">Ready for the next handover &amp; open work</p>
                                         </div>
+                                        <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-zinc-800">
+                                            {totalAttentionCount} open
+                                        </span>
                                     </div>
-                                    {scope.can_scan && (
-                                        <PortalLink href={route('hub.scan.station')} className={hubButton}>
-                                            Scan station
-                                        </PortalLink>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="divide-y divide-zinc-100">
-                                    {activeAttention.map((item) => (
-                                        <PortalLink
-                                            key={item.key}
-                                            href={item.href}
-                                            className="flex items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-zinc-50/80"
-                                        >
-                                            <div className="flex min-w-0 items-center gap-3">
-                                                <span
-                                                    className={`flex h-7 min-w-7 items-center justify-center rounded-md border px-1.5 text-xs font-bold tabular-nums ${toneClasses[item.tone]}`}
-                                                >
-                                                    {item.count}
+
+                                    {activeAttention.length === 0 ? (
+                                        <div className="flex items-center justify-between gap-3 px-5 py-5">
+                                            <div className="flex items-center gap-3">
+                                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600">
+                                                    <CheckCircle2 className="h-4 w-4" />
                                                 </span>
-                                                <span className="truncate text-xs font-medium text-zinc-800">{item.label}</span>
-                                            </div>
-                                            <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400" />
-                                        </PortalLink>
-                                    ))}
-                                </div>
-                            )}
-                        </section>
-
-                        {/* Recent Scan Activity */}
-                        <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                            <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                <div>
-                                    <h2 className="text-sm font-semibold text-[#121316]">Recent scan activity</h2>
-                                    <p className="text-xs text-zinc-500">Latest verified custody events</p>
-                                </div>
-                                <PortalLink
-                                    href={route(scope.can_scan ? 'hub.scan.station' : 'hub.deliveries')}
-                                    className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50/80 px-2.5 py-1 text-xs font-semibold text-[#C20836] hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] transition-all shadow-2xs"
-                                >
-                                    {scope.can_scan ? 'Open scanner' : 'View parcels'}
-                                </PortalLink>
-                            </div>
-
-                            {recentActivity.length === 0 ? (
-                                <div className="px-5 py-8 text-center text-xs text-zinc-500">No scans recorded in this scope.</div>
-                            ) : (
-                                <div className="divide-y divide-zinc-100">
-                                    {recentActivity.map((activity) => (
-                                        <div
-                                            key={activity.id}
-                                            className="flex items-center justify-between gap-3 px-5 py-3 text-xs transition-colors hover:bg-zinc-50/60"
-                                        >
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="inline-flex items-center rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-[#E00D42]">
-                                                        {activity.tracking_number}
-                                                    </span>
-                                                    <span className="truncate font-semibold text-[#121316]">
-                                                        {formatEvent(activity.event)}
-                                                    </span>
+                                                <div>
+                                                    <p className="text-xs font-semibold text-[#121316]">No urgent operational work</p>
+                                                    <p className="text-xs text-zinc-500">No attention items are recorded in this view.</p>
                                                 </div>
-                                                <p className="mt-1 truncate text-[11px] text-zinc-500">
-                                                    {activity.facility} · by {activity.operator}
-                                                </p>
                                             </div>
-                                            <div className="shrink-0 text-right">
-                                                <p className="font-medium text-zinc-700">{activity.relative_time}</p>
-                                                <p className="text-[10px] tabular-nums text-zinc-400">{activity.timestamp}</p>
-                                            </div>
+                                            {scope.can_scan && (
+                                                <PortalLink href={route('hub.scan.station')} className={hubButton}>
+                                                    Scan station
+                                                </PortalLink>
+                                            )}
                                         </div>
-                                    ))}
-                                </div>
+                                    ) : (
+                                        <div className="divide-y divide-zinc-100">
+                                            {activeAttention.map((item) => (
+                                                <PortalLink
+                                                    key={item.key}
+                                                    href={item.href}
+                                                    className="flex items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-zinc-50/80"
+                                                >
+                                                    <div className="flex min-w-0 items-center gap-3">
+                                                        <span
+                                                            className={`flex h-7 min-w-7 items-center justify-center rounded-md border px-1.5 text-xs font-bold tabular-nums ${toneClasses[item.tone]}`}
+                                                        >
+                                                            {item.count}
+                                                        </span>
+                                                        <span className="truncate text-xs font-medium text-zinc-800">{item.label}</span>
+                                                    </div>
+                                                    <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400" />
+                                                </PortalLink>
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
                             )}
-                        </section>
-                    </div>
+
+                            {/* Recent Scan Activity */}
+                            {(activeCategory === 'all' || activeCategory === 'facilities') && (
+                                <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
+                                    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                        <div>
+                                            <h2 className="text-sm font-semibold text-[#121316]">Recent scan activity</h2>
+                                            <p className="text-xs text-zinc-500">Latest verified custody events</p>
+                                        </div>
+                                        <PortalLink
+                                            href={route(scope.can_scan ? 'hub.scan.station' : 'hub.deliveries')}
+                                            className={hubButton}
+                                        >
+                                            {scope.can_scan ? 'Open scanner' : 'View parcels'}
+                                        </PortalLink>
+                                    </div>
+
+                                    {recentActivity.length === 0 ? (
+                                        <div className="px-5 py-8 text-center text-xs text-zinc-500">No scans recorded in this scope.</div>
+                                    ) : (
+                                        <div className="divide-y divide-zinc-100">
+                                            {recentActivity.map((activity) => (
+                                                <div
+                                                    key={activity.id}
+                                                    className="flex items-center justify-between gap-3 px-5 py-3 text-xs transition-colors hover:bg-zinc-50/60"
+                                                >
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-bold text-[#121316] tabular-nums">
+                                                                {activity.tracking_number}
+                                                            </span>
+                                                            <span className="truncate font-semibold text-[#121316]">
+                                                                {formatEvent(activity.event)}
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-1 truncate text-[11px] text-zinc-500">
+                                                            {activity.facility} · by {activity.operator}
+                                                        </p>
+                                                    </div>
+                                                    <div className="shrink-0 text-right">
+                                                        <p className="font-medium text-zinc-700">{activity.relative_time}</p>
+                                                        <p className="text-[10px] tabular-nums text-zinc-400">{activity.timestamp}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </DashboardLayout>

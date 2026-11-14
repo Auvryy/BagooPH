@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, type LucideIcon } from 'lucide-react';
 import PortalLink from '@/Components/PortalLink';
 
-type Item = { name: string; href: string; icon: LucideIcon; current: boolean };
+type Item = { name: string; href: string; icon: LucideIcon; current: boolean; badge?: string };
 const groups = [
     { title: 'Daily work', names: ['Overview', 'Scan Station', 'Parcels & Waybills', 'Counter Pickup'], defaultOpen: true },
     { title: 'Hub transfers', names: ['Mother Bags', 'Manifests', 'Delivery recovery', 'Parcel recovery', 'Buyer returns', 'Handover issues'], defaultOpen: false },
@@ -40,7 +40,7 @@ export default function SidebarNavigation({ items }: { items: Item[] }) {
                             aria-current={item.current ? 'page' : undefined}
                             className={`group flex min-h-10 items-center gap-2.5 rounded-xl px-3 py-2 text-xs transition ${
                                 item.current
-                                    ? 'bg-[#E00D42] text-white font-bold rounded-xl shadow-sm'
+                                    ? 'bg-[#22252E] text-white font-semibold border-l-2 border-[#E00D42] shadow-sm'
                                     : 'text-zinc-300 hover:text-white hover:bg-[#1E2027] rounded-xl font-medium'
                             }`}
                         >
@@ -54,6 +54,11 @@ export default function SidebarNavigation({ items }: { items: Item[] }) {
                                     ? 'Hub network'
                                     : item.name}
                             </span>
+                            {item.badge && (
+                                <span className="rounded-md bg-[#181A20] border border-[#2B2D37] px-1.5 py-0.5 text-[10px] font-semibold text-zinc-300">
+                                    {item.badge}
+                                </span>
+                            )}
                         </PortalLink>
                     ))}
                 </div>
