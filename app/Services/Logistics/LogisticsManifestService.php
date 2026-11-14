@@ -512,7 +512,8 @@ class LogisticsManifestService
                 case 'close-recovery':
                     $accountedLosses = app(ShipmentLossAccountingService::class)->members($manifest);
                     if ($action === 'close') {
-                        if ($accountedLosses->isEmpty() || $manifest->status !== 'dispatched') {
+                        $wholeTransportConfirmed = app(WholeTransportLossService::class)->manifestConfirmed($manifest);
+                        if (($accountedLosses->isEmpty() && ! $wholeTransportConfirmed) || $manifest->status !== 'dispatched') {
                             $this->requireStatus($manifest, 'received');
                         }
                     } else {

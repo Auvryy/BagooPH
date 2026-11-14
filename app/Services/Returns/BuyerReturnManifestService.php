@@ -26,6 +26,7 @@ use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsTripService;
 use App\Services\Logistics\WaybillScanInputService;
+use App\Services\Logistics\WholeTransportLossService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -286,7 +287,8 @@ class BuyerReturnManifestService
                     break;
                 case 'close':
                     $accountedLosses = app(ShipmentLossAccountingService::class)->members($manifest);
-                    if ($accountedLosses->isEmpty() || $manifest->status !== 'dispatched') {
+                    $wholeTransportConfirmed = app(WholeTransportLossService::class)->manifestConfirmed($manifest);
+                    if (($accountedLosses->isEmpty() && ! $wholeTransportConfirmed) || $manifest->status !== 'dispatched') {
                         $this->status($manifest, 'received');
                     }
                     if ((! $member?->received_at && ! $accountedLosses->has($member?->id)) || $this->manifests->openDiscrepancies($manifest)->isNotEmpty()) {

@@ -21,6 +21,7 @@ use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsTripService;
 use App\Services\Logistics\ParcelRecoveryService;
 use App\Services\Logistics\TransportArrivalService;
+use App\Services\Logistics\WholeTransportLossService;
 use App\Services\Returns\BuyerReturnBagService;
 use App\Services\Returns\BuyerReturnRecoveryService;
 use DomainException;
@@ -32,6 +33,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class LogisticsManifestController extends Controller
 {
@@ -112,6 +114,7 @@ class LogisticsManifestController extends Controller
                 ->whereIn('id', $discrepancies->pluck('id'))->pluck('id')->all();
             $detail = $this->summary($selected) + [
                 'transportArrival' => app(TransportArrivalService::class)->presentation($actor, $selected),
+                'wholeTransportLoss' => app(WholeTransportLossService::class)->presentation($actor, $selected, $request->is('hub/*') ? '/hub/manifests' : '/manifests'),
                 'motherBags' => MotherBag::where('manifest_id', $selected->id)->orderBy('created_at')
                     ->get(['id', 'reference', 'seal_number', 'status']),
                 'cargoCapacity' => app(CargoHandlingService::class)->available() ? app(CargoHandlingService::class)->manifestCapacity($selected) : null,
@@ -219,6 +222,24 @@ class LogisticsManifestController extends Controller
 
         return $request->expectsJson() ? response()->json(['event_reference' => $event->reference])
             : back()->with('success', 'Original vehicle arrival recorded. Parcel and sack receipts remain separate.');
+    }
+
+    public function wholeTransportLoss(Request $request, LogisticsManifest $manifest, WholeTransportLossService $losses): JsonResponse|RedirectResponse
+    {
+        try {
+            $confirmation = $losses->confirm($request->user(), $manifest, $request->except(['_token', 'proof']), $request->file('proof'));
+        } catch (DomainException $error) {
+            return $this->conflict($request, $error);
+        }
+
+        return $request->expectsJson()
+            ? response()->json(['confirmation_reference' => $confirmation->reference, 'scope_kind' => $confirmation->scope_kind])
+            : back()->with('success', 'Whole-transport loss accountability confirmed. Unarrived sacks are locked as lost without fake receipts.');
+    }
+
+    public function wholeTransportLossProof(Request $request, LogisticsManifest $manifest, WholeTransportLossService $losses): BinaryFileResponse
+    {
+        return $losses->proofResponse($request->user(), $manifest);
     }
 
     public function tripCommand(Request $request, LogisticsTransportTrip $trip, string $action, LogisticsTripService $trips): JsonResponse|RedirectResponse

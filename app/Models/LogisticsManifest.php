@@ -22,13 +22,25 @@ class LogisticsManifest extends Model
     public function scopeAwaitingPhysicalReceipt(Builder $query): Builder
     {
         return $query->where(function (Builder $query) {
+            $hasWholeTransportBags = Schema::hasTable('whole_transport_loss_bags');
             $query->where('logistics_manifests.status', 'dispatched');
             $query->orWhereExists(fn ($held) => $held->selectRaw('1')->from('mother_bags as original_bag')
                 ->whereColumn('original_bag.manifest_id', 'logistics_manifests.id')->whereNotNull('original_bag.dispatched_at')
-                ->whereNotIn('original_bag.status', ['received', 'emptied_at_source']));
+                ->whereNotIn('original_bag.status', ['received', 'emptied_at_source'])
+                ->when($hasWholeTransportBags, fn ($q) => $q->whereNotExists(fn ($wtl) => $wtl->selectRaw('1')
+                    ->from('whole_transport_loss_bags as wtl_bag')
+                    ->whereColumn('wtl_bag.mother_bag_id', 'original_bag.id')
+                    ->where('original_bag.status', 'lost')
+                    ->whereNull('original_bag.opened_at'))));
             if (Schema::hasTable('shipment_loss_accounting_manifests')) {
                 $query->orWhere(fn ($held) => $held->whereExists(fn ($loss) => $loss->selectRaw('1')->from('shipment_loss_accounting_manifests as loss_transport')
                     ->whereColumn('loss_transport.manifest_id', 'logistics_manifests.id')->whereIn('loss_transport.relation_kind', ['source', 'original']))
+                    ->when(Schema::hasTable('whole_transport_loss_manifests') && Schema::hasTable('whole_transport_loss_confirmations'),
+                        fn ($q) => $q->whereNotExists(fn ($wtl) => $wtl->selectRaw('1')
+                            ->from('whole_transport_loss_manifests as wtl_manifest')
+                            ->join('whole_transport_loss_confirmations as wtl_confirm', 'wtl_confirm.id', '=', 'wtl_manifest.whole_transport_loss_confirmation_id')
+                            ->whereColumn('wtl_manifest.manifest_id', 'logistics_manifests.id')
+                            ->where('wtl_confirm.scope_kind', 'whole_transport')))
                     ->whereNotExists(fn ($bag) => $bag->selectRaw('1')->from('mother_bags as arrived_loss_bag')
                         ->whereColumn('arrived_loss_bag.manifest_id', 'logistics_manifests.id')->whereNotNull('arrived_loss_bag.opened_at'))
                     ->whereNotExists(fn ($bag) => $bag->selectRaw('1')->from('mother_bag_return_parcels as arrived_loss_return_member')
@@ -47,7 +59,12 @@ class LogisticsManifest extends Model
                     ->join('logistics_transport_trips as t', 't.id', '=', 'tm.trip_id')
                     ->join('mother_bags as s', 's.return_trip_id', '=', 't.id')
                     ->whereColumn('tm.manifest_id', 'logistics_manifests.id')->where('t.status', 'dispatched')
-                    ->whereNotIn('s.status', ['received', 'emptied_at_source']));
+                    ->whereNotIn('s.status', ['received', 'emptied_at_source'])
+                    ->when($hasWholeTransportBags, fn ($q) => $q->whereNotExists(fn ($wtl) => $wtl->selectRaw('1')
+                        ->from('whole_transport_loss_bags as wtl_return_bag')
+                        ->whereColumn('wtl_return_bag.mother_bag_id', 's.id')
+                        ->where('s.status', 'lost')
+                        ->whereNull('s.opened_at'))));
             }
         });
     }

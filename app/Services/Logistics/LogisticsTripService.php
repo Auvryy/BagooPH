@@ -117,11 +117,16 @@ class LogisticsTripService
             } elseif ($action === 'close') {
                 app(BuyerReturnBagService::class)->assertClose($trip);
                 foreach ($manifests as $manifest) {
+                    $wholeTransportLosses = app(WholeTransportLossService::class);
                     $this->requireState(! MotherBag::where('manifest_id', $manifest->id)->whereNotNull('dispatched_at')
-                        ->whereNotIn('status', ['received', 'emptied_at_source'])->exists(),
+                        ->whereNotIn('status', ['received', 'emptied_at_source', 'lost'])->exists(),
                         'Record the actual arrival and member accountability of each original bag before closing the trip.');
+                    foreach (MotherBag::where('manifest_id', $manifest->id)->whereNotNull('dispatched_at')->where('status', 'lost')->get() as $lostBag) {
+                        $this->requireState($wholeTransportLosses->bagConfirmed($lostBag),
+                            'Record verified independent whole-transport or unarrived-bag loss accountability before closing the trip.');
+                    }
                     $this->requireState(! LogisticsManifest::awaitingPhysicalReceipt()->whereKey($manifest->id)->exists(),
-                        'Account for the actual vehicle arrival separately; a confirmed parcel loss is not a transport receipt.');
+                        'Account for the actual vehicle arrival or independent whole-transport loss separately; a confirmed parcel loss is not a transport receipt.');
                     $this->requireState(in_array($manifest->status, ['received', 'closed'], true)
                         && app(LogisticsManifestService::class)->receiptCounts($manifest)['outstanding'] === 0
                         && app(LogisticsManifestService::class)->openDiscrepancies($manifest)->isEmpty(),

@@ -21,6 +21,7 @@ use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsTripService;
 use App\Services\Logistics\MotherBagService;
 use App\Services\Logistics\WaybillScanInputService;
+use App\Services\Logistics\WholeTransportLossService;
 use Closure;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -264,8 +265,13 @@ class BuyerReturnBagService
     public function assertClose(LogisticsTransportTrip $trip): void
     {
         if ($this->available()) {
-            $this->requireState(! MotherBag::where('return_trip_id', $trip->id)->whereNotIn('status', ['received', 'emptied_at_source'])->exists(),
+            $this->requireState(! MotherBag::where('return_trip_id', $trip->id)->whereNotIn('status', ['received', 'emptied_at_source', 'lost'])->exists(),
                 'Verify the actual arriving return sacks before closing this trip. Recovered parcels do not prove their original outer sack arrived.');
+            $wholeTransportLosses = app(WholeTransportLossService::class);
+            foreach (MotherBag::where('return_trip_id', $trip->id)->where('status', 'lost')->get() as $lostSack) {
+                $this->requireState($wholeTransportLosses->bagConfirmed($lostSack),
+                    'Verify independent unarrived-sack loss accountability before closing this trip.');
+            }
         }
     }
 

@@ -25,7 +25,8 @@ class TransportArrivalService
             'can_record' => ! $event && $manifest->dispatched_at && in_array($manifest->status, ['dispatched', 'received', 'closed'], true)
                 && $actor->isLogistics() && $actor->canAccessPortal() && $actor->id !== $manifest->driver_id
                 && app(LogisticsEligibilityService::class)->canScan($actor, $manifest->destinationHub)
-                && app(ShipmentLossAccountingService::class)->members($manifest)->isNotEmpty()];
+                && app(ShipmentLossAccountingService::class)->members($manifest)->isNotEmpty()
+                && ! app(WholeTransportLossService::class)->hasWholeTransportLoss($manifest)];
     }
 
     public function record(User $original, LogisticsManifest $snapshot, array $input): LogisticsManifestEvent
@@ -87,8 +88,9 @@ class TransportArrivalService
                 }
                 abort_unless($related->dispatched_at && in_array($related->status, ['dispatched', 'received', 'closed'], true)
                     && ! $related->events()->where('event_type', 'transport-arrived')->exists()
+                    && ! app(WholeTransportLossService::class)->hasWholeTransportLoss($related)
                     && ! $related->events()->where('request_token', $data['request_token'])->exists(), 409,
-                    'This original transport already has an arrival or its retained departure changed.');
+                    'This original transport already has an arrival or whole-transport loss, or its retained departure changed.');
                 $event = LogisticsManifestEvent::create(['manifest_id' => $related->id, 'actor_id' => $actor->id,
                     'hub_id' => $related->destination_hub_id, 'event_type' => 'transport-arrived', 'barcode_scanned' => null,
                     'manifest_parcel_id' => null, 'reason' => $data['reason'], 'source_state' => $related->state(), 'target_state' => $related->state(),
