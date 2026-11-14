@@ -9,6 +9,7 @@ use App\Models\ShipmentFinancialEvent;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Models\WalletRefundCreditRequest;
+use App\Models\WalletRefundReserveEntry;
 use App\Models\WalletTransaction;
 use App\Services\Finance\SellerSettlementService;
 use App\Services\Finance\ShipmentLossAccountingService;
@@ -21,6 +22,7 @@ use App\Services\Wallet\WalletLossCreditService;
 use App\Services\Wallet\WalletLossReserve;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -79,6 +81,13 @@ class ShipmentLossGrantReturnTest extends TestCase
             'source_event_id' => $plan->events()->where('event_type', 'loss-credit-approved')->where('context->funding_credit_request_id', $grant->id)->sole()->id,
             'reason' => 'I return only this original reviewed grant’s actual unused credits to its demonstration issuance source while the found parcel remains held.',
             'unused_credit_return_confirmed' => true];
+    }
+
+    private function sourceReturnInput(ShipmentFinancialPlan $plan, ShipmentFinancialEvent $source): array
+    {
+        return ['action' => 'return-company-source', 'expected_version' => (int) $plan->events()->max('sequence'), 'request_token' => (string) Str::uuid(),
+            'source_event_id' => $source->id, 'reason' => 'Return my actual unused original reserve contribution while retaining its original reviewed grant restrictions.',
+            'company_source_return_confirmed' => true];
     }
 
     public function test_the_original_owner_can_return_unused_reviewed_credits_after_a_real_finding_without_clearing_liability_or_releasing_property(): void
@@ -261,5 +270,218 @@ class ShipmentLossGrantReturnTest extends TestCase
         $this->assertSame(0, $plan->events()->where('event_type', 'loss-return-unused-credit')->count());
         $this->postJson('/shipment-finances/'.$plan->id.'/actions', $input)->assertOk();
         $this->assertSame(1, WalletTransaction::where('kind', 'demo_loss_credit_return')->count());
+    }
+
+    public function test_an_actual_unused_company_contribution_returns_to_its_owner_and_restores_its_original_grant_before_returning_issuance(): void
+    {
+        [$plan, $admin, $order, $owner] = $this->plan();
+        $grant = $this->grant($owner, $admin, $plan);
+        $this->contribute($owner, $plan, 15000);
+        $source = $plan->events()->where('event_type', 'loss-contribute-company')->sole();
+        $this->assertSame(3833, app(WalletFundingCredits::class)->grantBalances($owner)[$grant->id]);
+        $this->quarantineMissing($plan);
+        $input = $this->sourceReturnInput($plan, $source);
+        $before = [$order->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes()];
+        $this->actingAs($owner)->get('/shipment-finances/'.$plan->id, $this->inertia())->assertOk()
+            ->assertJsonPath('props.loss.controls.actions.1.id', 'return-company-source')
+            ->assertJsonPath('props.loss.controls.actions.1.sources.0.amount_cents', 15000);
+        $this->actingAs($owner)->postJson('/shipment-finances/'.$plan->id.'/actions', $input)->assertOk()
+            ->assertJsonPath('event.event_type', 'loss-return-company-source')->assertJsonPath('event.amount_cents', 15000);
+        $this->postJson('/shipment-finances/'.$plan->id.'/actions', $input)->assertOk();
+        $credits = app(WalletFundingCredits::class);
+        $this->assertSame(18833, $credits->grantBalances($owner)[$grant->id]);
+        $this->assertSame(0, $credits->available($owner, 'another-original-authority'));
+        $state = app(WalletLossReserve::class)->summary($plan);
+        $this->assertSame(0, $state['company_received_cents']);
+        $this->assertSame(18833, $state['company_remaining_cents']);
+        $this->assertSame(0, $state['balance_cents']);
+        $this->assertSame(1, WalletRefundReserveEntry::where('source_kind', 'company_source_return')->count());
+        $this->assertSame($before, [$order->fresh()->getAttributes(), $order->delivery->fresh()->getAttributes()]);
+        $this->postJson('/shipment-finances/'.$plan->id.'/actions', $this->payload($plan, $grant))->assertOk()->assertJsonPath('event.amount_cents', 18833);
+        $this->assertSame(0, app(WalletLedger::class)->balance($owner));
+    }
+
+    public function test_returning_contributions_in_reverse_order_restores_the_exact_grants_they_actually_consumed(): void
+    {
+        [$plan, $admin, , $owner] = $this->plan();
+        $first = $this->grant($owner, $admin, $plan, 10000);
+        $this->contribute($owner, $plan, 5000);
+        $firstSource = $plan->events()->where('event_type', 'loss-contribute-company')->sole();
+        $second = $this->grant($owner, $admin, $plan, 8833);
+        $this->contribute($owner, $plan, 10000);
+        $secondSource = $plan->events()->where('event_type', 'loss-contribute-company')->where('amount_cents', 10000)->sole();
+        $this->quarantineMissing($plan);
+        $url = '/shipment-finances/'.$plan->id.'/actions';
+        $credits = app(WalletFundingCredits::class);
+        $this->actingAs($owner)->postJson($url, $this->payload($plan, $second))->assertOk()->assertJsonPath('event.amount_cents', 3833);
+        $this->postJson($url, $this->sourceReturnInput($plan, $secondSource))->assertOk();
+        $this->assertSame([$first->id => 5000, $second->id => 5000], $credits->grantBalances($owner));
+        $this->postJson($url, $this->payload($plan, $first))->assertOk()->assertJsonPath('event.amount_cents', 5000);
+        $this->postJson($url, $this->sourceReturnInput($plan, $firstSource))->assertOk();
+        $this->assertSame([$first->id => 5000, $second->id => 5000], $credits->grantBalances($owner));
+        $this->assertSame(0, $credits->available($owner, 'a-different-original-authority'));
+        $this->postJson($url, $this->payload($plan, $first))->assertOk()->assertJsonPath('event.amount_cents', 5000);
+        $this->postJson($url, $this->payload($plan, $second))->assertOk()->assertJsonPath('event.amount_cents', 5000);
+        $this->assertSame(0, app(WalletLedger::class)->balance($owner));
+        $this->assertSame(0, app(WalletLossReserve::class)->summary($plan)['balance_cents']);
+        $this->assertSame(2, WalletRefundReserveEntry::where('source_kind', 'company_source_return')->count());
+    }
+
+    public function test_restoring_owned_credits_contributed_before_any_grant_keeps_them_unrestricted_without_consuming_later_or_other_case_grants(): void
+    {
+        [$plan, $admin, , $owner] = $this->plan();
+        $ledger = app(WalletLedger::class);
+        DB::transaction(fn () => $ledger->post('isolated-original-unrestricted-source', 'demo_credit', 10000,
+            [$ledger->user($owner)->id => 10000, $ledger->platform('demo_issuance')->id => -10000], $admin,
+            'Isolated actual balanced preexisting unrestricted credits, before any reviewed liability grant.'));
+        $this->contribute($owner, $plan, 10000);
+        $source = $plan->events()->where('event_type', 'loss-contribute-company')->sole();
+        [$other] = $this->plan();
+        $otherGrant = $this->grant($owner, $admin, $other);
+        $this->quarantineMissing($plan);
+        $input = $this->sourceReturnInput($plan, $source);
+        $this->actingAs($owner)->postJson('/shipment-finances/'.$plan->id.'/actions', $input)->assertOk();
+        $credits = app(WalletFundingCredits::class);
+        $this->assertSame([$otherGrant->id => 18833], $credits->grantBalances($owner));
+        $this->assertSame(10000, $credits->available($owner, $plan->reference));
+        $this->assertSame(28833, $credits->available($owner, $other->reference));
+        $this->contribute($owner, $other, 18833);
+        $this->assertSame(10000, $ledger->balance($owner));
+    }
+
+    public function test_a_company_source_return_does_not_restore_original_escrow_or_undo_an_actual_advance_retirement(): void
+    {
+        [$plan, $admin, , $owner] = $this->plan();
+        $this->grant($owner, $admin, $plan);
+        foreach (['reserve-original' => 'original_reserve_confirmed', 'approve-advance' => 'demo_advance_confirmed'] as $action => $field) {
+            app(ShipmentLossWallet::class)->command($admin, $plan, $action, ['expected_version' => (int) $plan->events()->max('sequence'),
+                'request_token' => (string) Str::uuid(), 'reason' => 'Retain actual original escrow and a separately approved demonstration advance without paying compensation yet.',
+                $field => true, ...$action === 'approve-advance' ? ['amount' => '188.33'] : []]);
+        }
+        $this->contribute($owner, $plan, 15000);
+        $source = $plan->events()->where('event_type', 'loss-contribute-company')->sole();
+        $this->quarantineMissing($plan);
+        $before = app(WalletLossReserve::class)->summary($plan);
+        $this->assertSame(15000, $before['advance_retired_cents']);
+        $this->actingAs($owner)->postJson('/shipment-finances/'.$plan->id.'/actions', $this->sourceReturnInput($plan, $source))->assertOk();
+        $after = app(WalletLossReserve::class)->summary($plan);
+        foreach (['original_reserved_cents', 'advance_cents', 'advance_retired_cents', 'advance_outstanding_cents', 'resolved'] as $key) {
+            $this->assertSame($before[$key], $after[$key]);
+        }
+        $this->assertSame(28833, $after['balance_cents']);
+        $this->assertSame(18833, $after['company_remaining_cents']);
+        $this->assertSame(0, WalletTransaction::where('kind', 'wallet_loss_refund')->count());
+    }
+
+    public function test_actual_paid_compensation_cannot_be_reversed_as_if_the_original_company_contribution_were_unused(): void
+    {
+        [$plan, $admin, $order, $owner] = $this->plan();
+        $this->grant($owner, $admin, $plan);
+        $this->contribute($owner, $plan, 18833);
+        $source = $plan->events()->where('event_type', 'loss-contribute-company')->sole();
+        foreach (['reserve-original' => 'original_reserve_confirmed', 'resolve-wallet' => 'loss_settlement_confirmed'] as $action => $field) {
+            app(ShipmentLossWallet::class)->command($admin, $plan, $action, ['expected_version' => (int) $plan->events()->max('sequence'),
+                'request_token' => (string) Str::uuid(), 'reason' => 'Use the actual original payment and company funding for the independently approved original buyer and seller.', $field => true]);
+        }
+        $this->quarantineMissing($plan);
+        $ledger = app(WalletLedger::class);
+        $before = [$ledger->balance($owner), $ledger->balance($order->buyer), $ledger->balance($order->shop->user), app(WalletLossReserve::class)->summary($plan), WalletTransaction::count()];
+        $this->actingAs($owner)->postJson('/shipment-finances/'.$plan->id.'/actions', $this->sourceReturnInput($plan, $source))->assertConflict();
+        $this->assertSame($before, [$ledger->balance($owner), $ledger->balance($order->buyer), $ledger->balance($order->shop->user), app(WalletLossReserve::class)->summary($plan), WalletTransaction::count()]);
+        $this->assertSame(0, WalletRefundReserveEntry::where('source_kind', 'company_source_return')->count());
+        $this->get('/shipment-finances/'.$plan->id, $this->inertia())->assertOk()->assertJsonPath('props.loss.controls.actions', []);
+    }
+
+    public function test_source_returns_require_current_original_owner_evidence_and_consent_and_cannot_be_repeated_with_a_new_identity(): void
+    {
+        [$plan, $admin, $order, $owner] = $this->plan();
+        $this->grant($owner, $admin, $plan);
+        $this->contribute($owner, $plan, 15000);
+        $source = $plan->events()->where('event_type', 'loss-contribute-company')->sole();
+        $url = '/shipment-finances/'.$plan->id.'/actions';
+        $this->actingAs($owner)->postJson($url, $this->sourceReturnInput($plan, $source))->assertConflict();
+        [$other] = $this->plan();
+        $this->grant($owner, $admin, $other);
+        $this->contribute($owner, $other, 18833);
+        $otherSource = $other->events()->where('event_type', 'loss-contribute-company')->sole();
+        $otherReserve = app(WalletLossReserve::class)->summary($other);
+        $finding = $this->quarantineMissing($plan);
+        $input = $this->sourceReturnInput($plan, $source);
+        foreach ([$admin, $order->buyer, $order->shop->user] as $wrong) {
+            $this->actingAs($wrong)->postJson($url, $input)->assertForbidden();
+        }
+        $this->actingAs($owner);
+        foreach ([['company_source_return_confirmed' => false], ['amount' => '1.00'], ['recipient_id' => $admin->id],
+            ['reason' => 'short'], ['reason' => str_repeat('x', 1001)]] as $invalid) {
+            $this->postJson($url, [...$input, ...$invalid])->assertUnprocessable();
+        }
+        $this->postJson($url, [...$input, 'expected_version' => 1])->assertConflict();
+        $grantEvent = $plan->events()->where('event_type', 'loss-credit-approved')->sole();
+        $this->postJson($url, [...$input, 'source_event_id' => $grantEvent->id])->assertConflict();
+        $this->postJson($url, [...$input, 'source_event_id' => $otherSource->id])->assertConflict();
+        $photo = Storage::disk('local')->get($finding->proof_path);
+        Storage::disk('local')->delete($finding->proof_path);
+        $this->postJson($url, $input)->assertConflict();
+        Storage::disk('local')->put($finding->proof_path, $photo);
+        $owner->update(['status' => 'suspended']);
+        $this->postJson($url, $input)->assertOk();
+        $this->postJson($url, $this->sourceReturnInput($plan, $source))->assertConflict();
+        Storage::disk('local')->delete($finding->proof_path);
+        $this->postJson($url, $input)->assertOk();
+        $this->assertSame(18833, app(WalletFundingCredits::class)->available($owner, $plan->reference));
+        $this->assertSame(0, app(WalletFundingCredits::class)->available($owner, 'another-authority'));
+        $this->assertSame($otherReserve, app(WalletLossReserve::class)->summary($other));
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_loss_company_source_return')->count());
+    }
+
+    public function test_a_partial_buyer_return_restores_only_its_typed_company_source_without_changing_the_completed_purchase_or_quarantine(): void
+    {
+        [$plan, $admin, $order, $owner, $case] = $this->plan(true);
+        $due = app(WalletLossReserve::class)->summary($plan)['company_remaining_cents'];
+        $grant = $this->grant($owner, $admin, $plan, $due);
+        $this->contribute($owner, $plan, $due);
+        $source = $plan->events()->where('event_type', 'loss-contribute-company')->sole();
+        $this->quarantineMissing($plan);
+        $before = [$order->fresh()->getAttributes(), $case->parcel->fresh()->state()];
+        $this->actingAs($owner)->postJson('/shipment-finances/'.$plan->id.'/actions', $this->sourceReturnInput($plan, $source))->assertOk();
+        $this->assertSame($before, [$order->fresh()->getAttributes(), $case->parcel->fresh()->state()]);
+        $this->assertSame($due, app(WalletFundingCredits::class)->grantBalances($owner)[$grant->id]);
+        $this->assertSame(0, app(WalletLossReserve::class)->summary($plan)['balance_cents']);
+    }
+
+    public function test_source_return_reserve_and_financial_failures_rollback_actual_money_and_grant_restoration_before_the_same_retry(): void
+    {
+        [$plan, $admin, , $owner] = $this->plan();
+        $grant = $this->grant($owner, $admin, $plan);
+        $this->contribute($owner, $plan, 15000);
+        $source = $plan->events()->where('event_type', 'loss-contribute-company')->sole();
+        $this->quarantineMissing($plan);
+        $input = $this->sourceReturnInput($plan, $source);
+        $state = fn () => [WalletTransaction::count(), WalletRefundReserveEntry::count(), (int) $plan->events()->max('sequence'),
+            app(WalletLedger::class)->balance($owner), app(WalletFundingCredits::class)->grantBalances($owner)];
+        $before = $state();
+        $failedReserve = false;
+        Event::listen('eloquent.creating: '.WalletRefundReserveEntry::class, static function ($entry) use (&$failedReserve) {
+            if ($entry->source_kind === 'company_source_return' && ! $failedReserve) {
+                $failedReserve = true;
+                throw new \RuntimeException('Injected actual source-return reserve failure after its journal.');
+            }
+        });
+        $url = '/shipment-finances/'.$plan->id.'/actions';
+        $this->actingAs($owner)->postJson($url, $input)->assertServerError();
+        $this->assertSame($before, $state());
+        $failedEvent = false;
+        Event::listen('eloquent.creating: '.ShipmentFinancialEvent::class, static function ($event) use (&$failedEvent) {
+            if ($event->event_type === 'loss-return-company-source' && ! $failedEvent) {
+                $failedEvent = true;
+                $event->context = [...$event->context, 'wallet_reference' => 'NOT-THE-ACTUAL-SOURCE-RETURN'];
+            }
+        });
+        $this->postJson($url, $input)->assertConflict();
+        $this->assertSame($before, $state());
+        $this->postJson($url, $input)->assertOk();
+        $this->postJson($url, $input)->assertOk();
+        $this->assertSame(18833, app(WalletFundingCredits::class)->grantBalances($owner)[$grant->id]);
+        $this->assertSame(1, WalletTransaction::where('kind', 'wallet_loss_company_source_return')->count());
     }
 }

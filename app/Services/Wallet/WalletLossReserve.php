@@ -24,7 +24,7 @@ class WalletLossReserve
     public function summary(ShipmentFinancialPlan $plan): array
     {
         $entries = $this->entries($plan)->get();
-        $own = (int) $entries->where('source_kind', 'liable_company')->sum('delta_cents');
+        $own = (int) $entries->whereIn('source_kind', ['liable_company', 'company_source_return'])->sum('delta_cents');
         $advance = (int) $entries->where('source_kind', 'advance')->sum('delta_cents');
         $retired = -(int) $entries->where('source_kind', 'advance_retirement')->sum('delta_cents');
 

@@ -14,6 +14,7 @@ use App\Services\Wallet\WalletFundingCredits;
 use App\Services\Wallet\WalletLedger;
 use App\Services\Wallet\WalletLossCreditService;
 use App\Services\Wallet\WalletLossGrantReturn;
+use App\Services\Wallet\WalletLossSourceReturn;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -68,6 +69,9 @@ class ShipmentLossControls
                     $sources = app(WalletLossGrantReturn::class)->sources($actor, $plan);
                     if ($sources) {
                         $add('return-unused-credit', null, $sources);
+                    }
+                    if (! $state['resolved'] && ($sources = app(WalletLossSourceReturn::class)->sources($actor, $plan))) {
+                        $add('return-company-source', null, $sources);
                     }
                 } catch (HttpExceptionInterface $error) {
                     if ($error->getStatusCode() !== 409) {

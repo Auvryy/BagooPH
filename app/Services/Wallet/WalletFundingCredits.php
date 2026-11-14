@@ -36,6 +36,7 @@ class WalletFundingCredits
             return ['balance' => $balance, 'unspent' => [], 'remaining' => []];
         }
         $grants = WalletRefundCreditRequest::where('actor_id', $owner->id)->where('status', 'approved')->orderBy('id')->get()->keyBy('id');
+        $restored = app(WalletLossSourceReturn::class)->movements($owner);
         if ($grants->isEmpty()) {
             return ['balance' => $balance, 'unspent' => [], 'remaining' => []];
         }
@@ -57,7 +58,8 @@ class WalletFundingCredits
                 'type' => 'issue', 'grant_id' => $grant->id, 'amount' => $grant->amount_cents];
         }
         $contributions = WalletRefundReserveEntry::where('source_user_id', $owner->id)->whereIn('source_kind', ['liable_company', 'liable_seller'])
-            ->where('delta_cents', '>', 0)->whereIn('authority_reference', $grants->pluck('authority_reference'))->get();
+            ->where('delta_cents', '>', 0)->where(fn ($query) => $query->whereIn('authority_reference', $grants->pluck('authority_reference'))
+            ->orWhereIn('wallet_transaction_id', array_column($restored, 'source_id')))->get();
         foreach ($contributions as $entry) {
             $transaction = WalletTransaction::find($entry->wallet_transaction_id);
             $loss = $entry->shipment_financial_plan_id !== null;
@@ -70,10 +72,12 @@ class WalletFundingCredits
             $this->journal($transaction, $owner, -$entry->delta_cents, 'return_reserve');
             $movements[] = ['id' => $transaction->id, 'authority' => $entry->authority_reference, 'type' => 'contribute', 'amount' => $entry->delta_cents];
         }
-        $movements = [...$movements, ...$this->returnedGrants($owner, $grants)];
+        $movements = [...$movements, ...$this->returnedGrants($owner, $grants), ...$restored];
         usort($movements, fn ($left, $right) => $left['id'] <=> $right['id']);
         $remaining = [];
         $issued = [];
+        $consumed = [];
+        $returnedSources = [];
         foreach ($movements as $movement) {
             if ($movement['type'] === 'issue') {
                 $remaining[$movement['grant_id']] = $movement['amount'];
@@ -82,7 +86,15 @@ class WalletFundingCredits
                 abort_unless(($remaining[$movement['grant_id']] ?? 0) >= $movement['amount'], 409,
                     'A return cannot consume another grant or credits that were already contributed.');
                 $remaining[$movement['grant_id']] -= $movement['amount'];
+            } elseif ($movement['type'] === 'restore') {
+                abort_unless(isset($consumed[$movement['source_id']]) && ! isset($returnedSources[$movement['source_id']]), 409,
+                    'Restore only the exact original contribution once, preserving its actual grant allocation.');
+                foreach ($consumed[$movement['source_id']] as $grantId => $amount) {
+                    $remaining[$grantId] += $amount;
+                }
+                $returnedSources[$movement['source_id']] = true;
             } else {
+                $consumed[$movement['id']] = [];
                 $left = $movement['amount'];
                 foreach ($issued as $grantId) {
                     $grant = $grants->get($grantId);
@@ -91,6 +103,9 @@ class WalletFundingCredits
                     }
                     $used = min($left, $remaining[$grant->id] ?? 0);
                     $remaining[$grant->id] = ($remaining[$grant->id] ?? 0) - $used;
+                    if ($used > 0) {
+                        $consumed[$movement['id']][$grant->id] = $used;
+                    }
                     $left -= $used;
                     if ($left === 0) {
                         break;

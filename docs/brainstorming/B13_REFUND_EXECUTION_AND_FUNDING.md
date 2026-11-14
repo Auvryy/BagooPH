@@ -165,6 +165,17 @@ liability or an advance, and does not reverse paid compensation or authorize
 physical release. Restoring contributed reserve sources and independently
 reconciling the complete found outcome remain separate requirements.
 
+Before any Wallet loss compensation has been paid, the original company
+owner may restore its entire actual unused contribution from the original
+reserve to its own Wallet after an evidenced finding. Retain the exact
+original contribution and one balanced source return. Restored credits
+recover only the original grants that contribution actually consumed;
+preexisting unrestricted credits remain unrestricted. Net received company
+funding decreases, so this does not forgive liability. Original escrow,
+actual advance retirement and paid compensation cannot be reversed through
+this owner action. A returned contribution and a subsequent voluntary return
+of unused reviewed issuance are separate retained money movements.
+
 After physical pickup, a buyer's refusal of a conforming shipment keeps
 outbound shipping spent. An evidenced approved reverse fee belongs to the
 buyer only when actual return transport supports it. A prepaid merchandise

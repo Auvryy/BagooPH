@@ -6,6 +6,7 @@ use App\Models\ShipmentFinancialEvent;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Services\Wallet\WalletLossGrantReturn;
+use App\Services\Wallet\WalletLossSourceReturn;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 
@@ -34,7 +35,8 @@ class ShipmentLossActions
         $wallet = $mode === 'wallet' && isset(self::WALLET[$action]);
         $cash = $mode === 'cod' && isset(self::CASH[$action]);
         $grantReturn = $mode === 'wallet' && $action === 'return-unused-credit';
-        abort_unless($wallet || $cash || $grantReturn || in_array($action, ['void-unfunded', 'record-disposition', 'account-loss'], true), 404);
+        $sourceReturn = $mode === 'wallet' && $action === 'return-company-source';
+        abort_unless($wallet || $cash || $grantReturn || $sourceReturn || in_array($action, ['void-unfunded', 'record-disposition', 'account-loss'], true), 404);
         $offer = $cash && in_array($action, ['offer-company', 'offer-advance'], true);
         $source = $cash && (str_starts_with($action, 'receive-') || str_contains($action, '-receipt')
             || str_contains($action, '-nonreceipt') || $action === 'retire-advance');
@@ -44,6 +46,7 @@ class ShipmentLossActions
             'void-unfunded' => 'unfunded_void_confirmed', 'record-disposition' => 'disposition_confirmed',
             'account-loss' => 'loss_accounting_confirmed',
             'return-unused-credit' => 'unused_credit_return_confirmed',
+            'return-company-source' => 'company_source_return_confirmed',
             'assess-zero-buyer' => 'zero_refund_confirmed', 'resolve-cash' => 'financial_resolution_confirmed',
             default => $proof ? 'payment_confirmed' : 'action_confirmed',
         };
@@ -51,11 +54,12 @@ class ShipmentLossActions
         return ['id' => $action, 'label' => $wallet ? self::WALLET[$action][0] : (self::CASH[$action] ?? match ($action) {
             'void-unfunded' => 'Void an entirely unfunded review', 'account-loss' => 'Account for the confirmed lost parcel',
             'return-unused-credit' => 'Return my unused reviewed credits',
+            'return-company-source' => 'Restore my unused reserve contribution',
             default => 'Record independent operational loss evidence',
         }),
             'confirmation' => $confirmation, 'proof' => $proof || $action === 'record-disposition',
             'amount' => $offer || $action === 'retire-advance' || $wallet && in_array($action, ['contribute-company', 'approve-advance'], true),
-            'receiver' => $offer, 'source' => $source || $grantReturn,
+            'receiver' => $offer, 'source' => $source || $grantReturn || $sourceReturn,
             'cash_reference' => $cash && ($offer || str_starts_with($action, 'record-') || $action === 'retire-advance')];
     }
 
@@ -75,6 +79,9 @@ class ShipmentLossActions
         unset($input['action_confirmed']);
         if ($action === 'return-unused-credit') {
             return app(WalletLossGrantReturn::class)->execute($actor, $plan, $input);
+        }
+        if ($action === 'return-company-source') {
+            return app(WalletLossSourceReturn::class)->execute($actor, $plan, $input);
         }
         if ($action === 'void-unfunded') {
             return app(ShipmentLossReview::class)->voidUnfunded($actor, $plan, $input);

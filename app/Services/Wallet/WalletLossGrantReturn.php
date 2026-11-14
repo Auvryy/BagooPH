@@ -2,8 +2,10 @@
 
 namespace App\Services\Wallet;
 
+use App\Models\BuyerReturnCase;
 use App\Models\Delivery;
 use App\Models\LogisticsCompany;
+use App\Models\LogisticsManifest;
 use App\Models\Order;
 use App\Models\ShipmentFinancialEvent;
 use App\Models\ShipmentFinancialPlan;
@@ -75,6 +77,11 @@ class WalletLossGrantReturn
             WalletPayment::where('order_id', $order->id)->lockForUpdate()->first();
             $plan = ShipmentFinancialPlan::whereKey($original->id)->lockForUpdate()->firstOrFail();
             LogisticsCompany::whereKey($plan->logistics_company_id)->lockForUpdate()->firstOrFail();
+            LogisticsManifest::whereKey($plan->snapshot['source']['manifest_id'])->lockForUpdate()->firstOrFail();
+            if ($plan->buyer_return_case_id) {
+                $case = BuyerReturnCase::whereKey($plan->buyer_return_case_id)->lockForUpdate()->firstOrFail();
+                $case->parcel()->lockForUpdate()->firstOrFail();
+            }
             $owner = $this->owner($actor, $plan);
             abort_unless($plan->kind === 'transit_loss' && $plan->snapshot['payment_method'] === 'wallet', 409);
             if ($prior = ShipmentFinancialEvent::where('request_token_hash', $token)->first()) {
