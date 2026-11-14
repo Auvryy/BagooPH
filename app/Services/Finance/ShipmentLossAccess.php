@@ -52,16 +52,31 @@ class ShipmentLossAccess
             return false;
         }
         if ($actor->isBuyer() && $actor->id === $plan->buyer_id) {
-            return in_array($event->event_type, ['loss-record-buyer-payment', 'loss-confirm-buyer-receipt',
-                'loss-report-buyer-nonreceipt', 'loss-resolve-buyer-nonreceipt'], true);
+            if (in_array($event->event_type, ['loss-record-buyer-payment', 'loss-confirm-buyer-receipt',
+                'loss-report-buyer-nonreceipt', 'loss-resolve-buyer-nonreceipt', 'loss-offer-buyer-compensation-return'], true)) {
+                return true;
+            }
+            $source = $event->source_event_id ? $plan->events()->find($event->source_event_id) : null;
+
+            return $event->event_type === 'loss-receive-buyer-compensation-return'
+                && $source?->event_type === 'loss-offer-buyer-compensation-return' && $source->actor_id === $actor->id;
         }
         if ($actor->isSeller() && $actor->id === $plan->seller_id) {
-            return in_array($event->event_type, ['loss-record-seller-protection', 'loss-confirm-seller-receipt',
-                'loss-report-seller-nonreceipt', 'loss-resolve-seller-nonreceipt'], true);
+            if (in_array($event->event_type, ['loss-record-seller-protection', 'loss-confirm-seller-receipt',
+                'loss-report-seller-nonreceipt', 'loss-resolve-seller-nonreceipt', 'loss-offer-seller-compensation-return'], true)) {
+                return true;
+            }
+            $source = $event->source_event_id ? $plan->events()->find($event->source_event_id) : null;
+
+            return $event->event_type === 'loss-receive-seller-compensation-return'
+                && $source?->event_type === 'loss-offer-seller-compensation-return' && $source->actor_id === $actor->id;
         }
         if ($actor->isLogistics()) {
-            if ($event->event_type === 'loss-offer-company') {
+            if (in_array($event->event_type, ['loss-offer-company', 'loss-confirm-company-cash-return', 'loss-report-company-cash-nonreceipt'], true)) {
                 return $event->actor_id === $actor->id;
+            }
+            if (in_array($event->event_type, ['loss-record-company-cash-return', 'loss-resolve-company-cash-nonreceipt'], true)) {
+                return $event->recipient_id === $actor->id;
             }
             $source = $event->source_event_id ? $plan->events()->find($event->source_event_id) : null;
 

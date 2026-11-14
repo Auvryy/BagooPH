@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\SellerSettlement;
 use App\Models\ShipmentFinancialEvent;
 use App\Models\ShipmentFinancialPlan;
+use App\Models\ShipmentLossReconciliation;
 use App\Models\User;
 use App\Models\VoucherOrderAllocation;
 use App\Models\VoucherRevisionBalance;
@@ -24,6 +25,7 @@ use App\Services\Wallet\WalletCreditService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -31,14 +33,15 @@ use Throwable;
 
 class ShipmentLossCash
 {
-    private const OFFERS = ['offer-company', 'offer-advance'];
+    private const OFFERS = ['offer-company', 'offer-advance', 'offer-buyer-compensation-return', 'offer-seller-compensation-return'];
 
-    private const RECEIPTS = ['receive-company', 'receive-advance'];
+    private const RECEIPTS = ['receive-company', 'receive-advance', 'receive-buyer-compensation-return', 'receive-seller-compensation-return'];
 
     private const PAYMENTS = ['record-buyer-payment', 'record-seller-protection'];
 
     private const ACKS = ['confirm-buyer-receipt', 'confirm-seller-receipt', 'report-buyer-nonreceipt', 'report-seller-nonreceipt',
-        'resolve-buyer-nonreceipt', 'resolve-seller-nonreceipt'];
+        'resolve-buyer-nonreceipt', 'resolve-seller-nonreceipt',
+        'confirm-company-cash-return', 'report-company-cash-nonreceipt', 'resolve-company-cash-nonreceipt'];
 
     private function assertEvidence(ShipmentFinancialEvent $event): void
     {
@@ -78,6 +81,21 @@ class ShipmentLossCash
         return ['payment_id' => $payment?->id, 'amount_cents' => $payment?->amount_cents ?? 0, 'status' => $status];
     }
 
+    private function companyReturnStates(Collection $events): array
+    {
+        return $events->where('event_type', 'loss-record-company-cash-return')->map(function ($returnEvent) use ($events) {
+            $latest = $events->filter(fn ($event) => $event->id === $returnEvent->id || ($event->source_event_id === $returnEvent->id
+                && in_array($event->event_type, ['loss-confirm-company-cash-return', 'loss-report-company-cash-nonreceipt', 'loss-resolve-company-cash-nonreceipt'], true)))->last();
+            $status = match ($latest?->event_type) {
+                'loss-confirm-company-cash-return' => 'confirmed',
+                'loss-report-company-cash-nonreceipt' => 'disputed',
+                default => 'payment_recorded',
+            };
+
+            return ['id' => $returnEvent->id, 'amount_cents' => $returnEvent->amount_cents, 'cash_reference' => $returnEvent->cash_reference, 'status' => $status];
+        })->values()->all();
+    }
+
     public function state(ShipmentFinancialPlan $plan): array
     {
         abort_unless($plan->kind === 'transit_loss' && $plan->snapshot['payment_method'] === 'cod', 409);
@@ -87,14 +105,21 @@ class ShipmentLossCash
         $advances = (int) $events->where('event_type', 'loss-receive-advance')->sum('amount_cents');
         $retired = (int) $events->where('event_type', 'loss-retire-advance')->sum('amount_cents');
         $paid = (int) $events->whereIn('event_type', ['loss-record-buyer-payment', 'loss-record-seller-protection'])->sum('amount_cents');
+        $buyerReturned = (int) $events->where('event_type', 'loss-receive-buyer-compensation-return')->sum('amount_cents');
+        $sellerReturned = (int) $events->where('event_type', 'loss-receive-seller-compensation-return')->sum('amount_cents');
+        $companyReturned = (int) $events->where('event_type', 'loss-record-company-cash-return')->sum('amount_cents');
         $buyer = $this->paymentState($events, 'buyer');
         $seller = $this->paymentState($events, 'seller');
-        abort_unless($company >= 0 && $company <= $plan->snapshot['company_funding_due_cents'] && $retired >= 0 && $retired <= $advances, 409,
-            'Review the original loss funding and actual recorded advance returns.');
+        $companyReturns = $this->companyReturnStates($events);
+        abort_unless($company >= 0 && $company <= $plan->snapshot['company_funding_due_cents'] && $retired >= 0 && $retired <= $advances
+            && $companyReturned >= 0 && $companyReturned <= $company, 409,
+            'Review the original loss funding and actual recorded advance or company returns.');
         $remainingPayments = ($buyer['payment_id'] ? 0 : $plan->snapshot['buyer_refund_cents'])
             + ($seller['payment_id'] ? 0 : $plan->snapshot['seller_protection_cents']);
-        $balance = $company + $advances - $retired - $paid;
+        $balance = $company + $advances + $buyerReturned + $sellerReturned - $retired - $paid - $companyReturned;
         abort_unless($balance >= 0, 409, 'Original loss cash cannot spend another authority’s funding.');
+        $resolved = $events->contains('event_type', 'loss-resolve-cash');
+        $paidAny = $resolved || $buyer['payment_id'] !== null || $seller['payment_id'] !== null;
 
         return ['version' => (int) $events->max('sequence'), 'company_due_cents' => $plan->snapshot['company_funding_due_cents'],
             'company_received_cents' => $company, 'company_remaining_cents' => $plan->snapshot['company_funding_due_cents'] - $company,
@@ -104,7 +129,14 @@ class ShipmentLossCash
             'received_backing_cents' => $company + $advances - $retired, 'balance_cents' => $balance,
             'protected_remaining_cents' => $remainingPayments + $plan->snapshot['protected_earned_shipping_cents'],
             'buyer' => $buyer, 'seller' => $seller, 'zero_refund_assessed' => $events->contains('event_type', 'loss-assess-zero-buyer'),
-            'resolved' => $events->contains('event_type', 'loss-resolve-cash')];
+            'resolved' => $resolved, 'paid_any' => $paidAny,
+            'buyer_compensation_returned_cents' => $buyerReturned, 'seller_compensation_returned_cents' => $sellerReturned,
+            'pending_buyer_return_cents' => (int) $pending('offer-buyer-compensation-return')->sum('amount_cents'),
+            'pending_seller_return_cents' => (int) $pending('offer-seller-compensation-return')->sum('amount_cents'),
+            'company_cash_returned_cents' => $companyReturned, 'company_cash_net_cents' => $company - $companyReturned,
+            'company_cash_returns' => $companyReturns,
+            'has_company_return_dispute' => collect($companyReturns)->contains(fn ($row) => $row['status'] === 'disputed'),
+            'has_unconfirmed_company_return' => collect($companyReturns)->contains(fn ($row) => $row['status'] === 'payment_recorded')];
     }
 
     private function inputs(string $action, array $input, ?UploadedFile $proof): array
@@ -112,9 +144,11 @@ class ShipmentLossCash
         $offer = in_array($action, self::OFFERS, true);
         $receipt = in_array($action, self::RECEIPTS, true);
         $payment = in_array($action, self::PAYMENTS, true);
-        $retire = $action === 'retire-advance';
+        $retire = $action === 'retire-advance' || $action === 'record-company-cash-return';
         $ack = in_array($action, self::ACKS, true);
         $needsProof = $offer || $receipt || $payment || $retire || str_starts_with($action, 'resolve-') && $ack;
+        $needsAmount = in_array($action, ['offer-company', 'offer-advance', 'retire-advance', 'record-company-cash-return'], true);
+        $needsCashRef = $offer || $payment || $retire;
         foreach (['reason', 'cash_reference'] as $field) {
             if (is_string($input[$field] ?? null)) {
                 $input[$field] = trim($input[$field]);
@@ -125,10 +159,10 @@ class ShipmentLossCash
         }
         $data = Validator::make([...$input, 'proof' => $proof], ['expected_version' => ['required', new AsciiPositiveInteger, 'integer'],
             'request_token' => ['required', 'uuid'], 'reason' => ['required', new ApplicationText('notes', 10, 1000)],
-            'amount' => $offer || $retire ? ['required', 'string', 'regex:'.CodMoney::RULE] : ['prohibited'],
+            'amount' => $needsAmount ? ['required', 'string', 'regex:'.CodMoney::RULE] : ['prohibited'],
             'recipient_id' => $offer ? ['required', new AsciiPositiveInteger, 'integer'] : ['prohibited'],
-            'source_event_id' => $receipt || $ack || $retire ? ['required', new AsciiPositiveInteger, 'integer'] : ['prohibited'],
-            'cash_reference' => $offer || $payment || $retire ? ['required', 'string', 'min:3', 'max:120', 'regex:/\A[A-Z0-9][A-Z0-9 ._:\/\-]*\z/'] : ['prohibited'],
+            'source_event_id' => $receipt || $ack || $action === 'retire-advance' ? ['required', new AsciiPositiveInteger, 'integer'] : ['prohibited'],
+            'cash_reference' => $needsCashRef ? ['required', 'string', 'min:3', 'max:120', 'regex:/\A[A-Z0-9][A-Z0-9 ._:\/\-]*\z/'] : ['prohibited'],
             'proof' => [$needsProof ? 'required' : 'prohibited', 'nullable', 'file', 'max:5120'],
             'payment_confirmed' => $needsProof ? ['required', 'accepted'] : ['prohibited'],
             'zero_refund_confirmed' => $action === 'assess-zero-buyer' ? ['required', 'accepted'] : ['prohibited'],
@@ -155,13 +189,13 @@ class ShipmentLossCash
     {
         $actor = User::findOrFail($actor->id);
         abort_unless($actor->closed_at === null && $actor->email_verified_at, 403);
-        if ($action === 'offer-company') {
+        if (in_array($action, ['offer-company', 'confirm-company-cash-return', 'report-company-cash-nonreceipt'], true)) {
             abort_unless($actor->isLogistics() && $actor->isKycApproved()
                 && LogisticsCompany::whereKey($plan->logistics_company_id)->where('user_id', $actor->id)->exists(), 403);
-        } elseif (str_starts_with($action, 'confirm-buyer') || str_starts_with($action, 'report-buyer')) {
+        } elseif (in_array($action, ['offer-buyer-compensation-return', 'confirm-buyer-receipt', 'report-buyer-nonreceipt'], true)) {
             app(BuyerAccessService::class)->requireOrderHistory($actor);
             abort_unless($actor->id === $plan->buyer_id, 403);
-        } elseif (str_starts_with($action, 'confirm-seller') || str_starts_with($action, 'report-seller')) {
+        } elseif (in_array($action, ['offer-seller-compensation-return', 'confirm-seller-receipt', 'report-seller-nonreceipt'], true)) {
             abort_unless($actor->isSeller() && $actor->isKycApproved() && $actor->id === $plan->seller_id, 403);
         } else {
             app(WalletCreditService::class)->admin($actor);
@@ -172,7 +206,8 @@ class ShipmentLossCash
 
     public function command(User $actor, ShipmentFinancialPlan $original, string $action, array $input, ?UploadedFile $proof = null): ShipmentFinancialEvent
     {
-        abort_unless(in_array($action, [...self::OFFERS, ...self::RECEIPTS, ...self::PAYMENTS, ...self::ACKS, 'assess-zero-buyer', 'resolve-cash', 'retire-advance'], true), 404);
+        abort_unless(in_array($action, [...self::OFFERS, ...self::RECEIPTS, ...self::PAYMENTS, ...self::ACKS,
+            'assess-zero-buyer', 'resolve-cash', 'retire-advance', 'record-company-cash-return'], true), 404);
         $data = $this->inputs($action, $input, $proof);
         $files = app(ShipmentFinanceFiles::class);
         $info = $proof ? $files->inspect($proof) : null;
@@ -205,29 +240,60 @@ class ShipmentLossCash
                 app(ShipmentRefusalReview::class)->unused($token);
                 $state = $this->state($plan);
                 abort_unless(($plan->active_order_id || $plan->active_return_case_id) && $state['version'] === $data['expected_version'], 409, 'Review the original active loss and current financial history.');
+                $released = Schema::hasTable('shipment_loss_reconciliations')
+                    && ShipmentLossReconciliation::where('shipment_financial_plan_id', $plan->id)->where('status', 'released')->exists();
+                abort_if($released, 409, 'Quarantine was already reconciled and released.');
                 $found = app(ShipmentLossSource::class)->finding($plan) !== null;
-                if (! in_array($action, [...self::RECEIPTS, ...self::ACKS], true)) {
-                    app(ShipmentLossSource::class)->assertApproved($plan);
-                }
-                if (! $state['resolved']) {
-                    // A named receipt retains an already offered actual transfer, even if later custody needs reconciliation.
-                    // Every new offer, beneficiary payment and resolution still requires the current approved loss source.
-                    if (! $found && in_array($action, self::ACKS, true)) {
-                        app(ShipmentLossSource::class)->assertApproved($plan);
+                $foundOnlyActions = ['offer-buyer-compensation-return', 'receive-buyer-compensation-return',
+                    'offer-seller-compensation-return', 'receive-seller-compensation-return',
+                    'record-company-cash-return', 'confirm-company-cash-return', 'report-company-cash-nonreceipt', 'resolve-company-cash-nonreceipt'];
+                if ($found) {
+                    app(ShipmentLossSource::class)->assertQuarantined($plan);
+                    if (! $state['paid_any']) {
+                        abort_unless(in_array($action, ['receive-company', 'receive-advance', 'retire-advance',
+                            'record-company-cash-return', 'confirm-company-cash-return', 'report-company-cash-nonreceipt', 'resolve-company-cash-nonreceipt'], true), 409,
+                            'Found-parcel quarantine requires retiring advances and returning unused company cash instead of new payouts.');
+                    } else {
+                        abort_unless(in_array($action, ['offer-company', 'receive-company', 'receive-advance', 'retire-advance',
+                            ...$foundOnlyActions, ...self::ACKS], true), 409,
+                            'Found-parcel quarantine retains the existing paid outcome and permits only advance retirement, voluntary compensation returns, or company cash return reconciliation.');
+                        if ($action === 'offer-company') {
+                            abort_unless($state['advance_outstanding_cents'] > 0, 409, 'Offer additional company cash only while an advance remains outstanding.');
+                        }
                     }
                 } else {
-                    abort_unless(in_array($action, ['offer-company', 'receive-company', 'receive-advance', 'retire-advance'], true), 409, 'Retain the original completed cash outcome.');
+                    abort_if(in_array($action, $foundOnlyActions, true), 409,
+                        'Record an actual found-parcel quarantine intake before reconciling cash returns.');
+                    if (! in_array($action, [...self::RECEIPTS, ...self::ACKS], true)) {
+                        app(ShipmentLossSource::class)->assertApproved($plan);
+                    }
+                    if ($state['resolved']) {
+                        abort_unless(in_array($action, ['offer-company', 'receive-company', 'receive-advance', 'retire-advance'], true), 409, 'Retain the original completed cash outcome.');
+                    }
                 }
                 $source = isset($data['source_event_id']) ? $plan->events()->whereKey($data['source_event_id'])->firstOrFail() : null;
                 $amount = 0;
                 $recipient = null;
                 $context = ['plan_reference' => $plan->reference, 'no_physical_receipt' => true, 'demo_only' => false];
                 $consume = null;
-                if (in_array($action, self::OFFERS, true)) {
+                if (in_array($action, ['offer-buyer-compensation-return', 'offer-seller-compensation-return'], true)) {
+                    $recipient = app(WalletCreditService::class)->admin(User::findOrFail($data['recipient_id']))->id;
+                    abort_unless($recipient !== $actor->id, 403, 'Name the distinct current admin who actually received this transfer.');
+                    $isBuyer = $action === 'offer-buyer-compensation-return';
+                    $part = $isBuyer ? 'buyer' : 'seller';
+                    $amount = $plan->snapshot[$isBuyer ? 'buyer_refund_cents' : 'seller_protection_cents'];
+                    abort_unless($amount > 0 && $state[$part]['payment_id'] !== null && $state[$part]['status'] === 'confirmed'
+                        && $state[$part.'_compensation_returned_cents'] === 0 && $state['pending_'.$part.'_return_cents'] === 0, 409,
+                        'Only a confirmed actual compensation payout may be voluntarily returned once.');
+                    $context += ['company_id' => $plan->logistics_company_id, 'source_role' => $actor->role, 'voluntary_owner_return' => true, 'actually_received_cents' => 0];
+                } elseif (in_array($action, ['offer-company', 'offer-advance'], true)) {
                     $recipient = app(WalletCreditService::class)->admin(User::findOrFail($data['recipient_id']))->id;
                     abort_unless($recipient !== $actor->id, 403, 'Name the distinct current admin who actually received this transfer.');
                     $amount = CodMoney::cents($data['amount']);
-                    $maximum = $action === 'offer-company' ? $state['company_remaining_cents'] - $state['pending_company_cents']
+                    $companyCap = $found && $state['paid_any']
+                        ? min($state['company_remaining_cents'], $state['advance_outstanding_cents'])
+                        : $state['company_remaining_cents'];
+                    $maximum = $action === 'offer-company' ? $companyCap - $state['pending_company_cents']
                         : $state['company_due_cents'] - $state['company_received_cents'] - $state['advance_outstanding_cents'] - $state['pending_advance_cents'];
                     abort_unless($amount > 0 && $amount <= $maximum, 409, 'Offer only the remaining original company liability or required actual advance.');
                     $context += ['company_id' => $plan->logistics_company_id, 'source_role' => $actor->role, 'actually_received_cents' => 0];
@@ -239,6 +305,12 @@ class ShipmentLossCash
                     if ($action === 'receive-company') {
                         abort_unless(($source->context['company_id'] ?? null) === $plan->logistics_company_id
                             && ($source->context['source_role'] ?? null) === 'logistics' && $source->amount_cents <= $state['company_remaining_cents'], 409);
+                    } elseif ($action === 'receive-buyer-compensation-return') {
+                        abort_unless($source->actor_id === $plan->buyer_id && $state['buyer_compensation_returned_cents'] === 0
+                            && $source->amount_cents === $plan->snapshot['buyer_refund_cents'], 409);
+                    } elseif ($action === 'receive-seller-compensation-return') {
+                        abort_unless($source->actor_id === $plan->seller_id && $state['seller_compensation_returned_cents'] === 0
+                            && $source->amount_cents === $plan->snapshot['seller_protection_cents'], 409);
                     }
                     $this->assertEvidence($source);
                     $amount = $source->amount_cents;
@@ -289,10 +361,44 @@ class ShipmentLossCash
                     abort_unless($recipient !== $actor->id, 403, 'A distinct current admin must record the actual return to the original advance funder.');
                     $amount = CodMoney::cents($data['amount']);
                     $returned = (int) $plan->events()->where('event_type', 'loss-retire-advance')->where('source_event_id', $source->id)->sum('amount_cents');
+                    $protectedHold = $found
+                        ? ($state['resolved'] ? $plan->snapshot['protected_earned_shipping_cents'] : 0)
+                        : $state['protected_remaining_cents'];
                     abort_unless($amount > 0 && $amount <= $source->amount_cents - $returned && $amount <= $state['advance_outstanding_cents']
-                        && $amount <= max(0, $state['balance_cents'] - $state['protected_remaining_cents']), 409,
+                        && $amount <= max(0, $state['balance_cents'] - $protectedHold), 409,
                         'Record only an actual excess advance return after protecting every unpaid recipient and earned shipping.');
                     $context += ['source_reference' => $offer->cash_reference, 'original_advance_receipt_id' => $source->id, 'funding' => $state];
+                } elseif ($action === 'record-company-cash-return') {
+                    abort_if(in_array($actor->id, $plan->snapshot['source_actor_ids'] ?? [], true), 403,
+                        'An independent current admin must return unused company cash.');
+                    $this->assertFundingEvidence($plan);
+                    abort_unless($state['advance_outstanding_cents'] === 0, 409, 'Retire every outstanding advance before returning cash to the company.');
+                    abort_if($state['has_company_return_dispute'] || $state['buyer']['status'] === 'disputed' || $state['seller']['status'] === 'disputed', 409,
+                        'Resolve open nonreceipt disputes before returning cash to the company.');
+                    $protectedHold = $state['resolved'] ? $plan->snapshot['protected_earned_shipping_cents'] : 0;
+                    $freeCash = max(0, $state['balance_cents'] - $protectedHold);
+                    $maximum = min($freeCash, $state['company_cash_net_cents']);
+                    $amount = CodMoney::cents($data['amount']);
+                    abort_unless($amount > 0 && $amount <= $maximum, 409, 'Return only actual available surplus cash up to the net received company contribution.');
+                    $ownerId = (int) LogisticsCompany::whereKey($plan->logistics_company_id)->value('user_id');
+                    abort_unless($ownerId > 0 && $ownerId !== $actor->id, 403);
+                    $recipient = $ownerId;
+                    $context += ['company_id' => $plan->logistics_company_id, 'company_cash_return' => true, 'no_parcel_release' => true];
+                } elseif (str_ends_with($action, '-company-cash-return') || str_ends_with($action, '-company-cash-nonreceipt')) {
+                    if ($action === 'resolve-company-cash-nonreceipt') {
+                        abort_if(in_array($actor->id, $plan->snapshot['source_actor_ids'] ?? [], true), 403,
+                            'An independent current admin must resolve disputed company cash return evidence.');
+                    }
+                    $ownerId = (int) LogisticsCompany::whereKey($plan->logistics_company_id)->value('user_id');
+                    abort_unless($source->event_type === 'loss-record-company-cash-return' && $source->recipient_id === $ownerId, 409,
+                        'Select an actual recorded company cash return transfer.');
+                    $current = collect($state['company_cash_returns'])->firstWhere('id', $source->id);
+                    $status = $current['status'] ?? null;
+                    $recipient = $ownerId;
+                    abort_unless($status !== null && (str_starts_with($action, 'resolve-') ? $status === 'disputed'
+                        : (str_starts_with($action, 'confirm-') ? in_array($status, ['payment_recorded', 'disputed'], true) : $status === 'payment_recorded')), 409,
+                        'Review the current company cash return receipt or nonreceipt history.');
+                    $context += ['original_payment_reference' => $source->cash_reference, 'company_cash_return' => true, 'no_second_payment' => true];
                 } else {
                     $party = str_contains($action, 'buyer') ? 'buyer' : 'seller';
                     $type = $party === 'buyer' ? 'loss-record-buyer-payment' : 'loss-record-seller-protection';

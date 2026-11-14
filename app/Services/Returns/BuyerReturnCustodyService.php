@@ -14,10 +14,15 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
+use App\Models\ShipmentFinancialPlan;
+use App\Models\ShipmentLossReconciliation;
+use App\Models\ShipmentLossReturnRoute;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Finance\ShipmentLossCustody;
+use App\Services\Finance\ShipmentLossReconciliationService;
+use App\Services\Finance\ShipmentLossSource;
 use App\Services\Logistics\CargoHandlingService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
@@ -71,6 +76,23 @@ class BuyerReturnCustodyService
                                 $query->orWhereJsonContains('hub_ids', $id);
                             }
                         }));
+                    }
+                    if (app(ShipmentLossReconciliationService::class)->available()) {
+                        $scope->orWhereIn('buyer_return_case_id', ShipmentFinancialPlan::query()
+                            ->where('kind', 'transit_loss')
+                            ->whereNotNull('buyer_return_case_id')
+                            ->whereIn('id', ShipmentLossReconciliation::query()
+                                ->where('status', 'released')
+                                ->where('outcome_path', 'post_delivery_partial_return')
+                                ->whereColumn('active_plan_id', 'shipment_financial_plan_id')
+                                ->where(function ($query) use ($hubs) {
+                                    $query->whereRaw('1 = 0');
+                                    foreach ($hubs as $id) {
+                                        $query->orWhereJsonContains('return_route_hub_ids', $id);
+                                    }
+                                })
+                                ->select('shipment_financial_plan_id'))
+                            ->select('buyer_return_case_id'));
                     }
                 });
             }
@@ -229,6 +251,42 @@ class BuyerReturnCustodyService
         abort_unless($intake && ($intake->context['target_state']['current_hub_id'] ?? null) === $parcel->hub_ids[0]
             && $case->evidence()->where('buyer_return_event_id', $intake->id)->where('purpose', 'intake')->exists(), 409,
             'The original return needs its actual hub intake and photo evidence.');
+        $lossReconciled = app(ShipmentLossReconciliationService::class)->activeForParcel($parcel);
+        if ($lossReconciled?->outcome_path === 'post_delivery_partial_return') {
+            $lossPlan = $lossReconciled->plan;
+            $lostMember = BuyerReturnManifestParcel::find($lossPlan->snapshot['source']['member_id'] ?? null);
+            $finding = app(ShipmentLossSource::class)->finding($lossPlan);
+            $lossHubIds = $lossReconciled->return_route_hub_ids ?? [];
+            abort_unless($finding && $lostMember && $lostMember->buyer_return_parcel_id === $parcel->id
+                && $lostMember->included && ! $lostMember->received_at && ! $lostMember->active_return_parcel_id
+                && $lossHubIds !== [] && $lossHubIds[count($lossHubIds) - 1] === $parcel->hub_ids[count($parcel->hub_ids) - 1], 409,
+                'Retain the reconciled lost-return intake and route before staging or seller collection.');
+            for ($index = 0; $index < $lostMember->leg_index; $index++) {
+                $member = $parcel->members()->with('manifest')->whereHas('manifest.buyerReturnRoute')->where('leg_index', $index)->where('included', true)->whereNotNull('received_at')->first();
+                $scan = $member ? LogisticsManifestEvent::where('manifest_id', $member->manifest_id)->where('event_type', 'buyer-return-received')
+                    ->where('barcode_scanned', $parcel->barcode)->where('hub_id', $parcel->hub_ids[$index + 1])->first() : null;
+                abort_unless($member && $scan && $member->manifest->direction === 'buyer_return' && in_array($member->manifest->status, ['received', 'closed'], true)
+                    && $member->manifest->source_hub_id === $parcel->hub_ids[$index] && $member->manifest->destination_hub_id === $parcel->hub_ids[$index + 1]
+                    && ($scan->payload['return_member_id'] ?? null) === $member->id && $scan->actor_id === $member->received_by_id, 409,
+                    'This return is missing an actual pre-loss manifest receipt.');
+                if (! empty($scan->payload['return_recovery_id'])) {
+                    abort_unless(app(BuyerReturnRecoveryService::class)->supportsCompletion($scan), 409, 'Retain the full actual recovery evidence for this original return receipt.');
+                }
+            }
+            for ($index = 0; $index < count($lossHubIds) - 1; $index++) {
+                $route = $lossReconciled->returnRoutes()->where('leg_index', $index)->with('manifest')->first();
+                $member = $route?->manifest?->buyerReturnParcels()->where('buyer_return_parcel_id', $parcel->id)->where('included', true)->whereNotNull('received_at')->first();
+                $scan = ($route?->manifest && $member) ? LogisticsManifestEvent::where('manifest_id', $route->manifest->id)->where('event_type', 'buyer-return-received')
+                    ->where('barcode_scanned', $parcel->barcode)->where('hub_id', $lossHubIds[$index + 1])->first() : null;
+                abort_unless($route?->manifest && $member && $scan && $route->manifest->direction === 'buyer_return'
+                    && in_array($route->manifest->status, ['received', 'closed'], true)
+                    && $route->manifest->source_hub_id === $lossHubIds[$index] && $route->manifest->destination_hub_id === $lossHubIds[$index + 1]
+                    && ($scan->payload['return_member_id'] ?? null) === $member->id && $scan->actor_id === $member->received_by_id, 409,
+                    'Complete every actual reconciled return leg before staging or seller collection.');
+            }
+
+            return;
+        }
         for ($index = 0; $index < count($parcel->hub_ids) - 1; $index++) {
             $member = $parcel->members()->with('manifest')->whereHas('manifest.buyerReturnRoute')->where('leg_index', $index)->where('included', true)->whereNotNull('received_at')->first();
             $scan = $member ? LogisticsManifestEvent::where('manifest_id', $member->manifest_id)->where('event_type', 'buyer-return-received')
@@ -261,10 +319,13 @@ class BuyerReturnCustodyService
         $physical = app(BuyerReturnRecoveryService::class)->context($parcel);
         $hubs = LogisticsHub::whereIn('id', $physical['hub_ids'])->get()->keyBy('id');
         $recovery = app(BuyerReturnRecoveryService::class)->available() ? $parcel->recoveries()->latest('id')->first() : null;
+        $lossAuthority = app(ShipmentLossCustody::class)->authority($parcel);
+        $lossHold = $lossAuthority ? (app(ShipmentLossCustody::class)->releasedReconciliation($parcel)?->outcome_path === 'already_settled_salvage'
+            ? ShipmentLossCustody::SALVAGE_HOLD : ShipmentLossCustody::HOLD) : null;
         $canReadRecovery = $recovery && ($actor->isLogistics() || $actor->isAdmin())
             && app(BuyerReturnRecoveryService::class)->scope($actor)->whereKey($recovery->id)->exists();
         $options = [];
-        if ($actor->isLogistics() && $actor->canAccessPortal()) {
+        if ($lossAuthority === null && $actor->isLogistics() && $actor->canAccessPortal()) {
             foreach ($this->eligibility->accessibleHubs($actor)->get() as $hub) {
                 if (! $this->eligibility->canScan($actor, $hub)) {
                     continue;
@@ -273,7 +334,8 @@ class BuyerReturnCustodyService
                     && $case->dropoff_until && now()->lessThanOrEqualTo($case->dropoff_until)) {
                     $options[] = ['action' => 'intake', 'hub_id' => $hub->id, 'label' => 'Accept physical return'];
                 }
-                if (! $physical['recovery_id'] && $parcel->status === 'at_hub' && $parcel->route_position === count($parcel->hub_ids) - 1 && $hub->id === $parcel->current_hub_id) {
+                if (! $physical['recovery_id'] && $parcel->status === 'at_hub' && $parcel->route_position === count($parcel->hub_ids) - 1 && $hub->id === $parcel->current_hub_id
+                    && (($physical['loss_reconciliation_id'] ?? null) === null || $physical['position'] >= count($physical['hub_ids']) - 1)) {
                     $options[] = ['action' => 'stage', 'hub_id' => $hub->id, 'label' => 'Stage for seller collection'];
                 }
                 if ($parcel->status === 'at_hub' && $hub->id === $parcel->current_hub_id && isset($physical['hub_ids'][$physical['position'] + 1])
@@ -283,12 +345,15 @@ class BuyerReturnCustodyService
                 }
             }
         }
-        if ($actor->isSeller() && $actor->isKycApproved() && $actor->id === $case->seller_id && $actor->email_verified_at
+        if ($lossAuthority === null && $actor->isSeller() && $actor->isKycApproved() && $actor->id === $case->seller_id && $actor->email_verified_at
             && $case->status === 'ready_for_seller' && $parcel->status === 'ready_for_seller') {
             $options[] = ['action' => 'seller-receive', 'hub_id' => null, 'label' => 'Confirm actual return receipt'];
         }
-        $manifestRoute = $physical['recovery_id'] ? $recovery->routes()->orderByDesc('leg_index')->first()
-            : BuyerReturnManifestRoute::where('buyer_return_case_id', $case->id)->orderByDesc('leg_index')->first();
+        $manifestRoute = match (true) {
+            $physical['recovery_id'] !== null => $recovery->routes()->orderByDesc('leg_index')->first(),
+            ($physical['loss_reconciliation_id'] ?? null) !== null => ShipmentLossReturnRoute::where('reconciliation_id', $physical['loss_reconciliation_id'])->orderByDesc('leg_index')->first(),
+            default => BuyerReturnManifestRoute::where('buyer_return_case_id', $case->id)->orderByDesc('leg_index')->first(),
+        };
         $manifest = $manifestRoute ? LogisticsManifest::find($manifestRoute->manifest_id) : null;
         $canReadManifest = $manifest && $actor->isLogistics()
             && app(LogisticsManifestService::class)->readable($actor)->whereKey($manifest->id)->exists();
@@ -297,7 +362,7 @@ class BuyerReturnCustodyService
             'recovery' => $recovery ? ['reference' => $recovery->reference, 'state' => $recovery->state,
                 'active_route' => $physical['recovery_id'] !== null, 'url' => $canReadRecovery ? '/buyer-return-recoveries/'.$recovery->id : null] : null,
             'handling' => $actor->isLogistics() ? app(BuyerReturnCargoService::class)->reading($parcel)?->profile : null,
-            'weight_grams' => $parcel->weight_grams, 'custody' => $parcel->custody, 'actions' => $options,
+            'weight_grams' => $parcel->weight_grams, 'custody' => $parcel->custody, 'actions' => $options, 'loss_hold' => $lossHold,
             'hubs' => array_map(fn ($id) => $hubs->get($id)?->only(['id', 'name', 'code', 'address', 'operating_hours']), $physical['hub_ids']),
             'can_dropoff' => $case->status === 'approved' && $case->dropoff_until && now()->lessThanOrEqualTo($case->dropoff_until),
             'current_hub_name' => $hubs->get($parcel->current_hub_id)?->name, 'manifest_url' => $canReadManifest

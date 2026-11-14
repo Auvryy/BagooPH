@@ -70,9 +70,8 @@ class SellerOrderController extends Controller
             if ($delivery && in_array($delivery->status, OrderWorkspaceService::RETURN_CUSTODY, true)) {
                 $returns = app(DeliveryReturnService::class);
                 try {
-                    $route = $returns->route($delivery);
-                    $delivery->setAttribute('return_route_reference', $route->reference);
-                    $delivery->setAttribute('return_ready_for_receipt', ! app(HandoverHoldService::class)->held($delivery) && $fullyOwned && $returns->readyForSeller($delivery) && (bool) $returns->event($route, 'seller_staged'));
+                    $delivery->setAttribute('return_route_reference', $returns->activeRouteReference($delivery));
+                    $delivery->setAttribute('return_ready_for_receipt', ! app(HandoverHoldService::class)->held($delivery) && $fullyOwned && $returns->readyForSeller($delivery) && $returns->stagedForSeller($delivery));
                 } catch (DomainException $error) {
                     $delivery->setAttribute('return_ready_for_receipt', false);
                 }
@@ -103,7 +102,9 @@ class SellerOrderController extends Controller
         }
 
         return $request->expectsJson() ? response()->json(['status' => $parcel->status])
-            : back()->with('success', 'Your original parcel receipt was recorded. The order is now returned.');
+            : back()->with('success', $parcel->order->fresh()->status === 'cancelled'
+                ? 'Your original parcel receipt was recorded. The settled order remains cancelled.'
+                : 'Your original parcel receipt was recorded. The order is now returned.');
     }
 
     public function accept(Request $request, Order $order): JsonResponse|RedirectResponse

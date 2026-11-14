@@ -6,6 +6,7 @@ use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
 use App\Models\User;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Orders\OrderCancellationService;
 use DomainException;
 
@@ -16,12 +17,16 @@ class ParcelCustodyGuard
         if (app(OrderCancellationService::class)->livePending($parcel->order)) {
             throw new DomainException('The buyer’s cancellation request is awaiting review. Preparation and pickup remain on hold.');
         }
+        $lossSellerReturn = in_array($parcel->status, ['return_to_sender', 'return_in_transit'], true)
+            && app(ShipmentLossReconciliationService::class)->activeForParcel($parcel)?->outcome_path === 'already_settled_seller_return';
         $expectedOrder = match ($parcel->status) {
             'assigned_pickup' => ['ready_for_pickup'], 'picked_up' => ['picked_up'],
             'arrived_at_origin_hub', 'arrived_at_mother_hub', 'sorted_to_line_haul', 'in_transit_to_mother_hub',
             'in_transit_to_destination_hub', 'arrived_at_destination_hub' => ['at_sorting_center'],
             'sorted_to_barangay_bin', 'ready_for_hub_pickup' => ['sorted'], 'assigned_to_rider' => ['assigned_to_rider'],
-            'out_for_delivery' => ['out_for_delivery'], 'delivery_failed', 'return_to_sender', 'return_in_transit' => ['delivery_failed'],
+            'out_for_delivery' => ['out_for_delivery'],
+            'delivery_failed' => ['delivery_failed'],
+            'return_to_sender', 'return_in_transit' => $lossSellerReturn ? ['cancelled'] : ['delivery_failed'],
             default => null,
         };
         if ($expectedOrder && ! in_array($parcel->order->status, $expectedOrder, true)) {

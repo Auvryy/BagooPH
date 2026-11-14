@@ -113,6 +113,11 @@ class LogisticsManifest extends Model
         return $this->hasOne(BuyerReturnRecoveryRoute::class, 'manifest_id');
     }
 
+    public function lossReturnRoute(): HasOne
+    {
+        return $this->hasOne(ShipmentLossReturnRoute::class, 'manifest_id');
+    }
+
     public function getBuyerReturnRecoveryIdAttribute(): ?int
     {
         return $this->direction === 'buyer_return' && Schema::hasTable('buyer_return_recovery_routes')
@@ -121,14 +126,24 @@ class LogisticsManifest extends Model
 
     public function getBuyerReturnCaseIdAttribute(): ?int
     {
-        return $this->direction === 'buyer_return' ? ($this->buyerReturnRoute?->buyer_return_case_id
-            ?? ($this->buyer_return_recovery_id ? $this->buyerReturnRecoveryRoute->recovery->buyer_return_case_id : null)) : null;
+        if ($this->direction !== 'buyer_return') {
+            return null;
+        }
+
+        return $this->buyerReturnRoute?->buyer_return_case_id
+            ?? ($this->buyer_return_recovery_id ? $this->buyerReturnRecoveryRoute->recovery->buyer_return_case_id : null)
+            ?? (Schema::hasTable('shipment_loss_return_routes') ? $this->lossReturnRoute?->reconciliation?->plan?->buyer_return_case_id : null);
     }
 
     public function getBuyerReturnLegIndexAttribute(): ?int
     {
-        return $this->direction === 'buyer_return' ? ($this->buyerReturnRoute?->leg_index
-            ?? ($this->buyer_return_recovery_id ? $this->buyerReturnRecoveryRoute->leg_index : null)) : null;
+        if ($this->direction !== 'buyer_return') {
+            return null;
+        }
+
+        return $this->buyerReturnRoute?->leg_index
+            ?? ($this->buyer_return_recovery_id ? $this->buyerReturnRecoveryRoute->leg_index : null)
+            ?? (Schema::hasTable('shipment_loss_return_routes') ? $this->lossReturnRoute?->leg_index : null);
     }
 
     public function recoveryCase(): BelongsTo

@@ -169,7 +169,14 @@ class HubParcelWorkstationService
             'href' => $canAct && $path ? $base.$path.'?hub_id='.$hub->id : null, 'blocker' => $blocker];
 
         if ($loss = app(ShipmentLossCustody::class)->authority($parcel)) {
+            $salvaged = app(ShipmentLossCustody::class)->releasedReconciliation($parcel)?->outcome_path === 'already_settled_salvage';
             $found = ($custody['kind'] ?? null) === 'loss_quarantine';
+            if ($salvaged) {
+                return [...$guide, 'stage' => 'Salvaged parcel custody',
+                    'next_step' => 'Hold the salvaged parcel under closed salvage custody',
+                    'responsible' => 'Holding logistics facility', 'blocker' => ShipmentLossCustody::SALVAGE_HOLD,
+                    'action' => 'recovery', 'can_act' => $handler, 'href' => $handler ? '/loss-found/'.$loss->id.'?hub_id='.$hub->id : null];
+            }
 
             return [...$guide, 'stage' => $found ? 'Found parcel in quarantine' : 'Reviewed transit loss',
                 'next_step' => $found ? 'Keep the parcel on hold for independent reconciliation' : 'Record actual found-parcel intake if the parcel is present',
@@ -187,19 +194,24 @@ class HubParcelWorkstationService
         if (($custody['kind'] ?? 'unknown') === 'unknown') {
             return $next('Review missing custody evidence', 'Mother Hub manager', blocker: 'No retained custody checkpoint establishes the parcel holder. A status or assignment cannot replace a handover.');
         }
+        $lossSellerReturn = in_array($parcel->status, ['return_to_sender', 'return_in_transit', 'returned'], true)
+            && app(DeliveryReturnService::class)->activeSellerReturnReconciliation($parcel) !== null;
         $expectedOrder = match ($parcel->status) {
             'picked_up' => ['picked_up'],
             'arrived_at_origin_hub', 'arrived_at_mother_hub', 'sorted_to_line_haul', 'in_transit_to_mother_hub', 'in_transit_to_destination_hub', 'arrived_at_destination_hub' => ['at_sorting_center'],
             'sorted_to_barangay_bin', 'ready_for_hub_pickup' => ['sorted'],
             'assigned_to_rider' => ['assigned_to_rider'], 'out_for_delivery' => ['out_for_delivery'],
-            'delivery_failed', 'return_to_sender', 'return_in_transit' => ['delivery_failed'],
-            'delivered', 'customer_collected' => ['delivered', 'completed'], 'returned' => ['returned'],
+            'delivery_failed' => ['delivery_failed'],
+            'return_to_sender', 'return_in_transit' => $lossSellerReturn ? ['cancelled'] : ['delivery_failed'],
+            'delivered', 'customer_collected' => ['delivered', 'completed'],
+            'returned' => $lossSellerReturn ? ['cancelled', 'returned'] : ['returned'],
             default => null,
         };
         if ($expectedOrder && ! in_array($parcel->order?->status, $expectedOrder, true)) {
             return $next('Review the order and parcel stages', 'Mother Hub manager', blocker: 'The recorded commercial order state does not match this parcel stage. Refresh or review its source records before continuing.');
         }
-        if (in_array($parcel->status, self::TERMINAL, true) || in_array($parcel->order?->status, ['cancelled', 'completed', 'returned'], true)) {
+        if (in_array($parcel->status, self::TERMINAL, true)
+            || (in_array($parcel->order?->status, ['cancelled', 'completed', 'returned'], true) && ! ($lossSellerReturn && $parcel->status !== 'returned'))) {
             $awaitBuyer = $parcel->order?->status === 'delivered' && ($custody['kind'] ?? null) === 'buyer'
                 && ($custody['user_id'] ?? null) === $parcel->order->buyer_id;
 

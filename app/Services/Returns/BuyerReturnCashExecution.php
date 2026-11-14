@@ -105,6 +105,9 @@ class BuyerReturnCashExecution
     {
         $actor = $this->party($actor, $case);
         abort_unless($case->order->payment_method === 'cod' && ($case->order->shipping_quote['refund_policy_version'] ?? 1) === 2, 409);
+        if (app(BuyerReturnMoneyService::class)->blockedByLossPlan($case)) {
+            return [];
+        }
         $approved = Schema::hasTable('buyer_return_repayment_plans') && BuyerReturnRepaymentPlan::where('buyer_return_case_id', $case->id)->exists();
         $actions = [];
         if ($actor->isAdmin() && $actor->canAccessPortal() && $actor->email_verified_at) {

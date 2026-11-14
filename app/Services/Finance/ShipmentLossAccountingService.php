@@ -149,12 +149,17 @@ class ShipmentLossAccountingService
             $manifest = LogisticsManifest::findOrFail($source['manifest_id']);
             $return = $plan->buyer_return_case_id !== null;
             $member = $return ? BuyerReturnManifestParcel::find($source['member_id']) : LogisticsManifestParcel::find($source['member_id']);
+            $reconciliation = app(ShipmentLossReconciliationService::class)->active($plan);
+            $released = $reconciliation?->status === 'released';
             if (! $disposition || $disposition->id !== $record->shipment_loss_disposition_id
                 || in_array($record->actor_id, $plan->snapshot['source_actor_ids'], true)
                 || User::whereKey($record->actor_id)->value('role') !== 'admin'
                 || ! $member || $member->manifest_id !== $manifest->id || ! $member->included || $member->received_at
-                || ($return ? $member->parcel->buyer_return_case_id !== $plan->buyer_return_case_id || $member->active_return_parcel_id !== $member->buyer_return_parcel_id
-                    : $member->delivery_id !== $plan->delivery_id || $member->active_delivery_id !== $plan->delivery_id)
+                || ($return
+                    ? $member->parcel->buyer_return_case_id !== $plan->buyer_return_case_id
+                        || ($released ? $member->active_return_parcel_id !== null : $member->active_return_parcel_id !== $member->buyer_return_parcel_id)
+                    : $member->delivery_id !== $plan->delivery_id
+                        || ($released ? $member->active_delivery_id !== null : $member->active_delivery_id !== $plan->delivery_id))
                 || ! $this->physicalMatches($plan)
                 || ! $plan->events()->where('event_type', 'loss-accounted')->where('actor_id', $record->actor_id)
                     ->where('sequence', $record->financial_version + 1)->where('amount_cents', 0)->whereNull('wallet_transaction_id')
@@ -199,6 +204,15 @@ class ShipmentLossAccountingService
                 ->where('sequence', $finding->financial_version + 1)->where('request_token_hash', $finding->request_token_hash)
                 ->where('request_fingerprint', $finding->request_fingerprint)->where('context->finding_reference', $finding->reference)->where('amount_cents', 0)->exists()) {
             return false;
+        }
+        if ($reconciliation = app(ShipmentLossReconciliationService::class)->active($plan)) {
+            if ($reconciliation->status === 'released'
+                && $reconciliation->released_by_id !== null
+                && $plan->events()->where('event_type', 'loss-quarantine-released')
+                    ->where('context->reconciliation_reference', $reconciliation->reference)
+                    ->where('request_token_hash', $reconciliation->release_token_hash)->exists()) {
+                return true;
+            }
         }
         if ($return) {
             return $actual === [...$expected, 'current_hub_id' => $finding->hub_id, 'custody' => $finding->custody_after, 'version' => $expected['version'] + 1];

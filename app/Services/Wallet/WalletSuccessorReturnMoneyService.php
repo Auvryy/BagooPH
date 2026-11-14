@@ -16,6 +16,7 @@ use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\AccountRestrictionService;
 use App\Services\Finance\CodMoney;
+use App\Services\Returns\BuyerReturnMoneyService;
 use App\Services\Returns\BuyerReturnPlanApproval;
 use App\Services\Returns\BuyerReturnService;
 use Illuminate\Http\UploadedFile;
@@ -45,6 +46,9 @@ class WalletSuccessorReturnMoneyService
     {
         $actor = $this->party($actor, $case);
         abort_unless($case->order->payment_method === 'wallet' && ($case->order->shipping_quote['refund_policy_version'] ?? 1) === 2, 409);
+        if (app(BuyerReturnMoneyService::class)->blockedByLossPlan($case)) {
+            return [];
+        }
         $plan = Schema::hasTable('buyer_return_repayment_plans') ? BuyerReturnRepaymentPlan::where('buyer_return_case_id', $case->id)->first() : null;
         $admin = $actor->isAdmin() && $actor->canAccessPortal() && $actor->email_verified_at;
         if (! $plan) {

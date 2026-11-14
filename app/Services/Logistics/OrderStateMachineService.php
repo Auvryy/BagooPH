@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Courier\CourierProofService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\LogisticsEarningsService;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Wallet\WalletHandoverService;
 use App\Services\Wallet\WalletPaymentService;
@@ -178,7 +179,11 @@ class OrderStateMachineService
                 }
             }
 
-            if (in_array($lockedOrder->status, ['cancelled', 'completed', 'returned'], true)) {
+            $lossReconciled = app(ShipmentLossReconciliationService::class)->activeForParcel($lockedDelivery);
+            $lossSellerReturn = $lossReconciled?->outcome_path === 'already_settled_seller_return'
+                && in_array($targetStatus, [self::STATUS_RETURN_IN_TRANSIT, self::STATUS_RETURN_TO_SENDER], true);
+            if (in_array($lockedOrder->status, ['cancelled', 'completed', 'returned'], true)
+                && ! ($lockedOrder->status === 'cancelled' && $lossSellerReturn)) {
                 throw new DomainException('This order is terminal and cannot change parcel custody.');
             }
             app(HandoverHoldService::class)->assertMovable($lockedDelivery);
@@ -202,7 +207,7 @@ class OrderStateMachineService
                 self::STATUS_PICKED_UP => self::STATUS_READY_FOR_PICKUP,
                 self::STATUS_OUT_FOR_DELIVERY => self::STATUS_ASSIGNED_TO_RIDER,
                 self::STATUS_DELIVERED, self::STATUS_DELIVERY_FAILED => self::STATUS_OUT_FOR_DELIVERY,
-                self::STATUS_RETURN_IN_TRANSIT, self::STATUS_RETURN_TO_SENDER => self::STATUS_DELIVERY_FAILED,
+                self::STATUS_RETURN_IN_TRANSIT, self::STATUS_RETURN_TO_SENDER => $lossSellerReturn ? 'cancelled' : self::STATUS_DELIVERY_FAILED,
                 default => null,
             };
             if ($requiredOrderStatus && $lockedOrder->status !== $requiredOrderStatus) {
@@ -418,7 +423,9 @@ class OrderStateMachineService
             self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT => $transport?->manifest->source_hub_id,
             self::STATUS_ARRIVED_AT_DEST_HUB => $delivery->same_hub_bypass ? $delivery->destination_bayan_hub_id : $transport?->manifest->destination_hub_id,
             self::STATUS_ARRIVED_AT_MOTHER_HUB, self::STATUS_RETURN_TO_SENDER => $transport?->manifest->destination_hub_id,
-            self::STATUS_SORTED_TO_LINE_HAUL => in_array($delivery->current_hub_id, [$delivery->origin_mother_hub_id, $delivery->destination_mother_hub_id], true) ? $delivery->current_hub_id : null,
+            self::STATUS_SORTED_TO_LINE_HAUL => in_array($delivery->current_hub_id, [$delivery->origin_mother_hub_id, $delivery->destination_mother_hub_id], true)
+                || ($hub->isMotherHub() && in_array($delivery->current_hub_id, app(ShipmentLossReconciliationService::class)->activeForParcel($delivery)?->forward_route_hub_ids ?? [], true))
+                ? $delivery->current_hub_id : null,
             self::STATUS_SORTED_TO_BARANGAY_BIN,
             self::STATUS_READY_FOR_HUB_PICKUP,
             self::STATUS_ASSIGNED_TO_RIDER,

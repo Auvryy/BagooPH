@@ -13,13 +13,16 @@ use App\Models\Order;
 use App\Models\ParcelRecoveryCase;
 use App\Models\PickupClaim;
 use App\Models\PickupClaimEvent;
+use App\Models\ShipmentLossReconciliation;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Notifications\LifecycleNoticeService;
 use App\Services\ShopEligibilityService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class DeliveryReturnService
 {
@@ -154,8 +157,125 @@ class DeliveryReturnService
         return $position;
     }
 
+    public function activeSellerReturnReconciliation(Delivery $parcel): ?ShipmentLossReconciliation
+    {
+        $reconciled = app(ShipmentLossReconciliationService::class)->activeForParcel($parcel);
+
+        return $reconciled?->outcome_path === 'already_settled_seller_return' ? $reconciled : null;
+    }
+
+    public function activeRouteReference(Delivery $parcel): string
+    {
+        if ($reconciled = $this->activeSellerReturnReconciliation($parcel)) {
+            return $reconciled->reference;
+        }
+
+        return $this->route($parcel)->reference;
+    }
+
+    public function stagedForSeller(Delivery $parcel): bool
+    {
+        if ($reconciled = $this->activeSellerReturnReconciliation($parcel)) {
+            return $this->reconciledStagingCheckpoint($parcel, $reconciled) !== null;
+        }
+
+        return (bool) $this->event($this->route($parcel), 'seller_staged');
+    }
+
+    private function reconciledReleaseCheckpoint(Delivery $parcel, ShipmentLossReconciliation $reconciled): DeliveryCheckpoint
+    {
+        $release = $parcel->checkpoints()
+            ->where('checkpoint_type', 'loss_seller_return_released')
+            ->latest('id')
+            ->first();
+        if (! $release || ($release->custody_after['reconciliation_reference'] ?? null) !== $reconciled->reference) {
+            throw new DomainException('This reconciled seller return requires its actual quarantine release checkpoint.');
+        }
+
+        return $release;
+    }
+
+    private function reconciledStagingCheckpoint(Delivery $parcel, ShipmentLossReconciliation $reconciled): ?DeliveryCheckpoint
+    {
+        $release = $this->reconciledReleaseCheckpoint($parcel, $reconciled);
+
+        return $parcel->checkpoints()
+            ->where('id', '>', $release->id)
+            ->where('checkpoint_type', 'seller_return_staged')
+            ->where('custody_after->return_route_reference', $reconciled->reference)
+            ->latest('id')
+            ->first();
+    }
+
+    private function reconciledReceiptCheckpoint(Delivery $parcel, ShipmentLossReconciliation $reconciled): ?DeliveryCheckpoint
+    {
+        $release = $this->reconciledReleaseCheckpoint($parcel, $reconciled);
+
+        return $parcel->checkpoints()
+            ->where('id', '>', $release->id)
+            ->where('checkpoint_type', 'parcel_returned')
+            ->where('custody_after->return_route_reference', $reconciled->reference)
+            ->latest('id')
+            ->first();
+    }
+
+    private function reconciledPosition(Delivery $parcel, ShipmentLossReconciliation $reconciled): int
+    {
+        $release = $this->reconciledReleaseCheckpoint($parcel, $reconciled);
+        $hubIds = $reconciled->return_route_hub_ids ?? [];
+        $position = 0;
+        $custody = $release->custody_after;
+        foreach ($parcel->checkpoints()->where('id', '>', $release->id)->orderBy('id')->get() as $checkpoint) {
+            if ($checkpoint->checkpoint_type === 'return_in_transit') {
+                $scan = LogisticsManifestEvent::with(['manifest', 'parcel'])->where('reference', $checkpoint->custody_after['manifest_scan_reference'] ?? '')->first();
+                if (! $scan || $scan->event_type !== 'parcel_dispatched' || $scan->manifest->direction !== 'return'
+                    || $scan->parcel?->delivery_id !== $parcel->id
+                    || ($scan->parcel->route_snapshot['return_route_reference'] ?? null) !== $reconciled->reference
+                    || $position >= count($hubIds) - 1 || $scan->manifest->source_hub_id !== ($hubIds[$position] ?? null)
+                    || $scan->manifest->destination_hub_id !== ($hubIds[$position + 1] ?? null)
+                    || $checkpoint->custody_before !== $custody || ($custody['kind'] ?? null) !== 'hub') {
+                    throw new DomainException('The reconciled reverse departure does not match its retained custody chain.');
+                }
+                $custody = $checkpoint->custody_after;
+            } elseif ($checkpoint->checkpoint_type === 'return_to_sender') {
+                $scan = LogisticsManifestEvent::with(['manifest', 'parcel'])->where('reference', $checkpoint->custody_after['manifest_scan_reference'] ?? '')->first();
+                $arriving = ($custody['kind'] ?? null) === 'manifest' && ($custody['manifest_id'] ?? null) === $scan?->manifest_id;
+                if (! $scan || $scan->event_type !== 'parcel_received' || $scan->manifest->direction !== 'return'
+                    || $scan->parcel?->delivery_id !== $parcel->id
+                    || ($scan->parcel->route_snapshot['return_route_reference'] ?? null) !== $reconciled->reference
+                    || $scan->actor_id !== $checkpoint->scanned_by_id || $scan->hub_id !== $checkpoint->hub_id
+                    || $position >= count($hubIds) - 1 || ! $arriving || $checkpoint->custody_before !== $custody
+                    || $scan->manifest->source_hub_id !== ($hubIds[$position] ?? null)
+                    || $scan->manifest->destination_hub_id !== ($hubIds[$position + 1] ?? null)) {
+                    throw new DomainException('The reconciled reverse receipt does not match its arriving manifest.');
+                }
+                $position++;
+                $custody = $checkpoint->custody_after;
+            }
+        }
+
+        return $position;
+    }
+
     public function nextHub(Delivery $parcel): int
     {
+        if ($reconciled = $this->activeSellerReturnReconciliation($parcel)) {
+            $hubIds = $reconciled->return_route_hub_ids ?? [];
+            $position = $this->reconciledPosition($parcel, $reconciled);
+            $custody = DeliveryCheckpoint::lastCustody($parcel);
+            if ($parcel->status !== 'return_to_sender' || $parcel->order->status !== 'cancelled'
+                || $parcel->current_hub_id !== ($hubIds[$position] ?? null) || ($custody['kind'] ?? null) !== 'hub'
+                || ($custody['hub_id'] ?? null) !== $parcel->current_hub_id || $position >= count($hubIds) - 1
+                || $this->reconciledStagingCheckpoint($parcel, $reconciled) !== null) {
+                throw new DomainException('This reconciled seller return must have its actual current hub receipt and next reverse leg.');
+            }
+            $next = $hubIds[$position + 1];
+            if (! LogisticsHub::eligible()->where('logistics_company_id', $parcel->logistics_company_id)->whereKey($next)->exists()) {
+                throw new DomainException('The next required return facility needs its current approval and company scope.');
+            }
+
+            return $next;
+        }
         $route = $this->route($parcel);
         $position = $this->position($parcel, $route);
         $custody = DeliveryCheckpoint::lastCustody($parcel);
@@ -176,6 +296,16 @@ class DeliveryReturnService
     public function readyForSeller(Delivery $parcel): bool
     {
         try {
+            if ($reconciled = $this->activeSellerReturnReconciliation($parcel)) {
+                $hubIds = $reconciled->return_route_hub_ids ?? [];
+                $custody = DeliveryCheckpoint::lastCustody($parcel);
+
+                return $parcel->status === 'return_to_sender' && $parcel->order->status === 'cancelled'
+                    && $this->reconciledPosition($parcel, $reconciled) === count($hubIds) - 1
+                    && $parcel->current_hub_id === $parcel->origin_bayan_hub_id
+                    && ($custody['kind'] ?? null) === 'hub' && ($custody['hub_id'] ?? null) === $parcel->origin_bayan_hub_id
+                    && ! LogisticsManifestParcel::where('active_delivery_id', $parcel->id)->exists();
+            }
             $route = $this->route($parcel);
             $custody = DeliveryCheckpoint::lastCustody($parcel);
 
@@ -197,6 +327,32 @@ class DeliveryReturnService
                 throw new DomainException('Only the assigned origin-hub handler may stage this seller return.');
             }
             $barcode = app(WaybillScanInputService::class)->matchedBarcode($barcode, $parcel, allowOrderNumber: true);
+            if ($reconciled = $this->activeSellerReturnReconciliation($parcel)) {
+                if ($routeReference !== $reconciled->reference) {
+                    throw new DomainException('The reconciled return route changed. Scan its original waybill again.');
+                }
+                $existing = $this->reconciledStagingCheckpoint($parcel, $reconciled);
+                if ($existing) {
+                    if ($existing->scanned_by_id !== $actor->id || $existing->barcode_scanned !== $barcode) {
+                        throw new DomainException('Another handler already recorded this staging scan.');
+                    }
+
+                    return $parcel;
+                }
+                if ($expectedStatus !== 'return_to_sender' || ! $this->readyForSeller($parcel)) {
+                    throw new DomainException('Seller staging requires every actual reverse receipt and closed manifest.');
+                }
+                $source = DeliveryCheckpoint::state($parcel);
+                $custody = DeliveryCheckpoint::lastCustody($parcel);
+                $stageReference = (string) Str::uuid();
+                DeliveryCheckpoint::record($parcel, 'seller_return_staged', actor: $actor, hub: $hub, barcodeScanned: $barcode,
+                    notes: 'Reconciled settled return parcel staged for the owning seller. Evidence: '.$stageReference,
+                    evidence: ['source_state' => $source, 'target_state' => $source, 'custody_before' => $custody,
+                        'custody_after' => $custody + ['seller_staging_reference' => $stageReference, 'return_route_reference' => $reconciled->reference]],
+                    scanProvenance: 'loss_reconciliation_seller_return');
+
+                return $parcel;
+            }
             $route = $this->route($parcel);
             if ($routeReference !== $route->reference) {
                 throw new DomainException('The return route changed. Scan its original waybill again.');
@@ -243,6 +399,50 @@ class DeliveryReturnService
                 throw new DomainException('Only the current approved owning seller and shop may receive this returned parcel.');
             }
             $barcode = $inputs->matchedBarcode($input['barcode'], $parcel);
+            $fingerprint = hash('sha256', json_encode([$actor->id, $shop->id, $input['route_reference'], $barcode, $input['notes']], JSON_THROW_ON_ERROR));
+            if ($reconciled = $this->activeSellerReturnReconciliation($parcel)) {
+                if ($input['route_reference'] !== $reconciled->reference) {
+                    throw new DomainException('Refresh the reconciled return route before confirming receipt.');
+                }
+                $existingCheckpoint = $parcel->checkpoints()
+                    ->where('checkpoint_type', 'parcel_returned')
+                    ->where('custody_after->request_token', $input['request_token'])
+                    ->first();
+                if ($existingCheckpoint) {
+                    if ($existingCheckpoint->scanned_by_id !== $actor->id
+                        || ! hash_equals((string) ($existingCheckpoint->custody_after['request_fingerprint'] ?? ''), $fingerprint)) {
+                        throw new DomainException('This receipt request already recorded different details.');
+                    }
+
+                    return $parcel;
+                }
+                if (DeliveryReturnEvent::where('delivery_id', $parcel->id)->where('request_token', $input['request_token'])->exists()) {
+                    throw new DomainException('This receipt request already recorded different details.');
+                }
+                $staging = $this->reconciledStagingCheckpoint($parcel, $reconciled);
+                $custody = DeliveryCheckpoint::lastCustody($parcel);
+                if (! $this->readyForSeller($parcel) || ! $staging
+                    || ($custody['seller_staging_reference'] ?? null) !== ($staging->custody_after['seller_staging_reference'] ?? null)
+                    || $this->reconciledReceiptCheckpoint($parcel, $reconciled)) {
+                    throw new DomainException('Seller receipt requires the original parcel staged after the complete reverse route.');
+                }
+                $source = DeliveryCheckpoint::state($parcel);
+                $parcel->status = 'returned';
+                $parcel->current_hub_id = null;
+                $parcel->save();
+                // Keep Order.status = 'cancelled' so settlement/refund consumers never pay out a second time.
+                $hub = LogisticsHub::findOrFail($parcel->origin_bayan_hub_id);
+                $receiptRef = (string) Str::uuid();
+                DeliveryCheckpoint::record($parcel, 'parcel_returned', actor: $actor, hub: $hub, barcodeScanned: $barcode,
+                    notes: $input['notes'].' Receipt evidence: '.$receiptRef,
+                    evidence: ['source_state' => $source, 'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custody,
+                        'custody_after' => ['kind' => 'seller', 'user_id' => $actor->id, 'shop_id' => $shop->id,
+                            'return_route_reference' => $reconciled->reference, 'seller_receipt_reference' => $receiptRef,
+                            'request_token' => $input['request_token'], 'request_fingerprint' => $fingerprint]],
+                    scanProvenance: 'loss_reconciliation_seller_return');
+
+                return $parcel;
+            }
             $route = $this->route($parcel);
             if ($input['route_reference'] !== $route->reference) {
                 throw new DomainException('Refresh the retained return route before confirming receipt.');

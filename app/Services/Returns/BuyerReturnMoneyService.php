@@ -12,6 +12,7 @@ use App\Models\Delivery;
 use App\Models\Order;
 use App\Models\SellerSettlement;
 use App\Models\ShipmentFinancialEvent;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
@@ -20,6 +21,7 @@ use App\Services\BuyerAccessService;
 use App\Services\Finance\CodCashService;
 use App\Services\Finance\CodMoney;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Notifications\NotificationDeliveryService;
 use App\Services\Wallet\WalletReturnMoneyService;
 use App\Services\Wallet\WalletSuccessorReturnMoneyService;
@@ -92,8 +94,25 @@ class BuyerReturnMoneyService
             'recovery_offered_cents' => (int) $offered, 'recovery_remaining_cents' => ($adjustment?->recovery_due_cents ?? 0) - $received];
     }
 
+    public function blockedByLossPlan(BuyerReturnCase $case): bool
+    {
+        if (! Schema::hasTable('shipment_financial_plans')) {
+            return false;
+        }
+        $plan = ShipmentFinancialPlan::where('active_return_case_id', $case->id)->where('kind', 'transit_loss')->first();
+        if (! $plan) {
+            return false;
+        }
+        $reconciliation = app(ShipmentLossReconciliationService::class)->active($plan);
+
+        return ! ($reconciliation && $reconciliation->status === 'released' && $reconciliation->outcome_path === 'post_delivery_partial_return');
+    }
+
     public function actions(User $actor, BuyerReturnCase $case): array
     {
+        if ($this->blockedByLossPlan($case)) {
+            return [];
+        }
         $policy = $case->order->shipping_quote['refund_policy_version'] ?? 1;
         if ($policy === 2) {
             return $case->order->payment_method === 'wallet' ? app(WalletSuccessorReturnMoneyService::class)->actions($actor, $case)
@@ -139,6 +158,7 @@ class BuyerReturnMoneyService
 
     public function command(User $actor, BuyerReturnCase $case, string $action, array $input, ?UploadedFile $proof = null): BuyerReturnMoneyEvent
     {
+        abort_if($this->blockedByLossPlan($case), 409, 'Retain the reviewed transit loss or salvage outcome on this return; separate return payouts are unavailable.');
         $policy = $case->order->shipping_quote['refund_policy_version'] ?? 1;
         if ($policy === 2) {
             return $case->order->payment_method === 'wallet' ? app(WalletSuccessorReturnMoneyService::class)->command($actor, $case, $action, $input, $proof)

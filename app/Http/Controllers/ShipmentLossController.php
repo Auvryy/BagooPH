@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\ShipmentFinancialPlan;
 use App\Models\ShipmentLossDisposition;
 use App\Models\ShipmentLossFinding;
+use App\Models\ShipmentLossReconciliation;
 use App\Models\WalletRefundCreditRequest;
 use App\Services\Finance\ShipmentLossAccess;
 use App\Services\Finance\ShipmentLossActions;
@@ -167,32 +168,24 @@ class ShipmentLossController extends Controller
 
     public function findingProof(Request $request, ShipmentFinancialPlan $plan)
     {
-        $this->admin($request);
-        abort_unless(app(ShipmentLossAccess::class)->query($request->user())->whereKey($plan->id)->exists(), 404);
-        $record = ShipmentLossFinding::where('shipment_financial_plan_id', $plan->id)->firstOrFail();
-        $disk = Storage::disk('local');
-        abort_unless(preg_match('/\Ashipment-loss-findings\/[a-f0-9-]+\.(?:jpg|png|webp|pdf)\z/', $record->proof_path)
-            && $record->proof_bytes > 0 && $record->proof_bytes <= 5242880 && $disk->exists($record->proof_path)
-            && $disk->size($record->proof_path) === $record->proof_bytes
-            && hash_equals($record->proof_hash, hash_file('sha256', $disk->path($record->proof_path))), 404);
-
-        return $disk->response($record->proof_path, 'Found-parcel-evidence.'.pathinfo($record->proof_path, PATHINFO_EXTENSION),
-            ['Content-Type' => $record->proof_mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff'], 'attachment');
+        return $this->serveLocalProof(
+            $request,
+            $plan,
+            fn () => ShipmentLossFinding::where('shipment_financial_plan_id', $plan->id)->firstOrFail(),
+            'shipment-loss-findings',
+            fn () => 'Found-parcel-evidence',
+        );
     }
 
     public function dispositionProof(Request $request, ShipmentFinancialPlan $plan)
     {
-        $this->admin($request);
-        abort_unless(app(ShipmentLossAccess::class)->query($request->user())->whereKey($plan->id)->exists(), 404);
-        $record = ShipmentLossDisposition::where('shipment_financial_plan_id', $plan->id)->firstOrFail();
-        $disk = Storage::disk('local');
-        abort_unless(preg_match('/\Ashipment-loss-dispositions\/[a-f0-9-]+\.(?:jpg|png|webp|pdf)\z/', $record->proof_path)
-            && $record->proof_bytes > 0 && $record->proof_bytes <= 5242880 && $disk->exists($record->proof_path)
-            && $disk->size($record->proof_path) === $record->proof_bytes && hash_equals($record->proof_hash, hash('sha256', $disk->get($record->proof_path))), 404,
-            'The private loss evidence is unavailable. Its original record is retained.');
-
-        return $disk->response($record->proof_path, 'Loss-evidence-'.$record->reference.'.'.pathinfo($record->proof_path, PATHINFO_EXTENSION),
-            ['Content-Type' => $record->proof_mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff'], 'attachment');
+        return $this->serveLocalProof(
+            $request,
+            $plan,
+            fn () => ShipmentLossDisposition::where('shipment_financial_plan_id', $plan->id)->firstOrFail(),
+            'shipment-loss-dispositions',
+            fn (object $record) => 'Loss-evidence-'.$record->reference,
+        );
     }
 
     private function perform(Request $request, ShipmentFinancialPlan $plan, Closure $operation)
@@ -223,6 +216,36 @@ class ShipmentLossController extends Controller
         abort_unless($order, 409, 'Retain the original missing observation and its purchased shipment before reviewing a loss.');
 
         return $order;
+    }
+
+    public function reconciliationProof(Request $request, ShipmentFinancialPlan $plan, ShipmentLossReconciliation $reconciliation)
+    {
+        return $this->serveLocalProof(
+            $request,
+            $plan,
+            fn () => $reconciliation,
+            'shipment-loss-reconciliations',
+            fn (object $record) => 'Loss-reconciliation-'.$record->reference,
+            $reconciliation->shipment_financial_plan_id === $plan->id,
+        );
+    }
+
+    private function serveLocalProof(Request $request, ShipmentFinancialPlan $plan, Closure $resolveRecord, string $directory, Closure $downloadBaseName, bool $belongsToPlan = true)
+    {
+        $this->admin($request);
+        abort_unless($belongsToPlan && app(ShipmentLossAccess::class)->query($request->user())->whereKey($plan->id)->exists(), 404);
+        $record = $resolveRecord();
+        $disk = Storage::disk('local');
+        $pattern = '/\A'.preg_quote($directory, '/').'\/[a-f0-9-]+\.(?:jpg|png|webp|pdf)\z/';
+        abort_unless(preg_match($pattern, $record->proof_path)
+            && $record->proof_bytes > 0 && $record->proof_bytes <= 5242880
+            && $disk->exists($record->proof_path)
+            && $disk->size($record->proof_path) === $record->proof_bytes
+            && hash_equals($record->proof_hash, hash_file('sha256', $disk->path($record->proof_path))), 404,
+            'The private loss evidence is unavailable. Its original record is retained.');
+
+        return $disk->response($record->proof_path, $downloadBaseName($record).'.'.pathinfo($record->proof_path, PATHINFO_EXTENSION),
+            ['Content-Type' => $record->proof_mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff'], 'attachment');
     }
 
     private function rejected(Request $request, ValidationException|HttpExceptionInterface $error)

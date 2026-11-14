@@ -182,6 +182,9 @@ test('hub return guidance names the next handler and stages the parcel before as
     const ready = await render(ui.Custody, { custody: { ...atOrigin, status: 'ready_for_seller', actions: [] }, caseId: 11, version: 7 }, 'logistics');
     assert.match(ready, /Next: seller records receipt/);
     assert.doesNotMatch(ready, /Next: stage for seller collection|<form/);
+    const held = await render(ui.Custody, { custody: { ...atOrigin, actions: [], loss_hold: 'This salvaged parcel was already financially settled and released to salvage custody; ordinary delivery and return routing is closed.' }, caseId: 11, version: 7 }, 'logistics');
+    assert.match(held, /released to salvage custody/);
+    assert.doesNotMatch(held, /Next: stage for seller collection|Open transfers/);
     const buyer = await render(ui.Custody, { custody, caseId: 11, version: 2 });
     assert.doesNotMatch(buyer, /Barcode and QR for this return|Open transfers/);
 });

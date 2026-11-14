@@ -16,6 +16,7 @@ use App\Models\WalletTransaction;
 use App\Rules\ApplicationText;
 use App\Services\AccountRestrictionService;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Finance\ShipmentLossWallet;
 use App\Services\Finance\ShipmentRefusalMoney;
 use App\Services\Orders\AutomaticDeliveryCompletionService;
@@ -43,7 +44,7 @@ class WalletSettlementService
 
     public function basis(Order $order): array
     {
-        if (Schema::hasTable('shipment_financial_plans') && ($plan = ShipmentFinancialPlan::where('active_order_id', $order->id)->where('kind', 'transit_loss')->first())) {
+        if ($plan = app(ShipmentLossReconciliationService::class)->blocksOrderSettlement($order)) {
             return app(ShipmentLossWallet::class)->walletBasis($plan);
         }
         if (Schema::hasTable('shipment_financial_plans') && ($plan = ShipmentFinancialPlan::where('order_id', $order->id)->where('kind', 'buyer_refusal')->first())) {
@@ -76,7 +77,7 @@ class WalletSettlementService
     {
         $order->loadMissing('items.shop.user', 'delivery');
         $payment = $order->walletPayment;
-        if (Schema::hasTable('shipment_financial_plans') && ($plan = ShipmentFinancialPlan::where('active_order_id', $order->id)->where('kind', 'transit_loss')->first())) {
+        if ($plan = app(ShipmentLossReconciliationService::class)->blocksOrderSettlement($order)) {
             $event = $plan->events()->where('event_type', 'loss-resolve-wallet')->first();
             $transaction = $event?->wallet_transaction_id ? WalletTransaction::find($event->wallet_transaction_id) : null;
 

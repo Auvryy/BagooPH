@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Finance\ShipmentLossCustody;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
 use App\Services\Logistics\LogisticsRoutingEngine;
@@ -52,10 +53,29 @@ class BuyerReturnRecoveryService
     {
         $recovery = $this->active($parcel);
         if ($recovery && in_array($recovery->state, ['held', 'in_transit'], true)) {
-            return ['hub_ids' => $recovery->hub_ids, 'position' => $recovery->leg_index, 'recovery_id' => $recovery->id];
+            return ['hub_ids' => $recovery->hub_ids, 'position' => $recovery->leg_index, 'recovery_id' => $recovery->id, 'loss_reconciliation_id' => null];
+        }
+        $loss = app(ShipmentLossReconciliationService::class)->activeForParcel($parcel);
+        if ($loss?->outcome_path === 'post_delivery_partial_return') {
+            $hubIds = $loss->return_route_hub_ids ?? [];
+            $completed = $loss->returnRoutes()
+                ->with('manifest.buyerReturnParcels')
+                ->orderBy('leg_index')
+                ->get()
+                ->filter(fn ($route) => $route->manifest
+                    && in_array($route->manifest->status, ['received', 'closed'], true)
+                    && $route->manifest->buyerReturnParcels->contains(fn ($member) => $member->buyer_return_parcel_id === $parcel->id && $member->received_at !== null))
+                ->count();
+
+            return [
+                'hub_ids' => $hubIds,
+                'position' => min($completed, max(0, count($hubIds) - 1)),
+                'recovery_id' => null,
+                'loss_reconciliation_id' => $loss->id,
+            ];
         }
 
-        return ['hub_ids' => $parcel->hub_ids, 'position' => $parcel->route_position, 'recovery_id' => null];
+        return ['hub_ids' => $parcel->hub_ids, 'position' => $parcel->route_position, 'recovery_id' => null, 'loss_reconciliation_id' => null];
     }
 
     public function scope(User $actor): Builder

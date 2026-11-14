@@ -43,6 +43,22 @@ const eventLabels: Record<string, string> = {
     'loss-return-unused-credit': 'Unused reviewed credits returned to their issuance source',
     'loss-return-company-source': 'Unused company contribution restored',
     'loss-return-platform-source': 'Unused platform reserve source returned to its original account',
+    'loss-reconciliation-approved': 'Found-parcel reconciliation approved',
+    'loss-reconciliation-invalidated': 'Stale found-parcel reconciliation invalidated',
+    'loss-quarantine-released': 'Found parcel physically released from quarantine',
+    'loss-salvage-released': 'Found parcel released to salvage custody',
+    'loss-return-buyer-compensation': 'Buyer voluntarily returned Wallet refund',
+    'loss-return-seller-compensation': 'Seller voluntarily returned Wallet protection',
+    'loss-restore-company-compensation': 'Reimbursed company Wallet funding from returned compensation',
+    'loss-restore-escrow-compensation': 'Restored surplus returned compensation to Escrow',
+    'loss-offer-buyer-compensation-return': 'Buyer offered voluntary cash refund return',
+    'loss-receive-buyer-compensation-return': 'Admin confirmed buyer cash refund return',
+    'loss-offer-seller-compensation-return': 'Seller offered voluntary cash protection return',
+    'loss-receive-seller-compensation-return': 'Admin confirmed seller cash protection return',
+    'loss-record-company-cash-return': 'Recorded company cash reimbursement',
+    'loss-confirm-company-cash-return': 'Company confirmed cash reimbursement',
+    'loss-report-company-cash-nonreceipt': 'Company reported cash reimbursement nonreceipt',
+    'loss-resolve-company-cash-nonreceipt': 'Company cash reimbursement evidence reviewed',
 };
 
 export default function LossOutcome({ loss }: LossOutcomeProps) {

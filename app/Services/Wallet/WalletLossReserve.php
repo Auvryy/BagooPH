@@ -25,15 +25,21 @@ class WalletLossReserve
     {
         $entries = $this->entries($plan)->get();
         $own = (int) $entries->whereIn('source_kind', ['liable_company', 'company_source_return'])->sum('delta_cents');
+        $companyReimbursed = -(int) $entries->where('source_kind', 'company_compensation_reimbursement')->sum('delta_cents');
         $advance = (int) $entries->where('source_kind', 'advance')->sum('delta_cents');
         $retired = -(int) $entries->where('source_kind', 'advance_retirement')->sum('delta_cents');
         $returned = -(int) $entries->where('source_kind', 'found_advance_return')->sum('delta_cents');
+        $buyerReturned = (int) $entries->where('source_kind', 'buyer_compensation_return')->sum('delta_cents');
+        $sellerReturned = (int) $entries->where('source_kind', 'seller_compensation_return')->sum('delta_cents');
 
         return ['balance_cents' => (int) $entries->sum('delta_cents'), 'company_due_cents' => $plan->snapshot['company_funding_due_cents'],
-            'company_received_cents' => $own, 'company_remaining_cents' => $plan->snapshot['company_funding_due_cents'] - $own,
+            'company_received_cents' => $own, 'company_remaining_cents' => max(0, $plan->snapshot['company_funding_due_cents'] - $own),
+            'company_reimbursed_cents' => $companyReimbursed,
             'advance_cents' => $advance, 'advance_retired_cents' => $retired, 'advance_returned_cents' => $returned, 'advance_outstanding_cents' => $advance - $retired - $returned,
             'original_required_cents' => $plan->snapshot['original_escrow_required_cents'],
-            'original_reserved_cents' => (int) $entries->whereIn('source_kind', ['original_escrow', 'original_escrow_return'])->sum('delta_cents'),
+            'original_reserved_cents' => (int) $entries->whereIn('source_kind', ['original_escrow', 'original_escrow_return', 'escrow_compensation_reimbursement'])->sum('delta_cents'),
+            'buyer_compensation_returned_cents' => $buyerReturned,
+            'seller_compensation_returned_cents' => $sellerReturned,
             'reserve_goal_cents' => $plan->snapshot['reserve_goal_cents'], 'buyer_refund_cents' => $plan->snapshot['buyer_refund_cents'],
             'seller_protection_cents' => $plan->snapshot['seller_protection_cents'], 'protected_earned_shipping_cents' => $plan->snapshot['protected_earned_shipping_cents'],
             'resolved' => WalletTransaction::where('business_key', 'shipment-loss:'.$plan->id)->exists()];
@@ -53,7 +59,12 @@ class WalletLossReserve
         }
         abort_unless(in_array($action, ['reserve-original', 'contribute-company', 'approve-advance', 'resolve-wallet'], true), 409);
         $state = $this->summary($plan);
-        app(ShipmentLossSource::class)->assertApproved($plan);
+        $finding = app(ShipmentLossSource::class)->finding($plan);
+        if ($finding && $action === 'contribute-company' && $state['resolved'] && $state['advance_outstanding_cents'] > 0) {
+            app(ShipmentLossSource::class)->assertQuarantined($plan);
+        } else {
+            app(ShipmentLossSource::class)->assertApproved($plan);
+        }
         // Late own-company funding retires an actual advance without rewriting the original loss or refund.
         if ($state['resolved']) {
             abort_unless($action === 'contribute-company', 409, 'Retain the original completed loss settlement.');
@@ -132,7 +143,7 @@ class WalletLossReserve
         return $transaction;
     }
 
-    private function retireExcess(ShipmentFinancialPlan $plan, User $actor): void
+    public function retireExcess(ShipmentFinancialPlan $plan, User $actor): void
     {
         $state = $this->summary($plan);
         $free = max(0, $state['balance_cents'] - ($state['resolved'] ? 0 : $state['reserve_goal_cents']));

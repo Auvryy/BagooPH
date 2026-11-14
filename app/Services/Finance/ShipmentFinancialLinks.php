@@ -52,8 +52,15 @@ class ShipmentFinancialLinks
         }
         $plan = app(ShipmentLossAccess::class)->query($actor)->where('buyer_return_case_id', $case->id)
             ->where('active_return_case_id', $case->id)->first(['id', 'reference']);
+        if (! $plan) {
+            return null;
+        }
+        $reconciliation = app(ShipmentLossReconciliationService::class)->active($plan);
+        if ($reconciliation && $reconciliation->status === 'released' && $reconciliation->outcome_path === 'post_delivery_partial_return') {
+            return null;
+        }
 
-        return $plan ? ['id' => $plan->id, 'reference' => $plan->reference, 'return_reference' => $case->reference,
-            'href' => '/shipment-finances/'.$plan->id] : null;
+        return ['id' => $plan->id, 'reference' => $plan->reference, 'return_reference' => $case->reference,
+            'href' => '/shipment-finances/'.$plan->id];
     }
 }

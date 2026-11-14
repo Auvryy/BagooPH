@@ -89,3 +89,15 @@ test('returned platform reserve history renders its distinct label without marki
     assert.match(html, /250\.00/);
     assert.doesNotMatch(html, /Financial outcome recorded|Buyer confirmed receipt|Seller confirmed receipt/);
 });
+
+test('reconciliation, compensation return and quarantine release history events render distinct labels', async () => {
+    const html = await render({ ...loss, mode: 'wallet',
+        history: [
+            { ...loss.history[0], id: 10, event_type: 'loss-return-buyer-compensation', amount_cents: 12500 },
+            { ...loss.history[0], id: 11, event_type: 'loss-reconciliation-approved', amount_cents: 0 },
+            { ...loss.history[0], id: 12, event_type: 'loss-quarantine-released', amount_cents: 0 },
+        ] }, 'admin');
+    assert.match(html, /Buyer voluntarily returned Wallet refund/);
+    assert.match(html, /Found-parcel reconciliation approved/);
+    assert.match(html, /Found parcel physically released from quarantine/);
+});

@@ -286,3 +286,68 @@ test('unused platform reserve return renders distinct labels, enforces consent a
     assert.equal(h.forms.action.data.source_event_id, '');
     assert.notEqual(h.forms.action.data.request_token, tokenBeforeSwitch);
 });
+
+test('found-parcel reconciliation renders status, blocks ineligible paths and posts eligible outcome_path with proof', async () => {
+    const h = globalThis.lossControlsHarness = new Harness();
+    const value = {
+        ...base, version: 19,
+        finding: { reference: 'FINDING-REF-1', proof_url: '/shipment-finances/11/finding/proof', intake_url: '/loss-found/11?hub_id=4' },
+        reconciliation: {
+            eligible_paths: ['unpaid_undelivered'],
+            blocked_reasons: { already_settled_salvage: 'Salvage custody applies only after loss compensation or resolution has already been settled.' },
+            stale: false,
+            reconciliation: null,
+        },
+        actions: [action('reconcile-found', { confirmation: 'reconciliation_confirmed', proof: true, outcome_path: true })],
+    };
+    let html = await render(value, 11, 22);
+    assert.match(html, /href="\/loss-found\/11\?hub_id=4"/);
+    assert.match(html, /Salvage custody applies only after loss compensation/);
+    choose(h, 'reconcile-found');
+    html = await render(value, 11, 22);
+    assert.match(html, /Eligible reconciliation outcome/);
+    assert.match(html, /unpaid_undelivered/);
+    ready(h);
+    h.forms.action.data.proof = { size: 4096, type: 'image/png' };
+    h.submit();
+    assert.equal(h.posts.length, 1);
+    assert.deepEqual(Object.keys(h.posts[0].data).sort(), ['action', 'expected_version', 'outcome_path', 'proof', 'reason', 'reconciliation_confirmed', 'request_token']);
+    assert.equal(h.posts[0].data.outcome_path, 'unpaid_undelivered');
+    assert.equal(h.posts[0].data.reconciliation_confirmed, true);
+    assert.equal(h.posts[0].options.forceFormData, true);
+});
+
+test('approved stale reconciliation shows warning, invalidation action, and cod cash return submits without source_event_id', async () => {
+    const h = globalThis.lossControlsHarness = new Harness();
+    const value = {
+        ...base, version: 21, receivers: [{ id: 8, name: 'Receiving Admin' }],
+        reconciliation: {
+            eligible_paths: [],
+            blocked_reasons: {},
+            stale: true,
+            reconciliation: {
+                id: 5, reference: 'REC-STALE-1', outcome_path: 'already_settled_salvage',
+                outcome_label: 'Retain settled compensation & move parcel to salvage', status: 'approved',
+                stale: true, reason: 'Approved salvage custody.', proof_url: '/shipment-finances/11/reconciliation/5/proof',
+                invalidation_reason: null, invalidated_at: null, released_at: null, created_at: '2026-11-14T00:00:00Z',
+            },
+        },
+        actions: [
+            action('invalidate-reconciliation', { confirmation: 'invalidation_confirmed' }),
+            action('record-company-cash-return', { proof: true, amount: true, cash_reference: true, maximum_cents: 18000 }),
+            action('offer-buyer-compensation-return', { proof: true, receiver: true, cash_reference: true }),
+        ],
+    };
+    let html = await render(value, 11, 22);
+    assert.match(html, /Original financial state changed after reconciliation approval/);
+    assert.match(html, /href="\/shipment-finances\/11\/reconciliation\/5\/proof"/);
+    choose(h, 'record-company-cash-return');
+    await render(value, 11, 22);
+    ready(h);
+    Object.assign(h.forms.action.data, { amount: '180.00', cash_reference: 'CASH-RET-01', proof: { size: 2048, type: 'application/pdf' } });
+    h.submit();
+    assert.equal(h.posts.length, 1);
+    assert.equal(h.posts[0].data.action, 'record-company-cash-return');
+    assert.equal('source_event_id' in h.posts[0].data, false);
+    assert.equal(h.posts[0].data.cash_reference, 'CASH-RET-01');
+});

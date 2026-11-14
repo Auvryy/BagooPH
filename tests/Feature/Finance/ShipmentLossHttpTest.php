@@ -470,7 +470,7 @@ class ShipmentLossHttpTest extends TestCase
         $this->assertNotNull($receiverControls['hold_message']);
         $this->assertSame(['receive-company'], array_column($receiverControls['actions'], 'id'));
         $this->lossCommand($receiver, $plan, 'receive-company', 'payment_confirmed', ['source_event_id' => $offer['id'], 'proof' => UploadedFile::fake()->image('actual-found-source-receipt.png')]);
-        $this->assertSame([], $this->available($admin, $plan)['actions']);
+        $this->assertSame(['record-company-cash-return'], array_column($this->available($admin, $plan)['actions'], 'id'));
         $this->assertSame([], $this->available($owner, $plan)['actions']);
         $this->assertFalse($plan->events()->where('event_type', 'loss-record-seller-protection')->exists());
     }

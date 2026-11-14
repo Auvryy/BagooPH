@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Finance\ShipmentLossAccountingService;
 use App\Services\Finance\ShipmentLossCustody;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Returns\BuyerReturnManifestService;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -576,6 +577,29 @@ class LogisticsManifestService
             || ! $source || ($custody['kind'] ?? null) !== 'hub' || ($custody['hub_id'] ?? null) !== $delivery->current_hub_id) {
             throw new DomainException('Recorded source-hub custody is required before manifest loading.');
         }
+        $reconciled = app(ShipmentLossReconciliationService::class)->activeForParcel($delivery);
+        if ($reconciled?->outcome_path === 'unpaid_undelivered') {
+            $path = $reconciled->forward_route_hub_ids ?? [];
+            $position = array_search($source->id, $path, true);
+            $nextId = $position !== false ? ($path[$position + 1] ?? null) : null;
+            $next = $nextId ? LogisticsHub::eligible()->where('logistics_company_id', $delivery->logistics_company_id)->find($nextId) : null;
+            if (! $next) {
+                throw new DomainException('This parcel has no further reconciled forward hub transfer. Continue local sorting or review its route.');
+            }
+            $this->legType($source, $next);
+            if ($source->isMotherHub()) {
+                $quarantineReleasedHere = $position === 0
+                    && $delivery->checkpoints()->where('checkpoint_type', 'loss_quarantine_released')->where('hub_id', $source->id)->exists();
+                if (! in_array($delivery->status, ['arrived_at_mother_hub', 'sorted_to_line_haul'], true)
+                    || (! $quarantineReleasedHere && ! $this->actualHubReceipt($delivery, $source->id) && ! $this->historicalHubReceipt($delivery, $source->id))) {
+                    throw new DomainException('The Mother Hub needs its actual receipt or quarantine release before further departure.');
+                }
+            } elseif ($delivery->status !== OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB || $position !== 0) {
+                throw new DomainException('Complete the expected origin or quarantine release before the next transfer.');
+            }
+
+            return $next->id;
+        }
         if ($delivery->order->logistics_flow_version >= 2) {
             $path = $delivery->route_hub_ids ?? [];
             $position = array_search($source->id, $path, true);
@@ -648,7 +672,9 @@ class LogisticsManifestService
             $members = $manifest->buyerReturnParcels()->where('included', true)->get();
 
             return ['expected' => $members->count(), 'normal_received' => $members->whereNotNull('received_at')->count(),
-                'corrective_expected_received' => 0, 'unlisted_received' => 0, 'confirmed_lost' => $lost, 'outstanding' => $members->whereNull('received_at')->count() - $lost];
+                'corrective_expected_received' => 0, 'unlisted_received' => 0,
+                ...($lost > 0 ? ['confirmed_lost' => $lost] : []),
+                'outstanding' => $members->whereNull('received_at')->count() - $lost];
         }
         $members = $manifest->parcels()->where('included', true)->get();
         $corrective = $manifest->correctiveReceipts()->get()->filter(fn ($receipt) => $receipt->supports());
@@ -657,7 +683,8 @@ class LogisticsManifestService
 
         return ['expected' => $members->count(), 'normal_received' => $normalIds->count(), 'corrective_expected_received' => $correctiveIds->count(),
             'unlisted_received' => $corrective->whereNull('manifest_parcel_id')->count(),
-            'confirmed_lost' => $lost, 'outstanding' => $members->count() - $normalIds->count() - $correctiveIds->count() - $lost];
+            ...($lost > 0 ? ['confirmed_lost' => $lost] : []),
+            'outstanding' => $members->count() - $normalIds->count() - $correctiveIds->count() - $lost];
     }
 
     private function expectedHub(Delivery $delivery, ?int $id, string $tier): int
@@ -688,9 +715,15 @@ class LogisticsManifestService
             return app(ParcelRecoveryService::class)->recoveryRoute($recovery);
         }
         $route = app(DeliveryReturnService::class)->forwardRoute($delivery);
+        $reconciled = app(ShipmentLossReconciliationService::class)->activeForParcel($delivery);
         if ($this->direction($delivery) === 'return') {
+            if ($reconciled?->outcome_path === 'already_settled_seller_return') {
+                return $route + ['reconciliation_reference' => $reconciled->reference, 'return_route_reference' => $reconciled->reference, 'return_hub_ids' => $reconciled->return_route_hub_ids];
+            }
             $return = app(DeliveryReturnService::class)->route($delivery);
             $route += ['return_route_reference' => $return->reference, 'return_hub_ids' => $return->hub_ids];
+        } elseif ($reconciled?->outcome_path === 'unpaid_undelivered') {
+            $route += ['reconciliation_reference' => $reconciled->reference, 'forward_route_hub_ids' => $reconciled->forward_route_hub_ids];
         }
 
         return $route;
@@ -791,6 +824,16 @@ class LogisticsManifestService
             return;
         }
         $route = $parcel->route_snapshot;
+        if (! empty($route['reconciliation_reference'])) {
+            $corridor = $manifest->direction === 'return' ? ($route['return_hub_ids'] ?? []) : ($route['forward_route_hub_ids'] ?? []);
+            $position = array_search($manifest->source_hub_id, $corridor, true);
+            if ($position === false || ($corridor[$position + 1] ?? null) !== $manifest->destination_hub_id
+                || $this->legType($manifest->sourceHub, $manifest->destinationHub) !== $manifest->type) {
+                throw new DomainException('The arriving manifest must match the approved found-parcel reconciliation corridor.');
+            }
+
+            return;
+        }
         $sourceTier = in_array($manifest->source_hub_id, [$route['origin_mother_hub_id'], $route['destination_mother_hub_id']], true)
             ? 'regional_mother_hub' : 'local_bayan_hub';
         $destinationTier = in_array($manifest->destination_hub_id, [$route['origin_mother_hub_id'], $route['destination_mother_hub_id']], true)

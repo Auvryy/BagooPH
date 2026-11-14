@@ -41,9 +41,9 @@ class Harness {
 }
 const original = { id: 7, barcode: 'BGO-ORIGINAL', manifest_reference: 'MFT-ORIGINAL', scope: 'Original parcel',
     hub: { id: 4, name: 'Receiving hub', code: 'BH-4' }, version: 2, can_intake: true, blocker: null, finding: null };
-async function render(intake = original) {
+async function render(intake = original, release = null, actorId = 3) {
     const h = globalThis.foundHarness; h.cursor = 0; h.effectCursor = 0; h.handlers = []; let view;
-    const response = await createInertiaApp({ page: { component: 'Hub/LossFoundIntake', props: { auth: { user: { id: 3, name: 'Hub operator', role: 'logistics' } }, flash: {}, errors: {}, intake, requestToken: 'ORIGINAL-TOKEN' }, url: '/loss-found/7?hub_id=4', version: null },
+    const response = await createInertiaApp({ page: { component: 'Hub/LossFoundIntake', props: { auth: { user: { id: actorId, name: 'Hub operator', role: 'logistics' } }, flash: {}, errors: {}, intake, release, requestToken: 'ORIGINAL-TOKEN' }, url: '/loss-found/7?hub_id=4', version: null },
         resolve: () => Found, setup: ({ App, props }) => { view = createElement(App, props); return view; }, render: () => renderToStaticMarkup(view) });
     return response.body;
 }
@@ -80,4 +80,23 @@ test('changed source blocks stale rendered submit and does not manufacture a rec
     const h = globalThis.foundHarness = new Harness(); await render(); ready(h);
     const html = await render({ ...original, can_intake: false, blocker: 'Original custody changed; independent reconciliation is required.' });
     assert.match(html, /Original custody changed/); assert.equal(h.handlers.some(item => item.type === 'form'), false); assert.equal(h.posts.length, 0);
+});
+test('approved reconciliation enables hub release form and blocks release when stale or blocked', async () => {
+    const h = globalThis.foundHarness = new Harness();
+    const found = { ...original, can_intake: false, version: 5, finding: { reference: 'FOUND', recorded_at: '2026-11-13T12:00:00Z', at_selected_hub: true, proof_url: '/loss-found/7/proof?hub_id=4' } };
+    const staleHtml = await render(found, { can_release: false, stale: true, blocker: 'Reconciliation is stale; invalidate and re-approve before release.', reconciliation: { id: 1, reference: 'rec-uuid-1', outcome_path: 'unpaid_undelivered', outcome_label: 'Restore unused funds & resume forward delivery', status: 'approved', approved_at: '2026-11-14T00:00:00Z', released_at: null } });
+    assert.match(staleHtml, /Reconciliation is stale/); assert.equal(h.handlers.some(item => item.type === 'form'), false);
+    const readyHtml = await render(found, { can_release: true, stale: false, blocker: null, reconciliation: { id: 1, reference: 'rec-uuid-1', outcome_path: 'unpaid_undelivered', outcome_label: 'Restore unused funds & resume forward delivery', status: 'approved', approved_at: '2026-11-14T00:00:00Z', released_at: null } });
+    assert.match(readyHtml, /Complete physical quarantine release/);
+    Object.assign(h.form.data, { barcode: 'WRONG', reason: 'Too short', release_confirmed: false });
+    h.submit(); assert.equal(h.posts.length, 0); assert.ok(h.form.errors.barcode); assert.ok(h.form.errors.reason); assert.ok(h.form.errors.release_confirmed);
+    Object.assign(h.form.data, { barcode: found.barcode, reason: 'Verified original parcel at Bayan Hub quarantine shelf and released onto forward route.', release_confirmed: true });
+    h.submit(); h.submit(); assert.equal(h.posts.length, 1);
+    assert.equal(h.posts[0].url, '/loss-found/7/release');
+    assert.deepEqual(Object.keys(h.posts[0].data).sort(), ['barcode', 'expected_version', 'hub_id', 'reason', 'reconciliation_reference', 'release_confirmed', 'request_token']);
+    assert.equal(h.posts[0].data.reconciliation_reference, 'rec-uuid-1');
+    assert.equal(h.posts[0].data.release_confirmed, true);
+    h.finish();
+    h.posts[0].options.onSuccess({ props: { release: { can_release: false, stale: false, blocker: null, reconciliation: { id: 1, reference: 'rec-uuid-1', outcome_path: 'unpaid_undelivered', outcome_label: 'Restore unused funds & resume forward delivery', status: 'released', approved_at: '2026-11-14T00:00:00Z', released_at: '2026-11-14T01:00:00Z' } } } });
+    assert.equal(h.form.data.reason, ''); assert.equal(h.form.data.release_confirmed, false);
 });

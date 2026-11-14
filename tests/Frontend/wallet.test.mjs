@@ -197,3 +197,10 @@ test('wallet payment retains separate links for each original partial-return fin
     for (const id of [11, 12]) { assert.match(html, new RegExp(`BRT-CLAIM-${id}`)); assert.ok(html.includes(`href="/shipment-finances/${id}"`)); }
     assert.doesNotMatch(html, /All loss reviews/);
 });
+
+test('walletKind translates all compensation-return and reimbursement transaction kinds accurately', () => {
+    assert.equal(ui.walletKind('wallet_loss_buyer_compensation_return'), 'Voluntary buyer loss refund returned');
+    assert.equal(ui.walletKind('wallet_loss_seller_compensation_return'), 'Voluntary seller protection returned');
+    assert.equal(ui.walletKind('wallet_loss_company_reimbursement'), 'Company loss funding reimbursed');
+    assert.equal(ui.walletKind('wallet_loss_escrow_reimbursement'), 'Escrow loss compensation surplus restored');
+});

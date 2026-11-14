@@ -16,4 +16,8 @@ export const walletKind = (kind: string) => ({
     demo_loss_credit_return: 'Unused demo loss credits returned',
     wallet_loss_company_source_return: 'Unused loss contribution restored',
     wallet_loss_platform_source_return: 'Unused platform loss reserve returned',
+    wallet_loss_buyer_compensation_return: 'Voluntary buyer loss refund returned',
+    wallet_loss_seller_compensation_return: 'Voluntary seller protection returned',
+    wallet_loss_company_reimbursement: 'Company loss funding reimbursed',
+    wallet_loss_escrow_reimbursement: 'Escrow loss compensation surplus restored',
 }[kind] ?? 'Wallet transaction');

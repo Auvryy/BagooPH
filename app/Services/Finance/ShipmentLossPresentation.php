@@ -39,21 +39,25 @@ class ShipmentLossPresentation
             if ($admin || $access->proof($actor, $plan, $event)) {
                 return true;
             }
-            if (in_array($event->event_type, ['approved', 'voided'], true)) {
+            if (in_array($event->event_type, ['approved', 'voided', 'loss-reconciliation-approved', 'loss-reconciliation-invalidated', 'loss-quarantine-released'], true)) {
                 return true;
             }
 
-            return ($buyer && in_array($event->event_type, ['loss-resolve-wallet', 'loss-assess-zero-buyer', 'loss-resolve-cash'], true))
-                || ($seller && $event->event_type === 'loss-resolve-wallet')
-                || ($company && in_array($event->event_type, ['loss-contribute-company', 'loss-credit-requested', 'loss-credit-approved', 'loss-credit-rejected', 'loss-return-unused-credit', 'loss-return-company-source'], true));
+            return ($buyer && in_array($event->event_type, ['loss-resolve-wallet', 'loss-assess-zero-buyer', 'loss-resolve-cash', 'loss-return-buyer-compensation'], true))
+                || ($seller && in_array($event->event_type, ['loss-resolve-wallet', 'loss-return-seller-compensation'], true))
+                || ($company && in_array($event->event_type, ['loss-contribute-company', 'loss-credit-requested', 'loss-credit-approved', 'loss-credit-rejected', 'loss-return-unused-credit', 'loss-return-company-source', 'loss-restore-company-compensation', 'loss-confirm-company-cash-return', 'loss-report-company-cash-nonreceipt'], true));
         })->map(function ($event) use ($access, $actor, $plan, $admin, $seller) {
             $proof = $access->proof($actor, $plan, $event);
             // The Wallet settlement's headline amount is the buyer refund, never the seller's protection.
             $amount = $seller && $event->event_type === 'loss-resolve-wallet' ? $plan->snapshot['seller_protection_cents'] : $event->amount_cents;
+            $reconciliationProof = $admin && $event->event_type === 'loss-reconciliation-approved'
+                ? app(ShipmentLossReconciliationService::class)->active($plan)?->id
+                : null;
 
             return $event->only(['id', 'reference', 'event_type', 'created_at']) + ['amount_cents' => $amount,
                 'reason' => $admin ? $event->reason : null, 'cash_reference' => $proof ? $event->cash_reference : null,
-                'proof_url' => $proof ? '/shipment-finances/'.$plan->id.'/events/'.$event->id.'/proof' : null];
+                'proof_url' => $proof ? '/shipment-finances/'.$plan->id.'/events/'.$event->id.'/proof'
+                    : ($reconciliationProof ? '/shipment-finances/'.$plan->id.'/reconciliation/'.$reconciliationProof.'/proof' : null)];
         })->values()->all();
 
         return ['id' => $plan->id, 'reference' => $plan->reference, 'order' => $plan->order->only(['id', 'order_number']),

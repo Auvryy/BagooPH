@@ -909,7 +909,9 @@ class LogisticsHubWorkstationController extends Controller
             abort_unless(($validated['mode'] ?? 'inspect') === 'inspect', 409,
                 'Open the buyer return to record its required intake or actual manifest receipt. This scan only identifies it.');
             if ($loss = app(ShipmentLossCustody::class)->authority($return)) {
-                return $this->operationError($request, ShipmentLossCustody::HOLD, 409,
+                $salvaged = app(ShipmentLossCustody::class)->releasedReconciliation($return)?->outcome_path === 'already_settled_salvage';
+
+                return $this->operationError($request, $salvaged ? ShipmentLossCustody::SALVAGE_HOLD : ShipmentLossCustody::HOLD, 409,
                     ['recovery_url' => '/loss-found/'.$loss->id.'?hub_id='.$hub->id]);
             }
             try {
@@ -968,7 +970,9 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         if ($loss = app(ShipmentLossCustody::class)->authority($delivery)) {
-            return $this->operationError($request, ShipmentLossCustody::HOLD, 409,
+            $salvaged = app(ShipmentLossCustody::class)->releasedReconciliation($delivery)?->outcome_path === 'already_settled_salvage';
+
+            return $this->operationError($request, $salvaged ? ShipmentLossCustody::SALVAGE_HOLD : ShipmentLossCustody::HOLD, 409,
                 ['recovery_url' => '/loss-found/'.$loss->id.'?hub_id='.$hub->id]);
         }
 

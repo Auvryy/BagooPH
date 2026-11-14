@@ -11,7 +11,6 @@ use App\Models\DeliveryCheckpoint;
 use App\Models\Order;
 use App\Models\SellerSettlement;
 use App\Models\SellerSettlementEvent;
-use App\Models\ShipmentFinancialPlan;
 use App\Models\Shop;
 use App\Models\User;
 use App\Rules\ApplicationText;
@@ -24,7 +23,6 @@ use App\Services\Vouchers\VoucherFundingService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -87,7 +85,7 @@ class SellerSettlementService
         $basis['net_commission_cents'] = $promotions['promotion_blockers'] ? null : $basis['commission_cents'] - $promotions['platform_promotion_cents'];
         $basis += app(BuyerReturnAmounts::class)->sellerBasis($order, $basis['net_seller_cents'] ?? 0);
         $blockers = [];
-        if (Schema::hasTable('shipment_financial_plans') && ShipmentFinancialPlan::where('active_order_id', $order->id)->where('kind', 'transit_loss')->exists()) {
+        if (app(ShipmentLossReconciliationService::class)->blocksOrderSettlement($order)) {
             $blockers[] = 'Retain the separate reviewed loss and funded seller protection before any original-sale payment. Ordinary proceeds cannot duplicate that protection.';
         }
         if ($order->buyerReturns()->whereNotIn('status', BuyerReturnCase::TERMINAL)->exists()) {

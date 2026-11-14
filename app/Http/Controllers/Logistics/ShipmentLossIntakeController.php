@@ -11,6 +11,7 @@ use App\Models\ShipmentLossFinding;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Finance\ShipmentLossCustody;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Finance\ShipmentLossSource;
 use App\Services\Logistics\LogisticsEligibilityService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -36,7 +37,9 @@ class ShipmentLossIntakeController extends Controller
             && app(LogisticsEligibilityService::class)->canScan($actor, $hub), 403);
         $parcel = $plan->buyer_return_case_id ? BuyerReturnParcel::where('buyer_return_case_id', $plan->buyer_return_case_id)->firstOrFail()
             : Delivery::whereKey($plan->delivery_id)->firstOrFail();
-        abort_unless($plan->kind === 'transit_loss' && app(ShipmentLossCustody::class)->authority($parcel)?->id === $plan->id, 404);
+        $reconciledReleased = app(ShipmentLossReconciliationService::class)->active($plan)?->status === 'released';
+        abort_unless($plan->kind === 'transit_loss'
+            && ($reconciledReleased || app(ShipmentLossCustody::class)->authority($parcel)?->id === $plan->id), 404);
 
         return $hub;
     }
@@ -57,6 +60,35 @@ class ShipmentLossIntakeController extends Controller
                 $blocker = 'The original loss records changed. Ask for independent reconciliation before a new intake.';
             }
         }
+        $assessment = $finding ? app(ShipmentLossReconciliationService::class)->assessment($plan) : null;
+        $record = $assessment['reconciliation'] ?? null;
+        $safeReconciliation = is_array($record) ? [
+            'id' => $record['id'] ?? null,
+            'reference' => $record['reference'] ?? null,
+            'outcome_path' => $record['outcome_path'] ?? null,
+            'outcome_label' => $record['outcome_label'] ?? null,
+            'status' => $record['status'] ?? null,
+            'approved_at' => $record['approved_at'] ?? null,
+            'released_at' => $record['released_at'] ?? null,
+        ] : null;
+        $stale = (bool) ($assessment['stale'] ?? false);
+        $canRelease = $finding !== null
+            && $finding->hub_id === $hub->id
+            && ($record['status'] ?? null) === 'approved'
+            && ! $stale
+            && in_array($record['outcome_path'] ?? '', $assessment['eligible_paths'] ?? [], true);
+        $releaseBlocker = null;
+        if ($finding && ($record['status'] ?? null) !== 'released') {
+            if ($finding->hub_id !== $hub->id) {
+                $releaseBlocker = 'This parcel was placed under quarantine at another facility.';
+            } elseif (! $record || ($record['status'] ?? null) === 'invalidated') {
+                $releaseBlocker = 'An independent admin must approve found-parcel reconciliation before releasing quarantine.';
+            } elseif ($stale) {
+                $releaseBlocker = 'Source financial or facility facts changed after approval. Ask an admin to invalidate and re-approve reconciliation before releasing custody.';
+            } elseif (! $canRelease) {
+                $releaseBlocker = $assessment['blocked_reasons'][$record['outcome_path'] ?? ''] ?? 'The approved reconciliation path is currently blocked.';
+            }
+        }
 
         return Inertia::render('Hub/LossFoundIntake', ['intake' => ['id' => $plan->id,
             'barcode' => $plan->snapshot['source']['barcode'], 'manifest_reference' => $plan->snapshot['source']['manifest_reference'],
@@ -66,6 +98,12 @@ class ShipmentLossIntakeController extends Controller
             'finding' => $finding ? ['reference' => $finding->reference, 'recorded_at' => $finding->created_at->toIso8601String(),
                 'at_selected_hub' => $finding->hub_id === $hub->id,
                 'proof_url' => $finding->hub_id === $hub->id ? '/loss-found/'.$plan->id.'/proof?hub_id='.$hub->id : null] : null],
+            'release' => $finding ? [
+                'can_release' => $canRelease,
+                'blocker' => $releaseBlocker,
+                'stale' => $stale,
+                'reconciliation' => $safeReconciliation,
+            ] : null,
             'requestToken' => (string) Str::uuid()])->toResponse($request)->header('Cache-Control', 'private, no-store');
     }
 
@@ -96,6 +134,25 @@ class ShipmentLossIntakeController extends Controller
 
         return $request->expectsJson() ? response()->json(['finding' => ['reference' => $finding->reference]], 201)->header('Cache-Control', 'private, no-store')
             : redirect('/loss-found/'.$plan->id.'?hub_id='.$hub->id)->with('success', 'Found parcel placed on hold for reconciliation.');
+    }
+
+    public function release(Request $request, ShipmentFinancialPlan $plan, ShipmentLossCustody $custody)
+    {
+        $hub = $this->hub($request, $plan);
+        try {
+            $record = $custody->release($request->user(), $plan, $hub, $request->except('_token'));
+        } catch (ValidationException|HttpExceptionInterface $error) {
+            if ($request->expectsJson() || ($error instanceof HttpExceptionInterface && $error->getStatusCode() !== 409)) {
+                throw $error;
+            }
+
+            return back()->withErrors($error instanceof ValidationException ? $error->errors() : ['release' => $error->getMessage()]);
+        }
+
+        return $request->expectsJson()
+            ? response()->json(['reconciliation' => $record->only(['id', 'reference', 'outcome_path', 'status', 'released_at'])])
+                ->header('Cache-Control', 'private, no-store')
+            : back()->with('success', 'Physical quarantine was released according to the approved reconciliation.');
     }
 
     public function proof(Request $request, ShipmentFinancialPlan $plan)
