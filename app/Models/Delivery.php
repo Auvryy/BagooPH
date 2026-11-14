@@ -272,4 +272,9 @@ class Delivery extends Model
     {
         return $this->hasMany(MissingParcelInvestigation::class);
     }
+
+    public function feedback(): HasOne
+    {
+        return $this->hasOne(DeliveryFeedback::class);
+    }
 }

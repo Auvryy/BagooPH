@@ -12,6 +12,10 @@ class Review extends Model
 {
     use HasFactory;
 
+    public const SCORED_STATUSES = ['published', 'restored'];
+
+    public const PUBLIC_VISIBLE_STATUSES = ['published', 'restored', 'excluded_courier_issue'];
+
     protected $fillable = [
         'product_id',
         'buyer_id',
@@ -22,6 +26,7 @@ class Review extends Model
         'comment',
         'images',
         'edited_at', 'edit_fingerprint', 'original_content',
+        'moderation_status', 'moderation_reason', 'detected_flags', 'moderated_by_id', 'moderated_at',
     ];
 
     protected $hidden = ['submission_fingerprint', 'edit_fingerprint', 'original_content'];
@@ -32,6 +37,8 @@ class Review extends Model
         'verified_purchase' => 'boolean',
         'edited_at' => 'immutable_datetime',
         'original_content' => 'array',
+        'detected_flags' => 'array',
+        'moderated_at' => 'immutable_datetime',
     ];
 
     public function product(): BelongsTo
@@ -59,6 +66,16 @@ class Review extends Model
         return $this->hasOne(ReviewReply::class);
     }
 
+    public function dispute(): HasOne
+    {
+        return $this->hasOne(ReviewDispute::class);
+    }
+
+    public function moderatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'moderated_by_id');
+    }
+
     private static function purchaseLink(Builder $query): void
     {
         $query->whereColumn('order_items.order_id', 'reviews.order_id')
@@ -70,7 +87,14 @@ class Review extends Model
 
     public function scopeVerifiedPurchase(Builder $query): Builder
     {
-        return $query->whereBetween('reviews.rating', [1, 5])->whereHas('orderItem', self::purchaseLink(...));
+        return $query->whereBetween('reviews.rating', [1, 5])
+            ->whereIn('reviews.moderation_status', self::SCORED_STATUSES)
+            ->whereHas('orderItem', self::purchaseLink(...));
+    }
+
+    public function scopePublicVisible(Builder $query): Builder
+    {
+        return $query->whereIn('reviews.moderation_status', self::PUBLIC_VISIBLE_STATUSES);
     }
 
     public function scopeWithPurchaseVerification(Builder $query): Builder

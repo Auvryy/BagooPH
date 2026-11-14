@@ -175,4 +175,14 @@ class Order extends Model
     {
         return $this->belongsTo(LogisticsHub::class, 'pickup_hub_id');
     }
+
+    public function deliveryFeedbacks(): HasMany
+    {
+        return $this->hasMany(DeliveryFeedback::class);
+    }
+
+    public function moderationSignals(): HasMany
+    {
+        return $this->hasMany(ModerationSignal::class);
+    }
 }
