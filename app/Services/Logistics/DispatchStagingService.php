@@ -22,6 +22,8 @@ class DispatchStagingService
         if (! LogisticsHub::eligible()->whereKey($hub->id)->exists()) {
             return collect();
         }
+        $hub->loadMissing('company.user');
+        $hubsById = LogisticsHub::where('logistics_company_id', $hub->logistics_company_id)->get()->keyBy('id');
         $lanes = collect();
         $bags = MotherBag::where('logistics_company_id', $hub->logistics_company_id)->where('source_hub_id', $hub->id)
             ->whereIn('status', ['open', 'sealed'])->whereNull('manifest_id')->with('parcels.delivery.order')->get();
@@ -54,8 +56,8 @@ class DispatchStagingService
             $lanes->push(['next' => $next, 'bag' => null, 'sealed' => false, 'profile' => $profile]);
         }
 
-        return $lanes->groupBy('next')->map(function (Collection $members, int $next) use ($hub) {
-            $destination = LogisticsHub::findOrFail($next);
+        return $lanes->groupBy('next')->map(function (Collection $members, int $next) use ($hub, $hubsById) {
+            $destination = $hubsById->get($next) ?? LogisticsHub::findOrFail($next);
             $known = $members->every(fn ($member) => $member['profile'] !== null);
             $weight = $known ? round($members->sum(fn ($member) => $member['profile']['weight_kg']), 3) : null;
             $volume = $known ? $members->sum(fn ($member) => $member['profile']['volume_cm3']) / 1000000 : null;

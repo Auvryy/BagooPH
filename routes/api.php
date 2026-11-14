@@ -111,4 +111,5 @@ Route::prefix('v1/logistics')->middleware(PrivateRiderResponse::class)->group(fu
     Route::get('session', [LogisticsAuthController::class, 'me'])->middleware(EnsureLogisticsAccountToken::class.':account');
     Route::delete('auth/token', [LogisticsAuthController::class, 'logout'])->middleware(EnsureLogisticsAccountToken::class.':logout');
     Route::post('scan', [LogisticsScanController::class, 'scan'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:120,1']);
+    Route::post('scan/batch', [LogisticsScanController::class, 'batch'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:60,1']);
 });

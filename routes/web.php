@@ -477,6 +477,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource']);
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
+        Route::post('/scan/batch', [LogisticsHubWorkstationController::class, 'scanBatch'])->middleware('throttle:120,1');
         Route::post('/scan/fast-dispatch', [LogisticsHubWorkstationController::class, 'fastDispatch']);
         Route::get('/corridor-staging', [LogisticsHubWorkstationController::class, 'corridorStaging']);
         Route::get('/command-sheet', [LogisticsHubWorkstationController::class, 'commandSheet'])->name('logistics.command-sheet');
@@ -1033,6 +1034,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource'])->name('placements');
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
+        Route::post('/scan/batch', [LogisticsHubWorkstationController::class, 'scanBatch'])->middleware('throttle:120,1')->name('scan.batch');
         Route::post('/scan/fast-dispatch', [LogisticsHubWorkstationController::class, 'fastDispatch'])->name('scan.fast-dispatch');
         Route::get('/corridor-staging', [LogisticsHubWorkstationController::class, 'corridorStaging'])->name('corridor-staging');
         Route::get('/command-sheet', [LogisticsHubWorkstationController::class, 'commandSheet'])->name('command-sheet');
