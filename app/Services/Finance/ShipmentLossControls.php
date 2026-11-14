@@ -14,6 +14,7 @@ use App\Services\Wallet\WalletFundingCredits;
 use App\Services\Wallet\WalletLedger;
 use App\Services\Wallet\WalletLossCreditService;
 use App\Services\Wallet\WalletLossGrantReturn;
+use App\Services\Wallet\WalletLossPlatformReturn;
 use App\Services\Wallet\WalletLossSourceReturn;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -64,6 +65,18 @@ class ShipmentLossControls
             }
         }
         if ($active && $wallet) {
+            if ($admin && $finding && ! $state['resolved'] && ! in_array($actor->id, $plan->snapshot['source_actor_ids'], true)) {
+                try {
+                    if ($sources = app(WalletLossPlatformReturn::class)->sources($actor, $plan)) {
+                        $add('return-platform-source', null, $sources);
+                    }
+                } catch (HttpExceptionInterface $error) {
+                    if ($error->getStatusCode() !== 409) {
+                        throw $error;
+                    }
+                    $hold = $error->getMessage();
+                }
+            }
             if ($company && $finding) {
                 try {
                     $sources = app(WalletLossGrantReturn::class)->sources($actor, $plan);

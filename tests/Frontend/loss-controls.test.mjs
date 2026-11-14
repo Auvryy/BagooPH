@@ -42,10 +42,10 @@ class Harness {
     submit(label = 'Update original loss finances') { this.control(item => item.type === 'form' && item.props['aria-label'] === label).onSubmit({ preventDefault() {} }); }
     finish(name = 'action') { this.forms[name].processing = false; this.posts.at(-1).options.onFinish(); }
 }
-async function render(value, planId = 11) {
+async function render(value, planId = 11, actorId = null) {
     const h = globalThis.lossControlsHarness; h.cursor = 0; h.effectCursor = 0; h.handlers = [];
     let view;
-    const response = await createInertiaApp({ page: { component: 'Finance/LossControls', props: { planId, value }, url: '/shipment-finances/'+planId, version: null },
+    const response = await createInertiaApp({ page: { component: 'Finance/LossControls', props: { planId, value, ...(actorId ? { auth: { user: { id: actorId } } } : {}) }, url: '/shipment-finances/'+planId, version: null },
         resolve: () => Controls, setup: ({ App, props }) => { view = createElement(App, props); return view; }, render: () => renderToStaticMarkup(view) });
     return response.body;
 }
@@ -253,4 +253,36 @@ test('credits reserved for another authority remain in the balance while this or
     Object.assign(h.forms.credit.data, { amount: '188.33', reason: 'The other reviewed credits remain reserved for their own original obligation.' });
     h.submit('Request original company funding credits'); assert.equal(h.posts.length, 1); assert.equal(h.posts[0].data.amount, '188.33');
     assert.doesNotMatch(html, /Fund from my company Wallet/);
+});
+
+test('unused platform reserve return renders distinct labels, enforces consent and resets on actor change', async () => {
+    const h = globalThis.lossControlsHarness = new Harness();
+    const value = { ...base, version: 15, actions: [action('return-platform-source', { confirmation: 'platform_source_return_confirmed', source: true,
+        sources: [{ id: 51, label: 'Original unretired advance', amount_cents: 3833 }, { id: 52, label: 'Original unspent escrow', amount_cents: 25000 }] })] };
+    await render(value); choose(h, 'return-platform-source'); let html = await render(value); ready(h);
+    assert.match(html, /Original platform reserve deposit/);
+    assert.match(html, /I independently verified this found-parcel hold and authorize returning only this unused platform source/);
+    assert.doesNotMatch(html, /type="file"|Amount \(PHP\)|Actual receiving admin/);
+    h.submit(); assert.equal(h.posts.length, 0); assert.ok(h.forms.action.errors.source_event_id);
+    h.control(item => item.type === 'select' && item.props.children.some?.(child => child?.props?.children === 'Select the original escrow or advance deposit'))
+        .onChange({ target: { value: '52' } });
+    html = await render(value); assert.match(html, /Return [\s\S]*250\.00[\s\S]*to its original escrow or demo issuance account/);
+    h.control(item => item.type === 'input' && item.props.type === 'checkbox').onChange({ target: { checked: false } });
+    h.submit(); assert.equal(h.posts.length, 0);
+    h.control(item => item.type === 'input' && item.props.type === 'checkbox').onChange({ target: { checked: true } });
+    Object.assign(h.forms.action.data, { amount: '999.00', recipient_id: '999', proof: { size: 2048, type: 'image/png' } });
+    h.submit(); h.submit(); assert.equal(h.posts.length, 1);
+    assert.deepEqual(Object.keys(h.posts[0].data).sort(), ['action', 'expected_version', 'platform_source_return_confirmed', 'reason', 'request_token', 'source_event_id']);
+    assert.equal(h.posts[0].data.source_event_id, '52');
+    assert.equal(h.posts[0].data.platform_source_return_confirmed, true);
+    assert.equal(h.posts[0].options.forceFormData, false);
+    const tokenBeforeSwitch = h.forms.action.data.request_token;
+    await render(value, 11, 7);
+    ready(h);
+    h.forms.action.data.source_event_id = '52';
+    await render(value, 11, 8);
+    assert.equal(h.forms.action.data.reason, '');
+    assert.equal(h.forms.action.data.confirmed, false);
+    assert.equal(h.forms.action.data.source_event_id, '');
+    assert.notEqual(h.forms.action.data.request_token, tokenBeforeSwitch);
 });

@@ -42,6 +42,7 @@ const eventLabels: Record<string, string> = {
     'loss-accounted': 'Confirmed loss accounted separately from receipts',
     'loss-return-unused-credit': 'Unused reviewed credits returned to their issuance source',
     'loss-return-company-source': 'Unused company contribution restored',
+    'loss-return-platform-source': 'Unused platform reserve source returned to its original account',
 };
 
 export default function LossOutcome({ loss }: LossOutcomeProps) {

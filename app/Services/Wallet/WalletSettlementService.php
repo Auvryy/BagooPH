@@ -59,7 +59,7 @@ class WalletSettlementService
         $escrowDebited = $refunded;
         if ($policy === 2) {
             abort_unless(Schema::hasTable('wallet_refund_reserve_entries'), 409, 'Retain the original virtual refund source before releasing successor proceeds.');
-            $escrowDebited = (int) WalletRefundReserveEntry::where('order_id', $order->id)->where('source_kind', 'original_escrow')->sum('delta_cents');
+            $escrowDebited = (int) WalletRefundReserveEntry::where('order_id', $order->id)->whereIn('source_kind', ['original_escrow', 'original_escrow_return'])->sum('delta_cents');
         }
         abort_unless($escrowDebited >= 0 && $escrowDebited <= $payment->amount_cents, 409, 'The original escrow debit needs its actual retained source.');
 

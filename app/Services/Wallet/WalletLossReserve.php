@@ -27,12 +27,13 @@ class WalletLossReserve
         $own = (int) $entries->whereIn('source_kind', ['liable_company', 'company_source_return'])->sum('delta_cents');
         $advance = (int) $entries->where('source_kind', 'advance')->sum('delta_cents');
         $retired = -(int) $entries->where('source_kind', 'advance_retirement')->sum('delta_cents');
+        $returned = -(int) $entries->where('source_kind', 'found_advance_return')->sum('delta_cents');
 
         return ['balance_cents' => (int) $entries->sum('delta_cents'), 'company_due_cents' => $plan->snapshot['company_funding_due_cents'],
             'company_received_cents' => $own, 'company_remaining_cents' => $plan->snapshot['company_funding_due_cents'] - $own,
-            'advance_cents' => $advance, 'advance_retired_cents' => $retired, 'advance_outstanding_cents' => $advance - $retired,
+            'advance_cents' => $advance, 'advance_retired_cents' => $retired, 'advance_returned_cents' => $returned, 'advance_outstanding_cents' => $advance - $retired - $returned,
             'original_required_cents' => $plan->snapshot['original_escrow_required_cents'],
-            'original_reserved_cents' => (int) $entries->where('source_kind', 'original_escrow')->sum('delta_cents'),
+            'original_reserved_cents' => (int) $entries->whereIn('source_kind', ['original_escrow', 'original_escrow_return'])->sum('delta_cents'),
             'reserve_goal_cents' => $plan->snapshot['reserve_goal_cents'], 'buyer_refund_cents' => $plan->snapshot['buyer_refund_cents'],
             'seller_protection_cents' => $plan->snapshot['seller_protection_cents'], 'protected_earned_shipping_cents' => $plan->snapshot['protected_earned_shipping_cents'],
             'resolved' => WalletTransaction::where('business_key', 'shipment-loss:'.$plan->id)->exists()];
@@ -60,7 +61,7 @@ class WalletLossReserve
         if ($action === 'reserve-original') {
             $amount = $state['original_required_cents'] - $state['original_reserved_cents'];
             $payment = $plan->order->walletPayment;
-            $reserved = (int) WalletRefundReserveEntry::where('order_id', $plan->order_id)->where('source_kind', 'original_escrow')->sum('delta_cents');
+            $reserved = (int) WalletRefundReserveEntry::where('order_id', $plan->order_id)->whereIn('source_kind', ['original_escrow', 'original_escrow_return'])->sum('delta_cents');
             abort_unless($amount > 0 && $payment && ! $payment->settlement_transaction_id && $reserved + $amount <= $payment->amount_cents, 409,
                 'Reserve only the original unspent buyer payment once.');
 

@@ -15,4 +15,5 @@ export const walletKind = (kind: string) => ({
     demo_loss_funding_credit: 'Demo loss funding credits', wallet_loss_advance_retirement: 'Demo loss advance returned',
     demo_loss_credit_return: 'Unused demo loss credits returned',
     wallet_loss_company_source_return: 'Unused loss contribution restored',
+    wallet_loss_platform_source_return: 'Unused platform loss reserve returned',
 }[kind] ?? 'Wallet transaction');

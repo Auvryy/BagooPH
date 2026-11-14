@@ -157,7 +157,7 @@ class WalletReturnReserve
         abort_unless($case->status === 'repayment_ready' && $amount > 0, 409, 'No unreserved original virtual source is available for this case.');
         $payment = $case->order->walletPayment;
         if ($kind === 'original_escrow') {
-            $reserved = (int) WalletRefundReserveEntry::where('order_id', $case->order_id)->where('source_kind', 'original_escrow')->sum('delta_cents');
+            $reserved = (int) WalletRefundReserveEntry::where('order_id', $case->order_id)->whereIn('source_kind', ['original_escrow', 'original_escrow_return'])->sum('delta_cents');
             $paidShipping = $plan->snapshot['source_snapshot']['shipping']['buyer_paid_shipping_cents'];
             abort_unless($payment->settlement_transaction_id === null && $reserved + $amount + $paidShipping <= $payment->amount_cents, 409,
                 'Protect the original paid shipping and verify the unspent original escrow source.');

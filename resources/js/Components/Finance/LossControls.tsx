@@ -1,8 +1,9 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { FileText, Wallet } from 'lucide-react';
 import { financeMoney } from '@/utils/finance';
 import useRequestError from '@/hooks/useCourierRequestError';
+import { PageProps } from '@/types';
 
 export interface LossAction {
     id: string; label: string; confirmation: string; proof: boolean; amount: boolean; receiver: boolean; source: boolean;
@@ -41,25 +42,37 @@ function savedVersion(page: unknown, planId: number): number | null {
 }
 
 function ActionForm({ planId, value }: { planId: number; value: LossControlState }) {
+    const actorId = (usePage<PageProps>().props as Partial<PageProps>).auth?.user?.id ?? null;
     const initial = (version = value.version) => ({ action: '', expected_version: version, request_token: crypto.randomUUID(), reason: '',
         amount: '', recipient_id: '', source_event_id: '', cash_reference: '', proof: null as File | null, confirmed: false });
     const form = useForm(initial());
     const pending = useRef(false);
     const file = useRef<HTMLInputElement>(null);
-    const previous = useRef(planId);
+    const previous = useRef(`${planId}:${actorId ?? ''}`);
     const [failure, setFailure] = useState('');
     useRequestError(pending, useCallback(message => setFailure(message), []));
     const reset = (version = value.version) => { form.setData(initial(version)); form.clearErrors(); setFailure(''); if (file.current) file.current.value = ''; };
-    useEffect(() => { if (previous.current !== planId) { previous.current = planId; reset(); } }, [planId]);
+    useEffect(() => {
+        const current = `${planId}:${actorId ?? ''}`;
+        if (previous.current !== current) { previous.current = current; reset(); }
+    }, [planId, actorId]);
     const spec = value.actions.find(action => action.id === form.data.action);
     const source = spec?.sources.find(item => String(item.id) === form.data.source_event_id);
-    const sourceLabel = spec?.id === 'return-unused-credit' ? 'Original approved grant' : spec?.id === 'return-company-source' ? 'Original company contribution' : 'Original source';
-    const sourcePlaceholder = spec?.id === 'return-unused-credit' ? 'Select the original grant approval' : spec?.id === 'return-company-source' ? 'Select the original reserve contribution' : 'Select the original recorded transfer';
+    const sourceLabel = spec?.id === 'return-unused-credit' ? 'Original approved grant'
+        : spec?.id === 'return-company-source' ? 'Original company contribution'
+            : spec?.id === 'return-platform-source' ? 'Original platform reserve deposit'
+                : 'Original source';
+    const sourcePlaceholder = spec?.id === 'return-unused-credit' ? 'Select the original grant approval'
+        : spec?.id === 'return-company-source' ? 'Select the original reserve contribution'
+            : spec?.id === 'return-platform-source' ? 'Select the original escrow or advance deposit'
+                : 'Select the original recorded transfer';
     const confirmationCopy = spec?.id === 'return-unused-credit'
         ? 'I authorize returning only these unused reviewed credits from my company Wallet to their original demo issuance.'
         : spec?.id === 'return-company-source'
             ? 'I confirm restoring this unused contribution from its original reserve to my company Wallet, keeping reviewed credits restricted to their original grant.'
-            : 'I confirm the selected update, original participant and actual supporting evidence.';
+            : spec?.id === 'return-platform-source'
+                ? 'I independently verified this found-parcel hold and authorize returning only this unused platform source to its original escrow or demo issuance without a buyer repayment or parcel release.'
+                : 'I confirm the selected update, original participant and actual supporting evidence.';
     const busy = pending.current || form.processing;
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -107,6 +120,7 @@ function ActionForm({ planId, value }: { planId: number; value: LossControlState
             {spec.id === 'record-disposition' && <p className="text-sm text-slate-600">This records independent loss evidence. It does not confirm a parcel, vehicle or sack arrival.</p>}
             {spec.id === 'return-unused-credit' && <p className="text-sm text-slate-600">Return {source ? financeMoney(source.amount_cents) : 'the selected grant’s unused credits'} to the original demo issuance. Company debt, paid compensation and the parcel hold remain separate.</p>}
             {spec.id === 'return-company-source' && <p className="text-sm text-slate-600">Restore {source ? financeMoney(source.amount_cents) : 'the selected unused contribution'} to your company Wallet. Reviewed credits retain their original restrictions. This does not clear liability or release the parcel.</p>}
+            {spec.id === 'return-platform-source' && <p className="text-sm text-slate-600">Return {source ? financeMoney(source.amount_cents) : 'the selected unused deposit'} to its original escrow or demo issuance account. Owned company contributions, debt, paid compensation and the quarantine hold remain separate.</p>}
             {spec.id === 'account-loss' && <p className="text-sm text-slate-600">The retained independent disposition supports this missing parcel. Accounting moves no money, receives no parcel and confirms no vehicle or sack arrival.</p>}
             <label className="flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50/50 p-4 text-sm leading-6 text-slate-800"><input required type="checkbox" disabled={busy} checked={form.data.confirmed} onChange={event => form.setData('confirmed', event.target.checked)} className="mt-1 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /> {confirmationCopy}</label>
         </>}

@@ -81,3 +81,11 @@ test('restored company funding retains its distinct saved history while the orig
     assert.match(html, /Company funding outstanding/); assert.match(html, /188\.33/);
     assert.doesNotMatch(html, /Financial outcome recorded|Buyer confirmed receipt|Seller confirmed receipt/);
 });
+
+test('returned platform reserve history renders its distinct label without marking a buyer payout', async () => {
+    const html = await render({ ...loss, mode: 'wallet',
+        history: [{ ...loss.history[0], event_type: 'loss-return-platform-source', amount_cents: 25000 }] }, 'admin');
+    assert.match(html, /Unused platform reserve source returned to its original account/);
+    assert.match(html, /250\.00/);
+    assert.doesNotMatch(html, /Financial outcome recorded|Buyer confirmed receipt|Seller confirmed receipt/);
+});
