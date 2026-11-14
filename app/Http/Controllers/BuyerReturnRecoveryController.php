@@ -13,8 +13,12 @@ use Inertia\Response;
 
 class BuyerReturnRecoveryController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
+
     public function show(Request $request, BuyerReturnRecovery $recovery, BuyerReturnRecoveryService $service): Response
     {
+        $this->encryptSensitiveHistory($request);
+
         return Inertia::render('Returns/Recovery', ['recovery' => $service->present($request->user(), $recovery)]);
     }
 

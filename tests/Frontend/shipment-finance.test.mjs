@@ -17,23 +17,25 @@ const bundle = await build({ stdin: { contents: `export { default as Review } fr
         builder.onResolve({ filter: /^@inertiajs\/react$/ }, args => probe.test(args.importer) ? { path: 'inertia', namespace: 'shipment-probe' } : undefined);
         builder.onLoad({ filter: /^inertia$/, namespace: 'shipment-probe' }, () => ({ contents: `export * from '@inertiajs/react'; import {useForm as real} from '@inertiajs/react'; export const useForm=initial=>globalThis.shipmentHarness?globalThis.shipmentHarness.useForm(initial):real(initial);`, resolveDir: root }));
         builder.onResolve({ filter: /^react$/ }, args => probe.test(args.importer) ? { path: 'react', namespace: 'shipment-probe' } : undefined);
-        builder.onLoad({ filter: /^react$/, namespace: 'shipment-probe' }, () => ({ contents: `export * from 'react'; import React from 'react'; export const useRef=initial=>globalThis.shipmentHarness?globalThis.shipmentHarness.ref(initial):React.useRef(initial);`, resolveDir: root }));
+        builder.onLoad({ filter: /^react$/, namespace: 'shipment-probe' }, () => ({ contents: `export * from 'react'; import React from 'react'; export const useRef=initial=>globalThis.shipmentHarness?globalThis.shipmentHarness.ref(initial):React.useRef(initial); export const useEffect=(effect,deps)=>globalThis.shipmentHarness?globalThis.shipmentHarness.effect(effect,deps):React.useEffect(effect,deps);`, resolveDir: root }));
         builder.onResolve({ filter: /^react\/jsx-runtime$/ }, args => probe.test(args.importer) ? { path: 'jsx', namespace: 'shipment-probe' } : undefined);
         builder.onLoad({ filter: /^jsx$/, namespace: 'shipment-probe' }, () => ({ contents: `import {jsx as real,jsxs as many,Fragment} from 'react/jsx-runtime';export {Fragment};const track=(fn,type,props,key)=>{if(globalThis.shipmentHarness&&(props.onSubmit||props.onChange||props.onClick))globalThis.shipmentHarness.handlers.push({type,props});return fn(type,props,key);};export const jsx=(...args)=>track(real,...args);export const jsxs=(...args)=>track(many,...args);`, resolveDir: root }));
     } }] });
 const path = join(temporary, 'shipment.mjs'); writeFileSync(path, bundle.outputFiles[0].text); const ui = await import(pathToFileURL(path).href);
 globalThis.route = name => name ? '/'+name.replaceAll('.', '/') : { current: () => false, has: () => true };
-async function render(Component, supplied, role = 'admin') {
-    if (globalThis.shipmentHarness) { globalThis.shipmentHarness.cursor = 0; globalThis.shipmentHarness.handlers = []; }
+async function render(Component, supplied, role = 'admin', actorId = 7) {
+    if (globalThis.shipmentHarness) { globalThis.shipmentHarness.cursor = 0; globalThis.shipmentHarness.effectCursor = 0; globalThis.shipmentHarness.handlers = []; globalThis.shipmentHarness.queued = []; }
     let view;
     const response = await createInertiaApp({ page: { component: Component === ui.Review ? 'Finance/ShipmentReview' : Component === ui.Outcome ? 'Finance/ShipmentOutcome' : 'Returns/Liabilities',
-        props: { auth: { user: { id: 7, role, name: 'Original participant', email: role+'@bagoo.test', status: 'active', kyc_status: 'approved', canManageReturnLiabilities: role !== 'buyer' } }, flash: {}, ...supplied }, url: '/shipment-finances/11', version: null },
+        props: { auth: { user: { id: actorId, role, name: 'Original participant', email: role+'@bagoo.test', status: 'active', kyc_status: 'approved', canManageReturnLiabilities: role !== 'buyer' } }, flash: {}, ...supplied }, url: '/shipment-finances/11', version: null },
         resolve: () => Component, setup: ({ App, props }) => { view = createElement(App, props); return view; }, render: () => renderToStaticMarkup(view) });
+    globalThis.shipmentHarness?.queued.forEach(callback => callback());
     return response.body;
 }
 class Harness {
-    cursor = 0; refs = []; handlers = []; posts = []; form;
+    cursor = 0; effectCursor = 0; refs = []; effects = []; queued = []; handlers = []; posts = []; form;
     ref(initial) { return this.refs[this.cursor++] ??= { current: initial }; }
+    effect(callback, deps) { const slot = this.effectCursor++; const prior = this.effects[slot]; if (!prior || deps.some((value, index) => value !== prior[index])) { this.effects[slot] = [...deps]; this.queued.push(callback); } }
     useForm(initial) { return this.form ??= { data: initial, errors: {}, processing: false, transform: fn => { this.transform = fn; },
         setData: (key, value) => { if (typeof key === 'object') this.form.data = key; else this.form.data[key] = value; },
         clearErrors: () => { this.form.errors = {}; }, setError: (key, value) => { this.form.errors[key] = value; },
@@ -138,4 +140,31 @@ test('order financial history keeps its exact order filter across review types',
     const html = await render(ui.Queue, { cases, filters: { search: '', status: '', view: 'shipments', order_id: 41 } });
     for (const view of ['returns', 'shipments', 'losses']) assert.ok(html.includes(`view=${view}&amp;order_id=41`));
     assert.match(html, /Show all orders/);
+});
+
+test('shipment review and outcome forms reset sensitive drafts and request tokens when the active actor changes', async () => {
+    const reviewHarness = globalThis.shipmentHarness = new Harness();
+    try {
+        await render(ui.Review, { ...reviewProps, preview }, 'admin', 7);
+        Object.assign(reviewHarness.form.data, { reason: 'Sensitive draft review notes.', proof: { type: 'image/png', size: 2048 }, conforming_shipment_confirmed: true });
+        const reviewToken = reviewHarness.form.data.request_token;
+        await render(ui.Review, { ...reviewProps, preview }, 'admin', 8);
+        assert.equal(reviewHarness.form.data.reason, '');
+        assert.equal(reviewHarness.form.data.proof, null);
+        assert.equal(reviewHarness.form.data.conforming_shipment_confirmed, false);
+        assert.notEqual(reviewHarness.form.data.request_token, reviewToken);
+    } finally { delete globalThis.shipmentHarness; }
+
+    const outcomeHarness = globalThis.shipmentHarness = new Harness();
+    try {
+        await render(ui.Outcome, { financialPlan: plan }, 'buyer', 7);
+        Object.assign(outcomeHarness.form.data, { action: 'pay-wallet-shipping', amount: '100.00', reason: 'Draft payment reason.', payment_confirmed: true });
+        const outcomeToken = outcomeHarness.form.data.request_token;
+        await render(ui.Outcome, { financialPlan: plan }, 'buyer', 8);
+        assert.equal(outcomeHarness.form.data.action, '');
+        assert.equal(outcomeHarness.form.data.amount, '');
+        assert.equal(outcomeHarness.form.data.reason, '');
+        assert.equal(outcomeHarness.form.data.payment_confirmed, false);
+        assert.notEqual(outcomeHarness.form.data.request_token, outcomeToken);
+    } finally { delete globalThis.shipmentHarness; }
 });

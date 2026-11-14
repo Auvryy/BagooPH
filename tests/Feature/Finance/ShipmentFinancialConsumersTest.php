@@ -131,11 +131,13 @@ class ShipmentFinancialConsumersTest extends TestCase
             $this->actingAs($actor)->get('/buyer-returns/'.$case->id, $this->inertia())->assertOk()
                 ->assertJsonPath('props.returnCase.money.shipment_finance.id', $plan->id)
                 ->assertJsonPath('props.returnCase.money.actions', [])
-                ->assertJsonPath('props.returnCase.money.plan', null);
+                ->assertJsonPath('props.returnCase.money.plan', null)
+                ->assertJsonPath('props.returnCase.money.blockers.0', 'Approved shipment loss review '.$plan->reference.' governs refund and recovery finances for this return case.');
         }
         $owner = LogisticsCompany::findOrFail($case->parcel->logistics_company_id)->user;
         $page = $this->actingAs($owner)->get('/return-liabilities/'.$case->id, $this->inertia())->assertOk()
             ->assertJsonPath('props.financialCase.money.shipment_finance.id', $plan->id)
+            ->assertJsonPath('props.financialCase.money.blockers.0', 'Approved shipment loss review '.$plan->reference.' governs refund and recovery finances for this return case.')
             ->assertJsonPath('props.financialCase.canViewReturn', false);
         $this->assertArrayNotHasKey('proof_url', $page->json('props.financialCase.money.shipment_finance'));
         $wrong = $this->flowHandler($case->parcel->currentHub ?? LogisticsHub::findOrFail($case->parcel->hub_ids[0]));

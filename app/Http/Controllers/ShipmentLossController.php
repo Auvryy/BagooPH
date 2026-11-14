@@ -31,6 +31,8 @@ use Throwable;
 
 class ShipmentLossController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
+
     public function review(Request $request, LogisticsManifestEvent $observation, ShipmentLossReview $review)
     {
         $this->admin($request);
@@ -65,6 +67,8 @@ class ShipmentLossController extends Controller
                 $request->session()->forget('shipment_loss_preview');
             }
         }
+
+        $this->encryptSensitiveHistory($request);
 
         return Inertia::render('Finance/LossReview', ['order' => $order->only(['id', 'order_number']),
             'source' => $source, 'basis' => $basis, 'preview' => $preview, 'blocker' => $blocker, 'requestToken' => (string) Str::uuid()])

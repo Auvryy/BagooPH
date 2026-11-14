@@ -22,6 +22,8 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class BuyerReturnLiabilityController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
+
     public function index(Request $request, BuyerReturnFinancialScope $scope): Response|HttpResponse
     {
         $shipments = $request->input('view') === 'shipments';
@@ -66,6 +68,8 @@ class BuyerReturnLiabilityController extends Controller
                 'kind' => 'return', 'href' => '/return-liabilities/'.$case->id];
         });
 
+        $this->encryptSensitiveHistory($request);
+
         return Inertia::render('Returns/Liabilities', ['cases' => $cases, 'filters' => ['search' => $search, 'status' => $data['status'] ?? '', 'view' => 'returns',
             ...isset($data['order_id']) ? ['order_id' => (int) $data['order_id']] : []]]);
     }
@@ -96,6 +100,8 @@ class BuyerReturnLiabilityController extends Controller
             $candidates = $orders->orderByDesc('id')->paginate(12, ['id', 'order_number'], 'review_page')->withQueryString();
         }
 
+        $this->encryptSensitiveHistory($request);
+
         return Inertia::render('Returns/Liabilities', ['cases' => $cases, 'reviewCandidates' => $candidates,
             'filters' => ['search' => $search, 'status' => $data['status'] ?? '', 'view' => 'shipments',
                 ...isset($data['order_id']) ? ['order_id' => (int) $data['order_id']] : []]]);
@@ -116,6 +122,8 @@ class BuyerReturnLiabilityController extends Controller
         $cases = $query->with('order')->orderByDesc('id')->paginate(12)->withQueryString();
         $cases->getCollection()->transform(fn ($plan) => $queue->row($request->user(), $plan));
 
+        $this->encryptSensitiveHistory($request);
+
         return Inertia::render('Finance/LossQueue', ['cases' => $cases,
             'reviewCandidates' => $request->user()->isAdmin() && ! isset($data['order_id']) ? $queue->candidates($request->user(), $search) : null,
             'filters' => ['view' => 'losses', 'search' => $search, 'status' => $data['status'] ?? '',
@@ -126,6 +134,7 @@ class BuyerReturnLiabilityController extends Controller
     public function show(Request $request, BuyerReturnCase $case, BuyerReturnFinancialScope $scope, BuyerReturnMoneyPresentation $money): Response
     {
         $case = $scope->query($request->user())->whereKey($case->id)->with('order')->firstOrFail();
+        $this->encryptSensitiveHistory($request);
 
         return Inertia::render('Returns/Liability', ['financialCase' => $case->only(['id', 'reference', 'status', 'version']) + [
             'order' => $case->order->only(['id', 'order_number']), 'money' => $money->present($request->user(), $case),

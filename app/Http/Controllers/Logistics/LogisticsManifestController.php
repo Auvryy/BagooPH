@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Logistics;
 
+use App\Http\Controllers\Concerns\EncryptsSensitiveHistory;
 use App\Http\Controllers\Controller;
 use App\Models\BuyerReturnParcel;
 use App\Models\Delivery;
@@ -37,6 +38,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class LogisticsManifestController extends Controller
 {
+    use EncryptsSensitiveHistory;
+
     public function __construct(private readonly LogisticsManifestService $service, private readonly LogisticsEligibilityService $eligibility) {}
 
     public function index(Request $request): Response
@@ -156,6 +159,12 @@ class LogisticsManifestController extends Controller
                     'created_at' => $event->created_at->toIso8601String(),
                 ]),
             ];
+        }
+
+        if ($detail !== null && (($detail['wholeTransportLoss']['record']['reason'] ?? null) !== null)) {
+            $this->encryptSensitiveHistory($request);
+        } else {
+            Inertia::encryptHistory(false);
         }
 
         return Inertia::render('Hub/Manifests', [

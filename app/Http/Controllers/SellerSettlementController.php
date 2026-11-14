@@ -14,6 +14,8 @@ use Inertia\Inertia;
 
 class SellerSettlementController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
+
     public function __construct(private readonly SellerSettlementService $settlements) {}
 
     public function index(Request $request)
@@ -35,6 +37,8 @@ class SellerSettlementController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]), 'filters' => $filters,
             'can_release' => $actor->isAdmin()];
 
+        $this->encryptSensitiveHistory($request);
+
         return $request->expectsJson() ? response()->json($payload)->header('Cache-Control', 'private, no-store')
             : Inertia::render('Finance/Settlements', $payload);
     }
@@ -46,6 +50,8 @@ class SellerSettlementController extends Controller
         $payload = ['record' => $this->settlements->present($source, history: true)
             + ['shipment_finances' => app(ShipmentFinancialLinks::class)->forOrder($actor, $source)], 'can_release' => $actor->isAdmin(),
             'requestToken' => (string) Str::uuid()];
+
+        $this->encryptSensitiveHistory($request);
 
         return $request->expectsJson() ? response()->json($payload)->header('Cache-Control', 'private, no-store')
             : Inertia::render('Finance/SettlementDetail', $payload);

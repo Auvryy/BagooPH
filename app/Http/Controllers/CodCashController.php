@@ -18,6 +18,8 @@ use Inertia\Inertia;
 
 class CodCashController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
+
     private function courierScope(User $actor): ?array
     {
         if (! $actor->isCourier()) {
@@ -57,6 +59,8 @@ class CodCashController extends Controller
         $data = $views->page($actor, $filters) + ['base' => $this->base($request), 'requestToken' => (string) Str::uuid(),
             'scope' => $this->courierScope($actor)];
 
+        $this->encryptSensitiveHistory($request);
+
         return $request->expectsJson() ? response()->json($data)->header('Cache-Control', 'private, no-store') : Inertia::render('Finance/Cod', $data);
     }
 
@@ -67,6 +71,8 @@ class CodCashController extends Controller
         $data = ['account' => $views->present($account, $actor), 'mode' => $views->mode($actor), 'can_reconcile' => $actor->isAdmin(),
             'isOnline' => (bool) $actor->courierProfile?->is_available, 'scope' => $this->courierScope($actor),
             'base' => $this->base($request), 'requestToken' => (string) Str::uuid()];
+
+        $this->encryptSensitiveHistory($request);
 
         return $request->expectsJson() ? response()->json($data)->header('Cache-Control', 'private, no-store') : Inertia::render('Finance/CodDetail', $data);
     }

@@ -1,9 +1,10 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, Receipt } from 'lucide-react';
 import ReturnLayout from '@/Components/Returns/ReturnLayout';
 import ShipmentAmountSummary, { ShipmentAmounts, shipmentMoney, shipmentStatuses } from '@/Components/Finance/ShipmentAmounts';
 import { returnDate } from '@/Components/Returns/ReturnStatus';
+import { PageProps } from '@/types';
 import useRequestError from '@/hooks/useCourierRequestError';
 
 interface Plan {
@@ -21,13 +22,22 @@ const historyNames: Record<string, string> = { approved: 'Amounts approved · no
 const field = 'mt-2 w-full rounded-lg border border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]';
 
 export default function ShipmentOutcome({ financialPlan: plan }: { financialPlan: Plan }) {
+    const actorId = (usePage<PageProps>().props as Partial<PageProps>).auth?.user?.id ?? null;
+    const planScope = `${actorId ?? ''}:${plan.id}:${plan.version}`;
     const initial = () => ({ action: '', expected_version: plan.version, request_token: crypto.randomUUID(), reason: '', amount: '', cash_reference: '',
         source_event_id: '', recipient_id: '', proof: null as File | null, payment_confirmed: false, wallet_refund_confirmed: false, assessment_confirmed: false });
     const form = useForm(initial());
     const pending = useRef(false);
+    const previousScope = useRef(planScope);
     const [failure, setFailure] = useState('');
     useRequestError(pending, useCallback(message => setFailure(message), []));
-    useEffect(() => { form.setData(initial()); form.clearErrors(); }, [plan.id, plan.version]);
+    useEffect(() => {
+        if (previousScope.current === planScope) return;
+        previousScope.current = planScope;
+        form.setData(initial());
+        setFailure('');
+        form.clearErrors();
+    }, [planScope]);
     const action = form.data.action;
     const offer = action === 'offer-shipping-payment';
     const receive = action === 'receive-shipping-payment';

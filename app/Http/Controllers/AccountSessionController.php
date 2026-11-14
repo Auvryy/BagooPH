@@ -12,11 +12,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AccountSessionController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
+
     public function index(Request $request, AccountSessionService $sessions): Response
     {
         $data = $sessions->page($request);
-        $host = $request->getHost();
-        Inertia::encryptHistory($request->isSecure() || $host === 'localhost' || str_ends_with($host, '.localhost'));
+        $this->encryptSensitiveHistory($request);
         $response = $request->expectsJson() && ! $request->header('X-Inertia') ? response()->json($data)
             : Inertia::render('Account/Security', $data)->toResponse($request);
 

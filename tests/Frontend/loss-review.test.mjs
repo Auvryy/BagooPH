@@ -160,3 +160,11 @@ test('a different original observation resets sensitive fields and uses its own 
     assert.equal(h.form.data.request_token, 'other-observation-token'); assert.equal(h.form.data.seller_protection, '0.00');
     assert.equal(h.form.data.proof, null); assert.equal(h.form.data.reason, ''); assert.equal(h.form.data.loss_confirmed, false);
 });
+
+test('switching the active actor clears sensitive draft fields and rotates request identity even on the same observation', async () => {
+    const h = globalThis.lossReviewHarness = new Harness(); await render({ preview }); ready(h);
+    const originalToken = h.form.data.request_token;
+    await render({ auth: { user: { id: 8, role: 'admin', name: 'Other admin', status: 'active', kyc_status: 'approved', canManageReturnLiabilities: true } }, preview });
+    assert.equal(h.form.data.reason, ''); assert.equal(h.form.data.proof, null); assert.equal(h.form.data.loss_confirmed, false);
+    assert.notEqual(h.form.data.request_token, originalToken);
+});

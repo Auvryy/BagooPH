@@ -16,6 +16,7 @@ use Inertia\Response;
 
 class WalletController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
     use Concerns\HandlesWalletCommands;
 
     public function requestCredits(Request $request): RedirectResponse|JsonResponse
@@ -36,6 +37,8 @@ class WalletController extends Controller
                 'buyer' => $credit->buyer->only(['id', 'name', 'email']),
             ]);
 
+        $this->encryptSensitiveHistory($request);
+
         return Inertia::render('Admin/WalletCredits', ['creditRequests' => $requests, 'currentStatus' => $status,
             'pendingCount' => WalletTopUpRequest::where('status', 'pending')->count(), 'requestToken' => (string) Str::uuid()]);
     }
@@ -50,6 +53,8 @@ class WalletController extends Controller
 
     public function payment(Request $request, WalletPayment $payment): Response
     {
+        $this->encryptSensitiveHistory($request);
+
         return Inertia::render('Buyer/WalletPayment', ['payment' => app(WalletViewService::class)->payment($request->user(), $payment),
             'canUsePortal' => $request->user()->fresh()->canAccessPortal()]);
     }

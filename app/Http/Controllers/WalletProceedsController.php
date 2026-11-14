@@ -16,6 +16,7 @@ use Inertia\Response;
 
 class WalletProceedsController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
     use Concerns\HandlesWalletCommands;
 
     public function refundReturned(Request $request, Order $order): RedirectResponse|JsonResponse
@@ -33,6 +34,8 @@ class WalletProceedsController extends Controller
         $request->validate(['page' => 'nullable|integer|min:1|max:100000']);
         $orders = $query->with(['items.shop.user', 'walletPayment', 'delivery'])->latest('id')->paginate(12)->withQueryString()
             ->through(fn ($order) => $service->present($order) + ['shipment_finances' => app(ShipmentFinancialLinks::class)->forOrder($request->user(), $order)]);
+
+        $this->encryptSensitiveHistory($request);
 
         return Inertia::render('Finance/WalletProceeds', ['records' => $orders, 'canSettle' => $request->user()->isAdmin(),
             'virtualBalanceCents' => $request->user()->isSeller() ? app(WalletLedger::class)->balance($request->user()) : null,

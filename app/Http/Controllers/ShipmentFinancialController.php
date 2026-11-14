@@ -28,6 +28,8 @@ use Throwable;
 
 class ShipmentFinancialController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
+
     public function review(Request $request, Order $order, ShipmentRefusalReview $review)
     {
         app(WalletCreditService::class)->admin($request->user());
@@ -52,6 +54,8 @@ class ShipmentFinancialController extends Controller
             }
             $blocker = $error->getMessage();
         }
+
+        $this->encryptSensitiveHistory($request);
 
         return Inertia::render('Finance/ShipmentReview', ['order' => $order->only(['id', 'order_number']), 'source' => $source, 'preview' => $preview, 'blocker' => $blocker]);
     }
@@ -99,6 +103,7 @@ class ShipmentFinancialController extends Controller
 
     public function show(Request $request, ShipmentFinancialPlan $plan, ShipmentFinancialPresentation $presentation)
     {
+        $this->encryptSensitiveHistory($request);
         if ($plan->kind === 'transit_loss') {
             return Inertia::render('Finance/LossOutcome', ['loss' => app(ShipmentLossPresentation::class)->present($request->user(), $plan)])
                 ->toResponse($request)->header('Cache-Control', 'private, no-store');

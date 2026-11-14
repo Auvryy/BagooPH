@@ -351,3 +351,27 @@ test('approved stale reconciliation shows warning, invalidation action, and cod 
     assert.equal('source_event_id' in h.posts[0].data, false);
     assert.equal(h.posts[0].data.cash_reference, 'CASH-RET-01');
 });
+
+test('company credit request and admin review forms reset sensitive drafts and request tokens when the active actor changes', async () => {
+    const requestHarness = globalThis.lossControlsHarness = new Harness();
+    const requestValue = { ...base, version: 5, credits: { maximum_cents: 10000, wallet_balance_cents: 0, requests: [] } };
+    await render(requestValue, 11, 7);
+    Object.assign(requestHarness.forms.credit.data, { amount: '50.00', reason: 'Original company shortfall needing review.' });
+    const creditToken = requestHarness.forms.credit.data.request_token;
+    await render(requestValue, 11, 8);
+    assert.equal(requestHarness.forms.credit.data.amount, '');
+    assert.equal(requestHarness.forms.credit.data.reason, '');
+    assert.notEqual(requestHarness.forms.credit.data.request_token, creditToken);
+
+    const reviewHarness = globalThis.lossControlsHarness = new Harness();
+    const pendingRequest = { id: 9, reference: 'GRANT-ACTOR-RESET', status: 'pending', version: 2, amount_cents: 10000, reason: 'Original shortfall.', review_reason: null, can_review: true, can_approve: true, wallet_reference: null };
+    const reviewValue = { ...base, version: 6, credits: { maximum_cents: 0, wallet_balance_cents: null, requests: [pendingRequest] } };
+    await render(reviewValue, 11, 7);
+    Object.assign(reviewHarness.forms.review.data, { decision: 'approved', confirmed: true, reason: 'Independent admin checked the grant request.' });
+    const reviewToken = reviewHarness.forms.review.data.request_token;
+    await render(reviewValue, 11, 8);
+    assert.equal(reviewHarness.forms.review.data.decision, '');
+    assert.equal(reviewHarness.forms.review.data.confirmed, false);
+    assert.equal(reviewHarness.forms.review.data.reason, '');
+    assert.notEqual(reviewHarness.forms.review.data.request_token, reviewToken);
+});

@@ -70,7 +70,7 @@ function ActionForm({ planId, value }: { planId: number; value: LossControlState
     const previous = useRef(`${planId}:${actorId ?? ''}`);
     const [failure, setFailure] = useState('');
     useRequestError(pending, useCallback(message => setFailure(message), []));
-    const reset = (version = value.version) => { form.setData(initial(version)); form.clearErrors(); setFailure(''); if (file.current) file.current.value = ''; };
+    const reset = (version = value.version) => { form.setData(initial(version)); form.clearErrors(); if (failure) setFailure(''); if (file.current) file.current.value = ''; };
     useEffect(() => {
         const current = `${planId}:${actorId ?? ''}`;
         if (previous.current !== current) { previous.current = current; reset(); }
@@ -177,10 +177,21 @@ function ActionForm({ planId, value }: { planId: number; value: LossControlState
 }
 
 function CreditReview({ planId, request }: { planId: number; request: CreditRequest }) {
-    const form = useForm({ decision: '', reason: '', confirmed: false, version: request.version, request_token: crypto.randomUUID() });
+    const actorId = (usePage<PageProps>().props as Partial<PageProps>).auth?.user?.id ?? null;
+    const reviewScope = `${planId}:${request.id}:${request.version}:${actorId ?? ''}`;
+    const initial = () => ({ decision: '', reason: '', confirmed: false, version: request.version, request_token: crypto.randomUUID() });
+    const form = useForm(initial());
     const pending = useRef(false);
+    const previousScope = useRef(reviewScope);
     const [failure, setFailure] = useState('');
     useRequestError(pending, useCallback(message => setFailure(message), []));
+    useEffect(() => {
+        if (previousScope.current === reviewScope) return;
+        previousScope.current = reviewScope;
+        form.setData(initial());
+        if (failure) setFailure('');
+        form.clearErrors();
+    }, [reviewScope]);
     const submit = (event: FormEvent) => {
         event.preventDefault();
         if (pending.current || form.processing || !request.can_review) return;
@@ -201,11 +212,21 @@ function CreditReview({ planId, request }: { planId: number; request: CreditRequ
 }
 
 function CreditRequestForm({ planId, version, maximum }: { planId: number; version: number; maximum: number }) {
+    const actorId = (usePage<PageProps>().props as Partial<PageProps>).auth?.user?.id ?? null;
+    const requestScope = `${planId}:${actorId ?? ''}`;
     const initial = () => ({ amount: '', reason: '', expected_version: version, request_token: crypto.randomUUID() });
     const form = useForm(initial());
     const pending = useRef(false);
+    const previousScope = useRef(requestScope);
     const [failure, setFailure] = useState('');
     useRequestError(pending, useCallback(message => setFailure(message), []));
+    useEffect(() => {
+        if (previousScope.current === requestScope) return;
+        previousScope.current = requestScope;
+        form.setData(initial());
+        if (failure) setFailure('');
+        form.clearErrors();
+    }, [requestScope]);
     const submit = (event: FormEvent) => {
         event.preventDefault();
         if (pending.current || form.processing || maximum <= 0) return;
@@ -223,6 +244,8 @@ function CreditRequestForm({ planId, version, maximum }: { planId: number; versi
 }
 
 export default function LossControls({ planId, value, summaryLabels = [] }: { planId: number; value: LossControlState; summaryLabels?: string[] }) {
+    const actorId = (usePage<PageProps>().props as Partial<PageProps>).auth?.user?.id ?? null;
+    const actorScope = `${planId}:${actorId ?? ''}`;
     const rec = value.reconciliation?.reconciliation ?? null;
     const stale = Boolean(value.reconciliation?.stale || rec?.stale);
     const findingHeading = rec?.status === 'released'
@@ -259,13 +282,13 @@ export default function LossControls({ planId, value, summaryLabels = [] }: { pl
         </section>}
         {value.accounting && <p role="status" className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-slate-800">{value.accounting.verified ? 'The original missing parcel is accounted as a confirmed loss. Physical arrivals and money remain separate.' : 'Retained loss accounting needs independent source reconciliation.'}</p>}
         {value.hold_message && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{value.hold_message}</p>}
-        <ActionForm key={planId} planId={planId} value={value} />
+        <ActionForm key={actorScope} planId={planId} value={value} />
         {value.funding && <section className="rounded-lg border border-slate-300 bg-white p-5 shadow-sm"><h2 className="flex items-center gap-2 font-bold text-slate-900"><Wallet className="h-5 w-5 text-[#E00D42]" />Original funding</h2><dl className="mt-4 grid gap-4 sm:grid-cols-3">{Object.entries(value.funding).filter(([label]) => !summaryLabels.includes(label)).map(([label, amount]) => <div key={label}><dt className="text-xs text-slate-600">{label}</dt><dd className="mt-1 font-bold text-slate-900">{financeMoney(amount)}</dd></div>)}</dl></section>}
         {value.credits && (value.credits.maximum_cents > 0 || value.credits.requests.length > 0 || value.credits.wallet_balance_cents !== null) && <section className="space-y-4 rounded-lg border border-slate-300 bg-white p-5 shadow-sm sm:p-6"><h2 className="font-bold text-slate-900">Demonstration funding credits</h2>
             {value.credits.wallet_balance_cents !== null && <p className="text-sm text-slate-600">My virtual Wallet balance: <strong className="text-slate-900">{financeMoney(value.credits.wallet_balance_cents)}</strong></p>}
             {value.credits.available_for_authority_cents !== undefined && value.credits.available_for_authority_cents !== null && value.credits.available_for_authority_cents !== value.credits.wallet_balance_cents && <p className="text-sm text-slate-600">Available for this loss: <strong className="text-slate-900">{financeMoney(value.credits.available_for_authority_cents)}</strong></p>}
-            {value.credits.maximum_cents > 0 && !value.credits.requests.some(request => request.status === 'pending') && <CreditRequestForm key={planId} planId={planId} version={value.version} maximum={value.credits.maximum_cents} />}
-            {value.credits.requests.map(request => <article key={request.id} className="space-y-3 rounded-lg border border-slate-300 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold text-slate-900">{financeMoney(request.amount_cents)}</h3><span className="rounded-lg bg-rose-50 px-2 py-1.5 text-xs font-semibold text-[#C20836]">{request.status === 'pending' ? 'Awaiting independent review' : request.status === 'approved' ? 'Credits granted' : 'Request declined'}</span></div><p className="break-all text-xs text-slate-500">{request.reference}</p><p className="whitespace-pre-wrap break-words text-sm text-slate-700">{request.reason}</p>{request.review_reason && <p className="whitespace-pre-wrap break-words text-sm text-slate-700">{request.review_reason}</p>}{request.wallet_reference && <p className="break-all text-xs text-slate-600">Grant journal: {request.wallet_reference}</p>}{request.can_review && <CreditReview planId={planId} request={request} />}</article>)}
+            {value.credits.maximum_cents > 0 && !value.credits.requests.some(request => request.status === 'pending') && <CreditRequestForm key={actorScope} planId={planId} version={value.version} maximum={value.credits.maximum_cents} />}
+            {value.credits.requests.map(request => <article key={`${request.id}:${actorId ?? ''}`} className="space-y-3 rounded-lg border border-slate-300 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold text-slate-900">{financeMoney(request.amount_cents)}</h3><span className="rounded-lg bg-rose-50 px-2 py-1.5 text-xs font-semibold text-[#C20836]">{request.status === 'pending' ? 'Awaiting independent review' : request.status === 'approved' ? 'Credits granted' : 'Request declined'}</span></div><p className="break-all text-xs text-slate-500">{request.reference}</p><p className="whitespace-pre-wrap break-words text-sm text-slate-700">{request.reason}</p>{request.review_reason && <p className="whitespace-pre-wrap break-words text-sm text-slate-700">{request.review_reason}</p>}{request.wallet_reference && <p className="break-all text-xs text-slate-600">Grant journal: {request.wallet_reference}</p>}{request.can_review && <CreditReview key={`${request.id}:${request.version}:${actorId ?? ''}`} planId={planId} request={request} />}</article>)}
         </section>}
         {value.disposition && <section className="space-y-3 rounded-lg border border-slate-300 bg-white p-5 shadow-sm"><h2 className="font-bold text-slate-900">Retained operational loss evidence</h2><p className="break-all text-xs text-slate-500">{value.disposition.reference}</p><a href={value.disposition.proof_url} className={secondary}><FileText className="h-4 w-4" />Private loss evidence</a></section>}
     </>;

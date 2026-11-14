@@ -1,7 +1,8 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, ClipboardCheck, FileText, ShieldCheck } from 'lucide-react';
 import ReturnLayout from '@/Components/Returns/ReturnLayout';
+import { PageProps } from '@/types';
 import { financeMoney } from '@/utils/finance';
 import useRequestError from '@/hooks/useCourierRequestError';
 
@@ -82,7 +83,9 @@ export default function LossReview({ order, source, basis, preview = null, block
     const form = useForm<ReviewForm>(initial());
     const pending = useRef(false);
     const fileInput = useRef<HTMLInputElement>(null);
-    const previousSource = useRef(source?.observation_id);
+    const actorId = (usePage<PageProps>().props as Partial<PageProps>).auth?.user?.id ?? null;
+    const sourceScope = `${actorId ?? ''}:${source?.observation_id ?? ''}`;
+    const previousSource = useRef({ scope: sourceScope, actorId, requestToken });
     const [failure, setFailure] = useState('');
     const [phase, setPhase] = useState<'preview' | 'approve' | null>(null);
     useRequestError(pending, useCallback(message => setFailure(message), []));
@@ -92,13 +95,15 @@ export default function LossReview({ order, source, basis, preview = null, block
         if (fileInput.current) fileInput.current.value = '';
     };
     useEffect(() => {
-        if (previousSource.current === source?.observation_id) return;
-        previousSource.current = source?.observation_id;
-        form.setData(initial());
+        if (previousSource.current.scope === sourceScope) return;
+        const actorChanged = previousSource.current.actorId !== actorId;
+        const nextToken = actorChanged && requestToken === previousSource.current.requestToken ? crypto.randomUUID() : requestToken;
+        previousSource.current = { scope: sourceScope, actorId, requestToken };
+        form.setData({ ...initial(), request_token: nextToken });
         if (fileInput.current) fileInput.current.value = '';
-        setFailure('');
+        setFailure(current => (current === '' ? current : ''));
         form.clearErrors();
-    }, [source?.observation_id]);
+    }, [sourceScope]);
 
     const validAmounts = !!preview && /^[a-f0-9]{64}$/.test(preview.review_token)
         && previewKeys.every(key => Number.isSafeInteger(preview.amounts[key]) && preview.amounts[key] >= 0);

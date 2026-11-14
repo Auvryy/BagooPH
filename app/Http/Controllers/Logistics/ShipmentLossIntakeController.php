@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Logistics;
 
+use App\Http\Controllers\Concerns\EncryptsSensitiveHistory;
 use App\Http\Controllers\Controller;
 use App\Models\BuyerReturnParcel;
 use App\Models\Delivery;
@@ -28,6 +29,8 @@ use Throwable;
 
 class ShipmentLossIntakeController extends Controller
 {
+    use EncryptsSensitiveHistory;
+
     private function hub(Request $request, ShipmentFinancialPlan $plan): LogisticsHub
     {
         $data = Validator::make($request->only('hub_id'), ['hub_id' => ['required', new AsciiPositiveInteger, 'integer']])->validate();
@@ -89,6 +92,8 @@ class ShipmentLossIntakeController extends Controller
                 $releaseBlocker = $assessment['blocked_reasons'][$record['outcome_path'] ?? ''] ?? 'The approved reconciliation path is currently blocked.';
             }
         }
+
+        $this->encryptSensitiveHistory($request);
 
         return Inertia::render('Hub/LossFoundIntake', ['intake' => ['id' => $plan->id,
             'barcode' => $plan->snapshot['source']['barcode'], 'manifest_reference' => $plan->snapshot['source']['manifest_reference'],

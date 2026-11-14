@@ -1,8 +1,9 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, ClipboardCheck } from 'lucide-react';
 import ReturnLayout from '@/Components/Returns/ReturnLayout';
 import ShipmentAmountSummary, { ShipmentAmounts } from '@/Components/Finance/ShipmentAmounts';
+import { PageProps } from '@/types';
 import useRequestError from '@/hooks/useCourierRequestError';
 
 interface Source { payment_method: string; attempt_reference: string; return_route_reference: string; seller_receipt_reference: string; original_payment_reference: string | null; attempt_proof_url: string }
@@ -10,13 +11,24 @@ interface Preview { review_token: string; input: { reverse_fee: string; cost_ref
 const field = 'mt-2 w-full rounded-lg border border-slate-300 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]';
 
 export default function ShipmentReview({ order, source, preview, blocker }: { order: { id: number; order_number: string }; source: Source | null; preview: Preview | null; blocker: string | null }) {
+    const actorId = (usePage<PageProps>().props as Partial<PageProps>).auth?.user?.id ?? null;
+    const reviewScope = `${actorId ?? ''}:${order.id}`;
     const initial = () => ({ reverse_fee: preview?.input.reverse_fee ?? '', cost_reference: preview?.input.cost_reference ?? '', reason: '', proof: null as File | null, conforming_shipment_confirmed: false, request_token: crypto.randomUUID() });
     const form = useForm(initial());
     const pending = useRef(false);
+    const fileInput = useRef<HTMLInputElement>(null);
+    const previousScope = useRef(reviewScope);
     const [failure, setFailure] = useState('');
     const [previewing, setPreviewing] = useState(false);
     useRequestError(pending, useCallback(message => setFailure(message), []));
-    useEffect(() => { form.setData(initial()); form.clearErrors(); }, [order.id]);
+    useEffect(() => {
+        if (previousScope.current === reviewScope) return;
+        previousScope.current = reviewScope;
+        form.setData(initial());
+        if (fileInput.current) fileInput.current.value = '';
+        setFailure('');
+        form.clearErrors();
+    }, [reviewScope]);
     const matches = preview && form.data.reverse_fee === preview.input.reverse_fee && form.data.cost_reference.trim() === preview.input.cost_reference;
     const previewAmounts = () => {
         if (pending.current || form.processing || blocker) return;
@@ -45,7 +57,7 @@ export default function ShipmentReview({ order, source, preview, blocker }: { or
             <button type="button" disabled={form.processing} onClick={previewAmounts} className="rounded-lg border border-rose-200 bg-rose-50/85 px-4 py-3 text-sm font-bold text-[#C20836] hover:bg-[#E00D42] hover:text-white disabled:opacity-50">{previewing ? 'Checking…' : 'Preview amounts'}</button>
             {preview && <div className="space-y-3 border-t border-slate-300 pt-5"><ShipmentAmountSummary value={preview.amounts} preview />{!matches && <p role="status" className="text-sm text-amber-800">Amounts changed. Preview again before approving.</p>}</div>}
             <label className="block text-sm font-semibold">Review reason<textarea required minLength={10} maxLength={1000} rows={3} value={form.data.reason} onChange={event => form.setData('reason', event.target.value)} className={field} /></label>
-            <label className="block text-sm font-semibold">Private conformity and cost evidence<input required type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={event => form.setData('proof', event.target.files?.[0] ?? null)} className={field} /><span className="mt-1 block text-xs font-normal text-slate-500">JPG, PNG, WebP or PDF · up to 5 MB.</span></label>
+            <label className="block text-sm font-semibold">Private conformity and cost evidence<input ref={fileInput} required type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={event => form.setData('proof', event.target.files?.[0] ?? null)} className={field} /><span className="mt-1 block text-xs font-normal text-slate-500">JPG, PNG, WebP or PDF · up to 5 MB.</span></label>
             <label className="flex items-start gap-2 text-sm leading-6"><input required type="checkbox" checked={form.data.conforming_shipment_confirmed} onChange={event => form.setData('conforming_shipment_confirmed', event.target.checked)} className="mt-1 rounded border-slate-300 text-[#E00D42]" />I independently reviewed the conforming parcel, actual refusal, complete seller receipt and evidenced reverse charge.</label>
             {failure && <p role="alert" className="text-sm text-rose-700">{failure}</p>}{Object.entries(form.errors).map(([key, message]) => <p key={key} role="alert" className="text-sm text-rose-700">{String(message)}</p>)}
             <button disabled={form.processing || !matches} className="rounded-lg bg-[#E00D42] px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{form.processing && !previewing ? 'Saving…' : 'Approve reviewed amounts'}</button>

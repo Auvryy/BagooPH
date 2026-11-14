@@ -21,18 +21,23 @@ use Throwable;
 
 class BuyerReturnController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
+
     public function index(Request $request, BuyerReturnService $returns): Response
     {
         $request->validate(['page' => ['sometimes', 'integer', 'between:1,1000000']]);
         $cases = $returns->scope($request->user())->with('order:id,order_number')->latest('id')->paginate(12)->withQueryString()
             ->through(fn ($case) => $case->only(['id', 'reference', 'status', 'reason', 'created_at'])
                 + ['order_number' => $case->order->order_number]);
+        $this->encryptSensitiveHistory($request);
 
         return Inertia::render('Returns/Index', ['cases' => $cases]);
     }
 
     public function create(Request $request, Order $order, BuyerReturnService $returns): Response
     {
+        $this->encryptSensitiveHistory($request);
+
         return Inertia::render('Returns/Create', $returns->form($request->user(), $order));
     }
 
@@ -53,6 +58,8 @@ class BuyerReturnController extends Controller
 
     public function show(Request $request, BuyerReturnCase $case, BuyerReturnService $returns): Response
     {
+        $this->encryptSensitiveHistory($request);
+
         return Inertia::render('Returns/Show', ['returnCase' => $returns->present($request->user(), $case)]);
     }
 
