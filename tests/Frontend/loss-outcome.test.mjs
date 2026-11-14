@@ -73,3 +73,11 @@ test('connected outcome shows each reviewed debt once and keeps available backin
     assert.equal((html.match(/Advance outstanding/g) ?? []).length, 1);
     assert.match(html, /Available backing/);
 });
+
+test('restored company funding retains its distinct saved history while the original outcome is still pending', async () => {
+    const html = await render({ ...loss, mode: 'wallet', amounts: { 'Company funding outstanding': 18833 },
+        history: [{ ...loss.history[0], event_type: 'loss-return-company-source', amount_cents: 15000 }] }, 'logistics');
+    assert.match(html, /Unused company contribution restored/); assert.match(html, /150\.00/);
+    assert.match(html, /Company funding outstanding/); assert.match(html, /188\.33/);
+    assert.doesNotMatch(html, /Financial outcome recorded|Buyer confirmed receipt|Seller confirmed receipt/);
+});

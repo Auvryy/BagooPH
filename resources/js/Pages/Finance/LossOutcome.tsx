@@ -41,6 +41,7 @@ const eventLabels: Record<string, string> = {
     'loss-found-quarantined': 'Found parcel placed in quarantine',
     'loss-accounted': 'Confirmed loss accounted separately from receipts',
     'loss-return-unused-credit': 'Unused reviewed credits returned to their issuance source',
+    'loss-return-company-source': 'Unused company contribution restored',
 };
 
 export default function LossOutcome({ loss }: LossOutcomeProps) {
