@@ -57,7 +57,7 @@ class BrainstormContinuityTest extends TestCase
         }, $routeIds);
         $this->assertSame(5000, $quote['base_fee_cents']);
         $this->assertSame(2, $quote['cancellation_policy_version']);
-        $this->assertSame(1, $quote['refund_policy_version']);
+        $this->assertSame(2, $quote['refund_policy_version']);
         $this->actingAs($shop->user)->get('/seller/orders')->assertInertia(fn (Assert $page) => $page
             ->where('orders.data.0.can_print_waybill', false)->where('orders.data.0.recipient_phone', null));
         if ($payment === 'wallet') {

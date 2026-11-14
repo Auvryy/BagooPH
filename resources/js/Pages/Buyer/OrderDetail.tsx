@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import BuyerOrderAccessLayout from '@/Layouts/BuyerOrderAccessLayout';
 import BuyerOrderPackage from '@/Components/BuyerOrderPackage';
+import FinancialReviewLinks, { type FinancialReviews } from '@/Components/Finance/FinancialReviewLinks';
 import BuyerCancelOrder from '@/Components/BuyerCancelOrder';
 import OrderCancellationFeedback, { type CancellationFeedback } from '@/Components/OrderCancellationFeedback';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
@@ -26,6 +27,8 @@ interface Props {
     canConfirmReceipt: boolean;
     returnAvailability?: { can_request: boolean; until: string | null; reason: string | null } | null;
     buyerReturns?: Array<{ id: number; reference: string; status: string }>;
+    shipmentFinance?: { id: number; reference: string } | null;
+    shipmentFinances?: FinancialReviews;
     pickupClaim: { reference: string; status: string; expires_at: string; code_issued_at: string | null; locked_until: string | null } | null;
     pickupHub: {name: string; address: string; operating_hours: string | null} | null;
     pickupCodeUrl: string | null;
@@ -33,7 +36,7 @@ interface Props {
     orderNotices: BuyerOrderNotice[];
 }
 
-export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buyAgainToken, cancelOrderUrl, cancellationRequestUrl, cancellationFeedback, cancellationReasons = [], cancellationReason, canConfirmReceipt, returnAvailability, buyerReturns = [], pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [] }: Props) {
+export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buyAgainToken, cancelOrderUrl, cancellationRequestUrl, cancellationFeedback, cancellationReasons = [], cancellationReason, canConfirmReceipt, returnAvailability, buyerReturns = [], shipmentFinance, shipmentFinances, pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [] }: Props) {
     const { auth } = usePage<PageProps>().props;
     const adminOversight = auth.user?.role === 'admin';
     const [pickupCode,setPickupCode] = useState<string | null>(null);
@@ -71,7 +74,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
     const refreshTracking = () => {
         if (refreshPending.current || codePending.current || receiptPending.current) return;
         refreshPending.current = true; setTrackingRefreshing(true); setTrackingError('');
-        router.reload({ only: ['order', 'canUsePortal', 'buyAgainUrl', 'buyAgainToken', 'cancelOrderUrl', 'cancellationRequestUrl', 'cancellationFeedback', 'cancellationReasons', 'cancellationReason', 'canConfirmReceipt', 'returnAvailability', 'buyerReturns', 'pickupClaim', 'pickupHub', 'pickupCodeUrl', 'pickupCodeAvailable', 'orderNotices', 'auth', 'flash'],
+        router.reload({ only: ['order', 'canUsePortal', 'buyAgainUrl', 'buyAgainToken', 'cancelOrderUrl', 'cancellationRequestUrl', 'cancellationFeedback', 'cancellationReasons', 'cancellationReason', 'canConfirmReceipt', 'returnAvailability', 'buyerReturns', 'shipmentFinance', 'shipmentFinances', 'pickupClaim', 'pickupHub', 'pickupCodeUrl', 'pickupCodeAvailable', 'orderNotices', 'auth', 'flash'],
             onError: errors => setTrackingError(Object.values(errors).join(' ') || 'Tracking could not refresh. Try again.'),
             onFinish: () => { refreshPending.current = false; setTrackingRefreshing(false); },
         });
@@ -243,6 +246,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
                     onReview={canUsePortal && order.status === 'completed' && reviewableItems.length > 0 ? openReview : undefined}
                     onRefresh={refreshTracking} refreshing={trackingRefreshing || codeBusy || receiptBusy} error={trackingError} />
                 <BuyerOrderPackage order={order} canUsePortal={canUsePortal} />
+                <FinancialReviewLinks value={shipmentFinances} fallbackUrl={shipmentFinance ? `/shipment-finances/${shipmentFinance.id}` : null} />
 
                 {(returnAvailability?.can_request || buyerReturns.length > 0) && <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-300 bg-white p-4"><div><h2 className="font-bold text-slate-900">Returns and refunds</h2>{returnAvailability?.can_request && <p className="mt-1 text-sm text-slate-600">You can request a return within seven days of delivery, including after confirming receipt.</p>}</div><div className="flex flex-wrap gap-2">{returnAvailability?.can_request && <Link href={`/buyer-returns/orders/${order.id}/create`} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-[#C20836]">Request a return</Link>}{buyerReturns.map(item => <Link key={item.id} href={`/buyer-returns/${item.id}`} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">{item.reference}</Link>)}</div></section>}
                 {pickupClaim && <section aria-label="Your hub pickup" className="space-y-3 rounded-xl border border-slate-300 bg-white p-4">

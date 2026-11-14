@@ -66,11 +66,11 @@ Staging means an actually held parcel is waiting at its recorded hub/shelf. It d
 
 ## 5. Transport sharing without shared identity or money
 
-Forward, RTS and approved buyer returns may eventually use compatible physical transport. A shared vehicle does not merge their routes, custody events, item quantities, buyer claims, COD or refund entitlements.
+Forward, RTS and approved buyer returns may use compatible physical transport. A shared vehicle does not merge their routes, custody events, item quantities, buyer claims, COD or refund entitlements.
 
-Current buyer-return manifests use `direction=buyer_return`, retained per-case leg routes and separate `BuyerReturnManifestParcel` membership. **B03 does not enable mixed forward/return manifests.** Until B12 supplies that behavior, continue using the existing dedicated manifests; never work around direction guards by putting a return barcode in a forward member row.
+Buyer-return manifests use `direction=buyer_return`, retained per-case leg routes and separate `BuyerReturnManifestParcel` membership. The [B12 vehicle-trip protocol](B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md) groups compatible original manifests without merging their members. Never work around direction guards by putting a return barcode in a forward member row. Return sacks retain separate typed member records while using the existing permanent sack and numbered-seal identities.
 
-Before B12 enables shared loads, require all of the following:
+Shared loads require all of the following:
 
 1. Same eligible company and identical next source/destination leg, with compatible capacity, handling and seal requirements. Sharing a final destination is insufficient when next hops differ.
 2. Typed members referring to original shipment records; one active transport/container membership per physical shipment. No cross-table numeric-ID assumptions.
@@ -78,7 +78,7 @@ Before B12 enables shared loads, require all of the following:
 4. Independent forward, RTS and buyer-return histories and original routes. Unloading branches according to each member's stored next hop.
 5. No new collection, repayment, seller debit, insurance payment or earnings merely because a parcel loaded, arrived or shared a vehicle.
 
-Worked contract example: configured children A, B and C share Mother Hub M. A forward parcel follows A → M → B. A buyer return reverses its original C → M → A journey into A → M → C. They could share the A → M vehicle leg once B12 implements compatible loading. At M, their next children differ, so their membership and receiving outcomes must branch separately. A COD forward parcel remains uncollected during this linehaul; the return of a Wallet purchase remains a separate refund case. Neither receipt changes the other's payment or order. This is a future compatibility example, not evidence that mixed dispatch is enabled today.
+Worked contract example: configured children A, B and C share Mother Hub M. A forward parcel follows A → M → B. A buyer return reverses its original C → M → A journey into A → M → C. They may share the A → M vehicle leg under the B12 compatible-loading protocol. At M, their next children differ, so their membership and receiving outcomes must branch separately. A COD forward parcel remains uncollected during this linehaul; the return of a Wallet purchase remains a separate refund case. Neither receipt changes the other's payment or order. This is a routing example; actual departure and receipt still require their protected individual commands.
 
 Physical seller receipt can satisfy an existing refund prerequisite; it cannot itself assert an external refund was paid. B04/B10/B13 own original allocations, actual cash/Wallet events and funding. A last scan alone does not establish fault or liability.
 

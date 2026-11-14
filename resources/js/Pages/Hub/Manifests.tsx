@@ -10,9 +10,12 @@ import { nextTransferHubs, transferSteps } from '@/utils/hubWorkspace';
 import { QRCodeSVG } from 'qrcode.react';
 import { CapacityMeter, HandlingFields, HandlingSummary, emptyHandling, type Handling } from '@/Components/Logistics/CargoHandling';
 import WaybillCamera from '@/Components/WaybillCamera';
+import SharedTripPanel, { type SharedTrip, type TripManifest } from '@/Components/Logistics/SharedTripPanel';
+import TransportArrival, { type TransportArrivalState } from '@/Components/Logistics/TransportArrival';
+import TransportLoss, { type TransportLossState } from '@/Components/Logistics/TransportLoss';
 
 interface Hub extends HubPlace { id: number; name: string; code: string; tier: string }
-interface ReceiptCounts { expected: number; normal_received: number; corrective_expected_received: number; unlisted_received: number; outstanding: number }
+interface ReceiptCounts { expected: number; normal_received: number; corrective_expected_received: number; unlisted_received: number; outstanding: number; confirmed_lost?: number }
 interface Manifest {
     id: number; reference: string; type: string; direction: string; status: string; version: number; included_count: number;
     source: Hub; destination: Hub; vehicle_plate: string; driver_name: string;
@@ -22,37 +25,40 @@ interface Manifest {
     receiptCounts?: ReceiptCounts;
 }
 interface Detail extends Manifest {
+    transportArrival?: TransportArrivalState;
+    wholeTransportLoss?: TransportLossState | null;
     cargoCapacity?: { weight_kg: number | null; max_weight_kg: number; loose_count: number; count: number } | null;
     motherBags?: { id: string; reference: string; seal_number: string; status: string }[];
     canManage: boolean; canClose: boolean; canLoad: boolean; canReceive: boolean;
     reviewedHold?: boolean;
     parcels: Array<{ cargo_mode?: string | null; handling?: Handling | null; id: number; tracking_number: string; included: boolean; status: string; received_at: string | null; receipt_condition: string | null;
-        corrective_receipt?: { reference: string; received_at: string } | null; handover_hold?: boolean; handover_issue_url?: string | null }>;
+        corrective_receipt?: { reference: string; received_at: string } | null; handover_hold?: boolean; handover_issue_url?: string | null; confirmed_lost?: boolean }>;
     correctiveReceipts?: Array<{ reference: string; tracking_number: string; original_member_id: number | null; received_at: string; received_by: string;
         original_expected_count: number; original_received_count: number }>;
     discrepancies: Array<{ id: number; reference: string; kind: string; parcel_id: number | null; barcode: string | null; reason: string; recoveryUrl?: string | null }>;
     events: Array<{ id: number; reference: string; type: string; actor: string; actor_role: string; barcode: string | null; reason: string | null; created_at: string }>;
 }
 interface Props {
+    sharedTrip?: SharedTrip | null; tripCandidates?: TripManifest[];
     manifests: { data: Manifest[]; links: Array<{ url: string | null; label: string; active: boolean }> };
     selectedManifest: Detail | null; canCreate: boolean; creationToken: string | null; commandToken: string; basePath: string;
     sourceHubIds?: number[]; hubs: Hub[]; vehicles: Array<{ id: number; hub_id: number; plate_number: string; vehicle_type: string; driver_name: string; capacity_kg?: number }>;
     preparationRoute?: { source_hub_id: number; destination_hub_id: number } | null;
-    buyerReturns?: Array<{ id: number; reference: string; barcode: string; source_hub_id: number; destination_hub_id: number; weight_grams: number }>;
+    buyerReturns?: Array<{ id: number; reference: string; barcode: string; source_hub_id: number; destination_hub_id: number; weight_grams: number; recovery_id?: number | null }>;
 }
 const inputClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-[#121316] font-medium shadow-2xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors';
 const buttonClass = 'inline-flex items-center justify-center rounded-lg border border-rose-200 bg-rose-50/85 px-4 py-2 text-xs font-semibold text-[#C20836] shadow-2xs hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';
 const words = (value: string) => value.replaceAll('_', ' ').replaceAll('-', ' ');
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' });
 
-export default function Manifests({ manifests, selectedManifest: selected, canCreate, creationToken, commandToken, basePath, hubs, vehicles, sourceHubIds = [], buyerReturns = [], preparationRoute = null }: Props) {
-    const creation = useForm({ source_hub_id: preparationRoute ? String(preparationRoute.source_hub_id) : sourceHubIds.length === 1 ? String(sourceHubIds[0]) : '', destination_hub_id: preparationRoute ? String(preparationRoute.destination_hub_id) : '', vehicle_id: '', direction: 'outbound', buyer_return_case_id: '', creation_token: creationToken ?? '' });
+export default function Manifests({ manifests, selectedManifest: selected, canCreate, creationToken, commandToken, basePath, hubs, vehicles, sourceHubIds = [], buyerReturns = [], preparationRoute = null, sharedTrip = null, tripCandidates = [] }: Props) {
+    const creation = useForm({ source_hub_id: preparationRoute ? String(preparationRoute.source_hub_id) : sourceHubIds.length === 1 ? String(sourceHubIds[0]) : '', destination_hub_id: preparationRoute ? String(preparationRoute.destination_hub_id) : '', vehicle_id: '', direction: 'outbound', buyer_return_case_id: '', buyer_return_recovery_id: '', creation_token: creationToken ?? '' });
     const [barcode, setBarcode] = useState('');
     const [cargoMode, setCargoMode] = useState('');
     const [handling, setHandling] = useState(emptyHandling);
     const [search, setSearch] = useState('');
     const [returnSearch, setReturnSearch] = useState('');
-    const selectReturn = (item: NonNullable<Props['buyerReturns']>[number]) => creation.setData({ ...creation.data, buyer_return_case_id: String(item.id), source_hub_id: String(item.source_hub_id), destination_hub_id: String(item.destination_hub_id), vehicle_id: '' });
+    const selectReturn = (item: NonNullable<Props['buyerReturns']>[number]) => creation.setData({ ...creation.data, buyer_return_case_id: String(item.id), buyer_return_recovery_id: item.recovery_id ? String(item.recovery_id) : '', source_hub_id: String(item.source_hub_id), destination_hub_id: String(item.destination_hub_id), vehicle_id: '' });
     const visibleManifests = manifests.data.filter(item => [item.reference, item.source.name, item.destination.name, item.vehicle_plate, item.driver_name, item.status].join(' ').toLowerCase().includes(search.toLowerCase()));
     const [notes, setNotes] = useState('');
     const [kind, setKind] = useState('missing');
@@ -99,11 +105,12 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
             <div className="space-y-6">
                 <HubPageHeader
                     title="Transfers & manifests"
-                    description="One manifest is one vehicle trip to the next hub. Choose the route, load sealed bags or loose cargo and receive each arriving parcel."
+                    description="Prepare cargo for its next hub. Compatible sealed manifests can share one vehicle trip."
                     icon={Truck}
                     actions={<Link className={hubButton} href={route('hub.mother-bags.index')}><Container className="h-4 w-4" />Mother Bags</Link>}
                 />
 
+                <SharedTripPanel trip={sharedTrip} candidates={tripCandidates} selectedId={selected?.id ?? null} token={commandToken} basePath={basePath} />
                 {selected && (
                     <>
                         <HubStepRail steps={transferSteps(selected.status, selected.included_count > 0)} />
@@ -152,6 +159,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                         ...creation.data,
                                                         direction: option.value,
                                                         buyer_return_case_id: '',
+                                                        buyer_return_recovery_id: '',
                                                         source_hub_id: sourceHubIds.length === 1 ? String(sourceHubIds[0]) : '',
                                                         destination_hub_id: '',
                                                         vehicle_id: '',
@@ -211,7 +219,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                         <span className="block text-xs sm:text-sm font-bold text-[#121316]">Return #{item.id}</span>
                                                         <span className="mt-1 block break-words text-xs tabular-nums text-zinc-600">{item.barcode}</span>
                                                         <span className="mt-1 block text-xs text-zinc-500">
-                                                            {item.reference} · {(item.weight_grams / 1000).toFixed(3)} kg
+                                                            {item.reference} · {(item.weight_grams / 1000).toFixed(3)} kg{item.recovery_id ? ' · Authorized recovery' : ''}
                                                         </span>
                                                     </span>
                                                 </label>
@@ -226,6 +234,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                         Scanning selects the return. Choose its vehicle and prepare its exact next leg below.
                                     </p>
                                     {fieldError(creation.errors.buyer_return_case_id)}
+                                    {fieldError(creation.errors.buyer_return_recovery_id)}
                                 </fieldset>
                             )}
 
@@ -414,6 +423,8 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                             <div className="p-5 sm:p-6 space-y-5">
                                 <HubRoute stops={[selected.source, selected.destination]} />
+                                {selected.transportArrival && <TransportArrival value={selected.transportArrival} manifestId={selected.id} version={selected.version} driver={selected.driver_name} plate={selected.vehicle_plate} basePath={basePath} />}
+                                {selected.wholeTransportLoss && <TransportLoss value={selected.wholeTransportLoss} manifestId={selected.id} version={selected.version} basePath={basePath} />}
                                 {selected.cargoCapacity && <section aria-label="Vehicle cargo capacity" className="rounded-xl border border-rose-200 bg-rose-50/40 p-4"><h3 className="mb-3 text-sm font-bold text-[#9F1239]">Vehicle cargo · {selected.cargoCapacity.loose_count} loose parcels</h3><CapacityMeter label="Total retained cargo weight" value={selected.cargoCapacity.weight_kg} max={selected.cargoCapacity.max_weight_kg} unit="kg" /></section>}
 
                                 {selected.recoveryUrl && (
@@ -432,13 +443,14 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                 {receiptCounts && (
                                     <dl
                                         aria-label="Actual manifest receipts"
-                                        className="grid grid-cols-2 sm:grid-cols-5 rounded-xl border border-zinc-200/90 bg-zinc-50/40 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80 overflow-hidden shadow-2xs"
+                                        className={`grid grid-cols-2 ${receiptCounts.confirmed_lost ? 'sm:grid-cols-3 xl:grid-cols-6' : 'sm:grid-cols-5'} rounded-xl border border-zinc-200/90 bg-zinc-50/40 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80 overflow-hidden shadow-2xs`}
                                     >
                                         {[
                                             ['Original expected', receiptCounts.expected],
                                             ['Recorded receipts', receiptCounts.normal_received],
                                             ['Corrective receipts', receiptCounts.corrective_expected_received],
                                             ['Unlisted receipts', receiptCounts.unlisted_received],
+                                            ...(receiptCounts.confirmed_lost ? [['Confirmed lost', receiptCounts.confirmed_lost]] : []),
                                             ['Still awaiting', receiptCounts.outstanding],
                                         ].map(([label, value]) => (
                                             <div key={label} className="p-3.5">
@@ -541,16 +553,16 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                     {selected.canManage && selected.status === 'draft' && !hasCorrections && !selected.reviewedHold && (
                                         <button disabled={busy || !selected.included_count} onClick={() => command('seal')} className={buttonClass}>Seal parcel list</button>
                                     )}
-                                    {selected.canManage && selected.status === 'sealed' && !hasCorrections && !selected.reviewedHold && (
+                                    {selected.canManage && selected.status === 'sealed' && !hasCorrections && !selected.reviewedHold && !sharedTrip && (
                                         <button disabled={busy || !notes.trim()} onClick={() => command('reopen')} className={buttonClass}>Reopen with reason</button>
                                     )}
-                                    {selected.canLoad && selected.status === 'sealed' && !hasCorrections && !selected.reviewedHold && (
+                                    {selected.canLoad && selected.status === 'sealed' && !hasCorrections && !selected.reviewedHold && !sharedTrip && (
                                         <button disabled={busy} onClick={() => command('dispatch')} className="rounded-lg bg-[#E00D42] hover:bg-[#C20836] px-5 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99] disabled:opacity-50">
                                             Record departure
                                         </button>
                                     )}
-                                    {selected.canClose && selected.status === 'received' && (
-                                        <button disabled={busy || selected.discrepancies.length > 0 || selected.reviewedHold} onClick={() => command('close')} className={buttonClass}>Close received manifest</button>
+                                    {selected.canClose && (selected.status === 'received' || selected.status === 'dispatched' && !!receiptCounts?.confirmed_lost && receiptCounts.outstanding === 0) && (
+                                        <button disabled={busy || selected.discrepancies.length > 0 || selected.reviewedHold} onClick={() => command('close')} className={buttonClass}>{receiptCounts?.confirmed_lost ? 'Close accounted manifest' : 'Close received manifest'}</button>
                                     )}
                                     {selected.canClose && selected.status !== 'closed' && hasCorrections && (
                                         <button disabled={busy || !notes.trim() || selected.discrepancies.length > 0 || receiptCounts?.outstanding !== 0 || selected.reviewedHold} onClick={() => command('close-recovery')} className={buttonClass}>
@@ -566,7 +578,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                         </summary>
                                         <div className="border-t border-zinc-200/70 p-5">
                                             <p className="text-xs text-zinc-500">
-                                                An observation preserves the current parcel state. Missing and damaged parcels need a later actual receipt. An unexpected physical parcel stays unresolved until supported handling is recorded.
+                                                Record what is actually present. A missing parcel needs an actual receipt or an independently supported loss outcome.
                                             </p>
                                             <form className="mt-3.5 space-y-3.5" onSubmit={event => { event.preventDefault(); command('report-discrepancy', { kind, ...(kind === 'missing' ? { parcel_id: parcelId } : { barcode }) }); }}>
                                                 <label className="block text-xs font-bold text-[#121316]">
@@ -583,7 +595,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                         <select required className={inputClass} value={parcelId} disabled={busy} onChange={event => setParcelId(event.target.value)}>
                                                             <option value="">Choose missing parcel</option>
                                                             {selected.parcels
-                                                                .filter(parcel => parcel.included && !parcel.received_at && !parcel.corrective_receipt)
+                                                                .filter(parcel => parcel.included && !parcel.received_at && !parcel.corrective_receipt && !parcel.confirmed_lost)
                                                                 .map(parcel => (
                                                                     <option key={parcel.id} value={parcel.id}>{parcel.tracking_number}</option>
                                                                 ))}
@@ -662,9 +674,9 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                         {parcel.handover_hold && <p className="mt-1 text-xs font-bold text-amber-800">Awaiting supervised recovery</p>}
                                                         {parcel.handover_issue_url && <Link href={parcel.handover_issue_url} className="mt-1 inline-block text-xs font-bold text-[#E00D42]">Review handover</Link>}
                                                     </td>
-                                                    <td className="px-5 py-3.5 capitalize text-zinc-600">{words(parcel.status)}</td>
+                                                    <td className="px-5 py-3.5 capitalize text-zinc-600">{parcel.confirmed_lost ? 'Confirmed lost' : words(parcel.status)}</td>
                                                     <td className="px-5 py-3.5 text-zinc-600">
-                                                        {parcel.received_at
+                                                        {parcel.confirmed_lost ? 'Accounted as lost · no receipt' : parcel.received_at
                                                             ? words(parcel.receipt_condition ?? 'received') + ' · ' + date(parcel.received_at)
                                                             : parcel.corrective_receipt
                                                               ? 'Corrective receipt · ' + date(parcel.corrective_receipt.received_at)

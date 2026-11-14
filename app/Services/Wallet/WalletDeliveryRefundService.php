@@ -10,17 +10,23 @@ use App\Models\WalletPayment;
 use App\Models\WalletTransaction;
 use App\Rules\ApplicationText;
 use App\Services\AccountRestrictionService;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Logistics\DeliveryReturnService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 class WalletDeliveryRefundService
 {
     public function eligible(Order $order): bool
     {
+        if (Schema::hasTable('shipment_financial_plans') && app(ShipmentLossReconciliationService::class)->blocksOrderSettlement($order)) {
+            return false;
+        }
         $parcel = $order->delivery;
-        if ($order->status !== 'returned' || $parcel?->status !== 'returned' || $parcel->current_hub_id !== null
+        if (($order->shipping_quote['refund_policy_version'] ?? 1) !== 1
+            || $order->status !== 'returned' || $parcel?->status !== 'returned' || $parcel->current_hub_id !== null
             || ! app(WalletPaymentService::class)->paid($order) || $order->walletPayment?->settlement_transaction_id
             || $order->buyerReturns()->exists()) {
             return false;

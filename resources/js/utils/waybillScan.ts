@@ -56,7 +56,9 @@ export async function requestWaybill<T>(path: string, body: Record<string, unkno
         const fieldError = Object.values(data?.errors ?? {}).flat().find(value => typeof value === 'string');
         const message = response.status >= 500 ? 'The scanner is temporarily unavailable. Try again shortly.'
             : fieldError ?? data?.error ?? data?.message ?? 'The waybill could not be checked. Try again.';
-        const recoveryUrl = typeof data?.recovery_url === 'string' && /^\/(?:hub\/)?parcel-recovery\/[1-9][0-9]{0,17}$/.test(data.recovery_url) ? data.recovery_url : null;
+        const recoveryUrl = typeof data?.recovery_url === 'string'
+            && /^(?:\/(?:hub\/)?parcel-recovery\/[1-9][0-9]{0,17}|\/loss-found\/[1-9][0-9]{0,17}\?hub_id=[1-9][0-9]{0,17})$/.test(data.recovery_url)
+            ? data.recovery_url : null;
         throw new WaybillRequestError(String(message), response.status, recoveryUrl);
     }
     if (data.is_master_bag === true) {

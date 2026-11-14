@@ -16,14 +16,25 @@ use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestParcel;
 use App\Models\Order;
+use App\Models\ShipmentFinancialEvent;
+use App\Models\ShipmentFinancialPlan;
+use App\Models\ShipmentLossFinding;
+use App\Models\ShipmentLossReconciliation;
 use App\Models\Shop;
 use App\Models\User;
+use App\Models\WalletRefundCreditRequest;
+use App\Models\WalletTransaction;
 use App\Rules\ApplicationText;
 use App\Services\Finance\CodCashViewService;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Finance\ShipmentLossCash;
+use App\Services\Finance\ShipmentLossReconciliationService;
+use App\Services\Finance\ShipmentRefusalLiability;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Notifications\GovernanceNoticeService;
+use App\Services\Returns\BuyerReturnLiabilityBalance;
 use App\Services\Returns\BuyerReturnMoneyService;
+use App\Services\Wallet\WalletLossReserve;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -144,12 +155,15 @@ class AccountClosureService
 
     public function state(User $subject): array
     {
-        $work = $this->ordersFor($subject)->with(['delivery', 'commissionLedger'])->orderBy('id')->get()->map(fn ($order) => [
+        $work = $this->ordersFor($subject)->with(['delivery', 'commissionLedger', 'walletPayment'])->orderBy('id')->get()->map(fn ($order) => [
             'id' => $order->id, 'number' => $order->order_number, 'status' => $order->status,
             'payment_method' => $order->payment_method, 'payment_status' => $order->payment_status, 'total' => $order->total_amount,
             'parcel' => $order->delivery?->only(['id', 'status', 'courier_id', 'assigned_rider_id', 'current_hub_id']),
             'cash_evidence' => $order->payment_method === 'cod' ? app(CodCashViewService::class)->evidence($order->delivery) : null,
             'ledger' => $order->commissionLedger?->only(['id', 'status', 'gross_amount', 'seller_amount', 'platform_commission', 'delivery_fee']),
+            'wallet_settlement' => $order->payment_method === 'wallet' && $order->walletPayment?->settlement_transaction_id
+                ? WalletTransaction::whereKey($order->walletPayment->settlement_transaction_id)->where('order_id', $order->id)->where('kind', 'wallet_settlement')->exists()
+                : false,
             'settlement_payment' => (app(SellerSettlementService::class)->verifiedPayment($order->sellerSettlement) ?? app(SellerSettlementService::class)->verifiedClosure($order->sellerSettlement))?->only(['id', 'reference', 'amount_cents']),
         ])->all();
         $resources = $this->resources($subject);
@@ -181,12 +195,116 @@ class AccountClosureService
             $add('buyer_return_recovery', 'Actual seller recovery remains outstanding.',
                 'Record the remaining original recovery and its receiving confirmation before closing this account.', $returnDebt);
         }
-        $pendingTransfers = BuyerReturnMoneyEvent::whereIn('event_type', ['offer-recovery', 'offer-funding'])
+        $companyIds = LogisticsCompany::where('user_id', $subject->id)->pluck('id');
+        if ($companyIds->isNotEmpty()) {
+            $companyDebt = BuyerReturnCase::whereHas('parcel', fn ($query) => $query->whereIn('logistics_company_id', $companyIds))->get()
+                ->filter(fn ($case) => (app(BuyerReturnLiabilityBalance::class)->forCase($case)['compensation_remaining_cents'] ?? 0) > 0)->modelKeys();
+            if ($companyDebt) {
+                $add('buyer_return_compensation', 'Actual original company compensation remains outstanding.',
+                    'Settle the approved original company liability and its actual receipt before closing this account. A platform advance does not clear it.', $companyDebt);
+            }
+        }
+        $pendingTransfers = BuyerReturnMoneyEvent::whereIn('event_type', ['offer-recovery', 'offer-compensation', 'offer-funding'])
             ->where(fn ($query) => $query->where('actor_id', $subject->id)->orWhere('recipient_id', $subject->id))
             ->whereNotIn('id', BuyerReturnMoneyEvent::whereNotNull('consumed_source_id')->select('consumed_source_id'))->pluck('id')->all();
         if ($pendingTransfers) {
             $add('buyer_return_cash_receipt', 'An actual return transfer is awaiting receipt.',
                 'The named receiving admin must confirm the actual incoming money before either responsible account can close.', $pendingTransfers);
+        }
+        if (Schema::hasTable('wallet_refund_credit_requests')) {
+            $pendingCredits = WalletRefundCreditRequest::where('actor_id', $subject->id)->where('status', 'pending')->pluck('id')->all();
+            if ($pendingCredits) {
+                $add('wallet_return_funding_request', 'A demonstration return-funding credit request is awaiting review.',
+                    'Finish the independent funding-credit review before closing this liable account.', $pendingCredits);
+            }
+        }
+        $settledLossOrderIds = [];
+        if (Schema::hasTable('shipment_financial_plans')) {
+            $reconciliations = app(ShipmentLossReconciliationService::class);
+            $losses = ShipmentFinancialPlan::where('kind', 'transit_loss')
+                ->where(fn ($query) => $query->whereNotNull('active_order_id')->orWhereNotNull('active_return_case_id'))
+                ->where(fn ($query) => $query->where('buyer_id', $subject->id)->orWhere('seller_id', $subject->id)
+                    ->orWhere('actor_id', $subject->id)->orWhereIn('logistics_company_id', $companyIds))->get();
+            $releasedIds = Schema::hasTable('shipment_loss_reconciliations')
+                ? ShipmentLossReconciliation::whereIn('shipment_financial_plan_id', $losses->pluck('id'))
+                    ->where('status', 'released')->pluck('outcome_path', 'shipment_financial_plan_id')
+                : collect();
+            $pendingLosses = $losses->filter(fn ($plan) => ! $releasedIds->has($plan->id)
+                && ! $plan->events()->whereIn('event_type', ['loss-resolve-wallet', 'loss-resolve-cash'])->exists())->modelKeys();
+            if ($pendingLosses) {
+                $add('shipment_loss_review', 'An approved original loss still needs financial resolution.',
+                    'Retain the actual original funding and finish its separate approved outcome before closing a responsible account.', $pendingLosses);
+            }
+            if (Schema::hasTable('shipment_loss_findings')) {
+                $quarantined = ShipmentLossFinding::whereIn('shipment_financial_plan_id', $losses->pluck('id'))
+                    ->whereNotIn('shipment_financial_plan_id', $releasedIds->keys()->all())
+                    ->pluck('shipment_financial_plan_id')->all();
+                if ($quarantined) {
+                    $add('shipment_loss_quarantine', 'A found parcel remains under loss quarantine.',
+                        'Complete independent found-parcel reconciliation and physical release before closing a responsible account.', $quarantined);
+                }
+            }
+            $lossDebt = $losses->filter(fn ($plan) => ! $releasedIds->has($plan->id)
+                && $companyIds->contains($plan->logistics_company_id)
+                && ($plan->snapshot['payment_method'] === 'wallet' ? app(WalletLossReserve::class)->summary($plan)
+                    : app(ShipmentLossCash::class)->state($plan))['company_remaining_cents'] > 0)->modelKeys();
+            if ($lossDebt) {
+                $add('shipment_loss_company_liability', 'Approved original loss compensation remains outstanding.',
+                    'Transfer the original company’s remaining approved liability; a demonstration advance does not clear this debt.', $lossDebt);
+            }
+            $unconfirmedReturns = $losses->filter(function ($plan) {
+                if (($plan->snapshot['payment_method'] ?? null) !== 'cod') {
+                    return false;
+                }
+                $state = app(ShipmentLossCash::class)->state($plan);
+
+                return ($state['has_unconfirmed_company_return'] ?? false) || ($state['has_company_return_dispute'] ?? false)
+                    || $state['buyer']['status'] === 'disputed' || $state['seller']['status'] === 'disputed';
+            })->modelKeys();
+            if ($unconfirmedReturns) {
+                $add('shipment_loss_cash_dispute', 'An actual loss cash return or nonreceipt dispute remains unresolved.',
+                    'Confirm incoming cash returns or resolve open nonreceipt disputes before closing this account.', $unconfirmedReturns);
+            }
+            $lossTransfers = ShipmentFinancialEvent::whereIn('event_type', [
+                'loss-offer-company', 'loss-offer-advance', 'loss-offer-buyer-compensation-return', 'loss-offer-seller-compensation-return',
+            ])
+                ->where(fn ($query) => $query->where('actor_id', $subject->id)->orWhere('recipient_id', $subject->id))
+                ->whereNotIn('id', ShipmentFinancialEvent::whereNotNull('consumed_source_id')->select('consumed_source_id'))->pluck('id')->all();
+            if ($lossTransfers) {
+                $add('shipment_loss_cash_receipt', 'An actual original loss transfer is awaiting receipt.',
+                    'The named receiving admin must confirm its actual incoming money before either participant can close.', $lossTransfers);
+            }
+            $advanceOffers = ShipmentFinancialEvent::where('event_type', 'loss-offer-advance')->where('actor_id', $subject->id)->pluck('id');
+            $lossAdvances = ShipmentFinancialEvent::where('event_type', 'loss-receive-advance')->whereIn('source_event_id', $advanceOffers)->get()
+                ->filter(fn ($receipt) => $receipt->amount_cents > (int) ShipmentFinancialEvent::where('event_type', 'loss-retire-advance')
+                    ->where('source_event_id', $receipt->id)->sum('amount_cents'))->modelKeys();
+            if ($lossAdvances) {
+                $add('shipment_loss_advance', 'An original actual loss advance still needs its recorded return.',
+                    'Retain the original source and record any actual return with its distinct transfer proof before closing this funder.', $lossAdvances);
+            }
+            $settledLossOrderIds = $losses->filter(fn ($plan) => in_array($releasedIds->get($plan->id), ['already_settled_salvage', 'already_settled_seller_return'], true))
+                ->pluck('order_id')->unique()->values()->all();
+            $pendingPlans = ShipmentFinancialPlan::where('kind', 'buyer_refusal')
+                ->where(fn ($query) => $query->where('buyer_id', $subject->id)->orWhere('seller_id', $subject->id)
+                    ->orWhere('actor_id', $subject->id)->orWhereIn('logistics_company_id', $companyIds))
+                ->whereDoesntHave('events', fn ($events) => $events->whereIn('event_type', ['wallet-refund', 'zero-refund-assessed']))->pluck('id')->all();
+            if ($pendingPlans) {
+                $add('shipment_financial_review', 'An approved shipment financial review still needs execution.',
+                    'Resolve the original refund or zero-refund assessment before closing an account responsible for it.', $pendingPlans);
+            }
+            $shippingDebt = ShipmentFinancialPlan::where('kind', 'buyer_refusal')->where('buyer_id', $subject->id)->get()
+                ->filter(fn ($plan) => app(ShipmentRefusalLiability::class)->state($plan)['remaining_cents'] > 0)->modelKeys();
+            if ($shippingDebt) {
+                $add('shipment_shipping_liability', 'Reviewed shipping liability remains outstanding.',
+                    'Settle the reviewed original shipping balance and its actual receipt before closing this buyer account.', $shippingDebt);
+            }
+            $shippingTransfers = ShipmentFinancialEvent::where('event_type', 'offer-shipping-payment')
+                ->where(fn ($query) => $query->where('actor_id', $subject->id)->orWhere('recipient_id', $subject->id))
+                ->whereNotIn('id', ShipmentFinancialEvent::whereNotNull('consumed_source_id')->select('consumed_source_id'))->pluck('id')->all();
+            if ($shippingTransfers) {
+                $add('shipment_shipping_receipt', 'An actual shipping transfer is awaiting receipt.',
+                    'The named receiving admin must acknowledge the original incoming transfer before either participant can close.', $shippingTransfers);
+            }
         }
         $returnCustody = BuyerReturnParcel::whereHas('returnCase', fn ($query) => $query->whereNotIn('status', BuyerReturnCase::TERMINAL))
             ->where(function ($query) use ($subject, $resources) {
@@ -199,32 +317,37 @@ class AccountClosureService
         }
         $terminal = [...OrderStatus::completedCommerceStatuses(), ...OrderStatus::unrealizedCommerceStatuses()];
         foreach ($work as $order) {
+            $settledLoss = in_array($order['id'], $settledLossOrderIds, true);
             if (! in_array($order['status'], $terminal, true)) {
                 $add('active_order', 'Order '.$order['number'].' still needs resolution.', 'The buyer, seller and assigned logistics staff must finish or recover its documented flow.', [$order['id']]);
             }
             if ($order['parcel'] && ! in_array($order['parcel']['status'], ['delivered', 'returned', 'cancelled'], true)) {
                 $add('parcel_custody', 'Parcel custody for '.$order['number'].' remains unresolved.', 'The assigned logistics team must record the required handover or recovery.', [$order['parcel']['id']]);
             }
-            if ($order['payment_method'] === 'cod' && ($order['cash_evidence']['reconciliation'] ?? null) !== 'reconciled') {
+            if ($order['payment_method'] === 'cod' && ($order['cash_evidence']['reconciliation'] ?? null) !== 'reconciled'
+                && ! ($settledLoss && $order['payment_status'] !== 'paid' && ($order['cash_evidence']['amount_cents'] ?? 0) === 0)) {
                 $add('cash_unverified', 'Cash reconciliation for '.$order['number'].' cannot be verified from the available records.', 'Platform finance must establish recorded collection, remittance and reconciliation. Payment and commission labels do not prove cash custody.', [$order['id']]);
             }
             if (($order['cash_evidence']['excess_cents'] ?? 0) > 0) {
                 $add('cash_excess', 'Separate unallocated cash remains recorded for '.$order['number'].'.', 'Platform finance must account for the extra cash separately from the reconciled order amount.', [$order['id']]);
             }
-            if (! $order['settlement_payment'] && $order['ledger'] && ! in_array($order['ledger']['status'], ['settled', 'refunded'], true)) {
+            if (! $order['settlement_payment'] && $order['ledger'] && ! in_array($order['ledger']['status'], ['settled', 'refunded'], true) && ! $settledLoss) {
                 $add('pending_proceeds', 'Recorded proceeds for '.$order['number'].' are unresolved.', 'Platform finance must resolve the recorded obligation without changing its original amounts.', [$order['ledger']['id']]);
-            } elseif ($order['status'] === 'completed' && ($order['payment_method'] === 'cod'
-                ? ! $order['settlement_payment']
-                : (! $order['ledger'] || ! in_array($order['payment_status'], ['paid', 'refunded'], true)))) {
+            } elseif ($order['status'] === 'completed' && match ($order['payment_method']) {
+                'cod' => ! $order['settlement_payment'],
+                'wallet' => ! ($order['wallet_settlement'] || $order['ledger']) || ! in_array($order['payment_status'], ['paid', 'refunded'], true),
+                default => ! $order['ledger'] || ! in_array($order['payment_status'], ['paid', 'refunded'], true),
+            }) {
                 $add('settlement_unverified', 'Settlement for '.$order['number'].' lacks sufficient records.', 'Platform finance must verify payment and proceeds before account closure.', [$order['id']]);
             }
-            if (in_array($order['status'], OrderStatus::unrealizedCommerceStatuses(), true) && $order['payment_status'] === 'paid') {
+            if (in_array($order['status'], OrderStatus::unrealizedCommerceStatuses(), true) && $order['payment_status'] === 'paid' && ! $settledLoss) {
                 $add('returned_payment', 'Payment for the cancelled or returned order '.$order['number'].' remains unresolved.', 'Platform finance must review the recorded payment and any required return of money separately.', [$order['id']]);
             }
         }
         // A ledger can refer directly to an account even if the order owner has another role.
         $pending = CommissionLedger::where(fn ($q) => $q->where('seller_id', $subject->id)->orWhere('courier_id', $subject->id))
             ->whereNotIn('status', ['settled', 'refunded'])
+            ->when($settledLossOrderIds !== [], fn ($q) => $q->whereNotIn('order_id', $settledLossOrderIds))
             ->whereDoesntHave('order.sellerSettlement.events', fn ($event) => $event->where('event_type', 'payment_recorded'))->pluck('id')->all();
         if ($pending) {
             $add('pending_ledger', 'This account has unresolved recorded proceeds.', 'Platform finance must resolve these entries.', $pending);

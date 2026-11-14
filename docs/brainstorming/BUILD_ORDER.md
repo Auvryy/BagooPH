@@ -125,6 +125,8 @@ Use the approved proof/payment event to complete the versioned order and release
 
 Implement only missing return authorization, item quantities, fault reasons, evidence review and decision records. Separate post-delivery returns from rejection/failed-delivery RTS. Define timeout policy now; schedule automatic execution after B14.
 
+The [B11 review contract](B11_RETURN_REQUESTS_AND_REVIEW.md) records the retained request windows, private evidence, original-unit claims and independent fault findings. Its current verification is separate from the still-required B12/B13 execution gates.
+
 **Exit gate:** A refund request alone cannot create a physical pickup or refund. Wrong owner, excess quantity, duplicate claims, partial returns, disputes and already-adjusted units are handled without changing unrelated items.
 
 ### B12. Verify reverse custody and directional co-loading
@@ -133,6 +135,8 @@ Implement only missing return authorization, item quantities, fault reasons, evi
 
 Reuse the approved transport primitives for the reversed stored path. Receive returns immediately, then stage within agreed capacity/deadline limits. Co-load only compatible cargo with the same next destination and company.
 
+The [B12 shared-trip protocol](B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md) groups compatible original manifests without merging shipment identities. Remaining return-package and recovery acceptance stays visible in the roadmap.
+
 **Exit gate:** Both approved buyer returns and failed-delivery RTS reach their proper destination with separate identities. Mixed forward/return loads, partial arrivals, bulky freight and wrong-hub recovery retain individual custody and destination branching.
 
 ### B13. Verify refund execution and financial adjustments
@@ -140,6 +144,8 @@ Reuse the approved transport primitives for the reversed stored path. Receive re
 **Source topics:** 7, 8, 17, 25; voucher/debt part of 27. **Prerequisites:** B04, B10–B12.
 
 Apply approved refunds and recovery charges only on their required evidence. Preserve original discounts, shipping liability and earned amounts; record adjustment entries. Define insufficient-funds handling before enabling any debt collection or restriction.
+
+The [B13 execution and funding contract](B13_REFUND_EXECUTION_AND_FUNDING.md) separates original entitlement, actual COD receipts, balanced virtual reserves, loss/refusal outcomes and activation. Verification and remaining integration stay in the roadmap.
 
 **Exit gate:** Seller fault, buyer fault, courier fault and lost-parcel outcomes balance for COD and Wallet. Partial/voucher returns cannot exceed original paid units or refund twice. An admin decision does not falsely claim a real cash/bank refund occurred.
 

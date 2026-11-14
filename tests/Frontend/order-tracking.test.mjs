@@ -180,7 +180,7 @@ test('buyer refresh requests current portal access, receipt and code actions and
         globalThis.orderTrackingRefresh();
         globalThis.orderTrackingRefresh();
         assert.equal(visits.length, 1);
-        for (const key of ['order', 'canUsePortal', 'buyAgainUrl', 'canConfirmReceipt', 'pickupClaim', 'pickupCodeAvailable', 'pickupCodeUrl', 'orderNotices', 'auth']) {
+        for (const key of ['order', 'canUsePortal', 'buyAgainUrl', 'canConfirmReceipt', 'shipmentFinance', 'shipmentFinances', 'pickupClaim', 'pickupCodeAvailable', 'pickupCodeUrl', 'orderNotices', 'auth']) {
             assert.ok(visits[0].only.includes(key), `Refresh must include ${key}`);
         }
         visits[0].onFinish();
@@ -494,4 +494,20 @@ test('only approved completed purchases expose the fifth-step review action and 
     assert.match(saved, /Review saved/);
     assert.match(saved, /Edit review/);
     assert.doesNotMatch(saved, /Write a product review/);
+});
+
+test('buyer order details link to their approved shipment finances without offering another receipt confirmation', async () => {
+    const html = await render(ui.Detail, { ...detailProps, order: { ...order, status: 'returned' }, shipmentFinance: { id: 11, reference: 'REVIEW-ORIGINAL' } });
+    assert.match(html, /Shipping and refund review/); assert.match(html, /href="\/shipment-finances\/11"/);
+    assert.doesNotMatch(html, /I received my order/);
+});
+
+test('buyer financial previews distinguish partial claims and retain access to every older order review', async () => {
+    const records = Array.from({ length: 5 }, (_, i) => ({ id: 20 - i, reference: `REVIEW-${20 - i}`, kind: 'transit_loss', active: true,
+        return_reference: `BRT-OWN-CLAIM-${20 - i}`, href: `/shipment-finances/${20 - i}` }));
+    const html = await render(ui.Detail, { ...detailProps, shipmentFinance: { id: 20, reference: 'REVIEW-20' },
+        shipmentFinances: { records, histories: [{ kind: 'transit_loss', count: 6, href: '/return-liabilities?view=losses&order_id=9' }] } });
+    for (const record of records) { assert.match(html, new RegExp(record.return_reference)); assert.ok(html.includes(`href="${record.href}"`)); }
+    assert.match(html, /All loss reviews \(6\)/); assert.match(html, /order_id=9/);
+    assert.equal((html.match(/href="\/shipment-finances\/20"/g) ?? []).length, 1);
 });

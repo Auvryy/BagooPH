@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Logistics\DeliveryRecoveryService;
 use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Logistics\FleetDispatchEngine;
@@ -31,6 +32,7 @@ use App\Services\Logistics\ParcelScanEvidenceService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Logistics\RiderCompanyRequestService;
 use App\Services\Logistics\WaybillScanInputService;
+use App\Services\Returns\BuyerReturnRecoveryService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -903,10 +905,27 @@ class LogisticsHubWorkstationController extends Controller
         abort_unless($hub && $this->eligibility->canScan($request->user(), $hub), 403, 'An active handler assignment is required for floor scans.');
         if (str_starts_with($barcode, 'BRT-')) {
             $return = BuyerReturnParcel::where('barcode', $barcode)->first();
-            abort_unless($return && $return->logistics_company_id === $hub->logistics_company_id
-                && in_array($hub->id, $return->hub_ids, true), 404, 'This return barcode is not expected in your facility scope.');
+            abort_unless($return && $return->logistics_company_id === $hub->logistics_company_id, 404, 'This return barcode is not expected in your facility scope.');
             abort_unless(($validated['mode'] ?? 'inspect') === 'inspect', 409,
                 'Open the buyer return to record its required intake or actual manifest receipt. This scan only identifies it.');
+            if ($loss = app(ShipmentLossCustody::class)->authority($return)) {
+                $salvaged = app(ShipmentLossCustody::class)->releasedReconciliation($return)?->outcome_path === 'already_settled_salvage';
+
+                return $this->operationError($request, $salvaged ? ShipmentLossCustody::SALVAGE_HOLD : ShipmentLossCustody::HOLD, 409,
+                    ['recovery_url' => '/loss-found/'.$loss->id.'?hub_id='.$hub->id]);
+            }
+            try {
+                $recovery = app(BuyerReturnRecoveryService::class)->observe($request->user(), $return, $hub);
+            } catch (DomainException $error) {
+                return $this->scanResponse(['success' => false, 'confirmed' => false, 'message' => $error->getMessage()], 409);
+            }
+            if ($recovery) {
+                return $this->scanResponse(['success' => true, 'confirmed' => false,
+                    'message' => 'This return has an unexpected-hub review. Open its recovery for the actual authorized intake and next transfer.',
+                    'return_case' => ['reference' => $return->returnCase->reference, 'barcode' => $return->barcode,
+                        'href' => '/buyer-return-recoveries/'.$recovery->id, 'status' => $return->returnCase->status]]);
+            }
+            abort_unless(in_array($hub->id, $return->hub_ids, true), 404, 'This return barcode is not expected in your facility scope.');
 
             return $this->scanResponse(['success' => true, 'confirmed' => false,
                 'message' => 'Buyer return identified. Open its case for the actual intake, manifest or seller-collection step.',
@@ -948,6 +967,13 @@ class LogisticsHubWorkstationController extends Controller
 
         if (! $hub || $hub->logistics_company_id !== $delivery->logistics_company_id) {
             return $this->operationError($request, 'This parcel is outside the active facility company.', 403);
+        }
+
+        if ($loss = app(ShipmentLossCustody::class)->authority($delivery)) {
+            $salvaged = app(ShipmentLossCustody::class)->releasedReconciliation($delivery)?->outcome_path === 'already_settled_salvage';
+
+            return $this->operationError($request, $salvaged ? ShipmentLossCustody::SALVAGE_HOLD : ShipmentLossCustody::HOLD, 409,
+                ['recovery_url' => '/loss-found/'.$loss->id.'?hub_id='.$hub->id]);
         }
 
         $routingEngine = app(LogisticsRoutingEngine::class);

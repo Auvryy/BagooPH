@@ -17,6 +17,7 @@ use App\Services\SidebarAttentionService;
 use App\Services\VerificationDocumentService;
 use Closure;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Inertia\Middleware;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -33,6 +34,7 @@ class HandleInertiaRequests extends Middleware
     {
         $speculative = $request->prefetch();
         $cataloguePrefetch = $speculative && $request->header('X-Bagoo-Catalogue') === '1';
+        Inertia::encryptHistory(false);
         try {
             if ($speculative && (! $cataloguePrefetch || ! config('catalogue.prefetch_enabled') || ! $request->isMethod('GET')
                 || ! $request->header('X-Inertia') || ($request->user() && ! $request->user()->isBuyer())
@@ -43,6 +45,7 @@ class HandleInertiaRequests extends Middleware
             }
             $response = parent::handle($request, $next);
         } finally {
+            Inertia::encryptHistory(false);
             if ($speculative && $request->hasSession()) {
                 // Background browsing must not consume the next intentional visit's feedback.
                 $request->session()->reflash();
@@ -132,6 +135,9 @@ class HandleInertiaRequests extends Middleware
                     'canScanParcels' => $user->isLogistics() && $activeHub && $eligibility->canScan($user, $activeHub),
                     'canManageResources' => $user->canAccessPortal() && ($user->isAdmin() || $eligibility->isCompanyManager($user)),
                     'canSetupCompany' => $user->canAccessPortal() && ($user->isAdmin() || LogisticsCompany::eligible()->where('user_id', $user->id)->exists()),
+                    'canManageReturnLiabilities' => $user->closed_at === null && $user->email_verified_at !== null
+                        && (($user->isAdmin() && $user->canAccessPortal()) || ($user->isSeller() && $user->isKycApproved())
+                            || ($user->isLogistics() && $user->isKycApproved() && LogisticsCompany::where('user_id', $user->id)->exists())),
                     'canViewFinancialOversight' => $user->closed_at === null && $user->email_verified_at !== null
                         && (($user->isAdmin() && $user->canAccessPortal()) || ($user->isSeller() && $user->isKycApproved())
                             || ($user->isLogistics() && $user->canAccessPortal() && $user->logisticsCompany()->count() === 1)),

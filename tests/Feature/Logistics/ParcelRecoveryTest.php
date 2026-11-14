@@ -10,15 +10,18 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsManifestParcel;
+use App\Models\MotherBag;
 use App\Models\MotherBagParcel;
 use App\Models\ParcelRecoveryCase;
 use App\Models\ParcelRecoveryEvent;
 use App\Models\User;
 use App\Services\ExceptionOversightService;
 use App\Services\Logistics\DeliveryReturnService;
+use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\MisrouteTrapService;
 use App\Services\Logistics\ParcelRecoveryService;
 use App\Services\Logistics\PublicTrackingService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +42,122 @@ use Throwable;
 class ParcelRecoveryTest extends TestCase
 {
     use AssertsDeliveryCheckpoints, CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
+
+    public static function detachedArrivals(): array
+    {
+        return [['in_transit_to_mother_hub'], ['in_transit_to_destination_hub']];
+    }
+
+    #[DataProvider('detachedArrivals')]
+    public function test_actual_detached_parcel_recovery_preserves_the_original_unarrived_bag_and_driver_hold_until_its_own_seal_scan(string $observedStage): void
+    {
+        [$parcel, $observation, $manager, $handler] = $this->incident(observedStage: $observedStage);
+        $manifest = LogisticsManifest::findOrFail(DeliveryCheckpoint::lastCustody($parcel)['manifest_id']);
+        $bag = MotherBag::where('manifest_id', $manifest->id)->sole();
+        $packed = $bag->parcels()->where('delivery_id', $parcel->id)->sole();
+        $before = $bag->getAttributes();
+        $identity = $packed->only(['mother_bag_id', 'delivery_id', 'loaded_by_id', 'barcode_scanned', 'source_state', 'handling_snapshot', 'removed_at']);
+        $this->assertSame('in_transit', $bag->status);
+        $case = $this->authorizeCase($observation, $manager);
+        $input = $this->casePayload($case, ['barcode' => $parcel->tracking_number]);
+        $this->actingAs($handler)->postJson('/hub/parcel-recovery/'.$observation->id.'/intake', $input)->assertOk();
+        $this->postJson('/hub/parcel-recovery/'.$observation->id.'/intake', $input)->assertOk();
+        $this->assertSame($before, $bag->fresh()->getAttributes());
+        $this->assertNull($packed->fresh()->active_delivery_id);
+        if ($case->fresh()->state === 'completed') {
+            $this->assertNotNull($packed->fresh()->received_at);
+        } else {
+            $this->assertNull($packed->fresh()->received_at);
+        }
+        $this->assertSame(1, DB::table('parcel_recovery_bag_extractions')->where('recovery_id', $case->id)->count());
+        $case->refresh();
+        while ($case->state !== 'completed') {
+            $this->transfer($case, $manager);
+            $case->refresh();
+        }
+        $this->assertSame($before, $bag->fresh()->getAttributes());
+        $this->assertSame($identity, $packed->fresh()->only(array_keys($identity)));
+        $this->assertNotNull($packed->fresh()->received_at);
+        $this->assertNull($bag->fresh()->opened_at);
+        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/close', $this->flowManifestPayload($manifest))->assertOk();
+        $this->assertTrue(LogisticsManifest::awaitingPhysicalReceipt()->whereKey($manifest->id)->exists());
+        $profile = $manifest->driver->courierProfile;
+        try {
+            app(LogisticsEligibilityService::class)->assertCourierScope($profile, $manifest->logistics_company_id, $manifest->source_hub_id, newWork: true);
+            $this->fail('A received parcel does not make its original unarrived bag and driver available for new work.');
+        } catch (\DomainException $error) {
+            $this->assertStringContainsString('not eligible', $error->getMessage());
+        }
+        $receiver = $this->flowHandler($manifest->destinationHub);
+        $bad = ['version' => $bag->version, 'barcode' => $bag->reference, 'seal_number' => 'WRONG-ACTUAL-SEAL', 'seal_intact' => true];
+        $this->actingAs($receiver)->postJson('/hub/mother-bags/'.$bag->id.'/open', $bad)->assertConflict();
+        $this->assertSame($before, $bag->fresh()->getAttributes());
+        $this->postJson('/hub/mother-bags/'.$bag->id.'/open', [...$bad, 'seal_number' => $bag->seal_number])->assertOk();
+        $this->assertSame('received', $bag->fresh()->status);
+        $this->assertNotNull($bag->fresh()->opened_at);
+        $this->assertFalse(LogisticsManifest::awaitingPhysicalReceipt()->whereKey($manifest->id)->exists());
+        app(LogisticsEligibilityService::class)->assertCourierScope($profile, $manifest->logistics_company_id, $manifest->source_hub_id, newWork: true);
+        $this->assertSame($case->id, DB::table('parcel_recovery_bag_extractions')->where('original_bag_member_id', $packed->id)->value('recovery_id'));
+        $this->assertSame(1, $case->events()->where('event_type', 'intake')->count());
+        $this->assertSame(1, $case->events()->where('event_type', 'completed')->count());
+    }
+
+    public function test_sealed_bag_claim_and_receipt_cannot_be_forged_before_or_during_actual_recovery_and_extraction_evidence_is_retained(): void
+    {
+        [$parcel, $observation, $manager, $handler] = $this->incident();
+        $packed = MotherBagParcel::where('active_delivery_id', $parcel->id)->sole();
+        foreach ([['active_delivery_id' => null], ['active_delivery_id' => null, 'received_at' => now()]] as $change) {
+            try {
+                DB::table('mother_bag_parcels')->where('id', $packed->id)->update($change);
+                $this->fail('An unreceived sealed bag claim needs retained actual extraction authority.');
+            } catch (QueryException $error) {
+                $this->assertStringContainsString('Sealed bag membership is retained', $error->getMessage());
+            }
+        }
+        $case = $this->authorizeCase($observation, $manager);
+        app(ParcelRecoveryService::class)->intake($handler, $case, $this->casePayload($case, ['barcode' => $parcel->tracking_number]));
+        foreach ([['received_at' => now()], ['handling_snapshot' => '{}'], ['active_delivery_id' => $parcel->id]] as $change) {
+            try {
+                DB::table('mother_bag_parcels')->where('id', $packed->id)->update($change);
+                $this->fail('An actual extraction cannot forge its later receipt, packing identity or active claim.');
+            } catch (QueryException $error) {
+                $this->assertStringContainsString('Sealed bag membership is retained', $error->getMessage());
+            }
+        }
+        foreach (['update', 'delete'] as $operation) {
+            try {
+                DB::table('parcel_recovery_bag_extractions')->where('recovery_id', $case->id)->{$operation}(...($operation === 'update' ? [['actor_id' => $manager->id]] : []));
+                $this->fail('Actual extraction provenance must remain immutable.');
+            } catch (QueryException $error) {
+                $this->assertStringContainsString('Retain the actual parcel extraction', $error->getMessage());
+            }
+        }
+    }
+
+    public function test_failed_extraction_history_rolls_back_intake_custody_and_claim_before_an_exact_retry(): void
+    {
+        [$parcel, $observation, $manager, $handler] = $this->incident();
+        $case = $this->authorizeCase($observation, $manager);
+        $packed = MotherBagParcel::where('active_delivery_id', $parcel->id)->sole();
+        $before = [$parcel->fresh()->getAttributes(), $packed->getAttributes(), $case->getAttributes(), $parcel->checkpoints()->count()];
+        $input = $this->casePayload($case, ['barcode' => $parcel->tracking_number]);
+        DB::unprepared("CREATE TEMP TRIGGER fail_actual_extraction_history BEFORE INSERT ON mother_bag_events
+            WHEN NEW.event_type = 'parcel_extracted_for_recovery' BEGIN SELECT RAISE(ABORT, 'Simulated extraction history failure.'); END");
+        try {
+            app(ParcelRecoveryService::class)->intake($handler, $case, $input);
+            $this->fail('A failed extraction history write must roll back its actual custody.');
+        } catch (QueryException $error) {
+            $this->assertStringContainsString('Simulated extraction history failure', $error->getMessage());
+        } finally {
+            DB::unprepared('DROP TRIGGER fail_actual_extraction_history');
+        }
+        $this->assertSame($before, [$parcel->fresh()->getAttributes(), $packed->fresh()->getAttributes(), $case->fresh()->getAttributes(), $parcel->checkpoints()->count()]);
+        $this->assertSame(0, DB::table('parcel_recovery_bag_extractions')->count());
+        app(ParcelRecoveryService::class)->intake($handler, $case, $input);
+        app(ParcelRecoveryService::class)->intake($handler, $case, $input);
+        $this->assertSame(1, DB::table('parcel_recovery_bag_extractions')->count());
+        $this->assertSame(1, $case->events()->where('event_type', 'intake')->count());
+    }
 
     public function test_wrong_hub_before_origin_intake_gives_pickup_guidance_without_an_empty_recovery_link_or_custody_change(): void
     {

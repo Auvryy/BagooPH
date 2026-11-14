@@ -21,9 +21,9 @@ For each package, record **decision:** pending/accepted/changed/deferred/rejecte
 - [x] **B08 — Verify bags, seals and loose freight membership.** Topics: 16; cargo part of 27. Requires: B03, B04, B07. Decision: explicit automatic-lane packing, reusable sack/trip/seal separation, retained outer-package readings and loose manifest cargo; delivery: implemented with automated acceptance on the existing B06 branch, merged in web PR #162 (`7675682`); deployment/migration acceptance remains separate. Evidence: [B08 contract](B08_BAGS_SEALS_AND_LOOSE_CARGO.md) and the roadmap. Physical PostgreSQL concurrency, actual fit and later user review remain separate checks; packing does not imply sealing or custody movement.
 - [x] **B09 — Connect sorting guidance, manifests and dispatch.** Topics: 15; local staging part of 27. Requires: B01, B02, B07, B08. Decision: accepted with corrections; delivery: implemented and automatically verified locally on `feat/brainstorm-b09-b10-dispatch-completion`, not pushed. Evidence: [B09 contract](B09_SORTING_AND_DISPATCH.md), [combined manual review](MANUAL_REVIEW_B09_B10.md) and roadmap. B09/B10 combined gate: 915 backend tests / 42,788 assertions, 87 frontend checks, TypeScript/build/formatting passed. Actual physical fit, device and PostgreSQL concurrency acceptance remain separate; ETA/throughput remain B14/B17.
 - [x] **B10 — Verify delivery completion, earnings and cash reconciliation.** Topics: 8, 12, 25; baseline money from 26. Requires: B04, B05, B09. Decision: preserve original money/policy versions and require persisted proof/payment, actual origin receipt and current counted COD evidence; delivery: implemented and automatically verified locally on the B09/B10 branch, not pushed. Evidence: [B10 contract](B10_DELIVERY_COMPLETION_AND_CASH.md), four COD/Wallet doorstep/counter cases, rollback/retry and custody/cash/settlement regressions in the 915-case combined gate. User manual acceptance and external payouts remain separate; successor refunds remain B11–B13.
-- [ ] **B11 — Verify return requests and independent decisions.** Topics: 5, 8, 17, 18, 25. Requires: B03, B04, B10. Decision: pending; delivery: not started; evidence: pending.
-- [ ] **B12 — Verify reverse custody and directional co-loading.** Topics: 5, 17–19; cargo part of 27. Requires: B03, B08, B09, B11. Decision: pending; delivery: not started; evidence: pending.
-- [ ] **B13 — Verify refund execution and financial adjustments.** Topics: 7, 8, 17, 25; voucher/debt part of 27. Requires: B04, B10–B12. Decision: pending; delivery: not started; evidence: pending.
+- [x] **B11 — Verify return requests and independent decisions.** Topics: 5, 8, 17, 18, 25. Requires: B03, B04, B10. Decision: accepted with corrections (`BRT-` return requests over 7-day request / 3-day review / 3-day appeal / 7-day drop-off windows, explicit `seller`/`courier` fault required on policy v2 while preserving policy 1 `'unspecified'`, voluntary post-delivery change-of-mind excluded); delivery: implemented and automatically verified locally on `feat/brainstorm-b11-b13-returns-refunds` (unpublished); evidence: [B11 contract](B11_RETURN_REQUESTS_AND_REVIEW.md), [roadmap](../CORE_FLOW_ROADMAP.md), and the 207-test Returns/continuity/checkout suite. User manual testing and B14+ timers remain separate.
+- [x] **B12 — Verify reverse custody and directional co-loading.** Topics: 5, 17–19; cargo part of 27. Requires: B03, B08, B09, B11. Decision: accepted with corrections (actual intake and reversed hop custody, volumetric/50-unit return sacks without mixing forward and reverse items inside one bag, shared directional `LogisticsTransportTrip` vehicle grouping without minimum parcel-count holds, atomic arrival and quarantine recovery); delivery: implemented and automatically verified locally on `feat/brainstorm-b11-b13-returns-refunds` (unpublished); evidence: [B12 contract](B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md), `BuyerReturnBagTest`, `BuyerReturnCargoTest`, `BuyerReturnCustodyTest`, `BuyerReturnRecoveryTest`, `SharedTransportTripTest`, and `WholeTransportLossTest`. Physical fleet/device checks and B14 staging clocks remain separate.
+- [x] **B13 — Verify refund execution and financial adjustments.** Topics: 7, 8, 17, 25; voucher/debt part of 27. Requires: B04, B10–B12. Decision: accepted with corrections (`refund_policy_version => 2` active for live checkout with policy 1 compatibility preserved; cumulative item + paid-shipping allocation excluding voucher subsidies; independent loss review, whole-transport and unarrived-bag loss accountability; unused issuance/company-contribution/escrow-advance source restoration & quarantine physical release; sensitive Inertia history encryption & actor-bound form resets); delivery: implemented and automatically verified locally on `feat/brainstorm-b11-b13-returns-refunds` (unpublished); evidence: [B13 contract](B13_REFUND_EXECUTION_AND_FUNDING.md), `Finance`/`Security`/`Wallet` (390 tests / 25,717 assertions), `Returns`/continuity (207 tests), B11–B13 frontend suite (246 checks), TypeScript, Pint, and isolated Vite build. Live migration, PostgreSQL concurrency, and user manual testing remain separate; B14–B17 stay out of scope.
 - [ ] **B14 — Add ETA and state-aware monitoring.** Topics: 9, 18, 20, 21, 25; staging part of 27. Requires: B06–B13. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B15 — Add dispatch recovery and missing-parcel investigation.** Topics: 7, 9, 10, 18, 21, 25. Requires: B02, B09, B13, B14. Decision: pending; delivery: not started; evidence: pending.
 - [ ] **B16 — Apply evidence-based restrictions and review moderation.** Topics: 11–13, 21, 22, 25; debt restrictions part of 27. Requires: B02–B04, B11, B13–B15. Decision: pending; delivery: not started; evidence: pending.
@@ -73,9 +73,11 @@ Proposed ideas to review:
 
 ## 5. Reverse Logistics & Returns Routing
 
-- [ ] Resolve the source question: next question to put in the docs is. we already have the good image or flow how to implement the automated hubs passes, hwo about reverse logistics? like returning products?
+- [x] Resolve the source question: next question to put in the docs is. we already have the good image or flow how to implement the automated hubs passes, hwo about reverse logistics? like returning products?
 
 The source provides no core-takeaway proposal for this topic.
+
+Decision: **accepted with corrections in B11 and B12**. Post-delivery returns allocate dedicated `BRT-` barcodes over the reversed original hub route with hub intake, measurement, optional return sacks/shared directional transport, and evidenced seller receipt without altering the original delivery record. See [B11](B11_RETURN_REQUESTS_AND_REVIEW.md) and [B12](B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md).
 
 ## 6. Order Cancellation Window & Restrictions
 
@@ -109,7 +111,7 @@ Proposed ideas to review:
 - [x] Review/decide: Buyer Fault (Change of Mind / Joy Reserving): Buyer pays return shipping; original shipping is non-refundable. Repeated rejected COD orders trigger account restrictions.
 - [x] Review/decide: Riders: Always get paid for completed trips regardless of parcel outcome.
 
-Decision: **accepted with corrections for the successor policy**. Seller-fault returns include net item plus allocated buyer-paid shipping; courier fault needs funded review; buyer refusal after shipment carries actual shipping liability. Voluntary post-delivery change of mind remains excluded. Earned rider amounts require actual milestones, not unconditional pay. See [B04](B04_MONEY_AND_LIABILITY.md); new refund execution remains B11–B13, while policy 1 remains operational.
+Decision: **accepted with corrections for the successor policy**. Seller-fault returns include net item plus allocated buyer-paid shipping; courier fault needs funded review; buyer refusal after shipment carries actual shipping liability. Voluntary post-delivery change of mind remains excluded. Earned rider amounts require actual milestones, not unconditional pay. See [B04](B04_MONEY_AND_LIABILITY.md); successor `refund_policy_version => 2` execution is now active in B11–B13 for new checkouts while historical policy-1 orders remain operational.
 
 ## 9. SLA Timeouts, Expected Delivery Calculation, and Seller Fulfillment T&C
 
@@ -209,9 +211,11 @@ Decision: first scan means an explicit authorized packing action, not inspection
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Same Scanning, New Identity: Reverse logistics uses identical physical camera scanning motions, but mints a dedicated Return Tracking Barcode (e.g., RET-XXXXX) and flips origin and destination hubs dynamically. Mother Bags use polymorphic relations to co-load both forward and return items by destination direction.
-- [ ] Review/decide: Cost Allocation: Defective/seller faults deduct return shipping from the store wallet; courier-damaged items are reimbursed via the courier bond pool; buyer change-of-mind deducts shipping from the buyer's refund.
+- [x] Review/decide: Same Scanning, New Identity: Reverse logistics uses identical physical camera scanning motions, but mints a dedicated Return Tracking Barcode (e.g., RET-XXXXX) and flips origin and destination hubs dynamically. Mother Bags use polymorphic relations to co-load both forward and return items by destination direction.
+- [x] Review/decide: Cost Allocation: Defective/seller faults deduct return shipping from the store wallet; courier-damaged items are reimbursed via the courier bond pool; buyer change-of-mind deducts shipping from the buyer's refund.
 - [ ] Review/decide: Consolidated Transit SLA: Reverse linehaul runs 1–2 days slower than forward rush delivery to allow economical consolidation at sorting hubs.
+
+Decision: **accepted with corrections in B11–B13 (transit SLAs remain B14)**. Returns mint dedicated `BRT-` barcodes over the reversed hub sequence and co-load on shared directional `LogisticsTransportTrip` vehicles via separate forward `MotherBag`s and dedicated reverse return sacks rather than mixing both directions inside one sack. Policy v2 requires seller or independent admin courier fault (`buyer_paid_shipping_cents` allocated per unit; voluntary post-delivery change-of-mind remains excluded while in-transit buyer refusal carries shipping liability). See [B11](B11_RETURN_REQUESTS_AND_REVIEW.md), [B12](B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md), and [B13](B13_REFUND_EXECUTION_AND_FUNDING.md).
 
 ## 18. Return Batching Rules, Auto-Timeout Approvals, and Admin Dispute Resolution
 
@@ -219,20 +223,24 @@ Proposed ideas to review:
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Immediate First-Mile Pickup: Riders are dispatched individually to pick up approved returns from buyer doorsteps without waiting for batches.
+- [x] Review/decide: Immediate First-Mile Pickup: Riders are dispatched individually to pick up approved returns from buyer doorsteps without waiting for batches.
 - [ ] Review/decide: Hybrid Hub Threshold: Hub-to-hub linehaul dispatches when the bag reaches capacity (20–30 items) OR hits the 48h maximum holding timeout.
 - [ ] Review/decide: Auto-Approval Timers: If a seller ignores a return request for 48h, the system auto-approves it; if a seller fails to acknowledge delivery within 48h, the buyer's refund is auto-released.
-- [ ] Review/decide: Admin Evidence Governance: Admins adjudicate contested claims using immutable digital logs, unboxing footage, and GPS scan timestamps.
+- [x] Review/decide: Admin Evidence Governance: Admins adjudicate contested claims using immutable digital logs, unboxing footage, and GPS scan timestamps.
+
+Decision: **accepted with corrections in B11–B13; automatic timeout scheduling and 48h holding timers remain B14/B15**. Single returns dispatch immediately without a minimum batch wait (hub drop-off and shared-trip dispatch support a single return parcel; sacks cap at 50 items and volume limits). Admins adjudicate appeals, faults, and loss cases from immutable logs and private image evidence without auto-approving requests or releasing funds on timer expiry. See [B11](B11_RETURN_REQUESTS_AND_REVIEW.md) and [B12](B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md).
 
 ## 19. Co-Loading Forward and Reverse Logistics in Shared Directional Mother Bags
 
-- [ ] Resolve the source question: meaning if the product goes to me and i want a return and i click return someone might pickup my prlduct and then just pay if there is shipping needed or not if it is other rason then when it goes to logistic it will not instantly go to scanning instead it will wait for a mother bag to be almost full or full FOR THE SAME ROUTE of the other products that will going itno? meaning if there is a seller near me that he passed someone order and i have a return the two products might have on the same mother bags then repeat the process?
+- [x] Resolve the source question: meaning if the product goes to me and i want a return and i click return someone might pickup my prlduct and then just pay if there is shipping needed or not if it is other rason then when it goes to logistic it will not instantly go to scanning instead it will wait for a mother bag to be almost full or full FOR THE SAME ROUTE of the other products that will going itno? meaning if there is a seller near me that he passed someone order and i have a return the two products might have on the same mother bags then repeat the process?
 
 Proposed ideas to review:
 
-- [ ] Review/decide: Immediate Inbound Scan: Returns are scanned instantly upon arrival at the local hub to release rider custody and notify the buyer, but staged until linehaul departure.
-- [ ] Review/decide: Directional Co-Loading: Mother Bags and linehaul trucks group parcels purely by destination direction, allowing forward orders and return parcels to share the same physical sack and vehicle.
-- [ ] Review/decide: Destination Branching: The shared bag is opened at the destination hub where barcodes branch forward orders to buyer delivery shelves and return parcels to seller return shelves.
+- [x] Review/decide: Immediate Inbound Scan: Returns are scanned instantly upon arrival at the local hub to release rider custody and notify the buyer, but staged until linehaul departure.
+- [x] Review/decide: Directional Co-Loading: Mother Bags and linehaul trucks group parcels purely by destination direction, allowing forward orders and return parcels to share the same physical sack and vehicle.
+- [x] Review/decide: Destination Branching: The shared bag is opened at the destination hub where barcodes branch forward orders to buyer delivery shelves and return parcels to seller return shelves.
+
+Decision: **accepted with corrections in B12**. Destination hubs intake returns without minimum-count holds; `LogisticsTransportTrip` co-loads sealed forward `MotherBag`s and dedicated reverse return sacks (`direction = buyer_return`) on the same directional vehicle leg rather than mixing forward and return parcels in the same physical sack, and destination hubs open and branch each arrived manifest separately. See [B12](B12_REVERSE_TRANSPORT_AND_SHARED_TRIPS.md).
 
 ## 20. Minimum and Maximum Scan Thresholds per Hub & End-to-End Lifecycle
 
@@ -297,11 +305,11 @@ Decision: **accept named email invitations and personal passwords; retain owner-
 Proposed ideas to review:
 
 - [ ] Review/decide: Asymmetric Transit Timers: Forward deliveries enforce a strict 48h inter-hub timeout before auto-flagging missing parcels; reverse logistics parcels in consolidation staging receive an extended 96h window to prevent premature loss claims.
-- [ ] Review/decide: Doorstep Cash Prohibition & Net-Refunds: Doorstep cash collection for returns is prohibited. For change-of-mind returns, the return shipping fee is deducted automatically from the product refund, with returns blocked if shipping exceeds item value.
+- [x] Review/decide: Doorstep Cash Prohibition & Net-Refunds: Doorstep cash collection for returns is prohibited. For change-of-mind returns, the return shipping fee is deducted automatically from the product refund, with returns blocked if shipping exceeds item value.
 - [ ] Review/decide: Geo-Fenced SLA Penalties: Courier late-pickup fines (₱150) apply strictly within contracted, active coverage zones; orders in unserviceable or low-fleet territories auto-cancel without courier or seller penalties.
 - [x] Review/decide: Two-Human Custody Rule: Sorter workstation scanners reject check-in scans if the current parcel custody matches the logged-in operator, preventing delivery riders from validating their own vehicle handovers.
 
-Handover decision: **accepted with corrections in B07**. The rider/driver and the hub operator are separate named participants. One operator may receive, sort and dispatch at a small hub; an internal stage is not another physical handover requiring a second sorter. Account separation does not prove physical independence. The other timer, liability and refund proposals retain their later B11–B16 decisions.
+Handover decision: **accepted with corrections in B07**; return settlement decision: **accepted with corrections in B11/B13**. The rider/driver and the hub operator are separate named participants. Doorstep return cash collection is prohibited and return refunds settle net discounted item + allocated paid shipping on seller/courier fault (while post-delivery change-of-mind remains excluded and pre-delivery buyer refusal carries shipping liability). Timing timers (48h/96h) and geo-fenced SLA penalties remain in B14/B16.
 
 ## 26. Baseline Shipping Fee Matrix, Volumetric Weight Tiers, and Cargo Surcharges
 
@@ -324,6 +332,6 @@ Proposed ideas to review:
 - [x] Review/decide: Dual Manifest Loading: Digital trip manifests support both bulk Mother Bag barcodes and individual loose non-baggable barcodes (e.g., guitars, bulky tools), requiring individual offloading scans before manifest clearance to prevent lost freight or crushed cargo.
 - [ ] Review/decide: Intra-Hub Final Mile Staging: Intra-town orders bypass Mother Bags directly into local delivery staging shelves (STAGED_FOR_FINAL_MILE), pausing idle table timers to align with afternoon delivery shifts without raising false alarms.
 - [ ] Review/decide: Scale Verification & Negative Wallet Freezes: Discrepancies between declared and scale weight trigger automated camera scale logs and deduct overage fees from seller wallets; balances dropping below ₱0 trigger an immediate catalog visibility shadowban until debts are settled.
-- [ ] Review/decide: Proportional Voucher Split: Multi-item cart discounts are divided proportionally across all items, preventing voucher exploitation during partial returns by refunding only the net discounted item price.
+- [x] Review/decide: Proportional Voucher Split: Multi-item cart discounts are divided proportionally across all items, preventing voucher exploitation during partial returns by refunding only the net discounted item price.
 
-B09 retains the local final-mile shelf bypass and excludes it from outbound bag corridors. Shift/staging clocks remain B14; this combined proposal stays open until its timing decisions are verified.
+B09 retains the local final-mile shelf bypass and excludes it from outbound bag corridors. B13 verifies proportional unit voucher/shipping splits in multi-item and partial returns (`BuyerReturnAmounts`, `BuyerReturnRefundPlanTest`). Shift/staging clocks and negative-wallet catalog freeze governance remain B14/B16; this combined proposal stays open until those remaining items are verified.

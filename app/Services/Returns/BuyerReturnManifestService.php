@@ -6,6 +6,7 @@ use App\Models\BuyerReturnCase;
 use App\Models\BuyerReturnManifestParcel;
 use App\Models\BuyerReturnManifestRoute;
 use App\Models\BuyerReturnParcel;
+use App\Models\BuyerReturnRecoveryRoute;
 use App\Models\Delivery;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
@@ -13,12 +14,19 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
+use App\Models\ShipmentLossReconciliation;
+use App\Models\ShipmentLossReturnRoute;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossAccountingService;
+use App\Services\Finance\ShipmentLossCustody;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\LogisticsManifestService;
+use App\Services\Logistics\LogisticsTripService;
 use App\Services\Logistics\WaybillScanInputService;
+use App\Services\Logistics\WholeTransportLossService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -39,10 +47,13 @@ class BuyerReturnManifestService
         $data = Validator::make($input, ['source_hub_id' => ['required', new AsciiPositiveInteger, 'integer'],
             'destination_hub_id' => ['required', new AsciiPositiveInteger, 'integer'], 'vehicle_id' => ['required', new AsciiPositiveInteger, 'integer'],
             'buyer_return_case_id' => ['required', new AsciiPositiveInteger, 'integer'], 'creation_token' => ['required', 'uuid'],
+            'buyer_return_recovery_id' => ['nullable', new AsciiPositiveInteger, 'integer'],
             'direction' => ['required', 'in:buyer_return'],
         ])->validate();
-        foreach (['source_hub_id', 'destination_hub_id', 'vehicle_id', 'buyer_return_case_id'] as $key) {
-            $data[$key] = (int) $data[$key];
+        foreach (['source_hub_id', 'destination_hub_id', 'vehicle_id', 'buyer_return_case_id', 'buyer_return_recovery_id'] as $key) {
+            if (isset($data[$key])) {
+                $data[$key] = (int) $data[$key];
+            }
         }
         $fingerprint = $this->fingerprint($data);
 
@@ -56,6 +67,14 @@ class BuyerReturnManifestService
             abort_unless($this->manifests->canManageAtHub($actor, LogisticsHub::findOrFail($data['source_hub_id'])), 403);
             $case = BuyerReturnCase::whereKey($case->id)->lockForUpdate()->firstOrFail();
             $parcel = BuyerReturnParcel::where('buyer_return_case_id', $case->id)->lockForUpdate()->firstOrFail();
+            $recovery = app(BuyerReturnRecoveryService::class)->active($parcel, true);
+            $lossReconciled = ! $recovery ? app(ShipmentLossReconciliationService::class)->activeForParcel($parcel) : null;
+            if ($lossReconciled?->outcome_path !== 'post_delivery_partial_return') {
+                $lossReconciled = null;
+            }
+            if ($lossReconciled) {
+                $lossReconciled = ShipmentLossReconciliation::whereKey($lossReconciled->id)->lockForUpdate()->firstOrFail();
+            }
             abort_unless($parcel->logistics_company_id === $company->id, 403);
             $existing = LogisticsManifest::where('created_by_id', $actor->id)->where('creation_token', $data['creation_token'])->first();
             if ($existing) {
@@ -69,13 +88,26 @@ class BuyerReturnManifestService
                 throw ValidationException::withMessages(['creation_token' => 'Reload the manifest form before preparing this transfer.']);
             }
             app(BuyerReturnCustodyService::class)->assertSource($case, $parcel);
+            if ($recovery || ! empty($data['buyer_return_recovery_id'])) {
+                if (! $recovery || $recovery->id !== ($data['buyer_return_recovery_id'] ?? null) || $recovery->state !== 'held') {
+                    throw new DomainException('Choose this return’s current authorized physical recovery before preparing a detour.');
+                }
+            }
+            $context = app(BuyerReturnRecoveryService::class)->context($parcel);
+            $hubIds = $recovery?->hub_ids ?? ($lossReconciled ? $context['hub_ids'] : $parcel->hub_ids);
+            $position = $recovery?->leg_index ?? ($lossReconciled ? $context['position'] : $parcel->route_position);
             if ($parcel->status !== 'at_hub' || ! in_array($case->status, ['at_destination_hub', 'in_transit'], true)
                 || $parcel->current_hub_id !== $data['source_hub_id'] || ($parcel->custody['kind'] ?? null) !== 'hub'
                 || ($parcel->custody['hub_id'] ?? null) !== $data['source_hub_id']
-                || ($parcel->hub_ids[$parcel->route_position + 1] ?? null) !== $data['destination_hub_id']) {
+                || ($hubIds[$position] ?? null) !== $data['source_hub_id'] || ($hubIds[$position + 1] ?? null) !== $data['destination_hub_id']) {
                 throw new DomainException('Prepare only the next original reverse leg from the actual recorded hub holder.');
             }
-            if (BuyerReturnManifestRoute::where('buyer_return_case_id', $case->id)->where('leg_index', $parcel->route_position)->exists()) {
+            $already = match (true) {
+                $recovery !== null => BuyerReturnRecoveryRoute::where('recovery_id', $recovery->id)->where('leg_index', $position)->exists(),
+                $lossReconciled !== null => ShipmentLossReturnRoute::where('reconciliation_id', $lossReconciled->id)->where('leg_index', $position)->exists(),
+                default => BuyerReturnManifestRoute::where('buyer_return_case_id', $case->id)->where('leg_index', $position)->exists(),
+            };
+            if ($already) {
                 throw new DomainException('This return leg already has a retained manifest. Continue that original transfer.');
             }
             $source = LogisticsHub::findOrFail($data['source_hub_id']);
@@ -87,8 +119,13 @@ class BuyerReturnManifestService
                 'destination_hub_id' => $destination->id, 'vehicle_id' => $vehicle->id, 'driver_id' => $driverId, 'created_by_id' => $actor->id,
                 'creation_token' => $data['creation_token'], 'creation_fingerprint' => $fingerprint, 'direction' => 'buyer_return', 'type' => $type,
                 'status' => 'draft', 'version' => 1]);
-            BuyerReturnManifestRoute::create(['manifest_id' => $manifest->id, 'buyer_return_case_id' => $case->id,
-                'leg_index' => $parcel->route_position, 'created_at' => now()]);
+            if ($recovery) {
+                BuyerReturnRecoveryRoute::create(['manifest_id' => $manifest->id, 'recovery_id' => $recovery->id, 'leg_index' => $position, 'created_at' => now()]);
+            } elseif ($lossReconciled) {
+                ShipmentLossReturnRoute::create(['manifest_id' => $manifest->id, 'reconciliation_id' => $lossReconciled->id, 'leg_index' => $position, 'created_at' => now()]);
+            } else {
+                BuyerReturnManifestRoute::create(['manifest_id' => $manifest->id, 'buyer_return_case_id' => $case->id, 'leg_index' => $position, 'created_at' => now()]);
+            }
             $this->record($manifest, $actor, 'created', [], $manifest->state(), ['buyer_return_case_id' => $case->id, 'return_barcode' => $parcel->barcode], null, null, $source->id);
 
             return $manifest;
@@ -121,6 +158,11 @@ class BuyerReturnManifestService
             $actor = User::findOrFail($actor->id);
             $case = BuyerReturnCase::whereKey($case->id)->lockForUpdate()->firstOrFail();
             $parcel = BuyerReturnParcel::where('buyer_return_case_id', $case->id)->lockForUpdate()->firstOrFail();
+            $activeRecovery = app(BuyerReturnRecoveryService::class)->active($parcel, true);
+            $lossReconciled = ! $activeRecovery ? app(ShipmentLossReconciliationService::class)->activeForParcel($parcel) : null;
+            if ($lossReconciled?->outcome_path !== 'post_delivery_partial_return') {
+                $lossReconciled = null;
+            }
             $manifest = LogisticsManifest::whereKey($snapshot->id)->lockForUpdate()->firstOrFail();
             abort_unless($actor->isLogistics() && $actor->canAccessPortal() && $manifest->direction === 'buyer_return'
                 && $manifest->buyer_return_case_id === $case->id && $parcel->logistics_company_id === $manifest->logistics_company_id, 403);
@@ -139,11 +181,19 @@ class BuyerReturnManifestService
             if ($manifest->version !== $data['version']) {
                 throw new DomainException('This manifest changed. Reload its current list and receipts.');
             }
+            if (in_array($action, ['load', 'remove', 'seal', 'reopen', 'dispatch', 'receive'], true)) {
+                app(ShipmentLossCustody::class)->assertMovable($parcel);
+            }
+            $recovery = app(BuyerReturnRecoveryService::class)->assertManifest($parcel, $manifest,
+                in_array($action, ['load', 'remove', 'seal', 'reopen', 'dispatch', 'receive'], true));
+            app(LogisticsTripService::class)->assertManifestCommand($manifest, $action);
             app(BuyerReturnCustodyService::class)->assertSource($case, $parcel);
             $before = $manifest->state();
             $parcelBefore = $parcel->state();
             $member = $manifest->buyerReturnParcels()->lockForUpdate()->first();
-            $payload = ['buyer_return_case_id' => $case->id, 'return_parcel_id' => $parcel->id];
+            $payload = ['buyer_return_case_id' => $case->id, 'return_parcel_id' => $parcel->id,
+                ...($recovery ? ['return_recovery_id' => $recovery->id] : []),
+                ...($lossReconciled ? ['loss_reconciliation_id' => $lossReconciled->id] : [])];
             $scan = null;
             if (in_array($action, ['load', 'remove', 'seal', 'reopen', 'dispatch'], true) && $this->manifests->openDiscrepancies($manifest)->isNotEmpty()) {
                 throw new DomainException('Resolve the actual recorded discrepancy before changing the list or departing.');
@@ -152,6 +202,9 @@ class BuyerReturnManifestService
                 case 'load':
                     $this->status($manifest, 'draft');
                     $this->route($manifest, $case, $parcel);
+                    if ($recovery) {
+                        app(BuyerReturnCargoService::class)->profile($parcel);
+                    }
                     $this->barcode($parcel, $data);
                     if ($parcel->status !== 'at_hub' || $parcel->current_hub_id !== $manifest->source_hub_id || ($parcel->custody['kind'] ?? null) !== 'hub') {
                         throw new DomainException('This return must be physically recorded at the source hub before its load scan.');
@@ -163,7 +216,7 @@ class BuyerReturnManifestService
                         $member->update(['included' => true, 'active_return_parcel_id' => $parcel->id]);
                     } else {
                         $member = $manifest->buyerReturnParcels()->create(['buyer_return_parcel_id' => $parcel->id, 'active_return_parcel_id' => $parcel->id,
-                            'barcode_snapshot' => $parcel->barcode, 'leg_index' => $parcel->route_position, 'source_state' => $parcel->state(), 'included' => true]);
+                            'barcode_snapshot' => $parcel->barcode, 'leg_index' => $manifest->buyer_return_leg_index, 'source_state' => $parcel->state(), 'included' => true]);
                     }
                     $payload['return_member_id'] = $member->id;
                     break;
@@ -187,20 +240,29 @@ class BuyerReturnManifestService
                     break;
                 case 'dispatch':
                     $this->status($manifest, 'sealed');
+                    if ($recovery && ! in_array($manifest->id, app(LogisticsTripService::class)->departingManifestIds(), true)) {
+                        throw new DomainException('Depart this recovery through its dedicated vehicle trip with actual package readings and sack or loose-cargo checks.');
+                    }
                     $this->ready($manifest, $case, $parcel, $member);
                     $vehicle = $this->manifests->vehicle($manifest->logistics_company_id, $manifest->source_hub_id, $manifest->vehicle_id, $manifest->driver_id, true, $manifest->type);
                     $this->capacity($vehicle, $parcel);
-                    if (LogisticsManifest::where('status', 'dispatched')->whereKeyNot($manifest->id)
+                    if (LogisticsManifest::awaitingPhysicalReceipt()->whereKeyNot($manifest->id)
+                        ->whereNotIn('id', app(LogisticsTripService::class)->departingManifestIds())
                         ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->orWhere('driver_id', $manifest->driver_id))->exists()) {
                         throw new DomainException('This driver or vehicle already has transport in progress.');
                     }
                     $manifest->fill(['status' => 'dispatched', 'dispatched_at' => now(), 'dispatcher_id' => $actor->id]);
                     $parcel->fill(['status' => 'in_transit', 'current_hub_id' => null,
                         'custody' => ['kind' => 'manifest', 'manifest_id' => $manifest->id, 'driver_id' => $manifest->driver_id]]);
-                    $payload += ['return_member_id' => $member->id, 'weight_grams' => $parcel->weight_grams];
+                    $cargo = app(BuyerReturnCargoService::class);
+                    $handling = $cargo->reading($parcel) ? $cargo->profile($parcel) : null;
+                    $payload += ['return_member_id' => $member->id,
+                        'weight_grams' => $handling ? (int) round($handling['weight_kg'] * 1000) : $parcel->weight_grams,
+                        ...($handling ? ['handling' => $handling, 'intake_weight_grams' => $parcel->weight_grams] : [])];
                     break;
                 case 'receive':
                     $this->status($manifest, 'dispatched');
+                    app(BuyerReturnBagService::class)->assertReceipt($manifest, $parcel);
                     $this->barcode($parcel, $data);
                     $this->route($manifest, $case, $parcel);
                     if (! $member?->included || $member->received_at || $member->active_return_parcel_id !== $parcel->id
@@ -211,16 +273,31 @@ class BuyerReturnManifestService
                     $condition = $data['condition'] ?? 'intact';
                     $member->fill(['received_at' => now(), 'received_by_id' => $actor->id, 'receipt_condition' => $condition, 'active_return_parcel_id' => null])->save();
                     $manifest->fill(['status' => 'received', 'received_at' => now(), 'receiver_id' => $actor->id]);
-                    $parcel->fill(['status' => 'at_hub', 'route_position' => $parcel->route_position + 1, 'current_hub_id' => $manifest->destination_hub_id,
+                    $isLossFinal = $lossReconciled && $manifest->lossReturnRoute
+                        && $manifest->lossReturnRoute->reconciliation_id === $lossReconciled->id
+                        && ($manifest->lossReturnRoute->leg_index + 1) >= (count($lossReconciled->return_route_hub_ids ?? []) - 1);
+                    $nextRoutePosition = match (true) {
+                        $recovery !== null => $parcel->route_position,
+                        $lossReconciled !== null => $isLossFinal ? count($parcel->hub_ids) - 1 : $parcel->route_position,
+                        default => $parcel->route_position + 1,
+                    };
+                    $parcel->fill(['status' => 'at_hub', 'route_position' => $nextRoutePosition, 'current_hub_id' => $manifest->destination_hub_id,
                         'custody' => ['kind' => 'hub', 'hub_id' => $manifest->destination_hub_id, 'received_by_id' => $actor->id, 'manifest_id' => $manifest->id]]);
                     $payload += ['return_member_id' => $member->id, 'condition' => $condition];
                     break;
                 case 'close':
-                    $this->status($manifest, 'received');
-                    if (! $member?->received_at || $this->manifests->openDiscrepancies($manifest)->isNotEmpty()) {
+                    $accountedLosses = app(ShipmentLossAccountingService::class)->members($manifest);
+                    $wholeTransportConfirmed = app(WholeTransportLossService::class)->manifestConfirmed($manifest);
+                    if (($accountedLosses->isEmpty() && ! $wholeTransportConfirmed) || $manifest->status !== 'dispatched') {
+                        $this->status($manifest, 'received');
+                    }
+                    if ((! $member?->received_at && ! $accountedLosses->has($member?->id)) || $this->manifests->openDiscrepancies($manifest)->isNotEmpty()) {
                         throw new DomainException('Record the actual expected receipt and resolve any discrepancy before closing.');
                     }
                     $manifest->fill(['status' => 'closed', 'closed_at' => now()]);
+                    if ($accountedLosses->isNotEmpty()) {
+                        $payload['accounting_references'] = $accountedLosses->map->reference->unique()->values()->all();
+                    }
                     break;
                 case 'report-discrepancy':
                     if (! in_array($manifest->status, ['dispatched', 'received'], true)) {
@@ -269,6 +346,12 @@ class BuyerReturnManifestService
                 $parcel->save();
                 $type = $action === 'dispatch' ? 'buyer-return-departed' : 'buyer-return-received';
                 $scan = $this->record($manifest, $actor, $type, $parcelBefore, $parcel->state(), $payload, null, $parcel->barcode, $hubId);
+                if ($recovery) {
+                    app(BuyerReturnRecoveryService::class)->transfer($recovery, $manifest, $parcel, $actor, $scan, $action === 'receive');
+                }
+                if ($action === 'receive') {
+                    app(BuyerReturnBagService::class)->received($manifest, $parcel, $actor);
+                }
                 $source = $case->status;
                 $case->status = $action === 'receive' && $parcel->route_position === count($parcel->hub_ids) - 1 ? 'at_origin_hub' : 'in_transit';
                 $case->version++;
@@ -277,7 +360,8 @@ class BuyerReturnManifestService
                     hash('sha256', 'buyer-return-manifest:'.$manifest->id.':'.$data['request_token']), $fingerprint,
                     ['manifest_scan_reference' => $scan->reference, 'barcode' => $parcel->barcode, 'source_state' => $parcelBefore, 'target_state' => $parcel->state()]);
             }
-            $event = $this->record($manifest, $actor, $action, $before, $manifest->state(), $payload + ['custody_scan_reference' => $scan?->reference], $data,
+            $eventType = isset($payload['accounting_references']) ? 'close-loss-accounting' : $action;
+            $event = $this->record($manifest, $actor, $eventType, $before, $manifest->state(), $payload + ['custody_scan_reference' => $scan?->reference], $data,
                 $data['barcode'] ?? null, $hubId);
 
             return ['manifest' => $manifest, 'event' => $event];
@@ -287,8 +371,26 @@ class BuyerReturnManifestService
     private function route(LogisticsManifest $manifest, BuyerReturnCase $case, BuyerReturnParcel $parcel): void
     {
         app(BuyerReturnCustodyService::class)->assertSource($case, $parcel);
-        if ($manifest->buyer_return_leg_index !== $parcel->route_position || ($parcel->hub_ids[$parcel->route_position] ?? null) !== $manifest->source_hub_id
-            || ($parcel->hub_ids[$parcel->route_position + 1] ?? null) !== $manifest->destination_hub_id) {
+        $recovery = app(BuyerReturnRecoveryService::class)->assertManifest($parcel, $manifest);
+        $lossRoute = $manifest->lossReturnRoute;
+        if ($lossRoute && ($manifest->buyerReturnRoute || $manifest->buyerReturnRecoveryRoute)) {
+            throw new DomainException('A manifest cannot use two return-route authorities.');
+        }
+        $lossReconciled = ! $recovery ? app(ShipmentLossReconciliationService::class)->activeForParcel($parcel) : null;
+        if ($lossReconciled?->outcome_path !== 'post_delivery_partial_return') {
+            $lossReconciled = null;
+        }
+        if ($lossRoute && (! $lossReconciled || $lossReconciled->id !== $lossRoute->reconciliation_id)) {
+            throw new DomainException('The arriving return manifest must match its active approved found-parcel reconciliation corridor.');
+        }
+        if (! $lossRoute && $lossReconciled) {
+            throw new DomainException('Prepare the next return manifest from the reconciled found-parcel corridor.');
+        }
+        $context = $lossReconciled ? app(BuyerReturnRecoveryService::class)->context($parcel) : null;
+        $ids = $recovery?->hub_ids ?? ($context ? $context['hub_ids'] : $parcel->hub_ids);
+        $index = $recovery?->leg_index ?? ($context ? $context['position'] : $parcel->route_position);
+        if ($manifest->buyer_return_leg_index !== $index || ($ids[$index] ?? null) !== $manifest->source_hub_id
+            || ($ids[$index + 1] ?? null) !== $manifest->destination_hub_id) {
             throw new DomainException('Use only this return’s next retained reverse leg. Earlier and direct Bayan-to-Bayan legs cannot be used.');
         }
         $this->manifests->legType($manifest->sourceHub, $manifest->destinationHub);
@@ -308,8 +410,10 @@ class BuyerReturnManifestService
 
     private function capacity(LogisticsFleet $vehicle, BuyerReturnParcel $parcel): void
     {
-        if (! $parcel->weight_grams || ! is_finite($vehicle->capacity_kg) || $vehicle->capacity_kg <= 0
-            || $parcel->weight_grams > (int) round($vehicle->capacity_kg * 1000)) {
+        $cargo = app(BuyerReturnCargoService::class);
+        $grams = $cargo->reading($parcel) ? (int) round($cargo->profile($parcel)['weight_kg'] * 1000) : $parcel->weight_grams;
+        if (! $grams || ! is_finite($vehicle->capacity_kg) || $vehicle->capacity_kg <= 0
+            || $grams > (int) round($vehicle->capacity_kg * 1000)) {
             throw new DomainException('The vehicle must have enough recorded capacity for the actual accepted return weight.');
         }
     }

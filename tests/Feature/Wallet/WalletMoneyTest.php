@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\Feature\E2E\Support\AssertsDeliveryCheckpoints;
@@ -53,6 +54,9 @@ class WalletMoneyTest extends TestCase
         $buyer = $this->createApprovedUser('buyer');
         $seller = $this->createApprovedUser('seller');
         $shop = $this->createE2EShop($seller);
+        $this->flowNetwork($shop);
+        // These historical policy-one examples retain their explicit original tariff.
+        $this->flowCompany->update(['base_shipping_cents' => 6000, 'included_weight_grams' => 5000]);
         $product = $this->createE2EProduct($shop, ['price' => $price]);
         $shipping = ['payment_method' => 'wallet'];
         if ($funded) {
@@ -61,6 +65,8 @@ class WalletMoneyTest extends TestCase
             $shipping += ['shop_voucher_revision_ids' => [$shop->id => $shopOffer->current_revision_id], 'platform_voucher_revision_id' => $platformOffer->current_revision_id];
         }
         $order = $this->checkoutFlowOrder($buyer, $shop, [['product' => $product, 'quantity' => $quantity]], shipping: $shipping);
+        $order->update(['shipping_quote' => [...$order->shipping_quote, 'refund_policy_version' => 1]]);
+        $this->assertSame('60.00', $order->shipping_fee);
         $admin = $this->createApprovedUser('admin');
         $credits = app(WalletCreditService::class);
         $request = $credits->request($buyer, ['amount' => '1000.00', 'reason' => 'Demo credits for wallet money acceptance.', 'request_token' => (string) Str::uuid()]);
@@ -109,6 +115,8 @@ class WalletMoneyTest extends TestCase
     {
         $this->actingAs($admin)->post('/buyer-returns/'.$case->id.'/money', ['action' => 'approve-repayment', 'expected_version' => $case->fresh()->version,
             'request_token' => (string) Str::uuid(), 'reason' => 'Reviewed the actual returned units and original wallet amount.'])->assertSessionHasNoErrors();
+        $this->get('/buyer-returns/'.$case->id)->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('returnCase.money.mode', 'wallet')->where('returnCase.money.actions', ['refund-wallet'])->missing('returnCase.order.shipping_quote'));
         $payload = ['action' => 'refund-wallet', 'expected_version' => $case->fresh()->version, 'request_token' => (string) Str::uuid(),
             'wallet_refund_confirmed' => true, 'reason' => substr(str_repeat('Reviewed original returned units and exact wallet credits. ', 20), 0, 1000)];
         $this->post('/buyer-returns/'.$case->id.'/money', $payload)->assertSessionHasNoErrors();

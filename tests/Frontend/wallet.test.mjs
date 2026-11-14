@@ -166,3 +166,41 @@ test('wallet merchandise refunds show the saved credit reference without cash pr
     assert.equal(h.posts.length, 1); assert.equal(h.posts[0].data.action, 'refund-wallet'); assert.equal(h.posts[0].data.wallet_refund_confirmed, true);
     assert.equal(h.posts[0].data.cash_reference, undefined); assert.equal(h.posts[0].data.proof, undefined);
 }));
+
+test('resolved refusal proceeds link to the separate financial outcome without a second full refund action', async () => {
+    const html = await render(ui.Proceeds, { records: { ...empty, data: [{ ...proceeds, can_settle: false, can_refund_delivery: false, status: 'closed without buyer refund', seller_cents: 0, commission_cents: 0, refunded_cents: 0, shipment_financial_url: '/shipment-finances/11' }] }, canSettle: true, virtualBalanceCents: null, requestToken: 'reviewed-request' }, 'admin');
+    assert.match(html, /href="\/shipment-finances\/11"/); assert.doesNotMatch(html, /Review returned-parcel refund|Review virtual proceeds/);
+});
+
+test('buyer payment history shows an actual refusal refund and links to its separate shipping outcome', async () => {
+    const html = await render(ui.Payment, { payment: { ...payment, status: 'paid', amount_cents: 55000, payment_reference: 'WLT-ORIGINAL', can_pay: false,
+        items: [{ id: 1, name: 'Original item', quantity: 1, unit_price: '500.00' }], refunded_cents: 46000, refund_reference: 'WLT-ACTUAL-REFUND', shipment_financial_url: '/shipment-finances/11' }, canUsePortal: true });
+    assert.match(html, /Refunded to your original wallet/); assert.match(html, /460\.00/); assert.match(html, /WLT-ACTUAL-REFUND/);
+    assert.match(html, /href="\/shipment-finances\/11"/);
+});
+
+test('seller loss protection is separate from buyer refunds and is not labelled credited before actual settlement', async () => {
+    const original = { ...proceeds, can_settle: false, can_refund_delivery: false, seller_cents: 0, seller_protection_cents: 18000,
+        seller_protection_paid_cents: 0, refunded_cents: 0, shipment_financial_url: '/shipment-finances/12' };
+    const supplied = record => ({ records: { ...empty, data: [record] }, canSettle: false, virtualBalanceCents: 0, requestToken: 'ORIGINAL-LOSS' });
+    const pending = await render(ui.Proceeds, supplied(original), 'seller');
+    assert.match(pending, /Approved seller protection/); assert.match(pending, /Protection credited to seller/); assert.match(pending, /180\.00/);
+    const paid = await render(ui.Proceeds, supplied({ ...original, seller_protection_paid_cents: 18000, refunded_cents: 25000,
+        refund_reference: 'BUYER-REFUND-REFERENCE', resolution_reference: 'ORIGINAL-LOSS-SETTLEMENT' }), 'seller');
+    assert.match(paid, /Loss settlement reference: ORIGINAL-LOSS-SETTLEMENT/);
+    assert.doesNotMatch(paid, /Original wallet refund reference|BUYER-REFUND-REFERENCE|Review virtual proceeds|Review returned-parcel refund/);
+});
+
+test('wallet payment retains separate links for each original partial-return financial review', async () => {
+    const records = [11, 12].map(id => ({ id, reference: `ORIGINAL-${id}`, kind: 'transit_loss', active: true, return_reference: `BRT-CLAIM-${id}`, href: `/shipment-finances/${id}` }));
+    const html = await render(ui.Payment, { payment: { ...payment, can_pay: false, shipment_finances: { records, histories: [{ kind: 'transit_loss', count: 2, href: '/return-liabilities?view=losses&order_id=4' }] } }, canUsePortal: true });
+    for (const id of [11, 12]) { assert.match(html, new RegExp(`BRT-CLAIM-${id}`)); assert.ok(html.includes(`href="/shipment-finances/${id}"`)); }
+    assert.doesNotMatch(html, /All loss reviews/);
+});
+
+test('walletKind translates all compensation-return and reimbursement transaction kinds accurately', () => {
+    assert.equal(ui.walletKind('wallet_loss_buyer_compensation_return'), 'Voluntary buyer loss refund returned');
+    assert.equal(ui.walletKind('wallet_loss_seller_compensation_return'), 'Voluntary seller protection returned');
+    assert.equal(ui.walletKind('wallet_loss_company_reimbursement'), 'Company loss funding reimbursed');
+    assert.equal(ui.walletKind('wallet_loss_escrow_reimbursement'), 'Escrow loss compensation surplus restored');
+});

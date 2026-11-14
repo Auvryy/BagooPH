@@ -11,15 +11,15 @@ import { createInertiaApp } from '@inertiajs/react';
 const root = resolve(import.meta.dirname, '../..');
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-buyer-returns-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.returnHarness; delete globalThis.route; });
-const result = await build({ stdin: { contents: `export { default as Create } from '@/Pages/Returns/Create'; export { default as Show } from '@/Pages/Returns/Show'; export { default as Index } from '@/Pages/Returns/Index'; export { default as Custody } from '@/Components/Returns/ReturnCustodyPanel'; export { default as Money } from '@/Components/Returns/ReturnMoneyPanel'; export { default as Manifests } from '@/Pages/Hub/Manifests';`, resolveDir: root, loader: 'tsx' },
+const result = await build({ stdin: { contents: `export { default as Funding } from '@/Components/Returns/RefundFundingCredits'; export { default as Liability } from '@/Pages/Returns/Liability'; export { default as Liabilities } from '@/Pages/Returns/Liabilities'; export { default as Recovery } from '@/Pages/Returns/Recovery'; export { default as Create } from '@/Pages/Returns/Create'; export { default as Show } from '@/Pages/Returns/Show'; export { default as Index } from '@/Pages/Returns/Index'; export { default as Custody } from '@/Components/Returns/ReturnCustodyPanel'; export { default as Money } from '@/Components/Returns/ReturnMoneyPanel'; export { default as Manifests } from '@/Pages/Hub/Manifests';`, resolveDir: root, loader: 'tsx' },
     bundle: true, platform: 'node', format: 'esm', packages: 'external', jsx: 'automatic', write: false, loader: { '.css': 'empty' }, plugins: [{ name: 'return-controls', setup(builder) {
         builder.onResolve({ filter: /\.css$/ }, args => ({ path: args.path, namespace: 'return-styles' }));
         builder.onLoad({ filter: /.*/, namespace: 'return-styles' }, () => ({ contents: '', loader: 'js' }));
-        builder.onResolve({ filter: /^@inertiajs\/react$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel)|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'inertia', namespace: 'return-probe' } : undefined);
+        builder.onResolve({ filter: /^@inertiajs\/react$/ }, args => /(?:Pages\/Returns\/(Create|Show|Recovery|Liability|Liabilities)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel|RefundFundingCredits)|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'inertia', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^inertia$/, namespace: 'return-probe' }, () => ({ contents: `export * from '@inertiajs/react'; import { useForm as real } from '@inertiajs/react'; export const useForm = initial => globalThis.returnHarness ? globalThis.returnHarness.useForm(initial) : real(initial);`, resolveDir: root }));
-        builder.onResolve({ filter: /^react$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel)|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'react', namespace: 'return-probe' } : undefined);
+        builder.onResolve({ filter: /^react$/ }, args => /(?:Pages\/Returns\/(Create|Show|Recovery|Liability|Liabilities)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel|RefundFundingCredits)|Pages\/Hub\/Manifests)\.tsx$/.test(args.importer) ? { path: 'react', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^react$/, namespace: 'return-probe' }, () => ({ contents: `export * from 'react'; import React from 'react'; export const useRef = initial => globalThis.returnHarness ? globalThis.returnHarness.ref(initial) : React.useRef(initial);`, resolveDir: root }));
-        builder.onResolve({ filter: /^react\/jsx-runtime$/ }, args => /(?:Pages\/Returns\/(Create|Show)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel)|Pages\/Hub\/Manifests|Components\/Logistics\/VehiclePicker)\.tsx$/.test(args.importer) ? { path: 'jsx', namespace: 'return-probe' } : undefined);
+        builder.onResolve({ filter: /^react\/jsx-runtime$/ }, args => /(?:Pages\/Returns\/(Create|Show|Recovery|Liability|Liabilities)|Components\/Returns\/(?:ReturnCustodyPanel|ReturnMoneyPanel|RefundFundingCredits)|Pages\/Hub\/Manifests|Components\/Logistics\/VehiclePicker)\.tsx$/.test(args.importer) ? { path: 'jsx', namespace: 'return-probe' } : undefined);
         builder.onLoad({ filter: /^jsx$/, namespace: 'return-probe' }, () => ({ contents: `import { jsx as real, jsxs as many, Fragment } from 'react/jsx-runtime'; export { Fragment }; const track = (fn,type,props,key) => { if(globalThis.returnHarness && (props.onSubmit || props.onChange || props.onClick)) globalThis.returnHarness.handlers.push({type,props}); return fn(type,props,key); }; export const jsx=(...args)=>track(real,...args);export const jsxs=(...args)=>track(many,...args);`, resolveDir: root }));
     } }] });
 const path = join(temporary, 'returns.mjs'); writeFileSync(path, result.outputFiles[0].text); const ui = await import(pathToFileURL(path).href);
@@ -45,6 +45,44 @@ class Harness {
     control(test) { const match = this.handlers.find(test); assert.ok(match, 'expected actual rendered control'); return match.props; }
     submit() { this.control(node => node.type === 'form').onSubmit({ preventDefault() {} }); }
 }
+
+test('seller approval can record item fault without offering a courier-liability verdict', async () => {
+    const h=globalThis.returnHarness=new Harness();
+    try {
+        const supplied={returnCase:{...caseData,status:'requested',actions:['approve','reject']}};
+        await render(ui.Show,supplied,'seller'); h.form.data.action='approve';
+        const html=await render(ui.Show,supplied,'seller');
+        assert.match(html,/Seller \/ item fault/); assert.doesNotMatch(html,/value="courier"/);
+        h.form.data.fault='seller'; h.form.data.reason='The original item and photos establish an item defect.';
+        h.submit(); assert.equal(h.posts[0].data.fault,'seller'); assert.equal(h.posts.length,1);
+    } finally { delete globalThis.returnHarness; }
+});
+
+test('independent courier review asks for bounded evidence and retains input after rejection', async () => {
+    const h=globalThis.returnHarness=new Harness();
+    try {
+        const supplied={returnCase:{...caseData,status:'approved',actions:['review-fault']}};
+        await render(ui.Show,supplied,'admin'); h.form.data.action='review-fault'; h.form.data.fault='courier';
+        h.form.data.fault_evidence='The retained destination receipt records damage.';
+        let html=await render(ui.Show,supplied,'admin');
+        assert.match(html,/Supporting transit evidence/);
+        const evidence=h.control(node=>node.type==='textarea'&&node.props.value===h.form.data.fault_evidence);
+        assert.equal(evidence.minLength,10); assert.equal(evidence.maxLength,1000); assert.equal(evidence.required,true);
+        h.form.errors={fault_evidence:'Identify the actual observations.'};
+        html=await render(ui.Show,supplied,'admin'); assert.match(html,/Identify the actual observations/);
+        assert.equal(h.form.data.fault_evidence,'The retained destination receipt records damage.');
+    } finally { delete globalThis.returnHarness; }
+});
+
+test('changing away from fault review clears stale fault-only fields', async () => {
+    const h=globalThis.returnHarness=new Harness();
+    try {
+        await render(ui.Show,{returnCase:{...caseData,actions:['approve','reject']}},'seller');
+        h.form.data.fault='seller';h.form.data.fault_evidence='A previous evidence note.';
+        h.control(node=>node.type==='select'&&node.props.value===h.form.data.action).onChange({target:{value:'reject'}});
+        assert.equal(h.form.data.fault,''); assert.equal(h.form.data.fault_evidence,'');
+    } finally { delete globalThis.returnHarness; }
+});
 
 test('request form explains the selected window, original items, private photos and real upload limits', async () => {
     const html = await render(ui.Create, props);
@@ -144,8 +182,35 @@ test('hub return guidance names the next handler and stages the parcel before as
     const ready = await render(ui.Custody, { custody: { ...atOrigin, status: 'ready_for_seller', actions: [] }, caseId: 11, version: 7 }, 'logistics');
     assert.match(ready, /Next: seller records receipt/);
     assert.doesNotMatch(ready, /Next: stage for seller collection|<form/);
+    const held = await render(ui.Custody, { custody: { ...atOrigin, actions: [], loss_hold: 'This salvaged parcel was already financially settled and released to salvage custody; ordinary delivery and return routing is closed.' }, caseId: 11, version: 7 }, 'logistics');
+    assert.match(held, /released to salvage custody/);
+    assert.doesNotMatch(held, /Next: stage for seller collection|Open transfers/);
     const buyer = await render(ui.Custody, { custody, caseId: 11, version: 2 });
     assert.doesNotMatch(buyer, /Barcode and QR for this return|Open transfers/);
+});
+
+test('return-package readings submit actual bounded dimensions separately from intake and preserve errors', async () => {
+    const h = globalThis.returnHarness = new Harness();
+    try {
+        const measured = { ...custody, status: 'at_hub', custody: {kind: 'hub'}, actions: [{action:'measure',hub_id:3,label:'Save actual package readings'}] };
+        await render(ui.Custody, {custody:measured,caseId:11,version:3}, 'logistics');
+        h.control(node => node.type === 'input' && node.props.type === 'radio').onChange();
+        const html = await render(ui.Custody, {custody:measured,caseId:11,version:3}, 'logistics');
+        assert.match(html,/Actual outer package/); assert.equal((html.match(/type="number"/g) ?? []).length,4);
+        assert.match(html,/min="0.001" max="10000" step="0.001"/);
+        assert.match(html.match(/<input[^>]+type="checkbox"[^>]*>/)?.[0] ?? '',/required=""/);
+        h.form.data.barcode=custody.barcode; h.form.data.reason='The actual outer package was measured at the recorded hub.';
+        h.form.data.handling={weight_kg:'2.500',length_cm:'20',width_cm:'30',height_cm:'40',confirmed:true};
+        let transform; h.form.transform=fn=>{transform=fn;};
+        const post=h.form.post; h.form.post=(url,options)=>{const actual=transform(h.form.data);post(url,options);h.posts.at(-1).data=structuredClone(actual);};
+        h.submit(); assert.equal(h.posts.length,1); assert.deepEqual(h.posts[0].data.handling,h.form.data.handling);
+        assert.equal(h.posts[0].data.action,'measure'); assert.equal(h.posts[0].data.hub_id,3);
+        assert.equal('photo' in h.posts[0].data,false); assert.equal('weight_kg' in h.posts[0].data,false);
+        h.form.processing=false;h.posts[0].options.onFinish();h.form.errors={custody:'The intake weight needs evidenced review.'};
+        const failed=await render(ui.Custody,{custody:measured,caseId:11,version:3},'logistics');
+        assert.match(failed,/intake weight needs evidenced review/);assert.equal(h.form.data.handling.width_cm,'30');
+        h.submit();assert.equal(h.posts[1].data.request_token,h.posts[0].data.request_token);
+    } finally {delete globalThis.returnHarness;}
 });
 
 test('actual handover validates its separate code and photo, submits the scoped hub and keeps a retry token', async () => {
@@ -176,7 +241,7 @@ test('manifest preparation selects an actual accepted buyer return and retains o
     const data = { manifests: { data: [], links: [] }, selectedManifest: null, canCreate: true, creationToken: 'creation-token', commandToken: 'command-token', basePath: '/hub/manifests',
         sourceHubIds: [3], hubs: [{ id: 3, name: 'Destination Bayan Hub', code: 'BH-DEST', tier: 'local_bayan_hub', logistics_company_id: 1, parent_hub_id: 2 }, { id: 2, name: 'Mother Hub', code: 'MH', tier: 'regional_mother_hub', logistics_company_id: 1 }],
         vehicles: [{ id: 5, hub_id: 3, plate_number: 'RET-TEST', vehicle_type: 'l300_van', driver_name: 'Assigned Driver' }],
-        buyerReturns: [{ id: 11, reference: 'BR-OWNED', barcode: custody.barcode, source_hub_id: 3, destination_hub_id: 2, weight_grams: 2500 }] };
+        buyerReturns: [{ id: 11, reference: 'BR-OWNED', barcode: custody.barcode, source_hub_id: 3, destination_hub_id: 2, weight_grams: 2500, recovery_id: 27 }] };
     try {
         await render(ui.Manifests, data, 'logistics');
         h.control(node => node.type === 'input' && node.props.name === 'transfer-direction' && node.props.value === 'buyer_return').onChange();
@@ -184,13 +249,76 @@ test('manifest preparation selects an actual accepted buyer return and retains o
         h.control(node => node.type === 'input' && node.props.name === 'buyer-return-case' && String(node.props.value) === '11').onChange();
         html = await render(ui.Manifests, data, 'logistics');
         assert.equal(h.form.data.source_hub_id, '3'); assert.equal(h.form.data.destination_hub_id, '2'); assert.equal(h.form.data.buyer_return_case_id, '11');
-        const hubs = [...html.matchAll(/<input\b[^>]*role="combobox"[^>]*>/g)].map(match => match[0]);
+        assert.equal(h.form.data.buyer_return_recovery_id, '27'); assert.match(html, /Authorized recovery/);
+        const hubs = [...html.matchAll(/<select\b[^>]*disabled=""[^>]*>/g)].map(match => match[0]);
         assert.equal(hubs.length, 2); assert.ok(hubs.every(input => /\bdisabled(?:=|\s|>)/.test(input)));
         h.control(node => node.type === 'input' && node.props.name === 'transfer-vehicle' && String(node.props.value) === '5').onChange();
         h.submit();
         assert.equal(h.posts[0].url, '/hub/manifests'); assert.equal(h.posts[0].data.direction, 'buyer_return');
         assert.equal(h.posts[0].data.buyer_return_case_id, '11'); assert.equal(h.posts[0].data.creation_token, 'creation-token');
         assert.equal(h.posts[0].data.vehicle_id, '5');
+        assert.equal(h.posts[0].data.buyer_return_recovery_id, '27');
+        h.control(node => node.type === 'input' && node.props.name === 'transfer-direction' && node.props.value === 'outbound').onChange();
+        assert.equal(h.form.data.buyer_return_recovery_id, '');
+    } finally { delete globalThis.returnHarness; }
+});
+
+const recovery = { id: 27, reference: 'REC-RETAINED', state: 'observed', version: 1, leg_index: 0, authorization_reason: null,
+    barcode: 'BRT-ACTUAL', caseUrl: '/buyer-returns/11', originalManifestUrl: '/hub/manifests/12', sourceToken: 'reviewed-original-source', actions: ['authorize', 'withdraw'],
+    hubs: [{ id: 3, name: 'Observed Bayan Hub', code: 'OBS', tier: 'local_bayan_hub' }, { id: 2, name: 'Expected Mother Hub', code: 'EXP', tier: 'regional_mother_hub' }],
+    currentHubId: null, manifestUrl: null, canPrepare: false, prepareUrl: '/hub/manifests', history: [{ reference: 'REC-EVENT', event_type: 'observed', actor_role: 'logistics', reason: 'The barcode was observed at the named hub without recording an arrival.', created_at: '2026-11-12T00:00:00Z' }] };
+function probeTransform(h) {
+    let transform = value => value;
+    h.form.transform = fn => { transform = fn; };
+    const post = h.form.post;
+    h.form.post = (url, options) => { const actual = transform(h.form.data); post(url, options); h.posts.at(-1).data = structuredClone(actual); };
+}
+
+test('recovery review posts the bounded reviewed source and preserves its retry after rejection', async () => {
+    const h = globalThis.returnHarness = new Harness();
+    try {
+        let html = await render(ui.Recovery, { recovery }, 'logistics'); probeTransform(h);
+        assert.match(html, /Company review needed/); assert.match(html, /custody remains in place/); assert.match(html, /Proposed recovery route/);
+        assert.doesNotMatch(html, /Current holder|Actual intake photo/);
+        Object.assign(h.form.data, { action: 'authorize', notes: 'The observed parcel and original manifest support this exact recovery route.', barcode: 'STALE', photo: { name: 'stale.png' } });
+        await render(ui.Recovery, { recovery }, 'logistics');
+        const notes = h.control(node => node.type === 'textarea'); assert.equal(notes.minLength, 10); assert.equal(notes.maxLength, 1000);
+        h.submit(); h.submit(); assert.equal(h.posts.length, 1); assert.equal(h.posts[0].url, '/buyer-return-recoveries/27/authorize');
+        assert.equal(h.posts[0].data.source_token, recovery.sourceToken); assert.equal(h.posts[0].data.version, 1);
+        for (const key of ['barcode', 'photo', 'amount', 'status', 'hub_ids']) assert.equal(key in h.posts[0].data, false);
+        h.form.processing = false; h.posts[0].options.onFinish(); h.form.errors = { recovery: 'Reload the changed review before authorizing.' };
+        html = await render(ui.Recovery, { recovery }, 'logistics'); assert.match(html, /Reload the changed review/); assert.equal(h.form.data.notes.length > 10, true);
+        h.submit(); assert.equal(h.posts[1].data.request_token, h.posts[0].data.request_token);
+    } finally { delete globalThis.returnHarness; }
+});
+
+test('actual recovery intake requires the original return code and bounded photo without submitting financial or route authority', async () => {
+    const h = globalThis.returnHarness = new Harness(); const supplied = { recovery: { ...recovery, state: 'authorized', version: 2, actions: ['intake'] } };
+    try {
+        await render(ui.Recovery, supplied, 'logistics'); probeTransform(h);
+        Object.assign(h.form.data, { action: 'intake', notes: 'The actual parcel and separate barcode were checked at this observed hub.', barcode: 'ORIGINAL-DELIVERY' });
+        let html = await render(ui.Recovery, supplied, 'logistics'); assert.match(html, /Actual intake photo/); assert.doesNotMatch(html, /Authorize recovery route/);
+        h.submit(); assert.equal(h.posts.length, 0); assert.ok(h.form.errors.barcode);
+        h.form.data.barcode = ' brt-actual '; h.form.data.photo = { type: 'image/png', size: 5242881 };
+        await render(ui.Recovery, supplied, 'logistics'); h.submit(); assert.equal(h.posts.length, 0); assert.ok(h.form.errors.photo);
+        h.form.data.photo = { type: 'text/plain', size: 20 }; await render(ui.Recovery, supplied, 'logistics'); h.submit(); assert.equal(h.posts.length, 0);
+        h.form.data.photo = { type: 'image/png', size: 5242880 }; await render(ui.Recovery, supplied, 'logistics'); h.submit();
+        assert.equal(h.posts[0].data.barcode, 'BRT-ACTUAL'); assert.equal(h.posts[0].options.forceFormData, true);
+        for (const key of ['source_token', 'amount', 'state', 'hub_ids', 'authorized_by_id']) assert.equal(key in h.posts[0].data, false);
+        assert.equal(h.posts[0].data.version, 2);
+    } finally { delete globalThis.returnHarness; }
+});
+
+test('withdrawal excludes stale intake fields and completed recovery offers only retained history links', async () => {
+    const h = globalThis.returnHarness = new Harness();
+    try {
+        await render(ui.Recovery, { recovery }, 'admin'); probeTransform(h);
+        Object.assign(h.form.data, { action: 'withdraw', notes: 'The named company corrected the unreceived observation after review.', barcode: 'STALE', photo: { type: 'image/png', size: 30 } });
+        await render(ui.Recovery, { recovery }, 'admin'); h.submit(); assert.equal(h.posts[0].url, '/buyer-return-recoveries/27/withdraw');
+        assert.deepEqual(Object.keys(h.posts[0].data).sort(), ['notes', 'request_token', 'version']);
+        h.form.processing = false;
+        const html = await render(ui.Recovery, { recovery: { ...recovery, state: 'completed', actions: [] } }, 'logistics');
+        assert.match(html, /Original return route resumed/); assert.match(html, /Retained recovery history/); assert.doesNotMatch(html, /<form|Current holder/);
     } finally { delete globalThis.returnHarness; }
 });
 
@@ -240,4 +368,73 @@ test('incoming receipt selects the actual named offer while buyer confirmation u
         cash_reference: 'PAY-20', reason: 'The transfer was made to the original buyer.', source_event_id: null, proof_url: '/buyer-returns/11/money/20/proof', created_at: '2026-10-19T00:00:00Z' }] };
     const html = await render(ui.Money, { value: buyer, caseId: 11, version: 10 });
     assert.match(html, /I received the repayment/); assert.match(html, /Report missing repayment/); assert.match(html, /Download private receipt/);
+});
+
+
+const successorMoney = { ...returnMoney, mode: 'wallet', policy_version: 2, backing: undefined,
+    plan: { reference: 'BRP-EXAMPLE', is_preview: false, fault: 'seller', original_buyer_merchandise_cents: 45000, outbound_shipping_refund_cents: 2500, buyer_refund_cents: 47500 },
+    reserve: { balance_cents: 45000, original_required_cents: 45000, original_reserved_cents: 45000, liability_due_cents: 2500,
+        liable_received_cents: 0, liability_remaining_cents: 2500, advance_outstanding_cents: 0, refund_goal_cents: 47500 } };
+
+test('successor refund displays the approved item plus shipping entitlement instead of the legacy merchandise subtotal', async () => {
+    const html = await render(ui.Money, { value: { ...successorMoney, actions: ['refund-wallet'] }, caseId: 11, version: 9 }, 'admin');
+    assert.match(html, /Original paid shipping to refund/); assert.match(html, /475\.00/); assert.match(html, /Demonstration refund reserve/);
+    assert.doesNotMatch(html, /Shipping stays separate|Actual transfer reference/);
+    const detail = await render(ui.Liability, { financialCase: { id: 11, reference: 'BR-OWNED', status: 'repayment_ready', version: 9,
+        order: props.order, canViewReturn: false, money: { ...successorMoney, actions: [] } } }, 'logistics');
+    assert.match(detail, /Return finances/); assert.doesNotMatch(detail, /Open return details|shipping_address|recipient phone/i);
+});
+
+test('virtual contribution posts only its own confirmation and amount and retains exact failed request identity', async () => {
+    const h = globalThis.returnHarness = new Harness();
+    try {
+        const supplied = { value: { ...successorMoney, actions: ['fund-wallet-liability'] }, caseId: 11, version: 9 };
+        await render(ui.Money, supplied, 'seller'); h.form.data.action = 'fund-wallet-liability';
+        const html = await render(ui.Money, supplied, 'seller');
+        assert.match(html, /Virtual credits/); assert.doesNotMatch(html, /type="file"|Receiving platform admin|Actual transfer reference/);
+        h.form.data.amount = '25.00'; h.form.data.reason = 'Transfer my actual credits to this approved original refund.'; h.form.data.wallet_funding_confirmed = true;
+        let transform; h.form.transform = fn => { transform = fn; };
+        const original = h.form.post; h.form.post = (url, options) => { const data = transform(h.form.data); original(url, options); h.posts.at(-1).data = structuredClone(data); };
+        h.submit(); h.submit(); assert.equal(h.posts.length, 1);
+        const saved = h.posts[0].data; assert.equal(saved.wallet_funding_confirmed, true); assert.equal(saved.amount, '25.00');
+        for (const field of ['proof', 'recipient_id', 'payment_confirmed', 'cash_reference', 'review_token', 'wallet_refund_confirmed', 'demo_advance_confirmed']) assert.equal(field in saved, false);
+        h.form.processing = false; h.posts[0].options.onFinish(); h.submit(); assert.equal(h.posts[1].data.request_token, saved.request_token);
+    } finally { delete globalThis.returnHarness; }
+});
+
+test('successor approval posts the reviewed token and original version without client refund amounts', async () => {
+    const h = globalThis.returnHarness = new Harness();
+    try {
+        const supplied = { value: { ...successorMoney, review_token: 'a'.repeat(64), original_payment: { reference: 'ACTUAL-ORIGINAL-PAYMENT', paid_cents: 95000 }, original_seller_payment: { reference: 'ACTUAL-SELLER-PAYOUT', amount_cents: 81000 }, actions: ['approve-repayment'] }, caseId: 11, version: 10 };
+        await render(ui.Money, supplied, 'admin'); h.form.data.action = 'approve-repayment';
+        const preview = await render(ui.Money, supplied, 'admin'); assert.match(preview, /ACTUAL-ORIGINAL-PAYMENT/); assert.match(preview, /ACTUAL-SELLER-PAYOUT/); h.form.data.reason = 'Checked the original buyer payment and partial shipping allocation.';
+        let transform; h.form.transform = fn => { transform = fn; };
+        const original = h.form.post; h.form.post = (url, options) => { const data = transform(h.form.data); original(url, options); h.posts.at(-1).data = structuredClone(data); };
+        h.submit(); assert.equal(h.posts[0].data.review_token, 'a'.repeat(64)); assert.equal(h.posts[0].data.expected_version, 10);
+        for (const field of ['amount', 'proof', 'buyer_refund_cents', 'buyer_id']) assert.equal(field in h.posts[0].data, false);
+    } finally { delete globalThis.returnHarness; }
+});
+
+test('company demonstration funding requests are bounded and pending requests remove the duplicate request form', async () => {
+    const h = globalThis.returnHarness = new Harness();
+    try {
+        const supplied = { value: { ...successorMoney, funding_credit_max_cents: 2500, funding_credit_requests: [] }, caseId: 11, version: 10 };
+        const html = await render(ui.Funding, supplied, 'logistics');
+        assert.match(html, /Request demonstration credits/); assert.match(html, /maxLength="1000"/i); assert.doesNotMatch(html, /type="file"|type="password"/);
+        h.form.data.amount = '25.00'; h.form.data.reason = 'Request virtual credits for this original company obligation.';
+        let transform; h.form.transform = fn => { transform = fn; };
+        const original = h.form.post; h.form.post = (url, options) => { const data = transform(h.form.data); original(url, options); h.posts.at(-1).data = structuredClone(data); };
+        h.submit(); assert.equal(h.posts[0].url, '/buyer-returns/11/wallet-funding-credits'); assert.equal(h.posts[0].data.expected_version, 10);
+    } finally { delete globalThis.returnHarness; }
+    const pending = await render(ui.Funding, { value: { ...successorMoney, funding_credit_max_cents: 2500,
+        funding_credit_requests: [{ id: 4, version: 1, reference: 'WFC-ORIGINAL', actor_name: 'Original company', amount_cents: 2500, reason: 'Company funding request.', status: 'pending', can_review: false }] }, caseId: 11, version: 11 }, 'logistics');
+    assert.match(pending, /Awaiting review/); assert.doesNotMatch(pending, /Request demonstration credits|<form/);
+});
+
+
+test('an active original claim loss opens its own finances and suppresses obsolete return repayment controls', async () => {
+    const html = await render(ui.Money, { caseId: 11, version: 7, value: { ...successorMoney,
+        actions: ['approve-repayment', 'refund-wallet'], shipment_finance: { id: 23, reference: 'ORIGINAL-CLAIM-LOSS', return_reference: 'BRT-OWN-11', href: '/shipment-finances/23' } } });
+    assert.match(html, /Parcel loss financial review/); assert.match(html, /href="\/shipment-finances\/23"/);
+    assert.doesNotMatch(html, /<form|Approve original amount|Refund to Bagoo Wallet|Private receipt/);
 });

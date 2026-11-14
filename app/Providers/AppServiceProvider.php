@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\AccountSessions\AccountSessionService;
 use App\Services\BuyerAccessService;
 use App\Services\Logistics\HandoverHoldService;
+use App\Services\Logistics\LogisticsTripService;
 use App\Services\Notifications\GovernanceNoticeService;
 use Illuminate\Auth\Events\CurrentDeviceLogout;
 use Illuminate\Auth\Events\Login;
@@ -37,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(LogisticsTripService::class);
         $this->app->scoped(HandoverHoldService::class);
     }
 

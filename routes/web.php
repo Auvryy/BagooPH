@@ -37,7 +37,9 @@ use App\Http\Controllers\Buyer\ShopFollowController;
 use App\Http\Controllers\Buyer\VoucherController;
 use App\Http\Controllers\BuyerReturnController;
 use App\Http\Controllers\BuyerReturnCustodyController;
+use App\Http\Controllers\BuyerReturnLiabilityController;
 use App\Http\Controllers\BuyerReturnMoneyController;
+use App\Http\Controllers\BuyerReturnRecoveryController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CodCashController;
 use App\Http\Controllers\Courier\CourierDeliveryController;
@@ -58,6 +60,7 @@ use App\Http\Controllers\Logistics\ParcelRecoveryController;
 use App\Http\Controllers\Logistics\RestrictedCustodyRecoveryController;
 use App\Http\Controllers\Logistics\RiderCompanyIntakeController;
 use App\Http\Controllers\Logistics\RiderCompanyOfferController;
+use App\Http\Controllers\Logistics\ShipmentLossIntakeController;
 use App\Http\Controllers\LogisticsEarningsController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
@@ -84,11 +87,14 @@ use App\Http\Controllers\Seller\SellerStoreTagController;
 use App\Http\Controllers\Seller\SellerTagAssistantController;
 use App\Http\Controllers\Seller\SellerVoucherController;
 use App\Http\Controllers\SellerSettlementController;
+use App\Http\Controllers\ShipmentFinancialController;
+use App\Http\Controllers\ShipmentLossController;
 use App\Http\Controllers\ShopVerificationDocumentController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VerificationDocumentController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\WalletProceedsController;
+use App\Http\Controllers\WalletRefundCreditController;
 use App\Http\Middleware\AdvertisementResponseHeaders;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Http\Request;
@@ -411,6 +417,13 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::post('/mother-bags/{bag}/{action}', [MotherBagController::class, 'command'])->whereUuid('bag')->where('action', 'add|remove|seal|reopen|load|unload|open')->middleware('throttle:60,1');
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest');
         Route::post('/manifests', [LogisticsManifestController::class, 'store']);
+        Route::post('/manifests/trips', [LogisticsManifestController::class, 'storeTrip'])->middleware('throttle:30,1');
+        Route::post('/manifests/trips/{trip}/return-sacks', [LogisticsManifestController::class, 'packReturnSack'])->whereNumber('trip')->middleware('throttle:60,1');
+        Route::post('/manifests/trips/{trip}/return-sacks/{bag}/{bagAction}', [LogisticsManifestController::class, 'returnSackCommand'])->whereNumber('trip')->whereUuid('bag')->whereIn('bagAction', ['seal', 'reopen', 'remove', 'open'])->middleware('throttle:60,1');
+        Route::post('/manifests/trips/{trip}/{action}', [LogisticsManifestController::class, 'tripCommand'])->whereNumber('trip')->whereIn('action', ['dispatch', 'cancel', 'close'])->middleware('throttle:30,1');
+        Route::post('/manifests/{manifest}/transport-arrival', [LogisticsManifestController::class, 'transportArrival'])->whereNumber('manifest')->middleware('throttle:30,1');
+        Route::post('/manifests/{manifest}/whole-transport-loss', [LogisticsManifestController::class, 'wholeTransportLoss'])->whereNumber('manifest')->middleware('throttle:30,1');
+        Route::get('/manifests/{manifest}/whole-transport-loss/proof', [LogisticsManifestController::class, 'wholeTransportLossProof'])->whereNumber('manifest')->middleware('throttle:60,1');
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
             ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|close-recovery|report-discrepancy|correct-discrepancy|resolve-discrepancy');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries']);
@@ -569,6 +582,11 @@ Route::get('/about', [MarketplaceController::class, 'index'])->name('about');
 */
 Route::get('/track/{tracking_number?}', [PublicTrackingController::class, 'show'])->middleware('throttle:public-tracking')->name('track.show');
 
+Route::middleware('auth')->prefix('buyer-return-recoveries')->group(function () {
+    Route::get('/{recovery}', [BuyerReturnRecoveryController::class, 'show'])->whereNumber('recovery');
+    Route::post('/{recovery}/{action}', [BuyerReturnRecoveryController::class, 'command'])->whereNumber('recovery')
+        ->whereIn('action', ['authorize', 'withdraw', 'intake'])->middleware('throttle:30,1');
+});
 Route::middleware('auth')->prefix('buyer-returns')->name('buyer-returns.')->group(function () {
     Route::get('/', [BuyerReturnController::class, 'index'])->name('index');
     Route::get('/orders/{order}/create', [BuyerReturnController::class, 'create'])->where('order', '[1-9][0-9]{0,17}')->name('create');
@@ -577,8 +595,40 @@ Route::middleware('auth')->prefix('buyer-returns')->name('buyer-returns.')->grou
     Route::post('/{case}/actions', [BuyerReturnController::class, 'action'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('action');
     Route::post('/{case}/custody', [BuyerReturnCustodyController::class, 'store'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('custody');
     Route::post('/{case}/money', [BuyerReturnMoneyController::class, 'store'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('money');
+    Route::post('/{case}/wallet-funding-credits', [WalletRefundCreditController::class, 'store'])->where('case', '[1-9][0-9]{0,17}')->middleware('throttle:20,1');
+    Route::post('/{case}/wallet-funding-credits/{funding}/review', [WalletRefundCreditController::class, 'review'])->where(['case' => '[1-9][0-9]{0,17}', 'funding' => '[1-9][0-9]{0,17}'])->middleware('throttle:30,1');
     Route::get('/{case}/money/{event}/proof', [BuyerReturnMoneyController::class, 'proof'])->where(['case' => '[1-9][0-9]{0,17}', 'event' => '[1-9][0-9]{0,17}'])->name('money-proof');
     Route::get('/{case}/evidence/{evidence}', [BuyerReturnController::class, 'evidence'])->where(['case' => '[1-9][0-9]{0,17}', 'evidence' => '[1-9][0-9]{0,17}'])->name('evidence');
+});
+Route::middleware('auth')->prefix('return-liabilities')->name('return-liabilities.')->group(function () {
+    Route::get('/', [BuyerReturnLiabilityController::class, 'index'])->name('index');
+    Route::get('/{case}', [BuyerReturnLiabilityController::class, 'show'])->where('case', '[1-9][0-9]{0,17}')->name('show');
+});
+Route::middleware('auth')->prefix('loss-found')->group(function () {
+    Route::get('/{plan}', [ShipmentLossIntakeController::class, 'show'])->where('plan', '[1-9][0-9]{0,17}');
+    Route::post('/{plan}', [ShipmentLossIntakeController::class, 'store'])->where('plan', '[1-9][0-9]{0,17}')->middleware('throttle:30,1');
+    Route::post('/{plan}/release', [ShipmentLossIntakeController::class, 'release'])->where('plan', '[1-9][0-9]{0,17}')->middleware('throttle:30,1');
+    Route::get('/{plan}/proof', [ShipmentLossIntakeController::class, 'proof'])->where('plan', '[1-9][0-9]{0,17}');
+});
+
+Route::middleware('auth')->prefix('shipment-finances')->name('shipment-finances.')->group(function () {
+    Route::get('/missing/{observation}/review', [ShipmentLossController::class, 'review'])->where('observation', '[1-9][0-9]{0,17}')->name('loss-review');
+    Route::post('/missing/{observation}/preview', [ShipmentLossController::class, 'preview'])->where('observation', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('loss-preview');
+    Route::post('/missing/{observation}/approve', [ShipmentLossController::class, 'approve'])->where('observation', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('loss-approve');
+    Route::get('/orders/{order}/review', [ShipmentFinancialController::class, 'review'])->where('order', '[1-9][0-9]{0,17}')->name('review');
+    Route::post('/orders/{order}/preview', [ShipmentFinancialController::class, 'preview'])->where('order', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('preview');
+    Route::post('/orders/{order}/approve', [ShipmentFinancialController::class, 'approve'])->where('order', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('approve');
+    Route::get('/{plan}', [ShipmentFinancialController::class, 'show'])->where('plan', '[1-9][0-9]{0,17}')->name('show');
+    Route::post('/{plan}/actions', [ShipmentFinancialController::class, 'action'])->where('plan', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('action');
+    Route::post('/{plan}/wallet-funding-credits', [ShipmentLossController::class, 'requestCredits'])->where('plan', '[1-9][0-9]{0,17}')->middleware('throttle:20,1')->name('loss-credit-request');
+    Route::post('/{plan}/wallet-funding-credits/{funding}/review', [ShipmentLossController::class, 'reviewCredits'])->where(['plan' => '[1-9][0-9]{0,17}', 'funding' => '[1-9][0-9]{0,17}'])->middleware('throttle:20,1')->name('loss-credit-review');
+    Route::get('/{plan}/disposition/proof', [ShipmentLossController::class, 'dispositionProof'])->where('plan', '[1-9][0-9]{0,17}')->name('loss-disposition-proof');
+    Route::get('/{plan}/finding/proof', [ShipmentLossController::class, 'findingProof'])->where('plan', '[1-9][0-9]{0,17}')->name('loss-finding-proof');
+    Route::get('/{plan}/reconciliation/{reconciliation}/proof', [ShipmentLossController::class, 'reconciliationProof'])
+        ->where(['plan' => '[1-9][0-9]{0,17}', 'reconciliation' => '[1-9][0-9]{0,17}'])
+        ->name('loss-reconciliation-proof');
+    Route::get('/{plan}/proof', [ShipmentFinancialController::class, 'proof'])->where('plan', '[1-9][0-9]{0,17}')->name('proof');
+    Route::get('/{plan}/events/{event}/proof', [ShipmentFinancialController::class, 'eventProof'])->where(['plan' => '[1-9][0-9]{0,17}', 'event' => '[1-9][0-9]{0,17}'])->name('event-proof');
 });
 
 /*
@@ -912,6 +962,13 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/mother-bags/{bag}/{action}', [MotherBagController::class, 'command'])->whereUuid('bag')->where('action', 'add|remove|seal|reopen|load|unload|open')->middleware('throttle:60,1')->name('mother-bags.command');
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest')->name('manifests.show');
         Route::post('/manifests', [LogisticsManifestController::class, 'store'])->name('manifests.store');
+        Route::post('/manifests/trips', [LogisticsManifestController::class, 'storeTrip'])->middleware('throttle:30,1');
+        Route::post('/manifests/trips/{trip}/return-sacks', [LogisticsManifestController::class, 'packReturnSack'])->whereNumber('trip')->middleware('throttle:60,1');
+        Route::post('/manifests/trips/{trip}/return-sacks/{bag}/{bagAction}', [LogisticsManifestController::class, 'returnSackCommand'])->whereNumber('trip')->whereUuid('bag')->whereIn('bagAction', ['seal', 'reopen', 'remove', 'open'])->middleware('throttle:60,1');
+        Route::post('/manifests/trips/{trip}/{action}', [LogisticsManifestController::class, 'tripCommand'])->whereNumber('trip')->whereIn('action', ['dispatch', 'cancel', 'close'])->middleware('throttle:30,1');
+        Route::post('/manifests/{manifest}/transport-arrival', [LogisticsManifestController::class, 'transportArrival'])->whereNumber('manifest')->middleware('throttle:30,1');
+        Route::post('/manifests/{manifest}/whole-transport-loss', [LogisticsManifestController::class, 'wholeTransportLoss'])->whereNumber('manifest')->middleware('throttle:30,1');
+        Route::get('/manifests/{manifest}/whole-transport-loss/proof', [LogisticsManifestController::class, 'wholeTransportLossProof'])->whereNumber('manifest')->middleware('throttle:60,1');
         Route::post('/manifests/{manifest}/{action}', [LogisticsManifestController::class, 'command'])
             ->whereNumber('manifest')->where('action', 'load|remove|seal|reopen|dispatch|receive|close|close-recovery|report-discrepancy|correct-discrepancy|resolve-discrepancy')->name('manifests.command');
         Route::get('/deliveries', [LogisticsHubWorkstationController::class, 'deliveries'])->name('deliveries');

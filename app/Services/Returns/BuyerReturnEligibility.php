@@ -5,6 +5,7 @@ namespace App\Services\Returns;
 use App\Models\Order;
 use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Logistics\PickupClaimService;
+use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Wallet\WalletPaymentService;
 use DomainException;
 use Illuminate\Validation\ValidationException;
@@ -20,6 +21,9 @@ class BuyerReturnEligibility
         }
         if ($order->payment_method === 'wallet' && ! app(WalletPaymentService::class)->paid($order)) {
             $this->reject('The original wallet payment needs review before requesting a return.');
+        }
+        if ($order->logistics_flow_version >= 2 && ! app(AutomaticDeliveryCompletionService::class)->evidence($order)) {
+            $this->reject('The original recipient handover and payment need review before requesting a return.');
         }
         $type = $parcel->status === 'customer_collected' ? 'customer_collected' : 'delivered';
         $check = $parcel->checkpoints()->whereNull('source_checkpoint_id')->where('checkpoint_type', $type)->first();

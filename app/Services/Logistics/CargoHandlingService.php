@@ -78,6 +78,9 @@ class CargoHandlingService
     public function capacity(MotherBag $bag): array
     {
         $members = $bag->parcels()->whereNull('removed_at')->get();
+        if (Schema::hasTable('mother_bag_return_parcels')) {
+            $members = $members->concat($bag->returnParcels()->whereNull('removed_at')->get());
+        }
         $known = $members->every(fn ($member) => $member->handling_snapshot !== null);
 
         return ['count' => $members->count(), 'weight_kg' => $known ? round($members->sum(fn ($m) => $m->handling_snapshot['weight_kg']), 3) : null,

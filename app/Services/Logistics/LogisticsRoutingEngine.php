@@ -10,7 +10,9 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\Order;
 use App\Models\PickupClaim;
+use App\Models\ShipmentLossReconciliation;
 use App\Models\Shop;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -269,6 +271,13 @@ class LogisticsRoutingEngine
         return [$origin, $destination, $originMother, $destinationMother, $path, $local];
     }
 
+    private function activeForwardReconciliation(Delivery $delivery): ?ShipmentLossReconciliation
+    {
+        $reconciled = app(ShipmentLossReconciliationService::class)->activeForParcel($delivery);
+
+        return $reconciled?->outcome_path === 'unpaid_undelivered' ? $reconciled : null;
+    }
+
     public function forwardSortTarget(Delivery $parcel, ?LogisticsHub $station): ?array
     {
         if (! $station
@@ -280,8 +289,9 @@ class LogisticsRoutingEngine
             return null;
         }
 
-        $position = is_array($parcel->route_hub_ids) ? array_search($station->id, $parcel->route_hub_ids, true) : false;
-        $id = $position !== false ? ($parcel->route_hub_ids[$position + 1] ?? null) : null;
+        $routeHubs = $this->activeForwardReconciliation($parcel)?->forward_route_hub_ids ?? $parcel->route_hub_ids;
+        $position = is_array($routeHubs) ? array_search($station->id, $routeHubs, true) : false;
+        $id = $position !== false ? ($routeHubs[$position + 1] ?? null) : null;
 
         if (! $id) {
             $nextHop = $this->computeNextHop($parcel, $station);
@@ -298,6 +308,29 @@ class LogisticsRoutingEngine
      */
     public function computeNextHop(Delivery $delivery, LogisticsHub $hub): ?array
     {
+        if ($reconciled = $this->activeForwardReconciliation($delivery)) {
+            if ($hub->logistics_company_id !== $delivery->logistics_company_id
+                || in_array($delivery->status, ['return_to_sender', 'return_in_transit', 'returned', 'parcel_recovery_held', 'parcel_recovery_in_transit', 'delivered', 'customer_collected', 'cancelled'], true)) {
+                return null;
+            }
+            $path = $reconciled->forward_route_hub_ids ?? [];
+            $position = array_search($hub->id, $path, true);
+            if ($position === false) {
+                return null;
+            }
+            $nextId = $path[$position + 1] ?? null;
+            if ($nextId === null && $hub->id !== $delivery->destination_bayan_hub_id) {
+                return null;
+            }
+            $next = $nextId ? LogisticsHub::where('logistics_company_id', $delivery->logistics_company_id)->find($nextId) : $hub;
+
+            return $next ? [
+                'hub_id' => $next->id, 'hub_name' => $next->name, 'hub_code' => $next->code, 'tier' => $next->tier,
+                'recommended_bin' => $nextId ? 'BIN-'.$next->code : ($delivery->destination_bin
+                    ?: ($delivery->delivery_type === 'hub_self_pickup' ? 'SHELF-A1' : 'LOC-BIN-01')),
+            ] : null;
+        }
+
         // Current purchases use their retained corridor, never a newly configured topology.
         if ($delivery->order?->logistics_flow_version >= 2) {
             if ($hub->logistics_company_id !== $delivery->logistics_company_id
@@ -412,6 +445,14 @@ class LogisticsRoutingEngine
 
         $current = $currentHub ?? ($delivery->current_hub_id ? LogisticsHub::find($delivery->current_hub_id) : null);
         $currentHubId = $current?->id ?? $delivery->current_hub_id;
+
+        if ($reconciled = $this->activeForwardReconciliation($delivery)) {
+            $path = $reconciled->forward_route_hub_ids ?? [];
+            $pos = $currentHubId ? array_search($currentHubId, $path, true) : false;
+            if ($pos !== false && ($path[$pos + 1] ?? null) === $targetHub->id) {
+                return null;
+            }
+        }
 
         $destMotherId = $delivery->destination_mother_hub_id;
         $destBayanId = $delivery->destination_bayan_hub_id;
@@ -562,7 +603,7 @@ class LogisticsRoutingEngine
         if ($hub && in_array($status, ['return_to_sender', 'return_in_transit'], true)) {
             $returns = app(DeliveryReturnService::class);
             try {
-                $route = $returns->route($delivery);
+                $routeReference = $returns->activeRouteReference($delivery);
                 if ($status === 'return_in_transit') {
                     $custody = DeliveryCheckpoint::lastCustody($delivery);
                     $manifest = LogisticsManifest::find($custody['manifest_id'] ?? null);
@@ -571,13 +612,13 @@ class LogisticsRoutingEngine
                             'next_status' => 'return_to_sender', 'color' => 'amber'];
                     }
                 } elseif ($delivery->current_hub_id === $hub->id) {
-                    if ($returns->event($route, 'seller_staged')) {
+                    if ($returns->stagedForSeller($delivery)) {
                         return ['action' => 'AWAIT_SELLER_RECEIPT', 'prompt' => 'WAIT FOR THE OWNING SELLER TO SCAN RECEIPT',
                             'next_status' => $status, 'color' => 'amber'];
                     }
                     if ($returns->readyForSeller($delivery)) {
                         return ['action' => 'STAGE_SELLER_RETURN', 'prompt' => 'STAGE THE ORIGINAL PARCEL FOR SELLER RECEIPT',
-                            'next_status' => $status, 'color' => 'amber', 'route_reference' => $route->reference];
+                            'next_status' => $status, 'color' => 'amber', 'route_reference' => $routeReference];
                     }
                     $returns->nextHub($delivery);
 
@@ -641,9 +682,13 @@ class LogisticsRoutingEngine
             ];
         }
 
-        // 4. A second scan at the origin loads the parcel onto a feeder manifest.
-        if ($hub && $hub->id === $delivery->origin_bayan_hub_id && $status === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB) {
-            $motherHubCode = $delivery->originMotherHub?->code ?? 'MOTHER-HUB';
+        $reconciledForward = $this->activeForwardReconciliation($delivery);
+
+        // 4. A second scan at the origin (or a released off-route Bayan Hub) loads the parcel onto a feeder manifest.
+        if ($hub && $status === OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB
+            && ($hub->id === $delivery->origin_bayan_hub_id || ($reconciledForward && ! $hub->isMotherHub() && $hub->id === $delivery->current_hub_id && in_array($hub->id, $reconciledForward->forward_route_hub_ids ?? [], true)))) {
+            $nextHop = $this->computeNextHop($delivery, $hub);
+            $motherHubCode = $nextHop['hub_code'] ?? ($delivery->originMotherHub?->code ?? 'MOTHER-HUB');
 
             return [
                 'action' => 'DISPATCH_TO_FEEDER',
@@ -682,8 +727,10 @@ class LogisticsRoutingEngine
                 ];
             }
 
-            $nextMother = $hub->id === $delivery->origin_mother_hub_id && $delivery->origin_mother_hub_id !== $delivery->destination_mother_hub_id;
-            $destHubCode = $nextMother ? ($delivery->destinationMotherHub?->code ?? 'DEST-MOTHER-HUB') : ($delivery->destinationBayanHub?->code ?? 'DEST-BAYAN-HUB');
+            $nextHop = $this->computeNextHop($delivery, $hub);
+            $nextHub = $nextHop ? LogisticsHub::find($nextHop['hub_id']) : null;
+            $nextMother = $nextHub ? $nextHub->isMotherHub() : ($hub->id === $delivery->origin_mother_hub_id && $delivery->origin_mother_hub_id !== $delivery->destination_mother_hub_id);
+            $destHubCode = $nextHop['hub_code'] ?? ($nextMother ? ($delivery->destinationMotherHub?->code ?? 'DEST-MOTHER-HUB') : ($delivery->destinationBayanHub?->code ?? 'DEST-BAYAN-HUB'));
 
             return [
                 'action' => 'DISPATCH_LINE_HAUL',

@@ -49,6 +49,21 @@ test('unknown parcels show a blocker without authorizing or pretending to receiv
     assert.match(html, /Not established/);
     assert.doesNotMatch(html, /Authorize recovery|Record actual intake|Prepare recovery manifest/);
 });
+
+test('confirmed losses remain separate from actual receipts and allow accounted closure without claiming arrival', async () => {
+    const hub = { id: 1, name: 'Origin Bayan Hub', code: 'BH-1', tier: 'local_bayan_hub' };
+    const selected = { id: 9, reference: 'MFT-LOSS', type: 'feeder', direction: 'outbound', status: 'dispatched', version: 4, included_count: 1,
+        source: hub, destination: { ...hub, id: 2, name: 'Mother Hub', code: 'MH-1', tier: 'regional_mother_hub' },
+        vehicle_plate: 'BGO-LOSS-901', driver_name: 'Original driver', dispatched_at: '2026-11-13T12:00:00Z', received_at: null,
+        canManage: false, canClose: true, canLoad: false, canReceive: true,
+        receiptCounts: { expected: 1, normal_received: 0, corrective_expected_received: 0, unlisted_received: 0, outstanding: 0, confirmed_lost: 1 },
+        parcels: [{ id: 1, tracking_number: 'BGO-LOST-PARCEL', included: true, status: 'in_transit_to_mother_hub', received_at: null, receipt_condition: null, confirmed_lost: true }],
+        discrepancies: [], events: [] };
+    const html = await render(Manifests, 'Hub/Manifests', { manifests: { data: [], links: [] }, selectedManifest: selected,
+        canCreate: false, creationToken: null, commandToken: 'ORIGINAL-COMMAND', basePath: '/hub/manifests', hubs: [], vehicles: [] });
+    assert.match(html, /Confirmed lost/); assert.match(html, /Accounted as lost · no receipt/); assert.match(html, /Close accounted manifest/);
+    assert.doesNotMatch(html, /Close received manifest|Received Nov|Received parcel/);
+});
 test('company review gives authority without rendering a handler intake action', async () => {
     const html = await render(Recovery, 'Hub/ParcelRecovery', props({ ...detail, canAuthorize: true, sourceToken: 'SOURCE' }));
     assert.match(html, /Authorize recovery/);

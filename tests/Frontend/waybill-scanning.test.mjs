@@ -105,7 +105,9 @@ test('scanner recovery navigation requires a specific relative observation URL s
     const fetch = globalThis.fetch; const document = globalThis.document;
     globalThis.document = { cookie: '', querySelector: () => ({ content: 'rendered' }) };
     try {
-        for (const [url, expected] of [[null, null], ['/hub/parcel-recovery/23', '/hub/parcel-recovery/23'], ['/parcel-recovery/23', '/parcel-recovery/23'], ['https://foreign.test/parcel-recovery/23', null], ['//foreign.test/parcel-recovery/23', null], ['/hub/parcel-recovery', null], ['javascript:run()', null]]) {
+        for (const [url, expected] of [[null, null], ['/hub/parcel-recovery/23', '/hub/parcel-recovery/23'], ['/parcel-recovery/23', '/parcel-recovery/23'], ['https://foreign.test/parcel-recovery/23', null], ['//foreign.test/parcel-recovery/23', null], ['/hub/parcel-recovery', null], ['javascript:run()', null],
+            ['/loss-found/7?hub_id=4', '/loss-found/7?hub_id=4'], ['/loss-found/7?hub_id=0', null], ['/loss-found/07?hub_id=4', null],
+            ['/loss-found/7?hub_id=4&redirect=https://untrusted.invalid', null], ['//untrusted.invalid/loss-found/7?hub_id=4', null], ['/loss-found/7', null]]) {
             globalThis.fetch = async () => Response.json({ success: false, error: 'Wrong hub.', recovery_url: url }, { status: 409 });
             await assert.rejects(ui.requestWaybill('/hub/scan', {}, new AbortController().signal), error => {
                 assert.equal(error.recoveryUrl, expected); assert.equal(error.status, 409); return true;

@@ -105,8 +105,8 @@ class DispatchStagingService
             ->where('hub_id', $hub->id)->where('vehicle_type', $type)->whereNotNull('assigned_driver_id')
             ->where('capacity_kg', '>', 0)->where('capacity_kg', '>=', $weightKg)
             ->whereHas('driver.courierProfile', fn ($q) => $q->operational()->where('is_available', true))
-            ->whereNotIn('id', LogisticsManifest::whereIn('status', ['sealed', 'dispatched'])->select('vehicle_id'))
-            ->whereNotIn('assigned_driver_id', LogisticsManifest::whereIn('status', ['sealed', 'dispatched'])->select('driver_id'))
+            ->whereNotIn('id', LogisticsManifest::where(fn ($query) => $query->where('status', 'sealed')->orWhere(fn ($query) => $query->awaitingPhysicalReceipt()))->select('vehicle_id'))
+            ->whereNotIn('assigned_driver_id', LogisticsManifest::where(fn ($query) => $query->where('status', 'sealed')->orWhere(fn ($query) => $query->awaitingPhysicalReceipt()))->select('driver_id'))
             ->with('driver')->orderBy('capacity_kg')->orderBy('id')->get();
         $vehicle = $vehicles->first(fn ($fleet) => ! Delivery::riderHasActiveWork($fleet->assigned_driver_id));
 

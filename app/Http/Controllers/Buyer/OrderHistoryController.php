@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyAgainService;
 use App\Services\Commerce\ReviewService;
+use App\Services\Finance\ShipmentFinancialLinks;
 use App\Services\Notifications\NotificationCenterService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderTrackingService;
@@ -76,6 +77,7 @@ class OrderHistoryController extends Controller
         $pickupHub = $ownedBuyerOrder ? $order->delivery?->destinationBayanHub?->only(['name', 'address', 'operating_hours']) : null;
         $pickupCodeAvailable = $canFulfillOrder && $tracking->canShowPickupCode($order);
         $tracking->attach($order);
+        $financialLinks = app(ShipmentFinancialLinks::class)->forOrder($user, $order);
 
         return Inertia::render('Buyer/OrderDetail', [
             'order' => $order,
@@ -88,6 +90,8 @@ class OrderHistoryController extends Controller
             'returnAvailability' => $ownedBuyerOrder && $canFulfillOrder
                 ? app(BuyerReturnService::class)->availability($user, $order) : null,
             'buyerReturns' => $ownedBuyerOrder ? $order->buyerReturns()->latest('id')->get(['id', 'reference', 'status'])->all() : [],
+            'shipmentFinance' => $financialLinks['primary'],
+            'shipmentFinances' => $financialLinks,
             'cancelOrderUrl' => $ownedBuyerOrder && app(OrderLifecycleService::class)->canBuyerCancel($order, $user)
                 ? route('buyer.orders.cancel', $order, absolute: false) : null,
             'cancellationReasons' => OrderLifecycleService::BUYER_CANCELLATION_REASONS,

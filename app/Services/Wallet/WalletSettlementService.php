@@ -6,20 +6,26 @@ use App\Models\BuyerReturnAdjustment;
 use App\Models\BuyerReturnCase;
 use App\Models\Delivery;
 use App\Models\Order;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Models\VoucherOrderAllocation;
 use App\Models\VoucherRevisionBalance;
 use App\Models\WalletPayment;
+use App\Models\WalletRefundReserveEntry;
 use App\Models\WalletTransaction;
 use App\Rules\ApplicationText;
 use App\Services\AccountRestrictionService;
 use App\Services\Finance\SellerSettlementService;
+use App\Services\Finance\ShipmentLossReconciliationService;
+use App\Services\Finance\ShipmentLossWallet;
+use App\Services\Finance\ShipmentRefusalMoney;
 use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Returns\BuyerReturnAmounts;
 use App\Services\ShopEligibilityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -38,24 +44,68 @@ class WalletSettlementService
 
     public function basis(Order $order): array
     {
-        $source = app(BuyerReturnAmounts::class)->original($order);
-        $returns = BuyerReturnAdjustment::where('order_id', $order->id)->orderBy('id')->get();
+        if ($plan = app(ShipmentLossReconciliationService::class)->blocksOrderSettlement($order)) {
+            return app(ShipmentLossWallet::class)->walletBasis($plan);
+        }
+        if (Schema::hasTable('shipment_financial_plans') && ($plan = ShipmentFinancialPlan::where('order_id', $order->id)->where('kind', 'buyer_refusal')->first())) {
+            return app(ShipmentRefusalMoney::class)->walletBasis($plan);
+        }
+        $amounts = app(BuyerReturnAmounts::class);
+        $policy = $order->shipping_quote['refund_policy_version'] ?? 1;
+        $source = $policy === 2 ? $amounts->successorOriginal($order) : $amounts->original($order);
+        $returns = $amounts->adjustmentFinancials($order);
         $payment = WalletPayment::where('order_id', $order->id)->firstOrFail();
         $gross = array_sum(array_column($source['units'], 'gross_cents'));
-        $refunded = (int) WalletTransaction::where('order_id', $order->id)->where('kind', 'wallet_return_refund')->sum('amount_cents');
+        $refunded = (int) WalletTransaction::where('order_id', $order->id)->whereIn('kind', ['wallet_return_refund', 'wallet_loss_refund'])->sum('amount_cents');
+        $escrowDebited = $refunded;
+        if ($policy === 2) {
+            abort_unless(Schema::hasTable('wallet_refund_reserve_entries'), 409, 'Retain the original virtual refund source before releasing successor proceeds.');
+            $escrowDebited = (int) WalletRefundReserveEntry::where('order_id', $order->id)->whereIn('source_kind', ['original_escrow', 'original_escrow_return'])->sum('delta_cents');
+        }
+        abort_unless($escrowDebited >= 0 && $escrowDebited <= $payment->amount_cents, 409, 'The original escrow debit needs its actual retained source.');
 
-        return ['seller_cents' => $source['original_seller_cents'] - $returns->sum('seller_cents'),
-            'commission_cents' => SellerSettlementService::split($gross)['commission_cents'] - $returns->sum('commission_cents'),
+        return ['seller_cents' => $source['original_seller_cents'] - $returns['seller_cents'],
+            'commission_cents' => SellerSettlementService::split($gross)['commission_cents'] - $returns['commission_cents'],
             'shipping_cents' => $source['shipping_cents'], 'promotion_cents' => array_sum(array_column($source['units'], 'platform_discount_cents'))
-                - $returns->sum('platform_discount_cents') + $source['shipping_discount_cents'],
-            'escrow_cents' => $payment->amount_cents - $refunded, 'refunded_cents' => $refunded,
-            'adjustment_ids' => $returns->modelKeys(), 'gross_product_cents' => $gross];
+                - $returns['platform_discount_cents'] + $source['shipping_discount_cents'],
+            'escrow_cents' => $policy === 2 && $payment->settlement_transaction_id ? 0 : $payment->amount_cents - $escrowDebited,
+            'refunded_cents' => $refunded, 'adjustment_ids' => $returns['adjustment_ids'], 'gross_product_cents' => $gross]
+            + ($policy === 2 ? ['original_escrow_reserved_cents' => $escrowDebited] : []);
     }
 
     public function present(Order $order): array
     {
         $order->loadMissing('items.shop.user', 'delivery');
         $payment = $order->walletPayment;
+        if ($plan = app(ShipmentLossReconciliationService::class)->blocksOrderSettlement($order)) {
+            $event = $plan->events()->where('event_type', 'loss-resolve-wallet')->first();
+            $transaction = $event?->wallet_transaction_id ? WalletTransaction::find($event->wallet_transaction_id) : null;
+
+            return ['order_id' => $order->id, 'order_number' => $order->order_number, 'shop_name' => $order->items->first()?->shop?->name,
+                'seller_id' => $plan->seller_id, 'payment_reference' => $payment?->reference,
+                'status' => $event ? 'reviewed loss settled' : 'reviewed loss awaiting funding',
+                'can_settle' => false, 'can_refund_delivery' => false, 'consent' => '', 'settlement_reference' => null,
+                'refund_reference' => $event?->amount_cents > 0 ? $transaction?->reference : null,
+                'resolution_reference' => $transaction?->reference, 'payment_cents' => $payment?->amount_cents,
+                'shipment_financial_url' => '/shipment-finances/'.$plan->id,
+                'seller_protection_paid_cents' => $event ? $plan->snapshot['seller_protection_cents'] : 0,
+                'blockers' => ['Retain the separate approved loss, original funding and seller protection; ordinary sale proceeds are unavailable.'],
+                ...app(ShipmentLossWallet::class)->walletBasis($plan)];
+        }
+        if (Schema::hasTable('shipment_financial_plans') && ($plan = ShipmentFinancialPlan::where('order_id', $order->id)->where('kind', 'buyer_refusal')->first())) {
+            $basis = app(ShipmentRefusalMoney::class)->walletBasis($plan);
+            $event = $plan->events()->whereIn('event_type', ['wallet-refund', 'zero-refund-assessed'])->first();
+
+            return ['order_id' => $order->id, 'order_number' => $order->order_number, 'shop_name' => $order->items->first()?->shop?->name,
+                'seller_id' => $plan->seller_id, 'payment_reference' => $payment?->reference,
+                'status' => $event ? ($event->amount_cents > 0 ? 'refunded' : 'closed without buyer refund') : 'reviewed refusal',
+                'can_settle' => false, 'can_refund_delivery' => false, 'consent' => '', 'settlement_reference' => null,
+                'refund_reference' => $event?->amount_cents > 0 && $event->wallet_transaction_id ? WalletTransaction::find($event->wallet_transaction_id)?->reference : null,
+                'resolution_reference' => $event?->wallet_transaction_id ? WalletTransaction::find($event->wallet_transaction_id)?->reference : null,
+                'shipment_financial_url' => '/shipment-finances/'.$plan->id,
+                'payment_cents' => $payment?->amount_cents,
+                'blockers' => $event ? [] : ['The approved refusal needs its original-source financial execution.'], ...$basis];
+        }
         if ($payment?->status === 'refunded') {
             $refund = WalletTransaction::where('order_id', $order->id)->whereIn('kind', ['wallet_delivery_refund', 'wallet_cancellation_refund'])->latest('id')->first();
 

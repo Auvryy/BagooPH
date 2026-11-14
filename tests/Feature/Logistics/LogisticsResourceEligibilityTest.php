@@ -24,17 +24,21 @@ use App\Services\Logistics\RiderCompanyRequestService;
 use DomainException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Feature\E2E\Support\CreatesE2EOrders;
+use Tests\Feature\E2E\Support\InteractsWithOrderActions;
+use Tests\Feature\E2E\Support\InteractsWithRoles;
 use Tests\TestCase;
 
 class LogisticsResourceEligibilityTest extends TestCase
 {
-    use RefreshDatabase;
+    use CreatesE2EOrders, InteractsWithOrderActions, InteractsWithRoles, RefreshDatabase;
 
     private User $owner;
 
@@ -391,8 +395,8 @@ class LogisticsResourceEligibilityTest extends TestCase
 
     public function test_destination_assignment_retry_preserves_the_first_rider_and_checkpoint(): void
     {
-        $delivery = $this->pickup();
-        $delivery->update(['status' => 'sorted_to_barangay_bin', 'current_hub_id' => $this->hub->id]);
+        $delivery = $this->sortedParcel();
+        $checkpoints = $delivery->checkpoints()->count();
         $metadata = ['hub_id' => $this->hub->id, 'rider_id' => $this->rider->id];
         $state = app(OrderStateMachineService::class);
         $state->transition($delivery, 'assigned_to_rider', $this->owner, $metadata);
@@ -400,7 +404,8 @@ class LogisticsResourceEligibilityTest extends TestCase
         app(CourierOperationsService::class)->setAvailability($this->rider, false);
         $state->transition($delivery, 'assigned_to_rider', $this->owner, $metadata);
         $this->assertSame($before, $delivery->fresh()->getAttributes());
-        $this->assertDatabaseCount('delivery_checkpoints', 1);
+        $this->assertSame($checkpoints + 1, $delivery->checkpoints()->count());
+        $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'assigned_to_rider')->count());
         $this->deny(fn () => $state->transition($delivery, 'assigned_to_rider', $this->owner, [...$metadata, 'rider_id' => $this->account('courier')->id]));
         $this->assertSame($this->rider->id, $delivery->fresh()->assigned_rider_id);
     }
@@ -479,8 +484,8 @@ class LogisticsResourceEligibilityTest extends TestCase
     #[DataProvider('portals')]
     public function test_dispatch_http_retry_preserves_assignment_even_when_rider_is_now_off_duty(string $prefix): void
     {
-        $delivery = $this->pickup();
-        $delivery->update(['status' => 'sorted_to_barangay_bin', 'current_hub_id' => $this->hub->id]);
+        $delivery = $this->sortedParcel();
+        $checkpoints = $delivery->checkpoints()->count();
         $this->rider->courierProfile->update(['is_available' => false]);
         $this->actingAs($this->owner)->postJson($prefix.'/deliveries/'.$delivery->id.'/assign-rider', ['rider_id' => $this->rider->id])->assertUnprocessable();
         $this->assertNull($delivery->fresh()->assigned_rider_id);
@@ -490,7 +495,8 @@ class LogisticsResourceEligibilityTest extends TestCase
         $this->rider->courierProfile->update(['is_available' => false]);
         $this->postJson($prefix.'/deliveries/'.$delivery->id.'/assign-rider', ['rider_id' => $this->rider->id])->assertOk();
         $this->assertSame($before, $delivery->fresh()->getAttributes());
-        $this->assertDatabaseCount('delivery_checkpoints', 1);
+        $this->assertSame($checkpoints + 1, $delivery->checkpoints()->count());
+        $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'assigned_to_rider')->count());
     }
 
     public function test_handler_scope_migration_preserves_flags_and_stamps_the_existing_relationship_only(): void
@@ -638,19 +644,24 @@ class LogisticsResourceEligibilityTest extends TestCase
 
     public function test_final_mile_work_and_pickup_capacity_agree_with_the_job_board(): void
     {
-        $final = $this->pickup();
-        $final->update(['status' => 'sorted_to_barangay_bin', 'current_hub_id' => $this->hub->id]);
+        $final = $this->sortedParcel();
         app(OrderStateMachineService::class)->transition($final, 'assigned_to_rider', $this->owner, ['hub_id' => $this->hub->id, 'rider_id' => $this->rider->id]);
         $new = $this->pickup();
         $this->actingAs($this->rider)->get(route('courier.deliveries'))->assertOk()
             ->assertInertia(fn (Assert $page) => $page->has('queues.availablePickups', 0)->has('queues.finalMileTasks', 1));
         $this->deny(fn () => app(CourierOperationsService::class)->claimPickup($this->rider, $new));
-        $final->update(['status' => 'delivered']);
+        $this->patch(route('courier.updateStatus', $final), ['status' => 'out_for_delivery', 'barcode' => $final->tracking_number])
+            ->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->patch(route('courier.updateStatus', $final), [
+            ...$this->codCollectionInput($final->fresh()), 'status' => 'delivered', 'proof_image_file' => UploadedFile::fake()->image('capacity-delivery.png'),
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertSame('delivered', $final->fresh()->status);
+        $this->settleFlowOrder($final->order->fresh());
         foreach (range(1, Delivery::MAX_ACTIVE_PICKUPS_PER_RIDER) as $index) {
             $parcel = $this->pickup();
             app(CourierOperationsService::class)->claimPickup($this->rider, $parcel);
         }
-        $this->get(route('courier.deliveries'))->assertOk()->assertInertia(fn (Assert $page) => $page->has('queues.availablePickups', 0));
+        $this->actingAs($this->rider)->get(route('courier.deliveries'))->assertOk()->assertInertia(fn (Assert $page) => $page->has('queues.availablePickups', 0));
         $this->deny(fn () => app(CourierOperationsService::class)->claimPickup($this->rider, $new));
         $this->assertNull($new->fresh()->courier_id);
     }
@@ -671,11 +682,10 @@ class LogisticsResourceEligibilityTest extends TestCase
     public function test_a_courier_can_enter_final_mile_after_its_pickup_handoff_and_new_placement(): void
     {
         $destination = $this->hub->replicate();
-        $destination->fill(['code' => 'B04-DEST', 'name' => 'Bagoo Destination Hub'])->save();
+        $destination->fill(['code' => 'B04-DEST', 'name' => 'Bagoo Destination Hub', 'city_municipality' => 'Los Baños'])->save();
         $vehicle = $this->vehicle->replicate();
         $vehicle->fill(['plate_number' => 'B04-DEST-001', 'hub_id' => $destination->id, 'assigned_driver_id' => null])->save();
-        $delivery = $this->pickup();
-        $delivery->update(['courier_id' => $this->rider->id, 'status' => 'sorted_to_barangay_bin', 'current_hub_id' => $destination->id, 'destination_bayan_hub_id' => $destination->id]);
+        $delivery = $this->sortedParcel($destination, $this->rider);
         app(LogisticsPlacementService::class)->placeCourier($this->owner, $destination, $this->rider, $vehicle->id, expectedHubId: $this->hub->id);
         app(CourierOperationsService::class)->setAvailability($this->rider, true);
         app(OrderStateMachineService::class)->transition($delivery, 'assigned_to_rider', $this->owner, ['hub_id' => $destination->id, 'rider_id' => $this->rider->id]);
@@ -708,6 +718,24 @@ class LogisticsResourceEligibilityTest extends TestCase
             'logistics_company_id' => $this->company->id, 'origin_bayan_hub_id' => $this->hub->id,
             'destination_bayan_hub_id' => $this->hub->id, 'courier_id' => null, 'status' => 'unassigned',
         ]);
+    }
+
+    private function sortedParcel(?LogisticsHub $destination = null, ?User $pickupRider = null): Delivery
+    {
+        $this->withoutVite();
+        $this->flowCompany = $this->company;
+        $this->flowHandlers[$this->hub->id] = $this->handler;
+        $destination ??= $this->hub;
+        $shop = $this->createE2EShop($this->createApprovedUser('seller'), ['city' => $this->hub->city_municipality, 'pickup_province' => $this->hub->province]);
+        $order = $this->checkoutFlowOrder($this->createApprovedUser('buyer'), $shop, [], 'ready_for_pickup', [
+            'shipping_city' => $destination->city_municipality, 'shipping_province' => $destination->province,
+            'shipping_postal_code' => $destination->id === $this->hub->id ? '4009' : '4030',
+        ]);
+        if ($pickupRider) {
+            $this->flowRider($this->hub, $pickupRider);
+        }
+
+        return $this->flowDelivery($order, 'sorted_to_barangay_bin');
     }
 
     private function deny(callable $action): void

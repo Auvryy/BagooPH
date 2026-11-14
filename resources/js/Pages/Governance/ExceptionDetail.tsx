@@ -3,7 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
 
 type Evidence = { actorName?: string; id?: number; reference: string; event_type?: string; reason_code?: string; attempt_number?: number; notes?: string; attempted_at?: string; created_at?: string; retry_at?: string };
-type Detail = { kind: string; id: number; reference: string; reason: string; companyName: string | null; orderNumber: string | null; trackingNumber: string | null; status: string; responsibleName: string | null; blocker: string | null; canResolve: boolean; sourceToken: string; recoveryUrl: string | null; candidates: { id: number; name: string; role: string }[];
+type Detail = { kind: string; id: number; reference: string; reason: string; companyName: string | null; orderNumber: string | null; trackingNumber: string | null; status: string; responsibleName: string | null; blocker: string | null; canResolve: boolean; sourceToken: string; recoveryUrl: string | null; financialReviewUrl?: string | null; candidates: { id: number; name: string; role: string }[];
     state: { holderName: string; custody: { kind?: string } | null; parcel: { delivery_status?: string; order_status?: string } | null; source: { details: { status?: string; ready_at?: string; expires_at?: string; locked_until?: string; expired?: boolean; locked?: boolean } }; hubs: { id: number; name: string; is_active: boolean }[]; cash: { reference: string | null; holderName: string | null; amount_cents: number | null; evidence: string }; support: Record<string, string | number>; events: Record<string, Evidence[]> };
     history: { reference: string; action: string; reason: string; actor_name: string; responsible_name: string | null; created_at: string; supporting_evidence: Record<string, string | number> }[] };
 const human = (value: string) => value.replaceAll('_', ' ').replaceAll('-', ' ');
@@ -29,6 +29,7 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
                 </div>
 
                 <p className="text-sm font-semibold text-[#121316]">{human(item.reason)}</p>
+                {item.financialReviewUrl && <Link href={item.financialReviewUrl} className="inline-flex rounded-lg border border-rose-200 bg-rose-50/85 px-4 py-2 text-sm font-semibold text-[#C20836] hover:bg-[#E00D42] hover:text-white">Review returned-parcel finances</Link>}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                     <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">

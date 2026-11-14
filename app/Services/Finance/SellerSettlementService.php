@@ -85,6 +85,9 @@ class SellerSettlementService
         $basis['net_commission_cents'] = $promotions['promotion_blockers'] ? null : $basis['commission_cents'] - $promotions['platform_promotion_cents'];
         $basis += app(BuyerReturnAmounts::class)->sellerBasis($order, $basis['net_seller_cents'] ?? 0);
         $blockers = [];
+        if (app(ShipmentLossReconciliationService::class)->blocksOrderSettlement($order)) {
+            $blockers[] = 'Retain the separate reviewed loss and funded seller protection before any original-sale payment. Ordinary proceeds cannot duplicate that protection.';
+        }
         if ($order->buyerReturns()->whereNotIn('status', BuyerReturnCase::TERMINAL)->exists()) {
             $blockers[] = 'A buyer return is unresolved. Review its decision, custody and repayment before releasing seller proceeds.';
         }

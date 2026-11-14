@@ -24,7 +24,7 @@ const seller={id:7,name:'Seller',email:'seller@bagoo.test',role:'seller'};
 async function render(Component,props={},user=seller){let element;const page={component:user.role==='admin'?'Admin/Users':'Seller/Dashboard',props:{auth:{user},flash:{},...props},url:'/dashboard',version:null};const result=await createInertiaApp({page,resolve:()=>Component,setup:({App,props})=>(element=createElement(App,props)),render:()=>renderToStaticMarkup(element)});return result.body;}
 
 test('admin sections retain all destinations and open the active group with keyboard accessible buttons',async()=>{
- const names=['Dashboard','KYC Queue','Shop reviews','Users','Review requests','Products','Voucher campaigns','Advertisements','Logistics','Delivery exceptions','Buyer returns','Handover issues','COD cash','Seller proceeds','Wallet credits','Virtual proceeds','Financial oversight','Governance history','Resource activity'];
+ const names=['Dashboard','KYC Queue','Shop reviews','Users','Review requests','Products','Voucher campaigns','Advertisements','Logistics','Delivery exceptions','Buyer returns','Handover issues','COD cash','Seller proceeds','Return liabilities','Wallet credits','Virtual proceeds','Financial oversight','Governance history','Resource activity'];
  const items=names.map((name,index)=>({name,href:'/destination/'+index,icon,current:name==='Users',attention:name==='Products'}));
  const html=await render(ui.Sidebar,{items},{...seller,role:'admin'});
  assert.equal((html.match(/href="\/destination\//g)??[]).length,names.length);
@@ -115,4 +115,15 @@ test('informational updates and Products never add sidebar dots even in retained
   const html=await render(ui.Dashboard,{title:role,children:null,sidebarAttention,unreadMessagesCount:0},{...seller,role});
   assert.doesNotMatch(html,/ring-2 ring-white|Drafts, restricted listings or low stock|Restricted product listings/);
  }
+});
+
+
+test('return finance navigation is available once per authorized owner and hidden from operational floor accounts', async () => {
+ for(const role of ['admin','seller','logistics']){
+  const owner={...seller,role,status:'suspended',canManageReturnLiabilities:true};
+  const html=await render(ui.Dashboard,{title:'Return finances',children:null},owner);
+  assert.equal((html.match(/href="\/return-liabilities"/g)??[]).length,1);
+ }
+ const floor=await render(ui.Dashboard,{title:'Hub',children:null},{...seller,role:'logistics',canManageReturnLiabilities:false});
+ assert.doesNotMatch(floor,/href="\/return-liabilities"/);
 });

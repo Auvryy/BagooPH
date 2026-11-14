@@ -235,8 +235,9 @@ class ParcelRecoveryService
             $parcel->fill(['status' => self::HELD, 'current_hub_id' => $hub->id])->save();
             $event = $this->event($case, $actor, 'intake', $before, DeliveryCheckpoint::state($parcel), $input['notes'], $hub->id, $barcode,
                 payload: ['source_checkpoint_id' => $case->source_checkpoint_id], token: $input['request_token'], fingerprint: $fingerprint);
-            $this->checkpoint($case, $parcel, $actor, $hub, $event, 'parcel_recovery_intake', $before, $case->custody_snapshot,
+            $intakeCheckpoint = $this->checkpoint($case, $parcel, $actor, $hub, $event, 'parcel_recovery_intake', $before, $case->custody_snapshot,
                 ['kind' => 'hub', 'hub_id' => $hub->id, 'parcel_recovery_reference' => $case->reference]);
+            app(MotherBagService::class)->extractForRecovery($case, $parcel, $actor, $event, $intakeCheckpoint);
             if (count($case->hub_ids) === 1) {
                 $this->complete($case, $parcel, $actor, $hub, $input['notes']);
             }
@@ -420,7 +421,6 @@ class ParcelRecoveryService
             'hub_id' => $hub->id, 'event_type' => 'parcel_received', 'barcode_scanned' => $parcel->tracking_number, 'reason' => $notes,
             'source_state' => $before, 'target_state' => ['delivery_status' => $target], 'payload' => ['parcel_recovery_reference' => $case->reference]]);
         $member->update(['received_at' => now(), 'received_by_id' => $actor->id, 'receipt_condition' => 'intact', 'active_delivery_id' => null]);
-        app(MotherBagService::class)->received($manifest, $parcel, $actor, $parcel->tracking_number);
         if (! $manifest->parcels()->where('included', true)->whereNull('received_at')->exists()) {
             $manifest->fill(['status' => 'received', 'received_at' => now(), 'receiver_id' => $actor->id]);
         }
@@ -433,6 +433,7 @@ class ParcelRecoveryService
             evidence: ['source_state' => $before, 'target_state' => DeliveryCheckpoint::state($parcel), 'custody_before' => $custody,
                 'custody_after' => ['kind' => 'hub', 'hub_id' => $hub->id, 'manifest_scan_reference' => $scan->reference, 'parcel_recovery_reference' => $case->reference]]);
         $case->fill(['state' => 'completed', 'active_delivery_id' => null, 'version' => $case->version + 1])->save();
+        app(MotherBagService::class)->recovered($case, $parcel, $actor, $scan);
         $event = $this->event($case, $actor, 'completed', $before, DeliveryCheckpoint::state($parcel), $notes, $hub->id, $parcel->tracking_number, $scan);
         $observation = $case->observation;
         LogisticsManifestEvent::create(['manifest_id' => $observation->manifest_id, 'actor_id' => $actor->id, 'hub_id' => $hub->id,

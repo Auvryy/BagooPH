@@ -6,25 +6,29 @@ import type { PageProps } from '@/types';
 import { HubNextStep, HubRoute, hubButton } from '@/Components/Logistics/Workspace';
 import WaybillCamera from '@/Components/WaybillCamera';
 import WaybillCodes from '@/Components/WaybillCodes';
+import { emptyHandling, HandlingSummary, type Handling } from '@/Components/Logistics/CargoHandling';
 
 export interface ReturnCustody {
     barcode: string | null; status: string; position: number; weight_grams: number | null;
     custody: { kind: string }; current_hub_name: string | null; manifest_reference: string | null; manifest_url: string | null;
     manifest_pending?: boolean;
+    recovery?: { reference: string; state: string; active_route: boolean; url: string | null } | null;
+    handling?: Handling | null;
     hubs: Array<{ id: number; name: string; code: string; address: string; operating_hours: string | null }>;
     actions: Array<{ action: string; hub_id: number | null; label: string }>;
     can_dropoff?: boolean;
+    loss_hold?: string | null;
 }
 const input = 'mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:border-[#E00D42] focus:ring-[#E00D42]';
 
 export default function ReturnCustodyPanel({ custody, caseId, version }: { custody: ReturnCustody; caseId: number; version: number }) {
     const logistics = usePage<PageProps>().props.auth.user?.role === 'logistics';
     const form = useForm({ action: '', barcode: '', hub_id: null as number | null, expected_version: version, request_token: crypto.randomUUID(),
-        reason: '', weight_kg: '', condition: '', photo: null as File | null });
+        reason: '', weight_kg: '', condition: '', photo: null as File | null, handling: emptyHandling() });
     const pending = useRef(false);
     const [failure, setFailure] = useState('');
     useRequestError(pending, useCallback(message => setFailure(message), []));
-    useEffect(() => { form.setData({ action: '', barcode: '', hub_id: null, expected_version: version, request_token: crypto.randomUUID(), reason: '', weight_kg: '', condition: '', photo: null }); form.clearErrors(); }, [caseId, version]);
+    useEffect(() => { form.setData({ action: '', barcode: '', hub_id: null, expected_version: version, request_token: crypto.randomUUID(), reason: '', weight_kg: '', condition: '', photo: null, handling: emptyHandling() }); form.clearErrors(); }, [caseId, version]);
     const selected = custody.actions.find(option => option.action === form.data.action);
     const needsPhoto = ['intake', 'seller-receive'].includes(form.data.action);
     const submit = (event: FormEvent) => {
@@ -39,6 +43,7 @@ export default function ReturnCustodyPanel({ custody, caseId, version }: { custo
         form.transform(data => ({ action: selected.action, expected_version: version, request_token: data.request_token,
             reason: data.reason, ...(selected.action !== 'prepare-label' ? { barcode: data.barcode.trim().toUpperCase() } : {}),
             ...(selected.hub_id ? { hub_id: selected.hub_id } : {}), ...(selected.action === 'intake' ? { weight_kg: data.weight_kg } : {}),
+            ...(selected.action === 'measure' ? { handling: data.handling } : {}),
             ...(needsPhoto ? { condition: data.condition, photo: data.photo } : {}) }));
         form.post(`/buyer-returns/${caseId}/custody`, { forceFormData: needsPhoto, preserveScroll: true, onFinish: () => { pending.current = false; } });
     };
@@ -54,16 +59,19 @@ export default function ReturnCustodyPanel({ custody, caseId, version }: { custo
     return <section className="rounded-2xl border border-slate-300 bg-white p-5 sm:p-6" aria-label="Actual return custody">
         <div className="flex items-center gap-2"><PackageCheck className="h-5 w-5 text-[#E00D42]" aria-hidden="true" /><h2 className="text-lg font-bold text-slate-900">{logistics ? 'Return handover' : 'Return parcel'}</h2></div>
         {logistics && <p className="mt-4 text-sm leading-6 text-slate-700">{holderText}</p>}
-        {logistics && custody.custody.kind === 'hub' && custody.hubs.length > 0 && <div className="mt-4"><HubNextStep title={nextHub ? `Next hub: ${nextHub.name}` : needsSellerStaging ? 'Next: stage for seller collection' : 'Next: seller records receipt'} action={nextHub && <Link href={pendingTransfer ? custody.manifest_url! : route('hub.manifests.index')} className={hubButton}>{pendingTransfer ? 'Continue transfer' : 'Open transfers'}</Link>}>
+        {custody.loss_hold && <div role="status" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">{custody.loss_hold}</div>}
+        {custody.recovery && <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50/50 p-4"><p className="text-sm font-semibold text-[#9F1239]">Route recovery · {custody.recovery.state.replaceAll('_', ' ')}</p><p className="mt-1 text-xs leading-5 text-slate-600">{custody.recovery.active_route ? 'The authorized recovery path is shown below. The original return route resumes at its expected hub.' : ['observed', 'authorized'].includes(custody.recovery.state) ? 'An unexpected-hub observation is under review. Physical custody has not changed.' : 'The retained recovery history is available with this return.'}</p>{custody.recovery.url && <Link className={`${hubButton} mt-3`} href={custody.recovery.url}>Open route recovery</Link>}</div>}
+        {logistics && custody.handling && <div className="mt-3 rounded-lg bg-rose-50 p-3"><HandlingSummary value={custody.handling} /></div>}
+        {logistics && !custody.loss_hold && custody.custody.kind === 'hub' && custody.hubs.length > 0 && <div className="mt-4"><HubNextStep title={nextHub ? `Next hub: ${nextHub.name}` : needsSellerStaging ? 'Next: stage for seller collection' : 'Next: seller records receipt'} action={nextHub && <Link href={pendingTransfer ? custody.manifest_url! : route('hub.manifests.index')} className={hubButton}>{pendingTransfer ? 'Continue transfer' : 'Open transfers'}</Link>}>
             {nextHub ? (pendingTransfer ? `${custody.manifest_reference ?? 'The original transfer'} is already prepared. ${currentHubName}’s sending handler records the actual outbound scan and departure on that manifest.`
                 : `${currentHubName}’s sending handler prepares the next leg in Manifests. Choose Buyer item return and scan this separate return barcode.`) : needsSellerStaging
                 ? `${currentHubName}’s handler stages the returned parcel for seller collection using its separate return barcode.`
                 : `The seller receives the returned items at ${currentHubName} and records the separate barcode, condition and handover photo. Repayment keeps its own review.`}
         </HubNextStep></div>}
-        {logistics && custody.custody.kind === 'manifest' && nextHub && <div className="mt-4"><HubNextStep title={`Next: receipt at ${nextHub.name}`} action={custody.manifest_url && <Link href={custody.manifest_url} className={hubButton}>Open arrival manifest</Link>}>
+        {logistics && !custody.loss_hold && custody.custody.kind === 'manifest' && nextHub && <div className="mt-4"><HubNextStep title={`Next: receipt at ${nextHub.name}`} action={custody.manifest_url && <Link href={custody.manifest_url} className={hubButton}>Open arrival manifest</Link>}>
             {nextHub.name}’s receiving handler checks the separate return barcode and actual parcel condition, then records its receipt on the original manifest.
         </HubNextStep></div>}
-        {logistics && custody.hubs.length > 0 && <div className="mt-5"><HubRoute stops={custody.hubs} currentHubId={custody.custody.kind === 'hub' ? custody.hubs[custody.position]?.id : null} label="Saved return route" /></div>}
+        {logistics && custody.hubs.length > 0 && <div className="mt-5"><HubRoute stops={custody.hubs} currentHubId={custody.custody.kind === 'hub' ? custody.hubs[custody.position]?.id : null} label={custody.recovery?.active_route ? 'Authorized recovery route' : 'Saved return route'} /></div>}
         {custody.barcode && <div className="mt-4 rounded-xl border border-slate-300 bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-600">Separate return barcode</p><p className="mt-2 break-all text-base font-bold text-slate-900">{custody.barcode}</p><p className="mt-2 text-xs leading-5 text-slate-600">Show this reference with the returned items. The original delivery waybill cannot record this return.</p></div>}
         {custody.barcode && (logistics ? <details className="mt-4 rounded-lg border border-slate-200 p-3"><summary className="cursor-pointer text-sm font-semibold text-slate-700">Barcode and QR for this return</summary><div className="mt-4 max-w-sm"><WaybillCodes trackingNumber={custody.barcode} compact /></div></details> : <div className="mt-4 max-w-sm"><WaybillCodes trackingNumber={custody.barcode} compact /></div>)}
         {!logistics && <p className="mt-4 text-sm leading-6 text-slate-700">{holderText}</p>}
@@ -75,6 +83,14 @@ export default function ReturnCustodyPanel({ custody, caseId, version }: { custo
             {logistics && selected && selected.action !== 'prepare-label' && <WaybillCamera disabled={form.processing} onScan={barcode => form.setData('barcode', barcode)} instruction="Scan the separate return barcode. Confirm the actual handover using the checks below." />}
             {selected && selected.action !== 'prepare-label' && <label className="block text-sm font-semibold text-slate-700">Scan the separate return barcode<input required maxLength={40} disabled={form.processing} autoComplete="off" className={input} value={form.data.barcode} onChange={event => form.setData('barcode', event.target.value)} /></label>}
             {selected?.action === 'intake' && <label className="block text-sm font-semibold text-slate-700">Measured weight in kg<input required type="number" min="0.001" max="50000" step="0.001" disabled={form.processing} className={input} value={form.data.weight_kg} onChange={event => form.setData('weight_kg', event.target.value)} /></label>}
+            {selected?.action === 'measure' && <fieldset disabled={form.processing} className="rounded-lg border border-rose-200 bg-rose-50/40 p-4">
+                <legend className="px-1 text-sm font-semibold text-[#9F1239]">Actual outer package</legend>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{([['weight_kg', 'Weight (kg)'], ['length_cm', 'Length (cm)'], ['width_cm', 'Width (cm)'], ['height_cm', 'Height (cm)']] as const).map(([key, label]) =>
+                    <label key={key} className="text-xs font-semibold text-slate-700">{label}<input required type="number" inputMode="decimal" min="0.001" max="10000" step="0.001" className={input} value={form.data.handling[key]}
+                        onChange={event => form.setData('handling', { ...form.data.handling, [key]: event.target.value })} /></label>)}</div>
+                <label className="mt-4 flex items-start gap-2 text-xs text-slate-700"><input required type="checkbox" checked={form.data.handling.confirmed} onChange={event => form.setData('handling', { ...form.data.handling, confirmed: event.target.checked })}
+                    className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" />I checked this package’s actual weight and outside dimensions.</label>
+            </fieldset>}
             {needsPhoto && <><label className="block text-sm font-semibold text-slate-700">Condition<select required disabled={form.processing} className={input} value={form.data.condition} onChange={event => form.setData('condition', event.target.value)}><option value="">Choose actual condition</option>{selected?.action === 'intake' ? <><option value="intact">Package intact</option><option value="damaged">Package damaged</option></> : <><option value="accepted">Received and return condition accepted</option><option value="disputed">Received, condition needs review</option></>}</select></label><label className="block text-sm font-semibold text-slate-700">Photo of the actual handover<input required type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" disabled={form.processing} className={input} onChange={event => form.setData('photo', event.target.files?.[0] ?? null)} /><span className="mt-1 block text-xs font-normal text-slate-500">Real JPG, PNG or WebP, up to 5 MB. Kept with the private handover evidence.</span></label></>}
             <label className="block text-sm font-semibold text-slate-700">Handover details<textarea required minLength={10} maxLength={1000} disabled={form.processing} className={input} rows={3} value={form.data.reason} onChange={event => form.setData('reason', event.target.value)} /><span className="mt-1 block text-xs font-normal text-slate-500">10–1,000 characters describing what was physically checked.</span></label>
             {failure && <p role="alert" className="text-sm text-rose-700">{failure}</p>}{Object.entries(form.errors).map(([key, message]) => <p key={key} role="alert" className="text-sm text-rose-700">{String(message)}</p>)}

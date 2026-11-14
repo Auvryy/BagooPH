@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BuyerReturnManifestParcel;
 use App\Models\CodAccount;
 use App\Models\CodCustodyEntry;
 use App\Models\CourierProfile;
@@ -25,9 +26,11 @@ use App\Models\PickupClaim;
 use App\Models\PickupClaimEvent;
 use App\Models\RestrictionAffectedWork;
 use App\Models\RestrictionDecision;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Services\Finance\CodCashViewService;
+use App\Services\Finance\ShipmentLossReview;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\ParcelRecoveryService;
 use App\Services\Logistics\PickupClaimService;
@@ -35,8 +38,10 @@ use App\Services\Logistics\RestrictedCustodyRecoveryService;
 use DomainException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class ExceptionOversightService
 {
@@ -143,9 +148,52 @@ class ExceptionOversightService
             'canResolve' => filled($state['support']) && $latest?->action !== 'resolve',
             'blocker' => $state['support'] ? null : $this->blocker($kind, $context),
             'recoveryUrl' => $recoveryUrl,
+            'financialReviewUrl' => $this->financialReviewUrl($actor, $kind, $context),
             'history' => $history->map(fn ($event) => $event->only(['reference', 'action', 'reason', 'actor_name', 'actor_role', 'responsible_name', 'supporting_evidence', 'created_at']))->all(),
             'candidates' => $withCandidates ? array_values(array_filter($this->candidates($context['companyId']), fn ($candidate) => $actor->isAdmin() || $candidate['role'] !== 'admin')) : [],
         ];
+    }
+
+    private function financialReviewUrl(User $actor, string $kind, array $context): ?string
+    {
+        if (! $actor->isAdmin() || ! $actor->email_verified_at || ! Schema::hasTable('shipment_financial_plans')) {
+            return null;
+        }
+        $source = $context['source'];
+        if ($kind === 'manifest' && ($source->payload['kind'] ?? null) === 'missing') {
+            $caseId = $context['manifest']->direction === 'buyer_return'
+                ? BuyerReturnManifestParcel::whereKey($source->payload['return_member_id'] ?? 0)->where('manifest_id', $source->manifest_id)
+                    ->with('parcel')->first()?->parcel?->buyer_return_case_id : null;
+            $plan = ShipmentFinancialPlan::where('kind', 'transit_loss')
+                ->where(fn ($active) => $active->whereNotNull('active_order_id')->orWhereNotNull('active_return_case_id'))
+                ->where(function ($plans) use ($source, $caseId, $context) {
+                    $plans->where('loss_observation_id', $source->id);
+                    if ($caseId) {
+                        $plans->orWhere('active_return_case_id', $caseId);
+                    } elseif ($context['parcel'] && $context['order']) {
+                        $plans->orWhere(fn ($original) => $original->where('delivery_id', $context['parcel']->id)->where('active_order_id', $context['order']->id));
+                    }
+                })->latest('id')->first(['id']);
+            if ($plan) {
+                return '/shipment-finances/'.$plan->id;
+            }
+            try {
+                app(ShipmentLossReview::class)->preview($actor, $source,
+                    ['seller_protection' => '0.00', 'investigation_reference' => 'Awaiting independent investigation']);
+            } catch (HttpExceptionInterface $error) {
+                if (! in_array($error->getStatusCode(), [403, 409], true)) {
+                    throw $error;
+                }
+
+                return null;
+            }
+
+            return '/shipment-finances/missing/'.$source->id.'/review';
+        }
+
+        return $kind === 'attempt' && $source->reason_code === 'customer_refused' && $context['order']?->status === 'returned'
+            && ($context['order']->shipping_quote['refund_policy_version'] ?? 1) === 2
+            ? '/shipment-finances/orders/'.$context['order']->id.'/review' : null;
     }
 
     public function sourceGaps(User $actor): array

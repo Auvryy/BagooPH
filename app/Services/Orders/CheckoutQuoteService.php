@@ -79,7 +79,7 @@ class CheckoutQuoteService
             $shippingQuote = app(LogisticsRateService::class)->quote($group, $company);
             $doorstep = $shippingQuote['shipping_cents'];
             $payable = $deliveryType === 'hub_self_pickup' ? 0 : $doorstep;
-            $shippingQuote += ['purchased_terms_version' => 1, 'refund_policy_version' => 1, 'cancellation_policy_version' => $cancellationPolicy,
+            $shippingQuote += ['purchased_terms_version' => 1, 'refund_policy_version' => 2, 'cancellation_policy_version' => $cancellationPolicy,
                 'delivery_type' => $deliveryType, 'payable_shipping_cents' => $payable,
                 'earnings_terms_version' => 1,
                 'earnings_split_cents' => app(LogisticsRateService::class)->shippingSplit($payable, $shippingQuote['earnings_model'])];

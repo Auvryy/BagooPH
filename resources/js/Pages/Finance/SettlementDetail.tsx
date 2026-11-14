@@ -3,6 +3,7 @@ import { useEffect, type FormEvent } from 'react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { cashButton, cashDate, cashInput, cashMoney, cashPrimary } from '@/Components/CodCashUI';
 import type { SettlementRecord } from '@/types/finance';
+import FinancialReviewLinks from '@/Components/Finance/FinancialReviewLinks';
 
 export default function SettlementDetail({ record, can_release, requestToken }: {
     record: SettlementRecord; can_release: boolean; requestToken: string;
@@ -30,6 +31,7 @@ export default function SettlementDetail({ record, can_release, requestToken }: 
             <Head title="Seller settlement evidence" />
             <div className="space-y-5">
                 <Link className={cashButton} href="/seller-settlements">All seller proceeds</Link>
+                <FinancialReviewLinks value={record.shipment_finances} />
 
                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
                     <div className="flex flex-wrap justify-between gap-3 border-b border-zinc-100 pb-4">

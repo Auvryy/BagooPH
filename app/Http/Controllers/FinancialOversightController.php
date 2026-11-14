@@ -10,11 +10,15 @@ use UnexpectedValueException;
 
 class FinancialOversightController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
+
     public function __construct(private readonly FinancialOversightService $oversight) {}
 
     public function index(Request $request)
     {
         $payload = $this->oversight->page($request->user(), $request->query(), $request->url());
+
+        $this->encryptSensitiveHistory($request);
 
         return $request->expectsJson() ? response()->json($payload, $payload['error'] ? 503 : 200)->header('Cache-Control', 'private, no-store')
             : Inertia::render('Finance/Overview', $payload)->toResponse($request)->header('Cache-Control', 'private, no-store');
@@ -28,6 +32,8 @@ class FinancialOversightController extends Controller
             report($exception);
             abort(503, 'Original financial evidence is unavailable. Try again after the source is restored.');
         }
+
+        $this->encryptSensitiveHistory($request);
 
         return $request->expectsJson() ? response()->json($payload)->header('Cache-Control', 'private, no-store')
             : Inertia::render('Finance/Evidence', $payload)->toResponse($request)->header('Cache-Control', 'private, no-store');

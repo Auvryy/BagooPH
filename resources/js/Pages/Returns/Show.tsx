@@ -18,19 +18,21 @@ interface ReturnCase {
     history: Array<{ reference: string; event_type: string; actor_role: string; reason: string; target_status: string; created_at: string }>;
     custody?: ReturnCustody | null;
     money?: ReturnMoney | null;
+    fault_review?: { fault: string; reason: string; evidence: string | null; event_reference: string; actor_role: string; decided_at: string } | null;
+    refund_policy_version?: number;
 }
-const actionNames: Record<string, string> = { approve: 'Approve return', reject: 'Reject return', escalate: 'Ask admin to review', withdraw: 'Withdraw request', 'close-period': 'Close expired period' };
+const actionNames: Record<string, string> = { approve: 'Approve return', reject: 'Reject return', escalate: 'Ask admin to review', withdraw: 'Withdraw request', 'close-period': 'Close expired period', 'review-fault': 'Review fault and liability' };
 const reasons: Record<string, string> = { damaged: 'Item damaged', wrong_item: 'Wrong item', missing_parts: 'Missing parts', not_as_described: 'Not as described' };
 
 export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCase }) {
     const { auth } = usePage<PageProps>().props;
-    const form = useForm({ action: '', reason: '', expected_version: item.version, request_token: crypto.randomUUID() });
+    const form = useForm({ action: '', reason: '', fault: '', fault_evidence: '', expected_version: item.version, request_token: crypto.randomUUID() });
     const reasonLimit = auth.user?.role === 'seller' && form.data.action === 'reject' ? 300 : 1000;
     const pending = useRef(false);
     const [failure, setFailure] = useState('');
     const [refreshing, setRefreshing] = useState(false);
     useRequestError(pending, useCallback(message => setFailure(message), []));
-    useEffect(() => { form.setData({ action: '', reason: '', expected_version: item.version, request_token: crypto.randomUUID() }); form.clearErrors(); }, [item.id, item.version]);
+    useEffect(() => { form.setData({ action: '', reason: '', fault: '', fault_evidence: '', expected_version: item.version, request_token: crypto.randomUUID() }); form.clearErrors(); }, [item.id, item.version]);
     const submit = (event: FormEvent) => {
         event.preventDefault();
         if (pending.current || form.processing || !item.actions.includes(form.data.action)) return;
@@ -89,6 +91,13 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                     <div className="space-y-6">
                         {item.custody && <ReturnCustodyPanel custody={item.custody} caseId={item.id} version={item.version} />}
                         {item.money && <ReturnMoneyPanel value={item.money} caseId={item.id} version={item.version} />}
+                        {item.fault_review && <section className="rounded-xl border border-rose-200 bg-rose-50/50 p-5">
+                            <h2 className="text-sm font-bold text-[#C20836]">Recorded fault review</h2>
+                            <p className="mt-2 font-semibold text-slate-900">{item.fault_review.fault === 'seller' ? 'Seller / item fault' : item.fault_review.fault === 'courier' ? 'Courier-company fault' : 'Fault not determined under the original policy'}</p>
+                            <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-700">{item.fault_review.reason}</p>
+                            {item.fault_review.evidence && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-600">{item.fault_review.evidence}</p>}
+                            <p className="mt-3 break-all text-xs text-slate-500">{item.fault_review.event_reference} · {returnDate(item.fault_review.decided_at)}</p>
+                        </section>}
 
                         {/* Purchased Items */}
                         <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
@@ -230,7 +239,7 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                                             required
                                             disabled={form.processing || refreshing}
                                             value={form.data.action}
-                                            onChange={event => form.setData('action', event.target.value)}
+                                            onChange={event => form.setData({ ...form.data, action: event.target.value, fault: '', fault_evidence: '' })}
                                             className="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-[#121316] focus:border-[#E00D42] focus:ring-[#E00D42]"
                                         >
                                             <option value="">Choose an action</option>
@@ -239,6 +248,19 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                                             ))}
                                         </select>
                                     </label>
+                                    {['approve', 'review-fault'].includes(form.data.action) && <div className="space-y-3 rounded-lg border border-rose-200 bg-rose-50/60 p-3">
+                                        <label className="block text-xs font-bold text-slate-800">Fault finding
+                                            <select value={form.data.fault} onChange={event => form.setData('fault', event.target.value)} required={form.data.action === 'review-fault' || item.refund_policy_version === 2} disabled={form.processing || refreshing} className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]">
+                                                <option value="">Choose the evidenced fault</option>
+                                                <option value="seller">Seller / item fault</option>
+                                                {auth.user?.role === 'admin' && <option value="courier">Courier-company fault</option>}
+                                            </select>
+                                        </label>
+                                        {form.data.fault === 'courier' && <label className="block text-xs font-bold text-slate-800">Supporting transit evidence
+                                            <textarea required minLength={10} maxLength={1000} rows={3} value={form.data.fault_evidence} onChange={event => form.setData('fault_evidence', event.target.value)} disabled={form.processing || refreshing} className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" />
+                                            <span className="mt-1 block text-xs font-normal text-slate-600">10–1,000 characters. Reference the actual observations and retained handovers.</span>
+                                        </label>}
+                                    </div>}
                                     <label className="block text-xs font-bold text-[#121316]">
                                         Reason
                                         <textarea

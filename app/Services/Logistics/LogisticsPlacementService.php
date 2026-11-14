@@ -92,7 +92,7 @@ class LogisticsPlacementService
             if ($profile->assigned_hub_id !== $expectedHubId) {
                 throw new DomainException('The courier placement changed. Check its current facility before trying again.');
             }
-            if (Delivery::riderHasActiveWork($courier->id) || LogisticsManifest::where('driver_id', $courier->id)->where('status', 'dispatched')->exists()) {
+            if (Delivery::riderHasActiveWork($courier->id) || LogisticsManifest::awaitingPhysicalReceipt()->where('driver_id', $courier->id)->exists()) {
                 throw new DomainException('Finish or recover the courier’s existing parcel custody before changing placement.');
             }
             $oldVehicle = $profile->vehicle_id ? $fleet->get($profile->vehicle_id) : null;

@@ -18,6 +18,9 @@ use App\Models\Order;
 use App\Models\ParcelRecoveryCase;
 use App\Models\User;
 use App\Rules\AsciiPositiveInteger;
+use App\Services\Finance\ShipmentLossAccountingService;
+use App\Services\Finance\ShipmentLossCustody;
+use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Returns\BuyerReturnManifestService;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -72,6 +75,7 @@ class LogisticsManifestService
             'direction' => ['required', Rule::in(['outbound', 'return', 'recovery', 'buyer_return'])],
             'parcel_recovery_case_id' => ['exclude_unless:direction,recovery', ...$this->idRules()],
             'buyer_return_case_id' => ['exclude_unless:direction,buyer_return', ...$this->idRules()],
+            'buyer_return_recovery_id' => ['exclude_unless:direction,buyer_return', 'nullable', new AsciiPositiveInteger, 'integer'],
         ])->validate();
         if ($input['direction'] === 'buyer_return') {
             return app(BuyerReturnManifestService::class)->create($actor, $input, $issuedToken);
@@ -210,6 +214,7 @@ class LogisticsManifestService
 
                 return ['manifest' => $manifest, 'event' => $original];
             }
+            app(LogisticsTripService::class)->assertManifestCommand($manifest, $action);
             if ($manifest->version !== (int) $input['version']) {
                 throw new DomainException('The manifest changed. Refresh its current list and state before continuing.');
             }
@@ -217,10 +222,18 @@ class LogisticsManifestService
                 throw new DomainException('Corrective receipts retain the original list and departure history. Resolve its remaining receipts and use reviewed closure.');
             }
             if (! in_array($action, ['report-discrepancy', 'correct-discrepancy', 'resolve-discrepancy'], true)) {
+                $accountedLosses = in_array($action, ['close', 'close-recovery'], true)
+                    ? app(ShipmentLossAccountingService::class)->members($manifest)->keys()->all() : [];
                 foreach ($deliveries as $parcel) {
                     if ($parcel->id === $candidate?->id || ($action !== 'receive'
                         && (in_array($parcel->id, $heldManifestIds, true) || $manifest->parcels()->where('delivery_id', $parcel->id)->where('included', true)->exists()))) {
-                        app(HandoverHoldService::class)->assertMovable($parcel);
+                        if ($manifest->parcels()->where('delivery_id', $parcel->id)->whereIn('id', $accountedLosses)->exists()) {
+                            if (app(HandoverHoldService::class)->active($parcel)) {
+                                throw new DomainException('Resolve the separate supervised handover hold before loss-accounting closure.');
+                            }
+                        } else {
+                            app(HandoverHoldService::class)->assertMovable($parcel);
+                        }
                     }
                 }
             }
@@ -328,7 +341,8 @@ class LogisticsManifestService
                     $vehicle = $this->vehicle($manifest->logistics_company_id, $manifest->source_hub_id, $manifest->vehicle_id, $manifest->driver_id, newWork: true, legType: $manifest->type);
                     $manifest->setRelation('vehicle', $vehicle);
                     app(CargoHandlingService::class)->assertManifestCapacity($manifest);
-                    if (LogisticsManifest::where('status', 'dispatched')->whereKeyNot($manifest->id)
+                    if (LogisticsManifest::awaitingPhysicalReceipt()->whereKeyNot($manifest->id)
+                        ->whereNotIn('id', app(LogisticsTripService::class)->departingManifestIds())
                         ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->orWhere('driver_id', $manifest->driver_id))->exists()) {
                         throw new DomainException('This vehicle or driver already has a manifest in transit.');
                     }
@@ -369,6 +383,7 @@ class LogisticsManifestService
                     if (! $delivery || $this->route($delivery) !== $parcel->route_snapshot) {
                         throw new DomainException('The parcel route changed and needs review before receipt.');
                     }
+                    app(ShipmentLossCustody::class)->assertMovable($delivery);
                     if ($this->openDiscrepancies($manifest)->contains(fn ($event) => $event->manifest_parcel_id === $parcel->id && $event->payload['kind'] === 'damaged')) {
                         $this->requireNotes($input);
                     }
@@ -495,8 +510,12 @@ class LogisticsManifestService
                     break;
                 case 'close':
                 case 'close-recovery':
+                    $accountedLosses = app(ShipmentLossAccountingService::class)->members($manifest);
                     if ($action === 'close') {
-                        $this->requireStatus($manifest, 'received');
+                        $wholeTransportConfirmed = app(WholeTransportLossService::class)->manifestConfirmed($manifest);
+                        if (($accountedLosses->isEmpty() && ! $wholeTransportConfirmed) || $manifest->status !== 'dispatched') {
+                            $this->requireStatus($manifest, 'received');
+                        }
                     } else {
                         $this->requireNotes($input);
                         if (! in_array($manifest->status, ['draft', 'sealed', 'dispatched', 'received'], true) || ! $manifest->correctiveReceipts()->exists()) {
@@ -507,6 +526,9 @@ class LogisticsManifestService
                         throw new DomainException('Resolve every recorded discrepancy with supporting evidence before closure.');
                     }
                     foreach ($manifest->parcels()->where('included', true)->get() as $member) {
+                        if ($accountedLosses->has($member->id)) {
+                            continue;
+                        }
                         if ($corrective = $this->correctiveForMember($member)) {
                             continue;
                         }
@@ -521,14 +543,20 @@ class LogisticsManifestService
                         throw new DomainException('Every corrective receipt must retain its actual authorization and custody evidence.');
                     }
                     $manifest->fill(['status' => 'closed', 'closed_at' => now()]);
+                    if ($accountedLosses->isNotEmpty()) {
+                        $payload['accounting_references'] = $accountedLosses->map->reference->unique()->values()->all();
+                    }
                     foreach ($manifest->parcels()->where('included', true)->get() as $member) {
-                        $member->update(['active_delivery_id' => null]);
+                        if (! $accountedLosses->has($member->id)) {
+                            $member->update(['active_delivery_id' => null]);
+                        }
                     }
                     break;
             }
             $manifest->version++;
             $manifest->save();
-            $record = $this->event($manifest, $actor, $action, $before, $manifest->state(), $payload, $parcel,
+            $eventType = isset($payload['accounting_references']) ? 'close-loss-accounting' : $action;
+            $record = $this->event($manifest, $actor, $eventType, $before, $manifest->state(), $payload, $parcel,
                 $input['barcode'] ?? null, $hubId, $input['notes'] ?? null, $input['request_token'], $fingerprint);
 
             return ['manifest' => $manifest, 'event' => $record];
@@ -549,6 +577,29 @@ class LogisticsManifestService
         if (in_array($delivery->order->status, ['cancelled', 'completed', 'returned'], true)
             || ! $source || ($custody['kind'] ?? null) !== 'hub' || ($custody['hub_id'] ?? null) !== $delivery->current_hub_id) {
             throw new DomainException('Recorded source-hub custody is required before manifest loading.');
+        }
+        $reconciled = app(ShipmentLossReconciliationService::class)->activeForParcel($delivery);
+        if ($reconciled?->outcome_path === 'unpaid_undelivered') {
+            $path = $reconciled->forward_route_hub_ids ?? [];
+            $position = array_search($source->id, $path, true);
+            $nextId = $position !== false ? ($path[$position + 1] ?? null) : null;
+            $next = $nextId ? LogisticsHub::eligible()->where('logistics_company_id', $delivery->logistics_company_id)->find($nextId) : null;
+            if (! $next) {
+                throw new DomainException('This parcel has no further reconciled forward hub transfer. Continue local sorting or review its route.');
+            }
+            $this->legType($source, $next);
+            if ($source->isMotherHub()) {
+                $quarantineReleasedHere = $position === 0
+                    && $delivery->checkpoints()->where('checkpoint_type', 'loss_quarantine_released')->where('hub_id', $source->id)->exists();
+                if (! in_array($delivery->status, ['arrived_at_mother_hub', 'sorted_to_line_haul'], true)
+                    || (! $quarantineReleasedHere && ! $this->actualHubReceipt($delivery, $source->id) && ! $this->historicalHubReceipt($delivery, $source->id))) {
+                    throw new DomainException('The Mother Hub needs its actual receipt or quarantine release before further departure.');
+                }
+            } elseif ($delivery->status !== OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB || $position !== 0) {
+                throw new DomainException('Complete the expected origin or quarantine release before the next transfer.');
+            }
+
+            return $next->id;
         }
         if ($delivery->order->logistics_flow_version >= 2) {
             $path = $delivery->route_hub_ids ?? [];
@@ -617,11 +668,14 @@ class LogisticsManifestService
 
     public function receiptCounts(LogisticsManifest $manifest): array
     {
+        $lost = app(ShipmentLossAccountingService::class)->members($manifest)->count();
         if ($manifest->direction === 'buyer_return') {
             $members = $manifest->buyerReturnParcels()->where('included', true)->get();
 
             return ['expected' => $members->count(), 'normal_received' => $members->whereNotNull('received_at')->count(),
-                'corrective_expected_received' => 0, 'unlisted_received' => 0, 'outstanding' => $members->whereNull('received_at')->count()];
+                'corrective_expected_received' => 0, 'unlisted_received' => 0,
+                ...($lost > 0 ? ['confirmed_lost' => $lost] : []),
+                'outstanding' => $members->whereNull('received_at')->count() - $lost];
         }
         $members = $manifest->parcels()->where('included', true)->get();
         $corrective = $manifest->correctiveReceipts()->get()->filter(fn ($receipt) => $receipt->supports());
@@ -630,7 +684,8 @@ class LogisticsManifestService
 
         return ['expected' => $members->count(), 'normal_received' => $normalIds->count(), 'corrective_expected_received' => $correctiveIds->count(),
             'unlisted_received' => $corrective->whereNull('manifest_parcel_id')->count(),
-            'outstanding' => $members->count() - $normalIds->count() - $correctiveIds->count()];
+            ...($lost > 0 ? ['confirmed_lost' => $lost] : []),
+            'outstanding' => $members->count() - $normalIds->count() - $correctiveIds->count() - $lost];
     }
 
     private function expectedHub(Delivery $delivery, ?int $id, string $tier): int
@@ -661,9 +716,15 @@ class LogisticsManifestService
             return app(ParcelRecoveryService::class)->recoveryRoute($recovery);
         }
         $route = app(DeliveryReturnService::class)->forwardRoute($delivery);
+        $reconciled = app(ShipmentLossReconciliationService::class)->activeForParcel($delivery);
         if ($this->direction($delivery) === 'return') {
+            if ($reconciled?->outcome_path === 'already_settled_seller_return') {
+                return $route + ['reconciliation_reference' => $reconciled->reference, 'return_route_reference' => $reconciled->reference, 'return_hub_ids' => $reconciled->return_route_hub_ids];
+            }
             $return = app(DeliveryReturnService::class)->route($delivery);
             $route += ['return_route_reference' => $return->reference, 'return_hub_ids' => $return->hub_ids];
+        } elseif ($reconciled?->outcome_path === 'unpaid_undelivered') {
+            $route += ['reconciliation_reference' => $reconciled->reference, 'forward_route_hub_ids' => $reconciled->forward_route_hub_ids];
         }
 
         return $route;
@@ -708,9 +769,10 @@ class LogisticsManifestService
     public function openDiscrepancies(LogisticsManifest $manifest): Collection
     {
         $resolved = $manifest->events()->where('event_type', 'resolve-discrepancy')->get()->pluck('payload.source_event_id');
+        $accounted = app(ShipmentLossAccountingService::class)->observations($manifest);
 
         return $manifest->events()->where('event_type', 'report-discrepancy')->orderBy('id')->get()
-            ->reject(fn ($event) => $resolved->contains($event->id))->values();
+            ->reject(fn ($event) => $resolved->contains($event->id) || $accounted->contains($event->id))->values();
     }
 
     private function requireArriving(LogisticsManifest $manifest): void
@@ -763,6 +825,16 @@ class LogisticsManifestService
             return;
         }
         $route = $parcel->route_snapshot;
+        if (! empty($route['reconciliation_reference'])) {
+            $corridor = $manifest->direction === 'return' ? ($route['return_hub_ids'] ?? []) : ($route['forward_route_hub_ids'] ?? []);
+            $position = array_search($manifest->source_hub_id, $corridor, true);
+            if ($position === false || ($corridor[$position + 1] ?? null) !== $manifest->destination_hub_id
+                || $this->legType($manifest->sourceHub, $manifest->destinationHub) !== $manifest->type) {
+                throw new DomainException('The arriving manifest must match the approved found-parcel reconciliation corridor.');
+            }
+
+            return;
+        }
         $sourceTier = in_array($manifest->source_hub_id, [$route['origin_mother_hub_id'], $route['destination_mother_hub_id']], true)
             ? 'regional_mother_hub' : 'local_bayan_hub';
         $destinationTier = in_array($manifest->destination_hub_id, [$route['origin_mother_hub_id'], $route['destination_mother_hub_id']], true)
@@ -782,7 +854,11 @@ class LogisticsManifestService
             || $vehicle->vehicle_type !== ($legType === 'line_haul' ? 'wing_truck' : 'l300_van')) {
             throw new DomainException('Choose an active source-hub closed van for feeder transport or wing truck for line-haul, with its current responsible driver.');
         }
-        $this->eligibility->assertCourierScope($profile, $companyId, $hubId, newWork: $newWork);
+        $this->eligibility->assertCourierScope($profile, $companyId, $hubId,
+            newWork: $newWork && ! app(LogisticsTripService::class)->departingVehicle($vehicleId));
+        if ($newWork && ! $profile?->is_available) {
+            throw new DomainException('The assigned driver must be available before accepting transport.');
+        }
         if ($newWork && Delivery::riderHasActiveWork($driverId)) {
             throw new DomainException('This driver must finish the existing pickup or final-mile work before accepting manifest transport.');
         }

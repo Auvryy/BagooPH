@@ -18,7 +18,7 @@ class BuyerReturnCustodyController extends Controller
 {
     public function store(Request $request, BuyerReturnCase $case, BuyerReturnCustodyService $custody): RedirectResponse
     {
-        $data = $request->validate(['action' => ['required', Rule::in(['prepare-label', 'intake', 'stage', 'seller-receive'])]]);
+        $data = $request->validate(['action' => ['required', Rule::in(['prepare-label', 'intake', 'measure', 'stage', 'seller-receive'])]]);
         try {
             $custody->command($request->user(), $case, $data['action'], $request->except('photo'), $request->file('photo'));
         } catch (ValidationException|AuthorizationException|HttpExceptionInterface $error) {

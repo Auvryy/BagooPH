@@ -8,12 +8,15 @@ use Inertia\Inertia;
 
 class LogisticsEarningsController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
+
     public function index(Request $request, LogisticsEarningsService $service)
     {
         $actor = $request->user();
         if ($actor->isCourier()) {
             return redirect()->route('courier.earnings');
         }
+        $this->encryptSensitiveHistory($request);
 
         return Inertia::render('Finance/DeliveryEarnings', [
             'summary' => $service->summary($actor),

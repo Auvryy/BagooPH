@@ -13,11 +13,15 @@ use Inertia\Inertia;
 
 class ExceptionOversightController extends Controller
 {
+    use Concerns\EncryptsSensitiveHistory;
+
     public function index(Request $request, ExceptionOversightService $service)
     {
         $filters = $request->validate(['kind' => ['nullable', Rule::in(array_keys(ExceptionOversightService::SOURCES))],
             'status' => ['nullable', 'in:open,resolved,all'], 'page' => ['nullable', 'integer', 'min:1']]);
         $data = ['exceptions' => $service->queue($request->user(), $filters), 'filters' => $filters, 'sourceGaps' => $service->sourceGaps($request->user())];
+
+        $this->encryptSensitiveHistory($request);
 
         return $request->expectsJson() ? response()->json($data)->header('Cache-Control', 'private, no-store') : Inertia::render('Governance/Exceptions', $data);
     }
@@ -25,6 +29,8 @@ class ExceptionOversightController extends Controller
     public function show(Request $request, string $kind, int $id, ExceptionOversightService $service)
     {
         $data = ['exception' => $service->detail($request->user(), $kind, $id), 'requestToken' => (string) Str::uuid()];
+
+        $this->encryptSensitiveHistory($request);
 
         return $request->expectsJson() ? response()->json($data)->header('Cache-Control', 'private, no-store') : Inertia::render('Governance/ExceptionDetail', $data);
     }

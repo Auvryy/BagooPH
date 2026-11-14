@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Logistics;
 
+use App\Http\Controllers\Concerns\EncryptsSensitiveHistory;
 use App\Http\Controllers\Controller;
 use App\Models\HandoverIssue;
 use App\Rules\AsciiPositiveInteger;
@@ -18,6 +19,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class HandoverIssueController extends Controller
 {
+    use EncryptsSensitiveHistory;
+
     public function __construct(private readonly HandoverIssueService $service) {}
 
     public function index(Request $request): Response
@@ -33,6 +36,8 @@ class HandoverIssueController extends Controller
         $issues = $query->with(['delivery.order', 'reporter'])->latest('id')->paginate(15)->withQueryString()
             ->through(fn ($issue) => $this->summary($issue));
 
+        $this->encryptSensitiveHistory($request);
+
         return Inertia::render('Handover/Index', ['issues' => $issues, 'status' => $status, 'canReport' => ! $actor->isAdmin(),
             'isOnline' => (bool) $actor->courierProfile?->is_available]);
     }
@@ -42,6 +47,8 @@ class HandoverIssueController extends Controller
         abort_unless($this->service->readable($request->user())->whereKey($issue->id)->exists(), 404);
         $issue->load(['delivery.order', 'reporter', 'events.actor']);
         $current = $this->service->snapshot($issue->delivery);
+
+        $this->encryptSensitiveHistory($request);
 
         return Inertia::render('Handover/Show', ['issue' => [...$this->summary($issue), 'version' => $issue->version,
             'reported_holder' => $issue->reported_holder, 'reported_location' => $issue->reported_location, 'notes' => $issue->notes,

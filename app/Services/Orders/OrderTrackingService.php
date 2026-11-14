@@ -5,11 +5,16 @@ namespace App\Services\Orders;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\Order;
+use App\Models\ShipmentLossAccounting;
+use App\Services\Finance\ShipmentLossAccountingService;
+use App\Services\Finance\ShipmentLossCustody;
 use App\Services\Logistics\DeliveryRecoveryService;
+use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\PickupClaimService;
 use App\Services\Vouchers\VoucherReceiptService;
 use App\Services\Wallet\WalletPaymentService;
+use Illuminate\Support\Facades\Schema;
 
 class OrderTrackingService
 {
@@ -38,11 +43,15 @@ class OrderTrackingService
         'completed' => 'Buyer receipt confirmed', 'failed' => 'Delivery attempt failed',
         'delivery_failed' => 'Delivery attempt failed', 'return_to_sender' => 'Returning to seller',
         'return_in_transit' => 'Travelling on the return route', 'returned' => 'Seller return receipt recorded',
-        'cancelled' => 'Delivery cancelled', 'parcel_recovery_held' => 'Held for route recovery',
+        'cancelled' => 'Delivery cancelled', 'salvaged' => 'Released to salvage custody', 'parcel_recovery_held' => 'Held for route recovery',
         'parcel_recovery_in_transit' => 'Travelling on a recovery route',
     ];
 
     public const EVENTS = [
+        'loss_found_quarantine' => 'Found parcel placed on hold for reconciliation',
+        'loss_quarantine_released' => 'Found parcel quarantine released under reconciliation',
+        'loss_seller_return_released' => 'Settled found parcel released for seller return',
+        'loss_salvage_released' => 'Settled found parcel released to salvage custody',
         'handover_fulfillment_confirmed' => 'Seller confirmed an omitted fulfillment step now',
         'handover_holder_acknowledged' => 'Rider confirmed current possession during recovery',
         'handover_recovery_received' => 'Actual recovery receipt recorded at the named hub',
@@ -131,17 +140,43 @@ class OrderTrackingService
             $notice = 'This parcel is on a reviewed handover hold. Ordinary movement is paused until its authorized recovery receipt.';
             [$step, $responsible] = ['Await supervised handover recovery and the actual receiving-hub scan.', 'Logistics company and named holder'];
         }
+        $quarantined = ($custody['kind'] ?? null) === 'loss_quarantine';
+        $salvaged = ($custody['kind'] ?? null) === 'salvage';
+        $confirmedLoss = false;
+        $lossAccountingHold = false;
+        if ($parcel && ! $quarantined && ! $salvaged && ($loss = app(ShipmentLossCustody::class)->authority($parcel))
+            && Schema::hasTable('shipment_loss_accountings')) {
+            $accounting = ShipmentLossAccounting::where('shipment_financial_plan_id', $loss->id)->first();
+            $confirmedLoss = $accounting && app(ShipmentLossAccountingService::class)->verified($accounting);
+            $lossAccountingHold = $accounting && ! $confirmedLoss;
+        }
+        if ($lossAccountingHold) {
+            $notice = 'The retained parcel-loss accounting needs independent source review. Ordinary movement remains paused.';
+            [$step, $responsible] = ['Await independent review of the retained loss records.', 'Reviewing admin and original logistics company'];
+        }
+        if ($confirmedLoss) {
+            $notice = 'Independent review confirmed this parcel lost. Refunds and any later finding have separate reviews.';
+            [$step, $responsible] = ['Review the approved loss outcome and its payment status.', 'Independent reviewer and original logistics company'];
+        }
+        if ($quarantined) {
+            $notice = 'The parcel was found and is on hold while its original loss is reconciled.';
+            [$step, $responsible] = ['Await independent reconciliation before further parcel handling.', 'Logistics company and reviewing admin'];
+        }
+        if ($salvaged) {
+            $notice = 'This settled found parcel was released to salvage custody. Ordinary delivery and return routing is closed.';
+            [$step, $responsible] = ['No further buyer or seller custody action is available.', 'Logistics company'];
+        }
 
         return [
             'commercial_status' => $status, 'status_label' => self::label($order, $parcel),
             'parcel_status' => $parcel?->status,
             'delivery_type' => $order->delivery_type,
             'placed_at' => $order->created_at?->toIso8601String(),
-            'stage_label' => $parcel ? (self::STAGES[$parcel->status] ?? 'Parcel stage needs review') : 'Parcel record not available',
+            'stage_label' => $salvaged ? 'Released to salvage custody' : ($quarantined ? 'Found parcel on hold' : ($lossAccountingHold ? 'Parcel loss under review' : ($confirmedLoss ? 'Confirmed parcel loss' : ($parcel ? (self::STAGES[$parcel->status] ?? 'Parcel stage needs review') : 'Parcel record not available')))),
             'tone' => $notice || in_array($status, ['delivery_failed', 'returned', 'cancelled', 'unknown'], true)
                 ? 'attention' : (in_array($status, ['delivered', 'completed'], true) ? 'success' : 'progress'),
-            'custodian' => $this->holder($order, $parcel, $checkpoint, $custody),
-            'custody_recorded_at' => in_array($custody['kind'] ?? null, ['seller', 'courier', 'hub', 'manifest', 'buyer'], true)
+            'custodian' => $confirmedLoss ? 'Last known transport; parcel confirmed lost' : $this->holder($order, $parcel, $checkpoint, $custody),
+            'custody_recorded_at' => in_array($custody['kind'] ?? null, ['seller', 'courier', 'hub', 'manifest', 'buyer', 'loss_quarantine', 'salvage'], true)
                 ? $checkpoint?->created_at?->toIso8601String() : null,
             'next_step' => $step, 'responsible' => $responsible, 'notice' => $notice,
             'observed_at' => now()->toIso8601String(),
@@ -185,6 +220,8 @@ class OrderTrackingService
         if (! $parcel) {
             return 'The parcel record is not available. Your recorded order is retained.';
         }
+        $lossSellerReturn = in_array($parcel->status, ['return_to_sender', 'return_in_transit', 'returned'], true)
+            && app(DeliveryReturnService::class)->activeSellerReturnReconciliation($parcel) !== null;
         $expected = match ($parcel->status) {
             'unassigned', 'assigned', 'assigned_pickup' => ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'cancelled'],
             'picked_up' => ['picked_up'],
@@ -192,15 +229,17 @@ class OrderTrackingService
             'in_transit_to_destination_hub', 'arrived_at_destination_hub', 'at_sorting_center', 'in_transit' => ['at_sorting_center'],
             'sorted', 'sorted_to_barangay_bin', 'ready_for_hub_pickup' => ['sorted'],
             'assigned_to_rider' => ['assigned_to_rider'], 'out_for_delivery' => ['out_for_delivery'],
-            'failed', 'delivery_failed', 'return_to_sender', 'return_in_transit' => ['delivery_failed'],
+            'failed', 'delivery_failed' => ['delivery_failed'],
+            'return_to_sender', 'return_in_transit' => $lossSellerReturn ? ['cancelled'] : ['delivery_failed'],
             'delivered', 'customer_collected' => ['delivered', 'completed'], 'completed' => ['completed'],
-            'returned' => ['returned'], 'cancelled' => ['cancelled'], default => null,
+            'returned' => $lossSellerReturn ? ['cancelled', 'returned'] : ['returned'],
+            'cancelled' => ['cancelled'], default => null,
         };
         if ($expected && ! in_array($status, $expected, true)) {
             return 'The order state and parcel stage differ. Their recorded history is retained for review.';
         }
         $kind = $custody['kind'] ?? 'unknown';
-        if (! in_array($kind, ['seller', 'courier', 'hub', 'manifest', 'buyer'], true)
+        if (! in_array($kind, ['seller', 'courier', 'hub', 'manifest', 'buyer', 'salvage'], true)
             && ! in_array($parcel->status, ['unassigned', 'assigned', 'assigned_pickup', 'cancelled'], true)) {
             return 'The parcel holder is not recorded. The handover details need review.';
         }
@@ -234,6 +273,9 @@ class OrderTrackingService
     private function holder(Order $order, ?Delivery $parcel, ?DeliveryCheckpoint $checkpoint, array $custody): string
     {
         return match ($custody['kind'] ?? 'unknown') {
+            'loss_quarantine' => 'Logistics hub quarantine (actual finding recorded)',
+            'salvage' => ($checkpoint?->hub_id === ($custody['hub_id'] ?? null) && $checkpoint?->hub)
+                ? 'Salvage custody: '.$checkpoint->hub->name : 'Salvage custody (resolved)',
             'hub' => ($checkpoint?->hub_id === ($custody['hub_id'] ?? null) && $checkpoint?->hub)
                 ? $checkpoint->hub->name : 'Sorting hub (recorded handover)',
             'courier' => match (true) {
@@ -253,6 +295,19 @@ class OrderTrackingService
     private function next(Order $order, ?Delivery $parcel, string $status, array $custody): array
     {
         if ($status === 'cancelled') {
+            if ($parcel && in_array($parcel->status, ['return_to_sender', 'return_in_transit', 'returned'], true)
+                && app(DeliveryReturnService::class)->activeSellerReturnReconciliation($parcel)) {
+                if ($parcel->status === 'returned') {
+                    return ['The seller received the returned parcel. The settled order remains cancelled.', 'No delivery action'];
+                }
+                if ($parcel->status === 'return_in_transit') {
+                    return ['The settled parcel is returning through the hub network while the order remains cancelled.', 'Receiving hub'];
+                }
+                $staged = app(DeliveryReturnService::class)->stagedForSeller($parcel);
+
+                return [$staged ? 'The owning seller must scan and confirm return receipt while the order remains cancelled.' : 'Logistics is returning the settled parcel through the reconciled hub route.', $staged ? 'Seller' : 'Hub staff'];
+            }
+
             return ['This order was cancelled. No further delivery is scheduled.', 'No delivery action'];
         }
         if ($status === 'completed') {
