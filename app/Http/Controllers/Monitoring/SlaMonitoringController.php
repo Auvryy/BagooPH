@@ -23,6 +23,7 @@ use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -462,9 +463,8 @@ class SlaMonitoringController extends Controller
             'reason' => ['required', 'string', 'min:5', 'max:500'],
         ]);
 
-        $targetHubId = in_array($delivery->status, ['sorted_to_barangay_bin', 'assigned_to_rider'], true)
-            ? $delivery->destination_bayan_hub_id
-            : $delivery->origin_bayan_hub_id;
+        $isFinalMilePhase = in_array($delivery->status, ['sorted_to_barangay_bin', 'assigned_to_rider', 'out_for_delivery', 'arrived_at_destination_hub'], true);
+        $targetHubId = $isFinalMilePhase ? $delivery->destination_bayan_hub_id : $delivery->origin_bayan_hub_id;
         $targetHub = $targetHubId ? LogisticsHub::find($targetHubId) : null;
 
         abort_unless(
@@ -494,7 +494,7 @@ class SlaMonitoringController extends Controller
     }
 
     /**
-     * @return array{0: User, 1: bool, 2: bool, 3: \Illuminate\Support\Collection<int, LogisticsHub>, 4: ?int, 5: ?int}
+     * @return array{0: User, 1: bool, 2: bool, 3: Collection<int, LogisticsHub>, 4: ?int, 5: ?int}
      */
     private function resolveScope(Request $request): array
     {

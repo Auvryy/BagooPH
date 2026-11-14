@@ -603,7 +603,8 @@ class DispatchRecoveryService
                 ->get();
 
             foreach ($hubs as $hub) {
-                foreach ($this->density->calculateForHub($hub->id) as $brgyRow) {
+                $report = $this->density->calculateDensity($hub);
+                foreach ($report['barangay_densities'] ?? [] as $brgyRow) {
                     if (($brgyRow['parcel_count'] ?? 0) >= 40) {
                         $overloadAlerts[] = [
                             'hub_id' => $hub->id,

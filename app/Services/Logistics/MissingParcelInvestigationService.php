@@ -376,7 +376,7 @@ class MissingParcelInvestigationService
         $open = MissingParcelInvestigation::query()
             ->where('delivery_id', $delivery->id)
             ->where('status', 'investigating')
-            ->whereIn('source_kind', ['scan_timeout', 'hub_stall', 'pickup_transit_gap'])
+            ->whereIn('source_kind', ['scan_timeout', 'hub_stall', 'pickup_transit_gap', 'manifest_missing'])
             ->get();
 
         foreach ($open as $investigation) {
