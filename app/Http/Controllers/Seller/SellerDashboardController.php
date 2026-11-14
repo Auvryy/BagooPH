@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\FinancialPenalty;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -13,6 +14,7 @@ use App\Services\AccountSettingsService;
 use App\Services\Commerce\ReviewService;
 use App\Services\Commerce\SellerInventoryService;
 use App\Services\Commerce\SellerSalesMetricsService;
+use App\Services\Governance\EnforcementService;
 use App\Services\IdentityCorrectionService;
 use App\Services\MasterCategoryService;
 use App\Services\Orders\OrderWorkspaceService;
@@ -23,6 +25,7 @@ use App\Services\ShopReviewService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -82,6 +85,14 @@ class SellerDashboardController extends Controller
             'recentOrders' => $recentOrders,
             'topProducts' => $topProducts,
             'categories' => Category::where('is_active', true)->select('id', 'name', 'slug')->get(),
+            'activeSanctions' => app(EnforcementService::class)->activeForUser($request->user())->values()->all(),
+            'unpaidPenalties' => Schema::hasTable('financial_penalties')
+                ? FinancialPenalty::where('subject_user_id', $request->user()->id)
+                    ->where('status', 'unpaid_debt_hold')
+                    ->latest('id')
+                    ->get(['id', 'reference', 'category', 'amount_cents', 'outstanding_cents', 'reason', 'decided_at'])
+                    ->all()
+                : [],
         ]);
     }
 

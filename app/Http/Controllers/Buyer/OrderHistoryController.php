@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
+use App\Models\ModerationSignal;
 use App\Models\Order;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyAgainService;
 use App\Services\Commerce\ReviewService;
 use App\Services\Finance\ShipmentFinancialLinks;
+use App\Services\Governance\EnforcementService;
 use App\Services\Notifications\NotificationCenterService;
 use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderTrackingService;
@@ -18,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -62,12 +65,15 @@ class OrderHistoryController extends Controller
         $adminOversight = $user->isAdmin() && $user->canAccessPortal();
         abort_unless($ownedBuyerOrder || $adminOversight, 403);
 
-        $order->load(['items.product.shop', 'items.review', 'walletPayment', 'delivery.courier', ...OrderTrackingService::relations()]);
+        $order->load(['items.product.shop', 'items.review.dispute', 'walletPayment', 'delivery.courier', 'delivery.feedback', ...OrderTrackingService::relations()]);
         if ($ownedBuyerOrder && $user->canAccessPortal()) {
             foreach ($order->items as $item) {
                 if ($item->review) {
                     $editable = app(ReviewService::class)->canEdit($item->review);
                     $item->review->setAttribute('edit_url', $editable ? route('buyer.reviews.update', $item->review, absolute: false) : null);
+                    $canAppeal = in_array($item->review->moderation_status, ['removed_policy', 'excluded_courier_issue', 'held_velocity_review'], true)
+                        && $item->review->dispute?->status !== 'buyer_appealed';
+                    $item->review->setAttribute('appeal_url', $canAppeal ? route('buyer.reviews.appeal', $item->review, absolute: false) : null);
                 }
             }
         }
@@ -105,6 +111,18 @@ class OrderHistoryController extends Controller
             'pickupCodeAvailable' => $pickupCodeAvailable,
             'pickupCodeUrl' => $canFulfillOrder ? route('buyer.orders.pickup-code', $order, absolute: false) : null,
             'orderNotices' => $ownedBuyerOrder ? app(NotificationCenterService::class)->forOrder($user, $order) : [],
+            'deliveryFeedback' => $order->delivery?->feedback,
+            'deliveryFeedbackUrl' => $ownedBuyerOrder && $user->canAccessPortal() && $order->delivery && ($order->status === 'completed' || in_array($order->delivery->status, ['delivered', 'customer_collected'], true))
+                ? route('buyer.deliveries.feedback', $order->delivery, absolute: false)
+                : null,
+            'safetyCheckinSignals' => $ownedBuyerOrder && Schema::hasTable('moderation_signals')
+                ? ModerationSignal::where('order_id', $order->id)
+                    ->whereIn('signal_type', ['anti_scam_stalled_order', 'off_platform_bypass_keyword'])
+                    ->whereIn('status', ['open', 'checked_in'])
+                    ->latest('id')
+                    ->get(['id', 'reference', 'signal_type', 'status', 'summary', 'buyer_checkin_response', 'checked_in_at'])
+                : [],
+            'activeSanctions' => $ownedBuyerOrder ? app(EnforcementService::class)->activeForUser($user) : [],
         ]);
     }
 

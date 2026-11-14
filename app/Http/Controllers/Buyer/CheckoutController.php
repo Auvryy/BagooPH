@@ -10,6 +10,7 @@ use App\Rules\AsciiPositiveInteger;
 use App\Services\BuyerAccessService;
 use App\Services\Commerce\BuyerAddressService;
 use App\Services\Commerce\CommerceInputService;
+use App\Services\Governance\EnforcementService;
 use App\Services\KycSubmissionService;
 use App\Services\Logistics\LogisticsCheckoutService;
 use App\Services\Orders\CheckoutOrderService;
@@ -121,6 +122,9 @@ class CheckoutController extends Controller
             'logisticsCompanies' => $initialLogisticsChoices,
             'checkoutToken' => app(CheckoutSubmissionService::class)->issue($user, $cart, $checkoutItems),
             'walletBalanceCents' => app(WalletLedger::class)->balance($user),
+            'codRestriction' => app(EnforcementService::class)->activeCodRestrictionForBuyer($user)?->only([
+                'id', 'reference', 'reason_code', 'reason', 'expires_at',
+            ]),
         ]);
     }
 

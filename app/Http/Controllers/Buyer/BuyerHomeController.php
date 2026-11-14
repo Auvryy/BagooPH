@@ -64,6 +64,7 @@ class BuyerHomeController extends Controller
 
         // 4. Live Flash Deals (from ProductSale with kind = 'flash' or live offers)
         $flashSaleProducts = Product::with(['shop', 'category', 'sales' => fn ($q) => $q->whereNull('ended_at')->where('ends_at', '>', now())])
+            ->availableForSale()
             ->whereHas('sales', fn ($q) => $q->where('kind', 'flash')->whereNull('ended_at')->where('starts_at', '<=', now())->where('ends_at', '>', now()))
             ->where('status', 'active')
             ->take(6)
@@ -95,6 +96,7 @@ class BuyerHomeController extends Controller
                 $product->collection_sub = $meta['sub_slug'];
                 $product->collection_title = $meta['title'];
                 $product->sales_badge = $meta['sales_badge'];
+
                 return $product;
             });
 

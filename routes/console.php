@@ -4,6 +4,7 @@ use App\Services\AccountSessions\AccountSessionService;
 use App\Services\Advertisements\AdvertisementMeasurementService;
 use App\Services\Commerce\BuyerProductViewTracker;
 use App\Services\Commerce\SaleReminderService;
+use App\Services\Governance\EnforcementService;
 use App\Services\Logistics\RiderCompanyOfferService;
 use App\Services\Orders\OrderCancellationService;
 use App\Services\Wallet\WalletPaymentService;
@@ -107,3 +108,8 @@ Artisan::command('orders:expire-cancellation-requests {--limit=100}', function (
 Schedule::command('orders:expire-cancellation-requests')->everyMinute()->withoutOverlapping();
 
 Schedule::command('monitoring:scan-sla')->everyMinute()->withoutOverlapping();
+
+Schedule::call(fn () => app(EnforcementService::class)->expireDueSanctions())
+    ->name('governance:expire-sanctions')
+    ->everyTenMinutes()
+    ->withoutOverlapping();

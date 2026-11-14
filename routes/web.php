@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountEmailController;
+use App\Http\Controllers\AccountEnforcementController;
 use App\Http\Controllers\AccountReviewController;
 use App\Http\Controllers\AccountSessionController;
 use App\Http\Controllers\AddressLocationController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Buyer\AdvertisementController as BuyerAdvertisementCont
 use App\Http\Controllers\Buyer\AppAssociationController;
 use App\Http\Controllers\Buyer\BuyAgainController;
 use App\Http\Controllers\Buyer\BuyerCampaignController;
+use App\Http\Controllers\Buyer\BuyerDeliveryFeedbackController;
 use App\Http\Controllers\Buyer\BuyerDisputeController;
 use App\Http\Controllers\Buyer\BuyerHomeController;
 use App\Http\Controllers\Buyer\BuyerProductController;
@@ -46,6 +48,7 @@ use App\Http\Controllers\Courier\CourierDeliveryController;
 use App\Http\Controllers\Courier\RiderCompanyRequestController;
 use App\Http\Controllers\ExceptionOversightController;
 use App\Http\Controllers\FinancialOversightController;
+use App\Http\Controllers\Governance\GovernanceModerationController;
 use App\Http\Controllers\Governance\ResourceRestrictionController;
 use App\Http\Controllers\GovernanceHistoryController;
 use App\Http\Controllers\IdentityCorrectionController;
@@ -242,6 +245,27 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/custody-recovery/sign-in', [RestrictedCustodyRecoveryController::class, 'login'])->name('custody-recovery.login');
 Route::post('/custody-recovery/sign-in', [RestrictedCustodyRecoveryController::class, 'signIn'])->middleware('throttle:10,1')->name('custody-recovery.sign-in');
+Route::middleware(['auth', 'verified'])->prefix('governance/moderation')->name('governance.moderation.')->group(function () {
+    Route::get('/', [GovernanceModerationController::class, 'index'])->name('index');
+    Route::post('/sanctions', [GovernanceModerationController::class, 'issueSanction'])->middleware('throttle:30,1')->name('sanctions.store');
+    Route::post('/sanctions/{sanction}/resolve', [GovernanceModerationController::class, 'resolveSanction'])->whereNumber('sanction')->middleware('throttle:30,1')->name('sanctions.resolve');
+    Route::post('/appeals/{appeal}/decide', [GovernanceModerationController::class, 'decideAppeal'])->whereNumber('appeal')->middleware('throttle:30,1')->name('appeals.decide');
+    Route::post('/sla-clocks/{slaClock}/propose-penalty', [GovernanceModerationController::class, 'proposeSlaPenalty'])->whereNumber('slaClock')->middleware('throttle:30,1')->name('sla-clocks.propose-penalty');
+    Route::post('/deliveries/{delivery}/scale-log', [GovernanceModerationController::class, 'recordScaleLog'])->whereNumber('delivery')->middleware('throttle:30,1')->name('deliveries.scale-log');
+    Route::post('/scale-logs/{scaleLog}/propose-penalty', [GovernanceModerationController::class, 'proposeScalePenalty'])->whereNumber('scaleLog')->middleware('throttle:30,1')->name('scale-logs.propose-penalty');
+    Route::post('/penalties', [GovernanceModerationController::class, 'proposeManualPenalty'])->middleware('throttle:30,1')->name('penalties.store');
+    Route::post('/penalties/{penalty}/decide', [GovernanceModerationController::class, 'decidePenalty'])->whereNumber('penalty')->middleware('throttle:30,1')->name('penalties.decide');
+    Route::post('/signals/{signal}/review', [GovernanceModerationController::class, 'reviewSignal'])->whereNumber('signal')->middleware('throttle:30,1')->name('signals.review');
+    Route::post('/review-disputes/{dispute}/adjudicate', [GovernanceModerationController::class, 'adjudicateReviewDispute'])->whereNumber('dispute')->middleware('throttle:30,1')->name('review-disputes.adjudicate');
+    Route::post('/review-disputes/{dispute}/appeal-decision', [GovernanceModerationController::class, 'adjudicateReviewAppeal'])->whereNumber('dispute')->middleware('throttle:30,1')->name('review-disputes.appeal-decision');
+    Route::post('/reviews/{review}/velocity-decision', [GovernanceModerationController::class, 'moderateVelocityReview'])->whereNumber('review')->middleware('throttle:30,1')->name('reviews.velocity-decision');
+});
+
+Route::middleware(['auth', 'verified'])->prefix('account')->name('account.enforcement.')->group(function () {
+    Route::post('/enforcement-sanctions/{sanction}/appeal', [AccountEnforcementController::class, 'submitAppeal'])->whereNumber('sanction')->middleware('throttle:20,1')->name('appeal');
+    Route::post('/financial-penalties/{penalty}/settle', [AccountEnforcementController::class, 'settlePenalty'])->whereNumber('penalty')->middleware('throttle:20,1')->name('settle-penalty');
+});
+
 Route::middleware(['auth', 'verified'])->prefix('custody-recovery')->name('custody-recovery.')->group(function () {
     Route::get('/', [RestrictedCustodyRecoveryController::class, 'own'])->name('own');
     Route::get('/receiving', [RestrictedCustodyRecoveryController::class, 'receiving'])->name('receiving');
@@ -328,6 +352,7 @@ $registerSellerRoutes = function () {
         Route::post('/chat/send', [ChatController::class, 'sendMessage']);
         Route::get('/reviews', [SellerReviewController::class, 'index']);
         Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->middleware('throttle:30,1');
+        Route::post('/reviews/{review}/dispute', [SellerReviewController::class, 'dispute'])->middleware('throttle:20,1');
         Route::get('/disputes', [SellerDisputeController::class, 'index']);
         Route::get('/reports', [SellerDashboardController::class, 'reports']);
         Route::get('/settings', [SellerDashboardController::class, 'settings']);
@@ -690,6 +715,9 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
             Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
             Route::post('/reviews', [BuyerReviewController::class, 'store'])->middleware('throttle:30,1')->name('reviews.store');
             Route::patch('/reviews/{review}', [BuyerReviewController::class, 'update'])->whereNumber('review')->middleware('throttle:30,1')->name('reviews.update');
+            Route::post('/reviews/{review}/appeal', [BuyerDeliveryFeedbackController::class, 'appealReview'])->whereNumber('review')->middleware('throttle:20,1')->name('reviews.appeal');
+            Route::post('/deliveries/{delivery}/feedback', [BuyerDeliveryFeedbackController::class, 'store'])->whereNumber('delivery')->middleware('throttle:20,1')->name('deliveries.feedback');
+            Route::post('/safety-checkins/{signal}', [BuyerDeliveryFeedbackController::class, 'submitSafetyCheckin'])->whereNumber('signal')->middleware('throttle:20,1')->name('safety-checkins.submit');
             Route::post('/sale-reminders/{sale}', [SaleReminderController::class, 'store'])->where('sale', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('sale-reminders.store');
             Route::delete('/sale-reminders/{sale}', [SaleReminderController::class, 'destroy'])->where('sale', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('sale-reminders.destroy');
             Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
@@ -846,6 +874,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     Route::get('/messages', [ChatController::class, 'sellerInbox'])->name('messages.index');
     Route::get('/reviews', [SellerReviewController::class, 'index'])->name('reviews.index');
     Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->middleware('throttle:30,1')->name('reviews.reply');
+    Route::post('/reviews/{review}/dispute', [SellerReviewController::class, 'dispute'])->middleware('throttle:20,1')->name('reviews.dispute');
     Route::get('/disputes', [SellerDisputeController::class, 'index'])->name('disputes.index');
     Route::get('/reports', [SellerDashboardController::class, 'reports'])->name('reports');
     Route::get('/settings', [SellerDashboardController::class, 'settings'])->name('settings');
@@ -938,6 +967,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/products/{product}/moderation', [ProductModerationController::class, 'store'])->name('products.moderation.store');
     Route::get('/logistics', [LogisticsHubController::class, 'index'])->name('logistics');
     Route::get('/monitoring', fn () => redirect('/governance/monitoring'))->name('monitoring');
+    Route::get('/moderation', fn () => redirect('/governance/moderation'))->name('moderation');
 });
 
 /*
@@ -1012,6 +1042,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/pickup-pauses', [SlaMonitoringController::class, 'storePickupPause'])->middleware('throttle:20,1')->name('pickup-pauses.store');
         Route::post('/pickup-pauses/{pause}/resume', [SlaMonitoringController::class, 'resumePickupPause'])->whereNumber('pause')->middleware('throttle:20,1')->name('pickup-pauses.resume');
         Route::get('/monitoring', fn () => redirect('/governance/monitoring'))->name('monitoring');
+        Route::get('/moderation', fn () => redirect('/governance/moderation'))->name('moderation');
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup'])->name('release');
         Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap'])->name('roadmap');
     });

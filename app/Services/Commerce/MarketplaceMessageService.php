@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\BuyerAccessService;
+use App\Services\Governance\ModerationSignalService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -102,6 +103,8 @@ class MarketplaceMessageService
                     'order_id' => $data['order_id'] ?? null, 'message' => $text, 'is_read' => false, 'request_key' => $data['request_key'] ?? null,
                     'attachment_path' => $path, 'attachment_hash' => $hash,
                     'attachment_mime' => $image?->getMimeType(), 'attachment_size' => $image?->getSize()]);
+
+                app(ModerationSignalService::class)->inspectMessage($message);
 
                 return ['message' => $message->load(['sender:id,name,avatar', 'product:id,shop_id,name,slug,price,featured_image', 'product.shop:id,user_id,name,slug,logo']), 'is_duplicate' => false];
             });

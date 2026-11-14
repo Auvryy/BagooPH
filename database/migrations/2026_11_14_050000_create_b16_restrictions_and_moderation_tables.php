@@ -197,7 +197,7 @@ return new class extends Migration
                 $table->string('moderation_status', 32)->default('published');
                 $table->text('moderation_reason')->nullable();
                 $table->json('detected_flags')->nullable();
-                $table->foreignId('moderated_by_id')->nullable()->constrained('users')->nullOnDelete();
+                $table->unsignedBigInteger('moderated_by_id')->nullable();
                 $table->timestamp('moderated_at')->nullable();
             });
         }
@@ -207,8 +207,7 @@ return new class extends Migration
     {
         if (Schema::hasColumn('reviews', 'moderation_status')) {
             Schema::table('reviews', function (Blueprint $table) {
-                $table->dropConstrainedForeignId('moderated_by_id');
-                $table->dropColumn(['moderation_status', 'moderation_reason', 'detected_flags', 'moderated_at']);
+                $table->dropColumn(['moderation_status', 'moderation_reason', 'detected_flags', 'moderated_by_id', 'moderated_at']);
             });
         }
 

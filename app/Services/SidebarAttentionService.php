@@ -5,8 +5,12 @@ namespace App\Services;
 use App\Models\AccountReviewRequest;
 use App\Models\AdvertisementSubmission;
 use App\Models\DispatchEscalation;
+use App\Models\EnforcementAppeal;
+use App\Models\FinancialPenalty;
 use App\Models\MissingParcelInvestigation;
+use App\Models\ModerationSignal;
 use App\Models\Order;
+use App\Models\ReviewDispute;
 use App\Models\Shop;
 use App\Models\SlaClock;
 use App\Models\User;
@@ -31,6 +35,15 @@ class SidebarAttentionService
                 || (Schema::hasTable('dispatch_escalations')
                     && DispatchEscalation::where('is_urgent', true)->whereNotIn('status', ['resolved', 'auto_cancelled'])->exists());
 
+            $moderationNeedsAttention = (Schema::hasTable('enforcement_appeals')
+                    && EnforcementAppeal::whereIn('status', ['pending', 'under_review'])->exists())
+                || (Schema::hasTable('financial_penalties')
+                    && FinancialPenalty::where('status', 'pending_review')->exists())
+                || (Schema::hasTable('review_disputes')
+                    && ReviewDispute::whereIn('status', ['pending', 'buyer_appealed'])->exists())
+                || (Schema::hasTable('moderation_signals')
+                    && ModerationSignal::where('status', 'open')->whereIn('severity', ['review_required', 'high_priority'])->exists());
+
             return [
                 'shop_reviews' => Shop::where('review_status', 'pending_approval')->exists(),
                 'kyc' => User::whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])->where('kyc_status', 'pending_approval')->exists(),
@@ -38,6 +51,7 @@ class SidebarAttentionService
                 'advertisements' => app(SellerPromotionService::class)->installed() && AdvertisementSubmission::doesntHave('reviews')->exists(),
                 'wallet_credits' => WalletTopUpRequest::where('status', 'pending')->exists(),
                 'monitoring' => $monitoringNeedsAttention,
+                'moderation' => $moderationNeedsAttention,
             ];
         }
 

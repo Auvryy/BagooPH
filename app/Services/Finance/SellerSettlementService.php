@@ -8,6 +8,7 @@ use App\Models\CodAccount;
 use App\Models\CommissionLedger;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\FinancialPenalty;
 use App\Models\Order;
 use App\Models\SellerSettlement;
 use App\Models\SellerSettlementEvent;
@@ -15,6 +16,7 @@ use App\Models\Shop;
 use App\Models\User;
 use App\Rules\ApplicationText;
 use App\Services\AccountRestrictionService;
+use App\Services\Governance\EnforcementService;
 use App\Services\Notifications\NotificationDeliveryService;
 use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Returns\BuyerReturnAmounts;
@@ -23,6 +25,7 @@ use App\Services\Vouchers\VoucherFundingService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -127,6 +130,10 @@ class SellerSettlementService
         if (! $owner?->isSeller() || ! $owner->canAccessPortal() || $owner->email_verified_at === null
             || ! $shop || ! app(ShopEligibilityService::class)->isEligible($shop)) {
             $blockers[] = 'The original seller and shop must be approved and active before release.';
+        }
+        if ($owner && (app(EnforcementService::class)->activePayoutHoldForUser($owner) !== null
+            || (Schema::hasTable('financial_penalties') && FinancialPenalty::where('subject_user_id', $owner->id)->where('status', 'unpaid_debt_hold')->exists()))) {
+            $blockers[] = 'Seller account has an active payout hold or unpaid financial penalty obligation requiring clearance.';
         }
         $ledger = $order->commissionLedger;
         if (CommissionLedger::where('order_id', $order->id)->count() > 1 || ($ledger && (! in_array($ledger->status, ['pending'], true) || $ledger->seller_id !== $owner?->id

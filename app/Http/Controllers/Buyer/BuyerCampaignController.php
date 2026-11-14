@@ -263,7 +263,7 @@ class BuyerCampaignController extends Controller
                 'featured_image' => $product->featured_image,
                 'cover_image' => $product->featured_image,
                 'slug' => $product->slug,
-                'rating' => (float) ($product->rating ?: 4.8),
+                'rating' => $product->rating !== null && (float) $product->rating > 0 ? (float) $product->rating : null,
                 'sales_count' => $salesCount,
                 'stock' => $stock,
                 'curation_source' => 'Seller Nominated · Admin Approved',
