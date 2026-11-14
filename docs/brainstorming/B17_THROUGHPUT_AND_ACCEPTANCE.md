@@ -80,10 +80,10 @@
 
 To directly resolve the stakeholder / instructor critique (*"too much red, too cluttered/compact, unclear categories & what each user should do next"*):
 
-1. **Calm Semantic Color Tokens (De-Redding):**
-   - `#E00D42` stays reserved strictly for **primary submit/confirm buttons** and **critical errors/holds**.
-   - Secondary buttons (`hubButton`, `buttonClass`), navigation pills, active filter controls, bag/waybill/transfer ID chips, dashboard metric badges, conveyor idle icons, and focus outlines shift from rose-pink saturation (`bg-rose-50`, `text-[#C20836]`, `border-rose-200`) to calm zinc/slate surfaces (`border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:border-zinc-300`, `#121316` selection borders).
-   - Completed pipeline steps (`HubStepRail` `done` & `HubConveyorRail` completed stages) use semantic **emerald** instead of crimson/rose.
+1. **Balanced Semantic Hierarchy (De-Redding Without Monochrome/Obsidian):**
+   - `#E00D42` stays reserved strictly for **primary submit/confirm buttons** and **critical errors/holds** rather than flooding every secondary panel and background box in crimson.
+   - Avoid monochrome black-and-white / obsidian fills and preserve clear clickable button contrast aligned with Bagoo brand semantics instead of red background saturation everywhere.
+   - Completed pipeline steps (`HubStepRail` `done` & `HubConveyorRail` completed stages) use semantic **emerald** so status progression stands out clearly.
    - Zero `font-mono` classes and zero emoji icons across all logistics/courier/shared UI components.
 
 2. **Spatial De-Cluttering & Progressive Disclosure:**
