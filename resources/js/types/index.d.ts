@@ -1,6 +1,6 @@
 export type Role = 'admin' | 'seller' | 'buyer' | 'courier' | 'logistics';
 
-export type SidebarAttention = Partial<Record<'shop_reviews' | 'kyc' | 'review_requests' | 'advertisements' | 'wallet_credits' | 'messages' | 'orders' | 'monitoring', boolean>>;
+export type SidebarAttention = Partial<Record<'shop_reviews' | 'kyc' | 'review_requests' | 'advertisements' | 'wallet_credits' | 'messages' | 'orders' | 'monitoring' | 'moderation', boolean>>;
 
 export interface EtaPresentation {
     estimated_min_at: string | null;
@@ -418,6 +418,20 @@ export interface Review {
     comment?: string | null;
     images?: string[] | null;
     verified_purchase?: boolean;
+    moderation_status?: string;
+    moderation_reason?: string | null;
+    detected_flags?: string[] | null;
+    score_excluded?: boolean;
+    appeal_url?: string | null;
+    dispute?: {
+        id: number;
+        reference: string;
+        reason_code: string;
+        status: string;
+        seller_evidence?: string;
+        adjudication_notes?: string | null;
+        buyer_appeal_reason?: string | null;
+    } | null;
     purchased_options?: { color: string | null; size: string | null } | null;
     buyer?: Pick<User, 'name' | 'avatar'> | null;
     reply?: ReviewReply | null;

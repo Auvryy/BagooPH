@@ -71,6 +71,7 @@ interface Props {
     checkoutToken: string;
     itemQuantities?: Record<number, number>;
     walletBalanceCents?: number | null;
+    codRestriction?: { id: number; reference: string; reason_code: string; reason: string; expires_at?: string | null } | null;
     logisticsCompanies?: { id: number; name: string; logo?: string | null; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number }[];
 }
 
@@ -89,6 +90,7 @@ export default function CheckoutIndex({
     checkoutToken,
     itemQuantities = {},
     walletBalanceCents = 0,
+    codRestriction = null,
     logisticsCompanies = [],
 }: Props) {
     const { flash } = usePage<PageProps>().props;
@@ -152,7 +154,7 @@ export default function CheckoutIndex({
         delivery_type: 'doorstep' as 'doorstep' | 'hub_self_pickup',
         pickup_hub_id: '' as string | number,
         logistics_company_id: (logisticsCompanies[0]?.id ?? '') as string | number,
-        payment_method: 'cod',
+        payment_method: codRestriction ? 'wallet' : 'cod',
         notes: '',
         voucher_code: '',
         platform_voucher_revision_id: null as number | null,
@@ -1044,7 +1046,16 @@ export default function CheckoutIndex({
                                 </div>
                             </div>
 
-                            <BuyerPaymentChoice value={data.payment_method} onChange={method => setData('payment_method', method)} balanceCents={walletBalanceCents} disabled={processing} />
+                            {codRestriction && (
+                                <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900 space-y-1">
+                                    <p className="font-bold">Cash on Delivery restricted ({codRestriction.reference})</p>
+                                    <p>{codRestriction.reason} You can still place orders using Bagoo Wallet or submit an appeal.</p>
+                                    <a href="/account/status" className="inline-block font-semibold text-[#C20836] underline">
+                                        View restriction details and appeal
+                                    </a>
+                                </div>
+                            )}
+                            <BuyerPaymentChoice value={data.payment_method} onChange={method => setData('payment_method', method)} balanceCents={walletBalanceCents} disabled={processing} codDisabled={Boolean(codRestriction)} codDisabledReason={codRestriction?.reason ?? null} />
                             {errors.payment_method && <p role="alert" className="text-xs text-rose-700">{errors.payment_method}</p>}
                         </div>
 

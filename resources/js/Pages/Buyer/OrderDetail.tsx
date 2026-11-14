@@ -34,9 +34,16 @@ interface Props {
     pickupCodeUrl: string | null;
     pickupCodeAvailable?: boolean;
     orderNotices: BuyerOrderNotice[];
+    deliveryFeedback?: DeliveryFeedbackItem | null;
+    deliveryFeedbackUrl?: string | null;
+    safetyCheckinSignals?: SafetyCheckinSignalItem[];
+    activeSanctions?: ActiveSanctionItem[];
 }
 
-export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buyAgainToken, cancelOrderUrl, cancellationRequestUrl, cancellationFeedback, cancellationReasons = [], cancellationReason, canConfirmReceipt, returnAvailability, buyerReturns = [], shipmentFinance, shipmentFinances, pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [] }: Props) {
+import CourierDeliveryFeedbackSection, { type DeliveryFeedbackItem, type SafetyCheckinSignalItem } from '@/Components/CourierDeliveryFeedbackSection';
+import AccountEnforcementNotices, { type ActiveSanctionItem } from '@/Components/AccountEnforcementNotices';
+
+export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buyAgainToken, cancelOrderUrl, cancellationRequestUrl, cancellationFeedback, cancellationReasons = [], cancellationReason, canConfirmReceipt, returnAvailability, buyerReturns = [], shipmentFinance, shipmentFinances, pickupClaim, pickupHub, pickupCodeUrl, pickupCodeAvailable = false, orderNotices = [], deliveryFeedback = null, deliveryFeedbackUrl = null, safetyCheckinSignals = [], activeSanctions = [] }: Props) {
     const { auth } = usePage<PageProps>().props;
     const adminOversight = auth.user?.role === 'admin';
     const [pickupCode,setPickupCode] = useState<string | null>(null);
@@ -268,6 +275,8 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
                     {codeError && <p role="alert" className="text-sm text-red-700">{codeError}</p>}
                 </section>}
                 {reviewSaved && <p role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700">Your purchase review has been saved.</p>}
+                <AccountEnforcementNotices sanctions={activeSanctions} title="Account Restrictions Affecting Checkout or Reviews" />
+                <CourierDeliveryFeedbackSection deliveryFeedback={deliveryFeedback} deliveryFeedbackUrl={deliveryFeedbackUrl} safetyCheckinSignals={safetyCheckinSignals} />
 
                 {/* Product review */}
                 {canUsePortal && reviewModalOpen && (
@@ -334,7 +343,7 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
                                         onChange={(e) => setData('comment', e.target.value)}
                                         rows={3}
                                         maxLength={1000}
-                                        placeholder="Tell other buyers about product build, size fitting, and delivery condition..."
+                                        placeholder="Tell other buyers about product sizing, quality, and material..."
                                         className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42]"
                                         required
                                     />

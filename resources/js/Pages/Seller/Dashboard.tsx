@@ -52,9 +52,13 @@ interface Props {
     salesPeriod?: number;
     recentOrders: Order[];
     topProducts: Product[];
+    activeSanctions?: ActiveSanctionItem[];
+    unpaidPenalties?: UnpaidPenaltyItem[];
 }
 
-export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveries = [], salesPeriod = 30, recentOrders, topProducts }: Props) {
+import AccountEnforcementNotices, { type ActiveSanctionItem, type UnpaidPenaltyItem } from '@/Components/AccountEnforcementNotices';
+
+export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveries = [], salesPeriod = 30, recentOrders, topProducts, activeSanctions = [], unpaidPenalties = [] }: Props) {
     const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
     const [isHoveringChart, setIsHoveringChart] = useState(false);
     const chartClipId = useId();
@@ -161,6 +165,7 @@ export default function SellerDashboard({ shop, stats, dailySales, dailyDeliveri
             <Head title="Dashboard — BagooPH" />
 
             <div className="space-y-6 font-sans">
+                <AccountEnforcementNotices sanctions={activeSanctions} penalties={unpaidPenalties} title="Shop & Seller Restrictions and Financial Obligations" />
                 <div className="flex justify-end">
                     <PortalLink
                         href={route('seller.products.index')}
