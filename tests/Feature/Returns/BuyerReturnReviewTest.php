@@ -72,7 +72,8 @@ class BuyerReturnReviewTest extends TestCase
     private function command(BuyerReturnCase $case, string $action): array
     {
         return ['action' => $action, 'expected_version' => $case->fresh()->version, 'request_token' => (string) Str::uuid(),
-            'reason' => 'The original item and photo evidence were checked carefully.'];
+            'reason' => 'The original item and photo evidence were checked carefully.',
+            ...($action === 'approve' && (($case->order->shipping_quote['refund_policy_version'] ?? 1) === 2) ? ['fault' => 'seller'] : [])];
     }
 
     public function test_an_owned_request_has_private_original_units_and_replays_without_mutating_delivery_or_money(): void

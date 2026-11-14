@@ -93,6 +93,7 @@ class SelectedProductVoucherReturnTest extends TestCase
             ->create(['shop_id' => $shop->id, 'discount_type' => 'percent', 'discount_value' => 10, 'min_spend' => 0]);
         $order = $this->checkoutFlowOrder($buyer, $shop, [['product' => $qualifying, 'quantity' => 2], ['product' => $other, 'quantity' => 1]],
             shipping: ['payment_method' => $method, 'shop_voucher_revision_ids' => [$shop->id => $voucher->current_revision_id]]);
+        $order->update(['shipping_quote' => [...$order->shipping_quote, 'refund_policy_version' => 1]]);
         $this->assertSame('950.00', $order->total_amount);
         $admin = $this->createApprovedUser('admin');
         if ($method === 'wallet') {

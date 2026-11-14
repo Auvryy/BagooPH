@@ -80,6 +80,7 @@ class BuyerReturnMoneyTest extends TestCase
     private function received(?Order $original = null, int $quantity = 1, bool $paid = false, bool $authorized = false, bool $disputed = false, bool $reconciled = true): array
     {
         $order = $original ?? $this->newFlowOrder('ready_for_pickup');
+        $order->update(['shipping_quote' => [...$order->shipping_quote, 'refund_policy_version' => 1]]);
         $this->flowDelivery($order, 'delivered');
         $this->completeFlowOrder($order);
         $admin = $this->createApprovedUser('admin');
@@ -453,7 +454,9 @@ class BuyerReturnMoneyTest extends TestCase
 
     public function test_approval_requires_physical_seller_receipt_and_sql_cannot_rewrite_return_money(): void
     {
-        $early = $this->approvedReturn();
+        $earlyOrder = $this->newFlowOrder('ready_for_pickup');
+        $earlyOrder->update(['shipping_quote' => [...$earlyOrder->shipping_quote, 'refund_policy_version' => 1]]);
+        $early = $this->approvedReturn($earlyOrder);
         $admin = $this->createApprovedUser('admin');
         $this->actingAs($admin)->post('/buyer-returns/'.$early->id.'/money', $this->payload($early, 'approve-repayment'), ['Accept' => 'application/json'])->assertForbidden();
         [$case, $admin] = $this->received();

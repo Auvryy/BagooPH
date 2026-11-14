@@ -102,7 +102,11 @@ class BuyerReturnAmounts
     /** Original paid shipping allocations do not grant a refund or change purchased policy. */
     public function shipping(Order $order): array
     {
-        return $this->shippingSource($order, $this->original($order));
+        $source = ($order->shipping_quote['refund_policy_version'] ?? 1) === 2
+            ? $this->successorOriginal($order)
+            : $this->original($order);
+
+        return $this->shippingSource($order, $source);
     }
 
     private function shippingSource(Order $order, array $source): array
@@ -125,6 +129,10 @@ class BuyerReturnAmounts
 
     public function shippingForCase(BuyerReturnCase $case): array
     {
+        if (($case->order->shipping_quote['refund_policy_version'] ?? 1) === 2) {
+            return $this->successorForCase($case);
+        }
+
         return $this->claimedShipping($this->forCase($case), $this->shipping($case->order));
     }
 

@@ -203,6 +203,7 @@ class NewEraLocalFlowTest extends TestCase
     public function test_a_post_completion_wallet_return_uses_actual_local_intake_and_seller_receipt_and_adjusts_original_earnings(): void
     {
         $order = $this->localOrder('wallet');
+        $order->update(['shipping_quote' => [...$order->shipping_quote, 'refund_policy_version' => 1]]);
         $this->pay($order);
         $this->flowDelivery($order, 'delivered');
         $service = app(BuyerReturnService::class);

@@ -65,6 +65,7 @@ class WalletMoneyTest extends TestCase
             $shipping += ['shop_voucher_revision_ids' => [$shop->id => $shopOffer->current_revision_id], 'platform_voucher_revision_id' => $platformOffer->current_revision_id];
         }
         $order = $this->checkoutFlowOrder($buyer, $shop, [['product' => $product, 'quantity' => $quantity]], shipping: $shipping);
+        $order->update(['shipping_quote' => [...$order->shipping_quote, 'refund_policy_version' => 1]]);
         $this->assertSame('60.00', $order->shipping_fee);
         $admin = $this->createApprovedUser('admin');
         $credits = app(WalletCreditService::class);

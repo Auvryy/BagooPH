@@ -125,7 +125,7 @@ class SelectedProductVoucherTest extends TestCase
         $this->assertSame('127.00', $order->voucher_discount);
         $this->assertSame('933.00', $order->total_amount);
         $this->assertSame([$this->qualifying->id], VoucherRedemption::where('voucher_revision_id', $revision->id)->sole()->terms['product_ids']);
-        $units = app(BuyerReturnAmounts::class)->original($order)['units'];
+        $units = app(BuyerReturnAmounts::class)->successorOriginal($order)['units'];
         $this->assertSame([1000, 1000, 1000, 0], array_column($units, 'shop_discount_cents'));
         $this->assertSame([8100, 8100, 8100, 63000], array_column($units, 'buyer_cents'));
         $this->assertSame(87300, array_sum(array_column($units, 'buyer_cents')));
@@ -134,7 +134,7 @@ class SelectedProductVoucherTest extends TestCase
         $revision->voucher->update(['is_active' => false]);
         $this->post('/checkout', $input)->assertSessionHas('success');
         $this->assertSame($before, $order->fresh()->getRawOriginal());
-        $this->assertSame($units, app(BuyerReturnAmounts::class)->original($order->fresh())['units']);
+        $this->assertSame($units, app(BuyerReturnAmounts::class)->successorOriginal($order->fresh())['units']);
         $this->assertDatabaseCount('orders', 1);
         $this->assertDatabaseCount('voucher_redemptions', 2);
     }
@@ -172,7 +172,7 @@ class SelectedProductVoucherTest extends TestCase
         $this->assertSame(0.01, $quote['discount']);
         $this->createCheckoutNetwork($this->shop, ['Pasig' => 'Metro Manila']);
         $this->post('/checkout', $this->input(['shop_voucher_revision_ids' => [$this->shop->id => $revision->id]]))->assertSessionHas('success');
-        $units = app(BuyerReturnAmounts::class)->original(Order::sole())['units'];
+        $units = app(BuyerReturnAmounts::class)->successorOriginal(Order::sole())['units'];
         $this->assertSame(0, $units[0]['seller_cents']);
         $this->assertSame(0, $units[0]['buyer_cents']);
         $this->assertSame(0, $units[1]['shop_discount_cents']);
@@ -202,7 +202,7 @@ class SelectedProductVoucherTest extends TestCase
         $compact = $order->items()->where('product_id', $this->qualifying->id)->where('size', 'Compact')->sole();
         $this->assertSame('149.96', $compact->unit_price);
         $this->assertSame('SCOPE-C', $compact->sku_snapshot);
-        $units = app(BuyerReturnAmounts::class)->original($order)['units'];
+        $units = app(BuyerReturnAmounts::class)->successorOriginal($order)['units'];
         $this->assertSame(9749, array_sum(array_column($units, 'shop_discount_cents')));
         $this->assertSame(0, $units[2]['shop_discount_cents']);
     }

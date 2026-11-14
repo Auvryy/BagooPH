@@ -72,7 +72,7 @@ class BuyerReturnShippingTest extends TestCase
         $this->assertSame($source['buyer_paid_shipping_cents'], array_sum($totals));
         $this->assertDatabaseCount('buyer_return_adjustments', 0);
         $this->assertDatabaseCount('buyer_return_money_events', 0);
-        $this->assertSame(1, $order->shipping_quote['refund_policy_version']);
+        $this->assertSame(2, $order->shipping_quote['refund_policy_version']);
     }
 
     public function test_shipping_voucher_subsidy_is_excluded_and_reading_allocations_preserves_original_commitments(): void

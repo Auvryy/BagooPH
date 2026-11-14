@@ -99,9 +99,9 @@ class ReturnFaultReviewTest extends TestCase
     {
         $case = $this->requestCase();
         $service = app(BuyerReturnService::class);
-        $service->command(User::findOrFail($case->seller_id), $case, 'approve', $this->payload($case));
+        $service->command(User::findOrFail($case->seller_id), $case, 'approve', $this->payload($case, ['fault' => 'seller']));
         $this->actingAs($this->createApprovedUser('admin'))->post('/buyer-returns/'.$case->id.'/actions', ['action' => 'review-fault',
             ...$this->payload($case, ['fault' => 'courier', 'fault_evidence' => $evidence])])->assertSessionHasErrors('fault_evidence');
-        $this->assertSame('unspecified', app(ReturnFaultReviewService::class)->current($case->fresh())['fault']);
+        $this->assertSame('seller', app(ReturnFaultReviewService::class)->current($case->fresh())['fault']);
     }
 }

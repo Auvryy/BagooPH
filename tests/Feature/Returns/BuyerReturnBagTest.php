@@ -269,7 +269,8 @@ class BuyerReturnBagTest extends TestCase
                 'reason' => 'damaged', 'description' => 'This individually returned purchased unit has a broken fastening.',
                 'items' => [['order_item_id' => $order->items->first()->id, 'quantity' => 1]]], [UploadedFile::fake()->image('original-unit.png')]);
             $returns->command($seller, $case, 'approve', ['request_token' => (string) Str::uuid(), 'expected_version' => 1,
-                'reason' => 'The reviewed original unit has its own approved return.']);
+                'reason' => 'The reviewed original unit has its own approved return.',
+                ...((($order->shipping_quote['refund_policy_version'] ?? 1) === 2) ? ['fault' => 'seller'] : [])]);
             $case = $case->fresh(['parcel', 'order.delivery', 'order.buyer']);
             $source = LogisticsHub::findOrFail($case->parcel->hub_ids[0]);
             $handler = $this->flowHandler($source);
