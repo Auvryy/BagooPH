@@ -662,8 +662,13 @@ class LogisticsHubWorkstationController extends Controller
             $ridersByHub = [];
             $canScanByHub = [];
             $isCompanyManager = $user && ($user->isAdmin() || $this->eligibility->isCompanyManager($user));
+            $paginated = $query->latest()->paginate(15)->withPath($basePath.'/deliveries')->withQueryString();
+            $preloadedGuidance = $workstation->preloadGuidanceContext($paginated->getCollection(), $activeHub, $user);
+            if ($activeHub && array_key_exists('can_scan', $preloadedGuidance)) {
+                $canScanByHub[$activeHub->id] = (bool) $preloadedGuidance['can_scan'];
+            }
 
-            return $query->latest()->paginate(15)->withPath($basePath.'/deliveries')->withQueryString()->through(function ($d) use ($activeHub, $workstation, $user, $eligibleRiders, $basePath, $etaService, &$ridersByHub, &$canScanByHub, $isCompanyManager, $hasDispatchEscalations) {
+            return $paginated->through(function ($d) use ($activeHub, $workstation, $user, $eligibleRiders, $basePath, $etaService, &$ridersByHub, &$canScanByHub, $isCompanyManager, $hasDispatchEscalations, $preloadedGuidance) {
                 $isAwaitingOriginIntake = $activeHub
                     && $d->status === OrderStateMachineService::STATUS_PICKED_UP
                     && $d->origin_bayan_hub_id === $activeHub->id
@@ -721,7 +726,7 @@ class LogisticsHubWorkstationController extends Controller
                     'payment_method' => $d->order?->payment_method ?? 'cod',
                     'item_count' => $d->order?->items?->count() ?? 1,
                     'created_at' => $d->created_at->format('M d, Y H:i'),
-                    'guidance' => $workstation->guidance($d, $activeHub, $user, $eligibleRiders(), $basePath),
+                    'guidance' => $workstation->guidance($d, $activeHub, $user, $eligibleRiders(), $basePath, $preloadedGuidance),
                     'eta' => $etaService->present($d, $d->order, false),
                     'dispatch_delay_label' => $hasDispatchEscalations ? $d->dispatchEscalation?->dispatch_delay_label : null,
                     'dispatch_escalation_tier' => $hasDispatchEscalations ? $d->dispatchEscalation?->current_tier : null,

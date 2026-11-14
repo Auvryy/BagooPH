@@ -442,40 +442,64 @@ class HubBatchScanService
     }
 
     /**
-     * Attempt fast indexed lookup by deliveries.tracking_number before falling back to orders.order_number.
+     * Attempt fast indexed lookup by deliveries.tracking_number while preserving cross-namespace ambiguity checks.
      */
     public function findUniqueDelivery(string $barcode): array
     {
-        $direct = Delivery::query()
-            ->with([
-                'order.items.product',
-                'order.buyer',
-                'order.shop',
-                'originBayanHub',
-                'originMotherHub',
-                'destinationBayanHub',
-                'destinationMotherHub',
-                'assignedRider',
-            ])
+        $eager = [
+            'order.items.product',
+            'order.buyer',
+            'order.shop',
+            'originBayanHub',
+            'originMotherHub',
+            'destinationBayanHub',
+            'destinationMotherHub',
+            'assignedRider',
+        ];
+
+        $directMatches = Delivery::query()
+            ->with($eager)
             ->useWritePdo()
             ->where('tracking_number', $barcode)
-            ->first();
+            ->limit(2)
+            ->get();
 
-        if ($direct) {
+        if ($directMatches->count() > 1) {
+            return [
+                'delivery' => null,
+                'error' => 'This code matches more than one parcel and needs review. Use its unique tracking barcode.',
+                'ambiguous' => true,
+            ];
+        }
+
+        if ($directMatches->count() === 1) {
+            $direct = $directMatches->first();
+            $conflictingOrderIds = Order::query()
+                ->useWritePdo()
+                ->where('order_number', $barcode)
+                ->pluck('id');
+
+            if ($conflictingOrderIds->isNotEmpty()) {
+                $aliasConflict = Delivery::query()
+                    ->useWritePdo()
+                    ->whereIn('order_id', $conflictingOrderIds)
+                    ->where('id', '!=', $direct->id)
+                    ->exists();
+
+                if ($aliasConflict) {
+                    return [
+                        'delivery' => null,
+                        'error' => 'This code matches more than one parcel and needs review. Use its unique tracking barcode.',
+                        'ambiguous' => true,
+                    ];
+                }
+            }
+
             return ['delivery' => $direct, 'error' => null, 'ambiguous' => false];
         }
 
         $matches = Delivery::query()
-            ->with([
-                'order.items.product',
-                'order.buyer',
-                'order.shop',
-                'originBayanHub',
-                'originMotherHub',
-                'destinationBayanHub',
-                'destinationMotherHub',
-                'assignedRider',
-            ])
+            ->with($eager)
             ->useWritePdo()
             ->whereHas('order', fn ($query) => $query->where('order_number', $barcode))
             ->limit(2)
