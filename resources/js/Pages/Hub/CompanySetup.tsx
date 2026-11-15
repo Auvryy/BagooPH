@@ -8,7 +8,7 @@ import HubPicker from '@/Components/Logistics/HubPicker';
 import HubLocationEditor from '@/Components/Logistics/HubLocationEditor';
 import AddressLocationFields from '@/Components/AddressLocationFields';
 import LocationPinPicker from '@/Components/LocationPinPicker';
-import { HubBadge, HubButton, HubPanel, HubPageHeader, HubSearch, InfoHint, hubInput } from '@/Components/Logistics/Workspace';
+import { HubBadge, HubButton, HubCategoryTabs, HubPanel, HubPageHeader, HubSearch, InfoHint, hubInput } from '@/Components/Logistics/Workspace';
 
 type Hub = { latitude: number | null; longitude: number | null; address: string; id: number; name: string; code: string; tier: string; city_municipality: string; province: string; parent_hub_id: number | null; postal_codes: string[] | null; coverage_token: string; location_token: string; is_active: boolean };
 type Props = { companies: { id: number; name: string }[]; company: { id: number; name: string; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number; shipping_earnings_model: string; tariff_version: number }; canProvision: boolean; hubs: Hub[]; staff: { id: number; name: string; email: string; kind: string; hub_name: string; handler_id?: number | null; job_role?: string | null; must_change_password: boolean; email_verified_at: string | null }[]; basePath: string };
@@ -85,22 +85,12 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                     ))}
                 </div>
 
-                <div role="tablist" aria-label="Company setup sections" className="flex gap-1 overflow-x-auto border-b border-line-200">
-                    {tabs.map(({ key, label, icon: Icon }) => (
-                        <button
-                            key={key}
-                            role="tab"
-                            aria-selected={tab === key}
-                            onClick={() => { setTab(key); setCreating(false); setSearch(''); }}
-                            className={`-mb-px inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap border-x-0 border-t-0 border-b-2 px-3 py-2 focus-visible:-outline-offset-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${
- tab === key ? 'border-brand-500 text-brand-600' : 'border-transparent text-ink-600 hover:border-line-300 hover:text-ink-900'
- }`}
-                        >
-                            <Icon className="h-4 w-4" aria-hidden="true" />
-                            {label}
-                        </button>
-                    ))}
-                </div>
+                <HubCategoryTabs
+                    label="Company setup sections"
+                    activeId={tab}
+                    onChange={key => { setTab(key as typeof tab); setCreating(false); setSearch(''); }}
+                    tabs={tabs.map(({ key, label }) => ({ id: key, label }))}
+                />
 
                 {sharedErrors.map(([key, value]) => <p key={key} role="alert" className="rounded-xl border border-rose-200/90 bg-rose-50/80 p-4 text-sm text-rose-800">{value}</p>)}
 

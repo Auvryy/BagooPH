@@ -435,7 +435,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                             </header>
 
                             <div className="p-5 sm:p-6 space-y-5">
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                                     <div className="min-w-0 flex-1"><HubRoute stops={[selected.source, selected.destination]} /></div>
                                     {selected.source.latitude && selected.source.longitude && selected.destination.latitude && selected.destination.longitude && (
                                         <a
@@ -444,7 +444,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             rel="noopener noreferrer"
                                             aria-label="Open transfer directions"
                                             title="Open transfer directions"
-                                            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line-300 bg-white text-ink-700 hover:border-ink-400 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500"
+                                            className="inline-flex h-10 w-10 shrink-0 self-end sm:self-auto items-center justify-center rounded-full border border-line-300 bg-white text-ink-700 hover:border-ink-400 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500"
                                         >
                                             <ExternalLink className="h-4 w-4" aria-hidden="true" />
                                         </a>

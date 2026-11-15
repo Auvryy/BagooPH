@@ -583,7 +583,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             )}
 
                                             <form onSubmit={event => submit(event, 'seal')} className="space-y-3 border-t border-line-200 pt-5">
-                                                <div className="flex flex-wrap items-end gap-2">
+                                                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                                                     <label className="min-w-0 flex-1">
                                                         <span className={fieldLabel}>Numbered seal</span>
                                                         <input required maxLength={80} className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} placeholder="Scan or type SL-XXXXX" />

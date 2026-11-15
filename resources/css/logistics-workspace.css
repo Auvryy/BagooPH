@@ -228,3 +228,9 @@
 .logistics-workspace main details > summary:not(.inline):hover::after {
     border-color: #1C1917;
 }
+
+/* Tabs sit in a horizontally scrolling row: draw their focus ring inside so it is not clipped. */
+.logistics-workspace main [role="tab"]:focus-visible,
+.logistics-workspace main [aria-label="Handover report filters"] a:focus-visible {
+    outline-offset: -2px;
+}
