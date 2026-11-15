@@ -282,13 +282,13 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                                 <div className="min-w-0 flex-1">
                                                     <p className="truncate text-xs font-semibold text-[#121316]">{worker.name}</p>
                                                     <p className="truncate text-[11px] text-zinc-500">{worker.email}</p>
-                                                    <p className="mt-1 text-[11px] font-medium text-zinc-600">{worker.hub_name} ({worker.hub_code})</p>
+                                                    <p className="mt-1 truncate text-[11px] font-medium text-zinc-600">{worker.hub_name} ({worker.hub_code})</p>
                                                 </div>
-                                                <label className="shrink-0 space-y-1 text-[11px] font-semibold text-zinc-600">
+                                                <label className="w-full min-w-0 sm:w-auto sm:shrink-0 space-y-1 text-[11px] font-semibold text-zinc-600">
                                                     <span className="block">Locked role</span>
                                                     <select
                                                         aria-label={`Locked job role for ${worker.name} at ${worker.hub_name}`}
-                                                        className="block rounded-lg border border-zinc-200/90 bg-white px-2.5 py-1.5 text-xs font-medium text-[#121316] shadow-2xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15"
+                                                        className="block w-full min-w-0 max-w-full rounded-lg border border-zinc-200/90 bg-white px-2.5 py-1.5 text-xs font-medium text-[#121316] shadow-2xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15"
                                                         value={worker.job_role}
                                                         onChange={(event) => {
                                                             router.patch(

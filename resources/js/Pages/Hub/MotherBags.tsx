@@ -176,10 +176,10 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                             <form onSubmit={event => { event.preventDefault(); create.post(basePath); }} className="mt-5 space-y-4">
                                 <HubPicker label="Sending hub" hubs={packableHubs} value={create.data.source_hub_id} onChange={id => create.setData({ ...create.data, source_hub_id: id, destination_hub_id: '' })} error={create.errors.source_hub_id} />
                                 <HubPicker label="Next hub" hubs={receivingHubs} value={create.data.destination_hub_id} onChange={id => create.setData('destination_hub_id', id)} disabled={!source} error={create.errors.destination_hub_id} />
-                                <label className="block text-xs font-bold text-[#121316]">
+                                <label className="block min-w-0 text-xs font-bold text-[#121316]">
                                     Bag capacity preset
                                     <select
-                                        className={`${hubInput} mt-1.5`}
+                                        className={`${hubInput} mt-1.5 truncate`}
                                         value={create.data.capacity_preset}
                                         onChange={event => {
                                             const key = event.target.value;
@@ -298,7 +298,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                 </div>
                                                 <HubBadge tone={item.status === 'received' ? 'brand' : 'neutral'}>{words(item.status)}</HubBadge>
                                             </div>
-                                            <p className="mt-3 text-xs sm:text-sm font-bold leading-5 text-[#121316]">
+                                            <p className="mt-3 break-words text-xs sm:text-sm font-bold leading-5 text-[#121316]">
                                                 {item.source.name}
                                                 <ArrowRight className="mx-1.5 inline h-3.5 w-3.5 text-zinc-400" />
                                                 {item.destination.name}
@@ -423,7 +423,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                 <span className="text-xs font-medium text-zinc-500 tabular-nums">Seal {bag.seal_number}</span>
                                             )}
                                         </div>
-                                        <p className="mt-0.5 text-xs text-zinc-600">
+                                        <p className="mt-0.5 break-words text-xs text-zinc-600">
                                             {bag.source.name} → {bag.destination.name} · {bag.parcels_count} recorded parcels
                                         </p>
                                     </div>
