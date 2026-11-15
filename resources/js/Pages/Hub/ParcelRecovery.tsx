@@ -91,7 +91,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                     ))}
                 </div>
 
-                <div className="grid items-start gap-6 lg:grid-cols-[340px_1fr]">
+                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[340px_1fr]">
                     {/* Left: Reported Observations Sidebar */}
                     <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                         <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">

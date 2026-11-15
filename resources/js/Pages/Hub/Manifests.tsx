@@ -316,7 +316,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                     </div>
                                 </div>
 
-                                <div className="rounded border border-zinc-300 bg-zinc-50/40 p-3 space-y-2.5">
+                                <div className="space-y-2.5">
                                     <HubMap
                                         hubs={hubs}
                                         routeIds={sourceHub && destinationHub ? [sourceHub.id, destinationHub.id] : undefined}
@@ -328,7 +328,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             else if (sendingHubs.some(item => item.id === hub.id))
                                                 creation.setData({ ...creation.data, source_hub_id: String(hub.id), destination_hub_id: '', vehicle_id: '' });
                                         }}
-                                        className="h-64 rounded overflow-hidden border border-zinc-300"
+                                        className="h-64 overflow-hidden rounded-card border border-line-200"
                                     />
                                 </div>
                             </div>
@@ -337,7 +337,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                 )}
 
                 {/* Master-Detail Split */}
-                <div className="grid items-start gap-6 lg:grid-cols-[340px_1fr]">
+                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[340px_1fr]">
                     {/* Left: Recorded Transfers List */}
                     <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                         <header className="flex items-center justify-between gap-3 px-5 pt-5">

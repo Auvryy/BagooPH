@@ -152,7 +152,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                     </div>
                 )}
 
-                <div className="grid items-start gap-6 lg:grid-cols-[380px_1fr]">
+                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[380px_1fr]">
                     <div className="space-y-6">
                         {/* Bags directory */}
                         <section aria-label="Your bags" className="rounded-card border border-line-200 bg-white">
@@ -335,8 +335,8 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                         </details>
                     </div>
 
-                    {/* Right Column: Auto-pack (default) OR Selected Bag Workspace */}
-                    <div className="min-w-0 space-y-5">
+                    {/* Right Column: Auto-pack (default) OR Selected Bag Workspace; first on phones */}
+                    <div className="order-first min-w-0 space-y-5 lg:order-none">
                         {!packingAvailable && (
                             <p role="status" className="rounded-control bg-warning-soft p-4 text-sm text-warning">
                                 Packing upgrades need the additive database migration. Existing trip history remains available.
@@ -457,7 +457,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                 <div aria-label="Bag capacity">
                                                     <p className="mb-2 text-[13px] font-medium text-ink-700">Packing capacity</p>
                                                     <div className="grid gap-3 sm:grid-cols-3">
-                                                        <CapacityMeter label="Parcels" value={bag.capacity.count} max={bag.capacity.max_count} unit="parcels" />
+                                                        <CapacityMeter label="Parcels" value={bag.capacity.count} max={bag.capacity.max_count} unit="" />
                                                         <CapacityMeter label="Weight" value={bag.capacity.weight_kg} max={bag.capacity.max_weight_kg} unit="kg" />
                                                         <CapacityMeter label="Volume" value={bag.capacity.volume_cm3 === null ? null : Number((bag.capacity.volume_cm3 / 1000000).toFixed(4))} max={Number(((bag.capacity.max_volume_cm3 || 300000) / 1000000).toFixed(2))} unit="m³" />
                                                     </div>

@@ -44,7 +44,8 @@ export function HandlingSummary({ value }: { value?: Handling | null }) {
 export function CapacityMeter({ value, max, label, unit }: { value: number | null; max: number; label: string; unit: string }) {
     const pct = value === null || max <= 0 ? 0 : Math.min(100, (value / max) * 100);
     return <div className="rounded-control bg-surface-50 p-3">
-        <div className="flex justify-between gap-2 text-[13px] text-ink-600"><span>{label}</span><strong className="font-medium tabular-nums text-ink-900">{value === null ? 'Unknown' : value} / {max} {unit}</strong></div>
+        <p className="text-xs text-ink-600">{label}</p>
+        <p className="mt-0.5 whitespace-nowrap text-sm tabular-nums text-ink-900"><strong className="font-semibold">{value === null ? 'Unknown' : value}</strong><span className="text-ink-500"> / {max}{unit ? ` ${unit}` : ''}</span></p>
         <span role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value ?? undefined} className="mt-2 block h-1.5 overflow-hidden rounded-full bg-line-200">
             <span className={`block h-full rounded-full ${pct >= 90 ? 'bg-brand-500' : pct >= 70 ? 'bg-warning' : 'bg-success'}`} style={{ width: `${pct}%` }} />
         </span>

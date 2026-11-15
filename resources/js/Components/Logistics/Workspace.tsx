@@ -262,7 +262,7 @@ export function HubCategoryTabs({
     label?: string;
 }) {
     return (
-        <div role="tablist" aria-label={label} className="flex flex-wrap items-center gap-x-1 border-b border-line-200">
+        <div role="tablist" aria-label={label} className="flex items-center gap-x-1 overflow-x-auto border-b border-line-200 [scrollbar-width:none]">
             {tabs.map((tab) => {
                 const selected = tab.id === activeId;
                 return (
@@ -272,7 +272,7 @@ export function HubCategoryTabs({
                         type="button"
                         aria-selected={selected}
                         onClick={() => onChange(tab.id)}
-                        className={`-mb-px inline-flex min-h-10 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${
+                        className={`-mb-px inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${
  selected
  ? 'border-brand-500 text-brand-600'
  : 'border-transparent text-ink-600 hover:border-line-300 hover:text-ink-900'

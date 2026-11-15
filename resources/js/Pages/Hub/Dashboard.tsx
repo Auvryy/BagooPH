@@ -346,56 +346,29 @@ export default function HubDashboard({
                                     {facilities.length === 0 ? (
                                         <div className="px-5 py-8 text-center text-xs text-zinc-500">No accessible facilities in this scope.</div>
                                     ) : (
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full border-collapse text-left text-xs">
-                                                <thead>
-                                                    <tr className="border-b border-zinc-100 bg-zinc-50/60 text-[11px] font-semibold text-zinc-500">
-                                                        <th className="px-5 py-3">Facility</th>
-                                                        <th className="px-4 py-3">Tier</th>
-                                                        <th className="px-4 py-3 text-right">Custody</th>
-                                                        <th className="px-4 py-3 text-right">Exceptions</th>
-                                                        <th className="px-4 py-3 text-right">Fleet</th>
-                                                        <th className="px-5 py-3 text-right">Utilization</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-zinc-100">
-                                                    {facilities.map((facility) => (
-                                                        <tr key={facility.id} className="transition-colors hover:bg-zinc-50/60">
-                                                            <td className="px-5 py-3">
-                                                                <p className="font-semibold text-ink-900">{facility.name}</p>
-                                                                <p className="text-[11px] font-medium text-zinc-400">
-                                                                    {facility.code} · {facility.city_municipality}
-                                                                </p>
-                                                            </td>
-                                                            <td className="px-4 py-3">
-                                                                <span className="inline-flex rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
-                                                                    {formatTier(facility.tier)}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right font-semibold tabular-nums text-ink-900">
-                                                                {facility.parcels}
-                                                            </td>
-                                                            <td
-                                                                className={`px-4 py-3 text-right font-semibold tabular-nums ${
- facility.exceptions > 0 ? 'text-red-700' : 'text-zinc-500'
- }`}
-                                                            >
-                                                                {facility.exceptions}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right tabular-nums text-zinc-600">{facility.active_fleet}</td>
-                                                            <td className="px-5 py-3">
-                                                                <div className="ml-auto flex w-32 flex-col items-end gap-1" title={`${facility.utilization_rate}% of ${facility.capacity} parcels`}>
-                                                                    <span className="text-[13px] font-medium tabular-nums text-ink-900">{facility.utilization_rate}%</span>
-                                                                    <span className="h-1.5 w-full overflow-hidden rounded-full bg-surface-100" role="img" aria-label={`${facility.utilization_rate}% of ${facility.capacity} parcel capacity used`}>
-                                                                        <span className={`block h-full rounded-full ${facility.utilization_rate >= 90 ? 'bg-brand-500' : facility.utilization_rate >= 70 ? 'bg-warning' : 'bg-success'}`} style={{ width: `${Math.max(2, Math.min(100, facility.utilization_rate))}%` }} />
-                                                                    </span>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                        <ul className="divide-y divide-line-200 border-t border-line-200">
+                                            {facilities.map((facility) => (
+                                                <li key={facility.id} className="px-5 py-4">
+                                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            <p className="truncate text-sm font-semibold text-ink-900">{facility.name}</p>
+                                                            <p className="text-xs text-ink-600">{facility.code} · {facility.city_municipality} · {formatTier(facility.tier)}</p>
+                                                        </div>
+                                                        <dl className="flex gap-5 text-right">
+                                                            <div><dt className="text-xs text-ink-500">Custody</dt><dd className="text-sm font-semibold tabular-nums text-ink-900">{facility.parcels}</dd></div>
+                                                            <div><dt className="text-xs text-ink-500">Exceptions</dt><dd className={`text-sm font-semibold tabular-nums ${facility.exceptions > 0 ? 'text-warning' : 'text-ink-900'}`}>{facility.exceptions}</dd></div>
+                                                            <div><dt className="text-xs text-ink-500">Fleet</dt><dd className="text-sm font-semibold tabular-nums text-ink-900">{facility.active_fleet}</dd></div>
+                                                        </dl>
+                                                    </div>
+                                                    <div className="mt-3 flex items-center gap-3" title={`${facility.utilization_rate}% of ${facility.capacity} parcels`}>
+                                                        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-100" role="img" aria-label={`${facility.utilization_rate}% of ${facility.capacity} parcel capacity used`}>
+                                                            <span className={`block h-full rounded-full ${facility.utilization_rate >= 90 ? 'bg-brand-500' : facility.utilization_rate >= 70 ? 'bg-warning' : 'bg-success'}`} style={{ width: `${Math.max(2, Math.min(100, facility.utilization_rate))}%` }} />
+                                                        </span>
+                                                        <span className="shrink-0 text-xs tabular-nums text-ink-600">{facility.utilization_rate}% of {facility.capacity}</span>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
                                     )}
                                 </section>
                             )}
@@ -428,7 +401,7 @@ export default function HubDashboard({
                                                 </div>
                                             </div>
                                             {scope.can_scan && (
-                                                <PortalLink href={route('hub.scan.station')} className={hubButton}>
+                                                <PortalLink href={route('hub.scan.station')} className={`${hubButton} shrink-0 whitespace-nowrap`}>
                                                     Scan station
                                                 </PortalLink>
                                             )}
