@@ -3,11 +3,11 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowRight, Box, CheckCheck, Container, LockKeyhole, Package, Printer, ScanLine, Truck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { HubBadge, HubButton, HubNextStep, HubRoute, HubSearch, HubStepRail, hubButton, hubInput, type HubPlace } from '@/Components/Logistics/Workspace';
+import { HubBadge, HubButton, HubRoute, HubSearch, hubButton, hubInput, type HubPlace } from '@/Components/Logistics/Workspace';
 import HubPicker from '@/Components/Logistics/HubPicker';
 import { CapacityMeter, HandlingFields, HandlingSummary, emptyHandling, type Handling } from '@/Components/Logistics/CargoHandling';
 import WaybillCamera from '@/Components/WaybillCamera';
-import { bagSteps, nextTransferHubs } from '@/utils/hubWorkspace';
+import { nextTransferHubs } from '@/utils/hubWorkspace';
 
 type Hub = HubPlace & { id: number; name: string; code: string; tier: string; logistics_company_id: number; canScan: boolean };
 type Bag = { packing_policy_version?: number | null; physical_tag?: string | null; capacity?: { count: number; weight_kg: number | null; volume_cm3: number | null; max_count: number; max_weight_kg: number; max_volume_cm3: number } | null; id: string; reference: string; status: string; seal_number: string | null; version: number; source_hub_id: number; destination_hub_id: number; manifest_id: number | null; parcels_count: number; source: Pick<Hub, 'id' | 'name' | 'code'>; destination: Pick<Hub, 'id' | 'name' | 'code'> };
@@ -46,7 +46,6 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
     const source = hubs.find(hub => String(hub.id) === create.data.source_hub_id);
     const destination = hubs.find(hub => String(hub.id) === create.data.destination_hub_id);
     const receivingHubs = nextTransferHubs(hubs.filter(hub => hub.logistics_company_id === source?.logistics_company_id), source);
-    const nextTitle = !bag ? '' : bag.status === 'received' ? 'Bag received: scan parcels for their next sorting step' : bag.status === 'opened' ? 'Scan every arriving parcel in the linked manifest' : bag.status === 'in_transit' ? 'Receiving handler: check the physical master tag and seal' : bag.status === 'sealed' ? bag.manifest_id ? 'Bag loaded: record actual departure in the manifest' : 'Scan the sealed master tag onto a matching draft' : 'Scan parcels into this bag, then attach a numbered seal';
     const error = Object.values(action.errors).concat(Object.values(create.errors), Object.values(packing.errors)).filter(Boolean);
 
     return (
@@ -56,13 +55,24 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
             <div className="space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <h1 className="text-2xl font-bold tracking-tight text-[#121316]">Mother Bags</h1>
-                    <Link
-                        href={route('hub.manifests.index')}
-                        className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#121316] shadow-xs hover:border-zinc-300 hover:bg-zinc-50 transition"
-                    >
-                        <Truck className="h-4 w-4 text-zinc-600" />
-                        Manifests
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {bag && (
+                            <Link
+                                href={basePath}
+                                className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#121316] shadow-xs hover:border-zinc-300 hover:bg-zinc-50 transition"
+                            >
+                                <ScanLine className="h-4 w-4 text-zinc-600" />
+                                Auto-pack parcel
+                            </Link>
+                        )}
+                        <Link
+                            href={route('hub.manifests.index')}
+                            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#121316] shadow-xs hover:border-zinc-300 hover:bg-zinc-50 transition"
+                        >
+                            <Truck className="h-4 w-4 text-zinc-600" />
+                            Manifests
+                        </Link>
+                    </div>
                 </div>
 
                 {error.length > 0 && (
@@ -204,9 +214,15 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                         </aside>
                     </div>
 
-                    {/* Right Column: Scan into next open bag + Active Bag Details */}
+                    {/* Right Column: Auto-pack (default) OR Selected Bag Workspace */}
                     <div className="min-w-0 space-y-5">
-                        {packingAvailable ? (
+                        {!packingAvailable && (
+                            <p role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                                Packing upgrades need the additive database migration. Existing trip history remains available.
+                            </p>
+                        )}
+
+                        {!bag && packingAvailable && (
                             <section className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xs">
                                 <header className="border-b border-zinc-100 bg-white px-5 py-4">
                                     <h2 className="text-base font-bold text-[#121316]">Scan into the next open bag</h2>
@@ -271,86 +287,33 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     </div>
                                 </form>
                             </section>
-                        ) : (
-                            <p role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-                                Packing upgrades need the additive database migration. Existing trip history remains available.
-                            </p>
                         )}
 
                         {bag && (
                             <div className="space-y-5">
-                                <HubStepRail steps={bagSteps(bag.status, Boolean(bag.manifest_id))} label="Mother Bag progress" />
-                                <HubNextStep title={nextTitle} icon={bag.status === 'received' ? CheckCheck : ScanLine}>
-                                    {bag.source.name} → {bag.destination.name}. {bag.parcels_count} recorded parcels.
+                                {/* Compact Selected Bag Summary */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-5 py-3.5 shadow-xs">
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-sm font-bold text-[#121316] tabular-nums">{bag.reference}</span>
+                                            <HubBadge tone={bag.status === 'received' ? 'brand' : 'neutral'}>{words(bag.status)}</HubBadge>
+                                            {bag.seal_number && (
+                                                <span className="text-xs font-medium text-zinc-500 tabular-nums">Seal {bag.seal_number}</span>
+                                            )}
+                                        </div>
+                                        <p className="mt-0.5 text-xs text-zinc-600">
+                                            {bag.source.name} → {bag.destination.name} · {bag.parcels_count} recorded parcels
+                                        </p>
+                                    </div>
                                     {bag.manifest_id && (
-                                        <Link className="ml-2 font-semibold text-[#121316] underline underline-offset-4 hover:text-zinc-700" href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests/${bag.manifest_id}`}>
+                                        <Link
+                                            className="text-xs font-bold text-[#121316] underline underline-offset-4 hover:text-zinc-700"
+                                            href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests/${bag.manifest_id}`}
+                                        >
                                             Open transport manifest
                                         </Link>
                                     )}
-                                </HubNextStep>
-
-                                {bag.capacity && (
-                                    <section aria-label="Bag capacity" className="space-y-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-xs">
-                                        <div className="flex flex-wrap justify-between gap-2">
-                                            <h2 className="font-bold text-[#121316]">Packing capacity</h2>
-                                            <span className="break-all text-xs text-zinc-600">Permanent sack: <strong>{bag.physical_tag ?? 'No reusable tag recorded'}</strong></span>
-                                        </div>
-                                        <div className="grid gap-3 sm:grid-cols-3">
-                                            <CapacityMeter label="Parcels" value={bag.capacity.count} max={bag.capacity.max_count} unit="parcels" />
-                                            <CapacityMeter label="Weight" value={bag.capacity.weight_kg} max={bag.capacity.max_weight_kg} unit="kg" />
-                                            <CapacityMeter label="Volume" value={bag.capacity.volume_cm3 === null ? null : Number((bag.capacity.volume_cm3 / 1000000).toFixed(4))} max={0.30} unit="m³" />
-                                        </div>
-                                        <p className="text-xs text-zinc-500">Declared sizes or operator readings guide packing. Check the actual fit before attaching the numbered seal.</p>
-                                    </section>
-                                )}
-
-                                {/* Master Tag & Route Card */}
-                                <section className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                        <div className="flex items-center gap-2.5">
-                                            <Container className="h-4 w-4 text-zinc-600" />
-                                            <div>
-                                                <h2 className="text-sm font-bold text-[#121316] tabular-nums">{bag.reference}</h2>
-                                                <p className="text-xs text-zinc-500">Master tag, recorded route and numbered seal</p>
-                                            </div>
-                                        </div>
-                                        <HubButton type="button" onClick={() => window.print()}>
-                                            <Printer className="h-4 w-4" />
-                                            Print master tag
-                                        </HubButton>
-                                    </header>
-                                    <div className="p-5 sm:p-6 space-y-5">
-                                        <HubRoute stops={[bag.source, bag.destination]} />
-                                        <div className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-zinc-200/80 bg-zinc-50/30 p-4">
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-[#121316]">
-                                                        {bag.reference}
-                                                    </span>
-                                                    <HubBadge tone={bag.status === 'received' ? 'brand' : 'neutral'}>{words(bag.status)}</HubBadge>
-                                                </div>
-                                                <p className="text-xs sm:text-sm text-zinc-600 font-medium">
-                                                    {bag.parcels_count} parcels · {bag.seal_number ? `Seal ${bag.seal_number}` : 'Seal not attached'}
-                                                </p>
-                                                {bag.manifest_id && (
-                                                    <Link
-                                                        className="inline-block text-xs sm:text-sm font-bold text-[#121316] hover:text-zinc-700 underline underline-offset-4"
-                                                        href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests/${bag.manifest_id}`}
-                                                    >
-                                                        Open transport manifest
-                                                    </Link>
-                                                )}
-                                            </div>
-                                            <div data-bag-label className="rounded-xl border border-zinc-200 bg-white p-4 text-center shadow-xs">
-                                                <QRCodeSVG value={bag.reference} size={96} />
-                                                <p className="mt-2.5 text-xs tabular-nums font-bold text-[#121316]">{bag.reference}</p>
-                                                <p className="mt-1 text-xs text-zinc-500 font-medium">{bag.source.code} → {bag.destination.code}</p>
-                                                {bag.physical_tag && <p className="mt-1 break-all text-xs text-zinc-600">Sack {bag.physical_tag}</p>}
-                                                {bag.seal_number && <p className="mt-1 break-all text-xs tabular-nums text-zinc-600">Seal {bag.seal_number}</p>}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </section>
+                                </div>
 
                                 {/* Pack and Seal Console */}
                                 {bag.canPack && bag.status === 'open' && (
@@ -507,43 +470,6 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     </section>
                                 )}
 
-                                {/* Correct Packing or Loading */}
-                                {bag.canPack && ['open', 'sealed'].includes(bag.status) && (
-                                    <details className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                        <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-[#121316] hover:bg-zinc-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
-                                            Correct packing or loading
-                                        </summary>
-                                        <form onSubmit={event => submit(event, bag.status === 'open' ? 'remove' : bag.manifest_id ? 'unload' : 'reopen')} className="space-y-4 border-t border-zinc-100 p-5 sm:p-6">
-                                            <p className="text-xs leading-5 text-zinc-500">
-                                                {bag.status === 'open'
-                                                    ? 'Remove a scanned parcel before sealing, with the reason retained.'
-                                                    : bag.manifest_id
-                                                      ? 'Unload this complete sealed bag from an undeparted draft manifest. Its parcels and numbered seal stay together.'
-                                                      : 'Reopen this undeparted bag to correct its contents. The old seal cannot be reused.'}
-                                            </p>
-                                            {(bag.status === 'open' || bag.manifest_id) && (
-                                                <label className="block text-xs font-bold text-[#121316]">
-                                                    {bag.status === 'open' ? 'Parcel waybill to remove' : 'Scanned master bag tag'}
-                                                    <input required className={`${hubInput} mt-1.5`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
-                                                </label>
-                                            )}
-                                            {bag.manifest_id && (
-                                                <label className="block text-xs font-bold text-[#121316]">
-                                                    Numbered seal
-                                                    <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
-                                                </label>
-                                            )}
-                                            <label className="block text-xs font-bold text-[#121316]">
-                                                Actual correction reason
-                                                <textarea required maxLength={1000} rows={2} className={`${hubInput} mt-1.5`} value={action.data.notes} onChange={event => action.setData('notes', event.target.value)} />
-                                            </label>
-                                            <HubButton disabled={action.processing}>
-                                                {bag.status === 'open' ? 'Remove parcel with reason' : bag.manifest_id ? 'Unload complete bag' : 'Reopen with reason'}
-                                            </HubButton>
-                                        </form>
-                                    </details>
-                                )}
-
                                 {/* Verify Arriving Seal */}
                                 {bag.canOpen && bag.status === 'in_transit' && (
                                     <section className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
@@ -591,6 +517,21 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             Open scan station
                                         </Link>
                                     </div>
+                                )}
+
+                                {bag.capacity && (
+                                    <section aria-label="Bag capacity" className="space-y-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-xs">
+                                        <div className="flex flex-wrap justify-between gap-2">
+                                            <h2 className="font-bold text-[#121316]">Packing capacity</h2>
+                                            <span className="break-all text-xs text-zinc-600">Permanent sack: <strong>{bag.physical_tag ?? 'No reusable tag recorded'}</strong></span>
+                                        </div>
+                                        <div className="grid gap-3 sm:grid-cols-3">
+                                            <CapacityMeter label="Parcels" value={bag.capacity.count} max={bag.capacity.max_count} unit="parcels" />
+                                            <CapacityMeter label="Weight" value={bag.capacity.weight_kg} max={bag.capacity.max_weight_kg} unit="kg" />
+                                            <CapacityMeter label="Volume" value={bag.capacity.volume_cm3 === null ? null : Number((bag.capacity.volume_cm3 / 1000000).toFixed(4))} max={0.30} unit="m³" />
+                                        </div>
+                                        <p className="text-xs text-zinc-500">Declared sizes or operator readings guide packing. Check the actual fit before attaching the numbered seal.</p>
+                                    </section>
                                 )}
 
                                 {/* Parcel Contents Table */}
@@ -647,6 +588,91 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         )}
                                     </div>
                                 </section>
+
+                                {/* Master Tag & Route Card */}
+                                <section className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
+                                    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                        <div className="flex items-center gap-2.5">
+                                            <Container className="h-4 w-4 text-zinc-600" />
+                                            <div>
+                                                <h2 className="text-sm font-bold text-[#121316] tabular-nums">{bag.reference}</h2>
+                                                <p className="text-xs text-zinc-500">Master tag, recorded route and numbered seal</p>
+                                            </div>
+                                        </div>
+                                        <HubButton type="button" onClick={() => window.print()}>
+                                            <Printer className="h-4 w-4" />
+                                            Print master tag
+                                        </HubButton>
+                                    </header>
+                                    <div className="p-5 sm:p-6 space-y-5">
+                                        <HubRoute stops={[bag.source, bag.destination]} />
+                                        <div className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-zinc-200/80 bg-zinc-50/30 p-4">
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-[#121316]">
+                                                        {bag.reference}
+                                                    </span>
+                                                    <HubBadge tone={bag.status === 'received' ? 'brand' : 'neutral'}>{words(bag.status)}</HubBadge>
+                                                </div>
+                                                <p className="text-xs sm:text-sm text-zinc-600 font-medium">
+                                                    {bag.parcels_count} parcels · {bag.seal_number ? `Seal ${bag.seal_number}` : 'Seal not attached'}
+                                                </p>
+                                                {bag.manifest_id && (
+                                                    <Link
+                                                        className="inline-block text-xs sm:text-sm font-bold text-[#121316] hover:text-zinc-700 underline underline-offset-4"
+                                                        href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests/${bag.manifest_id}`}
+                                                    >
+                                                        Open transport manifest
+                                                    </Link>
+                                                )}
+                                            </div>
+                                            <div data-bag-label className="rounded-xl border border-zinc-200 bg-white p-4 text-center shadow-xs">
+                                                <QRCodeSVG value={bag.reference} size={96} />
+                                                <p className="mt-2.5 text-xs tabular-nums font-bold text-[#121316]">{bag.reference}</p>
+                                                <p className="mt-1 text-xs text-zinc-500 font-medium">{bag.source.code} → {bag.destination.code}</p>
+                                                {bag.physical_tag && <p className="mt-1 break-all text-xs text-zinc-600">Sack {bag.physical_tag}</p>}
+                                                {bag.seal_number && <p className="mt-1 break-all text-xs tabular-nums text-zinc-600">Seal {bag.seal_number}</p>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Correct Packing or Loading */}
+                                {bag.canPack && ['open', 'sealed'].includes(bag.status) && (
+                                    <details className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
+                                        <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-[#121316] hover:bg-zinc-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
+                                            Correct packing or loading
+                                        </summary>
+                                        <form onSubmit={event => submit(event, bag.status === 'open' ? 'remove' : bag.manifest_id ? 'unload' : 'reopen')} className="space-y-4 border-t border-zinc-100 p-5 sm:p-6">
+                                            <p className="text-xs leading-5 text-zinc-500">
+                                                {bag.status === 'open'
+                                                    ? 'Remove a scanned parcel before sealing, with the reason retained.'
+                                                    : bag.manifest_id
+                                                      ? 'Unload this complete sealed bag from an undeparted draft manifest. Its parcels and numbered seal stay together.'
+                                                      : 'Reopen this undeparted bag to correct its contents. The old seal cannot be reused.'}
+                                            </p>
+                                            {(bag.status === 'open' || bag.manifest_id) && (
+                                                <label className="block text-xs font-bold text-[#121316]">
+                                                    {bag.status === 'open' ? 'Parcel waybill to remove' : 'Scanned master bag tag'}
+                                                    <input required className={`${hubInput} mt-1.5`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
+                                                </label>
+                                            )}
+                                            {bag.manifest_id && (
+                                                <label className="block text-xs font-bold text-[#121316]">
+                                                    Numbered seal
+                                                    <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
+                                                </label>
+                                            )}
+                                            <label className="block text-xs font-bold text-[#121316]">
+                                                Actual correction reason
+                                                <textarea required maxLength={1000} rows={2} className={`${hubInput} mt-1.5`} value={action.data.notes} onChange={event => action.setData('notes', event.target.value)} />
+                                            </label>
+                                            <HubButton disabled={action.processing}>
+                                                {bag.status === 'open' ? 'Remove parcel with reason' : bag.manifest_id ? 'Unload complete bag' : 'Reopen with reason'}
+                                            </HubButton>
+                                        </form>
+                                    </details>
+                                )}
 
                                 {/* Bag Activity Log */}
                                 <details className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
