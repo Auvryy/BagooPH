@@ -991,15 +991,12 @@ export default function ScanStation({
                                         <button
                                             type="button"
                                             onClick={() => setAudioEnabled(!audioEnabled)}
-                                            className={`px-3 py-1 rounded-lg border transition shadow-2xs flex items-center gap-1.5 text-xs font-semibold font-sans cursor-pointer ${
- audioEnabled
- ? 'bg-white border-zinc-200 text-ink-900 hover:bg-zinc-50'
- : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'
- }`}
-                                            title={audioEnabled ? 'Sound Enabled' : 'Sound Muted'}
+                                            aria-pressed={audioEnabled}
+                                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 cursor-pointer"
+                                            title={audioEnabled ? 'Sound on' : 'Sound off'}
                                         >
-                                            {audioEnabled ? <Volume2 className="w-3.5 h-3.5 text-brand-500" /> : <VolumeX className="w-3.5 h-3.5" />}
-                                            <span>{audioEnabled ? 'Audio ON' : 'Muted'}</span>
+                                            {audioEnabled ? <Volume2 className="h-4 w-4" aria-hidden="true" /> : <VolumeX className="h-4 w-4 text-ink-400" aria-hidden="true" />}
+                                            <span className="sr-only">{audioEnabled ? 'Audio ON' : 'Muted'}</span>
                                         </button>
                                     </div>
 

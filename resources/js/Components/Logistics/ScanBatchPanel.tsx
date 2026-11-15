@@ -352,17 +352,17 @@ export function ScanModeControls({
     return (
         <section
             aria-label="Scanner speed and safety mode"
-            className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-xs space-y-3"
+            className="space-y-3"
         >
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                    <h2 className="text-[13px] font-medium text-ink-600">
                         Scan mode
                     </h2>
                     <div
                         role="radiogroup"
                         aria-label="Scanning workflow mode"
-                        className="inline-flex items-center rounded-lg border border-zinc-200 bg-slate-100/80 p-0.5 gap-0.5"
+                        className="inline-flex items-center gap-0.5 rounded-control border border-line-300 bg-white p-0.5"
                     >
                         {modes.map((option) => {
                             const active = scanMode === option.id;
@@ -373,12 +373,8 @@ export function ScanModeControls({
                                     role="radio"
                                     aria-checked={active}
                                     onClick={() => onModeChange(option.id)}
-                                    className={`rounded-md px-3 py-1 text-xs font-semibold transition cursor-pointer ${
- active
- ? option.id === 'direct'
- ? 'border border-brand-600 bg-brand-500 text-white shadow-2xs'
- : 'border border-zinc-200 bg-white text-ink-900 shadow-2xs'
- : 'border border-transparent text-zinc-600 hover:text-ink-900'
+                                    className={`min-h-8 rounded-[4px] px-3 text-[13px] font-medium transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${
+ active ? 'bg-brand-50 text-brand-600' : 'text-ink-700 hover:bg-surface-100'
  }`}
                                 >
                                     {option.label}
