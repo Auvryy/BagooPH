@@ -18,6 +18,7 @@ import {
     HubCategoryTabs,
     HubPageHeader,
     hubButton,
+    hubInput,
     hubPrimary,
 } from '@/Components/Logistics/Workspace';
 
@@ -191,11 +192,11 @@ export default function HubDashboard({
             actions={
                 <div className="flex items-center gap-2">
                     <PortalLink href={route('hub.counter')} className={`hidden sm:inline-flex ${hubButton}`}>
-                        <Store className="h-3.5 w-3.5 text-zinc-500" />
+                        <Store className="h-4 w-4 text-ink-500" aria-hidden="true" />
                         Counter pickup
                     </PortalLink>
                     <PortalLink href={route(scope.can_scan ? 'hub.scan.station' : 'hub.deliveries')} className={hubPrimary}>
-                        {scope.can_scan ? <ScanLine className="h-3.5 w-3.5" /> : <Package className="h-3.5 w-3.5" />}
+                        {scope.can_scan ? <ScanLine className="h-4 w-4" aria-hidden="true" /> : <Package className="h-4 w-4" aria-hidden="true" />}
                         {scope.can_scan ? 'Scan parcel' : 'View parcels'}
                     </PortalLink>
                 </div>
@@ -207,17 +208,17 @@ export default function HubDashboard({
                 {/* Editorial Workspace Header with Integrated Facility Scope Selector */}
                 <HubPageHeader
                     title="Operations overview"
-                    roleLabel={scope.can_view_company ? 'Logistics Manager' : 'Assigned Facility Handler'}
+                    roleLabel={scope.can_view_company ? `Company admin · ${scope.company_name}` : 'Hub operator'}
                     icon={Building2}
                     actions={
                         <div className="flex flex-wrap items-center gap-2.5">
-                            <label className="flex items-center gap-2 rounded border border-zinc-400 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Scope</span>
+                            <label className="flex items-center gap-2 text-sm text-ink-600">
+                                <span>Showing</span>
                                 {scope.can_view_company ? (
                                     <select
                                         value={scope.selected_hub_id ?? ''}
                                         onChange={(event) => changeScope(event.target.value)}
-                                        className="border-0 bg-transparent py-0.5 pl-1 pr-7 text-xs font-semibold text-ink-900 focus:ring-0 cursor-pointer"
+                                        className={`${hubInput} w-auto min-w-[220px] cursor-pointer font-medium`}
                                     >
                                         <option value="">All facilities ({scope.company_name})</option>
                                         {scope.hubs.map((hub) => (
@@ -232,23 +233,13 @@ export default function HubDashboard({
                                     </span>
                                 )}
                             </label>
-                            <PortalLink
-                                href={activeAttention[0]?.href ?? (scope.can_scan ? route('hub.scan.station') : route('hub.network'))}
-                                className={hubPrimary}
-                            >
-                                {activeAttention.length ? (
-                                    <>
-                                        <AlertTriangle className="h-3.5 w-3.5" />
-                                        <span>Review {activeAttention[0].count} attention {activeAttention[0].count === 1 ? 'item' : 'items'}</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <ScanLine className="h-3.5 w-3.5" />
-                                        <span>{scope.can_scan ? 'Open scan station' : 'View hub network'}</span>
-                                    </>
-                                )}
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </PortalLink>
+                            {activeAttention.length > 0 && (
+                                <PortalLink href={activeAttention[0].href} className={hubButton}>
+                                    <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
+                                    <span>Review {activeAttention[0].count} attention {activeAttention[0].count === 1 ? 'item' : 'items'}</span>
+                                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                                </PortalLink>
+                            )}
                         </div>
                     }
                 />
@@ -259,10 +250,10 @@ export default function HubDashboard({
                         activeId={activeCategory}
                         onChange={(id) => setActiveCategory(id as typeof activeCategory)}
                         tabs={[
-                            { id: 'all', label: 'All Workspace' },
-                            { id: 'urgent', label: 'Needs Action Now', count: totalAttentionCount },
-                            { id: 'pipeline', label: 'Parcel Movement' },
-                            { id: 'facilities', label: 'Facilities & Logs', count: facilities.length },
+                            { id: 'all', label: 'Everything' },
+                            { id: 'urgent', label: 'Needs action', count: totalAttentionCount },
+                            { id: 'pipeline', label: 'Parcel movement' },
+                            { id: 'facilities', label: 'Facilities', count: facilities.length },
                         ]}
                     />
                 </div>
@@ -270,31 +261,17 @@ export default function HubDashboard({
                 {/* Unified Architectural 4-Column Metric Strip */}
                 <section
                     aria-label="Operational metrics"
-                    className="grid grid-cols-1 divide-y divide-zinc-200/80 overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs sm:grid-cols-2 sm:divide-y-0 sm:divide-x xl:grid-cols-4"
+                    className="grid grid-cols-1 divide-y divide-line-200 overflow-hidden rounded-card border border-line-200 bg-white sm:grid-cols-2 sm:divide-y-0 sm:divide-x xl:grid-cols-4"
                 >
-                    {metrics.map((metric) => {
-                        const Icon = metric.icon;
-                        return (
-                            <div key={metric.label} className="flex flex-col justify-between p-5 transition-colors hover:bg-zinc-50/50">
-                                <div className="flex items-center justify-between gap-3">
-                                    <span className="text-xs font-medium text-zinc-500">{metric.label}</span>
-                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 text-zinc-700">
-                                        <Icon className="h-3.5 w-3.5" />
-                                    </span>
-                                </div>
-                                <div className="mt-3 flex items-baseline justify-between gap-2">
-                                    <p
-                                        className={`text-3xl font-bold tracking-tight tabular-nums ${
- metric.accent ? 'text-red-700' : 'text-ink-900'
- }`}
-                                    >
-                                        {metric.value}
-                                    </p>
-                                    <span className="truncate text-[11px] font-medium text-zinc-400">{metric.helper}</span>
-                                </div>
-                            </div>
-                        );
-                    })}
+                    {metrics.map((metric) => (
+                        <div key={metric.label} className="p-5">
+                            <p className="text-[13px] text-ink-600">{metric.label}</p>
+                            <p className={`mt-1 text-[28px] font-bold leading-9 tabular-nums ${metric.accent ? 'text-warning' : 'text-ink-900'}`}>
+                                {metric.value}
+                            </p>
+                            <p className="truncate text-xs text-ink-500">{metric.helper}</p>
+                        </div>
+                    ))}
                 </section>
 
                 {/* Two-Column Operational Command Grid */}

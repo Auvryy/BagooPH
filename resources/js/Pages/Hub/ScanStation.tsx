@@ -832,39 +832,36 @@ export default function ScanStation({
             <Head title="Scan Station — Logistics Hub — BagooPH" />
 
             {/* Compact Workstation Header */}
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-ink-900">Scan station</h1>
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+                <div className="min-w-0">
+                    <h1 className="text-[28px] font-bold leading-[34px] tracking-tight text-ink-900">Scan station</h1>
                     {activeHub && (
-                        <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs shadow-2xs">
-                            <Building2 className="h-3.5 w-3.5 text-zinc-500" />
-                            <span className="font-semibold text-ink-900">{activeHub.name}</span>
-                            <span className="rounded border border-zinc-200 bg-slate-100/80 px-1.5 py-0.5 text-[11px] font-bold text-zinc-700 tabular-nums">
-                                {activeHub.code}
-                            </span>
-                        </div>
+                        <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-600">
+                            <Building2 className="h-4 w-4 text-ink-500" aria-hidden="true" />
+                            <span>{activeHub.name} · {activeHub.code}</span>
+                        </p>
                     )}
                 </div>
 
-                <section aria-label="Station counts and expected arrivals" className="flex flex-wrap items-center gap-5 text-xs">
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="text-base font-bold text-ink-900 tabular-nums">{stats.parcels_in_hub}</span>
-                        <span className="font-medium text-zinc-500">In custody</span>
+                <section aria-label="Station counts and expected arrivals" className="flex flex-wrap items-end gap-6">
+                    <div>
+                        <p className="text-xl font-bold leading-7 text-ink-900 tabular-nums">{stats.parcels_in_hub}</p>
+                        <p className="text-xs text-ink-600">In custody</p>
                     </div>
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="text-base font-bold text-ink-900 tabular-nums">{stats.ready_pickup}</span>
-                        <span className="font-medium text-zinc-500">Counter ready</span>
+                    <div>
+                        <p className="text-xl font-bold leading-7 text-ink-900 tabular-nums">{stats.ready_pickup}</p>
+                        <p className="text-xs text-ink-600">Counter ready</p>
                     </div>
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="text-base font-bold text-ink-900 tabular-nums">{stats.dispatched_today}</span>
-                        <span className="font-medium text-zinc-500">Dispatched</span>
+                    <div>
+                        <p className="text-xl font-bold leading-7 text-ink-900 tabular-nums">{stats.dispatched_today}</p>
+                        <p className="text-xs text-ink-600">Dispatched today</p>
                     </div>
                 </section>
             </div>
 
             {/* Underline Navigation Tabs + Live Wedge Status */}
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200">
-                <div role="group" aria-label="Scanner views" className="-mb-px flex max-w-full items-center gap-6 overflow-x-auto text-xs font-sans">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-line-200">
+                <div role="group" aria-label="Scanner views" className="-mb-px flex max-w-full items-center gap-6 overflow-x-auto text-sm font-sans">
                     <button
                         type="button"
                         onClick={() => setActiveTab('scan')}
@@ -892,7 +889,7 @@ export default function ScanStation({
                         <Layers className="w-3.5 h-3.5" />
                         <span>Batch queue</span>
                         {queuedScans.length > 0 && (
-                            <span className="rounded border border-rose-300 bg-rose-50 px-1.5 py-0.5 text-[11px] font-bold text-brand-600 tabular-nums">
+                            <span className="rounded-chip bg-brand-50 px-1.5 py-0.5 text-xs font-medium text-brand-600 tabular-nums">
                                 {queuedScans.length}
                             </span>
                         )}
@@ -912,7 +909,7 @@ export default function ScanStation({
                             <Boxes className="w-3.5 h-3.5" />
                             <span>Counter queue</span>
                             {counterTotal > 0 && (
-                                <span className="rounded border border-zinc-300 bg-zinc-100 px-1.5 py-0.5 text-[11px] font-bold text-zinc-800 tabular-nums">
+                                <span className="rounded-chip bg-surface-100 px-1.5 py-0.5 text-xs font-medium text-ink-700 tabular-nums">
                                     {counterTotal}
                                 </span>
                             )}
@@ -935,13 +932,11 @@ export default function ScanStation({
                 </div>
 
                 <div className="pb-2">
-                    <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
- isOnline
- ? 'border-zinc-200 bg-white text-ink-900'
- : 'border-amber-300 bg-amber-50 text-amber-900'
+                    <span className={`inline-flex items-center gap-1.5 rounded-chip px-2 py-1 text-xs font-medium ${
+ isOnline ? 'bg-success-soft text-success' : 'bg-warning-soft text-warning'
  }`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${isOnline ? 'bg-brand-500' : 'bg-amber-600'}`} />
-                        {isOnline ? 'Wedge Ready' : 'Offline · Auto-queue'}
+                        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${isOnline ? 'bg-success' : 'bg-warning'}`} />
+                        {isOnline ? 'Scanner ready' : 'Offline · scans will queue'}
                     </span>
                 </div>
             </div>
