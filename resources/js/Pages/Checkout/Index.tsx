@@ -997,7 +997,7 @@ export default function CheckoutIndex({
                                 )}
                                 <div className="flex items-baseline justify-between gap-3 border-t border-line-200 pt-4">
                                     <span className="text-base font-semibold text-ink-900">Total</span>
-                                    <span className="text-[28px] font-bold leading-none tabular-nums text-ink-900">{quotePrice(grandTotal)}</span>
+                                    <span className="text-[28px] font-bold leading-none tabular-nums text-brand-500">{quotePrice(grandTotal)}</span>
                                 </div>
                                 <p className="-mt-2 text-right text-[13px] text-ink-600">Paying with {paymentLabel}</p>
                                 <p role="status" aria-live="polite" className={`text-[13px] ${pricing.pending || logisticsUnavailableReason ? 'text-ink-700' : 'text-ink-500'}`}>{quoteStatus}</p>
@@ -1024,7 +1024,7 @@ export default function CheckoutIndex({
                     <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4">
                         <div className="min-w-0">
                             <p className="text-xs text-ink-600">Total</p>
-                            <p className="text-lg font-bold tabular-nums text-ink-900">{quotePrice(grandTotal)}</p>
+                            <p className="text-lg font-bold tabular-nums text-brand-500">{quotePrice(grandTotal)}</p>
                         </div>
                         <Button type="submit" form="checkout-form" variant="primary" size="lg" disabled={submitDisabled} className="shrink-0">
                             {processing ? 'Placing order…' : kycStatus === 'approved' ? 'Review order' : 'Verify ID first'}
@@ -1034,7 +1034,7 @@ export default function CheckoutIndex({
 
                 {/* Order review dialog */}
                 <Dialog open={showConfirmModal} onClose={() => { if (orderDispatchStep === 'review') setShowConfirmModal(false); }} className="relative z-50">
-                    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-ink-900/50 sm:items-center sm:p-4 animate-fade-in">
+                    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-surface-100/85 sm:items-center sm:p-4 animate-fade-in">
                         <DialogPanel className="my-auto max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-card bg-white shadow-float sm:rounded-card">
 
                             {orderDispatchStep !== 'review' && (
@@ -1108,9 +1108,9 @@ export default function CheckoutIndex({
                                             </div>
                                         </dl>
 
-                                        <div className="flex items-baseline justify-between rounded-control bg-surface-100 px-4 py-3">
+                                        <div className="flex items-baseline justify-between rounded-control bg-brand-50 px-4 py-3">
                                             <span className="font-semibold text-ink-900">Total to pay</span>
-                                            <span className="text-xl font-bold tabular-nums text-ink-900">{quotePrice(grandTotal)}</span>
+                                            <span className="text-xl font-bold tabular-nums text-brand-600">{quotePrice(grandTotal)}</span>
                                         </div>
 
                                         <label className="flex cursor-pointer select-none items-start gap-2.5 text-sm text-ink-700">

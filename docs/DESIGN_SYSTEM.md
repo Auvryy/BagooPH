@@ -20,10 +20,16 @@ The only element carried over from the previous design is the Bagoo brand red.
    and alignment carry structure. Borders, cards, shadows, color and icons are
    added only when they clarify something.
 4. **Red is a signal.** The brand red marks the primary action, the active
-   location and the brand mark. If everything is red, nothing is.
-5. **Real states, real data.** Every view is designed with real Bagoo content
+   location, step markers, the final amount to pay and the brand mark. If
+   everything is red, nothing is.
+5. **No black shades.** Black and near-black fills fight the brand red. Never
+   use them for buttons, badges, step markers, avatars, chart bars, map pins,
+   cards, overlays or any other filled shape. Filled accents use the brand
+   reds; neutral fills stay light (`surface-50`, `surface-100`, `line-200`).
+   Dark ink is only for text and thin icons.
+6. **Real states, real data.** Every view is designed with real Bagoo content
    and covers loading, empty, error, partial and success states.
-6. **Consistency over novelty.** A pattern solved once (filters, tables,
+7. **Consistency over novelty.** A pattern solved once (filters, tables,
    status, money) is reused everywhere. New patterns need a reason.
 
 ## 2. Color
@@ -32,7 +38,7 @@ The only element carried over from the previous design is the Bagoo brand red.
 
 | Token | Hex | Use | Contrast on white |
 |---|---|---|---|
-| `brand-500` | `#E00D42` | Primary buttons, active nav marker, brand mark | 4.88:1 |
+| `brand-500` | `#E00D42` | Primary buttons, active nav marker, step markers, final total, brand mark | 4.88:1 |
 | `brand-600` | `#C20836` | Hover/pressed primary, red text links on tinted backgrounds | 6.21:1 |
 | `brand-700` | `#A1052B` | Small red text, destructive emphasis | 8.16:1 |
 | `brand-50` | `#FDF2F4` | Selected row/tab background, subtle highlight | - |
@@ -48,7 +54,7 @@ blue-grays and keeps the interface from looking generic.
 
 | Token | Hex | Use |
 |---|---|---|
-| `ink-900` | `#1C1917` | Headings, primary text (17.5:1) |
+| `ink-900` | `#1C1917` | Headings, primary text (17.5:1). Text only, never a fill |
 | `ink-700` | `#44403C` | Body text in dense views |
 | `ink-600` | `#57534E` | Secondary text, labels (7.6:1) |
 | `ink-500` | `#78716C` | Placeholder, meta text, disabled labels (4.8:1, minimum for text) |
@@ -184,6 +190,7 @@ restyling them.
 - **Toasts:** bottom-right desktop, top mobile; success auto-hides after 4s,
   errors stay until dismissed.
 - **Dialogs:** for confirmation of destructive or irreversible actions only.
+  The backdrop is a light scrim (`surface-100` at about 85%), never a dark one.
   Title states the action, body states the consequence, buttons name the action.
 - **Inline banners:** for page-level conditions (account pending approval,
   offline, hub capacity full).
@@ -244,7 +251,10 @@ restyling them.
 - Decorative icons beside every label or heading.
 - Many competing badges, colors or primary buttons on one screen.
 - Placeholder copy ("Lorem ipsum", "Welcome back!") and invented numbers.
-- Red used for anything that is not an action, the brand mark or an error.
+- Red used for anything that is not an action, a step marker, the final total,
+  the brand mark or an error.
+- Black or near-black fills of any kind (see principle 5), including dark
+  modal backdrops and dark badges.
 
 ## 11. Implementation order
 
