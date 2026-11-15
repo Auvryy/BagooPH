@@ -12,6 +12,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 
 - Work only inside this repository.
 - **NEVER PUSH DIRECTLY TO `main`**: All feature work, bug fixes, UI updates, and modifications must be created and pushed to dedicated feature branches (e.g. `feature/<name>` or `fix/<name>`), never directly to `main`. Merges into `main` must occur exclusively through GitHub Pull Requests (PR).
+- **ONE ACTIVE BRANCH AT A TIME (`prompt -> branch -> push -> repeat`)**: Never create another branch while already working on an active feature branch. Once a feature branch is created, keep adding and committing follow-up prompts on that **same** branch until it is pushed (`push mango`) and merged/reset cleanly back on `main`.
 - **FRESH BASE**: Before starting any new branch or feature work, always ensure `main` is clean and up to date by running `git pull origin main`.
 - **STRICT PUSH POLICY**: Local `git add` and `git commit` are permitted, but NEVER run `git push` (even to feature branches) unless the user explicitly types the secret phrase: `push mango`. Under no circumstances should `git push origin main` ever be executed; pushes are strictly restricted to feature branches for PR review.
 - For coding tasks, split work into small logical commits by feature or concern instead of one large commit.
