@@ -6,6 +6,7 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import HubMap from '@/Components/Logistics/HubMap';
 import HubPicker from '@/Components/Logistics/HubPicker';
 import HubLocationEditor from '@/Components/Logistics/HubLocationEditor';
+import AddressLocationFields from '@/Components/AddressLocationFields';
 import LocationPinPicker from '@/Components/LocationPinPicker';
 import { HubBadge, HubButton, HubPanel, HubPageHeader, HubSearch, hubInput } from '@/Components/Logistics/Workspace';
 
@@ -39,6 +40,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
     const [editingHub, setEditingHub] = useState<Hub | null>(null);
     const [resetPerson, setResetPerson] = useState<Props['staff'][number] | null>(null);
     const [creating, setCreating] = useState(false);
+    const [hubRegion, setHubRegion] = useState('');
     const [postalText, setPostalText] = useState('');
     const facility = useForm({ name: '', code: '', tier: 'local_bayan_hub', parent_hub_id: '', province: '', city_municipality: '', barangay: '', address: '', latitude: null as number | null, longitude: null as number | null, postal_codes: [] as string[], coverage_barangays: [] as string[], capacity: 500, allows_self_pickup: true, operating_hours: '' });
     const worker = useForm({ kind: 'operator', hub_id: '', first_name: '', last_name: '', birthday: '', email: '', phone: '' });
@@ -190,7 +192,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                         event.preventDefault();
                                         facility.post(`${basePath}/${company.id}/hubs`, {
                                             preserveScroll: true,
-                                            onSuccess: () => { facility.reset(); setPostalText(''); setCreating(false); },
+                                            onSuccess: () => { facility.reset(); setHubRegion(''); setPostalText(''); setCreating(false); },
                                         });
                                     }}
                                     className="grid gap-4 md:grid-cols-2"
@@ -216,23 +218,46 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                             onChange={value => facility.setData('parent_hub_id', value)}
                                         />
                                     )}
-                                    {(['province', 'city_municipality', 'barangay', 'address'] as const).map(field => (
-                                        <Field
-                                            key={field}
-                                            label={{ province: 'Province', city_municipality: 'City or municipality', barangay: 'Barangay', address: 'Physical street address' }[field]}
-                                            error={facility.errors[field]}
-                                        >
+                                    <div className="md:col-span-2">
+                                        <AddressLocationFields
+                                            idPrefix="hub-location"
+                                            required={false}
+                                            values={{
+                                                region: hubRegion,
+                                                province: facility.data.province,
+                                                city: facility.data.city_municipality,
+                                                barangay: facility.data.barangay,
+                                            }}
+                                            onChange={(next, userChange) => {
+                                                setHubRegion(next.region);
+                                                facility.setData(previous => ({
+                                                    ...previous,
+                                                    province: next.province,
+                                                    city_municipality: next.city,
+                                                    barangay: next.barangay,
+                                                    ...(userChange ? { latitude: null, longitude: null } : {}),
+                                                }));
+                                            }}
+                                            errors={{
+                                                province: facility.errors.province,
+                                                city: facility.errors.city_municipality,
+                                                barangay: facility.errors.barangay,
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Field label="Physical street address *" error={facility.errors.address}>
                                             <input
-                                                required={field !== 'barangay'}
-                                                value={facility.data[field]}
+                                                required
+                                                value={facility.data.address}
                                                 onChange={event => {
                                                     const value = event.target.value;
-                                                    facility.setData(previous => ({ ...previous, [field]: value, latitude: null, longitude: null }));
+                                                    facility.setData(previous => ({ ...previous, address: value, latitude: null, longitude: null }));
                                                 }}
                                                 className={hubInput}
                                             />
                                         </Field>
-                                    ))}
+                                    </div>
                                     <div className="space-y-2 md:col-span-2">
                                         <p className="text-xs font-semibold text-[#121316]">Physical hub map pin *</p>
                                         <LocationPinPicker

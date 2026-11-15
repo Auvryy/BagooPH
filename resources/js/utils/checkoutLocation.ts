@@ -8,7 +8,7 @@ export function validDeliveryPin(latitude: string | number | null, longitude: st
     return valid(latitude, 90) && valid(longitude, 180);
 }
 
-export type CheckoutAddressField = 'shipping_address' | 'shipping_city' | 'shipping_province' | 'destination_barangay' | 'shipping_postal_code';
+export type CheckoutAddressField = 'shipping_address' | 'shipping_region' | 'shipping_city' | 'shipping_province' | 'destination_barangay' | 'shipping_postal_code';
 
 export function defaultLogisticsCompanyId<T extends { id: number | string }>(companies: T[], selectedId: number | string | null | undefined): number | string | '' {
     if (selectedId !== null && selectedId !== undefined && selectedId !== ''
@@ -20,11 +20,24 @@ export function withDoorstepDelivery<T extends { delivery_type: 'doorstep' | 'hu
     return { ...previous, delivery_type: 'doorstep', save_address: previous.saved_address_id === null && canSave ? true : previous.save_address };
 }
 
+export function changedDeliveryLocation<T extends Record<CheckoutAddressField, string> & {
+    shipping_latitude: string | number; shipping_longitude: string | number; saved_address_id: number | null; save_address: boolean; saved_address_location_token?: string | null;
+}>(previous: T, updates: Partial<Pick<T, CheckoutAddressField>>, canSave: boolean): T {
+    const entries = (Object.entries(updates) as [CheckoutAddressField, string][]).filter(([field, value]) => previous[field] !== value);
+    if (entries.length === 0) return previous;
+    return {
+        ...previous,
+        ...Object.fromEntries(entries),
+        shipping_latitude: '',
+        shipping_longitude: '',
+        save_address: previous.saved_address_id !== null ? canSave : previous.save_address,
+        saved_address_id: null,
+        saved_address_location_token: null,
+    };
+}
+
 export function changedDeliveryAddress<T extends Record<CheckoutAddressField, string> & {
     shipping_latitude: string | number; shipping_longitude: string | number; saved_address_id: number | null; save_address: boolean; saved_address_location_token?: string | null;
 }>(previous: T, field: CheckoutAddressField, value: string, canSave: boolean): T {
-    if (previous[field] === value) return previous;
-    return { ...previous, [field]: value, shipping_latitude: '', shipping_longitude: '',
-        save_address: previous.saved_address_id !== null ? canSave : previous.save_address,
-        saved_address_id: null, saved_address_location_token: null };
+    return changedDeliveryLocation(previous, { [field]: value } as Partial<Pick<T, CheckoutAddressField>>, canSave);
 }
