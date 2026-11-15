@@ -147,17 +147,24 @@ class BuyerVoucherQuoteTest extends TestCase
         $this->assertEquals([2050, 850, 150], array_column($quote['shops'], 'total'));
     }
 
-    public function test_quantity_keeps_the_saved_shipping_discount_while_self_pickup_removes_it(): void
+    public function test_quantity_keeps_the_saved_shipping_discount_and_self_pickup_uses_reduced_calculated_shipping(): void
     {
         [, $cart] = $this->bag();
         $line = $this->line($cart, '800.00');
         $this->voucher(['discount_type' => 'free_shipping', 'discount_value' => 30]);
-        $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertOk()->assertJsonPath('quote.total', 830);
-        $this->preview([$line->id], ['code' => 'BAGOO_SAVE', 'delivery_type' => 'hub_self_pickup'])->assertUnprocessable()
-            ->assertJsonPath('quote.discount', 0)->assertJsonPath('quote.total', 800)
-            ->assertJsonPath('message', 'There is no shipping fee for this voucher to reduce.');
+        $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertOk()->assertJsonPath('quote.total', 820);
+        // Self-pickup keeps pickup + company splits (50.00 - 20.83 = 29.17), so a 30-peso shipping voucher reduces the full 29.17 fee (total = 800).
+        $this->preview([$line->id], ['code' => 'BAGOO_SAVE', 'delivery_type' => 'hub_self_pickup'])->assertOk()
+            ->assertJsonPath('quote.shipping_fee', 29.17)->assertJsonPath('quote.doorstep_shipping_fee', 50)
+            ->assertJsonPath('quote.shipping_discount', 29.17)->assertJsonPath('quote.total', 800);
         $line->update(['quantity' => 2]);
-        $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertOk()->assertJsonPath('quote.total', 1630);
+        $this->preview([$line->id], ['code' => 'BAGOO_SAVE'])->assertOk()->assertJsonPath('quote.total', 1620);
+        $this->createCheckoutNetwork($line->product->shop, ['Pasig' => 'Metro Manila']);
+        $company = \App\Models\LogisticsCompany::latest('id')->firstOrFail();
+        $company->update(['base_shipping_cents' => 0, 'additional_kg_cents' => 0]);
+        $this->preview([$line->id], ['code' => 'BAGOO_SAVE', 'logistics_company_id' => $company->id])->assertUnprocessable()
+            ->assertJsonPath('quote.discount', 0)->assertJsonPath('quote.total', 1600)
+            ->assertJsonPath('message', 'There is no shipping fee for this voucher to reduce.');
     }
 
     public function test_percent_and_fixed_caps_never_exceed_eligible_merchandise(): void
@@ -220,7 +227,10 @@ class BuyerVoucherQuoteTest extends TestCase
         $this->createCheckoutNetwork($line->product->shop, ['Pasig' => 'Metro Manila']);
         $hub = LogisticsHub::where('city_municipality', 'Pasig')->where('tier', 'local_bayan_hub')->firstOrFail();
         $hub->update(['allows_self_pickup' => true, 'operating_hours' => '08:00 to 17:00']);
-        $this->preview([$line->id], ['delivery_type' => 'hub_self_pickup', 'pickup_hub_id' => $hub->id])->assertOk()->assertJsonPath('quote.shipping_fee', 0);
+        $this->preview([$line->id], ['delivery_type' => 'hub_self_pickup', 'pickup_hub_id' => $hub->id])->assertOk()
+            ->assertJsonPath('quote.shipping_fee', 29.17)
+            ->assertJsonPath('quote.doorstep_shipping_fee', 50)
+            ->assertJsonPath('quote.self_pickup_shipping_fee', 29.17);
     }
 
     public function test_safe_public_offers_and_actual_count_are_bounded_and_exclude_invalid_campaigns(): void

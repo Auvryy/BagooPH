@@ -38,7 +38,7 @@ class PurchasedEarningsTermsTest extends TestCase
         }
     }
 
-    public function test_collection_quote_retains_zero_payable_shipping_and_zero_shipping_entitlements(): void
+    public function test_collection_quote_waives_doorstep_delivery_split_and_retains_pickup_and_company_entitlements(): void
     {
         $shop = $this->createE2EShop($this->createApprovedUser('seller'));
         $product = $this->createE2EProduct($shop);
@@ -47,9 +47,10 @@ class PurchasedEarningsTermsTest extends TestCase
         $quote = app(CheckoutQuoteService::class)->quote(collect([$item]), 'hub_self_pickup');
         $terms = $quote['shops'][0]['shipping_quote'];
         $this->assertSame(5000, $terms['shipping_cents']);
-        $this->assertSame(0, $terms['payable_shipping_cents']);
-        $this->assertSame(['pickup' => 0, 'delivery' => 0, 'company' => 0], $terms['earnings_split_cents']);
-        $this->assertSame(0, $quote['shops'][0]['shipping']);
+        $this->assertSame(2917, $terms['payable_shipping_cents']);
+        $this->assertSame(['pickup' => 833, 'delivery' => 0, 'company' => 2084], $terms['earnings_split_cents']);
+        $this->assertSame(29.17, $quote['shops'][0]['shipping']);
+        $this->assertEquals(50, $quote['shops'][0]['doorstep_shipping']);
     }
 
     public function test_earlier_orders_without_explicit_cent_terms_keep_the_original_named_model(): void

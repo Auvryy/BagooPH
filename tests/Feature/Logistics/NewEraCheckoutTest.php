@@ -271,4 +271,65 @@ class NewEraCheckoutTest extends TestCase
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('deliveries', 0);
     }
+
+    public function test_pickup_hub_choices_filter_to_available_destination_hubs_and_charge_reduced_system_fee(): void
+    {
+        [$buyer, , , , , $input] = $this->purchase();
+        $sczHub = LogisticsHub::where('code', 'BH-SCZ-01')->sole();
+        $lbnHub = LogisticsHub::where('code', 'BH-LBN-01')->sole();
+        Address::create([
+            'user_id' => $buyer->id,
+            'recipient_name' => $buyer->name,
+            'phone' => '+639171234567',
+            'street' => '100 Test Recipient Road',
+            'province' => 'Laguna',
+            'city' => 'Santa Cruz',
+            'postal_code' => '4009',
+            'barangay' => 'Poblacion III',
+            'latitude' => 14.2815,
+            'longitude' => 121.4162,
+            'is_default' => true,
+        ]);
+
+        // Initial Inertia checkout props should only expose hubs serving the buyer's destination (Santa Cruz 4009), not Los Banos.
+        $this->actingAs($buyer)->get(route('checkout.index'))->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('pickupHubs', function ($hubs) use ($sczHub, $lbnHub) {
+                $ids = collect($hubs)->pluck('id')->all();
+
+                return in_array($sczHub->id, $ids, true) && ! in_array($lbnHub->id, $ids, true);
+            }));
+
+        // Vouchers/apply quote returns reduced system-calculated shipping (delivery split waived) plus destination-filtered pickupHubs.
+        $sczQuote = $this->postJson(route('buyer.vouchers.apply'), [
+            ...$input,
+            'delivery_type' => 'hub_self_pickup',
+            'pickup_hub_id' => $sczHub->id,
+        ])->assertOk();
+        $this->assertSame([$sczHub->id], array_column($sczQuote->json('pickupHubs'), 'id'));
+        $this->assertSame(230, $sczQuote->json('quote.doorstep_shipping_fee'));
+        $this->assertSame(134.17, $sczQuote->json('quote.self_pickup_shipping_fee'));
+        $this->assertSame(134.17, $sczQuote->json('quote.shipping_fee'));
+
+        // Changing destination postal code to Los Banos swaps available pickupHubs dynamically without reloading.
+        $lbnQuote = $this->postJson(route('buyer.vouchers.apply'), [
+            ...$input,
+            'shipping_province' => 'Laguna',
+            'shipping_city' => 'Los Banos',
+            'shipping_postal_code' => '4030',
+            'destination_barangay' => 'Batong Malake',
+            'delivery_type' => 'doorstep',
+        ])->assertOk();
+        $this->assertSame([$lbnHub->id], array_column($lbnQuote->json('pickupHubs'), 'id'));
+
+        // Destination with no matching self-pickup hub returns empty pickupHubs.
+        $unmatchedQuote = $this->postJson(route('buyer.vouchers.apply'), [
+            ...$input,
+            'shipping_province' => 'Laguna',
+            'shipping_city' => 'San Pablo City',
+            'shipping_postal_code' => '4000',
+            'destination_barangay' => 'Bagong Bayan',
+            'delivery_type' => 'doorstep',
+        ]);
+        $this->assertSame([], $unmatchedQuote->json('pickupHubs'));
+    }
 }

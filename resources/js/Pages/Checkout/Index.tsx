@@ -11,7 +11,7 @@ import CheckoutRoutePreview from '@/Components/CheckoutRoutePreview';
 import LocationPinPicker from '@/Components/LocationPinPicker';
 import AddressLocationFields from '@/Components/AddressLocationFields';
 import useCheckoutGps from '@/hooks/useCheckoutGps';
-import { changedDeliveryAddress, changedDeliveryLocation, withDoorstepDelivery, validDeliveryPin, defaultLogisticsCompanyId, type CheckoutAddressField } from '@/utils/checkoutLocation';
+import { changedDeliveryAddress, changedDeliveryLocation, withDoorstepDelivery, validDeliveryPin, defaultLogisticsCompanyId, matchingPickupHubs, defaultPickupHubId, estimateSelfPickupFeeFromDoorstep, type CheckoutAddressField } from '@/utils/checkoutLocation';
 import type { AddressLocation } from '@/utils/addressLocations';
 import { checkoutErrorMessages, deliveryLocationErrorMessage } from '@/utils/checkoutErrorMessages';
 import BuyerVoucherPicker from '@/Components/Vouchers/BuyerVoucherPicker';
@@ -55,6 +55,9 @@ export interface PickupHubItem {
     city_municipality: string;
     address: string;
     province: string;
+    postal_codes?: string[] | null;
+    coverage_barangays?: string[] | null;
+    operating_hours?: string | null;
 }
 
 interface Props {
@@ -76,7 +79,7 @@ interface Props {
     itemQuantities?: Record<number, number>;
     walletBalanceCents?: number | null;
     codRestriction?: { id: number; reference: string; reason_code: string; reason: string; expires_at?: string | null } | null;
-    logisticsCompanies?: { id: number; name: string; logo?: string | null; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number }[];
+    logisticsCompanies?: { id: number; name: string; logo?: string | null; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number; shipping_earnings_model?: 'standard' | 'dedicated_fleet' }[];
 }
 
 export default function CheckoutIndex({ 
@@ -286,16 +289,22 @@ export default function CheckoutIndex({
     const noServingCompany = completeDoorstepDestination
         && pricing.current && pricing.companies !== undefined && pricing.companies.length === 0;
     const selectedCompany = servingCompanies.find(company => String(company.id) === String(data.logistics_company_id));
+    const effectivePickupHubs = pricing.pickupHubs ?? (pricing.failure ? [] : pickupHubs);
     const companyPickupHubs = selectedCompany
-        ? pickupHubs.filter(hub => String(hub.logistics_company_id) === String(selectedCompany.id))
+        ? matchingPickupHubs(effectivePickupHubs, selectedCompany.id, {
+            province: data.shipping_province,
+            city: data.shipping_city,
+            postal_code: data.shipping_postal_code,
+            barangay: data.destination_barangay,
+        })
         : [];
-    const noSelfPickupHubsForCompany = data.delivery_type === 'hub_self_pickup' && Boolean(selectedCompany) && companyPickupHubs.length === 0;
+    const noSelfPickupHubsForCompany = data.delivery_type === 'hub_self_pickup' && completeDoorstepDestination && Boolean(selectedCompany) && companyPickupHubs.length === 0;
     const logisticsUnavailableReason = pricing.pending ? ''
         : missingLocation ? 'Delivery province and city are required before matching a logistics company.'
             : missingValidPostal ? 'A valid 4-digit postal code is required for your delivery address to match a logistics hub. Add or edit the postal code in Delivery Address.'
                 : pricing.failure ? pricing.failure
                     : noServingCompany ? `No available logistics company near ${[data.shipping_city, data.shipping_province].filter(Boolean).join(', ')} (${data.shipping_postal_code})${quote.shops.length > 1 ? ' serves all sellers in your bag' : ' serves this route'}.`
-                        : noSelfPickupHubsForCompany ? `No self-pickup Bayan Hub is available for ${selectedCompany?.name}. Try Doorstep Delivery or another address.`
+                        : noSelfPickupHubsForCompany ? `No Bayan Hub self-pickup counter is available near ${[data.shipping_city, data.shipping_province].filter(Boolean).join(', ')} (${data.shipping_postal_code}) for ${selectedCompany?.name}. Choose Doorstep Delivery or another address.`
                             : '';
     const hasInvalidDeliveryLocation = Boolean(errors.shipping_latitude || errors.shipping_longitude);
     const visibleCheckoutErrors = checkoutErrorMessages(errors);
@@ -312,8 +321,19 @@ export default function CheckoutIndex({
         const defaultCompanyId = defaultLogisticsCompanyId(servingCompanies, data.logistics_company_id);
         if (String(defaultCompanyId) !== String(data.logistics_company_id)) {
             setData(previous => ({ ...previous, logistics_company_id: defaultCompanyId, pickup_hub_id: '' }));
+            return;
         }
-    }, [pricing.pending, servingCompanies, data.logistics_company_id]);
+        if (data.delivery_type !== 'hub_self_pickup') {
+            if (data.pickup_hub_id !== '') {
+                setData('pickup_hub_id', '');
+            }
+            return;
+        }
+        const defaultHubId = defaultPickupHubId(companyPickupHubs, data.pickup_hub_id);
+        if (String(defaultHubId) !== String(data.pickup_hub_id)) {
+            setData('pickup_hub_id', defaultHubId);
+        }
+    }, [pricing.pending, servingCompanies, data.logistics_company_id, data.delivery_type, companyPickupHubs, data.pickup_hub_id]);
     const [pickerSlot, setPickerSlot] = useState<number | null | undefined>(undefined);
     const [bestBusy, setBestBusy] = useState(false);
     const bestPending = useRef(false);
@@ -324,7 +344,9 @@ export default function CheckoutIndex({
     const quotedItems = new Map(quote.items.map(item => [item.id, item]));
     const subtotal = quote.subtotal;
     const isHubPickup = data.delivery_type === 'hub_self_pickup';
-    const selectedPickupHub = pickupHubs.find(hub => String(hub.id) === String(data.pickup_hub_id));
+    const selectedPickupHub = companyPickupHubs.find(hub => String(hub.id) === String(data.pickup_hub_id));
+    const displayedSelfPickupFee = quote.self_pickup_shipping_fee
+        ?? (isHubPickup ? quote.shipping_fee : estimateSelfPickupFeeFromDoorstep(quote.doorstep_shipping_fee, selectedCompany?.shipping_earnings_model));
     const appliedVouchers = pricing.current ? quote.vouchers ?? (quote.voucher ? [quote.voucher] : []) : [];
     const finalShippingFee = quote.shipping_fee - quote.shipping_discount;
     const grandTotal = quote.total;
@@ -406,8 +428,8 @@ export default function CheckoutIndex({
             return;
         }
 
-        if (data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id) {
-            setValidationError('Please select a designated Bayan Station Hub for self-pickup collection.');
+        if (data.delivery_type === 'hub_self_pickup' && (!data.pickup_hub_id || !selectedPickupHub)) {
+            setValidationError(logisticsUnavailableReason || 'Please select an available Bayan Station Hub serving this delivery address.');
             return;
         }
 
@@ -718,7 +740,7 @@ export default function CheckoutIndex({
                                     </div>
                                 </label>
 
-                                {/* Option 2: Free Bayan Hub Self-Pickup */}
+                                {/* Option 2: Reduced-Fee Bayan Hub Self-Pickup */}
                                 <label
                                     className={`relative focus-within:ring-2 focus-within:ring-[#E00D42] focus-within:ring-offset-2 p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
                                         data.delivery_type === 'hub_self_pickup'
@@ -736,14 +758,14 @@ export default function CheckoutIndex({
                                                 <div className="flex items-center gap-1.5">
                                                     <p className="text-xs font-bold text-slate-900">Bayan Hub Self-Pickup</p>
                                                     <span className="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-rose-100 text-[#E00D42] font-sans">
-                                                        100% FREE
+                                                        REDUCED FEE
                                                     </span>
                                                 </div>
-                                                <p className="text-[11px] text-slate-500">Pick up at municipal station</p>
+                                                <p className="text-[11px] text-slate-500">Pick up at local hub · Final-mile delivery waived</p>
                                             </div>
                                         </div>
                                         <span className="text-xs font-black font-sans text-[#E00D42]">
-                                            ₱0.00
+                                            {quotePrice(displayedSelfPickupFee)}
                                         </span>
                                     </div>
                                 </label>
@@ -757,48 +779,77 @@ export default function CheckoutIndex({
                                         <div>
                                             <h3 className="text-xs font-bold text-slate-900">Select Collection Station (Bayan Hub)</h3>
                                             <p className="text-[11px] text-slate-500 mt-0.5">
-                                                Select your local Bayan Hub for free self-collection.
+                                                Showing active Bayan Hubs serving your delivery city &amp; postal code. Final-mile doorstep rider delivery is waived.
                                             </p>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label htmlFor="checkout-pickup-hub" className="block text-xs font-semibold text-slate-800 mb-1.5">
-                                            Designated Bayan Station *
-                                        </label>
+                                        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                            <label htmlFor="checkout-pickup-hub" className="block text-xs font-semibold text-slate-800">
+                                                Designated Bayan Station *
+                                            </label>
+                                            {selectedPickupHub && !pricing.pending && (
+                                                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                                    {companyPickupHubs.length === 1 ? 'Auto-matched for your area' : 'Auto-selected'}
+                                                </span>
+                                            )}
+                                        </div>
                                         <select
                                             id="checkout-pickup-hub"
                                             aria-invalid={Boolean(errors.pickup_hub_id)}
                                             aria-describedby={errors.pickup_hub_id ? 'checkout-pickup-hub-error' : undefined}
                                             required
+                                            disabled={companyPickupHubs.length === 0}
                                             value={data.pickup_hub_id}
                                             onChange={(e) => setData('pickup_hub_id', e.target.value)}
-                                            className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] shadow-2xs"
+                                            className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] shadow-2xs disabled:bg-slate-100 disabled:text-slate-500"
                                         >
-                                            <option value="">-- Choose a Local Bayan Hub Station --</option>
-                                            {pickupHubs.filter(hub => String(hub.logistics_company_id) === String(data.logistics_company_id)).map((hub) => (
+                                            <option value="">
+                                                {missingLocation || missingValidPostal
+                                                    ? 'Complete city, province, and 4-digit postal code first'
+                                                    : companyPickupHubs.length === 0
+                                                        ? 'No self-pickup Bayan Hub covers this area'
+                                                        : '-- Choose a Local Bayan Hub Station --'}
+                                            </option>
+                                            {companyPickupHubs.map((hub) => (
                                                 <option key={hub.id} value={hub.id}>
                                                     [{hub.code}] {hub.name} — {hub.city_municipality}, {hub.province}
                                                 </option>
                                             ))}
                                         </select>
+                                        {(missingLocation || missingValidPostal || noSelfPickupHubsForCompany) && (
+                                            <div role="alert" className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-900">
+                                                <span className="font-medium">
+                                                    {missingLocation
+                                                        ? 'Select your delivery province and city to see available Bayan Hubs.'
+                                                        : missingValidPostal
+                                                            ? 'Add your 4-digit postal code in Delivery Address to match nearby Bayan Hubs.'
+                                                            : `No Bayan Hub self-pickup counter covers ${[data.shipping_city, data.shipping_province].filter(Boolean).join(', ')} (${data.shipping_postal_code}) for ${selectedCompany?.name}.`}
+                                                </span>
+                                                {(missingLocation || missingValidPostal) && !isEditingAddress && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsEditingAddress(true)}
+                                                        className="shrink-0 rounded-lg border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-900 hover:bg-amber-100 transition cursor-pointer"
+                                                    >
+                                                        Add postal code / edit address
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                         {errors.pickup_hub_id && (
                                             <p id="checkout-pickup-hub-error" className="text-rose-700 text-[11px] mt-1">{errors.pickup_hub_id}</p>
                                         )}
                                     </div>
 
-                                    {data.pickup_hub_id && (
+                                    {selectedPickupHub && (
                                         <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1">
-                                            {(() => {
-                                                const selectedHub = pickupHubs.find(h => String(h.id) === String(data.pickup_hub_id));
-                                                if (!selectedHub) return null;
-                                                return (
-                                                    <>
-                                                        <p className="font-bold text-slate-900">{selectedHub.name} ({selectedHub.code})</p>
-                                                        <p className="text-slate-600">{selectedHub.address}, {selectedHub.city_municipality}, {selectedHub.province}</p>
-                                                    </>
-                                                );
-                                            })()}
+                                            <p className="font-bold text-slate-900">{selectedPickupHub.name} ({selectedPickupHub.code})</p>
+                                            <p className="text-slate-600">{selectedPickupHub.address}, {selectedPickupHub.city_municipality}, {selectedPickupHub.province}</p>
+                                            {selectedPickupHub.operating_hours && (
+                                                <p className="text-[11px] text-slate-500">Counter hours: {selectedPickupHub.operating_hours}</p>
+                                            )}
                                         </div>
                                     )}
 

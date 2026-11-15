@@ -91,16 +91,15 @@ class CheckoutController extends Controller
         $addresses->each(fn ($address) => $address->setAttribute('location_token', app(BuyerAddressService::class)->locationToken($address)));
         $defaultAddress = $user->defaultAddress();
         $initialAddress = $defaultAddress ?? $addresses->firstWhere('is_default') ?? $addresses->first();
-        $initialLogisticsChoices = app(LogisticsCheckoutService::class)->choices($checkoutItems, [
+        $initialAddressData = [
             'delivery_type' => 'doorstep',
             'shipping_province' => $initialAddress?->province ?? $user->province,
             'shipping_city' => $initialAddress?->city ?? $user->city,
             'shipping_postal_code' => $initialAddress?->postal_code ?? $user->postal_code,
             'destination_barangay' => $initialAddress?->barangay ?? $user->barangay,
-        ]);
-
-        $pickupHubs = LogisticsHub::readyForSelfPickup()
-            ->get(['id', 'name', 'code', 'city_municipality', 'address', 'province', 'logistics_company_id']);
+        ];
+        $initialLogisticsChoices = app(LogisticsCheckoutService::class)->choices($checkoutItems, $initialAddressData);
+        $pickupHubs = app(LogisticsCheckoutService::class)->pickupHubs($checkoutItems, $initialAddressData);
 
         return Inertia::render('Checkout/Index', [
             'cart' => $cart,

@@ -42,6 +42,7 @@ class VoucherController extends Controller
         ])->validate();
         $selection = app(VoucherSelectionService::class)->normalize($input);
         $companies = [];
+        $pickupHubs = [];
         try {
             if (! empty($data['shipping_province']) && ! empty($data['shipping_city'])
                 && ! app(LogisticsRoutingEngine::class)->isContiguousRoadServiceable($data['shipping_province'], $data['shipping_city'])) {
@@ -53,19 +54,22 @@ class VoucherController extends Controller
             }
             $quotes = app(CheckoutQuoteService::class);
             $items = $quotes->selectedItems($buyer, $data['item_ids'], $input['item_quantities'] ?? []);
-            $companies = app(LogisticsCheckoutService::class)->choices($items, $data);
-            $company = app(LogisticsCheckoutService::class)->select($items, $data, $data['logistics_company_id'] ?? null, requireRoute: false);
+            $logistics = app(LogisticsCheckoutService::class);
+            $companies = $logistics->choices($items, $data);
+            $pickupHubs = $logistics->pickupHubs($items, $data);
+            $company = $logistics->select($items, $data, $data['logistics_company_id'] ?? null, requireRoute: false);
             if (! empty($data['logistics_company_id']) && ! $company) {
                 throw new CheckoutException('The selected company does not serve this address. Choose another company or address.');
             }
             $preview = app(VoucherPreviewService::class)->preview($buyer, $items, $data['delivery_type'] ?? 'doorstep', $selection, $company);
-            $quote = app(LogisticsCheckoutService::class)->withRoutes($preview['quote'], $items, $company, $data);
+            $quote = $logistics->withRoutes($preview['quote'], $items, $company, $data);
             $available = $quotes->offers($items, $data['delivery_type'] ?? 'doorstep', buyer: $buyer, selected: $preview['revisions'], company: $company);
             $message = $quote['voucher_error'] ?? ($quote['vouchers']
                 ? 'Vouchers applied: -₱'.number_format($quote['discount'], 2).'.'
                 : 'Your checkout total is up to date.');
             if ($request->expectsJson()) {
-                return response()->json(['success' => $quote['voucher_error'] === null, 'quote' => $quote, 'logisticsCompanies' => $companies,
+                return response()->json(['success' => $quote['voucher_error'] === null, 'quote' => $quote,
+                    'logisticsCompanies' => $companies, 'pickupHubs' => $pickupHubs,
                     'voucher' => $quote['voucher'], 'discount' => $quote['discount'],
                     'availableVouchers' => $available['offers'], 'validSelection' => $preview['validSelection'],
                     'selectionErrors' => $preview['selectionErrors'], 'message' => $message], $quote['voucher_error'] ? 422 : 200);
@@ -74,7 +78,8 @@ class VoucherController extends Controller
             return back()->with($quote['voucher_error'] ? 'error' : 'success', $message);
         } catch (CheckoutException $exception) {
             if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => $exception->getMessage(), 'logisticsCompanies' => $companies], 422);
+                return response()->json(['success' => false, 'message' => $exception->getMessage(),
+                    'logisticsCompanies' => $companies, 'pickupHubs' => $pickupHubs], 422);
             }
 
             return back()->with('error', $exception->getMessage());

@@ -15,7 +15,7 @@ globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: (
 const bundle = await build({ stdin: { contents: `export { default as Profile } from '@/Pages/Buyer/Profile';
  export { default as Editor } from '@/Components/BuyerAddressEditor'; export { default as Checkout } from '@/Pages/Checkout/Index';
  export { default as LocationPinPicker } from '@/Components/LocationPinPicker';
- export { validDeliveryPin, changedDeliveryAddress, withDoorstepDelivery, defaultLogisticsCompanyId } from '@/utils/checkoutLocation';
+ export { validDeliveryPin, changedDeliveryAddress, withDoorstepDelivery, defaultLogisticsCompanyId, matchingPickupHubs, defaultPickupHubId, estimateSelfPickupFeeFromDoorstep } from '@/utils/checkoutLocation';
  export * from '@/utils/checkoutErrorMessages';
  export { default as Recipient } from '@/Components/OrderRecipientSummary'; export * from '@/utils/buyerAddresses'; export * from '@/utils/addressLocations';
  export { personalNameError } from '@/utils/registrationValidation';`, resolveDir: root, loader: 'tsx' },
@@ -325,5 +325,28 @@ test('failed location reads keep saving unavailable and retry without losing ent
  const retry=nodes(h.tree).find(x=>x.type==='button'&&x.props.children==='Try again');retry.props.onClick();h.render();assert.equal(h.requests.length,2);
  h.requests[1].resolve({data:choices});await tick();h.render();assert.equal(h.loading.at(-1),false);
  assert.deepEqual(h.values,{region:'',province:'',city:'',barangay:''});
+ test.after(() => {});
  assert.deepEqual(Object.keys(h.requests[1].options.params).sort(),['city','province','region']);
+});
+test('checkout filters bayan hubs by carrier and destination and shows reduced calculated self-pickup fees', async () => {
+ const santaCruzHub = { id: 3, logistics_company_id: 8, name: 'Santa Cruz Bayan Hub', code: 'BH-SCZ-01', city_municipality: 'Santa Cruz', address: '456 Market Road', province: 'Laguna', postal_codes: ['4009'], operating_hours: 'Monday to Saturday, 8 AM to 6 PM' };
+ const lipaHub = { id: 9, logistics_company_id: 8, name: 'Taal Bayan Hub', code: 'BH-TAAL-01', city_municipality: 'Taal', address: '12 Taal Plaza', province: 'Batangas', postal_codes: ['4208'], operating_hours: 'Monday to Saturday, 8 AM to 6 PM' };
+ const otherCarrierHub = { id: 10, logistics_company_id: 12, name: 'Other Carrier SCZ', code: 'OC-SCZ-01', city_municipality: 'Santa Cruz', address: '99 Other Road', province: 'Laguna', postal_codes: ['4009'] };
+
+ assert.deepEqual(ui.matchingPickupHubs([santaCruzHub, lipaHub, otherCarrierHub], 8, { province: 'Laguna', city: 'Santa Cruz', postal_code: '4009' }).map(h => h.id), [3]);
+ assert.deepEqual(ui.matchingPickupHubs([santaCruzHub, lipaHub, otherCarrierHub], 8, { province: 'Laguna', city: 'Santa Cruz', postal_code: '' }), []);
+ assert.equal(ui.estimateSelfPickupFeeFromDoorstep(60, 'dedicated_fleet'), 35);
+ assert.equal(ui.estimateSelfPickupFeeFromDoorstep(60, 'standard'), 30);
+
+ const pickupHtml = await render(ui.Checkout, {
+  cart: { id: 1 }, items, quote: { ...quote, doorstep_shipping_fee: 60, self_pickup_shipping_fee: 35 },
+  subtotal: 250, shippingFee: 50, total: 300, user, kycStatus: 'approved', checkoutToken: 'confirmation',
+  addresses: [address],
+  logisticsCompanies: [{ id: 8, name: 'A Logistics', logo: null, base_shipping_cents: 6000, included_weight_grams: 1000, additional_kg_cents: 2000, shipping_earnings_model: 'dedicated_fleet' }],
+  pickupHubs: [santaCruzHub, lipaHub, otherCarrierHub],
+ });
+ assert.match(pickupHtml, /REDUCED FEE/);
+ assert.match(pickupHtml, /Final-mile delivery waived/);
+ assert.doesNotMatch(pickupHtml, /100% FREE/);
+ assert.match(pickupHtml, /₱35\.00/);
 });

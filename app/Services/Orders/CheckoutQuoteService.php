@@ -76,16 +76,23 @@ class CheckoutQuoteService
         $shops = $items->groupBy(fn (CartItem $item) => $item->product->shop_id)->sortKeys()->map(function (Collection $group, int $shopId) use ($deliveryType, $pricePlans, $company, $cancellationPolicy) {
             $subtotal = $group->sum(fn (CartItem $item) => collect($pricePlans[$item->id]['price_segments'])
                 ->sum(fn ($segment) => CodMoney::cents(number_format($segment['unit_price'], 2, '.', '')) * $segment['quantity']));
-            $shippingQuote = app(LogisticsRateService::class)->quote($group, $company);
+            $rates = app(LogisticsRateService::class);
+            $shippingQuote = $rates->quote($group, $company);
             $doorstep = $shippingQuote['shipping_cents'];
-            $payable = $deliveryType === 'hub_self_pickup' ? 0 : $doorstep;
+            $selfPickupTerms = $rates->selfPickupQuote($doorstep, $shippingQuote['earnings_model']);
+            $selfPickup = $selfPickupTerms['payable_cents'];
+            $payable = $deliveryType === 'hub_self_pickup' ? $selfPickup : $doorstep;
+            $split = $deliveryType === 'hub_self_pickup'
+                ? $selfPickupTerms['split']
+                : $rates->shippingSplit($payable, $shippingQuote['earnings_model']);
             $shippingQuote += ['purchased_terms_version' => 1, 'refund_policy_version' => 2, 'cancellation_policy_version' => $cancellationPolicy,
                 'delivery_type' => $deliveryType, 'payable_shipping_cents' => $payable,
+                'self_pickup_shipping_cents' => $selfPickup,
                 'earnings_terms_version' => 1,
-                'earnings_split_cents' => app(LogisticsRateService::class)->shippingSplit($payable, $shippingQuote['earnings_model'])];
+                'earnings_split_cents' => $split];
 
             return ['shop_id' => $shopId, 'shop_name' => $group->first()->product->shop->name, 'subtotal' => $subtotal,
-                'doorstep_shipping' => $doorstep, 'shipping' => $deliveryType === 'hub_self_pickup' ? 0 : $doorstep,
+                'doorstep_shipping' => $doorstep, 'self_pickup_shipping' => $selfPickup, 'shipping' => $payable,
                 'shipping_quote' => $shippingQuote];
         });
         $productDiscounts = $shops->map(fn () => 0);
@@ -161,7 +168,9 @@ class CheckoutQuoteService
             $discount = $productDiscounts[$id] + $shippingDiscounts[$id];
 
             return [...$shop, 'subtotal' => $shop['subtotal'] / 100, 'shipping' => $shop['shipping'] / 100,
-                'doorstep_shipping' => $shop['doorstep_shipping'] / 100, 'discount' => $discount / 100,
+                'doorstep_shipping' => $shop['doorstep_shipping'] / 100,
+                'self_pickup_shipping' => $shop['self_pickup_shipping'] / 100,
+                'discount' => $discount / 100,
                 'product_discount' => $productDiscounts[$id] / 100, 'shipping_discount' => $shippingDiscounts[$id] / 100,
                 'total' => ($shop['subtotal'] + $shop['shipping'] - $discount) / 100];
         })->values()->all();
@@ -169,7 +178,9 @@ class CheckoutQuoteService
         $presented = $reason ? [] : $revisions->map(fn ($r) => $this->present($r))->values()->all();
 
         return ['subtotal' => $shops->sum('subtotal') / 100, 'shipping_fee' => $shops->sum('shipping') / 100,
-            'doorstep_shipping_fee' => $shops->sum('doorstep_shipping') / 100, 'discount' => $discount / 100,
+            'doorstep_shipping_fee' => $shops->sum('doorstep_shipping') / 100,
+            'self_pickup_shipping_fee' => $shops->sum('self_pickup_shipping') / 100,
+            'discount' => $discount / 100,
             'shipping_discount' => $shippingDiscounts->sum() / 100,
             'total' => ($shops->sum('subtotal') + $shops->sum('shipping') - $discount) / 100, 'shops' => $shopQuotes,
             'items' => array_values($pricePlans),

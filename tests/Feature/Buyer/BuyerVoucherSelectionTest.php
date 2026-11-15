@@ -129,7 +129,10 @@ class BuyerVoucherSelectionTest extends TestCase
     public function test_picker_explains_scheduled_expired_minimum_and_zero_shipping_without_private_funding(): void
     {
         [, $items, $payload] = $this->bag(['2000.00']);
-        $payload['delivery_type'] = 'hub_self_pickup';
+        $items->first()->product->shop->city = 'Manila';
+        $company = \App\Models\LogisticsCompany::firstOrFail();
+        $company->update(['base_shipping_cents' => 0, 'additional_kg_cents' => 0]);
+        $payload['logistics_company_id'] = $company->id;
         $this->offer(terms: ['starts_at' => now()->addDay()]);
         $this->offer(terms: ['ends_at' => now()->subMinute()]);
         $this->offer(attributes: ['min_spend' => 3000]);
@@ -207,9 +210,10 @@ class BuyerVoucherSelectionTest extends TestCase
         $offer = $this->offer(attributes: ['discount_type' => 'free_shipping', 'discount_value' => '0.01', 'max_discount' => '0.01']);
         $this->postJson(route('buyer.vouchers.best'), $payload)->assertOk()->assertJsonPath('quote.discount', 0.01)
             ->assertJsonPath('quote.shops.0.shipping_discount', 0.01)->assertJsonPath('quote.shops.1.shipping_discount', 0)
-            ->assertJsonPath('quote.shops.2.total', 2060)->assertJsonPath('quote.shops.2.discount', 0);
+            ->assertJsonPath('quote.shops.2.total', 2050)->assertJsonPath('quote.shops.2.discount', 0);
         $this->postJson(route('buyer.vouchers.best'), array_replace($payload, ['delivery_type' => 'hub_self_pickup']))->assertOk()
-            ->assertJsonPath('selection.platform_voucher_revision_id', null)->assertJsonPath('quote.discount', 0);
+            ->assertJsonPath('selection.platform_voucher_revision_id', $offer->id)->assertJsonPath('quote.discount', 0.01)
+            ->assertJsonPath('quote.shipping_fee', 87.51)->assertJsonPath('quote.doorstep_shipping_fee', 150);
     }
 
     public function test_product_shop_and_selected_bag_discover_only_their_shop_offers(): void

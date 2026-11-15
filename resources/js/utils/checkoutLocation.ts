@@ -16,6 +16,66 @@ export function defaultLogisticsCompanyId<T extends { id: number | string }>(com
     return companies[0]?.id ?? '';
 }
 
+export interface PickupHubOption {
+    id: number | string;
+    logistics_company_id: number | string;
+    province: string;
+    city_municipality: string;
+    postal_codes?: string[] | null;
+    coverage_barangays?: string[] | null;
+}
+
+const normalizePlace = (value: string | null | undefined): string =>
+    (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+const cityKey = (value: string | null | undefined): string => {
+    const normalized = normalizePlace(value).replace(/[.,]/g, '');
+    return normalized.replace(/^(?:city|municipality)\s+of\s+|\s+(?:city|municipality)$/g, '').trim();
+};
+
+export function matchingPickupHubs<T extends PickupHubOption>(
+    hubs: T[],
+    companyId: number | string | null | undefined,
+    address: { province?: string; city?: string; postal_code?: string; barangay?: string },
+): T[] {
+    if (companyId === null || companyId === undefined || companyId === '') return [];
+    const province = normalizePlace(address.province);
+    const city = normalizePlace(address.city);
+    const postal = (address.postal_code ?? '').trim();
+    const barangay = normalizePlace(address.barangay);
+    if (!province || !city || !/^[0-9]{4}$/.test(postal)) return [];
+
+    return hubs.filter(hub => {
+        if (String(hub.logistics_company_id) !== String(companyId)) return false;
+        if (normalizePlace(hub.province) !== province) return false;
+        const postalCodes = hub.postal_codes?.filter(Boolean) ?? [];
+        if (postalCodes.length > 0) {
+            if (!postalCodes.includes(postal)) return false;
+        } else if (cityKey(hub.city_municipality) !== cityKey(city)) {
+            return false;
+        }
+        const coverageBarangays = hub.coverage_barangays?.filter(Boolean) ?? [];
+        if (coverageBarangays.length > 0 && barangay) {
+            if (!coverageBarangays.some(covered => normalizePlace(covered) === barangay)) return false;
+        }
+        return true;
+    });
+}
+
+export function defaultPickupHubId<T extends { id: number | string }>(hubs: T[], selectedHubId: number | string | null | undefined): number | string | '' {
+    if (selectedHubId !== null && selectedHubId !== undefined && selectedHubId !== ''
+        && hubs.some(hub => String(hub.id) === String(selectedHubId))) return selectedHubId;
+    return hubs[0]?.id ?? '';
+}
+
+export function estimateSelfPickupFeeFromDoorstep(doorstepFee: number, model = 'dedicated_fleet'): number {
+    const cents = Math.max(0, Math.round(doorstepFee * 100));
+    const delivery = model === 'standard'
+        ? Math.trunc(cents / 2)
+        : Math.trunc(cents / 12) * 5 + Math.trunc(((cents % 12) * 5) / 12);
+    return (cents - delivery) / 100;
+}
+
 export function withDoorstepDelivery<T extends { delivery_type: 'doorstep' | 'hub_self_pickup'; saved_address_id: number | null; save_address: boolean }>(previous: T, canSave: boolean): T {
     return { ...previous, delivery_type: 'doorstep', save_address: previous.saved_address_id === null && canSave ? true : previous.save_address };
 }

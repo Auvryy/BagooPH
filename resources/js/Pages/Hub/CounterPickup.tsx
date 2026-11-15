@@ -173,7 +173,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
     return (
         <DashboardLayout
             title="Counter pickup"
-            subtitle="Customer handover verification & zero-fee claim desk"
+            subtitle="Customer handover verification & hub pickup desk"
             actions={canScan &&
                 <Link
                     href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}

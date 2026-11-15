@@ -64,8 +64,20 @@ class NewEraRoutingRateTest extends TestCase
         foreach ([0, 1, 2, 59, 6001, 999999] as $cents) {
             foreach (['standard', 'dedicated_fleet'] as $model) {
                 $this->assertSame($cents, array_sum($rates->shippingSplit($cents, $model)));
+                $selfPickup = $rates->selfPickupQuote($cents, $model);
+                $this->assertSame($cents, $selfPickup['payable_cents'] + $selfPickup['waived_delivery_cents']);
+                $this->assertSame(0, $selfPickup['split']['delivery']);
+                $this->assertSame($selfPickup['payable_cents'], array_sum($selfPickup['split']));
             }
         }
+        $dedicated = $rates->selfPickupQuote(6000, 'dedicated_fleet');
+        $this->assertSame(3500, $dedicated['payable_cents']);
+        $this->assertSame(2500, $dedicated['waived_delivery_cents']);
+        $this->assertSame(['pickup' => 1000, 'delivery' => 0, 'company' => 2500], $dedicated['split']);
+        $standard = $rates->selfPickupQuote(6000, 'standard');
+        $this->assertSame(3000, $standard['payable_cents']);
+        $this->assertSame(3000, $standard['waived_delivery_cents']);
+        $this->assertSame(['pickup' => 0, 'delivery' => 0, 'company' => 3000], $standard['split']);
     }
 
     public function test_same_child_route_omits_mother_hubs_and_freezes_one_hop(): void
