@@ -484,7 +484,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             {/* RELEASE VERIFICATION MODAL */}
             {selectedParcel && (
                 <Dialog open onClose={() => { if (!submitting) setSelectedParcel(null); }} className="relative z-50 font-sans">
-                    <DialogBackdrop className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity" />
+                    <DialogBackdrop className="fixed inset-0 bg-brand-900/45 backdrop-blur-xs transition-opacity" />
                     <div className="fixed inset-0 flex items-center justify-center p-4">
                     <DialogPanel className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-2xl">
                         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-100 px-6 py-5">

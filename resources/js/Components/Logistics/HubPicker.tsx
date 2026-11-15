@@ -83,7 +83,7 @@ export default function HubPicker({
             {error && <p role="alert" className="text-xs text-rose-700">{error}</p>}
 
             <Dialog open={showMap} onClose={() => setShowMap(false)} className="relative z-[90]">
-                <DialogBackdrop className="fixed inset-0 bg-zinc-950/50" />
+                <DialogBackdrop className="fixed inset-0 bg-brand-900/45" />
                 <div className="fixed inset-0 flex items-center justify-center p-3 sm:p-6">
                     <DialogPanel className="flex max-h-[90dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl">
                         <header className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">

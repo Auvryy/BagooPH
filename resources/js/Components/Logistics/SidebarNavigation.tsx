@@ -15,7 +15,7 @@ export default function SidebarNavigation({ items }: { items: Item[] }) {
     const [expanded, setExpanded] = useState<Record<string, boolean>>({ 'Daily work': true });
     const active = items.find(item => item.current)?.name;
     useEffect(() => { const group = groups.find(group => group.names.includes(active ?? ''));if (group) setExpanded(value => ({ ...value, [group.title]: true })); }, [active]);
-    return <div className="space-y-2">{groups.map(group => {
+    return <div className="space-y-1">{groups.map(group => {
         const links = group.names.flatMap(name => items.filter(item => item.name === name));
         if (!links.length) return null;
         const open = expanded[group.title] ?? group.defaultOpen;
@@ -27,24 +27,24 @@ export default function SidebarNavigation({ items }: { items: Item[] }) {
                     aria-expanded={open}
                     aria-controls={id}
                     onClick={() => setExpanded(value => ({ ...value, [group.title]: !open }))}
-                    className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-[11px] font-semibold text-zinc-400 transition hover:text-zinc-200 hover:bg-[#181A20]"
+                    className="flex w-full items-center justify-between rounded-control px-3 py-2 text-left text-xs font-medium text-ink-500 transition-colors hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500"
                 >
                     <span className="flex items-center gap-2">{group.title}</span>
-                    <ChevronDown className={`h-3.5 w-3.5 text-zinc-400 transition-transform ${open ? '' : '-rotate-90'}`} />
+                    <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 transition-transform ${open ? '' : '-rotate-90'}`} />
                 </button>
-                <div id={id} hidden={!open} className="space-y-1 pb-2 pt-0.5">
+                <div id={id} hidden={!open} className="space-y-0.5 pb-2 pt-0.5">
                     {links.map(item => (
                         <PortalLink
                             key={item.name}
                             href={item.href}
                             aria-current={item.current ? 'page' : undefined}
-                            className={`group flex min-h-10 items-center gap-2.5 rounded px-3 py-2 text-xs transition ${
+                            className={`group relative flex min-h-10 items-center gap-2.5 rounded-control px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${
                                 item.current
-                                    ? 'bg-[#22252E] text-white font-semibold border border-[#3F4352] border-l-2 border-l-[#E00D42] shadow-sm'
-                                    : 'text-zinc-300 hover:text-white hover:bg-[#1E2027] rounded font-medium'
+                                    ? 'bg-brand-50 text-brand-600 font-semibold before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-brand-500'
+                                    : 'text-ink-700 hover:bg-surface-100 hover:text-ink-900 font-medium'
                             }`}
                         >
-                            <item.icon className={`h-4 w-4 shrink-0 ${item.current ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`} />
+                            <item.icon aria-hidden="true" className={`h-4 w-4 shrink-0 ${item.current ? 'text-brand-500' : 'text-ink-500 group-hover:text-ink-700'}`} />
                             <span className="flex-1">
                                 {item.name === 'Counter Pickup'
                                     ? 'Counter pickup'
@@ -55,7 +55,7 @@ export default function SidebarNavigation({ items }: { items: Item[] }) {
                                     : item.name}
                             </span>
                             {item.badge && (
-                                <span className="rounded-sm bg-[#181A20] border border-[#3F4352] px-1.5 py-0.5 text-[10px] font-semibold text-zinc-300">
+                                <span className="rounded-chip bg-surface-100 px-1.5 py-0.5 text-xs font-medium text-ink-600">
                                     {item.badge}
                                 </span>
                             )}

@@ -723,7 +723,7 @@ test('All Hub and Courier views render role guidance, category tabs, and calm no
     }
     const workspaceCss = readFileSync(join(root, 'resources/css/logistics-workspace.css'), 'utf8');
     assert.match(workspaceCss, /border-radius:\s*4px;/);
-    assert.match(workspaceCss, /border-color:\s*#CBD5E1;/);
+    assert.match(workspaceCss, /border-color:\s*#E7E5E4;/);
 });
 
 test('All touched Hub and Courier UI files keep zero font-mono and zero emoji characters in source', () => {

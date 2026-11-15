@@ -644,7 +644,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                         type="button"
                         aria-label="Close facility details"
                         onClick={closeDetails}
-                        className="absolute inset-0 h-full w-full bg-black/40 backdrop-blur-xs transition-opacity"
+                        className="absolute inset-0 h-full w-full bg-brand-900/45 backdrop-blur-xs transition-opacity"
                     />
 
                     <aside
@@ -849,7 +849,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                         type="button"
                         aria-label="Close connected facility details"
                         onClick={closeDetails}
-                        className="absolute inset-0 h-full w-full bg-black/40 backdrop-blur-xs transition-opacity"
+                        className="absolute inset-0 h-full w-full bg-brand-900/45 backdrop-blur-xs transition-opacity"
                     />
 
                     <aside

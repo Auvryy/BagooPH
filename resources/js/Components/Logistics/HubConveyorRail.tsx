@@ -157,7 +157,7 @@ export default function HubConveyorRail({
                             Resolving stage…
                         </span>
                     ) : hasScannedParcel ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#121316] px-2.5 py-0.5 rounded-md border border-[#121316]">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-brand-500 px-2.5 py-0.5 rounded-md border border-brand-500">
                             <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />
                             <span>Station {HUB_STATIONS[activeIndex].number}: {HUB_STATIONS[activeIndex].title}</span>
                         </span>
@@ -183,7 +183,7 @@ export default function HubConveyorRail({
                             onClick={() => onStationClick && onStationClick(station.id)}
                             className={`group relative flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition focus:outline-none cursor-pointer ${
                                 isStationActive
-                                    ? 'border-[#121316] bg-zinc-100/90 text-[#121316] shadow-xs'
+                                    ? 'border-brand-500 bg-zinc-100/90 text-[#121316] shadow-xs'
                                     : isStationCompleted
                                         ? 'border-emerald-200/80 bg-emerald-50/50 text-emerald-900 hover:border-emerald-300'
                                         : 'border-zinc-200/80 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
@@ -192,10 +192,10 @@ export default function HubConveyorRail({
                             <div
                                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition ${
                                     isStationActive
-                                        ? 'border-[#121316] bg-[#121316] text-white shadow-2xs'
+                                        ? 'border-brand-500 bg-brand-500 text-white shadow-2xs'
                                         : isStationCompleted
                                             ? 'border-emerald-600 bg-emerald-600 text-white'
-                                            : 'border-zinc-200 bg-zinc-50 text-zinc-500 group-hover:bg-[#121316] group-hover:text-white group-hover:border-[#121316]'
+                                            : 'border-zinc-200 bg-zinc-50 text-zinc-500 group-hover:bg-brand-500 group-hover:text-white group-hover:border-brand-500'
                                 }`}
                             >
                                 {isStationCompleted ? (

@@ -83,6 +83,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const logisticsCompany = (user as any)?.logisticsCompany;
     const canSwitchHubs = Boolean((user as any)?.canSwitchHubs);
     const canScanParcels = user?.canScanParcels === true;
+    const lx = role === 'logistics';
     const sharedHubHeading = role === 'logistics' && (component.startsWith('Governance/') || component.startsWith('Handover/') || (component.startsWith('Finance/') && component !== 'Finance/DeliveryEarnings'));
     const hubPageIcon = component.startsWith('Finance/') ? Banknote : component.startsWith('Handover/') || component.startsWith('Governance/Exception') ? AlertTriangle : component.startsWith('Governance/History') ? ShieldCheck : Settings;
 
@@ -294,14 +295,14 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             {/* Sidebar (Permanently Fixed on Desktop) */}
             <LogisticsNavigationDrawer enabled={role === 'logistics'} open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
             <aside id="portal-navigation" className={`
-                fixed inset-y-0 left-0 z-50 w-64 overscroll-contain bg-[#121316] text-zinc-200 border-r border-[#1F2128]
+                fixed inset-y-0 left-0 z-50 w-64 overscroll-contain ${lx ? 'bg-white text-ink-900 border-r border-line-200' : 'bg-[#121316] text-zinc-200 border-r border-[#1F2128]'}
                 flex flex-col transition-transform duration-200 ease-in-out
                 ${sidebarOpen ? 'visible translate-x-0' : 'invisible -translate-x-full'}
                 lg:visible lg:static lg:translate-x-0 lg:h-full lg:shrink-0 lg:z-30
             `}>
                 
                 {/* Brand Header */}
-                <div className="p-4 border-b border-[#1F2128] shrink-0 bg-[#121316]">
+                <div className={`p-4 shrink-0 ${lx ? 'bg-white' : 'border-b border-[#1F2128] bg-[#121316]'}`}>
                     <div className="flex items-center justify-between">
                         <Link href={role === 'seller' ? route('seller.dashboard') : role === 'admin' ? route('admin.dashboard') : role === 'logistics' ? route('hub.dashboard') : '/'} className="flex items-center gap-2.5">
                             {role === 'logistics' ? (
@@ -310,8 +311,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 <BagooLogo className="w-8 h-8 shadow-xs" rounded="rounded-xl" />
                             )}
                             <div>
-                                <span className="text-base font-black tracking-tight text-white">Bagoo<span className="text-[#E00D42]">PH</span></span>
-                                <span className="block text-[9px] uppercase font-bold tracking-widest text-zinc-400 -mt-0.5 font-sans">
+                                <span className={`text-base font-black tracking-tight ${lx ? 'text-ink-900' : 'text-white'}`}>Bagoo<span className="text-[#E00D42]">PH</span></span>
+                                <span className={`block -mt-0.5 font-sans ${lx ? 'text-xs font-medium text-ink-500' : 'text-[9px] uppercase font-bold tracking-widest text-zinc-400'}`}>
                                     {role === 'seller' ? 'Seller Centre' : role === 'admin' ? 'Admin Portal' : role === 'logistics' ? 'Logistics Hub' : 'Portal'}
                                 </span>
                             </div>
@@ -321,7 +322,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             aria-label="Close navigation"
                             data-autofocus={role === 'logistics' ? true : undefined}
                             onClick={() => setSidebarOpen(false)}
-                            className={`lg:hidden p-1 text-zinc-400 hover:text-white cursor-pointer ${role === 'logistics' ? 'flex min-h-11 min-w-11 items-center justify-center' : ''}`}
+                            className={`lg:hidden p-1 cursor-pointer ${lx ? 'flex min-h-11 min-w-11 items-center justify-center rounded-control text-ink-500 hover:bg-surface-100 hover:text-ink-900' : 'text-zinc-400 hover:text-white'}`}
                         >
                             <X className="w-5 h-5" />
                         </button>
@@ -343,17 +344,17 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                 {/* Active Hub Facility & Switcher for Logistics */}
                 {role === 'logistics' && (
-                    <div className="p-3 border-b border-[#1F2128] bg-[#121316] shrink-0">
-                        <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 font-sans flex items-center gap-1.5">
-                                <Building2 className="w-3.5 h-3.5 text-zinc-400" /> {canSwitchHubs ? 'Viewing facility' : 'Assigned facility'}
+                    <div className="px-3 pb-3 shrink-0">
+                        <div className="flex items-center justify-between mb-1.5 px-1">
+                            <span className="text-xs font-medium text-ink-500 font-sans flex items-center gap-1.5">
+                                <Building2 className="w-3.5 h-3.5" aria-hidden="true" /> {canSwitchHubs ? 'Viewing facility' : 'Assigned facility'}
                             </span>
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-sm bg-[#181A20] text-zinc-300 border border-[#3F4352] uppercase font-sans">
+                            <span className="text-xs font-medium px-1.5 py-0.5 rounded-chip bg-brand-50 text-brand-600 font-sans">
                                 {activeHub ? activeHub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub' : 'No facility'}
                             </span>
                         </div>
 
-                        {canSwitchHubs && !canScanParcels && <p className="mb-2 text-[10px] leading-4 text-zinc-400">Viewing this hub. Physical scans need its assigned handler.</p>}
+                        {canSwitchHubs && !canScanParcels && <p className="mb-2 px-1 text-xs leading-4 text-ink-600">Viewing this hub. Physical scans need its assigned handler.</p>}
 
                         {/* Facility Switcher Dropdown Button */}
                         <div className="relative">
@@ -361,29 +362,29 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 type="button"
                                 onClick={() => canSwitchHubs && setHubSwitcherOpen(!hubSwitcherOpen)}
                                 disabled={!canSwitchHubs || switchingHub !== null}
-                                className={`w-full flex items-center justify-between p-2.5 rounded bg-[#181A20] border border-[#3F4352] text-left transition shadow-sm group ${
-                                    canSwitchHubs ? 'hover:border-zinc-400 cursor-pointer' : 'cursor-default'
+                                className={`w-full flex items-center justify-between p-2.5 rounded-control bg-surface-100 text-left transition-colors group ${
+                                    canSwitchHubs ? 'hover:bg-line-200 cursor-pointer' : 'cursor-default'
                                 }`}
                             >
                                 <div className="min-w-0 flex-1">
-                                    <p className={`text-xs font-bold text-zinc-100 truncate transition ${canSwitchHubs ? 'group-hover:text-white' : ''}`}>
+                                    <p className="text-sm font-semibold text-ink-900 truncate">
                                         {switchingHub !== null ? 'Changing facility…' : activeHub?.name || logisticsCompany?.name || 'No facility assigned'}
                                     </p>
-                                    <p className="text-[10px] text-zinc-400 font-sans truncate">
-                                        Station: {activeHub?.code || 'Not assigned'} • {activeHub?.city_municipality || 'Location not provided'}
+                                    <p className="text-xs text-ink-600 font-sans truncate">
+                                        {activeHub?.code || 'Not assigned'} · {activeHub?.city_municipality || 'Location not provided'}
                                     </p>
                                 </div>
                                 {canSwitchHubs && (
-                                    <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 shrink-0 ml-1.5 transition-transform ${hubSwitcherOpen ? 'rotate-180' : ''}`} />
+                                    <ChevronDown className={`w-4 h-4 text-ink-500 shrink-0 ml-1.5 transition-transform ${hubSwitcherOpen ? 'rotate-180' : ''}`} />
                                 )}
                             </button>
 
                             {canSwitchHubs && hubSwitcherOpen && allHubs && allHubs.length > 0 && (
-                                <div className="absolute left-0 right-0 top-full mt-1 bg-[#181A20] rounded-xl shadow-xl border border-[#2B2D37] py-1.5 z-50 text-zinc-200">
-                                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-sans">
-                                        Switch Operating Hub
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-control shadow-float border border-line-200 py-1.5 z-50 text-ink-900">
+                                    <div className="px-3 py-1 text-xs font-medium text-ink-500 font-sans">
+                                        Switch hub
                                     </div>
-                                    <div className="max-h-48 overflow-y-auto divide-y divide-[#1F2128]">
+                                    <div className="max-h-48 overflow-y-auto">
                                         {allHubs.map((h: any) => (
                                              <button
                                                  key={h.id}
@@ -396,18 +397,18 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                          router.post(route('hub.switchHub'), { hub_id: h.id }, { preserveScroll: true, onFinish: () => { hubSwitchPending.current = false; setSwitchingHub(null); } });
                                                      }
                                                  }}
-                                                 className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer hover:bg-[#22252E] ${
-                                                     h.id === activeHub?.id ? 'bg-[#22252E] font-bold text-white' : 'text-zinc-200'
+                                                 className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between transition-colors cursor-pointer hover:bg-surface-100 ${
+                                                     h.id === activeHub?.id ? 'bg-brand-50 font-semibold text-brand-600' : 'text-ink-900'
                                                  }`}
                                              >
                                                  <div className="min-w-0 flex-1 pr-2">
                                                      <p className="truncate">{h.name}</p>
-                                                     <p className="text-[10px] text-zinc-400 font-sans truncate">
-                                                         {h.code} • {h.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
+                                                     <p className="text-xs font-normal text-ink-600 font-sans truncate">
+                                                         {h.code} · {h.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'}
                                                      </p>
                                                  </div>
                                                  {h.id === activeHub?.id && (
-                                                     <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                                     <Check className="w-4 h-4 text-brand-500 shrink-0" aria-hidden="true" />
                                                  )}
                                              </button>
                                          ))}
@@ -523,12 +524,14 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 </nav>
 
                 {/* Sidebar Bottom: Sign Out Button */}
-                <div className="p-3 border-t border-[#1F2128] bg-[#121316] shrink-0 mt-auto">
+                <div className={`p-3 shrink-0 mt-auto ${lx ? 'border-t border-line-200 bg-white' : 'border-t border-[#1F2128] bg-[#121316]'}`}>
                     <Link
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-zinc-300 hover:text-white hover:bg-[#181A20] transition border border-[#2B2D37] hover:border-zinc-600 uppercase tracking-wider shadow-sm cursor-pointer font-sans"
+                        className={lx
+                            ? 'w-full flex items-center gap-2 px-3 py-2 rounded-control text-sm font-medium text-ink-700 hover:bg-surface-100 hover:text-ink-900 transition-colors cursor-pointer font-sans'
+                            : 'w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-zinc-300 hover:text-white hover:bg-[#181A20] transition border border-[#2B2D37] hover:border-zinc-600 uppercase tracking-wider shadow-sm cursor-pointer font-sans'}
                     >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out</span>
@@ -541,7 +544,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
                 
                 {/* Topbar (Clean Fixed Header) */}
-                <header className={`h-15 bg-white/95 backdrop-blur-md border-b px-4 sm:px-8 flex items-center justify-between shrink-0 z-20 ${role === 'logistics' ? 'border-zinc-300' : 'border-zinc-200/80'}`}>
+                <header className={`h-15 border-b px-4 sm:px-8 flex items-center justify-between shrink-0 z-20 ${lx ? 'bg-white border-line-200' : 'bg-white/95 backdrop-blur-md border-zinc-200/80'}`}>
                     <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
                         <button
                             type="button"
@@ -549,23 +552,18 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             aria-controls="portal-navigation"
                             aria-expanded={sidebarOpen}
                             onClick={() => setSidebarOpen(true)}
-                            className={`lg:hidden p-2 text-zinc-600 hover:bg-zinc-100 cursor-pointer shrink-0 ${role === 'logistics' ? 'rounded border border-zinc-300 flex min-h-11 min-w-11 items-center justify-center' : 'rounded-xl'}`}
+                            className={`lg:hidden p-2 cursor-pointer shrink-0 ${lx ? 'rounded-control text-ink-700 hover:bg-surface-100 flex min-h-11 min-w-11 items-center justify-center' : 'text-zinc-600 hover:bg-zinc-100 rounded-xl'}`}
                         >
                             <Menu className="w-5 h-5" />
                         </button>
                         <div className="min-w-0">
                             {role === 'logistics' ? (
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 truncate">
+                                    <span className="hidden sm:inline-flex items-center gap-1.5 text-sm text-ink-600 truncate">
                                         <span>{activeHub?.name || logisticsCompany?.name || 'Logistics'}</span>
-                                        {activeHub?.code && (
-                                            <span className="rounded-sm bg-zinc-100 border border-zinc-300 px-2 py-0.5 text-xs font-semibold text-[#121316]">
-                                                {activeHub.code}
-                                            </span>
-                                        )}
                                     </span>
-                                    <span className="hidden sm:inline text-zinc-300">/</span>
-                                    <p className="truncate text-sm font-semibold text-[#121316]">{title}</p>
+                                    <span className="hidden sm:inline text-ink-400" aria-hidden="true">/</span>
+                                    <p className="truncate text-sm font-semibold text-ink-900">{title}</p>
                                 </div>
                             ) : (
                                 <>
@@ -598,7 +596,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         className="w-8 h-8 rounded-lg object-cover border border-zinc-200 shrink-0"
                                     />
                                 ) : (
-                                    <div className="w-8 h-8 rounded-lg bg-[#E00D42] text-white font-bold text-xs flex items-center justify-center shadow-xs group-hover:bg-[#C20836] transition font-sans">
+                                    <div className={`w-8 h-8 bg-[#E00D42] text-white font-bold text-xs flex items-center justify-center group-hover:bg-[#C20836] transition font-sans ${lx ? 'rounded-full' : 'rounded-lg shadow-xs'}`}>
                                         {user?.name.charAt(0).toUpperCase()}
                                     </div>
                                 )}
@@ -608,7 +606,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                                     </div>
                                     <span className="text-[10px] text-zinc-500 font-medium">
-                                        {role === 'seller' ? 'Verified Merchant' : role === 'admin' ? 'Super Admin' : role === 'logistics' ? 'Logistics Operator' : 'Authorized User'}
+                                        {role === 'seller' ? 'Verified Merchant' : role === 'admin' ? 'Super Admin' : role === 'logistics' ? (canSwitchHubs ? 'Company admin' : 'Hub operator') : 'Authorized User'}
                                     </span>
                                 </div>
                             </Link>
@@ -682,21 +680,21 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                             <>
                                                 <Link
                                                     href={route('hub.dashboard')}
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition"
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                                 >
-                                                    <LayoutDashboard className="w-4 h-4 text-blue-600" />
+                                                    <LayoutDashboard className="w-4 h-4 text-slate-400" />
                                                     <span>Hub Overview</span>
                                                 </Link>
                                                 <Link
                                                     href={route('hub.scan.station')}
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition"
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                                 >
-                                                    <ScanLine className="w-4 h-4 text-emerald-600" />
+                                                    <ScanLine className="w-4 h-4 text-slate-400" />
                                                     <span>Floor Scanner (PWA)</span>
                                                 </Link>
                                                 <Link
                                                     href={route('hub.network')}
-                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition"
+                                                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                                 >
                                                     <Building2 className="w-4 h-4 text-slate-400" />
                                                     <span>Facility Network</span>
@@ -739,19 +737,19 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
 
                 {/* Flash Alerts */}
                 {flash.success && (
-                    <div className="bg-emerald-600 text-white py-2.5 px-6 text-xs font-bold font-sans shadow-xs flex items-center gap-2 shrink-0">
+                    <div className={`py-2.5 px-6 font-sans flex items-center gap-2 shrink-0 ${lx ? 'bg-success-soft text-success border-b border-success/20 text-sm font-medium' : 'bg-emerald-600 text-white text-xs font-bold shadow-xs'}`}>
                         <CheckCircle2 className="w-4 h-4" />
                         <span>{flash.success}</span>
                     </div>
                 )}
                 {flash.error && (
-                    <div className="bg-[#E00D42] text-white py-2.5 px-6 text-xs font-bold font-sans shadow-xs shrink-0">
+                    <div className={`py-2.5 px-6 font-sans shrink-0 ${lx ? 'bg-brand-50 text-brand-700 border-b border-brand-100 text-sm font-medium' : 'bg-[#E00D42] text-white text-xs font-bold shadow-xs'}`}>
                         {flash.error}
                     </div>
                 )}
 
                 {/* Body Content */}
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F8FAFC]" id="portal-main">
+                <main className={`flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 ${lx ? 'bg-surface-50' : 'bg-[#F8FAFC]'}`} id="portal-main">
                     <div className="max-w-7xl mx-auto space-y-6">
                         {sharedHubHeading && <HubPageHeader title={title} description={subtitle} icon={hubPageIcon} />}
                         {children}
