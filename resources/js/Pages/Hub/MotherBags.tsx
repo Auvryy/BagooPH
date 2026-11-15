@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowRight, Box, CheckCheck, Container, LockKeyhole, Package, Printer, RotateCcw, ScanLine, Truck } from 'lucide-react';
+import { ArrowRight, Box, CheckCheck, LockKeyhole, Printer, RotateCcw, ScanLine, Truck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { HubBadge, HubButton, HubCategoryTabs, InfoHint, HubRoute, HubSearch, hubButton, hubInput, hubPrimary, type HubPlace } from '@/Components/Logistics/Workspace';
+import { HubBadge, HubButton, HubCategoryTabs, InfoHint, HubSearch, hubButton, hubInput, hubPrimary, type HubPlace } from '@/Components/Logistics/Workspace';
 import HubPicker from '@/Components/Logistics/HubPicker';
 import { CapacityMeter, HandlingFields, HandlingSummary, emptyHandling, type Handling } from '@/Components/Logistics/CargoHandling';
 import WaybillCamera from '@/Components/WaybillCamera';
@@ -415,529 +415,305 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                             </section>
                         )}
 
-                        {bag && (
+                        {bag && (() => {
+                            const manifestHref = bag.manifest_id ? `${basePath.startsWith('/hub') ? '/hub' : ''}/manifests/${bag.manifest_id}` : null;
+                            const stages = ['Packing', 'Sealed', 'Loaded', 'In transit', 'Received'];
+                            const stageIndex = bag.status === 'open' ? 0 : bag.status === 'sealed' ? (bag.manifest_id ? 2 : 1) : bag.status === 'in_transit' ? 3 : 4;
+                            const card = 'rounded-card border border-line-200 bg-white';
+                            const fieldLabel = 'block text-[13px] font-medium text-ink-700';
+                            return (
                             <div className="space-y-5">
-                                {/* Compact Selected Bag Summary */}
-                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-5 py-3.5 shadow-xs">
-                                    <div className="min-w-0">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-sm font-bold text-ink-900 tabular-nums">{bag.reference}</span>
-                                            <HubBadge tone={bag.status === 'received' ? 'brand' : 'neutral'}>{words(bag.status)}</HubBadge>
-                                            {bag.seal_number && (
-                                                <span className="text-xs font-medium text-zinc-500 tabular-nums">Seal {bag.seal_number}</span>
+                                {/* Bag overview: identity, lifecycle, route, capacity and printable tag */}
+                                <section aria-label="Selected bag" className={`${card} p-5 sm:p-6`}>
+                                    <div className="flex flex-wrap items-start justify-between gap-5">
+                                        <div className="min-w-0 flex-1 space-y-4">
+                                            <div>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h2 className="text-xl font-bold tabular-nums text-ink-900">{bag.reference}</h2>
+                                                    <HubBadge tone={bag.status === 'open' ? 'brand' : bag.status === 'received' ? 'success' : 'neutral'}>{words(bag.status)}</HubBadge>
+                                                </div>
+                                                <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-700">
+                                                    <span>{bag.source.name}</span>
+                                                    <ArrowRight className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
+                                                    <span>{bag.destination.name}</span>
+                                                </p>
+                                                <p className="mt-0.5 text-[13px] text-ink-600">
+                                                    {bag.parcels_count} parcels · {bag.seal_number ? `Seal ${bag.seal_number}` : 'Not sealed'}
+                                                    {bag.physical_tag && <> · Sack {bag.physical_tag}</>}
+                                                    {manifestHref && <> · <Link className="font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900" href={manifestHref}>Open transport manifest</Link></>}
+                                                </p>
+                                            </div>
+
+                                            <ol aria-label="Bag progress" className="grid grid-cols-5 gap-1">
+                                                {stages.map((label, index) => (
+                                                    <li key={label} aria-current={index === stageIndex ? 'step' : undefined} className="min-w-0">
+                                                        <span aria-hidden="true" className={`block h-1.5 rounded-full ${index <= stageIndex ? 'bg-brand-500' : 'bg-line-200'}`} />
+                                                        <span className={`mt-1.5 block truncate text-xs ${index === stageIndex ? 'font-semibold text-brand-600' : index < stageIndex ? 'text-ink-700' : 'text-ink-500'}`}>{label}</span>
+                                                    </li>
+                                                ))}
+                                            </ol>
+
+                                            {bag.capacity && (
+                                                <div aria-label="Bag capacity">
+                                                    <p className="mb-2 text-[13px] font-medium text-ink-700">Packing capacity</p>
+                                                    <div className="grid gap-3 sm:grid-cols-3">
+                                                        <CapacityMeter label="Parcels" value={bag.capacity.count} max={bag.capacity.max_count} unit="parcels" />
+                                                        <CapacityMeter label="Weight" value={bag.capacity.weight_kg} max={bag.capacity.max_weight_kg} unit="kg" />
+                                                        <CapacityMeter label="Volume" value={bag.capacity.volume_cm3 === null ? null : Number((bag.capacity.volume_cm3 / 1000000).toFixed(4))} max={Number(((bag.capacity.max_volume_cm3 || 300000) / 1000000).toFixed(2))} unit="m³" />
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
-                                        <p className="mt-0.5 break-words text-xs text-zinc-600">
-                                            {bag.source.name} → {bag.destination.name} · {bag.parcels_count} recorded parcels
-                                        </p>
-                                    </div>
-                                    {bag.manifest_id && (
-                                        <Link
-                                            className="text-xs font-bold text-ink-900 underline underline-offset-4 hover:text-zinc-700"
-                                            href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests/${bag.manifest_id}`}
-                                        >
-                                            Open transport manifest
-                                        </Link>
-                                    )}
-                                </div>
 
-                                {/* Pack and Seal Console */}
-                                {!bag.canPack && bag.status === 'open' && (
-                                    <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-                                        Packing and sealing this bag requires a Pack &amp; Dispatch or Full Hub Operations lock at {bag.source.name}.
-                                    </div>
-                                )}
-                                {bag.canPack && bag.status === 'open' && (
-                                    <section className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <ScanLine className="h-4 w-4 text-zinc-600" />
-                                                    <h2 className="text-base font-semibold text-ink-900">Pack and seal</h2>
-<InfoHint>Keep this bag open, scan incoming parcels continuously, revert any mis-scan, then scan or type the seal.</InfoHint>
-                                                </div>
+                                        <div className="flex shrink-0 flex-col items-center gap-2">
+                                            <div data-bag-label className="rounded-control border border-line-200 bg-white p-3 text-center">
+                                                <QRCodeSVG value={bag.reference} size={88} />
+                                                <p className="mt-2 text-xs font-semibold tabular-nums text-ink-900">{bag.reference}</p>
+                                                <p className="text-xs text-ink-600">{bag.source.code} → {bag.destination.code}</p>
+                                                {bag.physical_tag && <p className="break-all text-xs text-ink-600">Sack {bag.physical_tag}</p>}
+                                                {bag.seal_number && <p className="break-all text-xs tabular-nums text-ink-600">Seal {bag.seal_number}</p>}
                                             </div>
-                                            <label className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-ink-900 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={continuousPack}
-                                                    onChange={event => setContinuousPack(event.target.checked)}
-                                                    className="rounded border-zinc-300 text-brand-500 focus:ring-brand-500"
-                                                />
+                                            <button type="button" onClick={() => window.print()} className={`${hubButton} min-h-9 px-3 text-[13px]`}>
+                                                <Printer className="h-4 w-4 text-ink-500" aria-hidden="true" />
+                                                Print tag
+                                            </button>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Next action for this stage */}
+                                {!bag.canPack && bag.status === 'open' && (
+                                    <p role="status" className="rounded-control bg-warning-soft px-4 py-3 text-[13px] text-warning">
+                                        Packing this bag needs a Pack &amp; Dispatch or Full Hub Operations role at {bag.source.name}.
+                                    </p>
+                                )}
+
+                                {bag.canPack && bag.status === 'open' && (
+                                    <section aria-labelledby="pack-seal-title" className={card}>
+                                        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
+                                            <h2 id="pack-seal-title" className="flex items-center gap-1 text-lg font-semibold text-ink-900">
+                                                Pack and seal
+                                                <InfoHint>Scan parcels into this bag, revert any mis-scan, then scan or type the numbered seal. Arriving Mother Hub parcels need their sorting scan in Scan Station first.</InfoHint>
+                                            </h2>
+                                            <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] font-medium text-ink-700">
+                                                <input type="checkbox" checked={continuousPack} onChange={event => setContinuousPack(event.target.checked)} className="rounded-chip border-line-300 text-brand-500 focus:ring-brand-500" />
                                                 Hands-free continuous auto-add
                                             </label>
-                                        </header>
-                                        <div className="p-5 sm:p-6 space-y-5">
-                                            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
-                                                <p className="max-w-md text-xs leading-5 text-zinc-600">
-                                                    Arriving Mother Hub parcels need their sorting scan before the next bag. Check the parcel’s current stage if packing is blocked.
-                                                </p>
-                                                <Link href={route('hub.scan.station')} className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-900 underline underline-offset-4 hover:text-zinc-700">
-                                                    <ScanLine className="h-4 w-4" />
-                                                    Check in Scan Station
-                                                </Link>
-                                            </div>
-                                            <form onSubmit={event => submit(event, 'add')} className="flex flex-wrap items-end gap-3">
-                                                <label className="min-w-0 flex-1 text-xs font-bold text-ink-900">
-                                                    Parcel waybill
-                                                    <input
-                                                        autoFocus
-                                                        required
-                                                        autoComplete="off"
-                                                        className={`${hubInput} mt-1.5`}
-                                                        value={action.data.barcode}
-                                                        onChange={event => action.setData('barcode', event.target.value)}
-                                                        placeholder="Scan or enter waybill number"
-                                                    />
+                                        </div>
+                                        <div className="space-y-5 p-5 sm:p-6">
+                                            <form onSubmit={event => submit(event, 'add')} className="flex flex-col gap-2 sm:flex-row">
+                                                <label className="min-w-0 flex-1">
+                                                    <span className="sr-only">Parcel waybill</span>
+                                                    <input autoFocus required autoComplete="off" className={`${hubInput} h-12 text-base`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} placeholder="Scan or type waybill" />
                                                 </label>
-                                                <HubButton disabled={action.processing}>Add parcel</HubButton>
+                                                <button disabled={action.processing} className={`${hubPrimary} h-12 px-6`}>{action.processing ? 'Adding…' : 'Add parcel'}</button>
                                             </form>
                                             {bag.packing_policy_version && <HandlingFields value={action.data.handling} onChange={value => action.setData('handling', value)} disabled={action.processing} />}
                                             <WaybillCamera
                                                 continuous={continuousPack}
                                                 cooldownMs={1800}
-                                                buttonLabel={continuousPack ? 'Start continuous camera scan' : 'Scan actual waybill with camera'}
+                                                buttonLabel={continuousPack ? 'Start continuous camera scan' : 'Scan waybill with camera'}
                                                 stopLabel="Stop continuous camera"
-                                                instruction={continuousPack
-                                                    ? 'Point camera at each parcel barcode — valid waybills pack into this bag automatically without tapping Add.'
-                                                    : 'Scan the parcel waybill to fill this field, then review before tapping Add parcel.'}
-                                                onScan={value => {
-                                                    if (continuousPack) {
-                                                        packScannedWaybill(value);
-                                                    } else {
-                                                        action.setData('barcode', value);
-                                                    }
-                                                }}
+                                                instruction={continuousPack ? 'Point the camera at each barcode. Valid waybills are added automatically.' : 'Scan a waybill to fill the field, then tap Add parcel.'}
+                                                onScan={value => { if (continuousPack) packScannedWaybill(value); else action.setData('barcode', value); }}
                                                 disabled={action.processing}
                                             />
+
                                             {activeParcels.length > 0 && (
-                                                <div className="rounded-xl border border-zinc-200 bg-zinc-50/50 p-3.5 space-y-2.5">
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <p className="text-xs font-bold text-ink-900">
-                                                            Recently scanned in this bag ({activeParcels.length})
-                                                        </p>
-                                                        <span className="text-[11px] text-zinc-500">Revert a mis-scan before sealing</span>
-                                                    </div>
-                                                    <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+                                                <div>
+                                                    <p className="mb-2 text-[13px] font-medium text-ink-700">Recently scanned in this bag <span className="font-normal text-ink-500">· {activeParcels.length}</span></p>
+                                                    <ul className="max-h-56 divide-y divide-line-200 overflow-y-auto rounded-control border border-line-200">
                                                         {activeParcels.slice(0, 8).map(item => (
-                                                            <div key={item.id} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs">
+                                                            <li key={item.id} className="px-3 py-2 text-[13px]">
                                                                 <div className="flex flex-wrap items-center justify-between gap-2">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="rounded border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 font-bold text-ink-900 tabular-nums">
-                                                                            {item.tracking_number}
-                                                                        </span>
-                                                                        <span className="text-zinc-500">{words(item.status)}</span>
-                                                                    </div>
+                                                                    <span className="min-w-0"><span className="font-medium tabular-nums text-ink-900">{item.tracking_number}</span> <span className="text-ink-500">· {words(item.status)}</span></span>
                                                                     {revertingTracking === item.tracking_number ? (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => setRevertingTracking(null)}
-                                                                            className="text-[11px] font-semibold text-zinc-500 hover:text-zinc-800 cursor-pointer"
-                                                                        >
-                                                                            Cancel
-                                                                        </button>
+                                                                        <button type="button" onClick={() => setRevertingTracking(null)} className="text-xs font-medium text-ink-600 hover:text-ink-900">Cancel</button>
                                                                     ) : (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                setRevertingTracking(item.tracking_number);
-                                                                                setRevertNotes('Mis-scanned parcel');
-                                                                            }}
-                                                                            className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] font-semibold text-zinc-700 hover:border-red-200 hover:bg-red-50 hover:text-red-700 cursor-pointer transition"
-                                                                        >
-                                                                            <RotateCcw className="h-3 w-3" />
+                                                                        <button type="button" onClick={() => { setRevertingTracking(item.tracking_number); setRevertNotes('Mis-scanned parcel'); }}
+                                                                            className="inline-flex items-center gap-1 rounded-control px-2 py-1 text-xs font-medium text-ink-700 hover:bg-brand-50 hover:text-brand-700">
+                                                                            <RotateCcw className="h-3 w-3" aria-hidden="true" />
                                                                             Revert
                                                                         </button>
                                                                     )}
                                                                 </div>
                                                                 {revertingTracking === item.tracking_number && (
-                                                                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-2">
-                                                                        <input
-                                                                            type="text"
-                                                                            maxLength={200}
-                                                                            value={revertNotes}
-                                                                            onChange={event => setRevertNotes(event.target.value)}
-                                                                            placeholder="Reason (e.g. Wrong route)"
-                                                                            className={`${hubInput} flex-1 py-1 text-xs`}
-                                                                        />
-                                                                        <button
-                                                                            type="button"
-                                                                            disabled={action.processing}
-                                                                            onClick={() => revertParcel(item.tracking_number)}
-                                                                            className="rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-red-700 cursor-pointer disabled:opacity-50"
-                                                                        >
+                                                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                                        <input type="text" maxLength={200} value={revertNotes} onChange={event => setRevertNotes(event.target.value)} placeholder="Reason, e.g. wrong route" className={`${hubInput} min-h-9 flex-1 py-1 text-[13px]`} />
+                                                                        <button type="button" disabled={action.processing} onClick={() => revertParcel(item.tracking_number)}
+                                                                            className="min-h-9 rounded-control border border-brand-700 px-3 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-50">
                                                                             Confirm revert
                                                                         </button>
                                                                     </div>
                                                                 )}
-                                                            </div>
+                                                            </li>
                                                         ))}
-                                                    </div>
+                                                    </ul>
                                                 </div>
                                             )}
-                                            <form onSubmit={event => submit(event, 'seal')} className="space-y-3 border-t border-zinc-100 pt-5">
-                                                <div className="flex flex-wrap items-end gap-3">
-                                                    <label className="min-w-0 flex-1 text-xs font-bold text-ink-900">
-                                                        Numbered seal
-                                                        <input
-                                                            required
-                                                            maxLength={80}
-                                                            className={`${hubInput} mt-1.5 tabular-nums`}
-                                                            value={action.data.seal_number}
-                                                            onChange={event => action.setData('seal_number', event.target.value)}
-                                                            placeholder="Scan or type SL-XXXXX"
-                                                        />
+
+                                            <form onSubmit={event => submit(event, 'seal')} className="space-y-3 border-t border-line-200 pt-5">
+                                                <div className="flex flex-wrap items-end gap-2">
+                                                    <label className="min-w-0 flex-1">
+                                                        <span className={fieldLabel}>Numbered seal</span>
+                                                        <input required maxLength={80} className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} placeholder="Scan or type SL-XXXXX" />
                                                     </label>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowSealScanner(value => !value)}
-                                                        className={hubButton}
-                                                    >
-                                                        <ScanLine className="h-4 w-4" />
+                                                    <button type="button" onClick={() => setShowSealScanner(value => !value)} className={hubButton}>
+                                                        <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
                                                         {showSealScanner ? 'Hide seal camera' : 'Scan seal'}
                                                     </button>
                                                     <HubButton primary disabled={action.processing || !bag.parcels_count}>
-                                                        <LockKeyhole className="h-4 w-4" />
+                                                        <LockKeyhole className="h-4 w-4" aria-hidden="true" />
                                                         Seal bag
                                                     </HubButton>
                                                 </div>
                                                 {showSealScanner && (
-                                                    <WaybillCamera
-                                                        onScan={code => {
-                                                            action.setData('seal_number', code);
-                                                            setShowSealScanner(false);
-                                                        }}
-                                                        buttonLabel="Scan printed seal with camera"
-                                                        instruction="Point camera at the printed seal barcode or QR to auto-fill SL-XXXXX."
-                                                        disabled={action.processing}
-                                                    />
+                                                    <WaybillCamera onScan={code => { action.setData('seal_number', code); setShowSealScanner(false); }} buttonLabel="Scan printed seal with camera" instruction="Point the camera at the seal barcode or QR." disabled={action.processing} />
                                                 )}
                                             </form>
                                         </div>
                                     </section>
                                 )}
 
-                                {/* Load by Master Tag */}
                                 {bag.canPack && bag.status === 'sealed' && !bag.manifest_id && (
-                                    <section className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                        <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                            <div className="flex items-center gap-2">
-                                                <Truck className="h-4 w-4 text-zinc-600" />
-                                                <h2 className="text-base font-semibold text-ink-900">Load by master tag</h2>
+                                    <section aria-labelledby="load-title" className={card}>
+                                        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
+                                            <h2 id="load-title" className="text-lg font-semibold text-ink-900">Load onto a vehicle</h2>
+                                            <button type="button" onClick={() => action.setData({ ...action.data, barcode: bag.reference, seal_number: bag.seal_number || '' })}
+                                                className="text-[13px] font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900">
+                                                Fill tag and seal from this bag
+                                            </button>
+                                        </div>
+                                        <form onSubmit={event => submit(event, 'load')} className="space-y-5 p-5 sm:p-6">
+                                            <div className="grid gap-4 sm:grid-cols-2">
+                                                <label><span className={fieldLabel}>Master bag barcode</span><input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} /></label>
+                                                <label><span className={fieldLabel}>Numbered seal</span><input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} /></label>
                                             </div>
-                                        </header>
-                                        <div className="p-5 sm:p-6">
-                                            <form onSubmit={event => submit(event, 'load')} className="grid gap-4 sm:grid-cols-2">
-                                                <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-2 pb-1">
-                                                    <span className="text-xs text-zinc-500 font-medium">Scan physical bag label & seal, or auto-fill:</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            action.setData({
-                                                                ...action.data,
-                                                                barcode: bag.reference,
-                                                                seal_number: bag.seal_number || '',
-                                                            });
-                                                        }}
-                                                        className="text-xs font-bold text-ink-900 underline underline-offset-4 hover:text-zinc-700 cursor-pointer"
-                                                    >
-                                                        Auto-fill this bag&apos;s tag ({bag.reference}) &amp; seal ({bag.seal_number})
-                                                    </button>
-                                                </div>
-                                                <label className="text-xs font-bold text-ink-900">
-                                                    Master bag barcode
-                                                    <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
-                                                </label>
-                                                <label className="text-xs font-bold text-ink-900">
-                                                    Numbered seal
-                                                    <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
-                                                </label>
-                                                <fieldset className="space-y-3 sm:col-span-2">
-                                                    <legend className="mb-2 text-xs font-bold text-ink-900">Draft transport manifest</legend>
-                                                    <label className="block text-xs font-medium text-zinc-500">
-                                                        Scan transfer reference (or choose a truck below)
-                                                        <input
-                                                            className={`${hubInput} mt-1.5`}
-                                                            value={manifestScan}
-                                                            autoComplete="off"
-                                                            placeholder="Scan a prepared manifest reference"
-                                                            onChange={event => {
-                                                                setManifestScan(event.target.value);
-                                                                const match = matchingManifests.find(item => item.reference.toUpperCase() === event.target.value.trim().toUpperCase());
-                                                                action.setData('manifest_id', match ? String(match.id) : '');
-                                                            }}
-                                                        />
-                                                    </label>
-                                                    <div className="grid gap-2.5 sm:grid-cols-2">
-                                                        {matchingManifests.map(item => (
-                                                            <label
-                                                                key={item.id}
-                                                                className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 shadow-xs transition-colors focus-within:ring-2 focus-within:ring-[#E00D42]/15 ${
- action.data.manifest_id === String(item.id) ? 'border-brand-500 bg-rose-50/40 ring-1 ring-brand-500/20' : 'border-zinc-200 bg-white hover:bg-zinc-50'
- }`}
-                                                            >
-                                                                <input
-                                                                    type="radio"
-                                                                    name="bag-manifest"
-                                                                    required
-                                                                    value={item.id}
-                                                                    checked={action.data.manifest_id === String(item.id)}
-                                                                    onChange={() => {
-                                                                        action.setData('manifest_id', String(item.id));
-                                                                        setManifestScan('');
-                                                                    }}
-                                                                    className="mt-1 border-zinc-300 text-brand-500 focus:ring-brand-500"
-                                                                />
-                                                                <span className="min-w-0">
-                                                                    <span className="flex items-center gap-2 text-xs sm:text-sm font-bold text-ink-900">
-                                                                        <Truck className="h-4 w-4 text-zinc-400" />
-                                                                        {item.vehicle_plate ?? `Transfer #${item.id}`}
+                                            <fieldset className="space-y-3">
+                                                <legend className={`${fieldLabel} mb-1.5`}>Vehicle trip</legend>
+                                                {matchingManifests.length > 0 ? (
+                                                    <div className="grid gap-2 sm:grid-cols-2">
+                                                        {matchingManifests.map(item => {
+                                                            const selected = action.data.manifest_id === String(item.id);
+                                                            return (
+                                                                <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-control border px-3 py-2.5 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 ${selected ? 'border-brand-500 bg-brand-50/60' : 'border-line-300 hover:border-ink-400'}`}>
+                                                                    <input type="radio" name="bag-manifest" required value={item.id} checked={selected} onChange={() => { action.setData('manifest_id', String(item.id)); setManifestScan(''); }} className="sr-only" />
+                                                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning"><Truck className="h-4 w-4" aria-hidden="true" /></span>
+                                                                    <span className="min-w-0">
+                                                                        <span className="block truncate text-sm font-medium text-ink-900">{item.vehicle_plate ?? `Transfer #${item.id}`}</span>
+                                                                        <span className="block truncate text-xs text-ink-600">{item.driver_name ?? 'Recorded driver'} · {item.reference}</span>
                                                                     </span>
-                                                                    <span className="mt-1 block text-xs text-zinc-500">{item.driver_name ?? 'Recorded driver'} · Draft #{item.id}</span>
-                                                                    <span title={item.reference} className="mt-1 block truncate text-[11px] tabular-nums text-zinc-400">{item.reference}</span>
-                                                                </span>
-                                                            </label>
-                                                        ))}
+                                                                </label>
+                                                            );
+                                                        })}
                                                     </div>
-                                                    {!matchingManifests.length && (
-                                                        <p className="text-xs leading-5 text-amber-800 rounded-lg bg-amber-50 p-3 border border-amber-200">
-                                                            No draft matches this bag’s route. Prepare its vehicle trip in Manifests, then return here.
-                                                        </p>
-                                                    )}
-                                                </fieldset>
-                                                <div className="sm:col-span-2">
-                                                    <HubButton primary disabled={action.processing || !action.data.manifest_id}>Load sealed bag</HubButton>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </section>
-                                )}
-
-                                {/* Verify Arriving Seal */}
-                                {bag.canOpen && bag.status === 'in_transit' && (
-                                    <section className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                        <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                            <div className="flex items-center gap-2">
-                                                <CheckCheck className="h-4 w-4 text-zinc-600" />
-                                                <h2 className="text-base font-semibold text-ink-900">Verify arriving seal</h2>
-<InfoHint>Check the master tag and physical seal before individual receiving.</InfoHint>
-                                            </div>
-                                        </header>
-                                        <div className="p-5 sm:p-6">
-                                            <form onSubmit={event => submit(event, 'open')} className="space-y-4">
-                                                <label className="block text-xs font-bold text-ink-900">
-                                                    Scanned master bag tag
-                                                    <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
-                                                </label>
-                                                <label className="block text-xs font-bold text-ink-900">
-                                                    Seal number observed
-                                                    <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
-                                                </label>
-                                                <label className="flex items-center gap-2.5 text-xs text-zinc-700 font-medium">
-                                                    <input
-                                                        required
-                                                        type="checkbox"
-                                                        checked={action.data.seal_intact}
-                                                        onChange={event => action.setData('seal_intact', event.target.checked)}
-                                                        className="rounded border-zinc-300 text-brand-500 focus:ring-brand-500"
-                                                    />
-                                                    The physical numbered seal is intact and matches.
-                                                </label>
-                                                <HubButton primary disabled={action.processing}>Verify and open bag</HubButton>
-                                            </form>
-                                        </div>
-                                    </section>
-                                )}
-
-                                {/* Received Notice */}
-                                {bag.status === 'received' && (
-                                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 shadow-xs">
-                                        <p className="text-xs sm:text-sm font-semibold text-ink-900">
-                                            All parcels arrived. Scan each waybill to record sorting before its next transfer or rider assignment.
-                                        </p>
-                                        <Link href={route('hub.scan.station')} className={hubButton}>
-                                            <ScanLine className="h-4 w-4" />
-                                            Open scan station
-                                        </Link>
-                                    </div>
-                                )}
-
-                                {bag.capacity && (
-                                    <section aria-label="Bag capacity" className="space-y-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-xs">
-                                        <div className="flex flex-wrap justify-between gap-2">
-                                            <h2 className="font-bold text-ink-900">Packing capacity</h2>
-                                            <span className="break-all text-xs text-zinc-600">Permanent sack: <strong>{bag.physical_tag ?? 'No reusable tag recorded'}</strong></span>
-                                        </div>
-                                        <div className="grid gap-3 sm:grid-cols-3">
-                                            <CapacityMeter label="Parcels" value={bag.capacity.count} max={bag.capacity.max_count} unit="parcels" />
-                                            <CapacityMeter label="Weight" value={bag.capacity.weight_kg} max={bag.capacity.max_weight_kg} unit="kg" />
-                                            <CapacityMeter label="Volume" value={bag.capacity.volume_cm3 === null ? null : Number((bag.capacity.volume_cm3 / 1000000).toFixed(4))} max={Number(((bag.capacity.max_volume_cm3 || 300000) / 1000000).toFixed(2))} unit="m³" />
-                                        </div>
-                                    </section>
-                                )}
-
-                                {/* Parcel Contents Table */}
-                                <section className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                    <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                        <div className="flex items-center gap-2">
-                                            <Package className="h-4 w-4 text-zinc-600" />
-                                            <h2 className="text-base font-semibold text-ink-900">Parcel contents</h2>
-                                        </div>
-                                        <p className="mt-0.5 text-xs text-zinc-500">
-                                            {bag.status === 'opened' ? 'Open the manifest and scan each arriving waybill.' : 'Membership and each actual receiving scan stay recorded.'}
-                                        </p>
-                                    </header>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full min-w-[480px] text-left text-xs">
-                                            <thead>
-                                                <tr className="border-b border-zinc-100 bg-zinc-50/30 text-zinc-500 font-semibold">
-                                                    <th className="px-5 py-3">Waybill</th>
-                                                    <th className="px-5 py-3">Progress</th>
-                                                    <th className="px-5 py-3 text-right">Receipt</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-zinc-100">
-                                                {bag.parcels.map(item => (
-                                                    <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors">
-                                                        <td className="px-5 py-3.5">
-                                                            <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-ink-900">
-                                                                {item.tracking_number}
-                                                            </span><HandlingSummary value={item.handling} />
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-zinc-600">
-                                                            <div className="flex items-center gap-2">
-                                                                <span>{item.removed ? 'Removed from bag' : words(item.status)}</span>
-                                                                {item.status === 'return_to_sender' && (
-                                                                    <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
-                                                                        RTS RETURN
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-right">
-                                                            <HubBadge tone={item.received ? 'brand' : 'neutral'}>
-                                                                {item.received ? 'Received' : item.removed ? 'Removed' : 'Awaiting receipt'}
-                                                            </HubBadge>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        {bag.parcels.length === 0 && (
-                                            <p className="py-10 text-center text-xs text-zinc-400 font-medium">
-                                                Scan the first parcel to begin packing.
-                                            </p>
-                                        )}
-                                    </div>
-                                </section>
-
-                                {/* Master Tag & Route Card */}
-                                <section className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                        <div className="flex items-center gap-2.5">
-                                            <Container className="h-4 w-4 text-zinc-600" />
-                                            <div>
-                                                <h2 className="text-sm font-bold text-ink-900 tabular-nums">{bag.reference}</h2>
-                                            </div>
-                                        </div>
-                                        <HubButton type="button" onClick={() => window.print()}>
-                                            <Printer className="h-4 w-4" />
-                                            Print master tag
-                                        </HubButton>
-                                    </header>
-                                    <div className="p-5 sm:p-6 space-y-5">
-                                        <HubRoute stops={[bag.source, bag.destination]} />
-                                        <div className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-zinc-200/80 bg-zinc-50/30 p-4">
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-ink-900">
-                                                        {bag.reference}
-                                                    </span>
-                                                    <HubBadge tone={bag.status === 'received' ? 'brand' : 'neutral'}>{words(bag.status)}</HubBadge>
-                                                </div>
-                                                <p className="text-xs sm:text-sm text-zinc-600 font-medium">
-                                                    {bag.parcels_count} parcels · {bag.seal_number ? `Seal ${bag.seal_number}` : 'Seal not attached'}
-                                                </p>
-                                                {bag.manifest_id && (
-                                                    <Link
-                                                        className="inline-block text-xs sm:text-sm font-bold text-ink-900 hover:text-zinc-700 underline underline-offset-4"
-                                                        href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests/${bag.manifest_id}`}
-                                                    >
-                                                        Open transport manifest
-                                                    </Link>
+                                                ) : (
+                                                    <p className="rounded-control bg-warning-soft p-3 text-[13px] text-warning">No vehicle trip matches this route yet. Prepare one in Manifests, then come back.</p>
                                                 )}
+                                                <details className="text-[13px]">
+                                                    <summary className="cursor-pointer font-medium text-ink-700">Scan a trip reference instead</summary>
+                                                    <input className={`${hubInput} mt-2`} value={manifestScan} autoComplete="off" placeholder="Scan manifest reference"
+                                                        onChange={event => {
+                                                            setManifestScan(event.target.value);
+                                                            const match = matchingManifests.find(item => item.reference.toUpperCase() === event.target.value.trim().toUpperCase());
+                                                            action.setData('manifest_id', match ? String(match.id) : '');
+                                                        }} />
+                                                </details>
+                                            </fieldset>
+                                            <HubButton primary disabled={action.processing || !action.data.manifest_id}>Load sealed bag</HubButton>
+                                        </form>
+                                    </section>
+                                )}
+
+                                {bag.canOpen && bag.status === 'in_transit' && (
+                                    <section aria-labelledby="verify-title" className={card}>
+                                        <h2 id="verify-title" className="flex items-center gap-1 px-5 pt-5 text-lg font-semibold text-ink-900 sm:px-6">
+                                            Verify arriving seal
+                                            <InfoHint>Check the master tag and physical seal before receiving the parcels inside.</InfoHint>
+                                        </h2>
+                                        <form onSubmit={event => submit(event, 'open')} className="space-y-4 p-5 sm:p-6">
+                                            <div className="grid gap-4 sm:grid-cols-2">
+                                                <label><span className={fieldLabel}>Scanned master bag tag</span><input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} /></label>
+                                                <label><span className={fieldLabel}>Seal number observed</span><input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} /></label>
                                             </div>
-                                            <div data-bag-label className="rounded-xl border border-zinc-200 bg-white p-4 text-center shadow-xs">
-                                                <QRCodeSVG value={bag.reference} size={96} />
-                                                <p className="mt-2.5 text-xs tabular-nums font-bold text-ink-900">{bag.reference}</p>
-                                                <p className="mt-1 text-xs text-zinc-500 font-medium">{bag.source.code} → {bag.destination.code}</p>
-                                                {bag.physical_tag && <p className="mt-1 break-all text-xs text-zinc-600">Sack {bag.physical_tag}</p>}
-                                                {bag.seal_number && <p className="mt-1 break-all text-xs tabular-nums text-zinc-600">Seal {bag.seal_number}</p>}
-                                            </div>
-                                        </div>
+                                            <label className="flex items-center gap-2.5 text-sm text-ink-700">
+                                                <input required type="checkbox" checked={action.data.seal_intact} onChange={event => action.setData('seal_intact', event.target.checked)} className="rounded-chip border-line-300 text-brand-500 focus:ring-brand-500" />
+                                                The physical numbered seal is intact and matches.
+                                            </label>
+                                            <HubButton primary disabled={action.processing}>Verify and open bag</HubButton>
+                                        </form>
+                                    </section>
+                                )}
+
+                                {bag.status === 'received' && (
+                                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-success/20 bg-success-soft px-5 py-4">
+                                        <p className="flex items-center gap-2 text-sm font-medium text-ink-900"><CheckCheck className="h-4 w-4 text-success" aria-hidden="true" />All parcels arrived. Next: scan each waybill to sort it.</p>
+                                        <Link href={route('hub.scan.station')} className={hubButton}><ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />Open scan station</Link>
                                     </div>
+                                )}
+
+                                {/* Contents */}
+                                <section aria-labelledby="contents-title" className={card}>
+                                    <h2 id="contents-title" className="px-5 pt-5 text-base font-semibold text-ink-900 sm:px-6">Parcel contents <span className="font-normal text-ink-500">· {bag.parcels.length}</span></h2>
+                                    {bag.parcels.length === 0 ? (
+                                        <p className="px-5 py-8 text-center text-sm text-ink-600 sm:px-6">Scan the first parcel to begin packing.</p>
+                                    ) : (
+                                        <ul className="mt-3 divide-y divide-line-200 border-t border-line-200">
+                                            {bag.parcels.map(item => (
+                                                <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 sm:px-6">
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-medium tabular-nums text-ink-900">{item.tracking_number}</p>
+                                                        <p className="flex flex-wrap items-center gap-2 text-xs text-ink-600">
+                                                            {item.removed ? 'Removed from bag' : words(item.status)}
+                                                            {item.status === 'return_to_sender' && <HubBadge tone="warning">Return</HubBadge>}
+                                                        </p>
+                                                        <HandlingSummary value={item.handling} />
+                                                    </div>
+                                                    <HubBadge tone={item.received ? 'success' : 'neutral'}>{item.received ? 'Received' : item.removed ? 'Removed' : 'Awaiting receipt'}</HubBadge>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
                                 </section>
 
-                                {/* Correct Packing or Loading */}
                                 {bag.canPack && ['open', 'sealed'].includes(bag.status) && (
-                                    <details className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                        <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-ink-900 hover:bg-zinc-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
+                                    <details className={card}>
+                                        <summary className="cursor-pointer rounded-card px-5 py-4 text-sm font-medium text-ink-900 hover:bg-surface-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
                                             Correct packing or loading
                                         </summary>
-                                        <form onSubmit={event => submit(event, bag.status === 'open' ? 'remove' : bag.manifest_id ? 'unload' : 'reopen')} className="space-y-4 border-t border-zinc-100 p-5 sm:p-6">
-                                            <p className="text-xs leading-5 text-zinc-500">
-                                                {bag.status === 'open'
-                                                    ? 'Remove a scanned parcel before sealing, with the reason retained.'
-                                                    : bag.manifest_id
-                                                      ? 'Unload this complete sealed bag from an undeparted draft manifest. Its parcels and numbered seal stay together.'
-                                                      : 'Reopen this undeparted bag to correct its contents. The old seal cannot be reused.'}
+                                        <form onSubmit={event => submit(event, bag.status === 'open' ? 'remove' : bag.manifest_id ? 'unload' : 'reopen')} className="space-y-4 border-t border-line-200 p-5 sm:p-6">
+                                            <p className="text-[13px] text-ink-600">
+                                                {bag.status === 'open' ? 'Remove a scanned parcel before sealing. The reason is kept.' : bag.manifest_id ? 'Unload the whole sealed bag from an undeparted trip. Parcels and seal stay together.' : 'Reopen this bag to correct its contents. The old seal cannot be reused.'}
                                             </p>
                                             {(bag.status === 'open' || bag.manifest_id) && (
-                                                <label className="block text-xs font-bold text-ink-900">
-                                                    {bag.status === 'open' ? 'Parcel waybill to remove' : 'Scanned master bag tag'}
-                                                    <input required className={`${hubInput} mt-1.5`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
-                                                </label>
+                                                <label className="block"><span className={fieldLabel}>{bag.status === 'open' ? 'Parcel waybill to remove' : 'Scanned master bag tag'}</span><input required className={`${hubInput} mt-1.5`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} /></label>
                                             )}
                                             {bag.manifest_id && (
-                                                <label className="block text-xs font-bold text-ink-900">
-                                                    Numbered seal
-                                                    <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
-                                                </label>
+                                                <label className="block"><span className={fieldLabel}>Numbered seal</span><input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} /></label>
                                             )}
-                                            <label className="block text-xs font-bold text-ink-900">
-                                                Actual correction reason
-                                                <textarea required maxLength={1000} rows={2} className={`${hubInput} mt-1.5`} value={action.data.notes} onChange={event => action.setData('notes', event.target.value)} />
-                                            </label>
-                                            <HubButton disabled={action.processing}>
-                                                {bag.status === 'open' ? 'Remove parcel with reason' : bag.manifest_id ? 'Unload complete bag' : 'Reopen with reason'}
-                                            </HubButton>
+                                            <label className="block"><span className={fieldLabel}>Reason</span><textarea required maxLength={1000} rows={2} className={`${hubInput} mt-1.5 h-auto`} value={action.data.notes} onChange={event => action.setData('notes', event.target.value)} /></label>
+                                            <HubButton disabled={action.processing}>{bag.status === 'open' ? 'Remove parcel with reason' : bag.manifest_id ? 'Unload complete bag' : 'Reopen with reason'}</HubButton>
                                         </form>
                                     </details>
                                 )}
 
-                                {/* Bag Activity Log */}
-                                <details className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                    <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-ink-900 hover:bg-zinc-50 transition-colors">
-                                        Bag activity ({bag.events.length})
-                                    </summary>
-                                    <div className="border-t border-zinc-100 p-5 sm:p-6">
-                                        <ol className="divide-y divide-zinc-100">
-                                            {bag.events.map((event, index) => (
-                                                <li key={index} className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
-                                                    <div>
-                                                        <p className="text-xs sm:text-sm font-semibold text-ink-900">{words(event.event_type)}</p>
-                                                        <p className="mt-0.5 text-xs text-zinc-500">
-                                                            {event.actor}{event.barcode_scanned ? ` · ${event.barcode_scanned}` : ''}
-                                                        </p>
-                                                    </div>
-                                                    <time className="text-xs text-zinc-400 tabular-nums">{new Date(event.created_at).toLocaleString('en-PH')}</time>
-                                                </li>
-                                            ))}
-                                        </ol>
-                                    </div>
+                                <details className={card}>
+                                    <summary className="cursor-pointer rounded-card px-5 py-4 text-sm font-medium text-ink-900 hover:bg-surface-50">Bag activity <span className="font-normal text-ink-500">· {bag.events.length}</span></summary>
+                                    <ol className="divide-y divide-line-200 border-t border-line-200">
+                                        {bag.events.map((event, index) => (
+                                            <li key={index} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 sm:px-6">
+                                                <div>
+                                                    <p className="text-sm font-medium text-ink-900">{words(event.event_type)}</p>
+                                                    <p className="text-xs text-ink-600">{event.actor}{event.barcode_scanned ? ` · ${event.barcode_scanned}` : ''}</p>
+                                                </div>
+                                                <time className="text-xs tabular-nums text-ink-500">{new Date(event.created_at).toLocaleString('en-PH')}</time>
+                                            </li>
+                                        ))}
+                                    </ol>
                                 </details>
                             </div>
-                        )}
+                            );
+                        })()}
                     </div>
                 </div>
             </div>
