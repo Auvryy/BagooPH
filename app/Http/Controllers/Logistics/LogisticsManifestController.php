@@ -58,7 +58,7 @@ class LogisticsManifestController extends Controller
     {
         $actor = User::findOrFail($request->user()->id);
         $query = $this->service->readable($actor);
-        $sourceHubs = $actor->isLogistics() ? $this->eligibility->accessibleHubs($actor)->get()->filter(fn (LogisticsHub $hub) => $this->service->canManageAtHub($actor, $hub))->values() : collect();
+        $sourceHubs = $actor->isLogistics() ? $this->eligibility->accessibleHubs($actor)->get()->filter(fn (LogisticsHub $hub) => $this->service->handlesCargoAtHub($actor, $hub))->values() : collect();
         $companyIds = $sourceHubs->pluck('logistics_company_id')->unique();
         $sourceHubIds = $sourceHubs->pluck('id');
         $preparationRoute = null;
@@ -95,7 +95,7 @@ class LogisticsManifestController extends Controller
                 $shared = $tripId ? LogisticsTransportTrip::findOrFail($tripId) : null;
                 if ($shared && $shared->status !== 'cancelled') {
                     $trip = $shared->only(['id', 'reference', 'status', 'version']) + [
-                        'canManage' => $this->service->canManageAtHub($actor, $source),
+                        'canManage' => $this->service->handlesCargoAtHub($actor, $source),
                         'canDepart' => $actor->isLogistics() && $this->eligibility->canScan($actor, $source),
                         'canClose' => $this->service->canManageAtHub($actor, $destination),
                         'canReceive' => $actor->isLogistics() && $this->eligibility->canScan($actor, $destination),
@@ -104,7 +104,7 @@ class LogisticsManifestController extends Controller
                             'outstanding' => $this->service->receiptCounts($member)['outstanding'],
                         ]),
                     ] + app(BuyerReturnBagService::class)->presentation($shared);
-                } elseif ($selected->status === 'sealed' && $this->service->canManageAtHub($actor, $source)) {
+                } elseif ($selected->status === 'sealed' && $this->service->handlesCargoAtHub($actor, $source)) {
                     $tripCandidates = $query->clone()->where($selected->only(['logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id']))
                         ->where('status', 'sealed')->whereIn('direction', ['outbound', 'return', 'buyer_return'])
                         ->whereNotIn('id', DB::table('logistics_trip_manifests')->whereNotNull('active_manifest_id')->select('manifest_id'))
@@ -122,7 +122,7 @@ class LogisticsManifestController extends Controller
                     ->get(['id', 'reference', 'seal_number', 'status']),
                 'cargoCapacity' => app(CargoHandlingService::class)->available() ? app(CargoHandlingService::class)->manifestCapacity($selected) : null,
                 'reviewedHold' => app(HandoverHoldService::class)->manifestParcelIds($selected) !== [],
-                'canManage' => $this->service->canManageAtHub($actor, $source),
+                'canManage' => $this->service->handlesCargoAtHub($actor, $source),
                 'canClose' => $this->service->canManageAtHub($actor, $destination),
                 'canLoad' => $actor->isLogistics() && $this->eligibility->canScan($actor, $source),
                 'canReceive' => $actor->isLogistics() && $this->eligibility->canScan($actor, $destination),

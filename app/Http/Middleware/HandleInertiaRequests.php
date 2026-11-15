@@ -132,6 +132,7 @@ class HandleInertiaRequests extends Middleware
                     'courier_profile' => $user->role === 'courier' ? $user->courierProfile?->attributesToArray() : null,
                     'logisticsCompany' => $activeHub?->company,
                     'canSwitchHubs' => $activeHub && $eligibility->isCompanyManager($user),
+                    'canManageTeam' => $user->isLogistics() && $user->canAccessPortal() && $eligibility->teamHub($user) !== null,
                     'canScanParcels' => $user->isLogistics() && $activeHub && $eligibility->canScan($user, $activeHub),
                     'canManageResources' => $user->canAccessPortal() && ($user->isAdmin() || $eligibility->isCompanyManager($user)),
                     'canSetupCompany' => $user->canAccessPortal() && ($user->isAdmin() || LogisticsCompany::eligible()->where('user_id', $user->id)->exists()),

@@ -442,7 +442,7 @@ class ParcelRecoveryTest extends TestCase
         $this->actingAs($handler)->postJson('/hub/parcel-recovery/'.$observation->id.'/intake', $this->casePayload($case, ['barcode' => $parcel->tracking_number]))->assertOk();
         $this->actingAs($manager)->get('/hub/parcel-recovery/'.$observation->id)->assertInertia(fn (Assert $page) => $page
             ->component('Hub/ParcelRecovery')->where('selectedObservation.case.state', 'held')->where('selectedObservation.canIntake', false)
-            ->where('selectedObservation.case.canPrepareTransfer', true)->where('selectedObservation.expectedHub', $case->originalMember->manifest->destinationHub->name));
+            ->where('selectedObservation.case.canPrepareTransfer', false)->where('selectedObservation.expectedHub', $case->originalMember->manifest->destinationHub->name));
         $this->actingAs($handler)->get('/hub/parcel-recovery/'.$observation->id)->assertInertia(fn (Assert $page) => $page
             ->component('Hub/ParcelRecovery')->where('selectedObservation.case.originalManifestUrl', null)
             ->where('selectedObservation.case.canPrepareTransfer', true));
@@ -465,10 +465,11 @@ class ParcelRecoveryTest extends TestCase
         [$parcel, $observation, $manager, $receiver] = $this->incident();
         $manifest = $observation->manifest;
         $sender = $this->flowHandler($manifest->sourceHub);
+        // A Mother Hub sender is a hub account, not the company: it sees the recovery only once the case routes through it.
         $this->actingAs($sender)->get('/hub/manifests/'.$manifest->id)->assertInertia(fn (Assert $page) => $page
-            ->component('Hub/Manifests')->where('selectedManifest.discrepancies.0.recoveryUrl', '/hub/parcel-recovery/'.$observation->id));
+            ->component('Hub/Manifests')->where('selectedManifest.discrepancies.0.recoveryUrl', null));
         $this->assertTrue($manifest->sourceHub->isMotherHub());
-        $this->get('/hub/parcel-recovery/'.$observation->id)->assertOk();
+        $this->get('/hub/parcel-recovery/'.$observation->id)->assertNotFound();
         $unrelatedBayan = $this->flowHandler(LogisticsHub::findOrFail($parcel->origin_bayan_hub_id));
         $this->actingAs($unrelatedBayan)->get('/hub/parcel-recovery/'.$observation->id)->assertNotFound();
         $this->actingAs($receiver)->get('/hub/manifests/'.$manifest->id)->assertInertia(fn (Assert $page) => $page
@@ -496,8 +497,9 @@ class ParcelRecoveryTest extends TestCase
 
         $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/close', $this->flowManifestPayload($manifest))->assertOk();
         $this->transfer($case->fresh(), $manager);
+        // Attention follows the parcel: once it has left the Mother Hub, that hub's account no longer has work on it.
         $this->actingAs($motherHandler)->withSession(['active_hub_id' => $manifest->destination_hub_id])
-            ->get(route('hub.dashboard'))->assertInertia(fn (Assert $page) => $page->where('attentionQueue.4.count', 1));
+            ->get(route('hub.dashboard'))->assertInertia(fn (Assert $page) => $page->where('attentionQueue.4.count', 0));
         $this->actingAs($handler)->withSession(['active_hub_id' => $case->observed_hub_id])
             ->get(route('hub.dashboard'))->assertInertia(fn (Assert $page) => $page->where('attentionQueue.4.count', 1));
     }
@@ -606,7 +608,7 @@ class ParcelRecoveryTest extends TestCase
         $case = $this->authorizeCase($observation, $manager);
         $this->actingAs($handler)->postJson('/hub/parcel-recovery/'.$observation->id.'/intake', $this->casePayload($case, ['barcode' => $parcel->tracking_number]))->assertOk();
         $manifest = $this->prepareTransfer($case->fresh(), $manager);
-        $this->actingAs($manager)->get('/hub/manifests')->assertOk();
+        $this->actingAs($this->flowHandler($manifest->sourceHub))->get('/hub/manifests')->assertOk();
         $input = ['source_hub_id' => $manifest->source_hub_id, 'destination_hub_id' => $case->expected_hub_id,
             'vehicle_id' => $manifest->vehicle_id, 'direction' => 'recovery', 'parcel_recovery_case_id' => $case->id,
             'creation_token' => session()->get('manifest_creation_token')];
@@ -758,7 +760,7 @@ class ParcelRecoveryTest extends TestCase
         $manifest = $this->prepareTransfer($case, $manager, $base);
         $sender = $this->flowHandler($manifest->sourceHub);
         $this->actingAs($sender)->postJson($base.'/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $case->delivery->tracking_number]))->assertOk();
-        $this->actingAs($manager)->postJson($base.'/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+        $this->actingAs($sender)->postJson($base.'/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
         $this->actingAs($sender)->postJson($base.'/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
         $this->assertOwnedRecoveryTracking($case->delivery, 'Travelling on a recovery route', 'Hub transport (handover recorded)');
 
@@ -806,7 +808,8 @@ class ParcelRecoveryTest extends TestCase
             'model' => 'Bagoo Recovery Vehicle', 'capacity_kg' => 10000, 'assigned_driver_id' => $driver->id, 'status' => 'active']);
         $driver->courierProfile->update(['logistics_company_id' => $case->logistics_company_id, 'assigned_hub_id' => $source->id,
             'vehicle_id' => $vehicle->id, 'is_available' => true]);
-        $this->actingAs($manager)->get($base.'/parcel-recovery/'.$case->observation_event_id)->assertOk();
+        // The recovering hub's staff prepare the transfer; the owner only authorizes the case.
+        $this->actingAs($this->flowHandler($source))->get($base.'/parcel-recovery/'.$case->observation_event_id)->assertOk();
         $response = $this->postJson($base.'/manifests', ['source_hub_id' => $source->id, 'destination_hub_id' => $destination->id,
             'vehicle_id' => $vehicle->id, 'direction' => 'recovery', 'parcel_recovery_case_id' => $case->id, 'creation_token' => session()->get('manifest_creation_token')])->assertCreated();
 

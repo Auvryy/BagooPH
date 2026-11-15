@@ -386,7 +386,9 @@ class RiderCompanyRequestsTest extends TestCase
         $this->actingAs($foreignOwner)->get('/hub/network')->assertInertia(fn (Assert $page) => $page->has('riderIntake.requests.data', 0));
         $handler = $this->account('logistics');
         HubHandler::create(['user_id' => $handler->id, 'hub_id' => $this->hub->id, 'is_active' => true, 'role_title' => 'Hub handler']);
-        $this->actingAs($handler)->get('/hub/network?hub_id='.$this->hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page->where('riderIntake', null));
+        // The Bayan Hub's full-access account answers applications for its own hub but cannot change company intake.
+        $this->actingAs($handler)->get('/hub/network?hub_id='.$this->hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('riderIntake.can_decide', true)->where('riderIntake.can_change_intake', false)->where('riderIntake.review_hub_id', (string) $this->hub->id));
         $this->putJson('/hub/rider-request-intake', ['enabled' => false, 'expected_version' => 1, 'request_token' => (string) Str::uuid()])->assertForbidden();
         $this->assertTrue($foreignCompany->fresh()->rider_intake_enabled);
         $this->assertTrue($this->company->fresh()->rider_intake_enabled);

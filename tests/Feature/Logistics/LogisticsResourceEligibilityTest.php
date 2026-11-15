@@ -280,7 +280,8 @@ class LogisticsResourceEligibilityTest extends TestCase
         $this->assertDatabaseCount('logistics_placement_records', 1);
         Auth::forgetGuards();
         $this->actingAs($newHandler)->withSession(['active_hub_id' => $this->hub->id])->get($prefix.'/scan')->assertOk();
-        $this->postJson($prefix.'/placements', ['kind' => 'handler', 'email' => $this->owner->email, 'hub_id' => $this->hub->id])->assertForbidden();
+        // A company owner never takes a floor seat, so it cannot be placed as a handler.
+        $this->postJson($prefix.'/placements', ['kind' => 'handler', 'email' => $this->owner->email, 'hub_id' => $this->hub->id])->assertUnprocessable();
     }
 
     #[DataProvider('portals')]
@@ -341,7 +342,7 @@ class LogisticsResourceEligibilityTest extends TestCase
         $requests->changeIntake($this->owner, ['enabled' => true, 'expected_version' => 0, 'request_token' => (string) Str::uuid()]);
         $request = $requests->submit($courier, ['company_id' => $this->company->id, 'intake_version' => 1,
             'sharing_acknowledged' => true, 'request_token' => (string) Str::uuid()]);
-        $offered = $offers->issue($this->owner, $request['id'], ['expected_version' => 1, 'request_token' => (string) Str::uuid(),
+        $offered = $offers->issue($this->handler, $request['id'], ['expected_version' => 1, 'request_token' => (string) Str::uuid(),
             'hub_id' => $this->hub->id, 'vehicle_id' => $vehicle->id, 'barangay' => 'Poblacion III', 'terms' => 'Start at the recorded hub and agree your working hours with the company.']);
         $offers->riderDecision($courier, $request['id'], 'accepted', ['expected_version' => 2, 'request_token' => (string) Str::uuid(),
             'offer_id' => $offered['offer']['id'], 'terms_hash' => $offered['offer']['terms_hash'], 'acknowledged' => true]);
@@ -399,14 +400,14 @@ class LogisticsResourceEligibilityTest extends TestCase
         $checkpoints = $delivery->checkpoints()->count();
         $metadata = ['hub_id' => $this->hub->id, 'rider_id' => $this->rider->id];
         $state = app(OrderStateMachineService::class);
-        $state->transition($delivery, 'assigned_to_rider', $this->owner, $metadata);
+        $state->transition($delivery, 'assigned_to_rider', $this->handler, $metadata);
         $before = $delivery->fresh()->getAttributes();
         app(CourierOperationsService::class)->setAvailability($this->rider, false);
-        $state->transition($delivery, 'assigned_to_rider', $this->owner, $metadata);
+        $state->transition($delivery, 'assigned_to_rider', $this->handler, $metadata);
         $this->assertSame($before, $delivery->fresh()->getAttributes());
         $this->assertSame($checkpoints + 1, $delivery->checkpoints()->count());
         $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'assigned_to_rider')->count());
-        $this->deny(fn () => $state->transition($delivery, 'assigned_to_rider', $this->owner, [...$metadata, 'rider_id' => $this->account('courier')->id]));
+        $this->deny(fn () => $state->transition($delivery, 'assigned_to_rider', $this->handler, [...$metadata, 'rider_id' => $this->account('courier')->id]));
         $this->assertSame($this->rider->id, $delivery->fresh()->assigned_rider_id);
     }
 
@@ -487,7 +488,7 @@ class LogisticsResourceEligibilityTest extends TestCase
         $delivery = $this->sortedParcel();
         $checkpoints = $delivery->checkpoints()->count();
         $this->rider->courierProfile->update(['is_available' => false]);
-        $this->actingAs($this->owner)->postJson($prefix.'/deliveries/'.$delivery->id.'/assign-rider', ['rider_id' => $this->rider->id])->assertUnprocessable();
+        $this->actingAs($this->handler)->postJson($prefix.'/deliveries/'.$delivery->id.'/assign-rider', ['rider_id' => $this->rider->id])->assertUnprocessable();
         $this->assertNull($delivery->fresh()->assigned_rider_id);
         $this->rider->courierProfile->update(['is_available' => true]);
         $this->postJson($prefix.'/deliveries/'.$delivery->id.'/assign-rider', ['rider_id' => $this->rider->id])->assertOk();
@@ -645,7 +646,7 @@ class LogisticsResourceEligibilityTest extends TestCase
     public function test_final_mile_work_and_pickup_capacity_agree_with_the_job_board(): void
     {
         $final = $this->sortedParcel();
-        app(OrderStateMachineService::class)->transition($final, 'assigned_to_rider', $this->owner, ['hub_id' => $this->hub->id, 'rider_id' => $this->rider->id]);
+        app(OrderStateMachineService::class)->transition($final, 'assigned_to_rider', $this->handler, ['hub_id' => $this->hub->id, 'rider_id' => $this->rider->id]);
         $new = $this->pickup();
         $this->actingAs($this->rider)->get(route('courier.deliveries'))->assertOk()
             ->assertInertia(fn (Assert $page) => $page->has('queues.availablePickups', 0)->has('queues.finalMileTasks', 1));
@@ -688,7 +689,9 @@ class LogisticsResourceEligibilityTest extends TestCase
         $delivery = $this->sortedParcel($destination, $this->rider);
         app(LogisticsPlacementService::class)->placeCourier($this->owner, $destination, $this->rider, $vehicle->id, expectedHubId: $this->hub->id);
         app(CourierOperationsService::class)->setAvailability($this->rider, true);
-        app(OrderStateMachineService::class)->transition($delivery, 'assigned_to_rider', $this->owner, ['hub_id' => $destination->id, 'rider_id' => $this->rider->id]);
+        $destinationOperator = $this->account('logistics');
+        HubHandler::create(['user_id' => $destinationOperator->id, 'hub_id' => $destination->id, 'logistics_company_id' => $this->company->id, 'is_active' => true]);
+        app(OrderStateMachineService::class)->transition($delivery, 'assigned_to_rider', $destinationOperator, ['hub_id' => $destination->id, 'rider_id' => $this->rider->id]);
         app(CourierMessagingService::class)->send($this->rider, $delivery->fresh(), 'The final-mile parcel is ready.', 'final_mile');
         $this->assertSame($this->rider->id, $delivery->fresh()->courier_id);
         $this->assertSame($this->rider->id, $delivery->fresh()->assigned_rider_id);

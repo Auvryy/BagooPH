@@ -101,8 +101,8 @@ class DispatchRecoveryService
 
     public function pausePickup(User $actor, LogisticsHub $hub, ?string $barangay, string $reason): HubPickupPause
     {
-        if (! $actor->canAccessPortal() || (! $actor->isAdmin() && ! $this->eligibility->isCompanyManager($actor, $hub->logistics_company_id) && ! $this->eligibility->canScan($actor, $hub))) {
-            throw new DomainException('Only authorized hub managers, company administrators, or Platform Admins may pause hub pickup.');
+        if (! $actor->canAccessPortal() || (! $actor->isAdmin() && ! $this->eligibility->canScan($actor, $hub))) {
+            throw new DomainException('Only a handler at this hub or a Platform Admin may pause hub pickup.');
         }
 
         return HubPickupPause::create([
@@ -118,8 +118,8 @@ class DispatchRecoveryService
 
     public function resumePickup(HubPickupPause $pause, User $actor): HubPickupPause
     {
-        if (! $actor->canAccessPortal() || (! $actor->isAdmin() && ! $this->eligibility->isCompanyManager($actor, $pause->logistics_company_id) && ! $this->eligibility->canScan($actor, $pause->hub))) {
-            throw new DomainException('Only authorized hub managers, company administrators, or Platform Admins may resume hub pickup.');
+        if (! $actor->canAccessPortal() || (! $actor->isAdmin() && ! $this->eligibility->canScan($actor, $pause->hub))) {
+            throw new DomainException('Only a handler at this hub or a Platform Admin may resume hub pickup.');
         }
 
         if ($pause->status === 'resumed') {
@@ -442,11 +442,10 @@ class DispatchRecoveryService
 
             $authorized = $actor->canAccessPortal() && (
                 $actor->isAdmin()
-                || $this->eligibility->isCompanyManager($actor, $lockedDelivery->logistics_company_id)
                 || ($targetHub && $this->eligibility->canScan($actor, $targetHub))
             );
             if (! $authorized) {
-                throw new DomainException('Only authorized hub managers, company managers, or Platform Admins may reassign parcel riders.');
+                throw new DomainException('Only a handler at the parcel’s hub or a Platform Admin may reassign its rider.');
             }
 
             app(HandoverHoldService::class)->assertMovable($lockedDelivery);

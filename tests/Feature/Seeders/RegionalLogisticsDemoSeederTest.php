@@ -95,7 +95,7 @@ class RegionalLogisticsDemoSeederTest extends TestCase
         $this->assertSame(2, $company->riderIntakeEvents()->count());
     }
 
-    public function test_an_unassigned_rider_can_apply_and_accept_an_offer_from_the_seeded_owner(): void
+    public function test_an_unassigned_rider_can_apply_and_accept_an_offer_from_the_seeded_child_hub(): void
     {
         $this->seed(RegionalLogisticsDemoSeeder::class);
         $company = LogisticsCompany::where('code', 'BGR')->sole();
@@ -109,7 +109,9 @@ class RegionalLogisticsDemoSeederTest extends TestCase
             'company_id' => $company->id, 'intake_version' => $company->rider_intake_version,
             'sharing_acknowledged' => true, 'request_token' => (string) Str::uuid(),
         ]);
-        $offer = $this->actingAs($company->user)->postJson('/hub/rider-company-requests/'.$request['id'].'/offers', [
+        // The seeded child hub's full-access account answers the application.
+        $hubAccount = User::findOrFail(\App\Models\HubHandler::where('hub_id', $hub->id)->where('job_role', 'all')->value('user_id'));
+        $offer = $this->actingAs($hubAccount)->postJson('/hub/rider-company-requests/'.$request['id'].'/offers', [
             'expected_version' => 1, 'request_token' => (string) Str::uuid(),
             'hub_id' => $hub->id, 'terms' => 'Report to the recorded child hub for the agreed work schedule.',
         ])->assertOk()->json('data');

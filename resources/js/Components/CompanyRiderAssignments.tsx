@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { Link, useForm } from '@inertiajs/react';
+import { Link, useForm, usePage } from '@inertiajs/react';
 import { X } from 'lucide-react';
 import CompanyRequestPagination from '@/Components/CompanyRequestPagination';
 import { AssignmentOfferDetails, CompanyDecisionHistory, companyRequestStatus } from '@/Components/CompanyAssignmentOffer';
@@ -13,6 +13,7 @@ const button = 'inline-flex min-h-10 items-center justify-center rounded-lg bord
 const primary = `${button} border-transparent bg-[#E00D42] text-white hover:bg-[#C20836]`;
 
 export function CompanyRequestReview({ request, workspace }: { request: CompanyJoinRequest; workspace: Workspace }) {
+    const refreshHref = usePage().url.split('?')[0];
     const [action, setAction] = useState<'offers' | 'reject' | 'cancel' | null>(null);
     const [unconfirmed, setUnconfirmed] = useState(false);
     const pending = useRef(false);
@@ -44,7 +45,7 @@ export function CompanyRequestReview({ request, workspace }: { request: CompanyJ
         {request.offer && <div className="mt-3 rounded-lg border border-slate-300 bg-white p-4"><AssignmentOfferDetails offer={request.offer} /></div>}
         <CompanyDecisionHistory request={request} />
         {state === 'offered' && !request.can_accept && request.rider_eligible && <p role="status" className="mt-3 text-sm text-amber-800">The saved offer needs a replacement because an assignment detail or eligibility source changed.</p>}
-        {workspace.offers_available && (state === 'pending' || state === 'offered') && <div className="mt-3 flex flex-wrap gap-2">
+        {workspace.offers_available && workspace.can_decide !== false && (state === 'pending' || state === 'offered') && <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" disabled={!request.rider_eligible || !workspace.enabled || !workspace.history_available || !workspace.has_eligible_hub} onClick={() => { form.clearErrors(); setAction('offers'); }} className={primary}>{state === 'offered' ? 'Replace offer' : 'Make offer'}</button>
             <button type="button" onClick={() => { form.clearErrors(); setAction(state === 'offered' ? 'cancel' : 'reject'); }} className={button}>{state === 'offered' ? 'Withdraw offer' : 'Decline request'}</button>
         </div>}
@@ -60,7 +61,7 @@ export function CompanyRequestReview({ request, workspace }: { request: CompanyJ
                 </> : <label className="block text-sm font-semibold">Reason<textarea required rows={3} maxLength={1000} value={form.data.reason} disabled={form.processing || unconfirmed} onChange={(event) => form.setData('reason', event.target.value)} aria-invalid={Boolean(reasonError)} className={input} /><span className="mt-2 block text-xs font-normal text-slate-500">Explain the decision in 5–500 characters.</span>{form.data.reason && reasonError && <span role="alert" className="mt-2 block text-xs font-normal text-rose-700">{reasonError}</span>}</label>}
                 {Object.entries(form.errors).map(([key, message]) => <p key={key} role="alert" className="text-sm text-rose-700">{message}</p>)}
                 {unconfirmed && <p role="status" className="text-sm text-slate-600">The result is unconfirmed. Retry this same submission or refresh the requests.</p>}
-                <div className="flex flex-wrap gap-2"><button type="submit" disabled={form.processing || invalid} className={primary}>{form.processing ? 'Saving…' : unconfirmed ? 'Retry same submission' : action === 'offers' ? 'Send offer' : 'Save decision'}</button><Link href={route('hub.network')} className={button}>Refresh requests</Link></div>
+                <div className="flex flex-wrap gap-2"><button type="submit" disabled={form.processing || invalid} className={primary}>{form.processing ? 'Saving…' : unconfirmed ? 'Retry same submission' : action === 'offers' ? 'Send offer' : 'Save decision'}</button><Link href={refreshHref} className={button}>Refresh requests</Link></div>
             </form>
         </div>}
     </div>;
@@ -95,7 +96,7 @@ function RiderAssignment({ rider, workspace }: { rider: CompanyRiderAssignment; 
     return <article className="min-w-0 rounded-lg border border-slate-300 bg-slate-50 p-4">
         <h3 className="break-words font-semibold text-slate-900">{rider.name || 'Rider'}</h3><p className="mt-1 break-all text-xs text-slate-500">{rider.email}</p>
         <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">{[['Facility', rider.hub || 'Needs review'], ['Vehicle', rider.vehicle], ['Barangay', rider.barangay || 'Not assigned'], ['Duty', rider.on_duty ? 'On duty' : 'Off duty'], ['Eligibility', rider.eligible ? 'Eligible' : 'Needs review'], ['Source', rider.provenance]].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 break-words font-medium">{value}</dd></div>)}</dl>
-        {!editing && <button type="button" onClick={() => setEditing(true)} className={`${button} mt-4`}>Edit assignment</button>}
+        {!editing && workspace.can_decide !== false && <button type="button" onClick={() => setEditing(true)} className={`${button} mt-4`}>Edit assignment</button>}
         {editing && <form onSubmit={submit} className="mt-4 space-y-3 border-t border-slate-300 pt-4">
             <p className="text-xs text-slate-600">Current facility: {rider.hub || 'Not recorded'}. Finish active parcel or manifest custody before moving.</p>
             <label className="block text-sm font-semibold">Facility<select required value={form.data.hub_id} disabled={form.processing || unconfirmed} onChange={(event) => form.setData({ ...form.data, hub_id: event.target.value, vehicle_id: '', barangay: '' })} className={input}><option value="">Choose a facility</option>{workspace.hubs?.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>

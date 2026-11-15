@@ -3,7 +3,6 @@
 namespace Tests\Feature\Finance\Support;
 
 use App\Models\DeliveryCheckpoint;
-use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
@@ -70,9 +69,8 @@ trait CreatesMissingShipments
             $this->measureReturn($case);
             $manifest = $this->prepareLeg($case);
             $source = LogisticsHub::findOrFail($manifest->source_hub_id);
-            $owner = LogisticsCompany::findOrFail($manifest->logistics_company_id)->user;
             $this->actingAs($this->flowHandler($source))->postJson('/hub/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $case->parcel->barcode]))->assertOk();
-            $this->actingAs($owner)->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+            $this->actingAs($this->flowHandler($source))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
             $this->actingAs($this->flowHandler($source))->postJson('/hub/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
             $member = $manifest->buyerReturnParcels()->sole();
         } else {

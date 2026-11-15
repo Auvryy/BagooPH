@@ -55,6 +55,7 @@ use App\Http\Controllers\Logistics\CompanySetupController;
 use App\Http\Controllers\Logistics\DeliveryRecoveryController;
 use App\Http\Controllers\Logistics\HandoverIssueController;
 use App\Http\Controllers\Logistics\HandoverRecoveryController;
+use App\Http\Controllers\Logistics\HubTeamController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\Logistics\LogisticsManifestController;
 use App\Http\Controllers\Logistics\MotherBagController;
@@ -475,6 +476,8 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub']);
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource']);
         Route::patch('/handlers/{handler}/job-role', [LogisticsHubWorkstationController::class, 'updateHandlerJobRole'])->whereNumber('handler');
+        Route::get('/team', [HubTeamController::class, 'index']);
+        Route::post('/team/staff', [HubTeamController::class, 'store'])->middleware('throttle:10,1');
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
         Route::post('/scan/batch', [LogisticsHubWorkstationController::class, 'scanBatch'])->middleware('throttle:120,1');
@@ -1032,6 +1035,8 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource'])->name('placements');
         Route::patch('/handlers/{handler}/job-role', [LogisticsHubWorkstationController::class, 'updateHandlerJobRole'])->whereNumber('handler')->name('handlers.job-role');
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');
+        Route::get('/team', [HubTeamController::class, 'index'])->name('team');
+        Route::post('/team/staff', [HubTeamController::class, 'store'])->middleware('throttle:10,1')->name('team.staff');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
         Route::post('/scan/batch', [LogisticsHubWorkstationController::class, 'scanBatch'])->middleware('throttle:120,1')->name('scan.batch');
         Route::post('/scan/fast-dispatch', [LogisticsHubWorkstationController::class, 'fastDispatch'])->name('scan.fast-dispatch');

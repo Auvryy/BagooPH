@@ -3,6 +3,7 @@
 namespace Tests\Feature\Courier;
 
 use App\Models\CourierProfile;
+use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
@@ -36,6 +37,8 @@ class RiderCompanyApiTest extends TestCase
 
     protected User $owner;
 
+    protected User $operator;
+
     protected User $rider;
 
     protected LogisticsCompany $company;
@@ -60,6 +63,10 @@ class RiderCompanyApiTest extends TestCase
         $this->hub = LogisticsHub::create(['logistics_company_id' => $this->company->id, 'name' => 'Bagoo Bayan Hub',
             'code' => 'RC03-BH', 'tier' => 'local_bayan_hub', 'province' => 'Laguna', 'city_municipality' => 'Santa Cruz',
             'is_active' => true, 'address' => 'Private facility address', 'coverage_barangays' => ['Bagumbayan']]);
+        // The Bayan Hub's full-access account answers rider applications; the owner only sets intake.
+        $this->operator = $this->account('logistics');
+        HubHandler::create(['user_id' => $this->operator->id, 'logistics_company_id' => $this->company->id, 'hub_id' => $this->hub->id,
+            'job_role' => 'all', 'role_title' => 'Hub Operator', 'is_active' => true]);
         app(RiderCompanyRequestService::class)->changeIntake($this->owner, [
             'enabled' => true, 'expected_version' => 0, 'request_token' => (string) Str::uuid()]);
         $this->plain = $this->signIn($this->rider);
@@ -107,7 +114,7 @@ class RiderCompanyApiTest extends TestCase
     protected function offer(?RiderCompanyRequest $application = null, array $overrides = []): array
     {
         $application ??= $this->apply();
-        $result = $this->actingAs($this->owner)->postJson('/hub/rider-company-requests/'.$application->id.'/offers', [
+        $result = $this->actingAs($this->operator)->postJson('/hub/rider-company-requests/'.$application->id.'/offers', [
             'expected_version' => $application->fresh()->version, 'request_token' => (string) Str::uuid(),
             'hub_id' => $this->hub->id, 'barangay' => 'Bagumbayan',
             'terms' => 'Report to the recorded Bayan Hub and arrange your daily schedule.', ...$overrides])->assertOk()->json('data');
@@ -255,7 +262,7 @@ class RiderCompanyApiTest extends TestCase
             $this->key();
             $this->postJson('/api/v1/rider/company-requests/'.$application->id.'/accept', $this->acceptance($offer))->assertConflict();
         } else {
-            app(RiderCompanyOfferService::class)->companyDecision($this->owner, $application->id, $state, [
+            app(RiderCompanyOfferService::class)->companyDecision($this->operator, $application->id, $state, [
                 'expected_version' => $application->fresh()->version, 'request_token' => (string) Str::uuid(), 'reason' => 'The available work arrangement has changed.']);
         }
         $this->capture('CompanyApplicationEnvelope', $this->getJson('/api/v1/rider/company-requests/'.$application->id)
@@ -379,7 +386,7 @@ class RiderCompanyApiTest extends TestCase
     {
         $application = $this->apply();
         for ($i = 0; $i < 52; $i++) {
-            app(RiderCompanyOfferService::class)->issue($this->owner, $application->id, [
+            app(RiderCompanyOfferService::class)->issue($this->operator, $application->id, [
                 'expected_version' => $application->fresh()->version, 'request_token' => (string) Str::uuid(),
                 'hub_id' => $this->hub->id, 'terms' => 'Work arrangement number '.($i + 1).' at this facility.']);
         }

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Logistics;
 
 use App\Mail\OtpVerificationMail;
+use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\User;
@@ -101,19 +102,25 @@ class NewEraCompanySetupTest extends TestCase
         $this->get('/hub/company-setup')->assertForbidden();
     }
 
-    public function test_owner_can_create_a_rider_but_other_staff_cannot_provision_accounts(): void
+    public function test_the_hub_adds_its_own_riders_and_the_owner_only_opens_hub_accounts(): void
     {
         $company = $this->company();
-        $rider = app(CompanySetupService::class)->staff($company->user, $company->id, $this->person('rider'));
+        $this->assertThrows(fn () => app(CompanySetupService::class)->staff($company->user, $company->id, $this->person('rider')),
+            \DomainException::class, 'Create the hub account here.');
+        $hubAccount = User::where('email', 'losbanos.hub@bagoo.test')->sole();
+        $this->withoutVite()->actingAs($hubAccount)->post('/hub/team/staff', $this->person('rider'))->assertSessionHasNoErrors()->assertSessionHas('success');
+        $rider = User::where('email', 'crew-qa@bagoo.test')->sole();
         $this->assertSame('courier', $rider->role);
         $this->assertSame($company->id, $rider->courierProfile->logistics_company_id);
         $this->assertFalse($rider->courierProfile->is_available);
         $this->assertFalse($rider->isEligibleCourier());
-        $operator = User::where('email', 'losbanos.hub@bagoo.test')->sole();
         $before = User::count();
-        $this->actingAs($operator)->post('/hub/company-setup/'.$company->id.'/staff', $this->person('operator'))
-            ->assertForbidden();
-        $this->assertSame($before, User::count());
+        $other = LogisticsHub::where('logistics_company_id', $company->id)->where('code', '!=', 'BH-LBN-01')->firstOrFail();
+        $this->post('/hub/team/staff', [...$this->person('operator'), 'email' => 'other-hub@bagoo.test', 'phone' => '09175551832', 'hub_id' => $other->id])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(User::where('email', 'other-hub@bagoo.test')->sole()->id, HubHandler::where('hub_id', LogisticsHub::where('code', 'BH-LBN-01')->sole()->id)->latest('id')->value('user_id'),
+            'A hub can only add people to itself, whatever hub id is sent.');
+        $this->assertSame($before + 1, User::count());
     }
 
     public function test_staff_email_checks_include_owned_recovery_addresses_within_the_selected_role(): void
@@ -132,7 +139,9 @@ class NewEraCompanySetupTest extends TestCase
         $this->assertDatabaseHas('account_emails', ['user_id' => $owner->id,
             'email' => 'crew-qa@bagoo.test', 'role' => 'logistics', 'is_original' => false]);
 
-        $this->post($url, $this->person('rider'))->assertSessionHasNoErrors()->assertSessionHas('success');
+        // A rider account is a different role, so the hub may still add a rider at that address.
+        $this->withoutVite()->actingAs(User::where('email', 'losbanos.hub@bagoo.test')->sole())
+            ->post('/hub/team/staff', $this->person('rider'))->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertSame('courier', User::where('email', 'crew-qa@bagoo.test')->sole()->role);
     }
 

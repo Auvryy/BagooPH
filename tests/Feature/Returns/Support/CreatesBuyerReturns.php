@@ -55,7 +55,7 @@ trait CreatesBuyerReturns
         $source = LogisticsHub::findOrFail($parcel->hub_ids[$parcel->route_position]);
         $destination = LogisticsHub::findOrFail($parcel->hub_ids[$parcel->route_position + 1]);
         $company = LogisticsCompany::findOrFail($parcel->logistics_company_id);
-        $manager = $company->user;
+        $manager = $this->flowHandler($source); // hub staff prepare cargo; the company owner only monitors
         $driver = $this->createApprovedUser('courier');
         $fleet = LogisticsFleet::create(['logistics_company_id' => $company->id, 'hub_id' => $source->id,
             'plate_number' => 'BRT-'.str_pad((string) (LogisticsFleet::count() + 1), 4, '0', STR_PAD_LEFT),
@@ -114,7 +114,7 @@ trait CreatesBuyerReturns
         $destination = LogisticsHub::findOrFail($manifest->destination_hub_id);
         $manager = LogisticsCompany::findOrFail($manifest->logistics_company_id)->user;
         $this->actingAs($this->flowHandler($source))->postJson('/hub/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $parcel->barcode]))->assertOk();
-        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+        $this->actingAs($this->flowHandler(LogisticsHub::findOrFail($manifest->source_hub_id)))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
         $this->actingAs($this->flowHandler($source))->postJson('/hub/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
         $this->assertSame('in_transit', $parcel->fresh()->status);
         $receipt = $this->flowManifestPayload($manifest, ['barcode' => $parcel->barcode, 'condition' => 'intact']);

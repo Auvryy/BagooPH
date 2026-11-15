@@ -28,7 +28,7 @@ class LogisticsPlacementService
         return DB::transaction(function () use ($actor, $hub, $handler, $jobRole) {
             $company = $this->lockOwnedNetwork($actor, $hub, $handler);
             if (! User::eligibleLogisticsAccounts()->whereKey($handler->id)->exists()
-                || LogisticsCompany::where('user_id', $handler->id)->whereKeyNot($company->id)->exists()
+                || LogisticsCompany::where('user_id', $handler->id)->exists()
                 || HubHandler::where('user_id', $handler->id)->where(fn ($query) => $query
                     ->whereNull('logistics_company_id')->orWhere('logistics_company_id', '!=', $company->id))->exists()) {
                 throw new DomainException('Choose an approved logistics account belonging to this network or awaiting its first assignment.');
@@ -168,11 +168,30 @@ class LogisticsPlacementService
         if (! $currentHub) {
             throw new DomainException('The requested facility is unavailable.');
         }
-        abort_unless($this->eligibility->isCompanyManager($actor, $currentHub->logistics_company_id), 403, 'Only the company’s Mother Hub manager can manage placement.');
-        $company = $this->eligibility->lockNetwork($currentHub->logistics_company_id, [$actor->id, $subject->id], [$currentHub->id, ...$previousHubs]);
-        abort_unless($this->eligibility->isCompanyManager($actor, $company->id), 403);
+        // Each hub's full-access account runs its own people. Only the company owner (admin-like, never scanning)
+        // can move people between hubs.
+        $owner = $this->eligibility->isCompanyManager($actor, $currentHub->logistics_company_id);
+        abort_unless($owner || $this->canManageOwnHubOnly($actor, $currentHub, $subject, $previousHubs), 403, 'Only this hub’s full-access account or the company owner can manage its team.');
+        $company = $this->eligibility->lockNetwork($currentHub->logistics_company_id, [$actor->id, $subject->id], [$currentHub->id, ...array_filter($previousHubs)]);
+        abort_unless($owner ? $this->eligibility->isCompanyManager($actor, $company->id) : $this->eligibility->canManageHubTeam($actor, $currentHub), 403);
 
         return $company;
+    }
+
+    /**
+     * A hub operator manages only people who are new to the company or already belong to their own hub,
+     * so one hub can never pull workers or riders away from a sibling hub.
+     */
+    private function canManageOwnHubOnly(User $actor, LogisticsHub $hub, User $subject, array $previousHubs): bool
+    {
+        if ($actor->id === $subject->id || ! $this->eligibility->canManageHubTeam($actor, $hub)) {
+            return false;
+        }
+        if (collect($previousHubs)->filter()->contains(fn ($id) => (int) $id !== $hub->id)) {
+            return false;
+        }
+
+        return ! HubHandler::where('user_id', $subject->id)->where('hub_id', '!=', $hub->id)->exists();
     }
 
     private function record(User $actor, User $subject, LogisticsCompany $company, string $kind, ?array $before, array $after, ?RiderCompanyConsent $consent = null): void

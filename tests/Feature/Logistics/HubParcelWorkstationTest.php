@@ -96,27 +96,33 @@ class HubParcelWorkstationTest extends TestCase
         $this->assertSame($before, $this->snapshot($parcel));
     }
 
-    public function test_company_management_can_assign_only_current_eligible_area_riders_and_cannot_scan(): void
+    public function test_company_owner_only_monitors_while_the_hub_assigns_current_eligible_area_riders(): void
     {
         $parcel = $this->flowDelivery($this->newFlowOrder(), 'sorted_to_barangay_bin');
         $hub = LogisticsHub::findOrFail($parcel->destination_bayan_hub_id);
-        $manager = $hub->company->user;
-        $this->actingAs($manager)->get('/hub/deliveries?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('deliveries.data.0.guidance.can_act', false)->where('deliveries.data.0.guidance.eligible_rider_ids', [])
-            ->where('deliveries.data.0.guidance.blocker', 'No available eligible rider serves this facility and barangay.'));
+        $owner = $hub->company->user;
+        $handler = $this->flowHandler($hub);
         $rider = $this->flowRider($hub);
         $wrongArea = $this->flowRider($hub, $this->createApprovedUser('courier'));
         $wrongArea->courierProfile->update(['assigned_barangay' => 'Different barangay']);
-        $this->actingAs($manager)->get('/hub/deliveries?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+
+        // The owner reads the parcel but cannot assign, scan or dispatch it.
+        $this->actingAs($owner)->get('/hub/deliveries?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('deliveries.data.0.guidance.can_act', false)->where('canScan', false)
+            ->where('deliveries.data.0.guidance.blocker', 'This account may read the parcel but cannot assign its rider.'));
+        $this->postJson('/hub/deliveries/'.$parcel->id.'/assign-rider', ['rider_id' => $rider->id])->assertUnprocessable();
+        $this->assertNull($parcel->fresh()->assigned_rider_id);
+        $this->get('/hub/scan?hub_id='.$hub->id)->assertForbidden();
+
+        $this->actingAs($handler)->get('/hub/deliveries?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('deliveries.data.0.guidance.action', 'assign')->where('deliveries.data.0.guidance.can_act', true)
-            ->where('deliveries.data.0.guidance.eligible_rider_ids', [$rider->id])->where('canScan', false));
+            ->where('deliveries.data.0.guidance.eligible_rider_ids', [$rider->id]));
         $rider->courierProfile->update(['is_available' => false]);
         $before = $this->snapshot($parcel);
         $this->postJson('/hub/deliveries/'.$parcel->id.'/assign-rider', ['rider_id' => $rider->id])->assertUnprocessable();
         $this->assertSame($before, $this->snapshot($parcel));
         $this->get('/hub/deliveries?hub_id='.$hub->id)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('deliveries.data.0.guidance.can_act', false));
-        $this->get('/hub/scan?hub_id='.$hub->id)->assertForbidden();
     }
 
     public function test_missing_custody_is_blocked_and_excluded_from_recorded_hub_counts(): void

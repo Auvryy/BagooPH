@@ -411,7 +411,7 @@ class HubParcelWorkstationService
                     ->whereHas('manifest', fn ($manifest) => $manifest->where('logistics_company_id', $parcel->logistics_company_id))->first();
             if ($receipt && $receipt->manifest->status !== 'closed') {
                 return $next('Finish the incoming manifest receipt and closure', 'Assigned receiving handler records receipts and closes',
-                    'manifest', $manager || $handler, '/manifests/'.$receipt->manifest_id,
+                    'manifest', $handler, '/manifests/'.$receipt->manifest_id,
                     'The incoming manifest is '.$receipt->manifest->status.'. Complete its receiving checks before the next handover.');
             }
         }
@@ -429,8 +429,8 @@ class HubParcelWorkstationService
             }
             $ids = $riders->filter(fn ($rider) => ! $rider['assigned_barangay'] || strcasecmp(trim($rider['assigned_barangay']), trim((string) $parcel->order?->destination_barangay)) === 0)->pluck('id')->values()->all();
 
-            return [...$next('Assign an eligible final-mile rider', 'Mother Hub manager or assigned handler', 'assign', ($manager || $handler) && $ids !== [], '/deliveries',
-                blocker: ! ($manager || $handler) ? 'This account may read the parcel but cannot assign its rider.' : ($ids === [] ? 'No available eligible rider serves this facility and barangay.' : null)), 'eligible_rider_ids' => $ids];
+            return [...$next('Assign an eligible final-mile rider', 'Mother Hub manager or assigned handler', 'assign', $handler && $ids !== [], '/deliveries',
+                blocker: ! $handler ? 'This account may read the parcel but cannot assign its rider.' : ($ids === [] ? 'No available eligible rider serves this facility and barangay.' : null)), 'eligible_rider_ids' => $ids];
         }
         if ($parcel->status === 'ready_for_hub_pickup') {
             $claim = $parcel->pickupClaim;
@@ -461,7 +461,7 @@ class HubParcelWorkstationService
             && ($parcel->route_hub_ids[1] ?? null) === $parcel->origin_mother_hub_id;
 
         if ($canFastOriginDispatch) {
-            return $next('Prepare the next manifest and record its load and dispatch scans', 'Assigned source-hub handler prepares, loads and dispatches', 'manifest', $manager || $handler, '/manifests', ($manager || $handler) ? null : 'An assigned source-hub handler must continue the transfer.');
+            return $next('Prepare the next manifest and record its load and dispatch scans', 'Assigned source-hub handler prepares, loads and dispatches', 'manifest', $handler, '/manifests', $handler ? null : 'An assigned source-hub handler must continue the transfer.');
         }
 
         $prompt = $this->routing->getDynamicScanPrompt($parcel, $hub);
@@ -481,7 +481,7 @@ class HubParcelWorkstationService
                 return $next('Review manifest readiness', 'Assigned source-hub handler', blocker: $error->getMessage());
             }
 
-            return $next('Prepare the next manifest and record its load and dispatch scans', 'Assigned source-hub handler prepares, loads and dispatches', 'manifest', $manager || $handler, '/manifests', ($manager || $handler) ? null : 'An assigned source-hub handler must continue the transfer.');
+            return $next('Prepare the next manifest and record its load and dispatch scans', 'Assigned source-hub handler prepares, loads and dispatches', 'manifest', $handler, '/manifests', $handler ? null : 'An assigned source-hub handler must continue the transfer.');
         }
         if ($prompt['action'] === 'AWAIT_RETRY_REVIEW') {
             return $next('Review the failed attempt and approved retry date', 'Mother Hub manager', 'review', $manager, '/delivery-recovery', 'A retry requires company approval and the approved date before a handler releases it.');

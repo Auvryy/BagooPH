@@ -280,8 +280,9 @@ trait InteractsWithOrderActions
     {
         $delivery->refresh();
         $company = LogisticsCompany::findOrFail($delivery->logistics_company_id);
-        $manager = User::findOrFail($company->user_id);
+        // Hub staff move cargo; the company owner only monitors.
         $handler ??= $this->flowHandler($hub);
+        $manager = $handler;
         if ($departure) {
             $this->assertSame($hub->id, $delivery->current_hub_id);
             $destinationId = $direction === 'return' ? app(DeliveryReturnService::class)->nextHub($delivery) : ($delivery->status === 'arrived_at_origin_hub' ? $delivery->origin_mother_hub_id

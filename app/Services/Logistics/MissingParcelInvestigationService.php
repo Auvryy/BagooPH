@@ -3,6 +3,7 @@
 namespace App\Services\Logistics;
 
 use App\Models\Delivery;
+use App\Models\HubHandler;
 use App\Models\LogisticsManifestEvent;
 use App\Models\MissingParcelInvestigation;
 use App\Models\MissingParcelInvestigationEvent;
@@ -398,7 +399,8 @@ class MissingParcelInvestigationService
             return;
         }
 
-        if ($actor->isLogistics() && $companyId !== null && ($this->eligibility->isCompanyManager($actor, $companyId) || (int) $actor->logistics_company_id === (int) $companyId)) {
+        if ($actor->isLogistics() && $companyId !== null && ($this->eligibility->isCompanyManager($actor, $companyId) || (int) $actor->logistics_company_id === (int) $companyId
+            || HubHandler::eligible()->where('user_id', $actor->id)->where('logistics_company_id', $companyId)->exists())) {
             return;
         }
 

@@ -324,7 +324,10 @@ class SlaMonitoringController extends Controller
     public function addFinding(Request $request, MissingParcelInvestigation $investigation, MissingParcelInvestigationService $service): JsonResponse|RedirectResponse
     {
         $user = $this->authorizePortal($request);
-        $this->authorizeCompanyScope($user, $investigation->logistics_company_id);
+        // The hub worker assigned to investigate records what they physically find.
+        if ($investigation->investigator_id !== $user->id) {
+            $this->authorizeCompanyScope($user, $investigation->logistics_company_id);
+        }
 
         $validated = $request->validate([
             'notes' => ['required', 'string', 'min:5', 'max:1000'],

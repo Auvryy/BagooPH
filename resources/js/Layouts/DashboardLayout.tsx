@@ -231,6 +231,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     icon: Building2, 
                     current: component === 'Hub/Network' || route().current('hub.network') || url.startsWith('/hub/network') 
                 },
+                ...((user as any)?.canManageTeam ? [{ name: 'Team', href: route('hub.team'), icon: Users, current: component === 'Hub/Team' }] : []),
                 ...(user?.canSetupCompany ? [{ name: 'Company setup', href: route('hub.company-setup.index'), icon: Settings, current: component === 'Hub/CompanySetup' }] : []),
                 { name: 'Mother Bags', href: route('hub.mother-bags.index'), icon: Package, current: component === 'Hub/MotherBags' },
                 ...(user?.canManageResources ? [{ name: 'Delivery earnings', href: '/delivery-earnings', icon: Banknote, current: component === 'Finance/DeliveryEarnings' }] : []),

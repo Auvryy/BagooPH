@@ -98,7 +98,7 @@ class ParcelRecoveryController extends Controller
                 && $this->eligibility->canScan($actor, LogisticsHub::findOrFail($case->observed_hub_id));
             $transfer = $case?->manifests->firstWhere('recovery_leg_index', $case->leg_index);
             $sourceHub = $case ? $hubs->get($case->hub_ids[$case->leg_index] ?? null) : null;
-            $canPrepare = $sourceHub && app(LogisticsManifestService::class)->canManageAtHub($actor, $sourceHub);
+            $canPrepare = $sourceHub && app(LogisticsManifestService::class)->handlesCargoAtHub($actor, $sourceHub);
             if ($next && $canPrepare && ! $transfer) {
                 $creationToken = $request->session()->get('manifest_creation_token');
                 if (! is_string($creationToken)) {

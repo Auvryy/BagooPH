@@ -519,7 +519,8 @@ class LogisticsHubWorkstationController extends Controller
 
     public function placeResource(Request $request, LogisticsPlacementService $placements): JsonResponse|RedirectResponse
     {
-        abort_unless($this->eligibility->isCompanyManager($request->user()), 403, 'Only an assigned Mother Hub manager can manage personnel placement.');
+        $user = $request->user();
+        abort_unless($this->eligibility->isCompanyManager($user) || $this->eligibility->teamHub($user), 403, 'Only a hub’s full-access account or the company owner can manage personnel.');
         if (is_string($request->input('email'))) {
             $request->merge(['email' => strtolower(trim($request->input('email')))]);
         }
@@ -578,7 +579,9 @@ class LogisticsHubWorkstationController extends Controller
 
     public function updateHandlerJobRole(Request $request, HubHandler $handler, LogisticsPlacementService $placements): JsonResponse|RedirectResponse
     {
-        abort_unless($this->eligibility->isCompanyManager($request->user(), $handler->logistics_company_id), 403, 'Only a company or Mother Hub manager can switch worker job locks.');
+        $hub = LogisticsHub::find($handler->hub_id);
+        abort_unless($this->eligibility->isCompanyManager($request->user(), $handler->logistics_company_id)
+            || ($hub && $handler->user_id !== $request->user()->id && $this->eligibility->canManageHubTeam($request->user(), $hub)), 403, 'Only this hub’s full-access account or the company owner can change worker jobs.');
         $validated = $request->validate([
             'job_role' => 'required|in:all,intake,pack_dispatch',
         ]);
@@ -738,7 +741,7 @@ class LogisticsHubWorkstationController extends Controller
                 $canScanByHub[$activeHub->id] = (bool) $preloadedGuidance['can_scan'];
             }
 
-            return $paginated->through(function ($d) use ($activeHub, $workstation, $user, $eligibleRiders, $basePath, $etaService, &$ridersByHub, &$canScanByHub, $isCompanyManager, $hasDispatchEscalations, $preloadedGuidance) {
+            return $paginated->through(function ($d) use ($activeHub, $workstation, $user, $eligibleRiders, $basePath, $etaService, &$ridersByHub, &$canScanByHub, $hasDispatchEscalations, $preloadedGuidance) {
                 $isAwaitingOriginIntake = $activeHub
                     && $d->status === OrderStateMachineService::STATUS_PICKED_UP
                     && $d->origin_bayan_hub_id === $activeHub->id
@@ -755,7 +758,7 @@ class LogisticsHubWorkstationController extends Controller
                     ? $d->destinationBayanHub
                     : ($isFirstMilePreHandover ? $d->originBayanHub : null);
 
-                $canAuthorizeReassign = $user && ($isCompanyManager || ($phaseHub && ($canScanByHub[$phaseHub->id] ??= $this->eligibility->canScan($user, $phaseHub))));
+                $canAuthorizeReassign = $user && ($user->isAdmin() || ($phaseHub && ($canScanByHub[$phaseHub->id] ??= $this->eligibility->canScan($user, $phaseHub))));
                 $reassignRiders = [];
                 if ($canAuthorizeReassign && $phaseHub) {
                     if (! array_key_exists($phaseHub->id, $ridersByHub)) {

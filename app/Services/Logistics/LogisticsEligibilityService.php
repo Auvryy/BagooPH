@@ -71,15 +71,9 @@ class LogisticsEligibilityService
             return $query->whereKey(0);
         }
 
-        return $query->where(function (Builder $scope) use ($actor) {
-            $scope->where('user_id', $actor->id);
-            if ($actor->provisioned_company_id !== null) {
-                return;
-            }
-            $scope->orWhereIn('id', HubHandler::eligible()
-                ->where('user_id', $actor->id)->whereHas('hub', fn (Builder $hub) => $hub->where('tier', 'regional_mother_hub'))
-                ->select('logistics_company_id'));
-        });
+        // Only the company owner manages and monitors the whole company. Hub operators, including Mother Hub
+        // handlers, work inside their own assigned hub and never gain company-wide or facility-switching powers.
+        return $query->where('user_id', $actor->id);
     }
 
     public function isCompanyManager(User $actor, ?int $companyId = null): bool
@@ -89,11 +83,16 @@ class LogisticsEligibilityService
 
     public function canScan(User $actor, LogisticsHub $hub): bool
     {
-        return HubHandler::eligible()->where('user_id', $actor->id)->where('hub_id', $hub->id)->exists();
+        return $this->handlerAssignment($actor, $hub) !== null;
     }
 
+    /** Company owners monitor like an admin and never hold a floor seat, even if an old assignment row exists. */
     public function handlerAssignment(User $actor, LogisticsHub $hub): ?HubHandler
     {
+        if (LogisticsCompany::where('user_id', $actor->id)->exists()) {
+            return null;
+        }
+
         return HubHandler::eligible()->where('user_id', $actor->id)->where('hub_id', $hub->id)->first();
     }
 
@@ -107,6 +106,23 @@ class LogisticsEligibilityService
         return in_array($assignment->job_role, HubHandler::JOB_ROLES, true)
             ? $assignment->job_role
             : HubHandler::JOB_ROLE_ALL;
+    }
+
+    /** A hub's full-access operator runs its own team: workers, riders and their job locks, at that hub only. */
+    public function canManageHubTeam(User $actor, LogisticsHub $hub): bool
+    {
+        return $this->jobRole($actor, $hub) === HubHandler::JOB_ROLE_ALL;
+    }
+
+    public function teamHub(User $actor): ?LogisticsHub
+    {
+        if (LogisticsCompany::where('user_id', $actor->id)->exists()) {
+            return null;
+        }
+        $hubId = HubHandler::eligible()->where('user_id', $actor->id)
+            ->where(fn ($q) => $q->where('job_role', HubHandler::JOB_ROLE_ALL)->orWhereNull('job_role'))->orderBy('id')->value('hub_id');
+
+        return $hubId ? LogisticsHub::eligible()->find($hubId) : null;
     }
 
     public function canIntake(User $actor, LogisticsHub $hub): bool

@@ -132,7 +132,7 @@ class HubHandoverRecoveryTest extends TestCase
             'model' => 'Bagoo Recovery Transport', 'capacity_kg' => 1000, 'assigned_driver_id' => $driver->id, 'status' => 'active']);
         $driver->courierProfile->update(['logistics_company_id' => $parcel->logistics_company_id, 'assigned_hub_id' => $source->id,
             'vehicle_id' => $vehicle->id, 'is_available' => true]);
-        $this->actingAs($this->reviewer($parcel))->get('/hub/manifests')->assertOk();
+        $this->actingAs($this->flowHandler($source))->get('/hub/manifests')->assertOk();
         $response = $this->postJson('/hub/manifests', ['source_hub_id' => $source->id, 'destination_hub_id' => $target,
             'vehicle_id' => $vehicle->id, 'direction' => app(LogisticsManifestService::class)->direction($parcel),
             'creation_token' => session()->get('manifest_creation_token')])->assertCreated();
@@ -142,7 +142,7 @@ class HubHandoverRecoveryTest extends TestCase
                 $this->flowManifestPayload($manifest, ['barcode' => $parcel->tracking_number]))->assertOk();
         }
         if ($seal) {
-            $this->actingAs($this->reviewer($parcel))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+            $this->actingAs($this->flowHandler($source))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
         }
 
         return $manifest->fresh();
@@ -171,7 +171,7 @@ class HubHandoverRecoveryTest extends TestCase
             'model' => 'Bagoo Actual Recovery Transfer', 'capacity_kg' => 1000, 'assigned_driver_id' => $driver->id, 'status' => 'active']);
         $driver->courierProfile->update(['logistics_company_id' => $parcel->logistics_company_id, 'assigned_hub_id' => $source->id,
             'vehicle_id' => $vehicle->id, 'is_available' => true]);
-        $this->actingAs($this->reviewer($parcel))->get('/hub/parcel-recovery/'.$case->observation_event_id)->assertOk();
+        $this->actingAs($this->flowHandler($source))->get('/hub/parcel-recovery/'.$case->observation_event_id)->assertOk();
         $response = $this->postJson('/hub/manifests', ['source_hub_id' => $source->id, 'destination_hub_id' => $target,
             'direction' => 'recovery', 'parcel_recovery_case_id' => $case->id, 'vehicle_id' => $vehicle->id,
             'creation_token' => session()->get('manifest_creation_token')])->assertCreated();
@@ -411,7 +411,7 @@ class HubHandoverRecoveryTest extends TestCase
             $manifest = $this->prepareRecoveryTransfer($case->fresh());
             $this->actingAs($this->flowHandler($manifest->sourceHub))->postJson('/hub/manifests/'.$manifest->id.'/load',
                 $this->flowManifestPayload($manifest, ['barcode' => $parcel->tracking_number]))->assertOk();
-            $this->actingAs($this->reviewer($parcel))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+            $this->actingAs($this->flowHandler($manifest->sourceHub))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
             $this->actingAs($this->flowHandler($manifest->sourceHub))->postJson('/hub/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
             $this->assertTrue(app(HandoverHoldService::class)->requiresReviewedRecovery($parcel));
             $this->actingAs($this->flowHandler($manifest->destinationHub))->postJson('/hub/manifests/'.$manifest->id.'/receive',
@@ -584,7 +584,7 @@ class HubHandoverRecoveryTest extends TestCase
         $sender = $this->flowHandler($manifest->sourceHub);
         $this->actingAs($sender)->postJson('/hub/manifests/'.$manifest->id.'/load',
             $this->flowManifestPayload($manifest, ['barcode' => $second->tracking_number]))->assertOk();
-        $this->actingAs($this->reviewer($first))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+        $this->actingAs($sender)->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
         $this->actingAs($sender)->postJson('/hub/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
         $first->refresh()->load('order');
         $second->refresh()->load('order');
@@ -693,7 +693,7 @@ class HubHandoverRecoveryTest extends TestCase
         $manifest = $this->prepareRecoveryTransfer($case->fresh());
         $this->actingAs($this->flowHandler($manifest->sourceHub))->postJson('/hub/manifests/'.$manifest->id.'/load',
             $this->flowManifestPayload($manifest, ['barcode' => $parcel->tracking_number]))->assertOk();
-        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+        $this->actingAs($this->flowHandler($manifest->sourceHub))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
         $parcel->refresh()->load('order');
         $this->receiveManifestCorrection($parcel, $manifest);
         $this->assertSame('completed', $case->fresh()->state);
@@ -822,14 +822,14 @@ class HubHandoverRecoveryTest extends TestCase
         $issue = $this->held($parcel);
         $grant = $this->authorize($issue, 'hub_manifest', $manifest->id, $manifest->driver);
         $before = $this->snapshot($parcel);
-        $this->actingAs($this->reviewer($parcel))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertConflict();
+        $this->actingAs($this->flowHandler($manifest->sourceHub))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertConflict();
         $this->assertSame($before, $this->snapshot($parcel));
         $this->postJson('/handover-issues/recovery/'.$grant->id.'/acknowledge', $this->payload($issue, $manifest->driver))->assertOk();
         $view = $this->actingAs($this->reviewer($parcel))->get('/handover-issues/'.$issue->id)->assertOk()->inertiaProps('issue');
         $this->postJson('/handover-issues/recovery/'.$grant->id.'/withdraw', ['notes' => 'Current acknowledged physical possession still needs another receiving authorization.',
             'expected_version' => $view['version'], 'source_token' => $view['hub_recovery']['grant']['withdraw_source_token'], 'request_token' => (string) Str::uuid()])->assertOk();
         $before = $this->snapshot($parcel);
-        $this->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertConflict();
+        $this->actingAs($this->flowHandler($manifest->sourceHub))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertConflict();
         $this->assertSame($before, $this->snapshot($parcel));
         $this->assertSame([$parcel->id], app(HandoverHoldService::class)->manifestParcelIds($manifest));
     }

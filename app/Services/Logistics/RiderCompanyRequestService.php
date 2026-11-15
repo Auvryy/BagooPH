@@ -85,13 +85,20 @@ class RiderCompanyRequestService
 
     public function companyWorkspace(User $actor, array $query = []): ?array
     {
-        if (! $this->companyOwner($actor)) {
+        $reviewHub = $this->hubReviewer($actor);
+        $owner = $this->companyOwner($actor);
+        if (! $owner && ! $reviewHub) {
             return null;
         }
         if (! $this->available()) {
             return ['available' => false];
         }
-        $company = app(LogisticsEligibilityService::class)->managedCompanies($actor)->firstOrFail();
+        $company = $reviewHub
+            ? LogisticsCompany::eligible()->findOrFail($reviewHub->logistics_company_id)
+            : app(LogisticsEligibilityService::class)->managedCompanies($actor)->firstOrFail();
+        if ($reviewHub) {
+            $query['hub_id'] = (string) $reviewHub->id;
+        }
         $page = $query['rider_request_page'] ?? 1;
         Validator::make(['rider_request_page' => $page], ['rider_request_page' => ['required', 'integer', 'min:1', 'max:1000000', $this->number()]])->validate();
         $hubId = $query['hub_id'] ?? null;
@@ -105,7 +112,9 @@ class RiderCompanyRequestService
         return ['available' => true, 'enabled' => (bool) $company->rider_intake_enabled, 'version' => $company->rider_intake_version,
             'history_available' => $this->intakeRecorded($company), 'has_eligible_hub' => $company->hubs()->eligible()->exists(),
             'request_token' => (string) Str::uuid(), 'requests' => $pending,
-            ...app(RiderCompanyOfferService::class)->companyChoices($company, $query, $links)];
+            // The child hub that will employ the rider decides; the company owner only watches and sets intake.
+            'can_decide' => $reviewHub !== null, 'can_change_intake' => $owner, 'review_hub_id' => $reviewHub ? (string) $reviewHub->id : null,
+            ...app(RiderCompanyOfferService::class)->companyChoices($company, $query, $links, $reviewHub?->id)];
     }
 
     public function changeIntake(User $actor, array $input): array
@@ -297,6 +306,18 @@ class RiderCompanyRequestService
         abort_unless($rider?->isEligibleCourier() && (! $requireVerifiedEmail || $rider->email_verified_at !== null), 403);
 
         return $rider;
+    }
+
+    /** The child (Bayan) hub whose full-access operator reviews rider applications and offers work at that hub. */
+    public function hubReviewer(User $actor): ?LogisticsHub
+    {
+        $operator = User::find($actor->id);
+        if (! $operator?->isLogistics() || ! $operator->canAccessPortal() || $operator->email_verified_at === null) {
+            return null;
+        }
+        $hub = app(LogisticsEligibilityService::class)->teamHub($operator);
+
+        return $hub?->isBayanHub() ? $hub : null;
     }
 
     public function companyOwner(User $actor): bool

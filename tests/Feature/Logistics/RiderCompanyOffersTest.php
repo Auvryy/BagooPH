@@ -40,6 +40,8 @@ class RiderCompanyOffersTest extends TestCase
 
     private User $owner;
 
+    private User $operator;
+
     private User $rider;
 
     private LogisticsCompany $company;
@@ -67,6 +69,10 @@ class RiderCompanyOffersTest extends TestCase
         $this->hub = LogisticsHub::create(['logistics_company_id' => $this->company->id, 'name' => 'Bagoo Bayan Hub',
             'code' => 'RC02-BH', 'tier' => 'local_bayan_hub', 'province' => 'Laguna', 'city_municipality' => 'Santa Cruz',
             'is_active' => true, 'address' => 'Bagoo hub street', 'coverage_barangays' => ['Poblacion']]);
+        // The Bayan Hub's full-access account reviews rider applications; the owner only sets company intake.
+        $this->operator = $this->account('logistics');
+        HubHandler::create(['user_id' => $this->operator->id, 'logistics_company_id' => $this->company->id, 'hub_id' => $this->hub->id,
+            'job_role' => 'all', 'role_title' => 'Hub Operator', 'is_active' => true]);
         CourierProfile::factory()->create(['user_id' => $this->rider->id, 'is_available' => false,
             'logistics_company_id' => null, 'assigned_hub_id' => null, 'vehicle_id' => null]);
         $this->vehicle = LogisticsFleet::create(['logistics_company_id' => $this->company->id, 'hub_id' => $this->hub->id,
@@ -105,7 +111,7 @@ class RiderCompanyOffersTest extends TestCase
 
     private function issue(array $overrides = []): RiderCompanyOffer
     {
-        $receipt = $this->offers->issue($this->owner, $this->request->id, $this->offerInput($overrides));
+        $receipt = $this->offers->issue($this->operator, $this->request->id, $this->offerInput($overrides));
 
         return RiderCompanyOffer::findOrFail($receipt['offer']['id']);
     }
@@ -138,7 +144,7 @@ class RiderCompanyOffersTest extends TestCase
     {
         $before = $this->rider->courierProfile->getAttributes();
         $offerInput = $this->offerInput();
-        $issued = $this->actingAs($this->owner)->postJson($hubBase.'/rider-company-requests/'.$this->request->id.'/offers', $offerInput)
+        $issued = $this->actingAs($this->operator)->postJson($hubBase.'/rider-company-requests/'.$this->request->id.'/offers', $offerInput)
             ->assertOk()->assertJsonPath('data.status', 'offered')->json('data');
         $this->assertSame($before, $this->rider->courierProfile->fresh()->getAttributes());
         $this->assertNull($this->vehicle->fresh()->assigned_driver_id);
@@ -170,20 +176,24 @@ class RiderCompanyOffersTest extends TestCase
             ->where('assignment.company', $this->company->name)->where('assignment.hub', $this->hub->name)
             ->where('vehicle.plate_number', $this->vehicle->plate_number)->where('isOnline', false)
             ->where('companyJoining.requests.data.0.status', 'accepted'));
-        $this->actingAs($this->owner)->get($hubBase.'/network')->assertOk()->assertInertia(fn (Assert $page) => $page
+        $this->actingAs($this->operator)->get($hubBase.'/network')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('riderIntake.roster.total', 1)->where('riderIntake.roster.data.0.hub_id', (string) $this->hub->id)
             ->where('riderIntake.roster.data.0.vehicle_id', (string) $this->vehicle->id)
             ->where('riderIntake.roster.data.0.on_duty', false)->where('riderIntake.roster.data.0.provenance', 'Accepted offer'));
     }
 
     #[DataProvider('portals')]
-    public function test_existing_mother_handler_issues_an_offer_and_rider_accepts_without_company_owner_login(string $riderBase, string $hubBase): void
+    public function test_child_hub_account_issues_an_offer_and_rider_accepts_without_company_owner_login(string $riderBase, string $hubBase): void
     {
         $motherHub = LogisticsHub::create(['logistics_company_id' => $this->company->id,
             'name' => 'Bagoo Mother Hub', 'code' => 'RC02-MOTHER', 'tier' => 'regional_mother_hub',
             'province' => 'Laguna', 'city_municipality' => 'Calamba', 'is_active' => true, 'address' => '100 Mother Hub Road']);
+        $motherOperator = $this->account('logistics');
+        HubHandler::create(['user_id' => $motherOperator->id, 'hub_id' => $motherHub->id,
+            'logistics_company_id' => $this->company->id, 'is_active' => true]);
+        $this->actingAs($motherOperator)->postJson($hubBase.'/rider-company-requests/'.$this->request->id.'/offers', $this->offerInput())->assertForbidden();
         $manager = $this->account('logistics');
-        HubHandler::create(['user_id' => $manager->id, 'hub_id' => $motherHub->id,
+        HubHandler::create(['user_id' => $manager->id, 'hub_id' => $this->hub->id, 'job_role' => 'all',
             'logistics_company_id' => $this->company->id, 'is_active' => true]);
         $this->assertNotSame($this->company->user_id, $manager->id);
         $issued = $this->actingAs($manager)->postJson($hubBase.'/rider-company-requests/'.$this->request->id.'/offers', $this->offerInput())
@@ -207,9 +217,9 @@ class RiderCompanyOffersTest extends TestCase
     #[DataProvider('portals')]
     public function test_old_email_placement_cannot_create_membership_without_consent(string $riderBase, string $hubBase): void
     {
-        $this->actingAs($this->owner)->postJson($hubBase.'/placements', ['kind' => 'courier', 'email' => $this->rider->email,
+        $this->actingAs($this->operator)->postJson($hubBase.'/placements', ['kind' => 'courier', 'email' => $this->rider->email,
             'hub_id' => $this->hub->id])->assertConflict();
-        $this->denied(fn () => app(LogisticsPlacementService::class)->placeCourier($this->owner, $this->hub, $this->rider));
+        $this->denied(fn () => app(LogisticsPlacementService::class)->placeCourier($this->operator, $this->hub, $this->rider));
         $this->assertNull($this->rider->courierProfile->fresh()->logistics_company_id);
         $this->assertDatabaseCount('logistics_placement_records', 0);
     }
@@ -217,14 +227,14 @@ class RiderCompanyOffersTest extends TestCase
     public function test_replacement_retains_superseded_terms_and_changed_offer_or_key_intent_conflicts(): void
     {
         $input = $this->offerInput();
-        $first = $this->offers->issue($this->owner, $this->request->id, $input);
+        $first = $this->offers->issue($this->operator, $this->request->id, $input);
         $old = RiderCompanyOffer::findOrFail($first['offer']['id']);
         $oldAcceptance = $this->acceptance($old);
         $this->travel(1)->days();
-        $retry = $this->offers->issue($this->owner, $this->request->id, $input);
+        $retry = $this->offers->issue($this->operator, $this->request->id, $input);
         $this->assertTrue($retry['replayed']);
         $this->assertSame($first['offer']['expires_at'], $retry['offer']['expires_at']);
-        $this->denied(fn () => $this->offers->issue($this->owner, $this->request->id, [...$input, 'terms' => 'Changed working terms.']));
+        $this->denied(fn () => $this->offers->issue($this->operator, $this->request->id, [...$input, 'terms' => 'Changed working terms.']));
         $new = $this->issue(['terms' => 'Use the revised duty arrangement at this same hub.']);
         $this->assertSame(2, $new->version);
         $this->assertSame($input['terms'], $old->fresh()->terms);
@@ -360,8 +370,8 @@ class RiderCompanyOffersTest extends TestCase
             $this->issue();
         }
         $input = ['expected_version' => $this->request->fresh()->version, 'request_token' => (string) Str::uuid(), 'reason' => 'The requested working arrangement is unavailable.'];
-        $actor = in_array($action, ['rejected', 'cancelled'], true) ? $this->owner : $this->rider;
-        $command = fn () => $actor === $this->owner ? $this->offers->companyDecision($actor, $this->request->id, $action, $input)
+        $actor = in_array($action, ['rejected', 'cancelled'], true) ? $this->operator : $this->rider;
+        $command = fn () => $actor === $this->operator ? $this->offers->companyDecision($actor, $this->request->id, $action, $input)
             : $this->offers->riderDecision($actor, $this->request->id, $action, $input);
         $first = $command();
         $this->assertSame($action, $first['status']);
@@ -375,7 +385,8 @@ class RiderCompanyOffersTest extends TestCase
     public function test_foreign_company_handler_and_other_rider_cannot_review_or_accept(): void
     {
         $handler = $this->account('logistics');
-        HubHandler::create(['user_id' => $handler->id, 'logistics_company_id' => $this->company->id, 'hub_id' => $this->hub->id, 'is_active' => true]);
+        HubHandler::create(['user_id' => $handler->id, 'logistics_company_id' => $this->company->id, 'hub_id' => $this->hub->id,
+            'job_role' => 'intake', 'is_active' => true]);
         $this->denied(fn () => $this->offers->issue($handler, $this->request->id, $this->offerInput()), 403);
         $offer = $this->issue();
         $this->denied(fn () => $this->offers->riderDecision($this->account('courier'), $this->request->id, 'accepted', $this->acceptance($offer)), 404);
@@ -424,7 +435,7 @@ class RiderCompanyOffersTest extends TestCase
     #[DataProvider('invalidOfferFields')]
     public function test_direct_offer_field_validation_rejects_invalid_and_server_owned_values(string $field, mixed $value): void
     {
-        $this->actingAs($this->owner)->postJson('/hub/rider-company-requests/'.$this->request->id.'/offers', $this->offerInput([$field => $value]))
+        $this->actingAs($this->operator)->postJson('/hub/rider-company-requests/'.$this->request->id.'/offers', $this->offerInput([$field => $value]))
             ->assertUnprocessable()->assertJsonValidationErrors($field);
         $this->assertDatabaseCount('rider_company_offers', 0);
         $this->assertSame('pending', $this->request->fresh()->status);
@@ -455,7 +466,7 @@ class RiderCompanyOffersTest extends TestCase
         $this->actingAs($this->account('courier'))->postJson($riderBase.'/company-requests/'.$this->request->id.'/accept', $this->acceptance($offer))->assertNotFound();
         $foreign = $this->account('logistics');
         LogisticsCompany::create(['user_id' => $foreign->id, 'name' => 'Bagoo Other Company', 'slug' => 'bagoo-other', 'code' => 'RC02-OTHER', 'status' => 'active', 'is_active' => true]);
-        $this->actingAs($foreign)->postJson($hubBase.'/rider-company-requests/'.$this->request->id.'/offers', $this->offerInput())->assertNotFound();
+        $this->actingAs($foreign)->postJson($hubBase.'/rider-company-requests/'.$this->request->id.'/offers', $this->offerInput())->assertForbidden();
         $this->assertDatabaseCount('rider_company_consents', 0);
     }
 
@@ -493,7 +504,7 @@ class RiderCompanyOffersTest extends TestCase
         $url = $hubBase.'/rider-company-requests/'.$this->request->id.'/reject';
         $valid = ['expected_version' => 1, 'request_token' => (string) Str::uuid(), 'reason' => 'Short'];
         foreach (['', '    ', 'abcd', str_repeat('a', 501), '<script>reject</script>', ['not text']] as $reason) {
-            $this->actingAs($this->owner)->postJson($url, [...$valid, 'reason' => $reason])->assertUnprocessable()->assertJsonValidationErrors('reason');
+            $this->actingAs($this->operator)->postJson($url, [...$valid, 'reason' => $reason])->assertUnprocessable()->assertJsonValidationErrors('reason');
         }
         $this->from($hubBase.'/network')->post($url, [...$valid, 'reason' => 'abcd'])->assertRedirect($hubBase.'/network')->assertSessionHasErrors('reason')->assertSessionHasInput('reason', 'abcd');
         $this->postJson($url, [...$valid, 'reason' => str_repeat('a', 500)])->assertOk()->assertJsonPath('data.status', 'rejected');
@@ -526,13 +537,13 @@ class RiderCompanyOffersTest extends TestCase
         }
         $foreign = $this->account('courier');
         CourierProfile::factory()->create(['user_id' => $foreign->id, 'logistics_company_id' => $this->foreignCompany()->id]);
-        $page = $this->requests->companyWorkspace($this->owner);
+        $page = $this->requests->companyWorkspace($this->operator);
         $this->assertSame(16, $page['roster']->total());
         $this->assertCount(15, $page['roster']->items());
         $this->assertSame('Existing assignment', $page['roster']->items()[0]['provenance']);
         $this->assertSame((string) $this->hub->id, $page['roster']->items()[0]['hub_id']);
         $this->assertSame('Poblacion', $page['roster']->items()[0]['barangay']);
-        $this->assertCount(1, $this->requests->companyWorkspace($this->owner, ['rider_roster_page' => 2])['roster']->items());
+        $this->assertCount(1, $this->requests->companyWorkspace($this->operator, ['rider_roster_page' => 2])['roster']->items());
         $this->assertStringNotContainsString($foreign->email, json_encode($page));
         $this->assertDatabaseCount('rider_company_consents', 0);
     }
@@ -592,7 +603,7 @@ class RiderCompanyOffersTest extends TestCase
     {
         $offer = $this->issue();
         $fake = new RiderCompanyConsent(['id' => 999, 'offer_id' => $offer->id, 'rider_id' => $this->rider->id, 'acknowledged' => true]);
-        $this->denied(fn () => app(LogisticsPlacementService::class)->placeCourier($this->owner, $this->hub, $this->rider, $this->vehicle->id, 'Poblacion', null, $fake));
+        $this->denied(fn () => app(LogisticsPlacementService::class)->placeCourier($this->operator, $this->hub, $this->rider, $this->vehicle->id, 'Poblacion', null, $fake));
         $input = $this->acceptance($offer);
         $this->offers->riderDecision($this->rider, $this->request->id, 'accepted', $input);
         $this->denied(fn () => $this->offers->riderDecision($this->rider, $this->request->id, 'accepted', [...$input, 'terms_hash' => str_repeat('0', 64)]));
@@ -679,7 +690,8 @@ class RiderCompanyOffersTest extends TestCase
                 'name' => 'Decision Mother Hub', 'code' => 'RC02-GUARD-MH', 'tier' => 'regional_mother_hub',
                 'province' => 'Laguna', 'city_municipality' => 'Calamba', 'is_active' => true, 'address' => '100 Guard Hub Road']);
         }
-        HubHandler::create(['user_id' => $actor->id, 'hub_id' => $hub->id,
+        // A Bayan worker locked to one job is not the hub's full-access account, so it cannot decide.
+        HubHandler::create(['user_id' => $actor->id, 'hub_id' => $hub->id, 'job_role' => $kind === 'bayan' ? 'intake' : 'all',
             'logistics_company_id' => $hub->logistics_company_id, 'is_active' => true]);
         if ($kind === 'suspended_mother') {
             $actor->update(['status' => 'suspended']);
