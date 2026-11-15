@@ -185,6 +185,7 @@ test('sealed and arriving in-transit bags auto-fill tag, seal, and single matchi
     assert.equal(sealedH.forms[2].data.seal_number, 'SEAL-1');
     assert.equal(sealedH.forms[2].data.manifest_id, '77');
     assert.match(text(sealedH.tree), /Scan bag tag/);
+    assert.doesNotMatch(text(sealedH.tree), /Fill tag and seal from this bag/);
 
     const transitH = harness(t, ui.Bags, {
         ...props,
@@ -202,6 +203,7 @@ test('sealed and arriving in-transit bags auto-fill tag, seal, and single matchi
     assert.equal(transitH.forms[2].data.seal_number, 'SEAL-1');
     assert.equal(transitH.forms[2].data.seal_intact, true);
     assert.match(text(transitH.tree), /Scan bag QR \/ barcode/);
+    assert.doesNotMatch(text(transitH.tree), /Fill tag and seal from this bag/);
     const scanBtn = nodes(transitH.tree).find(n => n.type === 'button' && text(n).includes('Scan bag QR / barcode'));
     assert.ok(scanBtn, 'Verify arriving seal should provide a camera scanner button for the master bag tag');
 });

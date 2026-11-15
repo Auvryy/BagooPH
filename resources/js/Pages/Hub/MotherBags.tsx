@@ -96,7 +96,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
             seal_intact: bag?.status === 'in_transit',
         });
         action.clearErrors();
-    }, [bag?.id, bag?.version, bag?.status]);
+    }, [bag?.id, bag?.version, bag?.status, bag?.reference, bag?.seal_number]);
     useEffect(() => create.setData('creation_token', creationToken), [creationToken]);
     useEffect(() => {
         if (!defaultSourceHubId) return;
@@ -636,10 +636,6 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                     <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
                                                     {loadScannerTarget === 'seal' ? 'Hide seal camera' : 'Scan seal'}
                                                 </button>
-                                                <button type="button" onClick={() => action.setData({ ...action.data, barcode: bag.reference, seal_number: bag.seal_number || '' })}
-                                                    className="text-[13px] font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900">
-                                                    Fill tag and seal from this bag
-                                                </button>
                                             </div>
                                         </div>
                                         <form onSubmit={event => submit(event, 'load')} className="space-y-5 p-5 sm:p-6">
@@ -720,13 +716,6 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                 >
                                                     <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
                                                     {verifyScannerTarget === 'seal' ? 'Hide seal scanner' : 'Scan seal'}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => action.setData({ ...action.data, barcode: bag.reference, seal_number: bag.seal_number || '', seal_intact: true })}
-                                                    className="text-[13px] font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900"
-                                                >
-                                                    Fill tag and seal from this bag
                                                 </button>
                                             </div>
                                         </div>
