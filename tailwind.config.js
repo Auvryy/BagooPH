@@ -18,6 +18,8 @@ export default {
             boxShadow: {
                 '2xs': '0 1px 2px 0 rgba(18, 19, 22, 0.03)',
                 xs: '0 1px 2px 0 rgba(18, 19, 22, 0.04), 0 1px 3px 0 rgba(18, 19, 22, 0.02)',
+                // Redesign token: only for layers floating above the page
+                float: '0 8px 24px -6px rgba(28, 25, 23, 0.16), 0 2px 6px rgba(28, 25, 23, 0.06)',
             },
             fontFamily: {
                 sans: ['"Plus Jakarta Sans"', ...defaultTheme.fontFamily.sans],
@@ -33,6 +35,10 @@ export default {
                 '2xl': '8px',
                 '3xl': '12px',
                 full: '9999px',
+                // Redesign tokens (docs/DESIGN_SYSTEM.md)
+                chip: '4px',
+                control: '6px',
+                card: '10px',
             },
             colors: {
                 brand: {
@@ -45,6 +51,25 @@ export default {
                     900: '#570115',
                     DEFAULT: '#E00D42',
                 },
+                // Redesign tokens (docs/DESIGN_SYSTEM.md)
+                ink: {
+                    400: '#A8A29E',
+                    500: '#78716C',
+                    600: '#57534E',
+                    700: '#44403C',
+                    900: '#1C1917',
+                },
+                line: {
+                    200: '#E7E5E4',
+                    300: '#D6D3D1',
+                },
+                surface: {
+                    50: '#FAFAF9',
+                    100: '#F5F5F4',
+                },
+                success: { DEFAULT: '#15803D', soft: '#F0FDF4' },
+                warning: { DEFAULT: '#B45309', soft: '#FFFBEB' },
+                info: { DEFAULT: '#1D4ED8', soft: '#EFF6FF' },
             },
             keyframes: {
                 float: {
