@@ -27,6 +27,8 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
     const [manifestScan, setManifestScan] = useState('');
     const [continuousPack, setContinuousPack] = useState(true);
     const [showSealScanner, setShowSealScanner] = useState(false);
+    const [loadScannerTarget, setLoadScannerTarget] = useState<'barcode' | 'seal' | null>(null);
+    const [verifyScannerTarget, setVerifyScannerTarget] = useState<'barcode' | 'seal' | null>(null);
     const [revertingTracking, setRevertingTracking] = useState<string | null>(null);
     const [revertNotes, setRevertNotes] = useState('Mis-scanned parcel');
     const packableHubs = hubs.filter(hub => hub.canPackDispatch ?? hub.canScan);
@@ -59,14 +61,42 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
     });
     const pending = useRef(false);
     const packing = useForm({ source_hub_id: defaultSourceHubId, barcode: '', physical_tag: '', physical_checked: false, request_token: packingToken, handling: emptyHandling() });
-    const action = useForm({ request_token: commandToken, handling: emptyHandling(), version: bag?.version ?? 1, barcode: '', seal_number: '', manifest_id: '', notes: '', seal_intact: false });
+    const prefillBagFields = Boolean(bag && ['sealed', 'in_transit'].includes(bag.status));
+    const defaultManifestId = bag?.status === 'sealed' && !bag.manifest_id && matchingManifests.length === 1
+        ? String(matchingManifests[0].id)
+        : '';
+    const action = useForm({
+        request_token: commandToken,
+        handling: emptyHandling(),
+        version: bag?.version ?? 1,
+        barcode: prefillBagFields ? (bag?.reference ?? '') : '',
+        seal_number: prefillBagFields ? (bag?.seal_number ?? '') : '',
+        manifest_id: defaultManifestId,
+        notes: '',
+        seal_intact: bag?.status === 'in_transit',
+    });
     useEffect(() => {
         setManifestScan('');
         setRevertingTracking(null);
         setShowSealScanner(false);
-        action.setData({ request_token: commandToken, handling: emptyHandling(), version: bag?.version ?? 1, barcode: '', seal_number: '', manifest_id: '', notes: '', seal_intact: false });
+        setLoadScannerTarget(null);
+        setVerifyScannerTarget(null);
+        const shouldPrefill = Boolean(bag && ['sealed', 'in_transit'].includes(bag.status));
+        const autoManifestId = bag?.status === 'sealed' && !bag.manifest_id && matchingManifests.length === 1
+            ? String(matchingManifests[0].id)
+            : '';
+        action.setData({
+            request_token: commandToken,
+            handling: emptyHandling(),
+            version: bag?.version ?? 1,
+            barcode: shouldPrefill ? (bag?.reference ?? '') : '',
+            seal_number: shouldPrefill ? (bag?.seal_number ?? '') : '',
+            manifest_id: autoManifestId,
+            notes: '',
+            seal_intact: bag?.status === 'in_transit',
+        });
         action.clearErrors();
-    }, [bag?.id, bag?.version]);
+    }, [bag?.id, bag?.version, bag?.status]);
     useEffect(() => create.setData('creation_token', creationToken), [creationToken]);
     useEffect(() => {
         if (!defaultSourceHubId) return;
@@ -558,6 +588,13 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                         <span className={fieldLabel}>Numbered seal</span>
                                                         <input required maxLength={80} className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} placeholder="Scan or type SL-XXXXX" />
                                                     </label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => action.setData('seal_number', `SL-${bag.reference.replace(/^BAG-|^RMB-/, '').slice(0, 6)}-${bag.version}`)}
+                                                        className={hubButton}
+                                                    >
+                                                        Auto-fill seal
+                                                    </button>
                                                     <button type="button" onClick={() => setShowSealScanner(value => !value)} className={hubButton}>
                                                         <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
                                                         {showSealScanner ? 'Hide seal camera' : 'Scan seal'}
@@ -578,13 +615,45 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                 {bag.canPack && bag.status === 'sealed' && !bag.manifest_id && (
                                     <section aria-labelledby="load-title" className={card}>
                                         <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
-                                            <h2 id="load-title" className="text-lg font-semibold text-ink-900">Load onto a vehicle</h2>
-                                            <button type="button" onClick={() => action.setData({ ...action.data, barcode: bag.reference, seal_number: bag.seal_number || '' })}
-                                                className="text-[13px] font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900">
-                                                Fill tag and seal from this bag
-                                            </button>
+                                            <div>
+                                                <h2 id="load-title" className="text-lg font-semibold text-ink-900">Load onto a vehicle</h2>
+                                                <p className="mt-0.5 text-xs text-ink-600">Master bag tag and seal are pre-filled from this sealed bag. Scan with camera or confirm the vehicle trip below.</p>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLoadScannerTarget(current => (current === 'barcode' ? null : 'barcode'))}
+                                                    className={hubButton}
+                                                >
+                                                    <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
+                                                    {loadScannerTarget === 'barcode' ? 'Hide bag camera' : 'Scan bag tag'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLoadScannerTarget(current => (current === 'seal' ? null : 'seal'))}
+                                                    className={hubButton}
+                                                >
+                                                    <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
+                                                    {loadScannerTarget === 'seal' ? 'Hide seal camera' : 'Scan seal'}
+                                                </button>
+                                                <button type="button" onClick={() => action.setData({ ...action.data, barcode: bag.reference, seal_number: bag.seal_number || '' })}
+                                                    className="text-[13px] font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900">
+                                                    Fill tag and seal from this bag
+                                                </button>
+                                            </div>
                                         </div>
                                         <form onSubmit={event => submit(event, 'load')} className="space-y-5 p-5 sm:p-6">
+                                            {loadScannerTarget && (
+                                                <WaybillCamera
+                                                    onScan={code => {
+                                                        action.setData(loadScannerTarget === 'barcode' ? 'barcode' : 'seal_number', code);
+                                                        setLoadScannerTarget(null);
+                                                    }}
+                                                    buttonLabel={loadScannerTarget === 'barcode' ? 'Scan master bag QR / barcode' : 'Scan numbered seal barcode'}
+                                                    instruction={loadScannerTarget === 'barcode' ? 'Point the camera at the master bag QR code or barcode.' : 'Point the camera at the numbered seal barcode.'}
+                                                    disabled={action.processing}
+                                                />
+                                            )}
                                             <div className="grid gap-4 sm:grid-cols-2">
                                                 <label><span className={fieldLabel}>Master bag barcode</span><input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} /></label>
                                                 <label><span className={fieldLabel}>Numbered seal</span><input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} /></label>
@@ -627,11 +696,52 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
 
                                 {bag.canOpen && bag.status === 'in_transit' && (
                                     <section aria-labelledby="verify-title" className={card}>
-                                        <h2 id="verify-title" className="flex items-center gap-1 px-5 pt-5 text-lg font-semibold text-ink-900 sm:px-6">
-                                            Verify arriving seal
-                                            <InfoHint>Check the master tag and physical seal before receiving the parcels inside.</InfoHint>
-                                        </h2>
+                                        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
+                                            <div>
+                                                <h2 id="verify-title" className="flex items-center gap-1 text-lg font-semibold text-ink-900">
+                                                    Verify arriving seal
+                                                    <InfoHint>Check the master tag and physical seal before receiving the parcels inside.</InfoHint>
+                                                </h2>
+                                                <p className="mt-0.5 text-xs text-ink-600">Expected bag tag and seal are pre-filled. Scan the bag QR/barcode with your camera or verify directly.</p>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setVerifyScannerTarget(current => (current === 'barcode' ? null : 'barcode'))}
+                                                    className={hubButton}
+                                                >
+                                                    <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
+                                                    {verifyScannerTarget === 'barcode' ? 'Hide bag scanner' : 'Scan bag QR / barcode'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setVerifyScannerTarget(current => (current === 'seal' ? null : 'seal'))}
+                                                    className={hubButton}
+                                                >
+                                                    <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
+                                                    {verifyScannerTarget === 'seal' ? 'Hide seal scanner' : 'Scan seal'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => action.setData({ ...action.data, barcode: bag.reference, seal_number: bag.seal_number || '', seal_intact: true })}
+                                                    className="text-[13px] font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900"
+                                                >
+                                                    Fill tag and seal from this bag
+                                                </button>
+                                            </div>
+                                        </div>
                                         <form onSubmit={event => submit(event, 'open')} className="space-y-4 p-5 sm:p-6">
+                                            {verifyScannerTarget && (
+                                                <WaybillCamera
+                                                    onScan={code => {
+                                                        action.setData(verifyScannerTarget === 'barcode' ? 'barcode' : 'seal_number', code);
+                                                        setVerifyScannerTarget(null);
+                                                    }}
+                                                    buttonLabel={verifyScannerTarget === 'barcode' ? 'Start camera for master bag QR / barcode' : 'Start camera for seal barcode'}
+                                                    instruction={verifyScannerTarget === 'barcode' ? 'Point the camera at the arriving master bag QR or barcode tag.' : 'Point the camera at the arriving physical seal barcode.'}
+                                                    disabled={action.processing}
+                                                />
+                                            )}
                                             <div className="grid gap-4 sm:grid-cols-2">
                                                 <label><span className={fieldLabel}>Scanned master bag tag</span><input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} /></label>
                                                 <label><span className={fieldLabel}>Seal number observed</span><input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} /></label>

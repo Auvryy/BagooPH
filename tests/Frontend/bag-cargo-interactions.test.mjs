@@ -168,3 +168,40 @@ test('mother bags auto-select active hub, expose capacity presets, continuous pa
     assert.equal(h.posts[0][0], '/hub/mother-bags/bag-1/remove');
     assert.equal(h.posts[0][1].barcode, 'BGO-REVERT-1');
 });
+
+test('sealed and arriving in-transit bags auto-fill tag, seal, and single matching trip while exposing camera scanners', t => {
+    const sealedH = harness(t, ui.Bags, {
+        ...props,
+        manifests: [{ id: 77, reference: 'MF-77', source_hub_id: 1, destination_hub_id: 2, vehicle_plate: 'VAN-77', driver_name: 'Rico' }],
+        selectedBag: {
+            ...bag,
+            status: 'sealed',
+            seal_number: 'SEAL-1',
+            version: 3,
+        },
+    });
+    sealedH.render();
+    assert.equal(sealedH.forms[2].data.barcode, 'BAG-ONE');
+    assert.equal(sealedH.forms[2].data.seal_number, 'SEAL-1');
+    assert.equal(sealedH.forms[2].data.manifest_id, '77');
+    assert.match(text(sealedH.tree), /Scan bag tag/);
+
+    const transitH = harness(t, ui.Bags, {
+        ...props,
+        selectedBag: {
+            ...bag,
+            status: 'in_transit',
+            seal_number: 'SEAL-1',
+            canPack: false,
+            canOpen: true,
+            version: 4,
+        },
+    });
+    transitH.render();
+    assert.equal(transitH.forms[2].data.barcode, 'BAG-ONE');
+    assert.equal(transitH.forms[2].data.seal_number, 'SEAL-1');
+    assert.equal(transitH.forms[2].data.seal_intact, true);
+    assert.match(text(transitH.tree), /Scan bag QR \/ barcode/);
+    const scanBtn = nodes(transitH.tree).find(n => n.type === 'button' && text(n).includes('Scan bag QR / barcode'));
+    assert.ok(scanBtn, 'Verify arriving seal should provide a camera scanner button for the master bag tag');
+});
