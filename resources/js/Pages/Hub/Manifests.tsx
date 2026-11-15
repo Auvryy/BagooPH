@@ -289,7 +289,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                         )
                                     ) : (
                                         <p className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/40 p-5 text-center text-xs leading-6 text-zinc-500">
-                                            Choose the sending and receiving hubs to see vehicles available for that exact leg.
+                                            Choose both hubs to see available vehicles.
                                         </p>
                                     )}
 

@@ -354,7 +354,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             </span>
                         </div>
 
-                        {canSwitchHubs && !canScanParcels && <p className="mb-2 px-1 text-xs leading-4 text-ink-600">Viewing this hub. Physical scans need its assigned handler.</p>}
+                        {canSwitchHubs && !canScanParcels && <p className="mb-2 px-1 text-xs leading-4 text-ink-600">View only · scanning needs this hub's operator</p>}
 
                         {/* Facility Switcher Dropdown Button */}
                         <div className="relative">

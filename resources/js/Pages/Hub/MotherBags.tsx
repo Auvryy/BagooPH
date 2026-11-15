@@ -3,7 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ArrowRight, Box, CheckCheck, Container, LockKeyhole, Package, Printer, RotateCcw, ScanLine, Truck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { HubBadge, HubButton, HubRoute, HubSearch, hubButton, hubInput, type HubPlace } from '@/Components/Logistics/Workspace';
+import { HubBadge, HubButton, InfoHint, HubRoute, HubSearch, hubButton, hubInput, type HubPlace } from '@/Components/Logistics/Workspace';
 import HubPicker from '@/Components/Logistics/HubPicker';
 import { CapacityMeter, HandlingFields, HandlingSummary, emptyHandling, type Handling } from '@/Components/Logistics/CargoHandling';
 import WaybillCamera from '@/Components/WaybillCamera';
@@ -164,8 +164,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     <Container className="h-4 w-4" />
                                 </div>
                                 <div>
-                                    <h2 className="text-sm font-bold text-ink-900">Prepare a Mother Bag</h2>
-                                    <p className="mt-0.5 text-xs text-zinc-500">Sending hub is auto-selected; choose next hub and bag limit preset.</p>
+                                    <h2 className="text-base font-semibold text-ink-900">Prepare a Mother Bag</h2>
                                 </div>
                             </div>
                             {activeHubRecord && activeHubRecord.canPackDispatch === false && (
@@ -449,9 +448,9 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <ScanLine className="h-4 w-4 text-zinc-600" />
-                                                    <h2 className="text-sm font-bold text-ink-900">Pack and seal</h2>
+                                                    <h2 className="text-base font-semibold text-ink-900">Pack and seal</h2>
+<InfoHint>Keep this bag open, scan incoming parcels continuously, revert any mis-scan, then scan or type the seal.</InfoHint>
                                                 </div>
-                                                <p className="mt-0.5 text-xs text-zinc-500">Keep this bag open, scan incoming parcels continuously, revert any mis-scan, then scan or type the seal.</p>
                                             </div>
                                             <label className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-ink-900 cursor-pointer">
                                                 <input
@@ -619,9 +618,8 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                             <div className="flex items-center gap-2">
                                                 <Truck className="h-4 w-4 text-zinc-600" />
-                                                <h2 className="text-sm font-bold text-ink-900">Load by master tag</h2>
+                                                <h2 className="text-base font-semibold text-ink-900">Load by master tag</h2>
                                             </div>
-                                            <p className="mt-0.5 text-xs text-zinc-500">One bag scan loads its complete sealed parcel list.</p>
                                         </header>
                                         <div className="p-5 sm:p-6">
                                             <form onSubmit={event => submit(event, 'load')} className="grid gap-4 sm:grid-cols-2">
@@ -716,9 +714,9 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                             <div className="flex items-center gap-2">
                                                 <CheckCheck className="h-4 w-4 text-zinc-600" />
-                                                <h2 className="text-sm font-bold text-ink-900">Verify arriving seal</h2>
+                                                <h2 className="text-base font-semibold text-ink-900">Verify arriving seal</h2>
+<InfoHint>Check the master tag and physical seal before individual receiving.</InfoHint>
                                             </div>
-                                            <p className="mt-0.5 text-xs text-zinc-500">Check the master tag and physical seal before individual receiving.</p>
                                         </header>
                                         <div className="p-5 sm:p-6">
                                             <form onSubmit={event => submit(event, 'open')} className="space-y-4">
@@ -770,7 +768,6 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             <CapacityMeter label="Weight" value={bag.capacity.weight_kg} max={bag.capacity.max_weight_kg} unit="kg" />
                                             <CapacityMeter label="Volume" value={bag.capacity.volume_cm3 === null ? null : Number((bag.capacity.volume_cm3 / 1000000).toFixed(4))} max={Number(((bag.capacity.max_volume_cm3 || 300000) / 1000000).toFixed(2))} unit="m³" />
                                         </div>
-                                        <p className="text-xs text-zinc-500">Declared sizes or operator readings guide packing. Check the actual fit before attaching the numbered seal.</p>
                                     </section>
                                 )}
 
@@ -779,7 +776,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                         <div className="flex items-center gap-2">
                                             <Package className="h-4 w-4 text-zinc-600" />
-                                            <h2 className="text-sm font-bold text-ink-900">Parcel contents</h2>
+                                            <h2 className="text-base font-semibold text-ink-900">Parcel contents</h2>
                                         </div>
                                         <p className="mt-0.5 text-xs text-zinc-500">
                                             {bag.status === 'opened' ? 'Open the manifest and scan each arriving waybill.' : 'Membership and each actual receiving scan stay recorded.'}
@@ -836,7 +833,6 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             <Container className="h-4 w-4 text-zinc-600" />
                                             <div>
                                                 <h2 className="text-sm font-bold text-ink-900 tabular-nums">{bag.reference}</h2>
-                                                <p className="text-xs text-zinc-500">Master tag, recorded route and numbered seal</p>
                                             </div>
                                         </div>
                                         <HubButton type="button" onClick={() => window.print()}>

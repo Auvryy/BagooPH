@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
-import { ArrowRight, Check, Circle, MapPin, Package, Search, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Check, Circle, Info, MapPin, Package, Search, type LucideIcon } from 'lucide-react';
 
 export const hubInput =
     'w-full min-w-0 max-w-full min-h-10 rounded-control border border-line-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:bg-surface-100 disabled:text-ink-500 transition-colors';
@@ -12,6 +12,23 @@ export const hubButton =
 
 export const hubPrimary =
     buttonBase + ' border-brand-500 bg-brand-500 text-white hover:border-brand-600 hover:bg-brand-600';
+
+/** Long explanations stay off the page: shown on hover or keyboard focus, always read by screen readers. */
+export function InfoHint({ children, label = 'More information' }: { children: ReactNode; label?: string }) {
+    return (
+        <span className="group/hint relative inline-flex align-middle">
+            <button type="button" aria-label={label} className="inline-flex h-6 w-6 items-center justify-center rounded-full text-ink-400 hover:bg-surface-100 hover:text-ink-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
+                <Info className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <span role="tooltip" className="pointer-events-none absolute left-0 top-full z-30 mt-1.5 hidden w-72 rounded-control border border-line-200 bg-white p-3 text-[13px] font-normal leading-5 text-ink-700 shadow-float group-hover/hint:block group-focus-within/hint:block">
+                {children}
+            </span>
+        </span>
+    );
+}
+
+/** Keep short context visible; move long explanations into an InfoHint. */
+const isLong = (value: ReactNode) => typeof value === 'string' && value.length > 70;
 
 export function HubPanel({
     title,
@@ -31,8 +48,8 @@ export function HubPanel({
                     <div className="flex items-start gap-2.5">
                         {icon && <span className="mt-0.5 text-ink-500">{icon}</span>}
                         <div>
-                            <h2 className="text-base font-semibold text-ink-900">{title}</h2>
-                            {description && <p className="mt-0.5 text-[13px] leading-5 text-ink-600">{description}</p>}
+                            <h2 className="flex items-center gap-1 text-base font-semibold text-ink-900">{title}{description && isLong(description) && <InfoHint>{description}</InfoHint>}</h2>
+                            {description && !isLong(description) && <p className="mt-0.5 text-[13px] leading-5 text-ink-600">{description}</p>}
                         </div>
                     </div>
                 </div>
@@ -96,8 +113,8 @@ export function HubPageHeader({
                     <Icon className="h-4 w-4 text-ink-500" aria-hidden="true" />
                     <span>{roleLabel ?? 'Logistics workspace'}</span>
                 </p>
-                <h1 className="text-[28px] font-bold leading-[34px] tracking-tight text-ink-900">{title}</h1>
-                {description && <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-600">{description}</p>}
+                <h1 className="flex items-center gap-1.5 text-[28px] font-bold leading-[34px] tracking-tight text-ink-900">{title}{description && isLong(description) && <InfoHint>{description}</InfoHint>}</h1>
+                {description && !isLong(description) && <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-600">{description}</p>}
             </div>
             {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </div>

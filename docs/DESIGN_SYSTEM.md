@@ -27,9 +27,20 @@ The only element carried over from the previous design is the Bagoo brand red.
    cards, overlays or any other filled shape. Filled accents use the brand
    reds; neutral fills stay light (`surface-50`, `surface-100`, `line-200`).
    Dark ink is only for text and thin icons.
-6. **Real states, real data.** Every view is designed with real Bagoo content
+6. **Say less.** Every line of text must earn its place. No subtitles under
+   page or section titles unless they change what the user does next. No
+   helper captions under numbers, no repeated explanations, no "Verify your
+   details and..." filler. Field hints only where a format is required.
+   Rare details go behind a disclosure ("Details", "How this works"), not
+   on the page.
+7. **The next step is obvious, and every action answers back.** Each screen
+   leads with what the user should do now (one primary action, or a short
+   "Next: ..." prompt when work is waiting). Every action gives immediate
+   feedback: a busy state on the button, then a clear success or error
+   message near where the user acted, in plain words.
+8. **Real states, real data.** Every view is designed with real Bagoo content
    and covers loading, empty, error, partial and success states.
-7. **Consistency over novelty.** A pattern solved once (filters, tables,
+9. **Consistency over novelty.** A pattern solved once (filters, tables,
    status, money) is reused everywhere. New patterns need a reason.
 
 ## 2. Color
@@ -252,6 +263,8 @@ restyling them.
 - Decorative icons beside every label or heading.
 - Many competing badges, colors or primary buttons on one screen.
 - Placeholder copy ("Lorem ipsum", "Welcome back!") and invented numbers.
+- Subtitles and small grey captions under titles, cards, metrics and buttons
+  that restate the obvious (see principle 6).
 - Red used for anything that is not an action, a step marker, the final total,
   the brand mark or an error.
 - Black or near-black fills of any kind (see principle 5), including black

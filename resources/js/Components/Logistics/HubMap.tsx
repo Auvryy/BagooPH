@@ -190,7 +190,7 @@ export default function HubMap({ hubs, selectedId, onSelect, routeIds, className
  `}</style>
  {valid.length ? <div ref={element} aria-label="Company hubs on OpenStreetMap; choose a hub marker to inspect it" className="min-h-0 w-full flex-1" /> : <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-6 text-center"><MapPinned className="h-8 w-8 text-slate-400" /><p className="mt-3 text-sm font-semibold text-slate-700">No map pins saved yet</p><p className="mt-2 max-w-sm text-xs leading-5 text-slate-500">Use the hub names and addresses below. A location appears here when its coordinates are recorded.</p></div>}
  <figcaption className="relative shrink-0 space-y-1 border-t border-slate-200/90 bg-white px-3.5 py-2.5 text-[11px] leading-5 text-slate-500">
- {!!valid.length && <p>Dashed lines follow highway transit corridors.{selected && <span className="ml-1 font-semibold text-ink-900">Selected: {selected.code ?? selected.name}.</span>}</p>}
+ {!!valid.length && selected && <p>Selected: <span className="font-semibold text-ink-900">{selected.code ?? selected.name}</span></p>}
  {tileError && <p>Street tiles are unavailable. Saved hub pins and the hub list still work.</p>}
  {missing > 0 && <p>{missing} {missing === 1 ? 'hub has' : 'hubs have'} no saved map pin; use the address list.</p>}
         </figcaption>

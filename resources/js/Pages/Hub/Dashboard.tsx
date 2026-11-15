@@ -9,9 +9,7 @@ import {
     ChevronRight,
     Package,
     ScanLine,
-    Send,
     Store,
-    Truck,
 } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import {
@@ -153,29 +151,21 @@ export default function HubDashboard({
         {
             label: 'Parcels in custody',
             value: stats.parcels_in_custody,
-            helper: scope.mode === 'company' ? 'Across the network' : selectedHub?.code ?? 'Selected facility',
-            icon: Package,
             accent: false,
         },
         {
             label: 'Ready for dispatch',
             value: stats.ready_for_dispatch,
-            helper: 'Sorted or assigned',
-            icon: Send,
             accent: false,
         },
         {
             label: 'Needs attention',
             value: stats.exceptions,
-            helper: 'Failed or returning',
-            icon: AlertTriangle,
             accent: stats.exceptions > 0,
         },
         {
             label: 'Dispatched today',
             value: stats.dispatched_today,
-            helper: 'Verified outbound scans',
-            icon: Truck,
             accent: false,
         },
     ];
@@ -269,7 +259,6 @@ export default function HubDashboard({
                             <p className={`mt-1 text-[28px] font-bold leading-9 tabular-nums ${metric.accent ? 'text-warning' : 'text-ink-900'}`}>
                                 {metric.value}
                             </p>
-                            <p className="truncate text-xs text-ink-500">{metric.helper}</p>
                         </div>
                     ))}
                 </section>
@@ -282,10 +271,9 @@ export default function HubDashboard({
                             {/* 7-Day Parcel Movement */}
                             {(activeCategory === 'all' || activeCategory === 'pipeline') && (
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                    <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-ink-900">Parcel movement</h2>
-                                            <p className="text-xs text-zinc-500">Verified inbound and outbound scans · last 7 days</p>
+                                            <h2 className="text-base font-semibold text-ink-900">Parcel movement <span className="font-normal text-ink-500">· last 7 days</span></h2>
                                         </div>
                                         <div className="flex items-center gap-3 text-xs font-medium text-zinc-600">
                                             <span className="flex items-center gap-1.5">
@@ -327,12 +315,11 @@ export default function HubDashboard({
                                     ) : (
                                         <div className="flex items-center justify-between gap-4 px-5 py-6">
                                             <div className="flex items-center gap-3">
-                                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-700">
+                                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-100 text-ink-500">
                                                     <ScanLine className="h-4 w-4" />
                                                 </span>
                                                 <div>
-                                                    <p className="text-xs font-semibold text-ink-900">No parcel movement this week</p>
-                                                    <p className="text-xs text-zinc-500">Inbound and outbound scans will populate this 7-day chart.</p>
+                                                    <p className="text-sm font-medium text-ink-900">No parcel movement this week</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -343,10 +330,9 @@ export default function HubDashboard({
                             {/* Facilities Capacity & Load */}
                             {(activeCategory === 'all' || activeCategory === 'facilities') && (
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                                    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                    <div className="flex items-center justify-between px-5 pt-5 pb-3">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-ink-900">Facilities</h2>
-                                            <p className="text-xs text-zinc-500">Capacity and operational load</p>
+                                            <h2 className="text-base font-semibold text-ink-900">Facilities</h2>
                                         </div>
                                         <PortalLink
                                             href={route('hub.network')}
@@ -420,10 +406,9 @@ export default function HubDashboard({
                             {/* Needs Attention Worklist */}
                             {(activeCategory === 'all' || activeCategory === 'urgent') && (
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                                    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                    <div className="flex items-center justify-between px-5 pt-5 pb-3">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-ink-900">Needs attention</h2>
-                                            <p className="text-xs text-zinc-500">Ready for the next handover &amp; open work</p>
+                                            <h2 className="text-base font-semibold text-ink-900">Needs attention</h2>
                                         </div>
                                         <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-zinc-800">
                                             {totalAttentionCount} open
@@ -433,12 +418,11 @@ export default function HubDashboard({
                                     {activeAttention.length === 0 ? (
                                         <div className="flex items-center justify-between gap-3 px-5 py-5">
                                             <div className="flex items-center gap-3">
-                                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600">
+                                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success-soft text-success">
                                                     <CheckCircle2 className="h-4 w-4" />
                                                 </span>
                                                 <div>
-                                                    <p className="text-xs font-semibold text-ink-900">No urgent operational work</p>
-                                                    <p className="text-xs text-zinc-500">No attention items are recorded in this view.</p>
+                                                    <p className="text-sm font-medium text-ink-900">Nothing needs attention right now</p>
                                                 </div>
                                             </div>
                                             {scope.can_scan && (
@@ -474,10 +458,9 @@ export default function HubDashboard({
                             {/* Recent Scan Activity */}
                             {(activeCategory === 'all' || activeCategory === 'facilities') && (
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                                    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                    <div className="flex items-center justify-between px-5 pt-5 pb-3">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-ink-900">Recent scan activity</h2>
-                                            <p className="text-xs text-zinc-500">Latest verified custody events</p>
+                                            <h2 className="text-base font-semibold text-ink-900">Recent scan activity</h2>
                                         </div>
                                         <PortalLink
                                             href={route(scope.can_scan ? 'hub.scan.station' : 'hub.deliveries')}

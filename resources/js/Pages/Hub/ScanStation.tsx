@@ -1037,10 +1037,6 @@ export default function ScanStation({
                                                 )}
                                             </button>
                                         </div>
-
-                                        <div className="text-xs text-zinc-500">
-                                            Press <kbd className="rounded border border-zinc-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-700">Enter</kbd> or trigger laser wedge
-                                        </div>
                                     </form>
                                 </div>
 
@@ -1538,12 +1534,7 @@ export default function ScanStation({
                                     {/* Command Terminal Header */}
                                     <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                                Routing Terminal
-                                            </span>
-                                            <span className="rounded bg-slate-100/80 border border-zinc-200 px-2 py-0.5 text-[11px] font-bold text-zinc-700 tabular-nums">
-                                                {activeHub?.code || 'STATION'}
-                                            </span>
+                                            <h3 className="text-base font-semibold text-ink-900">Routing</h3>
                                         </div>
                                         <a
                                             href={`${basePath}/command-sheet`}
@@ -1552,51 +1543,48 @@ export default function ScanStation({
                                             className="inline-flex items-center gap-1.5 text-xs text-zinc-600 hover:text-brand-500 font-semibold transition"
                                         >
                                             <Printer className="h-3.5 w-3.5" />
-                                            <span>Print Sheet</span>
+                                            <span>Print commands</span>
                                         </a>
                                     </div>
 
                                     {/* Centered Idle Body */}
                                     <div className="px-5 pt-7 pb-5">
                                         <div className="flex flex-col items-center text-center py-4">
-                                            <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-500">
-                                                <QrCode className="w-5 h-5" />
+                                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-100 text-ink-500">
+                                                <QrCode className="w-5 h-5" aria-hidden="true" />
                                             </div>
-                                            <h4 className="mt-3 font-bold text-sm text-ink-900 font-sans">
+                                            <h4 className="mt-3 text-base font-semibold text-ink-900 font-sans">
                                                 Ready for the next parcel
                                             </h4>
-                                            <p className="mt-1 text-xs text-zinc-500">
-                                                Scan a waybill or barcode command to begin routing.
-                                            </p>
                                         </div>
 
                                         {/* Hardware & Keyboard Command Matrix */}
-                                        <div className="mt-6 border-t border-zinc-100 pt-4 space-y-2.5">
-                                            <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700">
-                                                <Zap className="h-3.5 w-3.5 text-brand-500" />
-                                                <span>2D / 1D Laser Wedge Commands</span>
-                                            </div>
-                                            <div className="space-y-2 text-xs">
+                                        <details className="group mt-6 border-t border-line-200 pt-3">
+                                            <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-control py-1 text-[13px] font-medium text-ink-700 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 [&::-webkit-details-marker]:hidden">
+                                                <Zap className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
+                                                <span>Scanner commands</span>
+                                            </summary>
+                                            <div className="mt-2 space-y-2 text-[13px]">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="text-zinc-600">Confirm intake or bag seal</span>
-                                                    <kbd className="rounded border border-zinc-200 bg-slate-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800">
+                                                    <kbd className="rounded-chip bg-surface-100 px-2 py-0.5 tabular-nums text-xs font-medium text-ink-700">
                                                         CMD-CONFIRM
                                                     </kbd>
                                                 </div>
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="text-zinc-600">Fast dispatch to route target</span>
-                                                    <kbd className="rounded border border-zinc-200 bg-slate-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800">
+                                                    <kbd className="rounded-chip bg-surface-100 px-2 py-0.5 tabular-nums text-xs font-medium text-ink-700">
                                                         CMD-DISPATCH
                                                     </kbd>
                                                 </div>
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="text-zinc-600">Reset terminal &amp; focus input</span>
-                                                    <kbd className="rounded border border-zinc-200 bg-slate-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800">
+                                                    <kbd className="rounded-chip bg-surface-100 px-2 py-0.5 tabular-nums text-xs font-medium text-ink-700">
                                                         CMD-CLEAR
                                                     </kbd>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </details>
                                     </div>
                                 </div>
                             )}
