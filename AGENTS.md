@@ -55,7 +55,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Customer-facing copy uses “Bag,” “Shopping Bag,” and “Add to Bag.” Follow existing database/class names such as `Cart` when required by the codebase.
 - No emojis in code, UI copy, comments, commit messages, or repository documentation.
 - Brand colors are the only fixed visual rule: primary red `#E00D42` with darker shades `#C20836` and `#A1052B` (Tailwind `brand` palette).
-- The website's visual design and UX are being redesigned from scratch. Previous layout, typography, radius, surface, border, button, and navigation styling rules are retired. Do not treat the current UI, older audits, or plan documents as the design reference; follow the new design direction the user provides.
+- The website's visual design and UX are being redesigned from scratch. Previous layout, typography, radius, surface, border, button, and navigation styling rules are retired. Do not treat the current UI, older audits, or plan documents as the design reference. `docs/DESIGN_SYSTEM.md` is the only design reference.
 - Prefer Inertia navigation and focused updates for ordinary same-origin actions. Preserve useful state and scroll, show saved-result feedback and avoid unnecessary full browser refreshes.
 - Keep layouts responsive and avoid continuous GPU-heavy effects.
 
@@ -75,6 +75,7 @@ Read only the documentation relevant to the task:
 - Courier: `docs/COURIER_FLOW.md`
 - Logistics/hub: `docs/SORTING_CENTER_LOGISTICS_FLOW.md` and `docs/MASTER_LOGISTICS_SPECIFICATION.md`
 - Admin/commission/governance: `docs/ADMIN_FLOW.md`
+- UI/UX design system for the redesign: `docs/DESIGN_SYSTEM.md`
 - Schema: inspect migrations/models first; use `docs/SCHEMA.md` as supporting context.
 - History only when requested: `docs/PROGRESS.md`.
 - Never read `docs/ERP_COMPONENTS_SPECIFICATION.md` or original PDFs for current business rules; they are preserved strictly as original historical curriculum material. Current authoritative rules are in `docs/new-docs-era/README.md` and `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md`.
