@@ -1,4 +1,5 @@
 import { RefreshCw } from 'lucide-react';
+import { buttonClasses } from '@/Components/ui';
 import { OrderTracking } from '@/types';
 import BuyerParcelProgress from '@/Components/BuyerParcelProgress';
 import { type BuyerOrderNotice, type BuyerProgressOrder } from '@/utils/buyerParcelProgress';
@@ -7,10 +8,10 @@ import { trackingDate } from '@/utils/orderTracking';
 export { trackingDate } from '@/utils/orderTracking';
 
 export function OrderTrackingStatus({ tracking }: { tracking?: OrderTracking }) {
-    const style = tracking?.tone === 'success' ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-        : tracking?.tone === 'attention' ? 'border-amber-300 bg-amber-50 text-amber-900'
-            : 'border-slate-300 bg-slate-100 text-slate-700';
-    return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${style}`}>{tracking?.status_label ?? 'Status not loaded'}</span>;
+    const style = tracking?.tone === 'success' ? 'bg-success-soft text-success'
+        : tracking?.tone === 'attention' ? 'bg-warning-soft text-warning'
+            : 'bg-info-soft text-info';
+    return <span className={`inline-flex rounded-chip px-2 py-0.5 text-xs font-medium ${style}`}>{tracking?.status_label ?? 'Status not loaded'}</span>;
 }
 
 export default function OrderTrackingPanel({ tracking, onRefresh, refreshing = false, error, compact = false, variant = 'default', buyerOrder, notices, onReview }: {
@@ -25,10 +26,10 @@ export default function OrderTrackingPanel({ tracking, onRefresh, refreshing = f
     onReview?: () => void;
 }) {
     const buyer = variant === 'buyer';
-    return <section aria-label={buyer ? 'Order progress' : 'Recorded parcel tracking'} className={`space-y-4 border border-slate-300 bg-white ${compact ? 'rounded-xl p-4' : buyer ? 'rounded-2xl p-4 sm:p-6 shadow-xs' : 'rounded-2xl p-6 sm:p-8 shadow-xs'}`}>
+    return <section aria-label={buyer ? 'Order progress' : 'Recorded parcel tracking'} className={`space-y-4 bg-white ${buyer ? 'space-y-5 rounded-card border border-line-200 p-5 sm:p-6' : compact ? 'rounded-xl border border-slate-300 p-4' : 'rounded-2xl border border-slate-300 p-6 sm:p-8 shadow-xs'}`}>
         <header className="flex flex-wrap items-start justify-between gap-3">
-            <div><h2 className="text-sm font-bold text-slate-900">{buyer ? 'Order progress' : 'Recorded parcel tracking'}</h2>{!buyer && <p className="mt-1 text-xs text-slate-500">Checked {trackingDate(tracking?.observed_at)} · Philippine time</p>}</div>
-            {onRefresh && <button type="button" onClick={onRefresh} disabled={refreshing} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw className="h-4 w-4" aria-hidden="true" />{refreshing ? 'Refreshing…' : 'Refresh tracking'}</button>}
+            <div><h2 className={buyer ? 'text-lg font-semibold text-ink-900' : 'text-sm font-bold text-slate-900'}>{buyer ? 'Order progress' : 'Recorded parcel tracking'}</h2>{!buyer && <p className="mt-1 text-xs text-slate-500">Checked {trackingDate(tracking?.observed_at)} · Philippine time</p>}</div>
+            {onRefresh && <button type="button" onClick={onRefresh} disabled={refreshing} className={buyer ? buttonClasses('secondary', 'sm') : 'inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50'}><RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />{refreshing ? 'Refreshing…' : 'Refresh tracking'}</button>}
         </header>
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         {!tracking ? <p className="text-sm text-slate-600">Tracking details are not loaded. Refresh to check the recorded journey.</p> : buyer ? <BuyerParcelProgress tracking={tracking} order={buyerOrder} notices={notices} onReview={onReview} reviewDisabled={refreshing} /> : <>
