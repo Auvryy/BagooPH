@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\BuyerReturnParcel;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
-use App\Models\DispatchEscalation;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
@@ -23,6 +22,7 @@ use App\Services\Logistics\DeliveryReturnService;
 use App\Services\Logistics\DispatchRecoveryService;
 use App\Services\Logistics\FleetDispatchEngine;
 use App\Services\Logistics\HandoverHoldService;
+use App\Services\Logistics\HubBatchScanService;
 use App\Services\Logistics\HubParcelWorkstationService;
 use App\Services\Logistics\HubScanTransferService;
 use App\Services\Logistics\LogisticsEligibilityService;
@@ -461,23 +461,6 @@ class LogisticsHubWorkstationController extends Controller
         ]);
     }
 
-    /**
-     * Corporate Enterprise Modules & Future Roadmap Explorer.
-     */
-    public function roadmap(Request $request): Response
-    {
-        $user = $request->user();
-        [$activeHub, $hubs] = $this->getActiveHub($request, $user);
-
-        $selectedModule = $request->query('module', 'personnel');
-
-        return Inertia::render('Hub/Roadmap', [
-            'activeHub' => $activeHub,
-            'hubs' => $hubs,
-            'selectedModule' => $selectedModule,
-        ]);
-    }
-
     public function placeResource(Request $request, LogisticsPlacementService $placements): JsonResponse|RedirectResponse
     {
         abort_unless($this->eligibility->isCompanyManager($request->user()), 403, 'Only an assigned Mother Hub manager can manage personnel placement.');
@@ -630,13 +613,15 @@ class LogisticsHubWorkstationController extends Controller
                 'originMotherHub',
                 'destinationBayanHub',
                 'destinationMotherHub',
-                'assignedRider',
+                'assignedRider.courierProfile',
                 'courier',
                 'currentHub',
                 'latestCustodyCheckpoint',
+                'latestOriginalCheckpoint',
                 'pickupClaim',
             ];
-            if (Schema::hasTable('dispatch_escalations')) {
+            $hasDispatchEscalations = Schema::hasTable('dispatch_escalations');
+            if ($hasDispatchEscalations) {
                 $withRelations[] = 'dispatchEscalation';
             }
 
@@ -658,9 +643,15 @@ class LogisticsHubWorkstationController extends Controller
 
             $etaService = app(EtaCalculationService::class);
             $ridersByHub = [];
+            $canScanByHub = [];
             $isCompanyManager = $user && ($user->isAdmin() || $this->eligibility->isCompanyManager($user));
+            $paginated = $query->latest()->paginate(15)->withPath($basePath.'/deliveries')->withQueryString();
+            $preloadedGuidance = $workstation->preloadGuidanceContext($paginated->getCollection(), $activeHub, $user);
+            if ($activeHub && array_key_exists('can_scan', $preloadedGuidance)) {
+                $canScanByHub[$activeHub->id] = (bool) $preloadedGuidance['can_scan'];
+            }
 
-            return $query->latest()->paginate(15)->withPath($basePath.'/deliveries')->withQueryString()->through(function ($d) use ($activeHub, $workstation, $user, $eligibleRiders, $basePath, $etaService, &$ridersByHub, $isCompanyManager) {
+            return $paginated->through(function ($d) use ($activeHub, $workstation, $user, $eligibleRiders, $basePath, $etaService, &$ridersByHub, &$canScanByHub, $isCompanyManager, $hasDispatchEscalations, $preloadedGuidance) {
                 $isAwaitingOriginIntake = $activeHub
                     && $d->status === OrderStateMachineService::STATUS_PICKED_UP
                     && $d->origin_bayan_hub_id === $activeHub->id
@@ -677,7 +668,7 @@ class LogisticsHubWorkstationController extends Controller
                     ? $d->destinationBayanHub
                     : ($isFirstMilePreHandover ? $d->originBayanHub : null);
 
-                $canAuthorizeReassign = $user && ($isCompanyManager || ($phaseHub && $this->eligibility->canScan($user, $phaseHub)));
+                $canAuthorizeReassign = $user && ($isCompanyManager || ($phaseHub && ($canScanByHub[$phaseHub->id] ??= $this->eligibility->canScan($user, $phaseHub))));
                 $reassignRiders = [];
                 if ($canAuthorizeReassign && $phaseHub) {
                     if (! array_key_exists($phaseHub->id, $ridersByHub)) {
@@ -718,10 +709,10 @@ class LogisticsHubWorkstationController extends Controller
                     'payment_method' => $d->order?->payment_method ?? 'cod',
                     'item_count' => $d->order?->items?->count() ?? 1,
                     'created_at' => $d->created_at->format('M d, Y H:i'),
-                    'guidance' => $workstation->guidance($d, $activeHub, $user, $eligibleRiders(), $basePath),
+                    'guidance' => $workstation->guidance($d, $activeHub, $user, $eligibleRiders(), $basePath, $preloadedGuidance),
                     'eta' => $etaService->present($d, $d->order, false),
-                    'dispatch_delay_label' => Schema::hasTable('dispatch_escalations') ? $d->dispatchEscalation?->dispatch_delay_label : null,
-                    'dispatch_escalation_tier' => Schema::hasTable('dispatch_escalations') ? $d->dispatchEscalation?->current_tier : null,
+                    'dispatch_delay_label' => $hasDispatchEscalations ? $d->dispatchEscalation?->dispatch_delay_label : null,
+                    'dispatch_escalation_tier' => $hasDispatchEscalations ? $d->dispatchEscalation?->current_tier : null,
                     'can_reassign_first_mile' => $canAuthorizeReassign && $isFirstMilePreHandover,
                     'can_reassign_final_mile' => $canAuthorizeReassign && $isFinalMilePreDeparture,
                     'reassign_riders' => $reassignRiders,
@@ -736,7 +727,7 @@ class LogisticsHubWorkstationController extends Controller
             'counts' => fn () => $workstation->counts($activeHub),
             'eligibleRiders' => $eligibleRiders,
             'basePath' => $basePath,
-            'canScan' => $activeHub && $user->isLogistics() && $this->eligibility->canScan($user, $activeHub),
+            'canScan' => $activeHub && $user->isLogistics() && ($canScanByHub[$activeHub->id] ??= $this->eligibility->canScan($user, $activeHub)),
             'filters' => [
                 'search' => $search,
                 'status' => $statusFilter,
@@ -823,7 +814,7 @@ class LogisticsHubWorkstationController extends Controller
         $basePath = $request->is('hub/*') ? '/hub' : '';
         $previous = parse_url(url()->previous());
         $path = $previous['path'] ?? '';
-        $pages = array_map(fn ($page) => $basePath.'/'.$page, ['dashboard', 'network', 'fleet', 'deliveries', 'scan', 'counter', 'manifests', 'roadmap']);
+        $pages = array_map(fn ($page) => $basePath.'/'.$page, ['dashboard', 'network', 'fleet', 'deliveries', 'scan', 'counter', 'manifests']);
         $query = [];
         if (($previous['host'] ?? $request->getHost()) === $request->getHost() && in_array($path, $pages, true)) {
             parse_str($previous['query'] ?? '', $query);
@@ -1020,24 +1011,11 @@ class LogisticsHubWorkstationController extends Controller
         if (str_starts_with($barcode, 'BAG-') || str_starts_with($barcode, 'RMB-')) {
             return $this->handleMotherBagScan($request, $barcode, $hub, $validated);
         }
-        $matches = Delivery::with([
-            'order.items.product',
-            'order.buyer',
-            'order.shop',
-            'originBayanHub',
-            'originMotherHub',
-            'destinationBayanHub',
-            'destinationMotherHub',
-            'assignedRider',
-        ])
-            ->useWritePdo()
-            ->where('tracking_number', $barcode)
-            ->orWhereHas('order', fn ($q) => $q->where('order_number', $barcode))
-            ->limit(2)->get();
-        if ($matches->count() > 1) {
+        $lookup = app(HubBatchScanService::class)->findUniqueDelivery($barcode);
+        if ($lookup['ambiguous'] ?? false) {
             throw ValidationException::withMessages(['barcode' => 'This code matches more than one parcel and needs review. Use its unique tracking barcode.']);
         }
-        $delivery = $matches->first();
+        $delivery = $lookup['delivery'];
 
         if (! $delivery) {
             if ($request->wantsJson()) {
@@ -1235,6 +1213,115 @@ class LogisticsHubWorkstationController extends Controller
         return back()->with('scan_result', $payload);
     }
 
+    /**
+     * Explicit 1-scan direct confirmation or offline/burst batch scan replay.
+     */
+    public function scanBatch(Request $request, HubBatchScanService $batchService): JsonResponse
+    {
+        abort_unless($request->user()?->isLogistics(), 403, 'Only logistics operators may scan parcel custody.');
+
+        $inputs = app(WaybillScanInputService::class);
+        $rawItems = is_array($request->input('items')) ? $request->input('items') : [];
+        $normalizedItems = array_map(function ($item) use ($inputs) {
+            if (! is_array($item)) {
+                return $item;
+            }
+            $normalized = $inputs->normalize([
+                'barcode' => $item['barcode'] ?? null,
+                'action' => $item['expected_action'] ?? null,
+                'notes' => $item['notes'] ?? null,
+            ], allowTrackingUrl: true);
+
+            return array_merge($item, [
+                'barcode' => $normalized['barcode'] ?? ($item['barcode'] ?? null),
+                'expected_action' => $normalized['action'] ?? ($item['expected_action'] ?? null),
+                'notes' => $normalized['notes'] ?? ($item['notes'] ?? null),
+            ]);
+        }, $rawItems);
+
+        $topNormalized = $inputs->normalize([
+            'notes' => $request->input('notes'),
+            'action' => $request->input('pinned_action'),
+        ]);
+        $request->merge([
+            'notes' => $topNormalized['notes'] ?? $request->input('notes'),
+            'pinned_action' => $topNormalized['action'] ?? $request->input('pinned_action'),
+            'items' => $normalizedItems,
+        ]);
+
+        $validated = $request->validate([
+            'hub_id' => ['bail', 'nullable', new AsciiPositiveInteger, 'integer', 'exists:logistics_hubs,id'],
+            'direct_mode' => ['nullable', 'boolean'],
+            'pinned_action' => ['nullable', 'string', 'max:100', 'not_in:AUTO_PROGRESS', 'regex:/\A[A-Z_]+\z/'],
+            'notes' => $inputs->notesRules(),
+            'continuous' => ['prohibited'],
+            'auto_advance' => ['prohibited'],
+            'actor_id' => ['prohibited'],
+            'operator_id' => ['prohibited'],
+            'scanned_by_id' => ['prohibited'],
+            'custody_before' => ['prohibited'],
+            'custody_after' => ['prohibited'],
+            'items' => ['required', 'array', 'min:1', 'max:'.HubBatchScanService::MAX_BATCH_SIZE],
+            'items.*.barcode' => ['required', 'string', 'max:255'],
+            'items.*.request_token' => ['required', 'uuid'],
+            'items.*.location_barcode' => ['nullable', 'string', 'max:100'],
+            'items.*.expected_action' => ['nullable', 'string', 'max:100', 'not_in:AUTO_PROGRESS', 'regex:/\A[A-Z_]+\z/'],
+            'items.*.notes' => $inputs->notesRules(),
+            'items.*.client_scanned_at' => ['nullable', 'date'],
+            'items.*.continuous' => ['prohibited'],
+            'items.*.auto_advance' => ['prohibited'],
+            'items.*.actor_id' => ['prohibited'],
+            'items.*.operator_id' => ['prohibited'],
+            'items.*.scanned_by_id' => ['prohibited'],
+        ]);
+
+        [$hub] = $this->getActiveHub($request, $request->user());
+        abort_unless($hub && $this->eligibility->canScan($request->user(), $hub), 403, 'An active handler assignment is required for floor scans.');
+
+        $sourceChannel = $request->is('api/v1/logistics/*') ? 'api' : 'web';
+        $result = $batchService->processBatch($request->user(), $hub, $validated, $sourceChannel);
+
+        $firstItem = $result['items'][0] ?? null;
+        if (($validated['direct_mode'] ?? false)
+            && count($result['items']) === 1
+            && is_array($firstItem)
+            && in_array($firstItem['outcome'] ?? null, ['confirmed', 'duplicate_replay'], true)
+            && ! empty($firstItem['delivery_id'])) {
+            $updatedDelivery = Delivery::with([
+                'order.items.product',
+                'order.buyer',
+                'originBayanHub',
+                'originMotherHub',
+                'destinationBayanHub',
+                'destinationMotherHub',
+                'currentHub',
+            ])->find($firstItem['delivery_id']);
+
+            if ($updatedDelivery) {
+                $nextPrompt = app(LogisticsRoutingEngine::class)->getDynamicScanPrompt($updatedDelivery, $hub);
+                $requiresNextConfirmation = ! in_array($nextPrompt['action'], HubBatchScanService::NON_CONFIRMABLE_ACTIONS, true);
+                $result['scan_result'] = $this->scanPayload(
+                    delivery: $updatedDelivery,
+                    hub: $hub,
+                    prompt: $nextPrompt,
+                    message: $firstItem['outcome'] === 'duplicate_replay'
+                        ? "Replay verified for parcel #{$updatedDelivery->tracking_number}."
+                        : ($requiresNextConfirmation
+                            ? "Custody action recorded for parcel #{$updatedDelivery->tracking_number}. The next facility action is ready."
+                            : "Custody action recorded for parcel #{$updatedDelivery->tracking_number}."),
+                    requiresConfirmation: $requiresNextConfirmation,
+                    confirmed: true,
+                    scannedLocation: filled($validated['items'][0]['location_barcode'] ?? null)
+                        ? trim((string) $validated['items'][0]['location_barcode'])
+                        : null,
+                    actor: $request->user(),
+                );
+            }
+        }
+
+        return $this->scanResponse($result);
+    }
+
     private function scanPayload(
         Delivery $delivery,
         LogisticsHub $hub,
@@ -1354,22 +1441,7 @@ class LogisticsHubWorkstationController extends Controller
 
     private function scanTargetForAction(string $action): ?string
     {
-        return match ($action) {
-            'RECEIVE_NEXT_MOTHER_HUB' => OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
-            'RECEIVE_NEXT_BAYAN_HUB' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
-            'RECEIVE_FROM_PICKUP_RIDER' => OrderStateMachineService::STATUS_ARRIVED_AT_ORIGIN_HUB,
-            'DISPATCH_TO_FEEDER' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_MOTHER_HUB,
-            'RECEIVE_AT_MOTHER_HUB' => OrderStateMachineService::STATUS_ARRIVED_AT_MOTHER_HUB,
-            'SORT_TO_LINE_HAUL' => OrderStateMachineService::STATUS_SORTED_TO_LINE_HAUL,
-            'DISPATCH_LINE_HAUL' => OrderStateMachineService::STATUS_IN_TRANSIT_TO_DEST_HUB,
-            'RECEIVE_AT_DESTINATION_HUB' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
-            'STAGE_FOR_PICKUP' => OrderStateMachineService::STATUS_READY_FOR_HUB_PICKUP,
-            'RECEIVE_FAILED_DELIVERY' => OrderStateMachineService::STATUS_DELIVERY_FAILED,
-            'RELEASE_APPROVED_RETRY' => OrderStateMachineService::STATUS_ARRIVED_AT_DEST_HUB,
-            'STAGE_SELLER_RETURN' => OrderStateMachineService::STATUS_RETURN_TO_SENDER,
-            'START_EXPIRED_PICKUP_RETURN' => OrderStateMachineService::STATUS_RETURN_TO_SENDER,
-            default => null,
-        };
+        return HubBatchScanService::targetStatusForAction($action);
     }
 
     /**

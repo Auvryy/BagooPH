@@ -4,9 +4,12 @@ namespace App\Services\Logistics;
 
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\HandoverIssue;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
+use App\Models\ParcelRecoveryCase;
 use App\Models\PickupClaimEvent;
+use App\Models\ShipmentFinancialPlan;
 use App\Models\User;
 use App\Rules\PhilippineContact;
 use App\Services\Finance\ShipmentLossCustody;
@@ -14,6 +17,7 @@ use App\Services\Orders\OrderTrackingService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 class HubParcelWorkstationService
 {
@@ -150,12 +154,135 @@ class HubParcelWorkstationService
         ];
     }
 
-    public function guidance(Delivery $parcel, LogisticsHub $hub, User $actor, Collection $riders, string $base): array
+    /**
+     * Batch-preload shared per-page workstation state to prevent N+1 queries on queue tables.
+     *
+     * @return array<string, mixed>
+     */
+    public function preloadGuidanceContext(Collection $parcels, ?LogisticsHub $hub, User $actor): array
+    {
+        if (! $hub || $parcels->isEmpty()) {
+            return [];
+        }
+
+        $deliveryIds = $parcels->pluck('id')->filter()->values();
+        $companyIds = $parcels->pluck('logistics_company_id')->filter()->unique()->values();
+
+        $canScan = $actor->isLogistics() && $this->eligibility->canScan($actor, $hub);
+        $managerByCompany = [];
+        if ($actor->isLogistics()) {
+            foreach ($companyIds as $companyId) {
+                $managerByCompany[$companyId] = $this->eligibility->isCompanyManager($actor, $companyId);
+            }
+        }
+
+        $lossPlanDeliveryIds = Schema::hasTable('shipment_financial_plans')
+            ? ShipmentFinancialPlan::query()
+                ->where('kind', 'transit_loss')
+                ->whereIn('delivery_id', $deliveryIds)
+                ->whereNull('buyer_return_case_id')
+                ->pluck('delivery_id', 'delivery_id')
+                ->all()
+            : [];
+
+        $handoverHolds = Schema::hasTable('handover_issues')
+            ? HandoverIssue::query()
+                ->whereIn('active_delivery_id', $deliveryIds)
+                ->where('state', 'needs_recovery')
+                ->get()
+                ->keyBy('active_delivery_id')
+            : collect();
+
+        $outgoingByDelivery = [];
+        $outgoing = app(LogisticsManifestService::class)->readable($actor)
+            ->where('source_hub_id', $hub->id)
+            ->whereIn('status', ['draft', 'sealed'])
+            ->whereHas('parcels', fn ($members) => $members->whereIn('delivery_id', $deliveryIds)->where('included', true))
+            ->with(['parcels' => fn ($members) => $members->whereIn('delivery_id', $deliveryIds)->where('included', true)])
+            ->latest('id')
+            ->get();
+
+        foreach ($outgoing as $manifest) {
+            foreach ($manifest->parcels as $member) {
+                $outgoingByDelivery[$member->delivery_id] ??= $manifest;
+            }
+        }
+
+        $manifestIds = $parcels
+            ->filter(fn ($parcel) => ($parcel->latestCustodyCheckpoint?->custody_after['kind'] ?? null) === 'manifest')
+            ->map(fn ($parcel) => $parcel->latestCustodyCheckpoint?->custody_after['manifest_id'] ?? null)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $incomingByKey = [];
+        if ($manifestIds->isNotEmpty()) {
+            $incoming = app(LogisticsManifestService::class)->readable($actor)
+                ->whereIn('id', $manifestIds)
+                ->where('destination_hub_id', $hub->id)
+                ->where('status', 'dispatched')
+                ->with(['parcels' => fn ($members) => $members->whereIn('delivery_id', $deliveryIds)->where('included', true)->whereNull('received_at')])
+                ->get();
+
+            foreach ($incoming as $manifest) {
+                foreach ($manifest->parcels as $member) {
+                    $incomingByKey[$manifest->id.':'.$member->delivery_id] = $manifest;
+                }
+            }
+        }
+
+        $receiptRefs = $parcels
+            ->map(fn ($parcel) => $parcel->latestCustodyCheckpoint?->custody_after['manifest_scan_reference'] ?? null)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $receiptsByRef = collect();
+        if ($receiptRefs->isNotEmpty()) {
+            $receiptsByRef = LogisticsManifestEvent::with(['manifest', 'parcel'])
+                ->whereIn('reference', $receiptRefs)
+                ->where('event_type', 'parcel_received')
+                ->where('hub_id', $hub->id)
+                ->whereHas('parcel', fn ($member) => $member->whereIn('delivery_id', $deliveryIds))
+                ->get()
+                ->groupBy('reference');
+        }
+
+        $recoveryDeliveryIds = Schema::hasTable('parcel_recovery_cases')
+            ? ParcelRecoveryCase::query()
+                ->whereIn('active_delivery_id', $deliveryIds)
+                ->pluck('active_delivery_id', 'active_delivery_id')
+                ->all()
+            : [];
+
+        $eligibleHubIds = LogisticsHub::eligible()
+            ->where('logistics_company_id', $hub->logistics_company_id)
+            ->pluck('id', 'id')
+            ->all();
+
+        return [
+            'can_scan' => $canScan,
+            'manager_by_company' => $managerByCompany,
+            'loss_plan_delivery_ids' => $lossPlanDeliveryIds,
+            'handover_holds' => $handoverHolds,
+            'outgoing_by_delivery' => $outgoingByDelivery,
+            'incoming_by_key' => $incomingByKey,
+            'receipts_by_ref' => $receiptsByRef,
+            'recovery_delivery_ids' => $recoveryDeliveryIds,
+            'eligible_hub_ids' => $eligibleHubIds,
+        ];
+    }
+
+    public function guidance(Delivery $parcel, LogisticsHub $hub, User $actor, Collection $riders, string $base, ?array $preloaded = null): array
     {
         $custody = $parcel->latestCustodyCheckpoint?->custody_after ?? ['kind' => 'unknown'];
         $atHub = ($custody['kind'] ?? null) === 'hub' && ($custody['hub_id'] ?? null) === $hub->id && $parcel->current_hub_id === $hub->id;
-        $handler = $actor->isLogistics() && $this->eligibility->canScan($actor, $hub);
-        $manager = $actor->isLogistics() && $this->eligibility->isCompanyManager($actor, $parcel->logistics_company_id);
+        $handler = $preloaded !== null && array_key_exists('can_scan', $preloaded)
+            ? (bool) $preloaded['can_scan']
+            : ($actor->isLogistics() && $this->eligibility->canScan($actor, $hub));
+        $manager = $preloaded !== null && array_key_exists($parcel->logistics_company_id, $preloaded['manager_by_company'] ?? [])
+            ? (bool) $preloaded['manager_by_company'][$parcel->logistics_company_id]
+            : ($actor->isLogistics() && $this->eligibility->isCompanyManager($actor, $parcel->logistics_company_id));
         $guide = [
             'stage' => self::STAGES[$parcel->status] ?? 'Unrecognized parcel stage',
             'order_status' => OrderTrackingService::label($parcel->order, $parcel),
@@ -168,7 +295,11 @@ class HubParcelWorkstationService
         $next = fn (string $step, string $responsible, string $action = 'wait', bool $canAct = false, ?string $path = null, ?string $blocker = null): array => [...$guide, 'next_step' => $step, 'responsible' => $responsible, 'action' => $action, 'can_act' => $canAct,
             'href' => $canAct && $path ? $base.$path.'?hub_id='.$hub->id : null, 'blocker' => $blocker];
 
-        if ($loss = app(ShipmentLossCustody::class)->authority($parcel)) {
+        $hasLossPlanCheck = $preloaded !== null && array_key_exists('loss_plan_delivery_ids', $preloaded);
+        $loss = (! $hasLossPlanCheck || isset($preloaded['loss_plan_delivery_ids'][$parcel->id]))
+            ? app(ShipmentLossCustody::class)->authority($parcel)
+            : null;
+        if ($loss) {
             $salvaged = app(ShipmentLossCustody::class)->releasedReconciliation($parcel)?->outcome_path === 'already_settled_salvage';
             $found = ($custody['kind'] ?? null) === 'loss_quarantine';
             if ($salvaged) {
@@ -184,7 +315,10 @@ class HubParcelWorkstationService
                 'action' => 'recovery', 'can_act' => $handler, 'href' => $handler ? '/loss-found/'.$loss->id.'?hub_id='.$hub->id : null];
         }
 
-        if ($held = app(HandoverHoldService::class)->active($parcel)) {
+        $held = $preloaded !== null && array_key_exists('handover_holds', $preloaded)
+            ? $preloaded['handover_holds']->get($parcel->id)
+            : app(HandoverHoldService::class)->active($parcel);
+        if ($held) {
             $readable = app(HandoverIssueService::class)->readable($actor)->whereKey($held->id)->exists();
 
             return [...$guide, 'next_step' => 'Continue supervised handover recovery', 'responsible' => 'Independent reviewer, named holder and receiving hub handler',
@@ -237,21 +371,25 @@ class HubParcelWorkstationService
             return $next('Receive the physical parcel from its rider', 'Assigned receiving handler', 'scan', $handler, '/scan', $handler ? null : 'An assigned handler must record the intake scan.');
         }
         if (($custody['kind'] ?? null) === 'manifest') {
-            $incoming = app(LogisticsManifestService::class)->readable($actor)
-                ->whereKey($custody['manifest_id'] ?? 0)->where('logistics_company_id', $parcel->logistics_company_id)
-                ->where('destination_hub_id', $hub->id)->where('status', 'dispatched')
-                ->whereHas('parcels', fn ($members) => $members->where('delivery_id', $parcel->id)->where('included', true)->whereNull('received_at'))
-                ->first();
+            $incoming = $preloaded !== null && array_key_exists('incoming_by_key', $preloaded)
+                ? ($preloaded['incoming_by_key'][($custody['manifest_id'] ?? 0).':'.$parcel->id] ?? null)
+                : app(LogisticsManifestService::class)->readable($actor)
+                    ->whereKey($custody['manifest_id'] ?? 0)->where('logistics_company_id', $parcel->logistics_company_id)
+                    ->where('destination_hub_id', $hub->id)->where('status', 'dispatched')
+                    ->whereHas('parcels', fn ($members) => $members->where('delivery_id', $parcel->id)->where('included', true)->whereNull('received_at'))
+                    ->first();
             if ($incoming) {
                 return $next('Receive the parcel on its incoming manifest', 'Assigned receiving handler', 'manifest', $handler,
                     '/manifests/'.$incoming->id, $handler ? null : 'An assigned receiving handler must record the manifest receipt.');
             }
         }
         if ($atHub) {
-            $outgoing = app(LogisticsManifestService::class)->readable($actor)
-                ->where('source_hub_id', $hub->id)->whereIn('status', ['draft', 'sealed'])
-                ->whereHas('parcels', fn ($members) => $members->where('delivery_id', $parcel->id)->where('included', true))
-                ->latest('id')->first();
+            $outgoing = $preloaded !== null && array_key_exists('outgoing_by_delivery', $preloaded)
+                ? ($preloaded['outgoing_by_delivery'][$parcel->id] ?? null)
+                : app(LogisticsManifestService::class)->readable($actor)
+                    ->where('source_hub_id', $hub->id)->whereIn('status', ['draft', 'sealed'])
+                    ->whereHas('parcels', fn ($members) => $members->where('delivery_id', $parcel->id)->where('included', true))
+                    ->latest('id')->first();
             if ($outgoing) {
                 return $next($outgoing->status === 'draft' ? 'Finish loading and seal the existing manifest' : 'Record departure on the sealed manifest',
                     'Assigned source-hub handler', 'manifest', $handler, '/manifests/'.$outgoing->id,
@@ -262,10 +400,15 @@ class HubParcelWorkstationService
             return $next('Review custody before another hub action', 'Mother Hub manager', blocker: 'The selected facility is not the recorded parcel holder.');
         }
         if ($custody['manifest_scan_reference'] ?? null) {
-            $receipt = LogisticsManifestEvent::with('manifest')->where('reference', $custody['manifest_scan_reference'])
-                ->where('event_type', 'parcel_received')->where('hub_id', $hub->id)
-                ->whereHas('parcel', fn ($member) => $member->where('delivery_id', $parcel->id))
-                ->whereHas('manifest', fn ($manifest) => $manifest->where('logistics_company_id', $parcel->logistics_company_id))->first();
+            $receipt = $preloaded !== null && array_key_exists('receipts_by_ref', $preloaded)
+                ? collect($preloaded['receipts_by_ref']->get($custody['manifest_scan_reference'], []))->first(
+                    fn ($event) => $event->parcel?->delivery_id === $parcel->id
+                        && $event->manifest?->logistics_company_id === $parcel->logistics_company_id
+                )
+                : LogisticsManifestEvent::with('manifest')->where('reference', $custody['manifest_scan_reference'])
+                    ->where('event_type', 'parcel_received')->where('hub_id', $hub->id)
+                    ->whereHas('parcel', fn ($member) => $member->where('delivery_id', $parcel->id))
+                    ->whereHas('manifest', fn ($manifest) => $manifest->where('logistics_company_id', $parcel->logistics_company_id))->first();
             if ($receipt && $receipt->manifest->status !== 'closed') {
                 return $next('Finish the incoming manifest receipt and closure', 'Assigned receiving handler records receipts and closes',
                     'manifest', $manager || $handler, '/manifests/'.$receipt->manifest_id,
@@ -300,6 +443,25 @@ class HubParcelWorkstationService
             }
 
             return [...$next('Verify buyer identity, claim code and exact COD before release', 'Assigned counter handler', 'counter', $handler, '/counter', $handler ? null : 'An assigned counter handler must verify and release the parcel.'), 'ready_for_collection' => true];
+        }
+
+        $canFastOriginDispatch = $preloaded !== null
+            && ! isset($preloaded['loss_plan_delivery_ids'][$parcel->id])
+            && ! isset($preloaded['recovery_delivery_ids'][$parcel->id])
+            && $parcel->status === 'arrived_at_origin_hub'
+            && $parcel->current_hub_id === $hub->id
+            && $hub->id === $parcel->origin_bayan_hub_id
+            && $parcel->order?->logistics_flow_version >= 2
+            && $parcel->origin_mother_hub_id
+            && isset($preloaded['eligible_hub_ids'][$parcel->origin_mother_hub_id])
+            && isset($preloaded['eligible_hub_ids'][$hub->id])
+            && $parcel->originMotherHub?->tier === 'regional_mother_hub'
+            && is_array($parcel->route_hub_ids)
+            && ($parcel->route_hub_ids[0] ?? null) === $hub->id
+            && ($parcel->route_hub_ids[1] ?? null) === $parcel->origin_mother_hub_id;
+
+        if ($canFastOriginDispatch) {
+            return $next('Prepare the next manifest and record its load and dispatch scans', 'Assigned source-hub handler prepares, loads and dispatches', 'manifest', $manager || $handler, '/manifests', ($manager || $handler) ? null : 'An assigned source-hub handler must continue the transfer.');
         }
 
         $prompt = $this->routing->getDynamicScanPrompt($parcel, $hub);

@@ -1,6 +1,6 @@
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildSync } from 'esbuild';
@@ -23,7 +23,7 @@ const ui = await import(pathToFileURL(path).href);
 globalThis.route = (name, parameter) => !name ? { current: () => false, has: () => true } : `/${name.replaceAll('.', '/')}/${typeof parameter === 'object' ? Object.values(parameter).join('/') : parameter ?? ''}`;
 after(() => delete globalThis.route);
 const now = '2026-10-19T02:00:00+08:00';
-const slot = { id: 2, name: 'Bagoo morning sale', kind: 'flash', price: '299.00', starts_at: '2026-10-19T02:05:00+08:00', ends_at: '2026-10-19T02:30:00+08:00', remaining_quantity: 2 };
+const slot = { id: 2, name: 'Bagoo morning sale', kind: 'store', price: '299.00', starts_at: '2026-10-19T02:05:00+08:00', ends_at: '2026-10-19T02:30:00+08:00' };
 const shop = { id: 1, name: 'Bagoo Crafts', city: 'Taguig City', slug: 'bagoo-crafts' };
 const product = { id: 1, name: 'Everyday Bag', slug: 'everyday-bag', stock: 10, price: '500.00', shop, status: 'active', sales_count: 0, rating: null,
     sale_offer: { effective_price: 299, server_now: now, active: slot, upcoming: null } };
@@ -46,9 +46,9 @@ test('vacation listings remain links and disable the quick purchase action', () 
     assert.match(html, /<a /);
     assert.match(html, /<button[^>]*\sdisabled(?:[\s=>])/);
 });
-test('mixed flash and ordinary quantities have distinct prices and quantities', () => {
-    const html = renderToStaticMarkup(createElement(ui.Segments, { quantity: 3, unitPrice: 299, segments: [{ quantity: 1, unit_price: 299, subtotal: 299, sale_kind: 'flash' }, { quantity: 2, unit_price: 399, subtotal: 798, sale_kind: 'store' }], detailed: true }));
-    assert.match(html, /1 × ₱299\.00/); assert.match(html, /2 × ₱399\.00/); assert.match(html, /₱798\.00/); assert.match(html, /Flash/);
+test('mixed store sale and ordinary quantities show sale pricing segments', () => {
+    const html = renderToStaticMarkup(createElement(ui.Segments, { quantity: 3, unitPrice: 299, segments: [{ quantity: 1, unit_price: 299, subtotal: 299, sale_kind: 'store' }, { quantity: 2, unit_price: 399, subtotal: 798 }], detailed: true }));
+    assert.match(html, /1 × ₱299\.00/); assert.match(html, /2 × ₱399\.00/); assert.match(html, /₱798\.00/); assert.match(html, /Sale/);
     assert.doesNotMatch(html, /3 × ₱299\.00/);
 });
 test('matrix stock shows each pair independently and preserves sold out zero counts', () => {
@@ -63,17 +63,23 @@ test('countdowns handle boundaries and use the supplied server clock', () => {
     assert.equal(ui.saleCountdown(slot.ends_at, Date.parse(slot.ends_at) + 1000), 'Updating sale');
     assert.equal(ui.saleCountdown('invalid', Date.parse(now)), 'Updating sale');
 });
-test('active sale panel shows real quota and explains split pricing', async () => {
-    const html = await render(ui.Sale, 'Buyer/ProductDetail', { product });
-    assert.match(html, /2 promotional units remain/); assert.match(html, /Ends in 00:30:00/);
-    assert.match(html, /shown separately at checkout/); assert.doesNotMatch(html, /Remind me/);
+test('active store sale panel shows countdown without flash quota or reminder controls', async () => {
+    const storeProduct = { ...product, sale_offer: { ...product.sale_offer, active: { ...product.sale_offer.active, kind: 'store' }, upcoming: null } };
+    const html = await render(ui.Sale, 'Buyer/ProductDetail', { product: storeProduct });
+    assert.match(html, /Ends in 00:30:00/);
+    assert.doesNotMatch(html, /promotional units remain|Remind me/);
 });
-test('upcoming sale offers an owned reminder and permits removing a recorded subscription', async () => {
-    const upcoming = { ...product, sale_offer: { ...product.sale_offer, active: null, upcoming: slot } };
-    const normal = await render(ui.Sale, 'Buyer/ProductDetail', { product: upcoming, reminder: { sale_id: 2, subscribed: false, notified: false } });
-    assert.match(normal, /Remind me/); assert.match(normal, /10 minutes/);
-    const subscribed = await render(ui.Sale, 'Buyer/ProductDetail', { product: upcoming, reminder: { sale_id: 2, subscribed: true, notified: true } });
-    assert.match(subscribed, /Remove reminder/); assert.doesNotMatch(subscribed, /<button[^>]*\sdisabled(?:[\s=>])/);
+
+test('sticky headers sit below modals and homepage excludes flash deals', () => {
+    const buyerLayout = readFileSync('resources/js/Layouts/BuyerLayout.tsx', 'utf8');
+    const marketLayout = readFileSync('resources/js/Layouts/MarketplaceLayout.tsx', 'utf8');
+    const home = readFileSync('resources/js/Pages/Buyer/Home.tsx', 'utf8');
+    const sellerSales = readFileSync('resources/js/Pages/Seller/ProductSales.tsx', 'utf8');
+    assert.match(buyerLayout, /sticky top-0 z-30/);
+    assert.doesNotMatch(buyerLayout, /<header[^>]*z-\[100\]/);
+    assert.match(marketLayout, /sticky top-0 z-30/);
+    assert.doesNotMatch(home, /FlashDealCard|flashSaleProducts|#flash-deals/);
+    assert.doesNotMatch(sellerSales, /Auto-fill next 4-hour flash deal slot|Promotional quantity/);
 });
 test('seller sale page provides real settings and an honest empty state', async () => {
     const html = await render(ui.Sales, 'Seller/ProductSales', { shop, product, sales: { data: [], current_page: 1, last_page: 1, per_page: 20, total: 0, links: [] } }, 'seller');

@@ -27,7 +27,7 @@ function SackControls({ trip, bag, basePath }: {trip: PackingTrip; bag: ReturnSa
     useEffect(() => { form.setData({version: trip.version, bag_version: bag.version, request_token: crypto.randomUUID(), action: '', barcode: '', return_barcode: '', seal_number: '', seal_intact: false, notes: ''}); form.clearErrors(); }, [trip.version, bag.version]);
     if (!actions.length) return null;
     const action = form.data.action;
-    return <form aria-label={`Manage sack ${bag.physical_tag}`} className="mt-4 space-y-3 border-t border-rose-100 pt-4" onSubmit={event => {
+    return <form aria-label={`Manage sack ${bag.physical_tag}`} className="mt-4 space-y-3 border-t border-zinc-200 pt-4" onSubmit={event => {
         event.preventDefault();
         if (pending.current || form.processing || !actions.includes(action)) return;
         pending.current = true;
@@ -46,7 +46,7 @@ function SackControls({ trip, bag, basePath }: {trip: PackingTrip; bag: ReturnSa
                 {['seal', 'open'].includes(action) && <label className="block text-xs font-semibold text-slate-700">Numbered seal<input required autoComplete="off" maxLength={80} className={`${hubInput} mt-1.5`} value={form.data.seal_number} onChange={event => form.setData('seal_number', event.target.value)} /></label>}
                 {action === 'remove' && <label className="block text-xs font-semibold text-slate-700">Return barcode to unpack<input required autoComplete="off" maxLength={40} className={`${hubInput} mt-1.5`} value={form.data.return_barcode} onChange={event => form.setData('return_barcode', event.target.value)} /></label>}
                 {['remove', 'reopen'].includes(action) && <label className="block text-xs font-semibold text-slate-700">Reason<textarea required minLength={10} maxLength={1000} rows={2} className={`${hubInput} mt-1.5`} value={form.data.notes} onChange={event => form.setData('notes', event.target.value)} /></label>}
-                {action === 'open' && <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" required checked={form.data.seal_intact} className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" onChange={event => form.setData('seal_intact', event.target.checked)} />I checked this arriving sack and its intact numbered seal.</label>}
+                {action === 'open' && <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" required checked={form.data.seal_intact} className="mt-0.5 rounded border-slate-300 text-[#121316] focus:ring-[#121316]" onChange={event => form.setData('seal_intact', event.target.checked)} />I checked this arriving sack and its intact numbered seal.</label>}
             </>}
             <button className={hubButton} disabled={form.processing || !actions.includes(action)}>{form.processing ? 'Saving…' : labels[action] ?? 'Save sack action'}</button>
         </fieldset>
@@ -60,12 +60,12 @@ export default function ReturnTripPackingPanel({trip, basePath}: {trip: PackingT
     const bags = trip.returnBags ?? [];
     const parcels = trip.returnParcels ?? [];
     useEffect(() => { form.setData({version: trip.version, request_token: crypto.randomUUID(), barcode: '', physical_tag: '', physical_checked: false}); form.clearErrors(); }, [trip.id, trip.version]);
-    return <section className="mt-5 space-y-4 border-t border-rose-200 pt-5" aria-label="Return sacks and loose cargo">
-        <div className="flex items-center gap-2 text-sm font-semibold text-[#9F1239]"><Container className="h-4 w-4" /><h3>Return sacks and loose cargo</h3></div>
-        <div className="divide-y divide-rose-100 rounded-lg border border-rose-200 bg-white px-3">{parcels.map(parcel => <div key={parcel.barcode} className="flex flex-wrap justify-between gap-2 py-2.5 text-xs">
+    return <section className="mt-5 space-y-4 border-t border-zinc-200 pt-5" aria-label="Return sacks and loose cargo">
+        <div className="flex items-center gap-2 text-sm font-semibold text-[#121316]"><Container className="h-4 w-4 text-zinc-600" /><h3>Return sacks and loose cargo</h3></div>
+        <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 bg-white px-3">{parcels.map(parcel => <div key={parcel.barcode} className="flex flex-wrap justify-between gap-2 py-2.5 text-xs">
             <span className="break-all font-semibold text-slate-700">{parcel.barcode}</span><span className="text-slate-600">{parcel.weight_kg ?? 'Unknown'} kg · {parcel.baggable === null ? 'Readings needed' : parcel.baggable ? 'Sack required' : 'Individual loose cargo'}</span>
         </div>)}</div>
-        {trip.status === 'ready' && trip.canDepart && parcels.some(parcel => parcel.baggable) && <form aria-label="Pack return into sack" className="space-y-3 rounded-lg border border-rose-200 bg-white p-4" onSubmit={event => {
+        {trip.status === 'ready' && trip.canDepart && parcels.some(parcel => parcel.baggable) && <form aria-label="Pack return into sack" className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4" onSubmit={event => {
             event.preventDefault(); if (pending.current || form.processing) return; pending.current = true;
             form.transform(data => ({...data, version: trip.version, barcode: data.barcode.trim().toUpperCase(), physical_tag: data.physical_tag.trim().toUpperCase()}));
             form.post(`${basePath}/trips/${trip.id}/return-sacks`, {preserveScroll: true,
@@ -75,18 +75,18 @@ export default function ReturnTripPackingPanel({trip, basePath}: {trip: PackingT
             <fieldset disabled={form.processing} className="space-y-3"><legend className="text-sm font-semibold text-slate-800">Pack one actual return</legend>
                 <div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-slate-700">Return barcode<input required autoComplete="off" maxLength={40} className={`${hubInput} mt-1.5`} value={form.data.barcode} onChange={event => form.setData('barcode', event.target.value)} /></label>
                     <label className="text-xs font-semibold text-slate-700">Permanent sack tag<input required autoComplete="off" maxLength={80} className={`${hubInput} mt-1.5`} value={form.data.physical_tag} onChange={event => form.setData('physical_tag', event.target.value)} /></label></div>
-                <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" required checked={form.data.physical_checked} className="mt-0.5 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" onChange={event => form.setData('physical_checked', event.target.checked)} />I checked this parcel and the physical sack tag.</label>
+                <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" required checked={form.data.physical_checked} className="mt-0.5 rounded border-slate-300 text-[#121316] focus:ring-[#121316]" onChange={event => form.setData('physical_checked', event.target.checked)} />I checked this parcel and the physical sack tag.</label>
                 <button className={hubButton} disabled={form.processing}>{form.processing ? 'Packing…' : 'Pack scanned return'}</button>
             </fieldset><Errors errors={form.errors} />
         </form>}
-        {bags.map(bag => <article key={bag.id} className="rounded-lg border border-rose-200 bg-white p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-sm font-semibold text-slate-800">Sack {bag.physical_tag}</h4><span className="rounded-lg bg-rose-50 px-2 py-1 text-xs font-medium capitalize text-[#9F1239]">{words(bag.status)}</span></div>
+        {bags.map(bag => <article key={bag.id} className="rounded-lg border border-zinc-200 bg-white p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="text-sm font-semibold text-slate-800">Sack {bag.physical_tag}</h4><span className="rounded-lg bg-zinc-100 border border-zinc-200 px-2 py-1 text-xs font-medium capitalize text-zinc-700">{words(bag.status)}</span></div>
             <p className="mt-2 break-all text-xs font-medium text-slate-600">Master tag: {bag.reference}</p>
             {bag.seal_number && <p className="mt-1 text-xs text-slate-600">Seal: {bag.seal_number}</p>}
-            <p className="mt-3 rounded-lg bg-rose-50/60 p-3 text-xs text-slate-700">{bag.capacity.count}/{bag.capacity.max_count} parcels · {bag.capacity.weight_kg ?? 'Unknown'}/{bag.capacity.max_weight_kg} kg · {bag.capacity.volume_cm3 === null ? 'Unknown' : (bag.capacity.volume_cm3 / 1000000).toFixed(3)}/0.300 m³</p>
+            <p className="mt-3 rounded-lg bg-zinc-50 border border-zinc-100 p-3 text-xs text-slate-700">{bag.capacity.count}/{bag.capacity.max_count} parcels · {bag.capacity.weight_kg ?? 'Unknown'}/{bag.capacity.max_weight_kg} kg · {bag.capacity.volume_cm3 === null ? 'Unknown' : (bag.capacity.volume_cm3 / 1000000).toFixed(3)}/0.300 m³</p>
             <ul className="mt-3 space-y-1 text-xs text-slate-600">{bag.barcodes.map(barcode => <li key={barcode} className="break-all">{barcode}</li>)}</ul>
             <SackControls trip={trip} bag={bag} basePath={basePath} />
         </article>)}
-        {trip.packingReason && <p role="status" className="rounded-lg border border-rose-200 bg-white p-3 text-xs text-[#9F1239]">{trip.packingReason}</p>}
+        {trip.packingReason && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900">{trip.packingReason}</p>}
     </section>;
 }

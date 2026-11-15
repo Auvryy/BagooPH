@@ -38,13 +38,12 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
         { label: 'At platform', amount: totals.platform, Icon: Landmark, note: `${cashMoney(totals.reconciled)} reconciled` },
     ];
     return (
-        <CashFrame mode={mode} isOnline={isOnline} scope={scope} title="COD cash records" subtitle="Follow each collection, confirm cash handovers, and review what reached the platform.">
+        <CashFrame mode={mode} isOnline={isOnline} scope={scope} title="COD cash records">
             <div className="space-y-6 pb-4">
-                <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                <section className="overflow-hidden rounded border border-zinc-300 bg-white shadow-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-300 bg-zinc-50/40 px-5 py-3.5">
                         <div>
                             <h2 className="text-sm font-semibold tracking-tight text-[#121316]">Every handover has a receipt</h2>
-                            <p className="mt-0.5 text-xs leading-5 text-zinc-500">Cash changes hands only after the named recipient confirms their count.</p>
                         </div>
                         <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200/90 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 shadow-2xs">
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
@@ -78,10 +77,9 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                 )}
 
                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                    <div className="flex flex-col justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5 sm:flex-row sm:items-center">
+                    <div className="flex flex-col justify-between gap-3 border-b border-zinc-300 bg-zinc-50/40 px-5 py-3.5 sm:flex-row sm:items-center">
                         <div>
                             <h2 className="text-sm font-semibold tracking-tight text-[#121316]">Collection and handover queue</h2>
-                            <p className="mt-0.5 text-xs text-zinc-500">Order completion and seller payouts are separate from cash reconciliation.</p>
                         </div>
                         <form
                             onSubmit={event => {

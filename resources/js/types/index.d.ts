@@ -176,7 +176,7 @@ export interface ProductImage {
     sort_order: number;
 }
 
-export interface SaleSummary { id: number; kind: 'store' | 'flash'; name: string; price: string | number; discount_type?: 'fixed' | 'percentage'; percentage?: number | null; starts_at: string; ends_at: string; remaining_quantity: number | null }
+export interface SaleSummary { id: number; kind: 'store'; name: string; price: string | number; discount_type?: 'fixed' | 'percentage'; percentage?: number | null; starts_at: string; ends_at: string; remaining_quantity: number | null }
 
 export interface StoreCategory {
     id: number;

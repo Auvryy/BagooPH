@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { ArrowRight, CheckCircle2, Container, Package, Truck, Undo2 } from 'lucide-react';
-import { HubBadge, HubEmpty, HubNextStep, HubPageHeader, HubRoute, HubSearch, HubStepRail, hubButton, type HubPlace } from '@/Components/Logistics/Workspace';
+import { HubBadge, HubCategoryTabs, HubEmpty, HubNextStep, HubPageHeader, HubRoute, HubSearch, HubStepRail, hubButton, type HubPlace } from '@/Components/Logistics/Workspace';
 import HubPicker from '@/Components/Logistics/HubPicker';
 import VehiclePicker from '@/Components/Logistics/VehiclePicker';
 import HubMap from '@/Components/Logistics/HubMap';
@@ -47,7 +47,7 @@ interface Props {
     buyerReturns?: Array<{ id: number; reference: string; barcode: string; source_hub_id: number; destination_hub_id: number; weight_grams: number; recovery_id?: number | null }>;
 }
 const inputClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-[#121316] font-medium shadow-2xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors';
-const buttonClass = 'inline-flex items-center justify-center rounded-lg border border-rose-200 bg-rose-50/85 px-4 py-2 text-xs font-semibold text-[#C20836] shadow-2xs hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';
+const buttonClass = 'inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-[#121316] shadow-2xs hover:bg-zinc-50 hover:border-zinc-400 transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';
 const words = (value: string) => value.replaceAll('_', ' ').replaceAll('-', ' ');
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' });
 
@@ -57,9 +57,22 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
     const [cargoMode, setCargoMode] = useState('');
     const [handling, setHandling] = useState(emptyHandling);
     const [search, setSearch] = useState('');
+    const [manifestCategory, setManifestCategory] = useState<'all' | 'draft' | 'sealed' | 'transit' | 'closed'>('all');
     const [returnSearch, setReturnSearch] = useState('');
     const selectReturn = (item: NonNullable<Props['buyerReturns']>[number]) => creation.setData({ ...creation.data, buyer_return_case_id: String(item.id), buyer_return_recovery_id: item.recovery_id ? String(item.recovery_id) : '', source_hub_id: String(item.source_hub_id), destination_hub_id: String(item.destination_hub_id), vehicle_id: '' });
-    const visibleManifests = manifests.data.filter(item => [item.reference, item.source.name, item.destination.name, item.vehicle_plate, item.driver_name, item.status].join(' ').toLowerCase().includes(search.toLowerCase()));
+    const draftCount = manifests.data.filter(item => item.status === 'draft').length;
+    const sealedCount = manifests.data.filter(item => item.status === 'sealed').length;
+    const transitCount = manifests.data.filter(item => item.status === 'dispatched').length;
+    const closedCount = manifests.data.filter(item => ['received', 'closed'].includes(item.status)).length;
+    const visibleManifests = manifests.data
+        .filter(item => {
+            if (manifestCategory === 'draft') return item.status === 'draft';
+            if (manifestCategory === 'sealed') return item.status === 'sealed';
+            if (manifestCategory === 'transit') return item.status === 'dispatched';
+            if (manifestCategory === 'closed') return ['received', 'closed'].includes(item.status);
+            return true;
+        })
+        .filter(item => [item.reference, item.source.name, item.destination.name, item.vehicle_plate, item.driver_name, item.status].join(' ').toLowerCase().includes(search.toLowerCase()));
     const [notes, setNotes] = useState('');
     const [kind, setKind] = useState('missing');
     const [parcelId, setParcelId] = useState('');
@@ -97,7 +110,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
             onFinish: () => { pending.current = false; setBusy(false); },
         });
     };
-    const fieldError = (message?: string) => message ? <p role="alert" className="mt-1 text-xs font-medium text-rose-700">{message}</p> : null;
+    const fieldError = (message?: string) => message ? <p role="alert" className="mt-1 text-xs font-medium text-red-700">{message}</p> : null;
 
     return (
         <DashboardLayout title="Manifests">
@@ -105,7 +118,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
             <div className="space-y-6">
                 <HubPageHeader
                     title="Transfers & manifests"
-                    description="Prepare cargo for its next hub. Compatible sealed manifests can share one vehicle trip."
+                    roleLabel="Line-haul dispatch & receiving"
                     icon={Truck}
                     actions={<Link className={hubButton} href={route('hub.mother-bags.index')}><Container className="h-4 w-4" />Mother Bags</Link>}
                 />
@@ -126,10 +139,9 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                 {/* Dispatch Trip Builder */}
                 {canCreate && !selected && (
-                    <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
-                        <header className="px-5 py-3.5 border-b border-zinc-100 bg-zinc-50/40">
+                    <section className="rounded border border-zinc-300 bg-white shadow-xs overflow-hidden">
+                        <header className="px-5 py-3.5 border-b border-zinc-300 bg-zinc-50/40">
                             <h2 className="text-sm sm:text-base font-bold text-[#121316]">Prepare a draft</h2>
-                            <p className="mt-0.5 text-xs text-zinc-500">Choose the next hub and assigned vehicle, then load the sealed master bag in Mother Bags.</p>
                         </header>
                         <form onSubmit={create} className="p-5 sm:p-6 space-y-6">
                             {/* Compact 3-option segmented/card selector */}
@@ -143,9 +155,9 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                     ].map(option => (
                                         <label
                                             key={option.value}
-                                            className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-all focus-within:ring-2 focus-within:ring-[#E00D42]/20 ${
+                                            className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-all focus-within:ring-2 focus-within:ring-[#121316]/15 ${
                                                 creation.data.direction === option.value
-                                                    ? 'border-rose-300 bg-rose-50/60 shadow-xs ring-1 ring-rose-200/60'
+                                                    ? 'border-[#E00D42] bg-rose-50/40 shadow-xs ring-1 ring-[#E00D42]/20'
                                                     : 'border-zinc-200/90 bg-white hover:bg-zinc-50/60 shadow-2xs'
                                             }`}
                                         >
@@ -167,7 +179,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                 }
                                                 className="sr-only"
                                             />
-                                            <option.icon className={`mt-0.5 h-4 w-4 shrink-0 ${creation.data.direction === option.value ? 'text-[#E00D42]' : 'text-zinc-400'}`} />
+                                            <option.icon className={`mt-0.5 h-4 w-4 shrink-0 ${creation.data.direction === option.value ? 'text-[#121316]' : 'text-zinc-400'}`} />
                                             <span>
                                                 <span className="block text-xs font-bold text-[#121316]">{option.title}</span>
                                                 <span className="mt-0.5 block text-xs leading-5 text-zinc-500">{option.detail}</span>
@@ -201,7 +213,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                     key={item.id}
                                                     className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 shadow-xs transition-colors ${
                                                         creation.data.buyer_return_case_id === String(item.id)
-                                                            ? 'border-rose-300 bg-rose-50/70'
+                                                            ? 'border-[#E00D42] bg-rose-50/40 ring-1 ring-[#E00D42]/20'
                                                             : 'border-zinc-200/90 bg-white hover:bg-zinc-50'
                                                     }`}
                                                 >
@@ -212,7 +224,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                         value={item.id}
                                                         checked={creation.data.buyer_return_case_id === String(item.id)}
                                                         onChange={() => selectReturn(item)}
-                                                        className="mt-1 border-zinc-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                                        className="mt-1 border-zinc-300 text-[#121316] focus:ring-[#121316]"
                                                     />
                                                     <Package className="mt-1 h-4 w-4 shrink-0 text-zinc-400" />
                                                     <span className="min-w-0">
@@ -286,21 +298,18 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                         {Object.entries(creation.errors)
                                             .filter(([key]) => !['source_hub_id', 'destination_hub_id', 'vehicle_id', 'creation_token'].includes(key))
                                             .map(([key, message]) => (
-                                                <p key={key} role="alert" className="text-xs text-rose-700">{message}</p>
+                                                <p key={key} role="alert" className="text-xs text-red-700">{message}</p>
                                             ))}
                                         <button
                                             disabled={creation.processing || !sourceHub || !destinationHub || !creation.data.vehicle_id || !availableVehicles.length}
-                                            className="rounded-lg bg-[#E00D42] hover:bg-[#C20836] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition active:scale-[0.99] disabled:opacity-50"
+                                            className="rounded border border-[#C20836] bg-[#E00D42] hover:bg-[#C20836] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition active:scale-[0.99] disabled:opacity-50"
                                         >
                                             Prepare manifest
                                         </button>
-                                        <p className="mt-2 text-xs text-zinc-500">
-                                            Feeder runs use a closed van; Mother-to-Mother line-haul uses a wing truck. The source-hub vehicle needs an active, available assigned driver.
-                                        </p>
                                     </div>
                                 </div>
 
-                                <div className="rounded-xl border border-zinc-200/90 bg-zinc-50/40 p-3 space-y-2.5">
+                                <div className="rounded border border-zinc-300 bg-zinc-50/40 p-3 space-y-2.5">
                                     <HubMap
                                         hubs={hubs}
                                         routeIds={sourceHub && destinationHub ? [sourceHub.id, destinationHub.id] : undefined}
@@ -312,11 +321,8 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             else if (sendingHubs.some(item => item.id === hub.id))
                                                 creation.setData({ ...creation.data, source_hub_id: String(hub.id), destination_hub_id: '', vehicle_id: '' });
                                         }}
-                                        className="h-64 rounded-lg overflow-hidden border border-zinc-200/80"
+                                        className="h-64 rounded overflow-hidden border border-zinc-300"
                                     />
-                                    <p className="px-1 text-[11px] leading-5 text-zinc-500">
-                                        Choose a hub pin or use the searchable fields. Only a permitted next hub can be selected.
-                                    </p>
                                 </div>
                             </div>
                         </form>
@@ -329,10 +335,22 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                     <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                         <header className="flex items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                             <h2 className="text-sm font-bold text-[#121316]">Recorded transfers</h2>
-                            {selected && <Link href={basePath} className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50/85 px-2.5 py-1 text-xs font-semibold text-[#C20836] shadow-2xs transition hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42]">All manifests</Link>}
+                            {selected && <Link href={basePath} className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs font-semibold text-[#121316] shadow-2xs transition hover:bg-zinc-50 hover:border-zinc-400">All manifests</Link>}
                         </header>
-                        <div className="p-3.5 border-b border-zinc-100">
+                        <div className="space-y-3 p-3.5 border-b border-zinc-100">
                             <HubSearch label="Search loaded transfers" value={search} onChange={setSearch} placeholder="Hub, plate or manifest" />
+                            <HubCategoryTabs
+                                label="Filter manifests"
+                                activeId={manifestCategory}
+                                onChange={(id) => setManifestCategory(id as 'all' | 'draft' | 'sealed' | 'transit' | 'closed')}
+                                tabs={[
+                                    { id: 'all', label: 'All', count: manifests.data.length },
+                                    { id: 'draft', label: 'Draft', count: draftCount },
+                                    { id: 'sealed', label: 'Sealed', count: sealedCount },
+                                    { id: 'transit', label: 'In Transit', count: transitCount },
+                                    { id: 'closed', label: 'Received / Closed', count: closedCount },
+                                ]}
+                            />
                         </div>
                         <div className="p-3.5 space-y-2.5">
                             {!manifests.data.length && <p className="py-4 text-center text-xs text-zinc-500">No manifests have been recorded within your scope.</p>}
@@ -343,12 +361,12 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                     className={
                                         'block rounded-xl border p-4 transition-all duration-150 ' +
                                         (selected?.id === manifest.id
-                                            ? 'border-rose-300 bg-rose-50/60 shadow-xs ring-1 ring-rose-200/60'
+                                            ? 'border-[#E00D42] bg-rose-50/40 shadow-xs ring-1 ring-[#E00D42]/20'
                                             : 'border-zinc-200/90 bg-white hover:border-zinc-300 hover:bg-zinc-50/40 shadow-2xs')
                                     }
                                 >
                                     <div className="flex items-center justify-between gap-2">
-                                        <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
+                                        <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-[#121316]">
                                             Transfer #{manifest.id}
                                         </span>
                                         <HubBadge tone={manifest.status === 'closed' ? 'success' : manifest.status === 'dispatched' ? 'brand' : 'neutral'}>
@@ -369,7 +387,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                 </Link>
                             ))}
                             {!visibleManifests.length && manifests.data.length > 0 && (
-                                <p className="py-6 text-center text-xs text-zinc-400">No matches on this page. Try a hub name or vehicle plate.</p>
+                                <p className="py-6 text-center text-xs text-zinc-400">No matches on this page for the selected stage or search term.</p>
                             )}
                             {manifests.links.filter(link => link.url).length > 1 && (
                                 <nav aria-label="Manifest pages" className="pt-2 flex flex-wrap gap-2">
@@ -389,7 +407,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                             <header className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-4">
                                 <div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
+                                        <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-[#121316]">
                                             Transfer #{selected.id}
                                         </span>
                                         <HubBadge tone={selected.status === 'closed' ? 'success' : selected.status === 'dispatched' ? 'brand' : 'neutral'}>
@@ -407,7 +425,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                     {selected.dispatched_at && <p className="mt-1 text-xs text-zinc-500">Departed {date(selected.dispatched_at)}</p>}
                                     {selected.received_at && <p className="mt-1 text-xs text-zinc-500">Received {date(selected.received_at)}</p>}
                                     <details className="mt-2.5 text-xs text-zinc-500">
-                                        <summary className="w-fit cursor-pointer font-bold text-[#E00D42] hover:text-[#C20836]">
+                                        <summary className="w-fit cursor-pointer font-bold text-[#121316] hover:text-zinc-700">
                                             Transfer reference &amp; QR
                                         </summary>
                                         <div className="mt-3 w-fit max-w-full rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs">
@@ -425,11 +443,11 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                 <HubRoute stops={[selected.source, selected.destination]} />
                                 {selected.transportArrival && <TransportArrival value={selected.transportArrival} manifestId={selected.id} version={selected.version} driver={selected.driver_name} plate={selected.vehicle_plate} basePath={basePath} />}
                                 {selected.wholeTransportLoss && <TransportLoss value={selected.wholeTransportLoss} manifestId={selected.id} version={selected.version} basePath={basePath} />}
-                                {selected.cargoCapacity && <section aria-label="Vehicle cargo capacity" className="rounded-xl border border-rose-200 bg-rose-50/40 p-4"><h3 className="mb-3 text-sm font-bold text-[#9F1239]">Vehicle cargo · {selected.cargoCapacity.loose_count} loose parcels</h3><CapacityMeter label="Total retained cargo weight" value={selected.cargoCapacity.weight_kg} max={selected.cargoCapacity.max_weight_kg} unit="kg" /></section>}
+                                {selected.cargoCapacity && <section aria-label="Vehicle cargo capacity" className="rounded-xl border border-zinc-200/90 bg-zinc-50/60 p-4"><h3 className="mb-3 text-sm font-bold text-[#121316]">Vehicle cargo · {selected.cargoCapacity.loose_count} loose parcels</h3><CapacityMeter label="Total retained cargo weight" value={selected.cargoCapacity.weight_kg} max={selected.cargoCapacity.max_weight_kg} unit="kg" /></section>}
 
                                 {selected.recoveryUrl && (
-                                    <Link href={selected.recoveryUrl} className="inline-block text-xs font-bold text-[#E00D42] hover:text-[#C20836]">
-                                        View this parcel recovery case
+                                    <Link href={selected.recoveryUrl} className="inline-block text-xs font-bold text-[#121316] underline underline-offset-4 hover:text-zinc-700">
+                                        View this parcel recovery case →
                                     </Link>
                                 )}
 
@@ -472,7 +490,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                         <div className="flex flex-wrap items-center justify-between gap-3">
                                             <div>
                                                 <h3 className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#121316]">
-                                                    <Container className="h-4 w-4 text-[#E00D42]" />
+                                                    <Container className="h-4 w-4 text-zinc-600" />
                                                     Sealed Mother Bags
                                                 </h3>
                                                 <p className="mt-1 text-xs leading-5 text-zinc-500">
@@ -487,7 +505,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             <ul className="mt-3 divide-y divide-zinc-200/80">
                                                 {selected.motherBags.map(bag => (
                                                     <li key={bag.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                                                        <Link href={route('hub.mother-bags.index', { bag: bag.id })} className="text-xs tabular-nums font-bold text-[#E00D42] hover:text-[#C20836] underline underline-offset-4">
+                                                        <Link href={route('hub.mother-bags.index', { bag: bag.id })} className="text-xs tabular-nums font-bold text-[#121316] hover:text-zinc-700 underline underline-offset-4">
                                                             {bag.reference} · Seal {bag.seal_number}
                                                         </Link>
                                                         <HubBadge tone={bag.status === 'opened' || bag.status === 'received' ? 'success' : 'neutral'}>
@@ -501,7 +519,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                 ) : null}
 
                                 {Object.entries(errors).map(([key, message]) => (
-                                    <p key={key} role="alert" className="text-xs font-medium text-rose-700">{message}</p>
+                                    <p key={key} role="alert" className="text-xs font-medium text-red-700">{message}</p>
                                 ))}
 
                                 {((selected.status === 'draft' && selected.canLoad) || (['dispatched', 'received'].includes(selected.status) && selected.canReceive)) && (
@@ -664,15 +682,15 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             {selected.parcels.map(parcel => (
                                                 <tr key={parcel.id} className="hover:bg-zinc-50/50 transition-colors">
                                                     <td className="px-5 py-3.5">
-                                                        <p className="break-all tabular-nums font-bold text-[#121316]">{parcel.tracking_number}</p><span className="text-xs font-semibold text-[#C20836]">{parcel.cargo_mode === 'loose' ? 'Loose cargo · individual unloading' : parcel.cargo_mode === 'bag' ? 'Sealed bag member' : 'Original transport record'}</span><HandlingSummary value={parcel.handling} />
+                                                        <p className="break-all tabular-nums font-bold text-[#121316]">{parcel.tracking_number}</p><span className="text-xs font-semibold text-zinc-600">{parcel.cargo_mode === 'loose' ? 'Loose cargo · individual unloading' : parcel.cargo_mode === 'bag' ? 'Sealed bag member' : 'Original transport record'}</span><HandlingSummary value={parcel.handling} />
                                                         {!parcel.included && <p className="text-xs text-zinc-500 font-medium">Removed from draft</p>}
                                                         {parcel.included && selected.canManage && selected.status === 'draft' && !hasCorrections && !selected.reviewedHold && (
-                                                            <button disabled={busy || !notes.trim() || parcel.cargo_mode === 'bag'} onClick={() => command('remove', { parcel_id: parcel.id })} className="mt-1 text-xs font-bold text-[#E00D42] hover:text-[#C20836] disabled:opacity-50">
+                                                            <button disabled={busy || !notes.trim() || parcel.cargo_mode === 'bag'} onClick={() => command('remove', { parcel_id: parcel.id })} className="mt-1 text-xs font-bold text-red-700 hover:text-red-800 disabled:opacity-50">
                                                                 Remove with reason
                                                             </button>
                                                         )}
                                                         {parcel.handover_hold && <p className="mt-1 text-xs font-bold text-amber-800">Awaiting supervised recovery</p>}
-                                                        {parcel.handover_issue_url && <Link href={parcel.handover_issue_url} className="mt-1 inline-block text-xs font-bold text-[#E00D42]">Review handover</Link>}
+                                                        {parcel.handover_issue_url && <Link href={parcel.handover_issue_url} className="mt-1 inline-block text-xs font-bold text-[#121316] underline underline-offset-4 hover:text-zinc-700">Review handover</Link>}
                                                     </td>
                                                     <td className="px-5 py-3.5 capitalize text-zinc-600">{parcel.confirmed_lost ? 'Confirmed lost' : words(parcel.status)}</td>
                                                     <td className="px-5 py-3.5 text-zinc-600">
@@ -741,7 +759,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                         </section>
                     ) : (
                         <section className="rounded-xl border border-zinc-200/90 bg-white p-6 shadow-xs">
-                            <HubEmpty title="Choose a recorded transfer" description="Its next action, truck, sealed bags and receiving scans will appear here." icon={Truck} />
+                            <HubEmpty title="Choose a recorded transfer" icon={Truck} />
                         </section>
                     )}
                 </div>

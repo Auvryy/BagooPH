@@ -24,7 +24,7 @@ export default function MarketplaceLayout({ children, title, headerTheme = 'ligh
     return (
         <div className="min-h-screen bg-[#ECEAE5] text-slate-900 flex flex-col font-sans relative selection:bg-[#E00D42] selection:text-white">
             {/* Minimal Dynamic Responsive Header: Logo on Left, Nav on Right */}
-            <header className={`sticky top-0 z-50 transition-colors duration-500 backdrop-blur-md ${
+            <header className={`sticky top-0 z-30 transition-colors duration-500 backdrop-blur-md ${
                 isDark 
                     ? 'bg-[#0A0D14]/90 border-b border-white/10 text-white' 
                     : 'bg-[#ECEAE5]/90 border-b border-black/10 text-black'

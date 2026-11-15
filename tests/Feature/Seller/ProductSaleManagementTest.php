@@ -27,12 +27,12 @@ class ProductSaleManagementTest extends TestCase
 
     private function payload(array $changes = []): array
     {
-        return [...['kind' => 'flash', 'name' => 'Weekend Bagoo sale', 'price' => '299.00', 'quantity' => 5,
+        return [...['kind' => 'store', 'name' => 'Weekend Bagoo sale', 'price' => '299.00',
             'starts_at' => now()->addHour()->setTimezone('Asia/Manila')->format('Y-m-d\TH:i'),
             'ends_at' => now()->addHours(2)->setTimezone('Asia/Manila')->format('Y-m-d\TH:i')], ...$changes];
     }
 
-    public function test_seller_creates_owned_slots_rejects_overlap_and_can_have_a_separate_store_sale(): void
+    public function test_seller_creates_owned_slots_rejects_overlap_and_allows_consecutive_store_sales(): void
     {
         [, $product] = $this->fixture();
         $this->post(route('seller.products.sales.store', $product), $this->payload())->assertSessionHasNoErrors();
@@ -40,44 +40,37 @@ class ProductSaleManagementTest extends TestCase
         $this->assertSame(now()->addHour()->toDateTimeString(), $sale->starts_at->toDateTimeString());
         $this->assertSame(0, $sale->used_quantity);
         $this->post(route('seller.products.sales.store', $product), $this->payload())->assertSessionHasErrors('starts_at');
-        $this->post(route('seller.products.sales.store', $product), $this->payload(['kind' => 'store', 'quantity' => null, 'price' => '399.00']))->assertSessionHasNoErrors();
-        $this->assertDatabaseCount('product_sales', 2);
         $this->post(route('seller.products.sales.store', $product), $this->payload([
+            'price' => '399.00',
             'starts_at' => now()->addHours(2)->setTimezone('Asia/Manila')->format('Y-m-d\TH:i'),
             'ends_at' => now()->addHours(3)->setTimezone('Asia/Manila')->format('Y-m-d\TH:i'),
         ]))->assertSessionHasNoErrors();
-        $this->assertDatabaseCount('product_sales', 3);
+        $this->assertDatabaseCount('product_sales', 2);
     }
 
-    public function test_running_store_price_can_change_but_running_flash_terms_and_schedule_are_retained(): void
+    public function test_running_store_price_and_name_can_change_but_schedule_is_retained_and_end_now_stops_it(): void
     {
         [, $product] = $this->fixture();
-        $this->post(route('seller.products.sales.store', $product), $this->payload(['kind' => 'store', 'quantity' => null]))->assertSessionHasNoErrors();
+        $this->post(route('seller.products.sales.store', $product), $this->payload(['kind' => 'store']))->assertSessionHasNoErrors();
         $store = ProductSale::sole();
         $this->travel(65)->minutes();
         $this->put(route('seller.products.sales.update', [$product, $store]), ['price' => '250.50'])->assertSessionHasNoErrors();
         $this->assertSame('250.50', $store->fresh()->price);
         $this->put(route('seller.products.sales.update', [$product, $store]), ['ends_at' => now()->addHour()->setTimezone('Asia/Manila')->format('Y-m-d\TH:i')])->assertSessionHasErrors('sale');
-        $this->post(route('seller.products.sales.store', $product), $this->payload(['starts_at' => now()->setTimezone('Asia/Manila')->format('Y-m-d\TH:i')]))->assertSessionHasNoErrors();
-        $flash = ProductSale::where('kind', 'flash')->firstOrFail();
-        foreach ([['price' => 100], ['quantity' => 10], ['kind' => 'store']] as $change) {
-            $this->put(route('seller.products.sales.update', [$product, $flash]), $change)->assertSessionHasErrors();
-        }
-        $this->post(route('seller.products.sales.end', [$product, $flash]))->assertSessionHas('success');
-        $ended = $flash->fresh()->ended_at;
+        $this->post(route('seller.products.sales.end', [$product, $store]))->assertSessionHas('success');
+        $ended = $store->fresh()->ended_at;
         $this->travel(1)->minutes();
-        $this->post(route('seller.products.sales.end', [$product, $flash]))->assertSessionHas('success');
-        $this->assertTrue($ended->equalTo($flash->fresh()->ended_at));
-        $this->put(route('seller.products.sales.update', [$product, $flash]), ['price' => 50])->assertSessionHasErrors('sale');
+        $this->post(route('seller.products.sales.end', [$product, $store]))->assertSessionHas('success');
+        $this->assertTrue($ended->equalTo($store->fresh()->ended_at));
+        $this->put(route('seller.products.sales.update', [$product, $store]), ['price' => 50])->assertSessionHasErrors('sale');
     }
 
     public static function invalidValues(): array
     {
         return [
             [['price' => 500], 'price'], [['price' => '0.001'], 'price'], [['price' => '0'], 'price'],
-            [['quantity' => 0], 'quantity'], [['quantity' => 1.5], 'quantity'], [['quantity' => null], 'quantity'],
-            [['quantity' => 1000001], 'quantity'], [['name' => ' '], 'name'], [['name' => str_repeat('a', 101)], 'name'],
-            [['starts_at' => '2026-02-31T10:00'], 'starts_at'], [['kind' => 'unsupported'], 'kind'], [['used_quantity' => 1], 'used_quantity'],
+            [['name' => ' '], 'name'], [['name' => str_repeat('a', 101)], 'name'],
+            [['starts_at' => '2026-02-31T10:00'], 'starts_at'], [['kind' => 'flash'], 'kind'], [['kind' => 'unsupported'], 'kind'], [['used_quantity' => 1], 'used_quantity'],
         ];
     }
 

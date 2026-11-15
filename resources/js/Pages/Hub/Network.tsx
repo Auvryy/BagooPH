@@ -151,10 +151,9 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
             <div className="space-y-6 font-sans">
                 <HubPageHeader
                     title="Hub network"
-                    description="See how your company’s hubs connect. Choose a pin or facility card to inspect its coverage and available actions."
                     icon={Building2}
                     actions={activeHub && (
-                        <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs shadow-2xs">
+                        <div className="inline-flex items-center gap-2 rounded border border-zinc-300 bg-white px-3 py-1.5 text-xs shadow-2xs">
                             <span className="text-zinc-500">Working facility:</span>
                             <span className="font-semibold text-[#121316]">{activeHub.name}</span>
                             <span className="tabular-nums font-semibold text-[#E00D42]">{activeHub.code}</span>
@@ -163,11 +162,11 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                 />
 
                 <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
-                    <div className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
+                    <div className="overflow-hidden rounded border border-zinc-300 bg-white shadow-xs">
                         <HubMap hubs={filteredHubs} selectedId={selectedHub?.id ?? activeHub?.id} onSelect={hub => setSelectedHub(hubs.find(item => item.id === hub.id) ?? null)} className="h-[360px]" />
                     </div>
                     <HubPanel title="Your network at a glance" icon={<Warehouse className="h-4 w-4" />}>
-                        <div className="grid grid-cols-2 divide-x divide-zinc-200/80 rounded-lg border border-zinc-200/80 bg-zinc-50/40 p-3.5">
+                        <div className="grid grid-cols-2 divide-x divide-zinc-300 rounded border border-zinc-300 bg-zinc-50/40 p-3.5">
                             <div className="pr-3">
                                 <p className="tabular-nums text-2xl font-bold tracking-tight tabular-nums text-[#121316]">{motherHubs.length}</p>
                                 <p className="mt-0.5 text-xs font-medium text-zinc-500">Mother Hubs</p>
@@ -177,13 +176,12 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                 <p className="mt-0.5 text-xs font-medium text-zinc-500">Bayan Hubs</p>
                             </div>
                         </div>
-                        <div className="mt-4 space-y-2.5 border-t border-zinc-100 pt-4 text-xs text-zinc-600">
+                        <div className="mt-4 space-y-2.5 border-t border-zinc-300 pt-4 text-xs text-zinc-600">
                             <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-[#9F1239]" />Mother Hub · transfers between service areas</p>
                             <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#E00D42]" />Bayan Hub · pickup, local sorting and delivery</p>
                         </div>
-                        <p className="mt-3.5 text-xs leading-relaxed text-zinc-500">Map links show configured hub relationships. A parcel follows its own saved route and actual scans.</p>
                         {activeHub && (
-                            <div className="mt-4 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3">
+                            <div className="mt-4 rounded border border-zinc-300 bg-zinc-50/70 p-3">
                                 <p className="text-[11px] font-medium text-zinc-500">Current facility view</p>
                                 <p className="mt-0.5 text-xs font-semibold text-[#121316]">{activeHub.name}</p>
                             </div>
@@ -250,7 +248,6 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                     <div className="flex flex-col gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <h2 className="text-sm font-semibold text-[#121316]">Company facilities</h2>
-                            <p className="mt-0.5 text-xs text-zinc-500">Only active facilities owned by {scope.company_name} are listed below.</p>
                         </div>
                         {activeHub && (
                             <div className="rounded-md border border-zinc-200/90 bg-white px-3 py-1 text-xs shadow-2xs">

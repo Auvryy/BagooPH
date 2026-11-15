@@ -303,7 +303,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 <div className="p-4 border-b border-[#1F2128] shrink-0 bg-[#121316]">
                     <div className="flex items-center justify-between">
                         <Link href={role === 'seller' ? route('seller.dashboard') : role === 'admin' ? route('admin.dashboard') : role === 'logistics' ? route('hub.dashboard') : '/'} className="flex items-center gap-2.5">
-                            <BagooLogo className="w-8 h-8 shadow-xs" rounded="rounded-xl" />
+                            <BagooLogo className="w-8 h-8 shadow-xs" rounded={role === 'logistics' ? 'rounded' : 'rounded-xl'} />
                             <div>
                                 <span className="text-base font-black tracking-tight text-white">Bagoo<span className="text-[#E00D42]">PH</span></span>
                                 <span className="block text-[9px] uppercase font-bold tracking-widest text-zinc-400 -mt-0.5 font-sans">
@@ -340,10 +340,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 {role === 'logistics' && (
                     <div className="p-3 border-b border-[#1F2128] bg-[#121316] shrink-0">
                         <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-sans flex items-center gap-1">
-                                <Building2 className="w-3 h-3 text-[#E00D42]" /> {canSwitchHubs ? 'Viewing facility' : 'Assigned facility'}
+                            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 font-sans flex items-center gap-1.5">
+                                <Building2 className="w-3.5 h-3.5 text-zinc-400" /> {canSwitchHubs ? 'Viewing facility' : 'Assigned facility'}
                             </span>
-                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-lg bg-[#181A20] text-zinc-300 border border-[#2B2D37] uppercase font-sans">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-sm bg-[#181A20] text-zinc-300 border border-[#3F4352] uppercase font-sans">
                                 {activeHub ? activeHub.tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub' : 'No facility'}
                             </span>
                         </div>
@@ -356,8 +356,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                 type="button"
                                 onClick={() => canSwitchHubs && setHubSwitcherOpen(!hubSwitcherOpen)}
                                 disabled={!canSwitchHubs || switchingHub !== null}
-                                className={`w-full flex items-center justify-between p-2.5 rounded-xl bg-[#181A20] border border-[#2B2D37] text-left transition shadow-sm group ${
-                                    canSwitchHubs ? 'hover:border-zinc-500 cursor-pointer' : 'cursor-default'
+                                className={`w-full flex items-center justify-between p-2.5 rounded bg-[#181A20] border border-[#3F4352] text-left transition shadow-sm group ${
+                                    canSwitchHubs ? 'hover:border-zinc-400 cursor-pointer' : 'cursor-default'
                                 }`}
                             >
                                 <div className="min-w-0 flex-1">
@@ -392,7 +392,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                      }
                                                  }}
                                                  className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition cursor-pointer hover:bg-[#22252E] ${
-                                                     h.id === activeHub?.id ? 'bg-[#22252E] font-bold text-[#E00D42]' : 'text-zinc-200'
+                                                     h.id === activeHub?.id ? 'bg-[#22252E] font-bold text-white' : 'text-zinc-200'
                                                  }`}
                                              >
                                                  <div className="min-w-0 flex-1 pr-2">
@@ -402,7 +402,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                                      </p>
                                                  </div>
                                                  {h.id === activeHub?.id && (
-                                                     <Check className="w-3.5 h-3.5 text-[#E00D42] shrink-0" />
+                                                     <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                                                  )}
                                              </button>
                                          ))}
@@ -462,12 +462,10 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         { name: 'Delivery recovery', href: route('hub.recovery.index'), icon: RotateCcw, current: component === 'Hub/Recovery' || component === 'Hub/DeliveryRecovery' },
                         ...(user?.canManageResources ? [
                             ...(user.resourceGovernanceUrl ? [{ name: 'Resource activity', href: user.resourceGovernanceUrl, icon: ShieldAlert, current: component.startsWith('Governance/Resource') }] : []),
-                            { name: 'SLA monitoring', href: '/governance/monitoring', icon: AlertTriangle, current: component === 'Governance/Monitoring' },
                             { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component.startsWith('Governance/History') },
                             { name: 'Delivery exceptions', href: '/exceptions', icon: AlertTriangle, current: component.startsWith('Governance/Exception') },
                         ] : []),
                         { name: 'Account & security', href: route('profile.edit'), icon: Settings, current: component.startsWith('Profile/') },
-                        { name: 'Workspace guide', href: route('hub.roadmap'), icon: Layers, current: component === 'Hub/Roadmap' },
                     ]} />}
 
                     {/* Quick Links (Storefront & Settings) */}
@@ -538,7 +536,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
             <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
                 
                 {/* Topbar (Clean Fixed Header) */}
-                <header className="h-15 bg-white/95 backdrop-blur-md border-b border-zinc-200/80 px-4 sm:px-8 flex items-center justify-between shrink-0 z-20">
+                <header className={`h-15 bg-white/95 backdrop-blur-md border-b px-4 sm:px-8 flex items-center justify-between shrink-0 z-20 ${role === 'logistics' ? 'border-zinc-300' : 'border-zinc-200/80'}`}>
                     <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
                         <button
                             type="button"
@@ -546,7 +544,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             aria-controls="portal-navigation"
                             aria-expanded={sidebarOpen}
                             onClick={() => setSidebarOpen(true)}
-                            className={`lg:hidden p-2 text-zinc-600 hover:bg-zinc-100 rounded-xl cursor-pointer shrink-0 ${role === 'logistics' ? 'flex min-h-11 min-w-11 items-center justify-center' : ''}`}
+                            className={`lg:hidden p-2 text-zinc-600 hover:bg-zinc-100 cursor-pointer shrink-0 ${role === 'logistics' ? 'rounded border border-zinc-300 flex min-h-11 min-w-11 items-center justify-center' : 'rounded-xl'}`}
                         >
                             <Menu className="w-5 h-5" />
                         </button>
@@ -556,7 +554,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                     <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 truncate">
                                         <span>{activeHub?.name || logisticsCompany?.name || 'Logistics'}</span>
                                         {activeHub?.code && (
-                                            <span className="rounded-md bg-rose-50 border border-rose-200 px-2 py-0.5 text-[11px] font-semibold text-[#C20836]">
+                                            <span className="rounded-sm bg-zinc-100 border border-zinc-300 px-2 py-0.5 text-xs font-semibold text-[#121316]">
                                                 {activeHub.code}
                                             </span>
                                         )}
@@ -750,7 +748,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 {/* Body Content */}
                 <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F8FAFC]" id="portal-main">
                     <div className="max-w-7xl mx-auto space-y-6">
-                        {sharedHubHeading && <HubPageHeader title={title} description={subtitle ?? 'Review the recorded evidence and follow the action available to your account.'} icon={hubPageIcon} />}
+                        {sharedHubHeading && <HubPageHeader title={title} description={subtitle} icon={hubPageIcon} />}
                         {children}
                     </div>
                 </main>

@@ -62,25 +62,7 @@ class BuyerHomeController extends Controller
 
         $categories = app(BuyerDiscoveryService::class)->categories();
 
-        // 4. Live Flash Deals (from ProductSale with kind = 'flash' or live offers)
-        $flashSaleProducts = Product::with(['shop', 'category', 'sales' => fn ($q) => $q->whereNull('ended_at')->where('ends_at', '>', now())])
-            ->availableForSale()
-            ->whereHas('sales', fn ($q) => $q->where('kind', 'flash')->whereNull('ended_at')->where('starts_at', '<=', now())->where('ends_at', '>', now()))
-            ->where('status', 'active')
-            ->take(6)
-            ->get();
-
-        if ($flashSaleProducts->isEmpty()) {
-            $flashSaleProducts = Product::with(['shop', 'category'])
-                ->availableForSale()
-                ->where('status', 'active')
-                ->whereNotNull('compare_at_price')
-                ->orderByDesc('sales_count')
-                ->take(6)
-                ->get();
-        }
-
-        // 5. Algorithmic Top Products & Curated Subcategory / Niche Showcases (Row 5)
+        // 4. Algorithmic Top Products & Curated Subcategory / Niche Showcases (Row 5)
         $topCuratedCollections = self::curatedCollections();
 
         $topPersonalizedProducts = Product::with(['shop', 'category', 'subCategory'])
@@ -173,7 +155,6 @@ class BuyerHomeController extends Controller
             'categories' => $categories,
             'subcategories' => $subcategories,
             'feedProducts' => $feedProducts,
-            'flashSaleProducts' => $flashSaleProducts,
             'topPersonalizedProducts' => $topPersonalizedProducts,
             'topCuratedCollections' => $topCuratedCollections,
             'relatedProducts' => $relatedProducts,

@@ -49,7 +49,7 @@ export default function AccountSessionSettings({ enabled = true }: { enabled?: b
     }, [userId, enabled]);
 
     const owned = enabled && data?.sessionOwnerId === userId && userId > 0;
-    const card = user?.role === 'courier' ? 'courier-panel rounded-[8px] bg-white p-5 shadow-sm sm:p-6' : 'rounded-3xl border border-slate-300 bg-white p-5 shadow-xs sm:p-6';
+    const card = user?.role === 'courier' ? 'courier-panel rounded-[8px] bg-white p-5 shadow-sm sm:p-6' : user?.role === 'buyer' ? 'rounded-3xl border border-slate-300 bg-white p-5 shadow-xs sm:p-6' : 'rounded-xl border border-slate-300 bg-white p-6 shadow-xs';
 
     return <section id="login-activity" tabIndex={-1} className="scroll-mt-28 focus:outline-none" aria-label="Login activity">
         {owned ? <AccountSessionPanel key={userId} {...data} onRefresh={() => load()} onPageChange={load} />

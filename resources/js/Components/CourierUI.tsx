@@ -5,14 +5,14 @@ import { useEffect, useState, type PropsWithChildren } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { CourierPlace, courierInitials, courierPath, directionsUrl, telephoneUrl } from '@/utils/courier';
 
-export const courierButton = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-[8px] border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-800 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none';
-export const courierPrimary = 'inline-flex min-h-[52px] items-center justify-center gap-2 rounded-[8px] bg-[#E00D42] px-5 py-3 text-sm font-medium text-white transition duration-150 hover:bg-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transform-none motion-reduce:transition-none';
-export const courierInput = 'mt-2 min-h-12 w-full rounded-[8px] border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 shadow-none placeholder:text-slate-500 hover:border-slate-300 focus:border-[#E00D42] focus:ring-[#E00D42]';
+export const courierButton = 'inline-flex min-h-12 items-center justify-center gap-2 rounded border border-slate-400 bg-white px-4 py-3 text-sm font-medium text-slate-800 transition-colors duration-150 hover:border-slate-600 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none';
+export const courierPrimary = 'inline-flex min-h-[52px] items-center justify-center gap-2 rounded border border-[#C20836] bg-[#E00D42] px-5 py-3 text-sm font-medium text-white transition duration-150 hover:bg-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transform-none motion-reduce:transition-none';
+export const courierInput = 'mt-2 min-h-12 w-full rounded border border-slate-400 bg-white px-3 py-3 text-base text-slate-900 shadow-none placeholder:text-slate-500 hover:border-slate-500 focus:border-[#E00D42] focus:ring-[#E00D42]';
 
 export const courierClasses = twMerge;
 
 export function CourierPanel({ children, className = '' }: PropsWithChildren<{ className?: string }>) {
-    return <section className={twMerge('courier-panel courier-enter rounded-[8px] border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.035)]', className)}>{children}</section>;
+    return <section className={twMerge('courier-panel courier-enter rounded border border-slate-300 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]', className)}>{children}</section>;
 }
 
 export function CourierBadge({ children, tone = 'neutral' }: PropsWithChildren<{ tone?: 'neutral' | 'brand' | 'waiting' | 'success' }>) {

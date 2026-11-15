@@ -3,7 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import WaybillCamera from '@/Components/WaybillCamera';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { HubNextStep, HubPageHeader, HubStepRail, hubInput } from '@/Components/Logistics/Workspace';
+import { HubCategoryTabs, HubNextStep, HubPageHeader, hubInput } from '@/Components/Logistics/Workspace';
 import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import { 
     Store, 
@@ -95,6 +95,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
     const pending = useRef(false);
     const [hours, setHours] = useState(activeHub?.operating_hours ?? '');
     const [submitting, setSubmitting] = useState(false);
+    const [categoryFilter, setCategoryFilter] = useState<'all' | 'ready' | 'attention'>('all');
     const [currentTime, setCurrentTime] = useState(Date.now);
     useEffect(() => {
         setHours(activeHub?.operating_hours ?? '');
@@ -115,6 +116,9 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
         && new Date(parcel.claim.expires_at).getTime() > Math.max(currentTime, Date.now())
         && (!parcel.claim.locked_until || new Date(parcel.claim.locked_until).getTime() <= Math.max(currentTime, Date.now()));
     const canRelease = (parcel: CounterParcel) => parcel.guidance.can_act && parcel.guidance.action === 'counter' && hasCurrentClaimWindow(parcel);
+    const readyParcels = pageParcels.filter(parcel => canRelease(parcel));
+    const attentionParcels = pageParcels.filter(parcel => !canRelease(parcel));
+    const visibleParcels = categoryFilter === 'ready' ? readyParcels : categoryFilter === 'attention' ? attentionParcels : pageParcels;
     const elapsedReady = pageParcels.filter(parcel => parcel.guidance.ready_for_collection && !hasCurrentClaimWindow(parcel)).length;
     const readyNow = Math.max(0, counterCounts.ready - elapsedReady);
     const blockedNow = Math.min(counterCounts.shown, counterCounts.blocked + elapsedReady);
@@ -183,10 +187,22 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             <Head title="Counter Self-Pickup — BagooPH" />
 
             <div className="space-y-5 font-sans">
-                <HubPageHeader title="Counter pickup" icon={Store} description="Stage the parcel, then verify the buyer and their private claim code before handing it over." />
-                {isCounterHub && <HubStepRail label="Counter release checks" steps={[{ title: 'Stage parcel', detail: 'Recorded hub arrival', state: 'waiting' }, { title: 'Verify buyer', detail: 'Photo ID and claim code', state: 'waiting' }, { title: 'Check payment', detail: 'Collect cash only for COD', state: 'waiting' }, { title: 'Record handover', detail: 'Release the actual parcel', state: 'waiting' }]} />}
+                <HubPageHeader
+                    title="Counter pickup"
+                    roleLabel="Counter releasing desk"
+                    icon={Store}
+                    actions={isCounterHub && canScan ? (
+                        <Link
+                            href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
+                            className="inline-flex items-center gap-2 rounded border border-zinc-400 bg-white px-3.5 py-2 text-xs font-semibold text-[#121316] shadow-2xs transition hover:bg-zinc-50 hover:border-zinc-600"
+                        >
+                            <ScanLine className="h-4 w-4 text-zinc-600" />
+                            Open parcel check-in
+                        </Link>
+                    ) : undefined}
+                />
                 {!isCounterHub && <HubNextStep title={activeHub?.tier === 'local_bayan_hub' ? 'Counter pickup is disabled at this hub' : 'Counter pickup is handled by child hubs'} icon={Store}><p>{canConfigureHours ? 'Choose an eligible child hub in the facility switcher to manage its pickup counter. Changing the view does not grant physical handler access.' : 'Use your assigned facility for its recorded parcel work. The company manager and assigned child-hub handler manage counter pickup.'}</p></HubNextStep>}
-                {isCounterHub && canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-xs"><label className="text-sm font-bold text-[#1C1A17]">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-2 w-full rounded-xl border border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white px-3.5 py-2.5 text-xs text-[#1C1A17] font-medium shadow-xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition-colors" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] px-4 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99]">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-xs text-rose-700">{errors.operating_hours}</p>}</form>}
+                {isCounterHub && canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-xs"><label className="text-sm font-bold text-[#1C1A17]">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-2 w-full rounded-xl border border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white px-3.5 py-2.5 text-xs text-[#1C1A17] font-medium shadow-xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] px-4 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99]">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-xs text-red-700">{errors.operating_hours}</p>}</form>}
                 {isCounterHub && !activeHub?.operating_hours && <p className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs font-medium text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
 
                 {/* 1. 4-COLUMN NOTION METRIC STRIP */}
@@ -257,7 +273,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </span>
                             </p>
                         </div>
-                        <span className="shrink-0 text-xs tabular-nums font-bold px-2 py-0.5 rounded-md bg-rose-50 text-[#E00D42] border border-rose-200">
+                        <span className="shrink-0 text-xs tabular-nums font-bold px-2 py-0.5 rounded-md bg-zinc-100 text-[#121316] border border-zinc-200">
                             {activeHub?.code || 'STATION'}
                         </span>
                     </div>
@@ -296,16 +312,18 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                         className="w-full pl-9 pr-3.5 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-medium text-[#1C1A17] placeholder:text-zinc-400 focus:outline-none focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 shadow-2xs transition-colors"
                                     />
                                 </form>
-
-                                <div className="text-xs font-sans text-zinc-600 flex items-center gap-1.5">
-                                    <ShieldCheck className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                                    <span>Verify photo ID, the one-time claim code and payment before release. Collect cash only for COD.</span>
-                                </div>
                             </div>
 
-                            <p className="text-[11px] text-zinc-500 font-medium border-t border-zinc-200/60 pt-2.5">
-                                Readiness and attention counts apply to this page. The queue total includes all matching parcels. Check the buyer's photo ID, private claim code and original payment before release.
-                            </p>
+                            <HubCategoryTabs
+                                label="Filter counter parcels"
+                                activeId={categoryFilter}
+                                onChange={(id) => setCategoryFilter(id as 'all' | 'ready' | 'attention')}
+                                tabs={[
+                                    { id: 'all', label: 'All on page', count: pageParcels.length },
+                                    { id: 'ready', label: 'Ready for Release', count: readyParcels.length },
+                                    { id: 'attention', label: 'Needs Attention / Staging', count: attentionParcels.length },
+                                ]}
+                            />
                         </div>
 
                         <div className="p-5 sm:p-6">
@@ -320,14 +338,26 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     Arrived parcels appear here before staging. Search or change pages to find a parcel.
                                 </p>
                             </div>
+                        ) : visibleParcels.length === 0 ? (
+                            <div className="py-10 text-center font-sans">
+                                <p className="text-sm font-semibold text-[#121316]">No parcels match this category on the current page</p>
+                                <p className="mt-1 text-xs text-zinc-500">Switch back to All on page or check another page.</p>
+                                <button
+                                    type="button"
+                                    onClick={() => setCategoryFilter('all')}
+                                    className="mt-3 rounded-lg border border-zinc-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-[#121316] shadow-2xs hover:bg-zinc-50 cursor-pointer"
+                                >
+                                    Show all on page
+                                </button>
+                            </div>
                         ) : (
                             <div className="divide-y divide-zinc-100 mt-2">
-                                {pageParcels.map((parcel) => (
+                                {visibleParcels.map((parcel) => (
                                     <div key={parcel.id} className="py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2 flex-wrap font-sans">
-                                                <span className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold tabular-nums tracking-wide text-[#E00D42] shadow-xs">
-                                                    <span className="text-[10px] uppercase font-sans font-extrabold mr-1 text-[#C20836]">WAYBILL:</span>{parcel.tracking_number}
+                                                <span className="inline-flex items-center rounded-lg border border-zinc-200 bg-zinc-100 px-2.5 py-1 text-xs font-bold tabular-nums tracking-wide text-[#121316] shadow-2xs">
+                                                    <span className="text-[10px] uppercase font-sans font-extrabold mr-1 text-zinc-500">WAYBILL:</span>{parcel.tracking_number}
                                                 </span>
                                                 <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-zinc-100 text-zinc-700 border border-zinc-200">
                                                     {parcel.destination_bin?.trim() ? parcel.destination_bin : 'Shelf not recorded'}
@@ -400,7 +430,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     : <button type="button" disabled className="rounded-xl border border-zinc-200/90 px-3.5 py-2 text-zinc-400 cursor-not-allowed">Previous</button>}
                                 {counterParcels.next_page_url ? <Link href={counterParcels.next_page_url} preserveScroll className="rounded-xl border border-zinc-200/90 bg-white px-3.5 py-2 font-semibold text-zinc-700 shadow-xs hover:bg-zinc-50 hover:text-zinc-900 transition-colors">Next</Link>
                                     : <button type="button" disabled className="rounded-xl border border-zinc-200/90 px-3.5 py-2 text-zinc-400 cursor-not-allowed">Next</button>}
-                                {counterParcels.current_page > counterParcels.last_page && <Link href={counterParcels.first_page_url} className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 font-bold text-[#E00D42] shadow-xs">First page</Link>}
+                                {counterParcels.current_page > counterParcels.last_page && <Link href={counterParcels.first_page_url} className="rounded-xl border border-zinc-300 bg-zinc-100 px-3.5 py-2 font-bold text-[#121316] shadow-xs">First page</Link>}
                             </nav>
                         </div>
                         </div>
@@ -445,16 +475,6 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 </div>
                             )}
                         </div>
-
-                        <div className="mt-5 p-3.5 rounded-xl bg-zinc-50 border border-zinc-200/80 text-xs text-zinc-800">
-                            <p className="font-bold flex items-center gap-1.5 font-sans text-xs text-[#1C1A17]">
-                                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                                Verified Station Handover
-                            </p>
-                            <p className="text-xs text-zinc-500 font-sans mt-1 leading-relaxed">
-                                Counter handovers automatically resolve status to "Customer Collected" with audit timestamps.
-                            </p>
-                        </div>
                     </div>
 
                 </div>
@@ -472,7 +492,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 <DialogTitle className="text-base font-bold text-[#1C1A17]">
                                     Verify counter handover
                                 </DialogTitle>
-                                <p className="text-xs text-[#E00D42] tabular-nums font-bold mt-1">
+                                <p className="text-xs text-[#121316] tabular-nums font-bold mt-1">
                                     {selectedParcel.tracking_number}
                                 </p>
                                 {selectedParcel.claim && <p className="mt-1 text-xs text-zinc-500">Holding deadline: {new Date(selectedParcel.claim.expires_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })} PHT · {selectedParcel.claim.status}</p>}
@@ -492,7 +512,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-5">
                             <label className="block text-xs font-bold text-[#1C1A17]">Actual parcel waybill<input required disabled={submitting} value={barcode} onChange={event => setBarcode(event.target.value)} className={`${hubInput} mt-1.5`} placeholder="Scan or type waybill number" /></label>
                             <WaybillCamera onScan={setBarcode} disabled={submitting || !currentSelectedParcel || !canRelease(currentSelectedParcel)} instruction="Scan the parcel waybill, then check the buyer’s ID, private claim code and payment before confirming handover." />
-                            <label className="flex items-start gap-2.5 text-xs text-zinc-700 leading-relaxed font-medium"><input type="checkbox" required disabled={submitting} checked={identityConfirmed} onChange={event => setIdentityConfirmed(event.target.checked)} className="mt-0.5 rounded border-zinc-300 text-[#E00D42] focus:ring-[#E00D42]" />I checked a valid photo ID matching buyer account #{selectedParcel.buyer_id} and the name below.</label>
+                            <label className="flex items-start gap-2.5 text-xs text-zinc-700 leading-relaxed font-medium"><input type="checkbox" required disabled={submitting} checked={identityConfirmed} onChange={event => setIdentityConfirmed(event.target.checked)} className="mt-0.5 rounded border-zinc-300 text-[#121316] focus:ring-[#121316]" />I checked a valid photo ID matching buyer account #{selectedParcel.buyer_id} and the name below.</label>
                             <div>
                                 <label htmlFor="counter-recipient-name" className="mb-1.5 block text-xs font-bold text-[#1C1A17]">
                                     Recipient name on the ID
@@ -548,7 +568,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     <p className="font-bold text-[10px] uppercase tracking-wider text-amber-800">Collect Cash on Delivery</p>
                                     <label className="block text-xs font-semibold">Actual cash tender<input required disabled={submitting} inputMode="decimal" value={cashReceived} onChange={event => setCashReceived(event.target.value)} className={`${hubInput} mt-1`} /></label>
                                     <label className="block text-xs font-semibold">Change returned<input required disabled={submitting} inputMode="decimal" value={changeGiven} onChange={event => setChangeGiven(event.target.value)} className={`${hubInput} mt-1`} /></label>
-                                    <label className="flex items-start gap-2.5 text-xs font-medium"><input required type="checkbox" checked={cashConfirmed} onChange={event => setCashConfirmed(event.target.checked)} className="mt-0.5 rounded border-zinc-300 text-[#E00D42] focus:ring-[#E00D42]" />I received the cash and returned any correct change.</label>
+                                    <label className="flex items-start gap-2.5 text-xs font-medium"><input required type="checkbox" checked={cashConfirmed} onChange={event => setCashConfirmed(event.target.checked)} className="mt-0.5 rounded border-zinc-300 text-[#121316] focus:ring-[#121316]" />I received the cash and returned any correct change.</label>
                                     <p className="text-base font-extrabold mt-1 text-[#1C1A17]">
                                         ₱{selectedParcel.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </p>
@@ -556,7 +576,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             )}
 
                             {(!currentSelectedParcel || !canRelease(currentSelectedParcel)) && <p role="alert" className="text-xs font-medium text-amber-800 rounded-lg bg-amber-50 p-2.5 border border-amber-200">This parcel is no longer ready for release. Close this form and review its current checks.</p>}
-                            {Object.entries(errors).map(([key,value]) => <p role="alert" key={key} className="text-xs font-medium text-rose-700">{value}</p>)}
+                            {Object.entries(errors).map(([key,value]) => <p role="alert" key={key} className="text-xs font-medium text-red-700">{value}</p>)}
                             </div>
                             <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-zinc-100 bg-zinc-50/50 px-6 py-4 font-sans">
                                 <button

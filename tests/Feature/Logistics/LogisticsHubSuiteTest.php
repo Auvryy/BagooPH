@@ -537,17 +537,10 @@ class LogisticsHubSuiteTest extends TestCase
         $this->assertDatabaseCount('cod_custody_entries', 1);
     }
 
-    public function test_logistics_operator_can_view_enterprise_roadmap(): void
+    public function test_workspace_guide_roadmap_route_is_removed(): void
     {
-        $response = $this->actingAs($this->logisticsUser)
-            ->get(route('hub.roadmap', ['module' => 'personnel']));
-
-        $response->assertOk();
-        $response->assertInertia(fn (Assert $page) => $page
-            ->component('Hub/Roadmap')
-            ->has('activeHub')
-            ->has('hubs')
-            ->where('selectedModule', 'personnel')
-        );
+        $this->actingAs($this->logisticsUser)
+            ->get('/roadmap')
+            ->assertNotFound();
     }
 }

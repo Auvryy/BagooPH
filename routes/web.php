@@ -33,7 +33,6 @@ use App\Http\Controllers\Buyer\CustomerServiceAssistantController;
 use App\Http\Controllers\Buyer\MobileCapabilitiesController;
 use App\Http\Controllers\Buyer\OrderHistoryController;
 use App\Http\Controllers\Buyer\PickupClaimController;
-use App\Http\Controllers\Buyer\SaleReminderController;
 use App\Http\Controllers\Buyer\SavedProductController;
 use App\Http\Controllers\Buyer\ShopFollowController;
 use App\Http\Controllers\Buyer\VoucherController;
@@ -477,6 +476,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource']);
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
+        Route::post('/scan/batch', [LogisticsHubWorkstationController::class, 'scanBatch'])->middleware('throttle:120,1');
         Route::post('/scan/fast-dispatch', [LogisticsHubWorkstationController::class, 'fastDispatch']);
         Route::get('/corridor-staging', [LogisticsHubWorkstationController::class, 'corridorStaging']);
         Route::get('/command-sheet', [LogisticsHubWorkstationController::class, 'commandSheet'])->name('logistics.command-sheet');
@@ -487,7 +487,6 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::post('/pickup-pauses/{pause}/resume', [SlaMonitoringController::class, 'resumePickupPause'])->whereNumber('pause')->middleware('throttle:20,1');
         Route::get('/monitoring', fn () => redirect('/governance/monitoring'));
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup']);
-        Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap']);
         Route::get('/hub', fn () => redirect('/dashboard'));
     });
 };
@@ -686,7 +685,6 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/', [BuyerHomeController::class, 'index'])->name('index');
     Route::get('/home', fn () => redirect()->route('marketplace'));
     Route::get('/top-products', [BuyerHomeController::class, 'topProducts'])->name('top-products');
-    Route::get('/flash-deals', fn () => redirect('/#flash-deals'))->name('flash-deals');
     Route::get('/search', [BuyerProductController::class, 'search'])->name('search');
     Route::get('/catalog', [BuyerProductController::class, 'search'])->name('catalog');
     Route::get('/product/{slug}', [BuyerProductController::class, 'show'])->name('products.show');
@@ -718,8 +716,6 @@ Route::prefix('buyer')->name('buyer.')->group(function () {
             Route::post('/reviews/{review}/appeal', [BuyerDeliveryFeedbackController::class, 'appealReview'])->whereNumber('review')->middleware('throttle:20,1')->name('reviews.appeal');
             Route::post('/deliveries/{delivery}/feedback', [BuyerDeliveryFeedbackController::class, 'store'])->whereNumber('delivery')->middleware('throttle:20,1')->name('deliveries.feedback');
             Route::post('/safety-checkins/{signal}', [BuyerDeliveryFeedbackController::class, 'submitSafetyCheckin'])->whereNumber('signal')->middleware('throttle:20,1')->name('safety-checkins.submit');
-            Route::post('/sale-reminders/{sale}', [SaleReminderController::class, 'store'])->where('sale', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('sale-reminders.store');
-            Route::delete('/sale-reminders/{sale}', [SaleReminderController::class, 'destroy'])->where('sale', '[1-9][0-9]{0,17}')->middleware('throttle:30,1')->name('sale-reminders.destroy');
             Route::post('/vouchers/apply', [VoucherController::class, 'apply'])->name('vouchers.apply');
             Route::post('/vouchers/choices', [VoucherController::class, 'choices'])->middleware('throttle:60,1')->name('vouchers.choices');
             Route::post('/vouchers/best', [VoucherController::class, 'best'])->middleware('throttle:30,1')->name('vouchers.best');
@@ -1033,6 +1029,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource'])->name('placements');
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
+        Route::post('/scan/batch', [LogisticsHubWorkstationController::class, 'scanBatch'])->middleware('throttle:120,1')->name('scan.batch');
         Route::post('/scan/fast-dispatch', [LogisticsHubWorkstationController::class, 'fastDispatch'])->name('scan.fast-dispatch');
         Route::get('/corridor-staging', [LogisticsHubWorkstationController::class, 'corridorStaging'])->name('corridor-staging');
         Route::get('/command-sheet', [LogisticsHubWorkstationController::class, 'commandSheet'])->name('command-sheet');
@@ -1044,7 +1041,6 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/monitoring', fn () => redirect('/governance/monitoring'))->name('monitoring');
         Route::get('/moderation', fn () => redirect('/governance/moderation'))->name('moderation');
         Route::post('/release', [LogisticsHubWorkstationController::class, 'releasePickup'])->name('release');
-        Route::get('/roadmap', [LogisticsHubWorkstationController::class, 'roadmap'])->name('roadmap');
     });
 });
 

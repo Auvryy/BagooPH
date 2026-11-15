@@ -24,15 +24,15 @@ export interface CashDetail extends CashAccount {
     excess_holders: { name: string; stage: string; amount_cents: number }[];
     recipients: { hub: { id: number; name: string }[]; platform: { id: number; name: string }[] }; can_authorize_recovery: boolean;
 }
-export const cashButton = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-[8px] border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60';
-export const cashPrimary = `${cashButton} !border-[#E00D42] !bg-[#E00D42] !text-white hover:!bg-[#C20836]`;
-export const cashInput = 'mt-2 min-h-12 w-full rounded-[8px] border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 placeholder:text-slate-500 focus:border-[#E00D42] focus:ring-[#E00D42]';
-export const cashSurface = 'rounded-[8px] border border-slate-300 bg-white shadow-[0_2px_8px_rgba(15,23,42,0.035)]';
+export const cashButton = 'inline-flex min-h-12 items-center justify-center gap-2 rounded border border-slate-400 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 hover:border-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-60';
+export const cashPrimary = `${cashButton} !border-[#C20836] !bg-[#E00D42] !text-white hover:!bg-[#C20836]`;
+export const cashInput = 'mt-2 min-h-12 w-full rounded border border-slate-400 bg-white px-3 py-3 text-base text-slate-900 placeholder:text-slate-500 focus:border-[#E00D42] focus:ring-[#E00D42]';
+export const cashSurface = 'rounded border border-slate-300 bg-white shadow-[0_2px_8px_rgba(15,23,42,0.04)]';
 export const cashMoney = (cents: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(cents / 100);
 export const cashDate = (date: string) => new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' }).format(new Date(date));
 export const cashEventLabel: Record<string, string> = { rider_collection: 'Rider collection', counter_collection: 'Counter collection', handover_offered: 'Handover offered', handover_received: 'Cash received', handover_cancelled: 'Handover cancelled', adjustment: 'Difference reviewed', platform_reconciled: 'Platform reconciliation', legacy_review: 'Older record reviewed', recovery_authorized: 'Recovery handover authorized' };
 
-export function CashFrame({ children, mode, title, subtitle, isOnline = false, scope }: PropsWithChildren<{ mode: CashMode; title: string; subtitle: string; isOnline?: boolean; scope?: CourierScope }>) {
+export function CashFrame({ children, mode, title, subtitle, isOnline = false, scope }: PropsWithChildren<{ mode: CashMode; title: string; subtitle?: string; isOnline?: boolean; scope?: CourierScope }>) {
     const { auth, flash } = usePage<PageProps>().props;
     const content = <><Head title={title} />{children}</>;
     if (mode === 'courier') return <CourierLayout title={title} subtitle={subtitle} isOnline={isOnline} scope={scope} pageLabel="Cash handover" actions={<Link href={courierPath('/deliveries')} className={cashButton}><ArrowLeft className="h-4 w-4" aria-hidden="true" />Deliveries</Link>}>{content}</CourierLayout>;

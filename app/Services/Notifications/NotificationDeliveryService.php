@@ -4,7 +4,6 @@ namespace App\Services\Notifications;
 
 use App\Models\NotificationDelivery;
 use App\Models\User;
-use App\Services\Commerce\SaleReminderService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -32,7 +31,7 @@ class NotificationDeliveryService
                 if ($delivery->discarded_at) {
                     return false;
                 }
-                if ($delivery->type === 'sale-reminder' && ! app(SaleReminderService::class)->deliveryIsCurrent($delivery)) {
+                if ($delivery->type === 'sale-reminder') {
                     $delivery->update(['discarded_at' => now(), 'last_attempt_at' => now()]);
 
                     return false;

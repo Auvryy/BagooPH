@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
+use App\Services\Logistics\HubBatchScanService;
 use App\Services\Logistics\LogisticsAccountService;
 use App\Services\Logistics\WaybillScanInputService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class LogisticsScanController extends Controller
@@ -31,5 +33,22 @@ class LogisticsScanController extends Controller
         }
 
         return $response;
+    }
+
+    public function batch(
+        Request $request,
+        LogisticsAccountService $accounts,
+        LogisticsHubWorkstationController $workstation,
+        HubBatchScanService $batchService,
+    ): JsonResponse {
+        $data = $request->validate([
+            'hub_id' => 'required|integer|min:1',
+            'continuous' => 'prohibited',
+            'auto_advance' => 'prohibited',
+            'pinned_action' => 'nullable|string|not_in:AUTO_PROGRESS',
+        ]);
+        abort_unless($accounts->hubs($request->user())->contains('id', $data['hub_id']), 403, 'This facility is not assigned to your operator account.');
+
+        return $workstation->scanBatch($request, $batchService);
     }
 }

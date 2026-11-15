@@ -74,7 +74,6 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                 <HubPageHeader
                     title="Parcel recovery"
                     icon={PackageSearch}
-                    description="Recover unexpected parcels through actual scans and recorded transfers back to their original route."
                     actions={<Link href={manifestPath} className={buttonClass}>View manifests</Link>}
                 />
 
@@ -151,7 +150,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                                 description={
                                     observations.data.length
                                         ? 'See its current holder, authorized route and next action. Unknown waybills remain open until the original parcel is established.'
-                                        : 'Parcels reported with an arrival problem appear here for company review. You can check another filter or continue ordinary parcel handling.'
+                                        : undefined
                                 }
                             />
                         </section>
