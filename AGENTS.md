@@ -87,7 +87,7 @@ When documentation conflicts with executable code, identify the mismatch. For cu
 
 - Run focused tests for changed behavior, then broader tests when risk warrants it.
 - For frontend changes, run `npm run build`; for backend/domain changes, run the relevant PHP tests. Use `./bagoo.sh` equivalents when host permissions or dependencies require Docker.
-- Never open a visible browser, use browser automation, or take screenshots for routine testing or visual checks. Prefer automated tests, builds, static inspection, and user-provided screenshots. Use browser UI testing only when the user explicitly requests it for that task.
+- For UI changes, verify the result visually: take headless browser screenshots of the affected pages on the local development site (phone and desktop widths) and fix what looks wrong. Use the seeded demo accounts, keep screenshots out of tracked files, and never point automation at production or real user data. Automated tests and builds remain required.
 - Do not claim success when checks are blocked or failing; state the exact blocker.
 - After coding, report a brief before/after rating for the specific UI, feature, or flow changed. Explain the user-visible improvement, the supporting verification, and remaining gaps. Treat ratings as scoped engineering assessments; do not raise overall flow readiness for unrelated or unverified work. Record lasting implementation evidence and ratings in `docs/CORE_FLOW_ROADMAP.md`.
 - Keep final responses short: outcome, verification, commits created, and any blocker. Do not include token estimates or a commit command unless requested.
