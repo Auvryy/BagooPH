@@ -6,8 +6,22 @@ import { cashButton, cashInput } from '@/Components/CodCashUI';
 import type { PageProps } from '@/types';
 import type { OversightProps } from '@/types/finance';
 import { financeDate, financeMoney, financeState } from '@/utils/finance';
+import SellerFinanceOverview from '@/Components/Finance/SellerFinanceOverview';
 
-export default function Overview({ records, totals, filters, mode, error, stateOptions, companies, recipients }: OversightProps) {
+export default function Overview(props: OversightProps) {
+    if (props.mode === 'seller') {
+        return (
+            <DashboardLayout title="Finances">
+                <Head title="Finances" />
+                <SellerFinanceOverview {...props} />
+            </DashboardLayout>
+        );
+    }
+
+    return <OversightOverview {...props} />;
+}
+
+function OversightOverview({ records, totals, filters, mode, error, stateOptions, companies, recipients }: OversightProps) {
     const [form, setForm] = useState(filters);
     const { errors } = usePage<PageProps>().props;
     useEffect(() => setForm(filters), [filters]);

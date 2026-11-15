@@ -197,8 +197,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     children: [
                         { name: 'Overview', href: '/financial-oversight', current: component === 'Finance/Overview' || component === 'Finance/Evidence' },
                         { name: 'Payouts', href: '/seller-settlements', current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },
-                        { name: 'Delivery earnings', href: '/delivery-earnings', current: component === 'Finance/DeliveryEarnings' },
-                        { name: 'Virtual proceeds', href: '/wallet/proceeds', current: component === 'Finance/WalletProceeds' },
+                        { name: 'Wallet sales', href: '/wallet/proceeds', current: component === 'Finance/WalletProceeds' },
                         { name: 'Sales report', href: route('seller.reports'), current: component === 'Seller/Reports' },
                     ],
                 },

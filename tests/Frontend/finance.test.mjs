@@ -63,7 +63,7 @@ test('a true zero links to its source filter and retains Philippine currency', a
     });
     assert.match(html, /₱0\.00/);
     assert.match(html, /href="\/financial-oversight\?metric=settled"/);
-    assert.match(html, /No records match these filters/);
+    assert.match(html, /No payouts yet/);
 });
 test('seller money pages share one finance section with distinct reports and payouts', async () => {
     const html = await render(Overview, 'Finance/Overview', {
