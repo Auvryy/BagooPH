@@ -30,8 +30,13 @@ class LogisticsTestingEnvironmentSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function () {
+            $admin = User::query()->where('email', 'admin@bagoo.test')->where('role', 'admin')->firstOrFail();
+
             // 1. Reset all old order and delivery history so the user can test manually with a fresh clean slate
-            DB::statement("SET session_replication_role = 'replica'");
+            $postgres = DB::getDriverName() === 'pgsql';
+            if ($postgres) {
+                DB::statement("SET session_replication_role = 'replica'");
+            }
             
             PickupClaim::query()->delete();
             DeliveryAttempt::query()->delete();
@@ -42,7 +47,9 @@ class LogisticsTestingEnvironmentSeeder extends Seeder
             OrderItem::query()->delete();
             Order::query()->delete();
 
-            DB::statement("SET session_replication_role = 'origin'");
+            if ($postgres) {
+                DB::statement("SET session_replication_role = 'origin'");
+            }
 
             // 2. Ensure ALL products have valid dimensions (length, width, height, weight) & stock
             // This prevents LogisticsRateService from throwing CheckoutException during calculation.

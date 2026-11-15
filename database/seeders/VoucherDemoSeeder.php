@@ -16,6 +16,8 @@ class VoucherDemoSeeder extends Seeder
         $admin = User::where('role', 'admin')->where('email', 'admin@bagoo.test')->first();
         $shop = Shop::eligible()->whereHas('user', fn ($q) => $q->where('email', 'seller@bagoo.test'))->first();
         if (! $admin?->isAdmin() || ! $admin->canAccessPortal() || ! $shop) {
+            $this->command?->warn('Demo vouchers skipped: the demo admin or the approved seller@bagoo.test shop is not ready yet.');
+
             return;
         }
         $campaigns = [
