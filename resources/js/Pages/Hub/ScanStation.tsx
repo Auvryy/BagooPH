@@ -337,8 +337,9 @@ export default function ScanStation({
     const [dwsHeight, setDwsHeight] = useState<string>('');
     const [dwsWeightGrams, setDwsWeightGrams] = useState<string>('');
 
-    // Always default to 2-step inspect mode so saved storage preferences never auto-confirm custody.
-    const [scanMode, setScanMode] = useState<ScanOperationMode>('verify');
+    // One scan receives the parcel: the server only applies the step this hub and worker are allowed to do,
+    // and rejects wrong-company or misrouted parcels. "Check first" stays available for unusual parcels.
+    const [scanMode, setScanMode] = useState<ScanOperationMode>('direct');
     const [pinnedAction, setPinnedAction] = useState<string>('ANY_PERMITTED_PARCEL_STEP');
     const [locationBarcode, setLocationBarcode] = useState<string>('');
     const [queuedScans, setQueuedScans] = useState<QueuedScanItem[]>([]);

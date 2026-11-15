@@ -74,6 +74,9 @@ function harness(t, Component = ui.Camera, initial = { onScan() {} }) {
     return h;
 }
 
+// The station defaults to one-scan receiving; these cases cover the deliberate inspect-then-confirm path.
+const checkFirst = h => { nodes(h.tree).find(n => n.props?.onModeChange).props.onModeChange('verify'); h.render(); };
+
 test('camera starts on its first mount and treats the matching printed QR and barcode as one parcel', async t => {
     const seen = []; const h = harness(t, ui.Camera, { onScan: code => seen.push(code) });
     h.values = [{ rawValue: 'BGO-ONE' }, { rawValue: 'https://bagoo.test/track/BGO-ONE' }];
@@ -95,7 +98,7 @@ test('leaving while camera permission is pending releases the eventual stream', 
     permission.resolve(h.stream()); await starting; assert.equal(h.stopped, 1);
 });
 test('first scanner entry inspects once and a deliberate confirmation refreshes queues and exposes the next step', async t => {
-    const h = harness(t, ui.Scanner, props); h.render();
+    const h = harness(t, ui.Scanner, props); h.render(); checkFirst(h);
     assert.equal(h.focused, 1, 'Direct entry must prepare the keyboard scanner field.');
     let input = nodes(h.tree).find(n => n.props?.id === 'barcode-field'); input.props.onChange({ target: { value: 'BGO-ONE' } }); h.render();
     nodes(h.tree).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await tick(); h.render();
@@ -110,7 +113,7 @@ test('first scanner entry inspects once and a deliberate confirmation refreshes 
     h.button('Check for updates'); h.button('Scan next parcel');
 });
 test('an invalid next scan preserves its validation error and cannot leave the old parcel confirmation active', async t => {
-    const h = harness(t, ui.Scanner, props); h.render();
+    const h = harness(t, ui.Scanner, props); h.render(); checkFirst(h);
     const input = () => nodes(h.tree).find(n => n.props?.id === 'barcode-field');
     const submit = () => nodes(h.tree).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
     input().props.onChange({ target: { value: 'BGO-ONE' } }); h.render(); submit(); await tick(); h.render(); h.button('Confirm custody action');
@@ -172,7 +175,7 @@ test('facility changes and foreground work reject even an already delivered old 
 });
 
 test('a buyer-return scan opens its actual case without offering an ordinary delivery confirmation', async t => {
-    const h = harness(t, ui.Scanner, props); h.render();
+    const h = harness(t, ui.Scanner, props); h.render(); checkFirst(h);
     const entry = { reference: 'BR-OWNED', barcode: 'BRT-ABCDEFGHIJKLMNOPQRST', href: '/buyer-returns/11', status: 'approved' };
     h.response = () => Response.json({ success: true, confirmed: false, message: 'Buyer return identified.', return_case: entry });
     nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: entry.barcode } }); h.render();
@@ -188,7 +191,7 @@ test('a buyer-return scan opens its actual case without offering an ordinary del
 test('a saved continuous preference cannot make inspection automatically confirm custody', async t => {
     const h = harness(t, ui.Scanner, props);
     h.window.localStorage = { getItem: () => 'true' };
-    h.render(); nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: 'BGO-ONE' } }); h.render();
+    h.render(); checkFirst(h); nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: 'BGO-ONE' } }); h.render();
     nodes(h.tree).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await tick(); h.render();
     assert.equal(h.calls.length, 1); assert.deepEqual(h.calls[0].body, { barcode: 'BGO-ONE', mode: 'inspect', hub_id: 1 });
     h.button('Confirm custody action');
@@ -212,7 +215,7 @@ test('scanner shows the original actor and event reference without counting inhe
     h.response = () => Response.json({ ...reply(), scan_evidence: { route_hub_count: 3, submitted_waybill_records: 2,
         inherited_departure_records: 1, derived_local_records: 0, latest_record: { reference: 'CP-ORIGINAL', actor: 'Ana Operator',
             actor_role: 'logistics', type: 'arrived_at_origin_hub', provenance: 'submitted', recorded_at: '2026-11-11T10:00:00Z' } } });
-    h.render(); nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: 'BGO-ONE' } }); h.render();
+    h.render(); checkFirst(h); nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: 'BGO-ONE' } }); h.render();
     nodes(h.tree).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await tick(); h.render();
     const rendered = nodes(h.tree).flatMap(n => [n.props?.children].flat(Infinity)).filter(x => typeof x === 'string').join(' ');
     assert.match(rendered, /CP-ORIGINAL/); assert.match(rendered, /Ana Operator/); assert.match(rendered, /not a count of physical touches/);
@@ -220,7 +223,7 @@ test('scanner shows the original actor and event reference without counting inhe
 
 
 test('confirmation retains the actually inspected order alias instead of generating a different tracking scan', async t => {
-    const h = harness(t, ui.Scanner, props); h.render();
+    const h = harness(t, ui.Scanner, props); h.render(); checkFirst(h);
     nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: 'BGO-ORDER-ALIAS' } }); h.render();
     nodes(h.tree).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} }); await tick(); h.render();
     h.response = () => Response.json(reply(true));

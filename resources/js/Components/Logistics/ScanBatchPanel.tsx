@@ -340,12 +340,12 @@ export function ScanModeControls({
 }) {
     const modes: Array<{ id: ScanOperationMode; label: string }> = [
         {
-            id: 'verify',
-            label: '2-Step Verify',
+            id: 'direct',
+            label: 'Scan & receive',
         },
         {
-            id: 'direct',
-            label: '1-Scan Direct',
+            id: 'verify',
+            label: 'Check first',
         },
     ];
 
@@ -407,7 +407,9 @@ export function ScanModeControls({
             </div>
 
             {scanMode === 'direct' && (
-                <div className="grid gap-3 border-t border-zinc-200 pt-3 sm:grid-cols-2">
+                <details className="border-t border-line-200 pt-3">
+                <summary className="cursor-pointer text-[13px] font-medium text-ink-600">Optional lane guards</summary>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <label className="block text-xs font-semibold text-zinc-700">
                         Lane Action Lock (optional guard)
                         <select
@@ -434,6 +436,7 @@ export function ScanModeControls({
                         />
                     </label>
                 </div>
+                </details>
             )}
         </section>
     );
