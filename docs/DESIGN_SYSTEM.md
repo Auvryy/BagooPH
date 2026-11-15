@@ -190,7 +190,8 @@ restyling them.
 - **Toasts:** bottom-right desktop, top mobile; success auto-hides after 4s,
   errors stay until dismissed.
 - **Dialogs:** for confirmation of destructive or irreversible actions only.
-  The backdrop is a light scrim (`surface-100` at about 85%), never a dark one.
+  The backdrop dims the page with deep brand red (`brand-900` at about 45%),
+  never black and never a light wash that makes the page look faded.
   Title states the action, body states the consequence, buttons name the action.
 - **Inline banners:** for page-level conditions (account pending approval,
   offline, hub capacity full).
@@ -253,7 +254,7 @@ restyling them.
 - Placeholder copy ("Lorem ipsum", "Welcome back!") and invented numbers.
 - Red used for anything that is not an action, a step marker, the final total,
   the brand mark or an error.
-- Black or near-black fills of any kind (see principle 5), including dark
+- Black or near-black fills of any kind (see principle 5), including black
   modal backdrops and dark badges.
 
 ## 11. Implementation order

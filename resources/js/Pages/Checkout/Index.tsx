@@ -1034,7 +1034,7 @@ export default function CheckoutIndex({
 
                 {/* Order review dialog */}
                 <Dialog open={showConfirmModal} onClose={() => { if (orderDispatchStep === 'review') setShowConfirmModal(false); }} className="relative z-50">
-                    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-surface-100/85 sm:items-center sm:p-4 animate-fade-in">
+                    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-brand-900/45 sm:items-center sm:p-4 animate-fade-in">
                         <DialogPanel className="my-auto max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-card bg-white shadow-float sm:rounded-card">
 
                             {orderDispatchStep !== 'review' && (
