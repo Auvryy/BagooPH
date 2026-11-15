@@ -41,7 +41,7 @@ class VoucherController extends Controller
             'destination_barangay' => ['nullable', 'string', 'max:100'],
         ])->validate();
         $selection = app(VoucherSelectionService::class)->normalize($input);
-        $companies = null;
+        $companies = [];
         try {
             if (! empty($data['shipping_province']) && ! empty($data['shipping_city'])
                 && ! app(LogisticsRoutingEngine::class)->isContiguousRoadServiceable($data['shipping_province'], $data['shipping_city'])) {

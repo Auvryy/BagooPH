@@ -84,7 +84,7 @@ class AccountSettingsUpdatesTest extends TestCase
         $order = Order::factory()->create(['buyer_id' => $buyer->id, 'shipping_address' => 'Old delivery street', 'status' => 'placed']);
         $this->actingAs($buyer)->from('/buyer/profile?tab=addresses')->patch('/buyer/addresses/'.$address->id,
             ['recipient_name' => 'Andrea Cruz', 'phone' => '09171234567', 'region' => '1300000000',
-                'province' => 'Metro Manila', 'city' => 'Makati', 'barangay' => 'Poblacion', 'street' => 'New delivery street'])
+                'province' => 'Metro Manila', 'city' => 'Makati', 'barangay' => 'Poblacion', 'postal_code' => '1210', 'street' => 'New delivery street'])
             ->assertSessionHasNoErrors()->assertRedirect('/buyer/profile?tab=addresses');
         $this->assertSame('Old delivery street', $order->fresh()->shipping_address);
         $this->assertSame('Andrea Cruz', $address->fresh()->recipient_name);

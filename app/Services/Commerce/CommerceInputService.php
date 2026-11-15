@@ -92,7 +92,7 @@ class CommerceInputService
             'city' => $this->text('location', 2, 100, true),
             'province' => $this->text('location', 2, 100, true),
             'barangay' => $this->text('location', 2, 100, true),
-            'postal_code' => ['bail', 'nullable', 'string', 'regex:/\A[0-9]{4}\z/'],
+            'postal_code' => ['bail', 'required', 'string', 'regex:/\A[0-9]{4}\z/'],
             'latitude' => $this->coordinate('longitude', 90),
             'longitude' => $this->coordinate('latitude', 180),
             'landmark' => $this->text('address', 5, 255),

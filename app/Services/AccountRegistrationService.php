@@ -44,7 +44,7 @@ class AccountRegistrationService
             }
             $rules = array_filter($rules, fn ($field) => in_array(explode('.', $field)[0], [...$fields, ...self::MANAGED_FIELDS], true), ARRAY_FILTER_USE_KEY);
         }
-        app(RegistrationAddressService::class)->resolve($request->validate($rules, $this->messages()));
+        app(RegistrationAddressService::class)->resolve($request->validate($rules, $this->messages()), $role);
     }
 
     private function prepare(Request $request, string $role, ?int $step = null): bool
@@ -171,7 +171,7 @@ class AccountRegistrationService
         }
         $birthDates = app(BirthDateEligibility::class);
         $separatedName = $this->prepare($request, $role);
-        $validated = app(RegistrationAddressService::class)->resolve($request->validate($this->rules($role, $separatedName, $request->input('vehicle_type')), $this->messages()));
+        $validated = app(RegistrationAddressService::class)->resolve($request->validate($this->rules($role, $separatedName, $request->input('vehicle_type')), $this->messages()), $role);
         $validated = app(ApplicationValidationService::class)->registrationValues($validated, $role);
 
         if ($requireVerifiedEmail && ! app(OtpService::class)->hasValidToken($validated['email'], (string) $request->input('otp_token'), 'registration', role: $role)) {

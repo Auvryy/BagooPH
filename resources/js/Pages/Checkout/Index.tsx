@@ -279,31 +279,41 @@ export default function CheckoutIndex({
     };
     const pricing = usePurchaseQuote(quoteInput, initialQuote, availableVouchers);
     const quote = pricing.quote;
-    const servingCompanies = pricing.companies ?? logisticsCompanies;
-    const completeDoorstepDestination = Boolean(data.shipping_province.trim() && data.shipping_city.trim()
-        && /^[0-9]{4}$/.test(data.shipping_postal_code));
-    const noServingCompany = data.delivery_type === 'doorstep' && completeDoorstepDestination
+    const servingCompanies = pricing.companies ?? (pricing.failure ? [] : logisticsCompanies);
+    const missingLocation = !data.shipping_province.trim() || !data.shipping_city.trim();
+    const missingValidPostal = !/^[0-9]{4}$/.test(data.shipping_postal_code.trim());
+    const completeDoorstepDestination = !missingLocation && !missingValidPostal;
+    const noServingCompany = completeDoorstepDestination
         && pricing.current && pricing.companies !== undefined && pricing.companies.length === 0;
     const selectedCompany = servingCompanies.find(company => String(company.id) === String(data.logistics_company_id));
+    const companyPickupHubs = selectedCompany
+        ? pickupHubs.filter(hub => String(hub.logistics_company_id) === String(selectedCompany.id))
+        : [];
+    const noSelfPickupHubsForCompany = data.delivery_type === 'hub_self_pickup' && Boolean(selectedCompany) && companyPickupHubs.length === 0;
+    const logisticsUnavailableReason = pricing.pending ? ''
+        : missingLocation ? 'Delivery province and city are required before matching a logistics company.'
+            : missingValidPostal ? 'A valid 4-digit postal code is required for your delivery address to match a logistics hub. Add or edit the postal code in Delivery Address.'
+                : pricing.failure ? pricing.failure
+                    : noServingCompany ? `No available logistics company near ${[data.shipping_city, data.shipping_province].filter(Boolean).join(', ')} (${data.shipping_postal_code})${quote.shops.length > 1 ? ' serves all sellers in your bag' : ' serves this route'}.`
+                        : noSelfPickupHubsForCompany ? `No self-pickup Bayan Hub is available for ${selectedCompany?.name}. Try Doorstep Delivery or another address.`
+                            : '';
     const hasInvalidDeliveryLocation = Boolean(errors.shipping_latitude || errors.shipping_longitude);
     const visibleCheckoutErrors = checkoutErrorMessages(errors);
     const routeDetailsReady = completeDoorstepDestination
         && (data.delivery_type === 'doorstep' || Boolean(data.pickup_hub_id));
     const canShowQuote = pricing.ready && routeDetailsReady && Boolean(selectedCompany);
     const quoteStatus = pricing.pending ? 'Updating prices, delivery fees and voucher eligibility…'
-        : pricing.failure ? pricing.failure
-            : noServingCompany ? 'No eligible logistics company serves this address and every seller in your Bag. Try another address.'
-                : !completeDoorstepDestination ? 'Enter a province, city and four-digit postal code to check delivery coverage.'
-                    : data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id ? 'Choose a Bayan Hub to check collection coverage.'
-                    : !selectedCompany ? 'Choose an eligible logistics company to confirm your delivery total.'
-                        : 'Current prices and delivery fees checked.';
+        : logisticsUnavailableReason ? logisticsUnavailableReason
+            : data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id ? 'Choose a Bayan Hub to check collection coverage.'
+                : !selectedCompany ? 'Choose an eligible logistics company to confirm your delivery total.'
+                    : 'Current prices and delivery fees checked.';
     useEffect(() => {
-        if (!pricing.companies) return;
-        const defaultCompanyId = defaultLogisticsCompanyId(pricing.companies, data.logistics_company_id);
+        if (pricing.pending) return;
+        const defaultCompanyId = defaultLogisticsCompanyId(servingCompanies, data.logistics_company_id);
         if (String(defaultCompanyId) !== String(data.logistics_company_id)) {
             setData(previous => ({ ...previous, logistics_company_id: defaultCompanyId, pickup_hub_id: '' }));
         }
-    }, [pricing.companies, data.logistics_company_id]);
+    }, [pricing.pending, servingCompanies, data.logistics_company_id]);
     const [pickerSlot, setPickerSlot] = useState<number | null | undefined>(undefined);
     const [bestBusy, setBestBusy] = useState(false);
     const bestPending = useRef(false);
@@ -401,10 +411,8 @@ export default function CheckoutIndex({
             return;
         }
 
-        if (noServingCompany || !data.logistics_company_id || !selectedCompany) {
-            setValidationError(noServingCompany
-                ? 'No eligible logistics company currently serves this address and every seller in your Bag. Try another address.'
-                : 'Choose a logistics company that serves this delivery route.');
+        if (noServingCompany || logisticsUnavailableReason || !data.logistics_company_id || !selectedCompany) {
+            setValidationError(logisticsUnavailableReason || 'Choose a logistics company that serves this delivery route.');
             return;
         }
 
@@ -630,25 +638,42 @@ export default function CheckoutIndex({
 
                             {/* Minimalist Logistics Carrier Dropdown */}
                             <div>
-                                <label htmlFor="checkout-carrier-select" className="block text-xs font-bold text-slate-800 mb-1.5">
-                                    Logistics Carrier
-                                </label>
+                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                    <label htmlFor="checkout-carrier-select" className="block text-xs font-bold text-slate-800">
+                                        Logistics Carrier
+                                    </label>
+                                    {selectedCompany && !pricing.pending && (
+                                        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                            {servingCompanies.length === 1 ? 'Auto-matched for your route' : 'Auto-selected'}
+                                        </span>
+                                    )}
+                                </div>
                                 <select
                                     id="checkout-carrier-select"
                                     required
+                                    disabled={servingCompanies.length === 0}
                                     value={data.logistics_company_id}
                                     onChange={event => setData({ ...data, logistics_company_id: event.target.value, pickup_hub_id: '' })}
-                                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 shadow-2xs focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 shadow-2xs focus:border-[#E00D42] focus:ring-[#E00D42] disabled:bg-slate-100 disabled:text-slate-500"
                                 >
-                                    <option value="">Choose a logistics carrier</option>
+                                    <option value="">{servingCompanies.length === 0 ? 'No available logistics company' : 'Choose a logistics carrier'}</option>
                                     {servingCompanies.map(company => (
                                         <option key={company.id} value={company.id}>{company.name}</option>
                                     ))}
                                 </select>
-                                {noServingCompany && (
-                                    <span className="mt-1.5 block text-xs text-rose-600">
-                                        No approved logistics carrier currently serves this route.
-                                    </span>
+                                {logisticsUnavailableReason && (
+                                    <div role="alert" className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-900">
+                                        <span className="font-medium">{logisticsUnavailableReason}</span>
+                                        {(missingLocation || missingValidPostal) && !isEditingAddress && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditingAddress(true)}
+                                                className="shrink-0 rounded-lg border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-900 hover:bg-amber-100 transition cursor-pointer"
+                                            >
+                                                Add postal code / edit address
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
                                 {errors.logistics_company_id && (
                                     <span className="mt-1 block text-xs text-rose-700">{errors.logistics_company_id}</span>

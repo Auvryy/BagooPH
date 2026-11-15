@@ -6,6 +6,7 @@ type FieldProps = {
     onChange: (value: string) => void;
     error?: string;
     courier?: boolean;
+    required?: boolean;
 };
 
 function controlClass(courier: boolean) {
@@ -23,23 +24,23 @@ export function RegistrationSexField({ value, onChange, error, courier = false }
         </div>;
 }
 
-export function RegistrationPostalCodeField({ value, onChange, error, courier = false }: FieldProps) {
+export function RegistrationPostalCodeField({ value, onChange, error, courier = false, required = false }: FieldProps) {
     const [postalFeedback, setPostalFeedback] = useState<string>();
     return <div className="space-y-1">
-            <label htmlFor="postal-code" className="flex h-5 items-center text-xs font-semibold uppercase tracking-wider text-slate-800">Postal code (optional)</label>
-            <input id="postal-code" name="postal_code" type="text" inputMode="numeric" autoComplete="postal-code" value={value} minLength={4} maxLength={4} pattern="[0-9]{4}" placeholder="4 digits"
+            <label htmlFor="postal-code" className="flex h-5 items-center text-xs font-semibold uppercase tracking-wider text-slate-800">{required ? <>Postal code <span className="ml-1 text-[#E00D42]">*</span></> : 'Postal code (optional)'}</label>
+            <input id="postal-code" name="postal_code" type="text" inputMode="numeric" autoComplete="postal-code" value={value} required={required} aria-required={required || undefined} minLength={4} maxLength={4} pattern="[0-9]{4}" placeholder="4 digits"
                 onChange={event => {
-                    const value = event.target.value;
-                    if (!/^[0-9]{0,4}$/.test(value)) { setPostalFeedback('Use exactly four digits, without letters or symbols.'); return; }
-                    setPostalFeedback(value && value.length !== 4 ? 'Use exactly four digits.' : undefined);
-                    onChange(value);
+                    const nextValue = event.target.value;
+                    if (!/^[0-9]{0,4}$/.test(nextValue)) { setPostalFeedback('Use exactly four digits, without letters or symbols.'); return; }
+                    setPostalFeedback(nextValue && nextValue.length !== 4 ? 'Use exactly four digits.' : (required && !nextValue.trim() ? 'Postal code is required (4 digits).' : undefined));
+                    onChange(nextValue);
                 }}
                 onPaste={event => {
                     const input = event.currentTarget;
-                    const value = input.value.slice(0, input.selectionStart ?? input.value.length) + event.clipboardData.getData('text') + input.value.slice(input.selectionEnd ?? input.value.length);
-                    if (!/^[0-9]{0,4}$/.test(value)) { event.preventDefault(); setPostalFeedback('Use four digits. No pasted text was added.'); }
+                    const nextValue = input.value.slice(0, input.selectionStart ?? input.value.length) + event.clipboardData.getData('text') + input.value.slice(input.selectionEnd ?? input.value.length);
+                    if (!/^[0-9]{0,4}$/.test(nextValue)) { event.preventDefault(); setPostalFeedback('Use four digits. No pasted text was added.'); }
                 }} className={controlClass(courier)} aria-invalid={Boolean(postalFeedback || error)} aria-describedby="postal-code-help postal-code-error" />
-            <p id="postal-code-help" className="text-xs text-slate-500">Use four digits for the address in this application.</p>
+            <p id="postal-code-help" className="text-xs text-slate-500">{required ? 'Required 4-digit postal code to match logistics hubs.' : 'Use four digits for the address in this application.'}</p>
             <InputError id="postal-code-error" role="status" aria-live="polite" message={postalFeedback || error} />
         </div>;
 }

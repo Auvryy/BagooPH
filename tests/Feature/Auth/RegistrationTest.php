@@ -49,6 +49,8 @@ class RegistrationTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('delivery_latitude');
         $this->postJson('/register/validate', [...$input, 'step' => 2, 'region' => null, 'address' => null])
             ->assertUnprocessable()->assertJsonValidationErrors(['region', 'address']);
+        $this->postJson('/register/validate', [...$input, 'step' => 2, 'postal_code' => null])
+            ->assertUnprocessable()->assertJsonValidationErrors('postal_code');
         $this->post('/register', $input)->assertSessionHasNoErrors()->assertRedirect(route('login'));
 
         $buyer = User::where('email', 'map-buyer@example.test')->sole();

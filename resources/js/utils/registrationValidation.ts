@@ -98,7 +98,9 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
             add(field, !value(field).trim() && required ? label + ' is required.' : registrationTextError(value(field), field === 'address' ? 5 : 2, field === 'address' ? 500 : 255, required));
         }
         for (const field of ['province', 'municipality', 'barangay']) add(field, registrationTextError(value(field), 2, 255));
-        if (value('postal_code') && !/^[0-9]{4}$/.test(value('postal_code'))) errors.postal_code = 'Use exactly 4 digits.';
+        const buyerPostalRequired = role === 'buyer' && (!google || hasBuyerPin || ['region', 'province', 'city', 'barangay', 'address'].some(field => value(field).trim()));
+        if (buyerPostalRequired && !value('postal_code').trim()) errors.postal_code = 'Postal code is required (4 digits).';
+        else if (value('postal_code') && !/^[0-9]{4}$/.test(value('postal_code'))) errors.postal_code = 'Use exactly 4 digits.';
     }
     const phoneStep = role === 'courier' || role === 'logistics' ? 1 : 2;
     if (checking(phoneStep)) {

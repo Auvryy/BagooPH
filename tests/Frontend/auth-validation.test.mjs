@@ -549,7 +549,11 @@ test('each role checks sex on the name step and postal values on the address ste
     for (const role of ['buyer', 'seller', 'courier', 'logistics']) {
         const step = role === 'courier' ? 1 : role === 'logistics' ? 3 : 2;
         assert.equal(ui.registrationInputErrors(identity(role), limits, step).postal_code, undefined);
-        assert.equal(ui.registrationInputErrors({ ...identity(role), postal_code: '' }, limits, step).postal_code, undefined);
+        if (role === 'buyer') {
+            assert.match(ui.registrationInputErrors({ ...identity(role), postal_code: '' }, limits, step).postal_code, /Postal code is required/);
+        } else {
+            assert.equal(ui.registrationInputErrors({ ...identity(role), postal_code: '' }, limits, step).postal_code, undefined);
+        }
         for (const sex of ['', '   ', undefined, null, 1, ['Female']]) {
             assert.match(ui.registrationInputErrors({ ...identity(role), sex }, limits, 1).sex, /required/);
             await assert.rejects(ui.checkRegistration({ ...identity(role), sex }, limits, 1), error => Boolean(error.fields.sex));
@@ -566,7 +570,7 @@ test('each role checks sex on the name step and postal values on the address ste
     assert.equal(requests, 0);
 });
 
-test('sex is required while postal code preserves leading zeroes and remains optional', () => {
+test('sex is required while postal code preserves leading zeroes and supports optional/required modes', () => {
     const sex = renderToStaticMarkup(createElement(ui.RegistrationSexField, { value: 'Female', onChange() {} }));
     assert.doesNotMatch(sex, /Sex \(optional\)/);
     assert.match(sex, /<select[^>]*name="sex"[^>]*required=""[^>]*aria-required="true"/);
@@ -582,6 +586,10 @@ test('sex is required while postal code preserves leading zeroes and remains opt
     assert.match(postal, /maxlength="4"/i);
     assert.match(postal, /inputMode="numeric"/i);
     assert.doesNotMatch(postal, /required=/);
+
+    const requiredPostalHtml = renderToStaticMarkup(createElement(ui.RegistrationPostalCodeField, { value: '4009', onChange() {}, required: true }));
+    assert.doesNotMatch(requiredPostalHtml, /Postal code \(optional\)/);
+    assert.match(requiredPostalHtml, /<input[^>]*name="postal_code"[^>]*required=""[^>]*aria-required="true"/);
 });
 
 test('policy acknowledgement starts unchecked with accessible versioned documents and field feedback', () => {

@@ -189,6 +189,35 @@ test('checkout payment, voucher and product areas provide clear icons and first 
  assert.match(html, /src="\/storage\/a-logistics\.svg"/);
  assert.match(html, /Selected carrier: A Logistics/);
 });
+test('address editor requires a four-digit postal code and checkout auto-selects carrier or explains why none is available', async () => {
+ const editorHtml = await render(ui.Editor, { user, address, count: 1, limit: 10, onClose() {} });
+ assert.match(editorHtml, /id="address-postal-code"[^>]*required=""[^>]*aria-required="true"[^>]*maxLength="4"/i);
+ assert.match(editorHtml, /Postal code \*/);
+ assert.doesNotMatch(editorHtml, /Postal code \(optional\)/);
+
+ const checkoutHtml = await render(ui.Checkout, {
+  cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user,
+  kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [address],
+  logisticsCompanies: [{ id: 8, name: 'A Logistics', logo: '/storage/a-logistics.svg' }, { id: 12, name: 'B Logistics', logo: null }],
+ });
+ assert.match(checkoutHtml, /<option value="8" selected=""/);
+ assert.match(checkoutHtml, /Auto-selected/);
+
+ const singleCarrierHtml = await render(ui.Checkout, {
+  cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user,
+  kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [address],
+  logisticsCompanies: [{ id: 8, name: 'A Logistics', logo: '/storage/a-logistics.svg' }],
+ });
+ assert.match(singleCarrierHtml, /<option value="8" selected=""/);
+ assert.match(singleCarrierHtml, /Auto-matched for your route/);
+
+ const noPostalHtml = await render(ui.Checkout, {
+  cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user: { ...user, postal_code: '' },
+  kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [{ ...address, postal_code: '', latitude: 14.28, longitude: 121.42 }], logisticsCompanies: [],
+ });
+ assert.match(noPostalHtml, /A valid 4-digit postal code is required/);
+ assert.match(noPostalHtml, /Add postal code \/ edit address/);
+});
 test('coordinate validation details are replaced with actionable map/GPS guidance', () => {
  const messages = ui.checkoutErrorMessages({
   shipping_latitude: 'The shipping latitude field must be a number.',
@@ -246,12 +275,13 @@ test('address names accept apostrophes and accents but reject numbers, hidden te
  for (const name of ['A', ' ', 'Name 123', 'A'.repeat(101), 'And\u200brea', '<b>Andrea</b>']) assert.ok(ui.buyerAddressErrors({ ...base, recipient_name: name }).recipient_name);
  assert.ok(ui.personalNameError('A'.repeat(51), 'First name'), 'Registration parts retain their existing fifty-character maximum.');
 });
-test('address client feedback covers every required field, mobile formats and optional postal format', () => {
- for (const field of ['recipient_name', 'phone', 'region', 'province', 'city', 'barangay', 'street']) assert.ok(ui.buyerAddressErrors({ ...address, [field]: '' })[field]);
+test('address client feedback covers every required field including postal code and mobile formats', () => {
+ for (const field of ['recipient_name', 'phone', 'region', 'province', 'city', 'barangay', 'street', 'postal_code']) assert.ok(ui.buyerAddressErrors({ ...address, [field]: '' })[field]);
  for (const phone of ['09171234567', '+639171234567']) assert.equal(ui.buyerAddressErrors({ ...address, phone }).phone, undefined);
  for (const phone of ['0917123', '091712345678', '+14155552671']) assert.ok(ui.buyerAddressErrors({ ...address, phone }).phone);
- assert.equal(ui.buyerAddressErrors({ ...address, postal_code: '' }).postal_code, undefined);
+ assert.match(ui.buyerAddressErrors({ ...address, postal_code: '' }).postal_code, /required/i);
  assert.ok(ui.buyerAddressErrors({ ...address, postal_code: '123' }).postal_code);
+ assert.equal(ui.buyerAddressErrors({ ...address, postal_code: '4009' }).postal_code, undefined);
 });
 test('changing ancestors clears dependent location fields while selecting the same value preserves them', () => {
  const values = { region: address.region, province: address.province, city: address.city, barangay: address.barangay };

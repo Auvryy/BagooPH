@@ -47,8 +47,9 @@ class GoogleRegistrationPolicyTest extends TestCase
         $this->get(route('auth.google.callback'));
         $values = $this->registrationPolicies() + ['registration_nonce' => session('registration.google.nonce'),
             'birthday' => '1995-05-15', 'first_name' => 'Ana', 'middle_initial' => 'md', 'last_name' => 'Santos', 'sex' => 'Female',
-            'region' => '1300000000', 'province' => 'Metro Manila', 'city' => 'Makati', 'barangay' => 'Poblacion', 'address' => '12 Bagoo Street'];
+            'region' => '1300000000', 'province' => 'Metro Manila', 'city' => 'Makati', 'barangay' => 'Poblacion', 'postal_code' => '1200', 'address' => '12 Bagoo Street'];
         $this->postJson(route('auth.google.registration.store'), array_replace($values, ['city' => 'City of Cebu']))->assertUnprocessable()->assertJsonValidationErrors('city');
+        $this->postJson(route('auth.google.registration.store'), array_replace($values, ['postal_code' => '']))->assertUnprocessable()->assertJsonValidationErrors('postal_code');
         $this->postJson(route('auth.google.registration.store'), array_replace($values, ['region' => '']))->assertUnprocessable()->assertJsonValidationErrors('region');
         $this->assertDatabaseCount('users', 0);
         $this->post(route('auth.google.registration.store'), $values)->assertSessionHasNoErrors();

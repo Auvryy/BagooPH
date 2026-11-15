@@ -93,7 +93,7 @@ class BuyerAddressBookTest extends TestCase
     public static function missingFields(): array
     {
         $cases = [];
-        foreach (['recipient_name', 'phone', 'region', 'province', 'city', 'barangay', 'street'] as $field) {
+        foreach (['recipient_name', 'phone', 'region', 'province', 'city', 'barangay', 'street', 'postal_code'] as $field) {
             foreach ([null, '', '   '] as $value) {
                 $cases[] = [$field, $value];
             }
