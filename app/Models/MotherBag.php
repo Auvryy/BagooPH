@@ -15,7 +15,17 @@ class MotherBag extends Model
 
     protected function casts(): array
     {
-        return ['packing_policy_version' => 'integer', 'version' => 'integer', 'sealed_at' => 'immutable_datetime', 'loaded_at' => 'immutable_datetime', 'dispatched_at' => 'immutable_datetime', 'opened_at' => 'immutable_datetime'];
+        return [
+            'packing_policy_version' => 'integer',
+            'version' => 'integer',
+            'max_count' => 'integer',
+            'max_weight_kg' => 'float',
+            'max_volume_cm3' => 'integer',
+            'sealed_at' => 'immutable_datetime',
+            'loaded_at' => 'immutable_datetime',
+            'dispatched_at' => 'immutable_datetime',
+            'opened_at' => 'immutable_datetime',
+        ];
     }
 
     public function parcels()

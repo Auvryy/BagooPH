@@ -19,9 +19,13 @@ class LogisticsPlacementService
 {
     public function __construct(private readonly LogisticsEligibilityService $eligibility) {}
 
-    public function assignHandler(User $actor, LogisticsHub $hub, User $handler): HubHandler
+    public function assignHandler(User $actor, LogisticsHub $hub, User $handler, string $jobRole = HubHandler::JOB_ROLE_ALL): HubHandler
     {
-        return DB::transaction(function () use ($actor, $hub, $handler) {
+        if (! in_array($jobRole, HubHandler::JOB_ROLES, true)) {
+            throw new DomainException('Choose a valid exclusive worker job role.');
+        }
+
+        return DB::transaction(function () use ($actor, $hub, $handler, $jobRole) {
             $company = $this->lockOwnedNetwork($actor, $hub, $handler);
             if (! User::eligibleLogisticsAccounts()->whereKey($handler->id)->exists()
                 || LogisticsCompany::where('user_id', $handler->id)->whereKeyNot($company->id)->exists()
@@ -34,13 +38,56 @@ class LogisticsPlacementService
                 if (! $assignment->is_active) {
                     throw new DomainException('An inactive handler assignment requires a separate reviewed reactivation.');
                 }
+                if ($assignment->job_role !== $jobRole) {
+                    $before = $assignment->only(['logistics_company_id', 'hub_id', 'is_active', 'job_role']);
+                    $assignment->forceFill([
+                        'job_role' => $jobRole,
+                        'role_title' => HubHandler::roleTitleFor($jobRole),
+                    ])->save();
+                    $this->record($actor, $handler, $company, 'handler_role', $before, $assignment->only(['logistics_company_id', 'hub_id', 'is_active', 'job_role']));
+                }
 
                 return $assignment;
             }
-            $assignment = HubHandler::create(['user_id' => $handler->id, 'logistics_company_id' => $company->id, 'hub_id' => $hub->id, 'is_active' => true]);
-            $this->record($actor, $handler, $company, 'handler', null, $assignment->only(['logistics_company_id', 'hub_id', 'is_active']));
+            $assignment = HubHandler::create([
+                'user_id' => $handler->id,
+                'logistics_company_id' => $company->id,
+                'hub_id' => $hub->id,
+                'job_role' => $jobRole,
+                'role_title' => HubHandler::roleTitleFor($jobRole),
+                'is_active' => true,
+            ]);
+            $this->record($actor, $handler, $company, 'handler', null, $assignment->only(['logistics_company_id', 'hub_id', 'is_active', 'job_role']));
 
             return $assignment;
+        });
+    }
+
+    public function updateHandlerJobRole(User $actor, HubHandler $assignment, string $jobRole): HubHandler
+    {
+        if (! in_array($jobRole, HubHandler::JOB_ROLES, true)) {
+            throw new DomainException('Choose a single valid hub job role for this worker.');
+        }
+
+        return DB::transaction(function () use ($actor, $assignment, $jobRole) {
+            $hub = LogisticsHub::eligible()->findOrFail($assignment->hub_id);
+            $subject = User::findOrFail($assignment->user_id);
+            $company = $this->lockOwnedNetwork($actor, $hub, $subject);
+            $locked = HubHandler::whereKey($assignment->id)->lockForUpdate()->firstOrFail();
+            if (! $locked->is_active || $locked->logistics_company_id !== $company->id) {
+                throw new DomainException('Only an active handler at this company facility can change job lock.');
+            }
+            $before = $locked->only(['logistics_company_id', 'hub_id', 'job_role']);
+            if (($locked->job_role ?? HubHandler::JOB_ROLE_ALL) === $jobRole) {
+                return $locked;
+            }
+            $locked->forceFill([
+                'job_role' => $jobRole,
+                'role_title' => HubHandler::roleTitleFor($jobRole),
+            ])->save();
+            $this->record($actor, $subject, $company, 'handler_role', $before, $locked->only(['logistics_company_id', 'hub_id', 'job_role']));
+
+            return $locked;
         });
     }
 

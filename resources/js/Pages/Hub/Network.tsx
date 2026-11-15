@@ -27,7 +27,20 @@ interface NetworkScope {
     company_code: string | null;
     active_hub_id: number | null;
     can_switch_facility: boolean;
+    can_manage_workers?: boolean;
     can_scan: boolean;
+}
+
+interface HandlerItem {
+    id: number;
+    user_id: number;
+    name: string;
+    email: string;
+    hub_id: number;
+    hub_name: string;
+    hub_code: string;
+    job_role: 'all' | 'intake' | 'pack_dispatch';
+    role_title?: string | null;
 }
 
 interface DirectoryHubItem {
@@ -62,15 +75,22 @@ interface Props {
     scope: NetworkScope;
     hubs: HubItem[];
     companyDirectoryHubs?: DirectoryHubItem[];
+    handlers?: HandlerItem[];
     riderIntake?: Intake | null;
 }
+
+const JOB_ROLE_OPTIONS = [
+    { value: 'all', label: 'Full Hub Operations (All)' },
+    { value: 'intake', label: 'Entry / Intake only' },
+    { value: 'pack_dispatch', label: 'Pack & Dispatch only' },
+] as const;
 
 const facilityType = (tier: HubItem['tier']) => (
     tier === 'regional_mother_hub' ? 'Mother Hub' : 'Bayan Hub'
 );
 
-export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], riderIntake }: Props) {
-    const placement = useForm({ kind: 'handler', email: '', hub_id: String(scope.active_hub_id ?? '') });
+export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], handlers = [], riderIntake }: Props) {
+    const placement = useForm({ kind: 'handler', email: '', hub_id: String(scope.active_hub_id ?? ''), job_role: 'all' });
     const [filterTier, setFilterTier] = useState<'all' | HubItem['tier']>('all');
     const [search, setSearch] = useState('');
     const [selectedHub, setSelectedHub] = useState<HubItem | null>(null);
@@ -239,13 +259,56 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], rid
                     </HubPanel>
                 </div>
 
-                {scope.can_switch_facility && (
-                    <details className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
+                {(scope.can_switch_facility || scope.can_manage_workers) && (
+                    <details open={handlers.length > 0 && !scope.can_switch_facility} className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                         <summary className="cursor-pointer px-5 py-4 text-xs font-semibold text-[#121316] transition-colors hover:bg-zinc-50/50 sm:text-sm">
-                            People & placements <span className="ml-2 text-xs font-normal text-zinc-500">Rider requests and handler assignments</span>
+                            People & placements <span className="ml-2 text-xs font-normal text-zinc-500">Worker job locks, handler assignments, and rider requests</span>
                         </summary>
                         <div className="space-y-4 border-t border-zinc-100 p-5 sm:p-6">
-                            <CompanyRiderIntake workspace={riderIntake} />
+                            {handlers.length > 0 && (
+                                <div className="rounded-xl border border-zinc-200/90 bg-zinc-50/30 p-5">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div>
+                                            <h2 className="text-sm font-semibold text-[#121316]">Hub workers &amp; exclusive job locks</h2>
+                                            <p className="mt-1 text-xs text-zinc-500">Each worker can only hold one job role at a time at their assigned hub.</p>
+                                        </div>
+                                        <span className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 tabular-nums">
+                                            {handlers.length} active assignments
+                                        </span>
+                                    </div>
+                                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                        {handlers.map((worker) => (
+                                            <div key={worker.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200/90 bg-white p-3.5 shadow-2xs">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-xs font-semibold text-[#121316]">{worker.name}</p>
+                                                    <p className="truncate text-[11px] text-zinc-500">{worker.email}</p>
+                                                    <p className="mt-1 text-[11px] font-medium text-zinc-600">{worker.hub_name} ({worker.hub_code})</p>
+                                                </div>
+                                                <label className="shrink-0 space-y-1 text-[11px] font-semibold text-zinc-600">
+                                                    <span className="block">Locked role</span>
+                                                    <select
+                                                        aria-label={`Locked job role for ${worker.name} at ${worker.hub_name}`}
+                                                        className="block rounded-lg border border-zinc-200/90 bg-white px-2.5 py-1.5 text-xs font-medium text-[#121316] shadow-2xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15"
+                                                        value={worker.job_role}
+                                                        onChange={(event) => {
+                                                            router.patch(
+                                                                route('hub.handlers.job-role', worker.id),
+                                                                { job_role: event.target.value },
+                                                                { preserveScroll: true },
+                                                            );
+                                                        }}
+                                                    >
+                                                        {JOB_ROLE_OPTIONS.map((option) => (
+                                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                                        ))}
+                                                    </select>
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {scope.can_switch_facility && <CompanyRiderIntake workspace={riderIntake} />}
                             {scope.can_switch_facility && hubs.length > 0 && (
                                 <form
                                     className="rounded-xl border border-zinc-200/90 bg-zinc-50/30 p-5"
@@ -281,6 +344,18 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], rid
                                             >
                                                 <option value="">Choose a facility</option>
                                                 {hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.name}</option>)}
+                                            </select>
+                                        </label>
+                                        <label className="space-y-1.5 text-xs font-semibold text-[#121316]">
+                                            <span>Locked job role</span>
+                                            <select
+                                                className="block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-[#121316] shadow-2xs transition-colors focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                                                value={placement.data.job_role}
+                                                onChange={(event) => placement.setData('job_role', event.target.value)}
+                                            >
+                                                {JOB_ROLE_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                ))}
                                             </select>
                                         </label>
                                     </div>

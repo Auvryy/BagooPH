@@ -122,3 +122,49 @@ test('opening a different manifest clears the previous parcel readings and treat
     h.props.selectedManifest={...h.props.selectedManifest,id:2};h.render();
     const selection=nodes(h.tree).find(n=>n.type==='select'&&nodes(n).some(c=>c.props?.value==='loose'));assert.equal(selection.props.value,'');assert.equal(nodes(h.tree).filter(n=>n.type===ui.HandlingFields).length,0);
 });
+
+test('mother bags auto-select active hub, expose capacity presets, continuous pack, revert and seal camera', t => {
+    const idle = harness(t, ui.Bags, {
+        ...autoPackProps,
+        activeHubId: 1,
+        bagPresets: [
+            { key: 'standard', label: 'Standard Sack (50 parcels)', max_count: 50, max_weight_kg: 25, max_volume_cm3: 300000 },
+            { key: 'bulk', label: 'Bulk Cage (120 parcels)', max_count: 120, max_weight_kg: 50, max_volume_cm3: 600000 },
+        ],
+    });
+    idle.render();
+    assert.equal(idle.forms[0].data.source_hub_id, '1');
+    assert.equal(idle.forms[1].data.source_hub_id, '1');
+
+    const presetSelect = nodes(idle.tree).find(n => n.type === 'select' && nodes(n).some(c => c.props?.value === 'custom'));
+    assert.ok(presetSelect, 'Preset dropdown should include custom limits option');
+    presetSelect.props.onChange({ target: { value: 'custom' } });
+    idle.render();
+    assert.match(text(idle.tree), /Max parcels/);
+
+    const h = harness(t, ui.Bags, {
+        ...props,
+        activeHubId: 1,
+        selectedBag: {
+            ...bag,
+            parcels: [{ id: 10, tracking_number: 'BGO-REVERT-1', status: 'arrived_at_origin_hub', removed: false, received: false }],
+        },
+    });
+    h.render();
+    const content = text(h.tree);
+    assert.match(content, /Recently scanned in this bag/);
+    assert.match(content, /BGO-REVERT-1/);
+    assert.match(content, /Hands-free continuous auto-add/);
+    assert.match(content, /Scan seal/);
+
+    const revertBtn = nodes(h.tree).find(n => n.type === 'button' && text(n).trim() === 'Revert');
+    assert.ok(revertBtn, 'Revert button should render for active scanned parcel');
+    revertBtn.props.onClick();
+    h.render();
+    const confirmRevert = nodes(h.tree).find(n => n.type === 'button' && text(n).trim() === 'Confirm revert');
+    assert.ok(confirmRevert, 'Inline revert confirmation should appear');
+    confirmRevert.props.onClick();
+    assert.equal(h.posts.length, 1);
+    assert.equal(h.posts[0][0], '/hub/mother-bags/bag-1/remove');
+    assert.equal(h.posts[0][1].barcode, 'BGO-REVERT-1');
+});

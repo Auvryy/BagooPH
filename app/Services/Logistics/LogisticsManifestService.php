@@ -768,6 +768,14 @@ class LogisticsManifestService
         if (! ($management ? $this->canManageAtHub($actor, $hub) : $this->eligibility->canScan($actor, $hub))) {
             throw new AuthorizationException('An active assignment to the responsible source or receiving hub is required.');
         }
+        if (! $this->eligibility->isCompanyAdministrator($actor, $hub->logistics_company_id) && $this->eligibility->canScan($actor, $hub)) {
+            if ($receiving && ! $this->eligibility->canIntake($actor, $hub)) {
+                throw new AuthorizationException('Your current hub job role is Pack & Dispatch only. Ask a manager to switch your role to Entry / Intake.');
+            }
+            if (! $receiving && ! $this->eligibility->canPackDispatch($actor, $hub)) {
+                throw new AuthorizationException('Your current hub job role is Entry / Intake only. Ask a manager to switch your role to Pack & Dispatch.');
+            }
+        }
     }
 
     public function openDiscrepancies(LogisticsManifest $manifest): Collection

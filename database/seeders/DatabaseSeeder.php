@@ -106,5 +106,6 @@ class DatabaseSeeder extends Seeder
         $this->call(LogisticsNetworkSeeder::class);
         $this->call(SellerDemoSeeder::class);
         $this->call(LogisticsTestingEnvironmentSeeder::class);
+        $this->call(HubWorkerRolesSeeder::class);
     }
 }

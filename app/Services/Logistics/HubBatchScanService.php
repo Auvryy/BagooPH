@@ -86,6 +86,7 @@ class HubBatchScanService
         string $sourceChannel = 'web',
     ): array {
         abort_unless($actor->isLogistics() && $this->eligibility->canScan($actor, $hub), 403, 'An active handler assignment is required to process batch scans at this facility.');
+        abort_unless($this->eligibility->canIntake($actor, $hub), 403, 'Your current hub job role is Pack & Dispatch only. Ask a manager to switch your role to Entry / Intake.');
 
         $batchStart = hrtime(true);
         $directMode = (bool) ($validated['direct_mode'] ?? false);

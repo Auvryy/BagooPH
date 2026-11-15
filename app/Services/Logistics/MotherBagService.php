@@ -41,14 +41,21 @@ class MotherBagService
             'creation_token' => 'required|uuid',
             'physical_tag' => ['nullable', 'string', 'max:80', 'regex:/\A[A-Z0-9-]+\z/'],
             'physical_checked' => 'sometimes|boolean',
+            'capacity_preset' => 'nullable|string|in:standard,compact,bulk,custom',
+            'max_count' => 'nullable|integer|between:1,500',
+            'max_weight_kg' => 'nullable|numeric|min:1|max:200',
+            'max_volume_cm3' => 'nullable|integer|between:10000,2000000',
+            'max_volume_m3' => 'nullable|numeric|min:0.01|max:2.0',
         ])->validate();
 
         return DB::transaction(function () use ($actor, $data) {
             $source = LogisticsHub::eligible()->findOrFail($data['source_hub_id']);
             $destination = LogisticsHub::eligible()->where('logistics_company_id', $source->logistics_company_id)->findOrFail($data['destination_hub_id']);
             app(LogisticsEligibilityService::class)->lockNetwork($source->logistics_company_id, [$actor->id], [$source->id, $destination->id]);
-            $this->operator($actor, $source);
+            $this->packOperator($actor, $source);
             app(LogisticsManifestService::class)->legType($source, $destination);
+            $handling = app(CargoHandlingService::class);
+            $limits = $handling->resolvePreset($data);
             $existing = MotherBag::where('created_by_id', $actor->id)->where('creation_token', $data['creation_token'])->first();
             if ($existing) {
                 if ($existing->source_hub_id !== $source->id || $existing->destination_hub_id !== $destination->id || ($existing->physical_tag ?? null) !== ($data['physical_tag'] ?? null)) {
@@ -58,10 +65,13 @@ class MotherBagService
                 return $existing;
             }
             $extra = [];
-            if (app(CargoHandlingService::class)->available()) {
+            if ($handling->available()) {
                 $extra = ['packing_policy_version' => 1, ...$this->physicalTag($source, $data)];
             } elseif (! empty($data['physical_tag'])) {
                 throw new DomainException('Apply the additive packing migration before registering a reusable sack.');
+            }
+            if (Schema::hasColumn('mother_bags', 'capacity_preset')) {
+                $extra = [...$extra, ...$limits];
             }
             $bag = MotherBag::create([...$extra, 'reference' => 'BAG-'.strtoupper(Str::random(12)),
                 'logistics_company_id' => $source->logistics_company_id, 'source_hub_id' => $source->id,
@@ -87,7 +97,7 @@ class MotherBagService
             throw new DomainException('Scan an existing parcel waybill.');
         }
         $source = LogisticsHub::eligible()->findOrFail($data['source_hub_id']);
-        $this->operator($actor, $source);
+        $this->packOperator($actor, $source);
         $fingerprint = hash('sha256', json_encode(['pack', $data], JSON_THROW_ON_ERROR));
 
         return DB::transaction(function () use ($candidate, $source, $actor, $data, $fingerprint) {
@@ -99,7 +109,7 @@ class MotherBagService
             Order::whereIn('id', Delivery::whereIn('id', $ids)->select('order_id'))->orderBy('id')->lockForUpdate()->get();
             Delivery::whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
             app(LogisticsEligibilityService::class)->lockNetwork($source->logistics_company_id, [$actor->id], [$source->id, $next]);
-            $this->operator($actor, $source->fresh());
+            $this->packOperator($actor, $source->fresh());
             if ($previous = DB::table('bag_packing_requests')->where('actor_id', $actor->id)->where('request_token', $data['request_token'])->first()) {
                 if (! hash_equals($previous->fingerprint, $fingerprint)) {
                     throw new DomainException('This packing request was used for a different parcel or reading.');
@@ -129,9 +139,9 @@ class MotherBagService
             }
             if ($bag) {
                 $c = app(CargoHandlingService::class)->capacity($bag);
-                if ($c['weight_kg'] !== null && ($c['count'] >= CargoHandlingService::BAG_PARCELS
-                    || $c['weight_kg'] + $profile['weight_kg'] > CargoHandlingService::BAG_WEIGHT_KG
-                    || $c['volume_cm3'] + $profile['volume_cm3'] > CargoHandlingService::BAG_VOLUME_CM3)) {
+                if ($c['weight_kg'] !== null && ($c['count'] >= $c['max_count']
+                    || $c['weight_kg'] + $profile['weight_kg'] > $c['max_weight_kg']
+                    || $c['volume_cm3'] + $profile['volume_cm3'] > $c['max_volume_cm3'])) {
                     if (! empty($data['physical_tag'])) {
                         throw new DomainException('This sack is full for the scanned parcel. Seal its current contents, then use another physical sack.');
                     }
@@ -201,7 +211,11 @@ class MotherBagService
                 throw new DomainException('The bag membership changed. Refresh before continuing.');
             }
             $hub = LogisticsHub::eligible()->findOrFail($action === 'open' ? $bag->destination_hub_id : $bag->source_hub_id);
-            $this->operator($actor, $hub);
+            if ($action === 'open') {
+                $this->intakeOperator($actor, $hub);
+            } else {
+                $this->packOperator($actor, $hub);
+            }
             $fingerprint = hash('sha256', json_encode([$bag->id, $action, $data], JSON_THROW_ON_ERROR));
             if (! empty($data['request_token']) && app(CargoHandlingService::class)->available()) {
                 if ($previous = DB::table('bag_packing_requests')->where('actor_id', $actor->id)->where('request_token', $data['request_token'])->first()) {
@@ -274,7 +288,7 @@ class MotherBagService
                 }
                 if ($bag->packing_policy_version) {
                     $capacity = app(CargoHandlingService::class)->capacity($bag);
-                    if ($capacity['weight_kg'] === null || $capacity['weight_kg'] > CargoHandlingService::BAG_WEIGHT_KG || $capacity['volume_cm3'] > CargoHandlingService::BAG_VOLUME_CM3 || $capacity['count'] > CargoHandlingService::BAG_PARCELS) {
+                    if ($capacity['weight_kg'] === null || $capacity['weight_kg'] > $capacity['max_weight_kg'] || $capacity['volume_cm3'] > $capacity['max_volume_cm3'] || $capacity['count'] > $capacity['max_count']) {
                         throw new DomainException('Recheck bag capacity and missing readings before sealing.');
                     }
                     foreach ($bag->parcels()->whereNull('removed_at')->with('delivery')->get() as $packed) {
@@ -486,9 +500,16 @@ class MotherBagService
         }
     }
 
-    private function operator(User $actor, LogisticsHub $hub): void
+    private function intakeOperator(User $actor, LogisticsHub $hub): void
     {
         abort_unless($actor->isLogistics() && app(LogisticsEligibilityService::class)->canScan($actor, $hub), 403, 'Use an active operator assigned to this physical hub.');
+        abort_unless(app(LogisticsEligibilityService::class)->canIntake($actor, $hub), 403, 'Your current hub job role is Pack & Dispatch only. Ask a manager to switch your role to Entry / Intake.');
+    }
+
+    private function packOperator(User $actor, LogisticsHub $hub): void
+    {
+        abort_unless($actor->isLogistics() && app(LogisticsEligibilityService::class)->canScan($actor, $hub), 403, 'Use an active operator assigned to this physical hub.');
+        abort_unless(app(LogisticsEligibilityService::class)->canPackDispatch($actor, $hub), 403, 'Your current hub job role is Entry / Intake only. Ask a manager to switch your role to Pack & Dispatch.');
     }
 
     private function members(MotherBag $bag): array

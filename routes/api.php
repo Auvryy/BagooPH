@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\LogisticsAuthController;
+use App\Http\Controllers\Api\LogisticsMotherBagController;
 use App\Http\Controllers\Api\LogisticsScanController;
 use App\Http\Controllers\Api\RiderAuthController;
 use App\Http\Controllers\Api\RiderCashController;
@@ -112,4 +113,11 @@ Route::prefix('v1/logistics')->middleware(PrivateRiderResponse::class)->group(fu
     Route::delete('auth/token', [LogisticsAuthController::class, 'logout'])->middleware(EnsureLogisticsAccountToken::class.':logout');
     Route::post('scan', [LogisticsScanController::class, 'scan'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:120,1']);
     Route::post('scan/batch', [LogisticsScanController::class, 'batch'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:60,1']);
+    Route::get('mother-bags', [LogisticsMotherBagController::class, 'index'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:60,1']);
+    Route::post('mother-bags', [LogisticsMotherBagController::class, 'store'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:30,1']);
+    Route::get('mother-bags/{bag}', [LogisticsMotherBagController::class, 'show'])->whereUuid('bag')->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:60,1']);
+    Route::post('mother-bags/{bag}/{action}', [LogisticsMotherBagController::class, 'command'])
+        ->whereUuid('bag')
+        ->where('action', 'add|remove|seal|reopen|load|unload|open')
+        ->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:120,1']);
 });

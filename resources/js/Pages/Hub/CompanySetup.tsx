@@ -11,7 +11,13 @@ import LocationPinPicker from '@/Components/LocationPinPicker';
 import { HubBadge, HubButton, HubPanel, HubPageHeader, HubSearch, hubInput } from '@/Components/Logistics/Workspace';
 
 type Hub = { latitude: number | null; longitude: number | null; address: string; id: number; name: string; code: string; tier: string; city_municipality: string; province: string; parent_hub_id: number | null; postal_codes: string[] | null; coverage_token: string; location_token: string; is_active: boolean };
-type Props = { companies: { id: number; name: string }[]; company: { id: number; name: string; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number; shipping_earnings_model: string; tariff_version: number }; canProvision: boolean; hubs: Hub[]; staff: { id: number; name: string; email: string; kind: string; hub_name: string; must_change_password: boolean; email_verified_at: string | null }[]; basePath: string };
+type Props = { companies: { id: number; name: string }[]; company: { id: number; name: string; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number; shipping_earnings_model: string; tariff_version: number }; canProvision: boolean; hubs: Hub[]; staff: { id: number; name: string; email: string; kind: string; hub_name: string; handler_id?: number | null; job_role?: string | null; must_change_password: boolean; email_verified_at: string | null }[]; basePath: string };
+const JOB_ROLE_OPTIONS = [
+    { value: 'all', label: 'Full Hub Operations (All)' },
+    { value: 'intake', label: 'Entry / Intake only' },
+    { value: 'pack_dispatch', label: 'Pack & Dispatch only' },
+] as const;
+const jobRoleLabel = (role?: string | null) => JOB_ROLE_OPTIONS.find(option => option.value === role)?.label ?? 'Full Hub Operations (All)';
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
     return (
         <label className="block text-xs font-semibold text-[#121316]">
@@ -43,7 +49,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
     const [hubRegion, setHubRegion] = useState('');
     const [postalText, setPostalText] = useState('');
     const facility = useForm({ name: '', code: '', tier: 'local_bayan_hub', parent_hub_id: '', province: '', city_municipality: '', barangay: '', address: '', latitude: null as number | null, longitude: null as number | null, postal_codes: [] as string[], coverage_barangays: [] as string[], capacity: 500, allows_self_pickup: true, operating_hours: '' });
-    const worker = useForm({ kind: 'operator', hub_id: '', first_name: '', last_name: '', birthday: '', email: '', phone: '' });
+    const worker = useForm({ kind: 'operator', hub_id: '', job_role: 'all', first_name: '', last_name: '', birthday: '', email: '', phone: '' });
     const tariff = useForm({ version: company.tariff_version, base_fee: (company.base_shipping_cents / 100).toFixed(2), additional_kg_fee: (company.additional_kg_cents / 100).toFixed(2), included_weight_grams: company.included_weight_grams, shipping_earnings_model: company.shipping_earnings_model });
     const sharedErrors = [...Object.entries(facility.errors), ...Object.entries(worker.errors), ...Object.entries(tariff.errors)].filter(([key]) => !Object.keys(facility.data).includes(key) && !Object.keys(worker.data).includes(key) && !Object.keys(tariff.data).includes(key));
     const tabs = [{ key: 'network', label: 'Hub network', icon: Warehouse }, { key: 'staff', label: 'People & access', icon: Users }, { key: 'rates', label: 'Shipping & earnings', icon: CircleDollarSign }];
@@ -322,7 +328,28 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                                 <p className="mt-0.5 break-words text-xs text-zinc-500">{person.email}</p>
                                             </div>
                                         </div>
-                                        <p className="mt-3 text-xs text-zinc-600">{person.kind === 'operator' ? 'Hub operator' : 'Rider'} · {person.hub_name}</p>
+                                        <p className="mt-3 text-xs text-zinc-600">{person.kind === 'operator' ? `Hub operator · ${jobRoleLabel(person.job_role)}` : 'Rider'} · {person.hub_name}</p>
+                                        {person.kind === 'operator' && person.handler_id && canProvision && (
+                                            <label className="mt-3 block text-[11px] font-semibold text-zinc-700">
+                                                Locked job role
+                                                <select
+                                                    aria-label={`Locked job role for ${person.name}`}
+                                                    value={person.job_role || 'all'}
+                                                    onChange={event => {
+                                                        router.patch(
+                                                            route('hub.handlers.job-role', person.handler_id!),
+                                                            { job_role: event.target.value },
+                                                            { preserveScroll: true },
+                                                        );
+                                                    }}
+                                                    className={`${hubInput} mt-1`}
+                                                >
+                                                    {JOB_ROLE_OPTIONS.map(option => (
+                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                        )}
                                         <div className="mt-3">
                                             <HubBadge tone={person.must_change_password || !person.email_verified_at ? 'warning' : 'success'}>
                                                 {person.must_change_password ? 'Invitation pending' : !person.email_verified_at ? 'Verify email' : 'Activated'}
@@ -363,6 +390,15 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                             <option value="rider">Pickup / delivery rider</option>
                                         </select>
                                     </Field>
+                                    {worker.data.kind === 'operator' && (
+                                        <Field label="Locked job role" error={worker.errors.job_role}>
+                                            <select value={worker.data.job_role} onChange={event => worker.setData('job_role', event.target.value)} className={hubInput}>
+                                                {JOB_ROLE_OPTIONS.map(option => (
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                ))}
+                                            </select>
+                                        </Field>
+                                    )}
                                     <HubPicker
                                         label="Assigned physical hub"
                                         error={worker.errors.hub_id}

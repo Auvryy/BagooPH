@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowRight, Box, CheckCheck, Container, LockKeyhole, Package, Printer, ScanLine, Truck } from 'lucide-react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { ArrowRight, Box, CheckCheck, Container, LockKeyhole, Package, Printer, RotateCcw, ScanLine, Truck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { HubBadge, HubButton, HubRoute, HubSearch, hubButton, hubInput, type HubPlace } from '@/Components/Logistics/Workspace';
@@ -9,16 +9,33 @@ import { CapacityMeter, HandlingFields, HandlingSummary, emptyHandling, type Han
 import WaybillCamera from '@/Components/WaybillCamera';
 import { nextTransferHubs } from '@/utils/hubWorkspace';
 
-type Hub = HubPlace & { id: number; name: string; code: string; tier: string; logistics_company_id: number; canScan: boolean };
-type Bag = { packing_policy_version?: number | null; physical_tag?: string | null; capacity?: { count: number; weight_kg: number | null; volume_cm3: number | null; max_count: number; max_weight_kg: number; max_volume_cm3: number } | null; id: string; reference: string; status: string; seal_number: string | null; version: number; source_hub_id: number; destination_hub_id: number; manifest_id: number | null; parcels_count: number; source: Pick<Hub, 'id' | 'name' | 'code'>; destination: Pick<Hub, 'id' | 'name' | 'code'> };
-type Detail = Bag & { canPack: boolean; canOpen: boolean; parcels: { handling?: Handling | null; id: number; tracking_number: string; status: string; removed: boolean; received: boolean }[]; events: { event_type: string; barcode_scanned: string | null; actor: string; created_at: string }[] };
-type Props = { packingAvailable?: boolean; packingToken?: string; commandToken?: string; bags: { data: Bag[]; links: { url: string | null; label: string; active: boolean }[] }; selectedBag: Detail | null; hubs: Hub[]; manifests: { id: number; reference: string; source_hub_id: number; destination_hub_id: number; vehicle_plate?: string; driver_name?: string }[]; creationToken: string; basePath: string };
+type Hub = HubPlace & { id: number; name: string; code: string; tier: string; logistics_company_id: number; canScan: boolean; canPackDispatch?: boolean; canIntake?: boolean; jobRole?: string };
+type BagPreset = { key: string; label: string; max_count: number; max_weight_kg: number; max_volume_cm3: number };
+type Bag = { capacity_preset?: string | null; packing_policy_version?: number | null; physical_tag?: string | null; capacity?: { count: number; weight_kg: number | null; volume_cm3: number | null; max_count: number; max_weight_kg: number; max_volume_cm3: number } | null; id: string; reference: string; status: string; seal_number: string | null; version: number; source_hub_id: number; destination_hub_id: number; manifest_id: number | null; parcels_count: number; source: Pick<Hub, 'id' | 'name' | 'code'>; destination: Pick<Hub, 'id' | 'name' | 'code'> };
+type Detail = Bag & { canPack: boolean; canOpen: boolean; sourceJobRole?: string; destinationJobRole?: string; parcels: { handling?: Handling | null; id: number; tracking_number: string; status: string; removed: boolean; received: boolean }[]; events: { event_type: string; barcode_scanned: string | null; actor: string; created_at: string }[] };
+type Props = { activeHubId?: number | null; bagPresets?: BagPreset[]; packingAvailable?: boolean; packingToken?: string; commandToken?: string; bags: { data: Bag[]; links: { url: string | null; label: string; active: boolean }[] }; selectedBag: Detail | null; hubs: Hub[]; manifests: { id: number; reference: string; source_hub_id: number; destination_hub_id: number; vehicle_plate?: string; driver_name?: string }[]; creationToken: string; basePath: string };
 const words = (value: string) => value.replaceAll('_', ' ');
+const DEFAULT_BAG_PRESETS: BagPreset[] = [
+    { key: 'standard', label: 'Standard Sack (50 parcels · 25 kg · 0.30 m³)', max_count: 50, max_weight_kg: 25, max_volume_cm3: 300000 },
+    { key: 'compact', label: 'Small Pouch Sack (80 parcels · 15 kg · 0.20 m³)', max_count: 80, max_weight_kg: 15, max_volume_cm3: 200000 },
+    { key: 'bulk', label: 'Bulk / Cage Bag (120 parcels · 50 kg · 0.60 m³)', max_count: 120, max_weight_kg: 50, max_volume_cm3: 600000 },
+];
 
-export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, creationToken, basePath, packingAvailable = false, packingToken = creationToken, commandToken = creationToken }: Props) {
+export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, creationToken, basePath, packingAvailable = false, packingToken = creationToken, commandToken = creationToken, activeHubId = null, bagPresets = DEFAULT_BAG_PRESETS }: Props) {
     const [search, setSearch] = useState('');
     const [bagCategory, setBagCategory] = useState<'all' | 'open' | 'sealed' | 'transit'>('all');
     const [manifestScan, setManifestScan] = useState('');
+    const [continuousPack, setContinuousPack] = useState(true);
+    const [showSealScanner, setShowSealScanner] = useState(false);
+    const [revertingTracking, setRevertingTracking] = useState<string | null>(null);
+    const [revertNotes, setRevertNotes] = useState('Mis-scanned parcel');
+    const packableHubs = hubs.filter(hub => hub.canPackDispatch ?? hub.canScan);
+    const defaultSourceHubId = activeHubId && packableHubs.some(hub => hub.id === activeHubId)
+        ? String(activeHubId)
+        : packableHubs[0]
+            ? String(packableHubs[0].id)
+            : '';
+    const activeHubRecord = hubs.find(hub => hub.id === activeHubId) ?? packableHubs[0] ?? null;
     const matchingManifests = manifests.filter(item => item.source_hub_id === bag?.source_hub_id && item.destination_hub_id === bag?.destination_hub_id);
     const openBagsCount = bags.data.filter(item => item.status === 'open').length;
     const sealedBagsCount = bags.data.filter(item => item.status === 'sealed').length;
@@ -31,21 +48,78 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
             return true;
         })
         .filter(item => [item.reference, item.source.name, item.destination.name, item.seal_number, item.status].join(' ').toLowerCase().includes(search.toLowerCase()));
-    const create = useForm({ source_hub_id: '', destination_hub_id: '', creation_token: creationToken });
+    const create = useForm({
+        source_hub_id: defaultSourceHubId,
+        destination_hub_id: '',
+        creation_token: creationToken,
+        capacity_preset: bagPresets[0]?.key ?? 'standard',
+        max_count: String(bagPresets[0]?.max_count ?? 50),
+        max_weight_kg: String(bagPresets[0]?.max_weight_kg ?? 25),
+        max_volume_m3: String(Number(((bagPresets[0]?.max_volume_cm3 ?? 300000) / 1000000).toFixed(2))),
+    });
     const pending = useRef(false);
-    const packing = useForm({ source_hub_id: '', barcode: '', physical_tag: '', physical_checked: false, request_token: packingToken, handling: emptyHandling() });
+    const packing = useForm({ source_hub_id: defaultSourceHubId, barcode: '', physical_tag: '', physical_checked: false, request_token: packingToken, handling: emptyHandling() });
     const action = useForm({ request_token: commandToken, handling: emptyHandling(), version: bag?.version ?? 1, barcode: '', seal_number: '', manifest_id: '', notes: '', seal_intact: false });
-    useEffect(() => { setManifestScan(''); action.setData({ request_token: commandToken, handling: emptyHandling(), version: bag?.version ?? 1, barcode: '', seal_number: '', manifest_id: '', notes: '', seal_intact: false }); action.clearErrors(); }, [bag?.id, bag?.version]);
+    useEffect(() => {
+        setManifestScan('');
+        setRevertingTracking(null);
+        setShowSealScanner(false);
+        action.setData({ request_token: commandToken, handling: emptyHandling(), version: bag?.version ?? 1, barcode: '', seal_number: '', manifest_id: '', notes: '', seal_intact: false });
+        action.clearErrors();
+    }, [bag?.id, bag?.version]);
     useEffect(() => create.setData('creation_token', creationToken), [creationToken]);
+    useEffect(() => {
+        if (!defaultSourceHubId) return;
+        if (!create.data.source_hub_id) {
+            create.setData({ ...create.data, source_hub_id: defaultSourceHubId, destination_hub_id: '' });
+        }
+        if (!packing.data.source_hub_id) {
+            packing.setData('source_hub_id', defaultSourceHubId);
+        }
+    }, [defaultSourceHubId]);
     const command = (name: string) => {
         if (!bag || pending.current) return;
         pending.current = true;
         action.post(`${basePath}/${bag.id}/${name}`, { preserveScroll: true, onFinish: () => { pending.current = false; } });
     };
+    const packScannedWaybill = (code: string) => {
+        if (!bag || pending.current) return;
+        pending.current = true;
+        router.post(`${basePath}/${bag.id}/add`, {
+            request_token: crypto.randomUUID(),
+            handling: action.data.handling,
+            version: bag.version,
+            barcode: code,
+        }, {
+            preserveScroll: true,
+            onFinish: () => {
+                pending.current = false;
+            },
+        });
+    };
+    const revertParcel = (trackingNumber: string) => {
+        if (!bag || pending.current) return;
+        pending.current = true;
+        router.post(`${basePath}/${bag.id}/remove`, {
+            request_token: crypto.randomUUID(),
+            version: bag.version,
+            barcode: trackingNumber,
+            notes: revertNotes.trim() || 'Mis-scanned parcel',
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setRevertingTracking(null);
+            },
+            onFinish: () => {
+                pending.current = false;
+            },
+        });
+    };
     const submit = (event: FormEvent, name: string) => { event.preventDefault(); command(name); };
     const source = hubs.find(hub => String(hub.id) === create.data.source_hub_id);
     const destination = hubs.find(hub => String(hub.id) === create.data.destination_hub_id);
     const receivingHubs = nextTransferHubs(hubs.filter(hub => hub.logistics_company_id === source?.logistics_company_id), source);
+    const activeParcels = bag ? bag.parcels.filter(item => !item.removed) : [];
     const error = Object.values(action.errors).concat(Object.values(create.errors), Object.values(packing.errors)).filter(Boolean);
 
     return (
@@ -91,12 +165,60 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                 </div>
                                 <div>
                                     <h2 className="text-sm font-bold text-[#121316]">Prepare a Mother Bag</h2>
-                                    <p className="mt-0.5 text-xs text-zinc-500">Choose the actual sending and next receiving hub.</p>
+                                    <p className="mt-0.5 text-xs text-zinc-500">Sending hub is auto-selected; choose next hub and bag limit preset.</p>
                                 </div>
                             </div>
+                            {activeHubRecord && activeHubRecord.canPackDispatch === false && (
+                                <p role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                                    Your active hub role at {activeHubRecord.name} is locked to Entry / Intake only. Ask a manager to switch your role to Pack &amp; Dispatch to prepare or seal bags.
+                                </p>
+                            )}
                             <form onSubmit={event => { event.preventDefault(); create.post(basePath); }} className="mt-5 space-y-4">
-                                <HubPicker label="Sending hub" hubs={hubs.filter(hub => hub.canScan)} value={create.data.source_hub_id} onChange={id => create.setData({ ...create.data, source_hub_id: id, destination_hub_id: '' })} error={create.errors.source_hub_id} />
+                                <HubPicker label="Sending hub" hubs={packableHubs} value={create.data.source_hub_id} onChange={id => create.setData({ ...create.data, source_hub_id: id, destination_hub_id: '' })} error={create.errors.source_hub_id} />
                                 <HubPicker label="Next hub" hubs={receivingHubs} value={create.data.destination_hub_id} onChange={id => create.setData('destination_hub_id', id)} disabled={!source} error={create.errors.destination_hub_id} />
+                                <label className="block text-xs font-bold text-[#121316]">
+                                    Bag capacity preset
+                                    <select
+                                        className={`${hubInput} mt-1.5`}
+                                        value={create.data.capacity_preset}
+                                        onChange={event => {
+                                            const key = event.target.value;
+                                            const preset = bagPresets.find(item => item.key === key);
+                                            if (preset) {
+                                                create.setData({
+                                                    ...create.data,
+                                                    capacity_preset: key,
+                                                    max_count: String(preset.max_count),
+                                                    max_weight_kg: String(preset.max_weight_kg),
+                                                    max_volume_m3: String(Number((preset.max_volume_cm3 / 1000000).toFixed(2))),
+                                                });
+                                            } else {
+                                                create.setData('capacity_preset', key);
+                                            }
+                                        }}
+                                    >
+                                        {bagPresets.map(preset => (
+                                            <option key={preset.key} value={preset.key}>{preset.label}</option>
+                                        ))}
+                                        <option value="custom">Custom limits</option>
+                                    </select>
+                                </label>
+                                {create.data.capacity_preset === 'custom' && (
+                                    <div className="grid grid-cols-3 gap-2 rounded-lg border border-zinc-200 bg-zinc-50/70 p-3">
+                                        <label className="text-[11px] font-semibold text-zinc-700">
+                                            Max parcels
+                                            <input type="number" min={1} max={500} required className={`${hubInput} mt-1 tabular-nums`} value={create.data.max_count} onChange={event => create.setData('max_count', event.target.value)} />
+                                        </label>
+                                        <label className="text-[11px] font-semibold text-zinc-700">
+                                            Max kg
+                                            <input type="number" min={1} max={200} step="0.5" required className={`${hubInput} mt-1 tabular-nums`} value={create.data.max_weight_kg} onChange={event => create.setData('max_weight_kg', event.target.value)} />
+                                        </label>
+                                        <label className="text-[11px] font-semibold text-zinc-700">
+                                            Max m³
+                                            <input type="number" min={0.01} max={2} step="0.01" required className={`${hubInput} mt-1 tabular-nums`} value={create.data.max_volume_m3} onChange={event => create.setData('max_volume_m3', event.target.value)} />
+                                        </label>
+                                    </div>
+                                )}
                                 {source && destination && <HubRoute stops={[source, destination]} label="Selected bag route" />}
                                 <button
                                     type="submit"
@@ -246,7 +368,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                 >
                                     <div className="space-y-3.5 p-5">
                                         <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                                            <HubPicker label="Packing hub" hubs={hubs.filter(hub => hub.canScan)} value={packing.data.source_hub_id} onChange={id => packing.setData('source_hub_id', id)} />
+                                            <HubPicker label="Packing hub" hubs={packableHubs} value={packing.data.source_hub_id} onChange={id => packing.setData('source_hub_id', id)} />
                                             <label className="min-w-0 block text-xs font-semibold text-zinc-700">
                                                 Actual parcel waybill
                                                 <input
@@ -316,14 +438,30 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                 </div>
 
                                 {/* Pack and Seal Console */}
+                                {!bag.canPack && bag.status === 'open' && (
+                                    <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                                        Packing and sealing this bag requires a Pack &amp; Dispatch or Full Hub Operations lock at {bag.source.name}.
+                                    </div>
+                                )}
                                 {bag.canPack && bag.status === 'open' && (
                                     <section className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                        <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                            <div className="flex items-center gap-2">
-                                                <ScanLine className="h-4 w-4 text-zinc-600" />
-                                                <h2 className="text-sm font-bold text-[#121316]">Pack and seal</h2>
+                                        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <ScanLine className="h-4 w-4 text-zinc-600" />
+                                                    <h2 className="text-sm font-bold text-[#121316]">Pack and seal</h2>
+                                                </div>
+                                                <p className="mt-0.5 text-xs text-zinc-500">Keep this bag open, scan incoming parcels continuously, revert any mis-scan, then scan or type the seal.</p>
                                             </div>
-                                            <p className="mt-0.5 text-xs text-zinc-500">Pack parcels ready for this next leg, then attach a new numbered seal.</p>
+                                            <label className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#121316] cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={continuousPack}
+                                                    onChange={event => setContinuousPack(event.target.checked)}
+                                                    className="rounded border-zinc-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                                />
+                                                Hands-free continuous auto-add
+                                            </label>
                                         </header>
                                         <div className="p-5 sm:p-6 space-y-5">
                                             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
@@ -351,23 +489,125 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                 <HubButton disabled={action.processing}>Add parcel</HubButton>
                                             </form>
                                             {bag.packing_policy_version && <HandlingFields value={action.data.handling} onChange={value => action.setData('handling', value)} disabled={action.processing} />}
-                                            <WaybillCamera onScan={value => action.setData('barcode', value)} disabled={action.processing} />
-                                            <form onSubmit={event => submit(event, 'seal')} className="flex flex-wrap items-end gap-3 border-t border-zinc-100 pt-5">
-                                                <label className="min-w-0 flex-1 text-xs font-bold text-[#121316]">
-                                                    Numbered seal
-                                                    <input
-                                                        required
-                                                        maxLength={80}
-                                                        className={`${hubInput} mt-1.5 tabular-nums`}
-                                                        value={action.data.seal_number}
-                                                        onChange={event => action.setData('seal_number', event.target.value)}
-                                                        placeholder="SL-XXXXX"
+                                            <WaybillCamera
+                                                continuous={continuousPack}
+                                                cooldownMs={1800}
+                                                buttonLabel={continuousPack ? 'Start continuous camera scan' : 'Scan actual waybill with camera'}
+                                                stopLabel="Stop continuous camera"
+                                                instruction={continuousPack
+                                                    ? 'Point camera at each parcel barcode — valid waybills pack into this bag automatically without tapping Add.'
+                                                    : 'Scan the parcel waybill to fill this field, then review before tapping Add parcel.'}
+                                                onScan={value => {
+                                                    if (continuousPack) {
+                                                        packScannedWaybill(value);
+                                                    } else {
+                                                        action.setData('barcode', value);
+                                                    }
+                                                }}
+                                                disabled={action.processing}
+                                            />
+                                            {activeParcels.length > 0 && (
+                                                <div className="rounded-xl border border-zinc-200 bg-zinc-50/50 p-3.5 space-y-2.5">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <p className="text-xs font-bold text-[#121316]">
+                                                            Recently scanned in this bag ({activeParcels.length})
+                                                        </p>
+                                                        <span className="text-[11px] text-zinc-500">Revert a mis-scan before sealing</span>
+                                                    </div>
+                                                    <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+                                                        {activeParcels.slice(0, 8).map(item => (
+                                                            <div key={item.id} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs">
+                                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="rounded border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 font-bold text-[#121316] tabular-nums">
+                                                                            {item.tracking_number}
+                                                                        </span>
+                                                                        <span className="text-zinc-500">{words(item.status)}</span>
+                                                                    </div>
+                                                                    {revertingTracking === item.tracking_number ? (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setRevertingTracking(null)}
+                                                                            className="text-[11px] font-semibold text-zinc-500 hover:text-zinc-800 cursor-pointer"
+                                                                        >
+                                                                            Cancel
+                                                                        </button>
+                                                                    ) : (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setRevertingTracking(item.tracking_number);
+                                                                                setRevertNotes('Mis-scanned parcel');
+                                                                            }}
+                                                                            className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] font-semibold text-zinc-700 hover:border-red-200 hover:bg-red-50 hover:text-red-700 cursor-pointer transition"
+                                                                        >
+                                                                            <RotateCcw className="h-3 w-3" />
+                                                                            Revert
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                                {revertingTracking === item.tracking_number && (
+                                                                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-2">
+                                                                        <input
+                                                                            type="text"
+                                                                            maxLength={200}
+                                                                            value={revertNotes}
+                                                                            onChange={event => setRevertNotes(event.target.value)}
+                                                                            placeholder="Reason (e.g. Wrong route)"
+                                                                            className={`${hubInput} flex-1 py-1 text-xs`}
+                                                                        />
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={action.processing}
+                                                                            onClick={() => revertParcel(item.tracking_number)}
+                                                                            className="rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-red-700 cursor-pointer disabled:opacity-50"
+                                                                        >
+                                                                            Confirm revert
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <form onSubmit={event => submit(event, 'seal')} className="space-y-3 border-t border-zinc-100 pt-5">
+                                                <div className="flex flex-wrap items-end gap-3">
+                                                    <label className="min-w-0 flex-1 text-xs font-bold text-[#121316]">
+                                                        Numbered seal
+                                                        <input
+                                                            required
+                                                            maxLength={80}
+                                                            className={`${hubInput} mt-1.5 tabular-nums`}
+                                                            value={action.data.seal_number}
+                                                            onChange={event => action.setData('seal_number', event.target.value)}
+                                                            placeholder="Scan or type SL-XXXXX"
+                                                        />
+                                                    </label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowSealScanner(value => !value)}
+                                                        className={hubButton}
+                                                    >
+                                                        <ScanLine className="h-4 w-4" />
+                                                        {showSealScanner ? 'Hide seal camera' : 'Scan seal'}
+                                                    </button>
+                                                    <HubButton primary disabled={action.processing || !bag.parcels_count}>
+                                                        <LockKeyhole className="h-4 w-4" />
+                                                        Seal bag
+                                                    </HubButton>
+                                                </div>
+                                                {showSealScanner && (
+                                                    <WaybillCamera
+                                                        onScan={code => {
+                                                            action.setData('seal_number', code);
+                                                            setShowSealScanner(false);
+                                                        }}
+                                                        buttonLabel="Scan printed seal with camera"
+                                                        instruction="Point camera at the printed seal barcode or QR to auto-fill SL-XXXXX."
+                                                        disabled={action.processing}
                                                     />
-                                                </label>
-                                                <HubButton primary disabled={action.processing || !bag.parcels_count}>
-                                                    <LockKeyhole className="h-4 w-4" />
-                                                    Seal bag
-                                                </HubButton>
+                                                )}
                                             </form>
                                         </div>
                                     </section>
@@ -528,7 +768,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         <div className="grid gap-3 sm:grid-cols-3">
                                             <CapacityMeter label="Parcels" value={bag.capacity.count} max={bag.capacity.max_count} unit="parcels" />
                                             <CapacityMeter label="Weight" value={bag.capacity.weight_kg} max={bag.capacity.max_weight_kg} unit="kg" />
-                                            <CapacityMeter label="Volume" value={bag.capacity.volume_cm3 === null ? null : Number((bag.capacity.volume_cm3 / 1000000).toFixed(4))} max={0.30} unit="m³" />
+                                            <CapacityMeter label="Volume" value={bag.capacity.volume_cm3 === null ? null : Number((bag.capacity.volume_cm3 / 1000000).toFixed(4))} max={Number(((bag.capacity.max_volume_cm3 || 300000) / 1000000).toFixed(2))} unit="m³" />
                                         </div>
                                         <p className="text-xs text-zinc-500">Declared sizes or operator readings guide packing. Check the actual fit before attaching the numbered seal.</p>
                                     </section>

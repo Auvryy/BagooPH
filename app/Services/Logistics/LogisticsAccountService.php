@@ -23,8 +23,18 @@ class LogisticsAccountService
 
     public function resource(User $user): array
     {
-        return ['user' => $user->only(['id', 'name', 'email', 'role']),
-            'hubs' => $this->hubs($user)->map->only(['id', 'name', 'code', 'logistics_company_id'])->all()];
+        $eligibility = app(LogisticsEligibilityService::class);
+
+        return [
+            'user' => $user->only(['id', 'name', 'email', 'role']),
+            'hubs' => $this->hubs($user)->map(function ($hub) use ($user, $eligibility) {
+                return $hub->only(['id', 'name', 'code', 'tier', 'parent_hub_id', 'logistics_company_id']) + [
+                    'job_role' => $eligibility->jobRole($user, $hub) ?? 'all',
+                    'can_intake' => $eligibility->canIntake($user, $hub),
+                    'can_pack_dispatch' => $eligibility->canPackDispatch($user, $hub),
+                ];
+            })->all(),
+        ];
     }
 
     public function session(User $user, string $device, Request $request): array
