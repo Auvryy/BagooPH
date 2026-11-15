@@ -444,7 +444,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             rel="noopener noreferrer"
                                             aria-label="Open transfer directions"
                                             title="Open transfer directions"
-                                            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-600 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500"
+                                            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line-300 bg-white text-ink-700 hover:border-ink-400 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500"
                                         >
                                             <ExternalLink className="h-4 w-4" aria-hidden="true" />
                                         </a>

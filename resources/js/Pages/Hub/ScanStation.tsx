@@ -992,7 +992,7 @@ export default function ScanStation({
                                             type="button"
                                             onClick={() => setAudioEnabled(!audioEnabled)}
                                             aria-pressed={audioEnabled}
-                                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 cursor-pointer"
+                                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line-300 bg-white text-ink-700 transition-colors hover:border-ink-400 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 cursor-pointer"
                                             title={audioEnabled ? 'Sound on' : 'Sound off'}
                                         >
                                             {audioEnabled ? <Volume2 className="h-4 w-4" aria-hidden="true" /> : <VolumeX className="h-4 w-4 text-ink-400" aria-hidden="true" />}

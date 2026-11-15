@@ -193,7 +193,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                                 </div>
                                             </div>
                                             {hasPhone && (
-                                                <a href={`tel:${vehicle.driver_phone}`} aria-label={`Call ${vehicle.driver_name}`} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-600 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
+                                                <a href={`tel:${vehicle.driver_phone}`} aria-label={`Call ${vehicle.driver_name}`} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line-300 bg-white text-ink-700 hover:border-ink-400 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
                                                     <Phone className="h-4 w-4" aria-hidden="true" />
                                                 </a>
                                             )}

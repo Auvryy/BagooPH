@@ -528,7 +528,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                     ].filter(group => group.mother || group.children.length);
                     const directions = (hub: DirectoryHubItem) => hub.latitude !== null && hub.longitude !== null && (
                         <a href={`https://www.google.com/maps/dir/?api=1&destination=${hub.latitude},${hub.longitude}&travelmode=driving`} target="_blank" rel="noopener noreferrer"
-                            aria-label={`Directions to ${hub.name}`} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-500 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
+                            aria-label={`Directions to ${hub.name}`} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line-300 bg-white text-ink-700 hover:border-ink-400 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
                             <ExternalLink className="h-4 w-4" aria-hidden="true" />
                         </a>
                     );
