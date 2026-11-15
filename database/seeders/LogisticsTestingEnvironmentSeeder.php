@@ -18,6 +18,7 @@ use App\Models\OrderItem;
 use App\Models\PickupClaim;
 use App\Models\Product;
 use App\Models\Shop;
+use App\Models\ShopReviewDecision;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -90,6 +91,45 @@ class LogisticsTestingEnvironmentSeeder extends Seeder
                     'status' => 'active',
                     'review_status' => 'approved',
                 ]);
+                $currentReview = $shop->fresh()->currentReview;
+                if (! $currentReview
+                    || ($currentReview->submission['shop']['name'] ?? null) !== $shop->name
+                    || ($currentReview->submission['shop']['address'] ?? null) !== $shop->address
+                    || ($currentReview->submission['shop']['city'] ?? null) !== $shop->city) {
+                    $decision = ShopReviewDecision::create([
+                        'shop_id' => $shop->id,
+                        'decision' => 'approved',
+                        'reviewer_id' => $admin->id,
+                        'reviewer_role' => 'admin',
+                        'reviewer_name' => $admin->name,
+                        'submission_token' => (string) Str::uuid(),
+                        'reason' => 'Store passes business identity verification and authorized department inspection.',
+                        'reviewed_at' => now(),
+                        'seller_id' => $sellerFood->id,
+                        'root_category_id' => $shop->root_category_id,
+                        'before_state' => [],
+                        'after_state' => [
+                            'status' => 'active',
+                            'review_status' => 'approved',
+                            'reviewed_at' => now()->toISOString(),
+                            'review_feedback' => 'Store passes business identity verification and authorized department inspection.',
+                            'shop' => [
+                                'name' => $shop->name,
+                                'address' => $shop->address,
+                                'city' => $shop->city,
+                                'status' => 'active',
+                            ],
+                        ],
+                        'submission' => [
+                            'shop' => [
+                                'name' => $shop->name,
+                                'address' => $shop->address,
+                                'city' => $shop->city,
+                            ],
+                        ],
+                    ]);
+                    $shop->update(['review_decision_id' => $decision->id]);
+                }
             }
 
             // 4. Configure Primary Test Buyer: "buyer@bagoo.test" (Santa Cruz, Laguna)

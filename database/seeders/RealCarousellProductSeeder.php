@@ -151,12 +151,20 @@ class RealCarousellProductSeeder extends Seeder
                 }
 
                 // Admin review decision for shop eligibility
-                $decision = ShopReviewDecision::firstOrCreate(
-                    [
+                $currentReview = $shop->currentReview;
+                $needsNewDecision = ! $currentReview
+                    || $currentReview->decision !== 'approved'
+                    || $currentReview->reviewer_role !== 'admin'
+                    || (int) $currentReview->seller_id !== (int) $seller->id
+                    || (int) $currentReview->root_category_id !== (int) $category->id
+                    || ($currentReview->submission['shop']['name'] ?? null) !== $shop->name
+                    || ($currentReview->submission['shop']['address'] ?? null) !== $shop->address
+                    || ($currentReview->submission['shop']['city'] ?? null) !== $shop->city;
+
+                $decision = $needsNewDecision
+                    ? ShopReviewDecision::create([
                         'shop_id' => $shop->id,
                         'decision' => 'approved',
-                    ],
-                    [
                         'reviewer_id' => $admin->id,
                         'reviewer_role' => 'admin',
                         'reviewer_name' => $admin->name,
@@ -167,10 +175,15 @@ class RealCarousellProductSeeder extends Seeder
                         'root_category_id' => $category->id,
                         'before_state' => [],
                         'after_state' => [
+                            'status' => $shop->status ?? 'active',
+                            'review_status' => 'approved',
+                            'reviewed_at' => now()->toISOString(),
+                            'review_feedback' => 'Store passes business identity verification and authorized department inspection.',
                             'shop' => [
                                 'name' => $shop->name,
                                 'address' => $shop->address,
                                 'city' => $shop->city,
+                                'status' => $shop->status ?? 'active',
                             ],
                         ],
                         'submission' => [
@@ -180,8 +193,8 @@ class RealCarousellProductSeeder extends Seeder
                                 'city' => $shop->city,
                             ],
                         ],
-                    ]
-                );
+                    ])
+                    : $currentReview;
 
                 $shop->update([
                     'review_decision_id' => $decision->id,

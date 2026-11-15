@@ -83,7 +83,7 @@ class ShopReviewService
             'decision_history' => $shop->reviewDecisions()->orderByDesc('id')->get()->map(fn ($decision) => [
                 'id' => $decision->id, 'decision' => $decision->decision, 'reason' => $decision->reason,
                 'reviewer' => $decision->reviewer_name, 'reviewed_at' => $decision->reviewed_at->toISOString(),
-                'shop_status' => $decision->after_state['status'], 'source' => ($decision->submission['source'] ?? null) === 'demo_fixture'
+                'shop_status' => $decision->after_state['status'] ?? $decision->after_state['shop']['status'] ?? $shop->status, 'source' => ($decision->submission['source'] ?? null) === 'demo_fixture'
                     ? 'Synthetic demo setup' : ($decision->kyc_decision_id ? 'Original account application' : 'Shop review'),
                 'documents' => $this->links($shop, $decision->submission, $decision),
             ])->all()];
