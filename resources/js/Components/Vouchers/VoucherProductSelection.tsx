@@ -3,12 +3,19 @@ import axios from 'axios';
 import { PaginatedData } from '@/types';
 
 export interface VoucherProduct {
-    id: number; name: string; sku: string | null; featured_image: string | null; eligible?: boolean;
+    id: number; name: string; sku: string | null; price?: number | string | null; featured_image: string | null; eligible?: boolean;
 }
 
-export default function VoucherProductSelection({ scope, ids, initialProducts = [], errors = [], disabled = false, onScope, onChange }: {
+const formatProductPrice = (price?: number | string | null): string | null => {
+    if (price === null || price === undefined || price === '') return null;
+    const numeric = Number(price);
+    if (!Number.isFinite(numeric) || numeric <= 0) return null;
+    return `₱${numeric.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+export default function VoucherProductSelection({ scope, ids, initialProducts = [], errors = [], disabled = false, onScope, onChange, onProductsChange }: {
     scope: 'all' | 'selected'; ids: number[]; initialProducts?: VoucherProduct[]; errors?: string[]; disabled?: boolean;
-    onScope: (scope: 'all' | 'selected') => void; onChange: (ids: number[]) => void;
+    onScope: (scope: 'all' | 'selected') => void; onChange: (ids: number[]) => void; onProductsChange?: (products: VoucherProduct[]) => void;
 }) {
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
@@ -27,7 +34,9 @@ export default function VoucherProductSelection({ scope, ids, initialProducts = 
                 const rows = response.data?.products;
                 if (!rows || !Array.isArray(rows.data) || !Number.isInteger(rows.last_page)) throw new Error('Invalid product response');
                 setProducts(rows);
-                setKnown(current => ({ ...current, ...Object.fromEntries(rows.data.map((product: VoucherProduct) => [product.id, product])) }));
+                const nextKnown = { ...known, ...Object.fromEntries(rows.data.map((product: VoucherProduct) => [product.id, product])) };
+                setKnown(nextKnown);
+                onProductsChange?.(ids.map(id => nextKnown[id]).filter((item): item is VoucherProduct => Boolean(item)));
             }).catch(error => {
                 if (!controller.signal.aborted) setFailure(axios.isAxiosError(error) && [401, 419].includes(error.response?.status ?? 0)
                     ? 'Reload to renew your session, then try again.' : 'Could not load your products. Try again.');
@@ -35,23 +44,32 @@ export default function VoucherProductSelection({ scope, ids, initialProducts = 
         }, 200);
         return () => { window.clearTimeout(timer); controller.abort(); };
     }, [scope, search, page, retry]);
-    const toggle = (id: number) => onChange(ids.includes(id) ? ids.filter(current => current !== id) : [...ids, id].sort((a, b) => a - b));
+    const updateIds = (nextIds: number[]) => {
+        onChange(nextIds);
+        onProductsChange?.(nextIds.map(id => known[id]).filter((item): item is VoucherProduct => Boolean(item)));
+    };
+    const toggle = (id: number) => updateIds(ids.includes(id) ? ids.filter(current => current !== id) : [...ids, id].sort((a, b) => a - b));
     return <fieldset className="space-y-3 border-t border-slate-300 pt-5" disabled={disabled}>
         <legend className="text-sm font-bold text-slate-900">Eligible products</legend>
         <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-700">
             {([['all', 'All shop products'], ['selected', 'Selected products']] as const).map(([value, label]) => <label key={value} className="flex min-h-11 cursor-pointer items-center gap-2">
-                <input type="radio" name="voucher-product-scope" value={value} checked={scope === value} onChange={() => onScope(value)} className="text-[#E00D42] focus:ring-[#E00D42]" />{label}
+                <input type="radio" name="voucher-product-scope" value={value} checked={scope === value} onChange={() => { onScope(value); if (value === 'all') onProductsChange?.([]); }} className="text-[#E00D42] focus:ring-[#E00D42]" />{label}
             </label>)}
         </div>
         <p className="text-xs leading-5 text-slate-600">{scope === 'selected' ? 'Only these products count toward the minimum spend and discount. All their available variants qualify. Choose up to 100 products.' : 'All eligible products from your shop count toward the minimum spend and discount.'}</p>
         {scope === 'selected' && <>
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><span className="font-semibold text-slate-700">{ids.length} / 100 selected</span>
-                {ids.length > 0 && <button type="button" onClick={() => onChange([])} className="min-h-11 font-semibold text-[#C20836] hover:underline">Clear selection</button>}
+                {ids.length > 0 && <button type="button" onClick={() => updateIds([])} className="min-h-11 font-semibold text-[#C20836] hover:underline">Clear selection</button>}
             </div>
             {ids.length > 0 && <ul aria-label="Selected voucher products" className="max-h-48 divide-y divide-slate-200 overflow-y-auto rounded-xl border border-slate-300">
                 {ids.map(id => <li key={id} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
-                    <span className="min-w-0"><span className="block break-words font-semibold text-slate-800">{known[id]?.name ?? 'Product no longer available'}</span>
-                        {(!known[id] || known[id].eligible === false) && <span className="block text-amber-800">Remove this product or choose another before publishing.</span>}</span>
+                    <span className="min-w-0">
+                        <span className="block break-words font-semibold text-slate-800">
+                            {known[id]?.name ?? 'Product no longer available'}
+                            {formatProductPrice(known[id]?.price) && <span className="ml-1.5 font-bold text-[#E00D42]">({formatProductPrice(known[id]?.price)})</span>}
+                        </span>
+                        {(!known[id] || known[id].eligible === false) && <span className="block text-amber-800">Remove this product or choose another before publishing.</span>}
+                    </span>
                     <button type="button" aria-label={`Remove ${known[id]?.name ?? 'unavailable product'}`} onClick={() => toggle(id)} className="min-h-11 shrink-0 px-2 font-semibold text-[#C20836] hover:underline">Remove</button>
                 </li>)}
             </ul>}
@@ -64,10 +82,13 @@ export default function VoucherProductSelection({ scope, ids, initialProducts = 
                 : failure ? <div role="alert" className="flex min-h-24 flex-col items-center justify-center gap-2 text-center text-xs"><p className="text-rose-700">{failure}</p><button type="button" onClick={() => setRetry(retry + 1)} className="min-h-11 font-semibold text-[#C20836] hover:underline">Try again</button></div>
                     : products?.data.length ? <>
                         <div className="divide-y divide-slate-200 rounded-xl border border-slate-300">
-                            {products.data.map(product => <label key={product.id} className="flex min-h-14 cursor-pointer items-center gap-3 px-3 py-2 text-xs hover:bg-slate-50">
-                                <input type="checkbox" checked={ids.includes(product.id)} disabled={disabled || (ids.length >= 100 && !ids.includes(product.id))}
-                                    onChange={() => toggle(product.id)} className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" />
-                                <span className="min-w-0"><span className="block break-words font-semibold text-slate-900">{product.name}</span>{product.sku && <span className="mt-1 block break-all text-slate-500">{product.sku}</span>}</span>
+                            {products.data.map(product => <label key={product.id} className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-3 py-2 text-xs hover:bg-slate-50">
+                                <span className="flex min-w-0 items-center gap-3">
+                                    <input type="checkbox" checked={ids.includes(product.id)} disabled={disabled || (ids.length >= 100 && !ids.includes(product.id))}
+                                        onChange={() => toggle(product.id)} className="rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" />
+                                    <span className="min-w-0"><span className="block break-words font-semibold text-slate-900">{product.name}</span>{product.sku && <span className="mt-1 block break-all text-slate-500">{product.sku}</span>}</span>
+                                </span>
+                                {formatProductPrice(product.price) && <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 font-bold text-slate-800">{formatProductPrice(product.price)}</span>}
                             </label>)}
                         </div>
                         {products.last_page > 1 && <nav aria-label="Voucher product pages" className="flex items-center justify-between gap-3 text-xs">

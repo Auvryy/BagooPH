@@ -203,3 +203,22 @@ test('ineligible checkout choices remain disabled while showing scope and the us
     assert.equal(nodes(tree, node => node.props?.type === 'radio')[1].props.disabled, true);
     assert.match(text(tree), /qualifying products/); assert.equal(nodes(tree, node => node.type === ui.Scope)[0].props.offer, offer);
 });
+
+test('selected product price guide auto-fills minimum spend and applies suggested limits', () => {
+    const h = harness(ui.Form, { campaign: null, platform: false, onClose() {} });
+    try {
+        let tree = h.render();
+        nodes(tree, node => node.type === ui.Selection)[0].props.onScope('selected');
+        tree = h.render();
+        nodes(tree, node => node.type === ui.Selection)[0].props.onChange([1]);
+        nodes(tree, node => node.type === ui.Selection)[0].props.onProductsChange([{ id: 1, name: 'Matcha Powder', sku: 'M-300', price: 300, featured_image: null }]);
+        tree = h.render();
+        assert.match(text(tree), /Selected product price guide:\s+₱300\.00/);
+        button(tree, 'Apply suggested prices').props.onClick();
+        tree = h.render();
+        nodes(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {}, nativeEvent: { submitter: { value: 'draft' } } });
+        assert.equal(h.submitted[0].data.min_spend, '300');
+        assert.equal(h.submitted[0].data.max_discount, '30');
+        assert.equal(h.submitted[0].data.budget, '300');
+    } finally { h.close(); }
+});

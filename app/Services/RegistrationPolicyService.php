@@ -65,6 +65,7 @@ class RegistrationPolicyService
                 ]],
                 ['title' => 'Selling and delivery work', 'paragraphs' => [
                     'A seller account operates one shop in its approved category. Listings, descriptions, stock and evidence must be accurate. Reviewed identity, shop scope and vehicle details use the correction process in account settings.',
+                    'Buyer recipient details (including full name, contact number, street address, and delivery pin) remain hidden until the seller accepts the order. By accepting an order, the seller agrees to keep all disclosed buyer personal information strictly confidential, use it solely to pack, label, and fulfill that specific order, and assumes full responsibility and liability for protecting buyer privacy against unauthorized disclosure, retention, or misuse.',
                     'Couriers and logistics users may act only on work assigned through Bagoo. Follow recorded handovers, delivery evidence and the current approval and assignment rules. Do not use private buyer information for another purpose.',
                     'The platform commission is 10% of product sales and the seller share is 90%. Shipping and handling are recorded separately.',
                 ]],

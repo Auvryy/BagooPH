@@ -801,6 +801,7 @@ Route::middleware('auth')->group(function () {
 
     // Live Chat / Messaging Endpoints
     Route::get('/messages', [ChatController::class, 'buyerInbox'])->middleware('buyer.approved')->name('messages');
+    Route::post('/messages', [ChatController::class, 'sendMessage'])->name('messages.send');
     Route::get('/chat/messages/{receiverId}', [ChatController::class, 'getMessages'])->where('receiverId', '[1-9][0-9]{0,17}')->name('chat.messages');
     Route::get('/chat/attachments/{message}', [ChatController::class, 'attachment'])->where('message', '[1-9][0-9]{0,17}')->name('chat.attachment');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
@@ -869,6 +870,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
         Route::get('/{advertisement}/preview', [SellerPromotionController::class, 'preview'])->whereNumber('advertisement')->name('preview');
     });
     Route::get('/messages', [ChatController::class, 'sellerInbox'])->name('messages.index');
+    Route::post('/messages', [ChatController::class, 'sendMessage'])->name('messages.store');
     Route::get('/reviews', [SellerReviewController::class, 'index'])->name('reviews.index');
     Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->middleware('throttle:30,1')->name('reviews.reply');
     Route::post('/reviews/{review}/dispute', [SellerReviewController::class, 'dispute'])->middleware('throttle:20,1')->name('reviews.dispute');

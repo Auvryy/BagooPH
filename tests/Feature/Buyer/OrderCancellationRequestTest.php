@@ -313,4 +313,25 @@ class OrderCancellationRequestTest extends TestCase
         $this->expectException(\LogicException::class);
         $migration->down();
     }
+
+    public function test_direct_buyer_cancellation_before_acceptance_surfaces_reason_and_optional_notes_to_seller(): void
+    {
+        $order = $this->newFlowOrder('placed');
+        $this->actingAs($order->buyer)
+            ->post(route('buyer.orders.cancel', $order), [
+                'reason' => 'Ordered by mistake',
+                'notes' => 'I selected the wrong barangay by mistake, will reorder shortly.',
+            ])
+            ->assertRedirect();
+
+        $freshOrder = $order->fresh(['delivery.checkpoints']);
+        $this->assertSame('cancelled', $freshOrder->status);
+
+        $feedback = app(\App\Services\Orders\OrderLifecycleService::class)->cancellationFeedback($freshOrder);
+        $this->assertSame('cancelled', $feedback['code']);
+        $this->assertSame(
+            'Ordered by mistake: I selected the wrong barangay by mistake, will reorder shortly.',
+            $feedback['reason']
+        );
+    }
 }

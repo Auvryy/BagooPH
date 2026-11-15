@@ -5,7 +5,7 @@ export interface CancellationRequest {
     respond_by: string; decision_reason: string | null; can_review: boolean; approve_url?: string; reject_url?: string;
 }
 export interface CancellationFeedback {
-    allowed: boolean; mode: 'request' | 'direct'; code: string; message: string; payment_message: string;
+    allowed: boolean; mode: 'request' | 'direct'; code: string; message: string; reason?: string | null; payment_message: string;
     refund: { reference: string; amount_cents: number; created_at: string } | null; request: CancellationRequest | null;
 }
 export default function OrderCancellationFeedback({ feedback }: { feedback?: CancellationFeedback | null }) {
@@ -14,6 +14,12 @@ export default function OrderCancellationFeedback({ feedback }: { feedback?: Can
     return <section aria-label="Cancellation status" className={`space-y-1.5 rounded-card border p-4 text-sm text-ink-700 sm:p-5 ${feedback.code === 'cancelled' ? 'border-warning/25 bg-warning-soft' : 'border-line-200 bg-white'}`}>
         <h3 className="font-semibold text-ink-900">{feedback.code === 'cancelled' ? 'Order cancelled' : 'Cancellation'}</h3>
         <p role="status">{feedback.message}</p>
+        {!request && feedback.reason && (
+            <div className="rounded-lg border border-warning/20 bg-white/75 px-3 py-2 text-[13px] text-ink-800">
+                <span className="font-semibold text-ink-900">Buyer cancellation reason &amp; note: </span>
+                <span>{feedback.reason}</span>
+            </div>
+        )}
         {request && <div className="space-y-1 border-t border-line-200 pt-2">
             <p className="font-medium text-ink-900">{request.reference} · {request.status.replaceAll('_', ' ')}</p>
             <p>{request.reason}{request.notes ? `: ${request.notes}` : ''}</p>
