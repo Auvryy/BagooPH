@@ -84,7 +84,7 @@ test('assignment opens a deliberate rider choice while preserving the actual cur
 });
 test('an empty queue remains truthful and zero counts do not become a success percentage', async () => {
     const html = await render(Registry, 'Hub/Deliveries', registry([], { counts: { all: 0, in_hub: 0, out_for_delivery: 0, ready_pickup: 0, handovers_today: 0 }, canScan: false }));
-    assert.match(html, /No parcels in this view/);
+    assert.match(html, /No parcels here/);
     assert.doesNotMatch(html, /100%|Station Active|Open scanner/);
 });
 test('arrived counter parcels show staging guidance and a disabled release control', async () => {

@@ -17,7 +17,7 @@ import {
 } from '@/Components/Logistics/Workspace';
 import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import type { EtaPresentation } from '@/types';
-import { Package, Search, Store, MapPin, ScanLine, CheckCircle2, UserRound, RefreshCw, ArrowRight, ExternalLink } from 'lucide-react';
+import { Package, Search, Store, MapPin, ScanLine, UserRound, RefreshCw, ArrowRight, ExternalLink } from 'lucide-react';
 
 interface DeliveryItem {
     id: number;
@@ -221,103 +221,98 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
         <div className="space-y-5 font-sans" aria-busy={busy || undefined}>
             <HubPageHeader
                 title="Parcels & waybills"
-                roleLabel={canScan ? 'Hub Handler & Sorter' : 'Facility Dispatcher / Viewer'}
+                roleLabel={canScan ? 'Hub operator' : 'View only'}
                 icon={Package}
-                actions={canScan && <PortalLink href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`} className={hubPrimary}><ScanLine className="h-4 w-4" />Open scanner</PortalLink>}
+                actions={canScan && <PortalLink href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`} className={hubPrimary}><ScanLine className="h-4 w-4" aria-hidden="true" />Open scanner</PortalLink>}
             />
-            <p role="status" className={busy ? 'text-sm text-zinc-600' : 'sr-only'}>{busy ? 'Updating parcel records…' : ''}</p>
-            {readError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-xs">{readError}</p>}
+            <p role="status" className={busy ? 'text-sm text-ink-600' : 'sr-only'}>{busy ? 'Updating parcel records…' : ''}</p>
+            {readError && <p role="alert" className="rounded-control border border-brand-100 bg-brand-50 p-4 text-sm text-brand-700">{readError}</p>}
 
-            {/* 4-Column Notion Metric Strip */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 divide-x divide-zinc-200/80 rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
+            {/* Numbers double as queue filters */}
+            <div role="group" aria-label="Queue" className="grid grid-cols-2 overflow-hidden rounded-card border border-line-200 bg-white lg:grid-cols-4">
                 {[
-                    { label: 'Facility queue', value: counts.all, Icon: Package, sub: 'total active' },
-                    { label: 'Recorded hub custody', value: counts.in_hub, Icon: MapPin, sub: 'at station' },
-                    { label: 'Counter queue', value: counts.ready_pickup, Icon: Store, sub: 'self-pickup' },
-                    { label: 'Handed over today', value: counts.handovers_today, Icon: CheckCircle2, sub: 'completed' },
-                ].map(({ label, value, Icon, sub }) => (
-                    <div key={label} className="flex items-start justify-between gap-3 p-4 sm:p-5">
-                        <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 font-sans">{label}</p>
-                            <div className="mt-1.5 flex items-baseline gap-2">
-                                <p className="text-2xl font-bold font-sans text-zinc-900 tabular-nums">{value}</p>
-                                <span className="text-xs font-medium text-zinc-500">{sub}</span>
-                            </div>
-                        </div>
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-50 border border-zinc-200/90 text-zinc-700">
-                            <Icon className="h-4 w-4" />
-                        </div>
-                    </div>
-                ))}
+                    { key: 'all', label: 'All parcels', value: counts.all },
+                    { key: 'in_hub', label: 'In hub custody', value: counts.in_hub },
+                    { key: 'ready_pickup', label: 'Counter queue', value: counts.ready_pickup },
+                ].map(({ key, label, value }) => {
+                    const selected = filters.status === key;
+                    return (
+                        <button
+                            key={key}
+                            type="button"
+                            disabled={busy}
+                            aria-pressed={selected}
+                            onClick={() => handleFilter(key)}
+                            className={`relative border-b border-r border-line-200 p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:p-5 lg:border-b-0 ${selected ? 'bg-brand-50/60' : 'hover:bg-surface-50'}`}
+                        >
+                            {selected && <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-brand-500" />}
+                            <span className={`block text-[13px] ${selected ? 'font-medium text-brand-600' : 'text-ink-600'}`}>{label}</span>
+                            <span className="mt-1 block text-[28px] font-bold leading-9 tabular-nums text-ink-900">{value}</span>
+                        </button>
+                    );
+                })}
+                <div className="p-4 sm:p-5">
+                    <span className="block text-[13px] text-ink-600">Handed over today</span>
+                    <span className="mt-1 block text-[28px] font-bold leading-9 tabular-nums text-success">{counts.handovers_today}</span>
+                </div>
             </div>
 
-            <HubCategoryTabs
-                label="Parcel work categories"
-                activeId={activeCategory}
-                onChange={(id) => setActiveCategory(id as typeof activeCategory)}
-                tabs={[
-                    { id: 'all', label: 'All on Page', count: deliveries.data.length },
-                    { id: 'action', label: 'Needs Action Now', count: actionRequiredCount },
-                    { id: 'waiting', label: 'Waiting / Assigned', count: waitingCount },
-                    { id: 'counter', label: 'Counter Pickup', count: counterReadyCount },
-                ]}
-            />
-
-            {/* Unified Notion Database Toolbar */}
-            <section className="flex flex-wrap items-end gap-3 rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs" aria-label="Filter parcels">
+            <section className="flex flex-wrap items-center gap-3" aria-label="Filter parcels">
                 <form onSubmit={handleSearchSubmit} className="flex min-w-56 flex-1 gap-2">
                     <div className="relative min-w-0 flex-1">
                         <label className="sr-only" htmlFor="parcel-search">Search waybill, order or buyer</label>
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" aria-hidden="true" />
                         <input
                             id="parcel-search"
                             maxLength={120}
                             value={searchTerm}
                             disabled={busy}
                             onChange={event => setSearchTerm(event.target.value)}
-                            className="w-full rounded-lg border border-zinc-300 bg-zinc-50/40 hover:bg-white focus:bg-white pl-10 pr-3.5 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition"
-                            placeholder="Waybill, order or buyer…"
+                            className={`${hubInput} pl-9`}
+                            placeholder="Search waybill, order or buyer"
                         />
                     </div>
-                    <button
-                        disabled={busy}
-                        className="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 shadow-2xs transition cursor-pointer disabled:opacity-50"
-                    >
-                        Search
-                    </button>
+                    <button disabled={busy} className={hubButton}>Search</button>
                 </form>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                    Queue
-                    <select
-                        disabled={busy}
-                        value={filters.status}
-                        onChange={event => handleFilter(event.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white pl-3.5 pr-9 py-2 text-xs font-semibold text-zinc-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition cursor-pointer"
-                    >
-                        <option value="all">All parcels</option>
-                        <option value="in_hub">In hub custody</option>
-                        <option value="ready_pickup">Counter queue</option>
-                    </select>
-                </label>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                    Delivery method
-                    <select
-                        disabled={busy}
-                        value={filters.delivery_type}
-                        onChange={event => handleFilter(undefined, event.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white pl-3.5 pr-9 py-2 text-xs font-semibold text-zinc-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition cursor-pointer"
-                    >
-                        <option value="all">All methods</option>
-                        <option value="doorstep">Doorstep delivery</option>
-                        <option value="hub_self_pickup">Counter pickup</option>
-                    </select>
-                </label>
+                <div role="group" aria-label="Delivery method" className="inline-flex rounded-control border border-line-300 bg-white p-0.5">
+                    {[
+                        { key: 'all', label: 'All' },
+                        { key: 'doorstep', label: 'Doorstep' },
+                        { key: 'hub_self_pickup', label: 'Counter' },
+                    ].map(option => {
+                        const selected = filters.delivery_type === option.key;
+                        return (
+                            <button
+                                key={option.key}
+                                type="button"
+                                disabled={busy}
+                                aria-pressed={selected}
+                                onClick={() => handleFilter(undefined, option.key)}
+                                className={`min-h-9 rounded-[4px] px-3 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${selected ? 'bg-brand-50 text-brand-600' : 'text-ink-700 hover:bg-surface-100'}`}
+                            >
+                                {option.label}
+                            </button>
+                        );
+                    })}
+                </div>
             </section>
+
+            <HubCategoryTabs
+                label="Parcel work categories"
+                activeId={activeCategory}
+                onChange={(id) => setActiveCategory(id as typeof activeCategory)}
+                tabs={[
+                    { id: 'all', label: 'This page', count: deliveries.data.length },
+                    { id: 'action', label: 'Needs action', count: actionRequiredCount },
+                    { id: 'waiting', label: 'Waiting', count: waitingCount },
+                    ...(counterReadyCount > 0 ? [{ id: 'counter', label: 'For counter', count: counterReadyCount }] : []),
+                ]}
+            />
 
             {/* Parcel Registry Cards */}
             {!visibleDeliveries.length ? (
                 <div className="rounded-xl border border-zinc-200/90 bg-white p-6 shadow-xs">
-                    <HubEmpty title="No parcels in this view" description="Try another filter or search. Incoming parcels appear after their recorded pickup or transfer." />
+                    <HubEmpty title="No parcels here" description="Try another filter or search." />
                 </div>
             ) : (
                 <div className="grid items-start gap-4 xl:grid-cols-2">
