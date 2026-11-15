@@ -7,7 +7,7 @@ import HubHandoverRecoveryPanel from '@/Components/HubHandoverRecoveryPanel';
 import { AuthRequestError, AuthRequestScope, authRequest } from '@/utils/authRequests';
 import { refreshPage } from '@/utils/accountRequests';
 
-const fieldClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-[#121316] shadow-2xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors';
+const fieldClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-ink-900 shadow-2xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-colors';
 
 export default function Show({ issue, isOnline }: { issue: IssueDetail; isOnline: boolean }) {
     const [decision, setDecision] = useState('');
@@ -52,24 +52,24 @@ export default function Show({ issue, isOnline }: { issue: IssueDetail; isOnline
                 {/* Main Issue Details Card */}
                 <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                        <h2 className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
+                        <h2 className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-brand-500">
                             {issue.order_number}
                         </h2>
                         <IssueBadge state={issue.state} />
                     </header>
                     <div className="p-5 sm:p-6">
                         <p className="break-words text-xs tabular-nums text-zinc-600">{issue.reference} · Waybill {issue.tracking_number}</p>
-                        <p className="mt-3 text-sm font-bold text-[#121316]">{issueKind[issue.kind]}</p>
+                        <p className="mt-3 text-sm font-bold text-ink-900">{issueKind[issue.kind]}</p>
                         <p className="mt-1.5 text-xs text-zinc-500">{issue.reporter_name} · {issueDate(issue.created_at)} · Manila time</p>
 
                         <dl className="mt-5 grid gap-4 rounded-xl border border-zinc-200/80 bg-zinc-50/30 p-4 text-sm sm:grid-cols-2">
                             <div>
                                 <dt className="text-xs font-medium text-zinc-500">Reported holder</dt>
-                                <dd className="mt-1 break-words font-bold text-[#121316]">{issue.reported_holder}</dd>
+                                <dd className="mt-1 break-words font-bold text-ink-900">{issue.reported_holder}</dd>
                             </div>
                             <div>
                                 <dt className="text-xs font-medium text-zinc-500">Reported location</dt>
-                                <dd className="mt-1 break-words font-bold text-[#121316]">{issue.reported_location}</dd>
+                                <dd className="mt-1 break-words font-bold text-ink-900">{issue.reported_location}</dd>
                             </div>
                         </dl>
 
@@ -99,14 +99,14 @@ export default function Show({ issue, isOnline }: { issue: IssueDetail; isOnline
                 {issue.can_review && (
                     <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                         <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                            <h2 className="text-sm font-bold text-[#121316]">Independent review</h2>
+                            <h2 className="text-sm font-bold text-ink-900">Independent review</h2>
                             <p className="mt-0.5 text-xs text-zinc-500">
                                 Check the document and current parcel facts before deciding. Confirmation keeps the issue open for recovery.
                             </p>
                         </header>
                         <form onSubmit={submit} className="p-5 sm:p-6 space-y-4">
                             <fieldset disabled={busy} className="space-y-4">
-                                <label htmlFor="review-decision" className="block text-xs font-bold text-[#121316]">
+                                <label htmlFor="review-decision" className="block text-xs font-bold text-ink-900">
                                     Decision
                                     <select
                                         id="review-decision"
@@ -122,7 +122,7 @@ export default function Show({ issue, isOnline }: { issue: IssueDetail; isOnline
                                     </select>
                                     <IssueError id="review-decision-error" message={errors.decision} />
                                 </label>
-                                <label htmlFor="review-notes" className="block text-xs font-bold text-[#121316]">
+                                <label htmlFor="review-notes" className="block text-xs font-bold text-ink-900">
                                     What did you verify?
                                     <textarea
                                         id="review-notes"
@@ -144,7 +144,7 @@ export default function Show({ issue, isOnline }: { issue: IssueDetail; isOnline
                                         required
                                         checked={reviewed}
                                         onChange={event => setReviewed(event.target.checked)}
-                                        className="mt-1 rounded border-zinc-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                        className="mt-1 rounded border-zinc-300 text-brand-500 focus:ring-brand-500"
                                     />
                                     <span>I reviewed the supporting document and current parcel facts.</span>
                                 </label>
@@ -154,7 +154,7 @@ export default function Show({ issue, isOnline }: { issue: IssueDetail; isOnline
                             <button
                                 type="submit"
                                 disabled={busy}
-                                className="rounded-lg bg-[#E00D42] hover:bg-[#C20836] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
+                                className="rounded-lg bg-brand-500 hover:bg-brand-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
                             >
                                 {busy ? 'Saving review…' : 'Save review'}
                             </button>
@@ -165,14 +165,14 @@ export default function Show({ issue, isOnline }: { issue: IssueDetail; isOnline
                 {/* Report History Card */}
                 <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                     <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                        <h2 className="text-sm font-bold text-[#121316]">Report history</h2>
+                        <h2 className="text-sm font-bold text-ink-900">Report history</h2>
                     </header>
                     <div className="p-5 sm:p-6">
                         <ol className="divide-y divide-zinc-100">
                             {issue.events.map(event => (
                                 <li key={event.id} className="py-4 first:pt-0 last:pb-0">
                                     <div className="flex flex-wrap items-center justify-between gap-2">
-                                        <p className="text-sm font-bold text-[#121316]">{issueEvent[event.type]}</p>
+                                        <p className="text-sm font-bold text-ink-900">{issueEvent[event.type]}</p>
                                         <time className="text-xs text-zinc-500" dateTime={event.created_at}>
                                             {issueDate(event.created_at)}
                                         </time>

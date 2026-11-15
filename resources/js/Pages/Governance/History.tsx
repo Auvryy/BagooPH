@@ -18,25 +18,25 @@ export default function History({ events, filters, sources, subjectTypes, scope 
     const [input, setInput] = useState<Filters>({ ...empty, ...filters });
     const { errors } = usePage<PageProps>().props;
     const change = (field: keyof Filters, value: string) => setInput((current) => ({ ...current, [field]: value }));
-    const control = 'mt-1.5 w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-xs font-medium text-[#121316] shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15';
+    const control = 'mt-1.5 w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-xs font-medium text-ink-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15';
     const companyView = scope === 'own_company_resources';
     const advancedKeys = ['subject_id', 'actor_id', 'from', 'to'] as const;
     const activeAdvanced = advancedKeys.filter(key => input[key]).length;
     const advancedFields = (
         <>
-            <label className="text-xs font-semibold text-[#121316]">
+            <label className="text-xs font-semibold text-ink-900">
                 {companyView ? 'Resource record number' : 'Subject ID'}
                 <input type="number" min="1" className={control} value={input.subject_id} onChange={event => change('subject_id', event.target.value)} />
             </label>
-            <label className="text-xs font-semibold text-[#121316]">
+            <label className="text-xs font-semibold text-ink-900">
                 {companyView ? 'Reviewer account number' : 'Reviewer ID'}
                 <input type="number" min="1" className={control} value={input.actor_id} onChange={event => change('actor_id', event.target.value)} />
             </label>
-            <label className="text-xs font-semibold text-[#121316]">
+            <label className="text-xs font-semibold text-ink-900">
                 From (Philippine date)
                 <input type="date" className={control} value={input.from} onChange={event => change('from', event.target.value)} />
             </label>
-            <label className="text-xs font-semibold text-[#121316]">
+            <label className="text-xs font-semibold text-ink-900">
                 Through (Philippine date)
                 <input type="date" className={control} value={input.to} onChange={event => change('to', event.target.value)} />
             </label>
@@ -58,14 +58,14 @@ export default function History({ events, filters, sources, subjectTypes, scope 
                     className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs"
                 >
                     <div className={`grid gap-4 sm:grid-cols-2 ${companyView ? '' : 'xl:grid-cols-3'}`}>
-                        <label className="text-xs font-semibold text-[#121316]">
+                        <label className="text-xs font-semibold text-ink-900">
                             Decision source
                             <select className={control} value={input.source} onChange={(event) => change('source', event.target.value)}>
                                 <option value="">All available sources</option>
                                 {sources.map((source) => <option key={source.value} value={source.value}>{source.label}</option>)}
                             </select>
                         </label>
-                        <label className="text-xs font-semibold text-[#121316]">
+                        <label className="text-xs font-semibold text-ink-900">
                             Subject type
                             <select className={control} value={input.subject_type} onChange={(event) => change('subject_type', event.target.value)}>
                                 <option value="">All subjects</option>
@@ -74,7 +74,7 @@ export default function History({ events, filters, sources, subjectTypes, scope 
                         </label>
                         {companyView ? (
                             <details open={activeAdvanced > 0 || advancedKeys.some(key => Boolean(errors[key]))} className="rounded-lg border border-zinc-200/80 bg-zinc-50/50 p-3 sm:col-span-2">
-                                <summary className="cursor-pointer text-xs font-semibold text-[#121316]">
+                                <summary className="cursor-pointer text-xs font-semibold text-ink-900">
                                     Dates and record filters{activeAdvanced > 0 ? ` (${activeAdvanced} active)` : ''}
                                 </summary>
                                 <div className="mt-4 grid gap-4 sm:grid-cols-2">{advancedFields}</div>
@@ -89,7 +89,7 @@ export default function History({ events, filters, sources, subjectTypes, scope 
                         </div>
                     )}
                     <div className="mt-4 flex gap-2.5">
-                        <button className="rounded-lg bg-[#E00D42] px-4 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-[#C20836]">
+                        <button className="rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-brand-600">
                             Apply filters
                         </button>
                         <button
@@ -121,21 +121,21 @@ export default function History({ events, filters, sources, subjectTypes, scope 
                                 {events.data.map((event) => (
                                     <tr key={`${event.source}-${event.id}`} className="transition-colors hover:bg-zinc-50/40">
                                         <td className="max-w-sm px-5 py-3.5">
-                                            <p className="font-semibold text-[#121316]">{event.source_label}</p>
+                                            <p className="font-semibold text-ink-900">{event.source_label}</p>
                                             <p className="text-zinc-600">{recordLabel(event.action)}</p>
                                             <p className="mt-1 line-clamp-2 text-zinc-500">{event.reason ?? 'No reason recorded'}</p>
                                         </td>
                                         <td className="px-5 py-3.5">
-                                            <p className="font-medium text-[#121316]">{event.subject.name ?? 'Name not recorded'}</p>
+                                            <p className="font-medium text-ink-900">{event.subject.name ?? 'Name not recorded'}</p>
                                             <p className="mt-0.5 tabular-nums text-zinc-500">{recordLabel(event.subject.type)} #{event.subject.id}</p>
                                         </td>
                                         <td className="px-5 py-3.5">
-                                            <p className="font-medium text-[#121316]">{event.actor.name}</p>
+                                            <p className="font-medium text-ink-900">{event.actor.name}</p>
                                             <p className="mt-0.5 tabular-nums text-zinc-500">Reviewer #{event.actor.id}</p>
                                         </td>
                                         <td className="whitespace-nowrap px-5 py-3.5 text-zinc-500">{governanceTime(event.occurred_at)}</td>
                                         <td className="px-5 py-3.5">
-                                            <Link href={event.detail_url} className="font-semibold text-[#E00D42] hover:underline">View record</Link>
+                                            <Link href={event.detail_url} className="font-semibold text-brand-500 hover:underline">View record</Link>
                                         </td>
                                     </tr>
                                 ))}

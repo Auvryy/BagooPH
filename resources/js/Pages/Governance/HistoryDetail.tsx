@@ -22,9 +22,9 @@ export default function HistoryDetail({ event }: { event: GovernanceEvent }) {
             <section className="rounded-xl border border-slate-300 bg-white p-6">
                 <h2 className="font-semibold text-slate-900">Related records and evidence</h2>
                 <div className="mt-4 space-y-3 text-sm">
-                    {event.prior_decision ? <Link href={`/governance-history/${event.prior_decision.source}/${event.prior_decision.id}`} className="block font-semibold text-[#E00D42] hover:underline">View recorded prior decision</Link> : <p className="text-slate-500">No explicit prior decision link was recorded.</p>}
-                    {event.context_url && <Link href={event.context_url} className="block font-semibold text-[#E00D42] hover:underline">Inspect current account context</Link>}
-                    {event.documents.length ? <><p className="text-slate-600">Evidence access checks your current authority and the retained file’s integrity.</p><div className="flex flex-wrap gap-3">{event.documents.map((document) => <a key={document.kind} href={document.url} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-[#E00D42]">View {recordLabel(document.kind)} evidence</a>)}</div></> : <p className="text-slate-500">No retained evidence link is available in this view.</p>}
+                    {event.prior_decision ? <Link href={`/governance-history/${event.prior_decision.source}/${event.prior_decision.id}`} className="block font-semibold text-brand-500 hover:underline">View recorded prior decision</Link> : <p className="text-slate-500">No explicit prior decision link was recorded.</p>}
+                    {event.context_url && <Link href={event.context_url} className="block font-semibold text-brand-500 hover:underline">Inspect current account context</Link>}
+                    {event.documents.length ? <><p className="text-slate-600">Evidence access checks your current authority and the retained file’s integrity.</p><div className="flex flex-wrap gap-3">{event.documents.map((document) => <a key={document.kind} href={document.url} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-brand-500">View {recordLabel(document.kind)} evidence</a>)}</div></> : <p className="text-slate-500">No retained evidence link is available in this view.</p>}
                 </div>
             </section>
         </div>

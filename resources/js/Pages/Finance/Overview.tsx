@@ -24,8 +24,8 @@ export default function Overview({ records, totals, filters, mode, error, stateO
                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
                     {mode === 'company' ? (
                         <>
-                            <h2 className="text-sm font-semibold text-[#121316]">Follow the original cash receipts</h2>
-                            <ol tabIndex={0} aria-label="COD receipt stages; scroll to view every stage" className="mt-3.5 flex items-center gap-3 overflow-x-auto pb-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
+                            <h2 className="text-sm font-semibold text-ink-900">Follow the original cash receipts</h2>
+                            <ol tabIndex={0} aria-label="COD receipt stages; scroll to view every stage" className="mt-3.5 flex items-center gap-3 overflow-x-auto pb-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
                                 {[{ name: 'Buyer payment', Icon: Receipt }, { name: 'Rider or counter', Icon: Wallet }, { name: 'Hub receipt', Icon: Building2 }, { name: 'Platform receipt', Icon: Landmark }].map(({ name, Icon }, index) => (
                                     <li key={name} className="flex shrink-0 items-center gap-3">
                                         <span className="inline-flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-700">
@@ -39,7 +39,7 @@ export default function Overview({ records, totals, filters, mode, error, stateO
                         </>
                     ) : (
                         <>
-                            <h2 className="text-sm font-semibold text-[#121316]">{mode === 'seller' ? 'Your proceeds and payments' : 'Recorded money and its sources'}</h2>
+                            <h2 className="text-sm font-semibold text-ink-900">{mode === 'seller' ? 'Your proceeds and payments' : 'Recorded money and its sources'}</h2>
                             <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-zinc-600">
                                 {mode === 'seller'
                                     ? 'See proceeds awaiting payment and payments backed by recorded receipts. Payouts shows the payment history for each order. Sales report shows completed sales and estimated shares.'
@@ -54,15 +54,15 @@ export default function Overview({ records, totals, filters, mode, error, stateO
                 {Object.values(errors ?? {}).length > 0 && <div role="alert" className="rounded-xl border border-rose-200/90 bg-rose-50/80 p-4 text-sm text-rose-800">{Object.values(errors).map((message, index) => <p key={index}>{message}</p>)}</div>}
 
                 <form onSubmit={submit} className="grid items-end gap-3.5 overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs sm:grid-cols-2 xl:grid-cols-3">
-                    <label className="text-xs font-semibold text-[#121316]">
+                    <label className="text-xs font-semibold text-ink-900">
                         From date
                         <input type="date" className={cashInput} value={form.from ?? ''} onChange={event => update('from', event.target.value)} />
                     </label>
-                    <label className="text-xs font-semibold text-[#121316]">
+                    <label className="text-xs font-semibold text-ink-900">
                         Through date
                         <input type="date" className={cashInput} value={form.to ?? ''} onChange={event => update('to', event.target.value)} />
                     </label>
-                    <label className="text-xs font-semibold text-[#121316]">
+                    <label className="text-xs font-semibold text-ink-900">
                         Recorded state
                         <select className={cashInput} value={form.state ?? ''} onChange={event => update('state', event.target.value)}>
                             <option value="">All states</option>
@@ -71,14 +71,14 @@ export default function Overview({ records, totals, filters, mode, error, stateO
                     </label>
                     {mode === 'admin' && (
                         <>
-                            <label className="text-xs font-semibold text-[#121316]">
+                            <label className="text-xs font-semibold text-ink-900">
                                 Company
                                 <select className={cashInput} value={form.company ?? ''} onChange={event => update('company', event.target.value)}>
                                     <option value="">All companies</option>
                                     {companies.map(company => <option key={company.id} value={company.id}>{company.name} · #{company.id}</option>)}
                                 </select>
                             </label>
-                            <label className="text-xs font-semibold text-[#121316]">
+                            <label className="text-xs font-semibold text-ink-900">
                                 Seller recipient
                                 <select className={cashInput} value={form.recipient ?? ''} onChange={event => update('recipient', event.target.value)}>
                                     <option value="">All recipients</option>
@@ -100,10 +100,10 @@ export default function Overview({ records, totals, filters, mode, error, stateO
                     {totals.map(total => (
                         <article key={total.key} className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
                             <h2 className="text-xs font-semibold text-zinc-500">{total.label}</h2>
-                            <p className="mt-2 tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{financeMoney(total.amount_cents)}</p>
+                            <p className="mt-2 tabular-nums text-2xl font-bold tabular-nums text-ink-900">{financeMoney(total.amount_cents)}</p>
                             <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">{total.definition}</p>
                             {total.amount_cents !== null && total.url && (
-                                <Link href={total.url} className="mt-3 inline-flex min-h-9 items-center text-xs font-semibold text-[#C20836] underline underline-offset-4">
+                                <Link href={total.url} className="mt-3 inline-flex min-h-9 items-center text-xs font-semibold text-brand-600 underline underline-offset-4">
                                     Review {total.source_count} source {total.source_count === 1 ? 'record' : 'records'}
                                 </Link>
                             )}
@@ -117,7 +117,7 @@ export default function Overview({ records, totals, filters, mode, error, stateO
                         {records.data.map(record => (
                             <article key={record.order_id} className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <h2 className="text-sm font-bold text-[#121316]">{record.order_number}</h2>
+                                    <h2 className="text-sm font-bold text-ink-900">{record.order_number}</h2>
                                     <span className="rounded-md border border-zinc-200/90 bg-zinc-50 px-2.5 py-0.5 text-xs font-semibold text-zinc-700">{financeState(record.proceeds?.status ?? record.cash_status)}</span>
                                 </div>
                                 <p className="mt-1.5 text-xs text-zinc-500">{record.date_basis} · {financeDate(record.recorded_at)}</p>
@@ -126,7 +126,7 @@ export default function Overview({ records, totals, filters, mode, error, stateO
                                     {['held', 'reconciled', 'pending', 'settled'].filter(key => key in record.metrics).map(key => (
                                         <div key={key}>
                                             <dt className="text-zinc-500">{totals.find(total => total.key === key)?.label}</dt>
-                                            <dd className="mt-0.5 tabular-nums text-sm font-semibold tabular-nums text-[#121316]">{financeMoney(record.metrics[key])}</dd>
+                                            <dd className="mt-0.5 tabular-nums text-sm font-semibold tabular-nums text-ink-900">{financeMoney(record.metrics[key])}</dd>
                                         </div>
                                     ))}
                                 </dl>
