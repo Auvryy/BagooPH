@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { AlertCircle, ArrowLeft, LogIn, RotateCcw } from 'lucide-react';
-import BagooLogo from '@/Components/BagooLogo';
+import BagooLogisticsLogo from '@/Components/BagooLogisticsLogo';
 
 interface Props {
     status: number;
@@ -28,7 +28,7 @@ export default function LogisticsError({ title, description, requestId, overview
                 <section className="w-full max-w-lg overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm">
                     <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/50 px-6 py-4">
                         <div className="flex items-center gap-2.5">
-                            <BagooLogo className="h-7 w-7" rounded="rounded-lg" />
+                            <BagooLogisticsLogo className="h-7 w-7" rounded="rounded-lg" />
                             <span className="text-xs font-bold tracking-tight text-[#121316]">BagooPH Logistics Workspace</span>
                         </div>
                         <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-[#E00D42]">

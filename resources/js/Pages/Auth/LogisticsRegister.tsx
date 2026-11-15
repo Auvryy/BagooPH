@@ -279,6 +279,7 @@ export default function LogisticsRegister({ birthDateLimits, policies, serviceRe
 
     return (
         <GuestLayout guestOnly
+            logoVariant="logistics"
             formPosition="right"
             imageSrc="/images/auth/hub_register.jpg?v=20260919"
             imageAlt="BagooPH Logistics Sorting Hub Visual"
