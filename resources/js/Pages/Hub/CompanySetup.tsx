@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Building2, CheckCircle2, CircleDollarSign, KeyRound, MapPin, Plus, Settings2, Users, Warehouse, UserRound } from 'lucide-react';
+import { Building2, CircleDollarSign, KeyRound, MapPin, Plus, Settings2, Users, Warehouse } from 'lucide-react';
 import { CoverageEditor, TemporaryLoginEditor } from '@/Components/Logistics/SetupEditors';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import HubMap from '@/Components/Logistics/HubMap';
@@ -8,7 +8,7 @@ import HubPicker from '@/Components/Logistics/HubPicker';
 import HubLocationEditor from '@/Components/Logistics/HubLocationEditor';
 import AddressLocationFields from '@/Components/AddressLocationFields';
 import LocationPinPicker from '@/Components/LocationPinPicker';
-import { HubBadge, HubButton, HubPanel, HubPageHeader, HubSearch, hubInput } from '@/Components/Logistics/Workspace';
+import { HubBadge, HubButton, HubPanel, HubPageHeader, HubSearch, InfoHint, hubInput } from '@/Components/Logistics/Workspace';
 
 type Hub = { latitude: number | null; longitude: number | null; address: string; id: number; name: string; code: string; tier: string; city_municipality: string; province: string; parent_hub_id: number | null; postal_codes: string[] | null; coverage_token: string; location_token: string; is_active: boolean };
 type Props = { companies: { id: number; name: string }[]; company: { id: number; name: string; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number; shipping_earnings_model: string; tariff_version: number }; canProvision: boolean; hubs: Hub[]; staff: { id: number; name: string; email: string; kind: string; hub_name: string; handler_id?: number | null; job_role?: string | null; must_change_password: boolean; email_verified_at: string | null }[]; basePath: string };
@@ -20,7 +20,7 @@ const JOB_ROLE_OPTIONS = [
 const jobRoleLabel = (role?: string | null) => JOB_ROLE_OPTIONS.find(option => option.value === role)?.label ?? 'Full Hub Operations (All)';
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
     return (
-        <label className="block text-xs font-semibold text-ink-900">
+        <label className="block text-[13px] font-medium text-ink-700">
             {label}
             <div className="mt-1.5">{children}</div>
             {error && <span role="alert" className="mt-1.5 block text-xs font-normal text-rose-700">{error}</span>}
@@ -63,7 +63,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                 <HubPageHeader
                     title="Company setup"
                     icon={Building2}
-                    description={`Manage ${company.name} facilities, named work accounts and future shipping quotes.`}
+                    roleLabel={company.name}
                     actions={companies.length > 1 && (
                         <select aria-label="Select company" className={`${hubInput} max-w-xs`} value={company.id} onChange={event => router.get(basePath, { company_id: event.target.value })}>
                             {companies.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
@@ -71,36 +71,33 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                     )}
                 />
 
-                <div className="grid grid-cols-2 divide-x divide-y divide-zinc-200/80 overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs lg:grid-cols-4 lg:divide-y-0">
+                <div className="grid grid-cols-2 divide-x divide-y divide-line-200 overflow-hidden rounded-card border border-line-200 bg-white lg:grid-cols-4 lg:divide-y-0">
                     {[
-                        { label: 'Hubs', value: hubs.length, Icon: Warehouse },
-                        { label: 'Active hubs', value: activeHubCount, Icon: CheckCircle2 },
-                        { label: 'Work accounts', value: staff.length, Icon: Users },
-                        { label: 'Riders', value: riderCount, Icon: UserRound },
-                    ].map(({ label, value, Icon }) => (
+                        { label: 'Hubs', value: hubs.length, note: `${activeHubCount} active` },
+                        { label: 'Work accounts', value: staff.length, note: `${staff.length - riderCount} operators` },
+                        { label: 'Riders', value: riderCount, note: null },
+                        { label: 'Base shipping', value: `₱${tariff.data.base_fee}`, note: `v${company.tariff_version}` },
+                    ].map(({ label, value, note }) => (
                         <div key={label} className="p-4 sm:p-5">
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-semibold text-zinc-500">{label}</span>
-                                <span className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200/80 bg-zinc-50 text-zinc-600">
-                                    <Icon className="h-3.5 w-3.5" />
-                                </span>
-                            </div>
-                            <p className="mt-2 tabular-nums text-2xl font-bold tabular-nums text-ink-900">{value}</p>
+                            <p className="text-[13px] text-ink-600">{label}</p>
+                            <p className="mt-1 flex items-baseline gap-2"><span className="text-[28px] font-bold leading-9 tabular-nums text-ink-900">{value}</span>{note && <span className="text-xs text-ink-500">{note}</span>}</p>
                         </div>
                     ))}
                 </div>
 
-                <div className="flex gap-1 overflow-x-auto rounded-xl border border-zinc-200/90 bg-zinc-100/70 p-1">
+                <div role="tablist" aria-label="Company setup sections" className="flex gap-1 overflow-x-auto border-b border-line-200">
                     {tabs.map(({ key, label, icon: Icon }) => (
                         <button
                             key={key}
+                            role="tab"
+                            aria-selected={tab === key}
                             aria-pressed={tab === key}
                             onClick={() => { setTab(key); setCreating(false); setSearch(''); }}
-                            className={`inline-flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-xs font-semibold transition ${
- tab === key ? 'bg-white text-ink-900 shadow-2xs ring-1 ring-zinc-200/80' : 'text-zinc-500 hover:text-ink-900'
+                            className={`-mb-px inline-flex min-h-10 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${
+ tab === key ? 'border-brand-500 text-brand-600' : 'border-transparent text-ink-600 hover:border-line-300 hover:text-ink-900'
  }`}
                         >
-                            <Icon className="h-4 w-4" />
+                            <Icon className="h-4 w-4" aria-hidden="true" />
                             {label}
                         </button>
                     ))}
@@ -116,7 +113,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                             icon={<Building2 className="h-4 w-4" />}
                         >
                             <div className="mb-4 flex items-center justify-between gap-4">
-                                <span className="text-xs font-semibold text-zinc-500">{hubs.length} facilities</span>
+                                <span className="text-[13px] text-ink-600">{hubs.length} facilities</span>
                                 {canProvision && (
                                     <HubButton onClick={() => setCreating(!creating)}>
                                         <Plus className="h-4 w-4" />
@@ -124,7 +121,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                     </HubButton>
                                 )}
                             </div>
-                            <div className="mb-5 grid gap-4 lg:grid-cols-[1fr_260px]">
+                            <div className="mb-5">
                                 <HubMap
                                     hubs={hubs}
                                     selectedId={selectedHubId}
@@ -134,14 +131,6 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                     }}
                                     className="min-h-72"
                                 />
-                                <div className="space-y-3 rounded-xl border border-zinc-200/90 bg-zinc-50/60 p-4">
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-200/80 bg-white text-zinc-600 shadow-2xs">
-                                        <Warehouse className="h-4 w-4" />
-                                    </span>
-                                    <h3 className="text-sm font-semibold text-ink-900">One connected company</h3>
-                                    <p className="text-xs leading-relaxed text-zinc-500">Mother Hubs connect the company network. Each child hub has its own Mother Hub parent and postal coverage.</p>
-                                    <p className="text-xs leading-relaxed text-zinc-500">Choose a saved map pin to highlight its facility below. Hubs without coordinates stay in the address list.</p>
-                                </div>
                             </div>
 
                             <HubSearch label="Find a company hub" value={search} onChange={setSearch} placeholder="Hub name, town or postal code" />
@@ -151,37 +140,36 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                     <article
                                         key={hub.id}
                                         id={`setup-hub-${hub.id}`}
-                                        className={`rounded-xl border p-4 transition-colors ${
- selectedHubId === hub.id ? 'border-brand-500 bg-rose-50/30 ring-1 ring-brand-500/15' : 'border-zinc-200/90 bg-white'
- }`}
+                                        className={`rounded-control border p-4 transition-colors ${selectedHubId === hub.id ? 'border-brand-500 bg-brand-50/40' : 'border-line-200 bg-white'}`}
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex min-w-0 items-start gap-2.5">
-                                                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-zinc-200/80 bg-zinc-50 text-zinc-600">
-                                                    {hub.tier === 'regional_mother_hub' ? <Warehouse className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+                                                <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${hub.tier === 'regional_mother_hub' ? 'bg-warning-soft text-warning' : 'bg-brand-50 text-brand-500'}`}>
+                                                    {hub.tier === 'regional_mother_hub' ? <Warehouse className="h-4 w-4" aria-hidden="true" /> : <Building2 className="h-4 w-4" aria-hidden="true" />}
                                                 </span>
-                                                <div>
-                                                    <h3 className="text-sm font-semibold text-ink-900">{hub.name}</h3>
-                                                    <p className="mt-0.5 text-xs text-zinc-500"><span className="tabular-nums">{hub.code}</span> · {hub.city_municipality}</p>
+                                                <div className="min-w-0">
+                                                    <h3 className="truncate text-sm font-semibold text-ink-900">{hub.name}</h3>
+                                                    <p className="truncate text-xs text-ink-600">
+                                                        <span className="tabular-nums">{hub.code}</span> · {hub.city_municipality} · {hub.tier === 'regional_mother_hub' ? 'Mother Hub' : `Under ${hubs.find(item => item.id === hub.parent_hub_id)?.name ?? 'province route'}`}
+                                                    </p>
                                                 </div>
                                             </div>
                                             <HubBadge tone={hub.is_active ? 'success' : 'warning'}>{hub.is_active ? 'Active' : 'Inactive'}</HubBadge>
                                         </div>
-                                        <p className="mt-3 text-xs leading-5 text-zinc-600">
-                                            {hub.tier === 'regional_mother_hub' ? 'Mother Hub' : `Child of ${hubs.find(item => item.id === hub.parent_hub_id)?.name ?? 'existing province route'}`}
-                                        </p>
-                                        <p className="mt-1.5 text-xs leading-5 text-zinc-500">Postal coverage: {hub.postal_codes?.join(', ') || 'Existing city coverage'}</p>
+                                        {hub.postal_codes && hub.postal_codes.length > 0 && (
+                                            <p className="mt-2 flex flex-wrap gap-1">{hub.postal_codes.map(code => <span key={code} className="rounded-chip bg-surface-100 px-1.5 py-0.5 text-xs tabular-nums text-ink-700">{code}</span>)}</p>
+                                        )}
                                         {canProvision && (
-                                            <div className="mt-4 flex flex-wrap gap-2">
-                                                <HubButton onClick={() => setSelectedHubId(hub.id)}>Edit map pin</HubButton>
-                                                {hub.tier === 'local_bayan_hub' && <HubButton onClick={() => setEditingHub(hub)}>Edit coverage</HubButton>}
+                                            <div className="mt-3 flex flex-wrap gap-3 text-[13px]">
+                                                <button type="button" onClick={() => setSelectedHubId(hub.id)} className="font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900">Edit map pin</button>
+                                                {hub.tier === 'local_bayan_hub' && <button type="button" onClick={() => setEditingHub(hub)} className="font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900">Edit coverage</button>}
                                             </div>
                                         )}
                                         {canProvision && selectedHubId === hub.id && <HubLocationEditor key={hub.location_token} hub={hub} url={`${basePath}/${company.id}/hubs/${hub.id}/location`} />}
                                     </article>
                                 ))}
                             </div>
-                            {hubs.length === 0 && <p className="py-12 text-center text-xs text-zinc-500">Create a Mother Hub first, then its local child hubs.</p>}
+                            {hubs.length === 0 && <p className="py-10 text-center text-sm text-ink-600">Create a Mother Hub first, then its child hubs.</p>}
                             {hubs.length > 0 && !hubs.some(hub => matching([hub.name, hub.code, hub.city_municipality, ...(hub.postal_codes ?? [])].join(' '))) && (
                                 <p className="py-8 text-center text-xs text-zinc-500">No facilities match your search.</p>
                             )}
@@ -210,10 +198,18 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                         <input required value={facility.data.code} onChange={event => facility.setData('code', event.target.value.toUpperCase())} className={hubInput} placeholder="CH-PAGS-01" />
                                     </Field>
                                     <Field label="Hub type" error={facility.errors.tier}>
-                                        <select value={facility.data.tier} onChange={event => facility.setData('tier', event.target.value)} className={hubInput}>
-                                            <option value="regional_mother_hub">Mother Hub</option>
-                                            <option value="local_bayan_hub">Child Hub</option>
-                                        </select>
+<div role="radiogroup" className="grid grid-cols-2 gap-2">
+                                            {[{ value: 'regional_mother_hub', label: 'Mother Hub', detail: 'Connects service areas' }, { value: 'local_bayan_hub', label: 'Child Hub', detail: 'Pickup, sorting, delivery' }].map(option => {
+                                                const selected = facility.data.tier === option.value;
+                                                return (
+                                                    <label key={option.value} className={`cursor-pointer rounded-control border px-3 py-2.5 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 ${selected ? 'border-brand-500 bg-brand-50/60' : 'border-line-300 hover:border-ink-400'}`}>
+                                                        <input type="radio" name="hub-tier" value={option.value} checked={selected} onChange={() => facility.setData('tier', option.value)} className="sr-only" />
+                                                        <span className={`block text-sm font-medium ${selected ? 'text-brand-600' : 'text-ink-900'}`}>{option.label}</span>
+                                                        <span className="block text-xs text-ink-600">{option.detail}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
                                     </Field>
                                     {facility.data.tier === 'local_bayan_hub' && (
                                         <HubPicker
@@ -307,7 +303,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                     <>
                         <HubPanel title="Named work accounts" description="Your company creates each account with one fixed role and an assigned physical hub." icon={<Users className="h-4 w-4" />}>
                             <div className="mb-4 flex items-center justify-between">
-                                <span className="text-xs font-semibold text-zinc-500">{staff.length} company-created accounts</span>
+                                <span className="text-[13px] text-ink-600">{staff.length} accounts</span>
                                 {canProvision && (
                                     <HubButton onClick={() => setCreating(!creating)}>
                                         <Plus className="h-4 w-4" />
@@ -318,17 +314,22 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                             <HubSearch label="Find a work account" value={search} onChange={setSearch} placeholder="Person, email or hub" />
                             <div className="mt-4 grid gap-3 md:grid-cols-2">
                                 {staff.filter(person => matching([person.name, person.email, person.hub_name].join(' '))).map(person => (
-                                    <article key={person.id} className="rounded-xl border border-zinc-200/90 bg-white p-4">
-                                        <div className="flex items-start gap-3">
-                                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200/80 bg-zinc-50 text-zinc-500">
-                                                <UserRound className="h-4 w-4" />
-                                            </span>
-                                            <div className="min-w-0">
-                                                <h3 className="text-sm font-semibold text-ink-900">{person.name}</h3>
-                                                <p className="mt-0.5 break-words text-xs text-zinc-500">{person.email}</p>
+                                    <article key={person.id} className="rounded-control border border-line-200 bg-white p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex min-w-0 items-start gap-3">
+                                                <span aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${person.kind === 'rider' ? 'bg-info-soft text-info' : 'bg-surface-100 text-ink-700'}`}>
+                                                    {person.name.split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase()).join('')}
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <h3 className="truncate text-sm font-semibold text-ink-900">{person.name}</h3>
+                                                    <p className="truncate text-xs text-ink-600">{person.kind === 'operator' ? `Hub operator · ${jobRoleLabel(person.job_role)}` : 'Rider'} · {person.hub_name}</p>
+                                                    <p className="break-words text-xs text-ink-500">{person.email}</p>
+                                                </div>
                                             </div>
+                                            <HubBadge tone={person.must_change_password || !person.email_verified_at ? 'warning' : 'success'}>
+                                                {person.must_change_password ? 'Invitation pending' : !person.email_verified_at ? 'Verify email' : 'Activated'}
+                                            </HubBadge>
                                         </div>
-                                        <p className="mt-3 text-xs text-zinc-600">{person.kind === 'operator' ? `Hub operator · ${jobRoleLabel(person.job_role)}` : 'Rider'} · {person.hub_name}</p>
                                         {person.kind === 'operator' && person.handler_id && canProvision && (
                                             <label className="mt-3 block text-[11px] font-semibold text-zinc-700">
                                                 Locked job role
@@ -350,11 +351,6 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                                 </select>
                                             </label>
                                         )}
-                                        <div className="mt-3">
-                                            <HubBadge tone={person.must_change_password || !person.email_verified_at ? 'warning' : 'success'}>
-                                                {person.must_change_password ? 'Invitation pending' : !person.email_verified_at ? 'Verify email' : 'Activated'}
-                                            </HubBadge>
-                                        </div>
                                         {canProvision && person.must_change_password && (
                                             <div className="mt-4">
                                                 <HubButton onClick={() => setResetPerson(person)}>Resend invitation</HubButton>
@@ -364,7 +360,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                 ))}
                             </div>
                             {!staff.some(person => matching([person.name, person.email, person.hub_name].join(' '))) && (
-                                <p className="py-10 text-center text-xs text-zinc-500">{staff.length ? 'No work accounts match your search.' : 'Create a named operator or rider for an active hub.'}</p>
+                                <p className="py-10 text-center text-sm text-ink-600">{staff.length ? 'No accounts match.' : 'Create an operator or rider for an active hub.'}</p>
                             )}
                         </HubPanel>
 
@@ -385,10 +381,18 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                     className="grid gap-4 md:grid-cols-2"
                                 >
                                     <Field label="Work role" error={worker.errors.kind}>
-                                        <select value={worker.data.kind} onChange={event => worker.setData('kind', event.target.value)} className={hubInput}>
-                                            <option value="operator">Hub operator</option>
-                                            <option value="rider">Pickup / delivery rider</option>
-                                        </select>
+<div role="radiogroup" className="grid grid-cols-2 gap-2">
+                                            {[{ value: 'operator', label: 'Hub operator', detail: 'Scans and sorts at a hub' }, { value: 'rider', label: 'Rider', detail: 'Pickup and delivery' }].map(option => {
+                                                const selected = worker.data.kind === option.value;
+                                                return (
+                                                    <label key={option.value} className={`cursor-pointer rounded-control border px-3 py-2.5 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 ${selected ? 'border-brand-500 bg-brand-50/60' : 'border-line-300 hover:border-ink-400'}`}>
+                                                        <input type="radio" name="worker-kind" value={option.value} checked={selected} onChange={() => worker.setData('kind', option.value)} className="sr-only" />
+                                                        <span className={`block text-sm font-medium ${selected ? 'text-brand-600' : 'text-ink-900'}`}>{option.label}</span>
+                                                        <span className="block text-xs text-ink-600">{option.detail}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
                                     </Field>
                                     {worker.data.kind === 'operator' && (
                                         <Field label="Locked job role" error={worker.errors.job_role}>
@@ -423,7 +427,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                             />
                                         </Field>
                                     ))}
-                                    <p className="text-xs leading-5 text-zinc-600 md:col-span-2">Use an email the worker can access. Invitations last seven days; each setup code expires after 10 minutes.</p>
+                                    <p className="flex items-center gap-1 text-[13px] text-ink-600 md:col-span-2">The worker gets an email invitation to set their password.<InfoHint>Use an email the worker can access. Invitations last seven days; each setup code expires after 10 minutes.</InfoHint></p>
                                     <div className="md:col-span-2">
                                         <HubButton primary disabled={worker.processing}>Create account & email invitation</HubButton>
                                     </div>
@@ -457,10 +461,18 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                         <input required inputMode="decimal" value={tariff.data.additional_kg_fee} onChange={event => tariff.setData('additional_kg_fee', event.target.value)} className={hubInput} />
                                     </Field>
                                     <Field label="Shipping earnings model" error={tariff.errors.shipping_earnings_model}>
-                                        <select value={tariff.data.shipping_earnings_model} onChange={event => tariff.setData('shipping_earnings_model', event.target.value)} className={hubInput}>
-                                            <option value="standard">Standard: 50% company / 50% delivery</option>
-                                            <option value="dedicated_fleet">Dedicated: pickup, delivery and company shares</option>
-                                        </select>
+<div role="radiogroup" className="grid grid-cols-2 gap-2">
+                                            {[{ value: 'standard', label: 'Standard', detail: '50% company · 50% delivery' }, { value: 'dedicated_fleet', label: 'Dedicated', detail: 'Pickup, delivery, company' }].map(option => {
+                                                const selected = tariff.data.shipping_earnings_model === option.value;
+                                                return (
+                                                    <label key={option.value} className={`cursor-pointer rounded-control border px-3 py-2.5 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 ${selected ? 'border-brand-500 bg-brand-50/60' : 'border-line-300 hover:border-ink-400'}`}>
+                                                        <input type="radio" name="earnings-model" value={option.value} checked={selected} onChange={() => tariff.setData('shipping_earnings_model', option.value)} className="sr-only" />
+                                                        <span className={`block text-sm font-medium ${selected ? 'text-brand-600' : 'text-ink-900'}`}>{option.label}</span>
+                                                        <span className="block text-xs text-ink-600">{option.detail}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
                                     </Field>
                                 </div>
                                 <HubButton primary disabled={tariff.processing}>Save future shipping rates</HubButton>
@@ -468,7 +480,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                         </HubPanel>
 
                         <HubPanel title="How amounts are calculated" icon={<CircleDollarSign className="h-4 w-4" />}>
-                            <div className="space-y-3 text-xs leading-relaxed text-zinc-600">
+                            <div className="space-y-3 text-[13px] leading-relaxed text-ink-600">
                                 <p>Volumetric kg = length × width × height ÷ 3,500.</p>
                                 <p>Billable weight is the greater of actual and volumetric weight.</p>
                                 <ShippingEarningsPreview baseFee={tariff.data.base_fee} model={tariff.data.shipping_earnings_model} />
