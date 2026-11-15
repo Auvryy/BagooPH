@@ -45,7 +45,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                     <Icon className="h-3.5 w-3.5" />
                                 </span>
                             </div>
-                            <p className="mt-2 tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{value}</p>
+                            <p className="mt-2 tabular-nums text-2xl font-bold tabular-nums text-ink-900">{value}</p>
                         </div>
                     ))}
                 </div>
@@ -55,12 +55,12 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                         <div className="min-w-48 flex-1">
                             <HubSearch label="Search loaded vehicles" value={search} onChange={setSearch} placeholder="Plate, driver or model" />
                         </div>
-                        <label className="min-w-40 text-xs font-semibold text-[#121316]">
+                        <label className="min-w-40 text-xs font-semibold text-ink-900">
                             Vehicle type
                             <select
                                 value={filters.tier}
                                 onChange={event => handleFilter(event.target.value, filters.status)}
-                                className="mt-1.5 block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-[#121316] shadow-2xs transition-colors focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                                className="mt-1.5 block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-ink-900 shadow-2xs transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                             >
                                 <option value="all">All vehicle types</option>
                                 <option value="motorcycle">Motorcycles</option>
@@ -69,12 +69,12 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                 <option value="wing_truck">Wing trucks</option>
                             </select>
                         </label>
-                        <label className="min-w-40 text-xs font-semibold text-[#121316]">
+                        <label className="min-w-40 text-xs font-semibold text-ink-900">
                             Vehicle activity
                             <select
                                 value={filters.status}
                                 onChange={event => handleFilter(filters.tier, event.target.value)}
-                                className="mt-1.5 block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-[#121316] shadow-2xs transition-colors focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                                className="mt-1.5 block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-ink-900 shadow-2xs transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                             >
                                 <option value="all">All activity</option>
                                 <option value="active">Active</option>
@@ -107,7 +107,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                                     <Icon className="h-4 w-4" />
                                                 </span>
                                                 <div>
-                                                    <h2 className="tabular-nums text-sm font-bold text-[#121316]">{vehicle.plate_number}</h2>
+                                                    <h2 className="tabular-nums text-sm font-bold text-ink-900">{vehicle.plate_number}</h2>
                                                     <p className="mt-0.5 text-xs text-zinc-500">
                                                         {vehicleNames[vehicle.vehicle_type] ?? vehicle.vehicle_type.replaceAll('_', ' ')}
                                                         {vehicle.model ? ` · ${vehicle.model}` : ''}
@@ -120,14 +120,14 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                         </div>
                                         <div className="space-y-4 p-5">
                                             <div className="flex flex-wrap justify-between gap-2 text-xs">
-                                                <p className="font-semibold text-[#121316]">{vehicleWork[vehicle.vehicle_type] ?? 'Assigned hub work'}</p>
+                                                <p className="font-semibold text-ink-900">{vehicleWork[vehicle.vehicle_type] ?? 'Assigned hub work'}</p>
                                                 <p className="tabular-nums font-medium text-zinc-500">{vehicle.capacity_kg.toLocaleString()} kg capacity</p>
                                             </div>
                                             <div className="flex items-start gap-3 rounded-lg border border-zinc-200/80 bg-zinc-50/50 p-3.5">
                                                 <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
                                                 <div className="min-w-0">
                                                     <p className="text-[11px] font-medium text-zinc-500">Assigned driver</p>
-                                                    <p className="mt-0.5 text-xs font-semibold text-[#121316]">{vehicle.driver_name}</p>
+                                                    <p className="mt-0.5 text-xs font-semibold text-ink-900">{vehicle.driver_name}</p>
                                                     {vehicle.driver_phone !== 'N/A' && (
                                                         <p className="mt-1 flex items-center gap-1.5 tabular-nums text-xs text-zinc-500">
                                                             <Phone className="h-3 w-3 text-zinc-400" />

@@ -182,14 +182,14 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
             title="Facility Network"
             subtitle={(
                 <span className="flex items-center gap-1.5 text-xs text-zinc-600">
-                    <span className="font-semibold text-[#121316]">{scope.company_name}</span>
+                    <span className="font-semibold text-ink-900">{scope.company_name}</span>
                     {scope.company_code && <span className="text-zinc-400">· {scope.company_code}</span>}
                 </span>
             )}
             actions={scope.can_scan ? (
                 <Link
                     href={route('hub.scan.station')}
-                    className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-[#C20836] active:scale-[0.99]"
+                    className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-600 active:scale-[0.99]"
                 >
                     <ScanLine className="h-4 w-4" />
                     Scan parcel
@@ -205,8 +205,8 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                     actions={activeHub && (
                         <div className="inline-flex items-center gap-2 rounded border border-zinc-300 bg-white px-3 py-1.5 text-xs shadow-2xs">
                             <span className="text-zinc-500">Working facility:</span>
-                            <span className="font-semibold text-[#121316]">{activeHub.name}</span>
-                            <span className="tabular-nums font-semibold text-[#E00D42]">{activeHub.code}</span>
+                            <span className="font-semibold text-ink-900">{activeHub.name}</span>
+                            <span className="tabular-nums font-semibold text-brand-500">{activeHub.code}</span>
                         </div>
                     )}
                 />
@@ -233,22 +233,22 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                     <HubPanel title="Your network at a glance" icon={<Warehouse className="h-4 w-4" />}>
                         <div className="grid grid-cols-2 divide-x divide-zinc-300 rounded border border-zinc-300 bg-zinc-50/40 p-3.5">
                             <div className="pr-3">
-                                <p className="tabular-nums text-2xl font-bold tracking-tight tabular-nums text-[#121316]">{networkMotherCount}</p>
+                                <p className="tabular-nums text-2xl font-bold tracking-tight tabular-nums text-ink-900">{networkMotherCount}</p>
                                 <p className="mt-0.5 text-xs font-medium text-zinc-500">Mother Hubs</p>
                             </div>
                             <div className="pl-3">
-                                <p className="tabular-nums text-2xl font-bold tracking-tight tabular-nums text-[#121316]">{networkBayanCount}</p>
+                                <p className="tabular-nums text-2xl font-bold tracking-tight tabular-nums text-ink-900">{networkBayanCount}</p>
                                 <p className="mt-0.5 text-xs font-medium text-zinc-500">Bayan Hubs</p>
                             </div>
                         </div>
                         <div className="mt-4 space-y-2.5 border-t border-zinc-300 pt-4 text-xs text-zinc-600">
                             <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-[#F97316]" />Mother Hub · transfers between service areas</p>
-                            <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#E00D42]" />Bayan Hub · pickup, local sorting and delivery</p>
+                            <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-brand-500" />Bayan Hub · pickup, local sorting and delivery</p>
                         </div>
                         {activeHub && (
                             <div className="mt-4 rounded border border-zinc-300 bg-zinc-50/70 p-3">
                                 <p className="text-[11px] font-medium text-zinc-500">Current facility view</p>
-                                <p className="mt-0.5 text-xs font-semibold text-[#121316]">{activeHub.name}</p>
+                                <p className="mt-0.5 text-xs font-semibold text-ink-900">{activeHub.name}</p>
                                 {parentHubName(activeHub.parent_hub_id) && (
                                     <p className="mt-1 text-[11px] text-zinc-500">
                                         Parent: <span className="font-semibold text-zinc-700">{parentHubName(activeHub.parent_hub_id)}</span>
@@ -261,7 +261,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
 
                 {(scope.can_switch_facility || scope.can_manage_workers) && (
                     <details open={handlers.length > 0 && !scope.can_switch_facility} className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                        <summary className="cursor-pointer px-5 py-4 text-xs font-semibold text-[#121316] transition-colors hover:bg-zinc-50/50 sm:text-sm">
+                        <summary className="cursor-pointer px-5 py-4 text-xs font-semibold text-ink-900 transition-colors hover:bg-zinc-50/50 sm:text-sm">
                             People & placements <span className="ml-2 text-xs font-normal text-zinc-500">Worker job locks, handler assignments, and rider requests</span>
                         </summary>
                         <div className="space-y-4 border-t border-zinc-100 p-5 sm:p-6">
@@ -269,7 +269,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                 <div className="rounded-xl border border-zinc-200/90 bg-zinc-50/30 p-5">
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-[#121316]">Hub workers &amp; exclusive job locks</h2>
+                                            <h2 className="text-sm font-semibold text-ink-900">Hub workers &amp; exclusive job locks</h2>
                                             <p className="mt-1 text-xs text-zinc-500">Each worker can only hold one job role at a time at their assigned hub.</p>
                                         </div>
                                         <span className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 tabular-nums">
@@ -280,7 +280,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                         {handlers.map((worker) => (
                                             <div key={worker.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200/90 bg-white p-3.5 shadow-2xs">
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="truncate text-xs font-semibold text-[#121316]">{worker.name}</p>
+                                                    <p className="truncate text-xs font-semibold text-ink-900">{worker.name}</p>
                                                     <p className="truncate text-[11px] text-zinc-500">{worker.email}</p>
                                                     <p className="mt-1 truncate text-[11px] font-medium text-zinc-600">{worker.hub_name} ({worker.hub_code})</p>
                                                 </div>
@@ -288,7 +288,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                                     <span className="block">Locked role</span>
                                                     <select
                                                         aria-label={`Locked job role for ${worker.name} at ${worker.hub_name}`}
-                                                        className="block w-full min-w-0 max-w-full rounded-lg border border-zinc-200/90 bg-white px-2.5 py-1.5 text-xs font-medium text-[#121316] shadow-2xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15"
+                                                        className="block w-full min-w-0 max-w-full rounded-lg border border-zinc-200/90 bg-white px-2.5 py-1.5 text-xs font-medium text-ink-900 shadow-2xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15"
                                                         value={worker.job_role}
                                                         onChange={(event) => {
                                                             router.patch(
@@ -317,26 +317,26 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                         placement.post(route('hub.placements'), { preserveScroll: true, onSuccess: () => placement.reset('email') });
                                     }}
                                 >
-                                    <h2 className="text-sm font-semibold text-[#121316]">Assign a hub handler</h2>
+                                    <h2 className="text-sm font-semibold text-ink-900">Assign a hub handler</h2>
                                     <p className="mt-1 text-xs leading-5 text-zinc-500">Use an approved logistics account’s email. New rider assignments use company offers and rider acceptance above.</p>
                                     <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                        <label className="space-y-1.5 text-xs font-semibold text-[#121316]">
+                                        <label className="space-y-1.5 text-xs font-semibold text-ink-900">
                                             <span>Account email</span>
                                             <input
                                                 type="email"
                                                 required
                                                 maxLength={254}
-                                                className="block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-[#121316] shadow-2xs transition-colors focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                                                className="block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-ink-900 shadow-2xs transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                                                 value={placement.data.email}
                                                 onChange={(event) => placement.setData('email', event.target.value)}
                                                 placeholder="handler@company.com"
                                             />
                                         </label>
-                                        <label className="space-y-1.5 text-xs font-semibold text-[#121316]">
+                                        <label className="space-y-1.5 text-xs font-semibold text-ink-900">
                                             <span>Destination facility</span>
                                             <select
                                                 required
-                                                className="block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-[#121316] shadow-2xs transition-colors focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                                                className="block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-ink-900 shadow-2xs transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                                                 value={placement.data.hub_id}
                                                 onChange={(event) => {
                                                     placement.setData('hub_id', event.target.value);
@@ -346,10 +346,10 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                                 {hubs.map((hub) => <option key={hub.id} value={hub.id}>{hub.name}</option>)}
                                             </select>
                                         </label>
-                                        <label className="space-y-1.5 text-xs font-semibold text-[#121316]">
+                                        <label className="space-y-1.5 text-xs font-semibold text-ink-900">
                                             <span>Locked job role</span>
                                             <select
-                                                className="block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-[#121316] shadow-2xs transition-colors focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                                                className="block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-ink-900 shadow-2xs transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                                                 value={placement.data.job_role}
                                                 onChange={(event) => placement.setData('job_role', event.target.value)}
                                             >
@@ -360,7 +360,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                         </label>
                                     </div>
                                     {Object.values(placement.errors).map((error, index) => <p key={index} role="alert" className="mt-2 text-xs font-medium text-rose-700">{error}</p>)}
-                                    <button type="submit" disabled={placement.processing} className="mt-4 rounded-lg bg-[#E00D42] px-4 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-[#C20836] active:scale-[0.99] disabled:opacity-50">
+                                    <button type="submit" disabled={placement.processing} className="mt-4 rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-brand-600 active:scale-[0.99] disabled:opacity-50">
                                         {placement.processing ? 'Saving…' : 'Save placement'}
                                     </button>
                                 </form>
@@ -372,13 +372,13 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                     <div className="flex flex-col gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5 lg:flex-row lg:items-center lg:justify-between">
                         <div>
-                            <h2 className="text-sm font-semibold text-[#121316]">Company facilities</h2>
+                            <h2 className="text-sm font-semibold text-ink-900">Company facilities</h2>
                         </div>
                         {activeHub && (
                             <div className="rounded-md border border-zinc-200/90 bg-white px-3 py-1 text-xs shadow-2xs">
                                 <span className="text-zinc-500">Working facility: </span>
-                                <span className="font-semibold text-[#121316]">{activeHub.name}</span>
-                                <span className="ml-1.5 tabular-nums text-xs font-semibold text-[#E00D42]">{activeHub.code}</span>
+                                <span className="font-semibold text-ink-900">{activeHub.name}</span>
+                                <span className="ml-1.5 tabular-nums text-xs font-semibold text-brand-500">{activeHub.code}</span>
                             </div>
                         )}
                     </div>
@@ -394,7 +394,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                             <Icon className="h-3.5 w-3.5" />
                                         </span>
                                     </div>
-                                    <p className="mt-2 tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{metric.value.toLocaleString()}</p>
+                                    <p className="mt-2 tabular-nums text-2xl font-bold tabular-nums text-ink-900">{metric.value.toLocaleString()}</p>
                                     <p className="mt-1 text-xs text-zinc-500">{metric.detail}</p>
                                 </div>
                             );
@@ -412,7 +412,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                 value={search}
                                 onChange={(event) => setSearch(event.target.value)}
                                 placeholder="Search facility, code, municipality, or province"
-                                className="w-full rounded-lg border border-zinc-200/90 bg-white py-2 pl-9 pr-3.5 text-xs font-medium text-[#121316] placeholder:text-zinc-400 shadow-2xs transition-colors focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15"
+                                className="w-full rounded-lg border border-zinc-200/90 bg-white py-2 pl-9 pr-3.5 text-xs font-medium text-ink-900 placeholder:text-zinc-400 shadow-2xs transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15"
                             />
                         </div>
 
@@ -427,10 +427,10 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                     type="button"
                                     onClick={() => setFilterTier(filter.value)}
                                     className={`rounded-md px-3 py-1.5 font-semibold transition-all duration-150 ${
-                                        filterTier === filter.value
-                                            ? 'bg-white text-[#121316] shadow-2xs'
-                                            : 'text-zinc-500 hover:text-[#121316]'
-                                    }`}
+ filterTier === filter.value
+ ? 'bg-white text-ink-900 shadow-2xs'
+ : 'text-zinc-500 hover:text-ink-900'
+ }`}
                                 >
                                     {filter.label}
                                 </button>
@@ -443,7 +443,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                     <section className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
                         {filteredHubs.map((hub) => {
                             const isWorkingFacility = scope.active_hub_id === hub.id;
-                            const capacityTone = hub.utilization >= 80 ? 'bg-amber-500' : 'bg-[#E00D42]';
+                            const capacityTone = hub.utilization >= 80 ? 'bg-amber-500' : 'bg-brand-500';
 
                             return (
                                 <button
@@ -451,17 +451,17 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                     type="button"
                                     onClick={() => { setSelectedPeerHub(null); setSelectedHub(hub); }}
                                     className={`group flex min-h-60 flex-col rounded-xl border bg-white p-5 text-left shadow-xs transition-all duration-150 hover:border-zinc-300 ${
-                                        isWorkingFacility ? 'border-[#E00D42] ring-1 ring-[#E00D42]/15' : 'border-zinc-200/90'
-                                    }`}
+ isWorkingFacility ? 'border-brand-500 ring-1 ring-brand-500/15' : 'border-zinc-200/90'
+ }`}
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
-                                            isWorkingFacility
-                                                ? 'border-rose-200 bg-rose-50 text-[#E00D42]'
-                                                : hub.tier === 'regional_mother_hub'
-                                                    ? 'border-orange-200 bg-orange-50 text-orange-600'
-                                                    : 'border-zinc-200/80 bg-zinc-50 text-zinc-600'
-                                        }`}>
+ isWorkingFacility
+ ? 'border-rose-200 bg-rose-50 text-brand-500'
+ : hub.tier === 'regional_mother_hub'
+ ? 'border-orange-200 bg-orange-50 text-orange-600'
+ : 'border-zinc-200/80 bg-zinc-50 text-zinc-600'
+ }`}>
                                             {hub.tier === 'regional_mother_hub'
                                                 ? <Warehouse className="h-4 w-4" />
                                                 : <Store className="h-4 w-4" />}
@@ -480,7 +480,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
 
                                     <div className="mt-3.5">
                                         <div className="flex items-center gap-2">
-                                            <h3 className="line-clamp-1 text-sm font-bold text-[#121316]">{hub.name}</h3>
+                                            <h3 className="line-clamp-1 text-sm font-bold text-ink-900">{hub.name}</h3>
                                             <span className="shrink-0 tabular-nums text-xs font-semibold text-zinc-400">{hub.code}</span>
                                         </div>
                                         <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500">
@@ -492,7 +492,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                     <div className="mt-4 rounded-lg border border-zinc-200/80 bg-zinc-50/50 p-3">
                                         <div className="flex items-center justify-between text-xs">
                                             <span className="font-medium text-zinc-500">Capacity used</span>
-                                            <span className="tabular-nums font-semibold text-[#121316]">
+                                            <span className="tabular-nums font-semibold text-ink-900">
                                                 {hub.parcel_count.toLocaleString()} / {hub.capacity.toLocaleString()}
                                             </span>
                                         </div>
@@ -505,15 +505,15 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                         <div className="mt-3 grid grid-cols-3 divide-x divide-zinc-200/80 text-center">
                                             <div>
                                                 <span className="block text-[11px] text-zinc-500">Vehicles</span>
-                                                <span className="mt-0.5 block tabular-nums text-xs font-bold text-[#121316]">{hub.fleet_count}</span>
+                                                <span className="mt-0.5 block tabular-nums text-xs font-bold text-ink-900">{hub.fleet_count}</span>
                                             </div>
                                             <div>
                                                 <span className="block text-[11px] text-zinc-500">Handlers</span>
-                                                <span className="mt-0.5 block tabular-nums text-xs font-bold text-[#121316]">{hub.handlers_count}</span>
+                                                <span className="mt-0.5 block tabular-nums text-xs font-bold text-ink-900">{hub.handlers_count}</span>
                                             </div>
                                             <div>
                                                 <span className="block text-[11px] text-zinc-500">Barangays</span>
-                                                <span className="mt-0.5 block tabular-nums text-xs font-bold text-[#121316]">{hub.coverage_barangays.length}</span>
+                                                <span className="mt-0.5 block tabular-nums text-xs font-bold text-ink-900">{hub.coverage_barangays.length}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -522,7 +522,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                         <span className="text-zinc-500">
                                             {hub.allows_self_pickup ? `${hub.ready_pickup_count} awaiting counter pickup` : 'Transfer facility'}
                                         </span>
-                                        <span className="inline-flex items-center gap-1 font-semibold text-[#E00D42] group-hover:text-[#C20836]">
+                                        <span className="inline-flex items-center gap-1 font-semibold text-brand-500 group-hover:text-brand-600">
                                             View facility
                                             <ChevronRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
                                         </span>
@@ -537,7 +537,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                     <section className="space-y-3" aria-label="Connected company family facilities">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                                <h2 className="text-sm font-bold text-[#121316]">
+                                <h2 className="text-sm font-bold text-ink-900">
                                     Connected company family ({peerDirectoryHubs.length})
                                 </h2>
                                 <p className="text-xs text-zinc-500">
@@ -556,35 +556,35 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                     <article
                                         key={hub.id}
                                         className={`flex flex-col rounded-xl border bg-white p-5 shadow-xs transition-all duration-150 ${
-                                            selectedPeerHub?.id === hub.id
-                                                ? 'border-[#E00D42] ring-1 ring-[#E00D42]/15'
-                                                : isParent
-                                                    ? 'border-orange-300 bg-orange-50/20'
-                                                    : 'border-zinc-200/90'
-                                        }`}
+ selectedPeerHub?.id === hub.id
+ ? 'border-brand-500 ring-1 ring-brand-500/15'
+ : isParent
+ ? 'border-orange-300 bg-orange-50/20'
+ : 'border-zinc-200/90'
+ }`}
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
-                                                hub.tier === 'regional_mother_hub'
-                                                    ? 'border-orange-200 bg-orange-50 text-orange-600'
-                                                    : 'border-rose-200 bg-rose-50 text-[#E00D42]'
-                                            }`}>
+ hub.tier === 'regional_mother_hub'
+ ? 'border-orange-200 bg-orange-50 text-orange-600'
+ : 'border-rose-200 bg-rose-50 text-brand-500'
+ }`}>
                                                 {hub.tier === 'regional_mother_hub'
                                                     ? <Warehouse className="h-4 w-4" />
                                                     : <Store className="h-4 w-4" />}
                                             </span>
                                             <span className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
-                                                isParent
-                                                    ? 'border-orange-200 bg-orange-50 text-orange-800'
-                                                    : 'border-zinc-200/90 bg-zinc-50 text-zinc-700'
-                                            }`}>
+ isParent
+ ? 'border-orange-200 bg-orange-50 text-orange-800'
+ : 'border-zinc-200/90 bg-zinc-50 text-zinc-700'
+ }`}>
                                                 {relation}
                                             </span>
                                         </div>
 
                                         <div className="mt-3.5">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="line-clamp-1 text-sm font-bold text-[#121316]">{hub.name}</h3>
+                                                <h3 className="line-clamp-1 text-sm font-bold text-ink-900">{hub.name}</h3>
                                                 <span className="shrink-0 tabular-nums text-xs font-semibold text-zinc-400">{hub.code}</span>
                                             </div>
                                             <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-600">
@@ -603,7 +603,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                             <button
                                                 type="button"
                                                 onClick={() => { setSelectedHub(null); setSelectedPeerHub(hub); }}
-                                                className="inline-flex items-center gap-1 font-semibold text-[#E00D42] hover:text-[#C20836]"
+                                                className="inline-flex items-center gap-1 font-semibold text-brand-500 hover:text-brand-600"
                                             >
                                                 Inspect location
                                                 <ChevronRight className="h-3.5 w-3.5" />
@@ -613,7 +613,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                                     href={`https://www.google.com/maps/dir/?api=1&destination=${hub.latitude},${hub.longitude}&travelmode=driving`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#121316] shadow-2xs transition hover:border-[#E00D42] hover:text-[#E00D42]"
+                                                    className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-900 shadow-2xs transition hover:border-brand-500 hover:text-brand-500"
                                                 >
                                                     <ExternalLink className="h-3 w-3" />
                                                     Directions
@@ -632,7 +632,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                         <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200/90 bg-zinc-50 text-zinc-500">
                             <Building2 className="h-5 w-5" />
                         </span>
-                        <h2 className="text-sm font-semibold text-[#121316]">No facilities found</h2>
+                        <h2 className="text-sm font-semibold text-ink-900">No facilities found</h2>
                         <p className="mt-1 text-xs text-zinc-500">Try another search or facility type.</p>
                     </section>
                 )}
@@ -660,9 +660,9 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                         <span className="rounded-md border border-zinc-200/90 bg-zinc-50 px-2.5 py-0.5 text-xs font-semibold text-zinc-700">
                                             {facilityType(selectedHub.tier)}
                                         </span>
-                                        <span className="tabular-nums text-xs font-semibold text-[#E00D42]">{selectedHub.code}</span>
+                                        <span className="tabular-nums text-xs font-semibold text-brand-500">{selectedHub.code}</span>
                                     </div>
-                                    <h2 id="facility-details-title" className="mt-2.5 text-lg font-bold text-[#121316]">
+                                    <h2 id="facility-details-title" className="mt-2.5 text-lg font-bold text-ink-900">
                                         {selectedHub.name}
                                     </h2>
                                     <p className="mt-0.5 text-xs text-zinc-500">{selectedHub.company_name}</p>
@@ -670,7 +670,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                 <button
                                     type="button"
                                     onClick={closeDetails}
-                                    className="rounded-lg border border-zinc-200/90 p-2 text-zinc-400 transition-colors hover:bg-zinc-50 hover:text-[#121316]"
+                                    className="rounded-lg border border-zinc-200/90 p-2 text-zinc-400 transition-colors hover:bg-zinc-50 hover:text-ink-900"
                                     aria-label="Close facility details"
                                 >
                                     <X className="h-4 w-4" />
@@ -687,7 +687,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                     <button
                                         type="button"
                                         onClick={() => handleSwitchHub(selectedHub.id)}
-                                        className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-[#C20836] active:scale-[0.99]"
+                                        className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-brand-600 active:scale-[0.99]"
                                     >
                                         <Building2 className="h-4 w-4" />
                                         Use as working facility
@@ -715,7 +715,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                                     <Icon className="h-3.5 w-3.5" />
                                                     <span className="text-xs font-medium">{item.label}</span>
                                                 </div>
-                                                <p className="mt-2 tabular-nums text-lg font-bold tabular-nums text-[#121316]">{item.value}</p>
+                                                <p className="mt-2 tabular-nums text-lg font-bold tabular-nums text-ink-900">{item.value}</p>
                                             </div>
                                         );
                                     })}
@@ -723,11 +723,11 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                 <div className="mt-3 rounded-xl border border-zinc-200/90 bg-white p-3.5">
                                     <div className="flex items-center justify-between text-xs">
                                         <span className="text-zinc-500">Capacity used</span>
-                                        <span className="tabular-nums font-semibold text-[#121316]">{selectedHub.utilization}%</span>
+                                        <span className="tabular-nums font-semibold text-ink-900">{selectedHub.utilization}%</span>
                                     </div>
                                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-100">
                                         <div
-                                            className={`h-full rounded-full ${selectedHub.utilization >= 80 ? 'bg-amber-500' : 'bg-[#E00D42]'}`}
+                                            className={`h-full rounded-full ${selectedHub.utilization >= 80 ? 'bg-amber-500' : 'bg-brand-500'}`}
                                             style={{ width: `${Math.min(100, selectedHub.utilization)}%` }}
                                         />
                                     </div>
@@ -738,7 +738,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                 <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Location</h3>
                                 <div className="mt-3 rounded-xl border border-zinc-200/90 bg-zinc-50/40 p-4">
                                     <div className="flex items-start gap-2.5 text-xs leading-5 text-zinc-700">
-                                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#E00D42]" />
+                                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
                                         <span>
                                             {selectedHub.address}, {selectedHub.barangay}, {selectedHub.city_municipality}, {selectedHub.province}
                                         </span>
@@ -748,7 +748,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                             {selectedHub.latitude !== null && selectedHub.latitude !== undefined && selectedHub.longitude !== null && selectedHub.longitude !== undefined ? (
                                                 <>
                                                     GPS pin:{' '}
-                                                    <span className="tabular-nums font-semibold text-[#121316]">
+                                                    <span className="tabular-nums font-semibold text-ink-900">
                                                         {Number(selectedHub.latitude).toFixed(4)}° N, {Number(selectedHub.longitude).toFixed(4)}° E
                                                     </span>
                                                 </>
@@ -761,7 +761,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                                 href={`https://www.google.com/maps/dir/?api=1&destination=${selectedHub.latitude},${selectedHub.longitude}&travelmode=driving`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#121316] shadow-2xs transition hover:border-[#E00D42] hover:text-[#E00D42]"
+                                                className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-900 shadow-2xs transition hover:border-brand-500 hover:text-brand-500"
                                             >
                                                 <ExternalLink className="h-3 w-3" />
                                                 Directions
@@ -793,14 +793,14 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                             value={coverageSearch}
                                             onChange={(event) => setCoverageSearch(event.target.value)}
                                             placeholder="Search assigned barangay"
-                                            className="w-full rounded-lg border border-zinc-200/90 bg-white py-2 pl-9 pr-3 text-xs font-medium text-[#121316] placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15"
+                                            className="w-full rounded-lg border border-zinc-200/90 bg-white py-2 pl-9 pr-3 text-xs font-medium text-ink-900 placeholder:text-zinc-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15"
                                         />
                                     </div>
                                 )}
 
                                 <div className="mt-3 grid max-h-48 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
                                     {filteredCoverage.length > 0 ? filteredCoverage.map((barangay) => (
-                                        <div key={barangay} className="rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-xs font-medium text-[#121316]">
+                                        <div key={barangay} className="rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-xs font-medium text-ink-900">
                                             {barangay}
                                         </div>
                                     )) : (
@@ -816,14 +816,14 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                 <div className="mt-3 space-y-2">
                                     <Link
                                         href={route('hub.scan.station')}
-                                        className="flex items-center justify-between rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-[#121316] transition hover:border-zinc-300 hover:bg-zinc-50"
+                                        className="flex items-center justify-between rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-ink-900 transition hover:border-zinc-300 hover:bg-zinc-50"
                                     >
-                                        <span className="flex items-center gap-2"><ScanLine className="h-4 w-4 text-[#E00D42]" /> Scan parcel</span>
+                                        <span className="flex items-center gap-2"><ScanLine className="h-4 w-4 text-brand-500" /> Scan parcel</span>
                                         <ChevronRight className="h-4 w-4 text-zinc-400" />
                                     </Link>
                                     <Link
                                         href={route('hub.deliveries')}
-                                        className="flex items-center justify-between rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-[#121316] transition hover:border-zinc-300 hover:bg-zinc-50"
+                                        className="flex items-center justify-between rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-ink-900 transition hover:border-zinc-300 hover:bg-zinc-50"
                                     >
                                         <span className="flex items-center gap-2"><Package className="h-4 w-4 text-zinc-500" /> Parcels and waybills</span>
                                         <ChevronRight className="h-4 w-4 text-zinc-400" />
@@ -831,7 +831,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                     {selectedHub.allows_self_pickup && (
                                         <Link
                                             href={route('hub.counter')}
-                                            className="flex items-center justify-between rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-[#121316] transition hover:border-zinc-300 hover:bg-zinc-50"
+                                            className="flex items-center justify-between rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-ink-900 transition hover:border-zinc-300 hover:bg-zinc-50"
                                         >
                                             <span className="flex items-center gap-2"><Store className="h-4 w-4 text-zinc-500" /> Counter pickup</span>
                                             <ChevronRight className="h-4 w-4 text-zinc-400" />
@@ -863,15 +863,15 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                 <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <span className={`rounded-md border px-2.5 py-0.5 text-xs font-semibold ${
-                                            selectedPeerHub.tier === 'regional_mother_hub'
-                                                ? 'border-orange-200 bg-orange-50 text-orange-800'
-                                                : 'border-zinc-200/90 bg-zinc-50 text-zinc-700'
-                                        }`}>
+ selectedPeerHub.tier === 'regional_mother_hub'
+ ? 'border-orange-200 bg-orange-50 text-orange-800'
+ : 'border-zinc-200/90 bg-zinc-50 text-zinc-700'
+ }`}>
                                             {facilityType(selectedPeerHub.tier)}
                                         </span>
-                                        <span className="tabular-nums text-xs font-semibold text-[#E00D42]">{selectedPeerHub.code}</span>
+                                        <span className="tabular-nums text-xs font-semibold text-brand-500">{selectedPeerHub.code}</span>
                                     </div>
-                                    <h2 id="peer-facility-details-title" className="mt-2.5 text-lg font-bold text-[#121316]">
+                                    <h2 id="peer-facility-details-title" className="mt-2.5 text-lg font-bold text-ink-900">
                                         {selectedPeerHub.name}
                                     </h2>
                                     <p className="mt-0.5 text-xs font-medium text-zinc-600">{familyRelationLabel(selectedPeerHub)}</p>
@@ -879,7 +879,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                 <button
                                     type="button"
                                     onClick={closeDetails}
-                                    className="rounded-lg border border-zinc-200/90 p-2 text-zinc-400 transition-colors hover:bg-zinc-50 hover:text-[#121316]"
+                                    className="rounded-lg border border-zinc-200/90 p-2 text-zinc-400 transition-colors hover:bg-zinc-50 hover:text-ink-900"
                                     aria-label="Close connected facility details"
                                 >
                                     <X className="h-4 w-4" />
@@ -892,14 +892,14 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                 <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Location &amp; routing details</h3>
                                 <div className="mt-3 rounded-xl border border-zinc-200/90 bg-zinc-50/40 p-4 space-y-3">
                                     <div className="flex items-start gap-2.5 text-xs leading-5 text-zinc-700">
-                                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#E00D42]" />
+                                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
                                         <span>
                                             {[selectedPeerHub.address, selectedPeerHub.barangay, selectedPeerHub.city_municipality, selectedPeerHub.province].filter(Boolean).join(', ')}
                                         </span>
                                     </div>
                                     {parentHubName(selectedPeerHub.parent_hub_id) && (
                                         <p className="text-xs text-zinc-600">
-                                            Parent hub: <span className="font-semibold text-[#121316]">{parentHubName(selectedPeerHub.parent_hub_id)}</span>
+                                            Parent hub: <span className="font-semibold text-ink-900">{parentHubName(selectedPeerHub.parent_hub_id)}</span>
                                         </p>
                                     )}
                                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200/80 pt-3 text-xs text-zinc-500">
@@ -907,7 +907,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                             {selectedPeerHub.latitude !== null && selectedPeerHub.longitude !== null ? (
                                                 <>
                                                     GPS pin:{' '}
-                                                    <span className="tabular-nums font-semibold text-[#121316]">
+                                                    <span className="tabular-nums font-semibold text-ink-900">
                                                         {Number(selectedPeerHub.latitude).toFixed(4)}° N, {Number(selectedPeerHub.longitude).toFixed(4)}° E
                                                     </span>
                                                 </>
@@ -920,7 +920,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                                 href={`https://www.google.com/maps/dir/?api=1&destination=${selectedPeerHub.latitude},${selectedPeerHub.longitude}&travelmode=driving`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#121316] shadow-2xs transition hover:border-[#E00D42] hover:text-[#E00D42]"
+                                                className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-900 shadow-2xs transition hover:border-brand-500 hover:text-brand-500"
                                             >
                                                 <ExternalLink className="h-3 w-3" />
                                                 Directions

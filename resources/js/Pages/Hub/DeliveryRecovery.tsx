@@ -12,7 +12,7 @@ type Attempt = { id: number; reference: string; number: number; riderName: strin
 type Parcel = { id: number; trackingNumber: string; status: string; hubName: string; atHub: boolean; canReview: boolean; guidance?: ParcelGuidance; attempts: Attempt[] };
 type Props = { deliveries: { data: Parcel[]; links: { url: string | null; label: string; active: boolean }[] }; requestToken: string; basePath: string };
 const when = (value: string) => new Date(value).toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
-const fieldClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-[#121316] font-medium shadow-2xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors';
+const fieldClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-ink-900 font-medium shadow-2xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-colors';
 
 export default function DeliveryRecovery({ deliveries, requestToken, basePath }: Props) {
     const path = (suffix: string) => `${basePath}${suffix}`;
@@ -74,7 +74,7 @@ export default function DeliveryRecovery({ deliveries, requestToken, basePath }:
                             <article key={parcel.id} className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                                 <header className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                     <div>
-                                        <h2 className="inline-block rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
+                                        <h2 className="inline-block rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-brand-500">
                                             {parcel.trackingNumber}
                                         </h2>
                                         <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-zinc-500">
@@ -128,8 +128,8 @@ export default function DeliveryRecovery({ deliveries, requestToken, basePath }:
                                         <ol className="space-y-5">
                                             {parcel.attempts.map(attempt => (
                                                 <li key={attempt.id} className="relative border-l border-zinc-200 pl-5">
-                                                    <span className="absolute -left-2 top-0.5 flex h-4 w-4 items-center justify-center rounded-full border-4 border-white bg-[#E00D42]" />
-                                                    <p className="text-sm font-bold text-[#121316]">
+                                                    <span className="absolute -left-2 top-0.5 flex h-4 w-4 items-center justify-center rounded-full border-4 border-white bg-brand-500" />
+                                                    <p className="text-sm font-bold text-ink-900">
                                                         Attempt {attempt.number} · {attempt.reason.replaceAll('_', ' ')}
                                                     </p>
                                                     <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500">
@@ -140,7 +140,7 @@ export default function DeliveryRecovery({ deliveries, requestToken, basePath }:
                                                     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700">{attempt.notes}</p>
                                                     <a
                                                         href={path(`/delivery-attempts/${attempt.id}/proof`)}
-                                                        className="mt-2 inline-block text-xs font-bold text-[#E00D42] hover:text-[#C20836] underline underline-offset-4"
+                                                        className="mt-2 inline-block text-xs font-bold text-brand-500 hover:text-brand-600 underline underline-offset-4"
                                                         target="_blank"
                                                         rel="noreferrer"
                                                     >
@@ -150,7 +150,7 @@ export default function DeliveryRecovery({ deliveries, requestToken, basePath }:
                                                         <ul className="mt-3 space-y-2 rounded-xl border border-zinc-200/90 bg-zinc-50/50 p-3.5">
                                                             {attempt.events.map(event => (
                                                                 <li key={event.reference} className="text-xs leading-5 text-zinc-600">
-                                                                    <p className="font-bold text-[#121316]">{event.type.replaceAll('_', ' ')}</p>
+                                                                    <p className="font-bold text-ink-900">{event.type.replaceAll('_', ' ')}</p>
                                                                     <p>
                                                                         {when(event.recordedAt)}
                                                                         {event.retryAt ? ` · Retry: ${when(event.retryAt)}` : ''}
@@ -178,7 +178,7 @@ export default function DeliveryRecovery({ deliveries, requestToken, basePath }:
                                     <Link
                                         key={index}
                                         href={link.url}
-                                        className={`${hubButton} ${link.active ? 'border-rose-200 bg-rose-50 text-[#E00D42]' : ''}`}
+                                        className={`${hubButton} ${link.active ? 'border-rose-200 bg-rose-50 text-brand-500' : ''}`}
                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                     />
                                 )
@@ -190,12 +190,12 @@ export default function DeliveryRecovery({ deliveries, requestToken, basePath }:
                     {review && (
                         <form onSubmit={submit} className="space-y-4">
                             <p className="text-sm text-zinc-600">
-                                <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
+                                <span className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-brand-500">
                                     {review.trackingNumber}
                                 </span>{' '}
                                 · {review.hubName}
                             </p>
-                            <label className="block text-xs font-bold text-[#121316]">
+                            <label className="block text-xs font-bold text-ink-900">
                                 Retry date · Asia/Manila
                                 <input
                                     type="datetime-local"
@@ -206,7 +206,7 @@ export default function DeliveryRecovery({ deliveries, requestToken, basePath }:
                                     className={fieldClass}
                                 />
                             </label>
-                            <label className="block text-xs font-bold text-[#121316]">
+                            <label className="block text-xs font-bold text-ink-900">
                                 Why is another attempt appropriate?
                                 <textarea
                                     required

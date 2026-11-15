@@ -179,37 +179,37 @@ export function HubStepRail({ steps, label = 'Transfer progress' }: { steps: Hub
                         key={step.title}
                         aria-current={step.state === 'current' ? 'step' : undefined}
                         className={`relative flex items-center gap-3 rounded-control px-3 py-2.5 transition-colors ${
-                            step.state === 'current'
-                                ? 'bg-brand-50'
-                                : step.state === 'blocked'
-                                ? 'bg-warning-soft'
-                                : ''
-                        }`}
+ step.state === 'current'
+ ? 'bg-brand-50'
+ : step.state === 'blocked'
+ ? 'bg-warning-soft'
+ : ''
+ }`}
                     >
                         <span
                             className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-semibold tabular-nums ${
-                                step.state === 'done'
-                                    ? 'border-brand-500 bg-brand-500 text-white'
-                                    : step.state === 'current'
-                                    ? 'border-brand-500 bg-white text-brand-600'
-                                    : step.state === 'blocked'
-                                    ? 'border-warning bg-white text-warning'
-                                    : 'border-line-300 bg-white text-ink-500'
-                            }`}
+ step.state === 'done'
+ ? 'border-brand-500 bg-brand-500 text-white'
+ : step.state === 'current'
+ ? 'border-brand-500 bg-white text-brand-600'
+ : step.state === 'blocked'
+ ? 'border-warning bg-white text-warning'
+ : 'border-line-300 bg-white text-ink-500'
+ }`}
                         >
                             {step.state === 'waiting' ? index + 1 : <Icon className="h-3.5 w-3.5" />}
                         </span>
                         <span className="min-w-0 flex-1">
                             <span
                                 className={`block truncate text-[13px] font-medium ${
-                                    step.state === 'current'
-                                        ? 'font-semibold text-brand-600'
-                                        : step.state === 'done'
-                                        ? 'text-ink-900'
-                                        : step.state === 'blocked'
-                                        ? 'text-warning'
-                                        : 'text-ink-500'
-                                }`}
+ step.state === 'current'
+ ? 'font-semibold text-brand-600'
+ : step.state === 'done'
+ ? 'text-ink-900'
+ : step.state === 'blocked'
+ ? 'text-warning'
+ : 'text-ink-500'
+ }`}
                             >
                                 {step.title}
                                 <span className="sr-only">
@@ -256,17 +256,17 @@ export function HubCategoryTabs({
                         aria-selected={selected}
                         onClick={() => onChange(tab.id)}
                         className={`-mb-px inline-flex min-h-10 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${
-                            selected
-                                ? 'border-brand-500 text-brand-600'
-                                : 'border-transparent text-ink-600 hover:border-line-300 hover:text-ink-900'
-                        }`}
+ selected
+ ? 'border-brand-500 text-brand-600'
+ : 'border-transparent text-ink-600 hover:border-line-300 hover:text-ink-900'
+ }`}
                     >
                         <span>{tab.label}</span>
                         {tab.count !== undefined && (
                             <span
                                 className={`rounded-chip px-1.5 py-0.5 text-xs font-medium tabular-nums ${
-                                    selected ? 'bg-brand-50 text-brand-600' : 'bg-surface-100 text-ink-600'
-                                }`}
+ selected ? 'bg-brand-50 text-brand-600' : 'bg-surface-100 text-ink-600'
+ }`}
                             >
                                 {tab.count}
                             </span>
@@ -318,10 +318,10 @@ export function HubRoute({
                         <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-control bg-white px-3 py-2">
                             <span
                                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-                                    stop.id === currentHubId
-                                        ? 'bg-brand-500 text-white'
-                                        : 'bg-surface-100 text-ink-500'
-                                }`}
+ stop.id === currentHubId
+ ? 'bg-brand-500 text-white'
+ : 'bg-surface-100 text-ink-500'
+ }`}
                             >
                                 <MapPin className="h-3.5 w-3.5" />
                             </span>

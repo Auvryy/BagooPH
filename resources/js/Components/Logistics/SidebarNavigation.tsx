@@ -39,10 +39,10 @@ export default function SidebarNavigation({ items }: { items: Item[] }) {
                             href={item.href}
                             aria-current={item.current ? 'page' : undefined}
                             className={`group relative flex min-h-10 items-center gap-2.5 rounded-control px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${
-                                item.current
-                                    ? 'bg-brand-50 text-brand-600 font-semibold before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-brand-500'
-                                    : 'text-ink-700 hover:bg-surface-100 hover:text-ink-900 font-medium'
-                            }`}
+ item.current
+ ? 'bg-brand-50 text-brand-600 font-semibold before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-brand-500'
+ : 'text-ink-700 hover:bg-surface-100 hover:text-ink-900 font-medium'
+ }`}
                         >
                             <item.icon aria-hidden="true" className={`h-4 w-4 shrink-0 ${item.current ? 'text-brand-500' : 'text-ink-500 group-hover:text-ink-700'}`} />
                             <span className="flex-1">

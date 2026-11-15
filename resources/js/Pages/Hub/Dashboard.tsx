@@ -184,7 +184,7 @@ export default function HubDashboard({
             title="Operations Overview"
             subtitle={
                 <span className="flex items-center gap-1.5 text-xs text-zinc-600">
-                    <span className="font-semibold text-[#121316]">{scope.company_name}</span>
+                    <span className="font-semibold text-ink-900">{scope.company_name}</span>
                     {scope.company_code && <span className="text-zinc-400">· {scope.company_code}</span>}
                 </span>
             }
@@ -217,7 +217,7 @@ export default function HubDashboard({
                                     <select
                                         value={scope.selected_hub_id ?? ''}
                                         onChange={(event) => changeScope(event.target.value)}
-                                        className="border-0 bg-transparent py-0.5 pl-1 pr-7 text-xs font-semibold text-[#121316] focus:ring-0 cursor-pointer"
+                                        className="border-0 bg-transparent py-0.5 pl-1 pr-7 text-xs font-semibold text-ink-900 focus:ring-0 cursor-pointer"
                                     >
                                         <option value="">All facilities ({scope.company_name})</option>
                                         {scope.hubs.map((hub) => (
@@ -227,7 +227,7 @@ export default function HubDashboard({
                                         ))}
                                     </select>
                                 ) : (
-                                    <span className="font-semibold text-[#121316]">
+                                    <span className="font-semibold text-ink-900">
                                         {selectedHub ? `${selectedHub.name} (${selectedHub.code})` : 'Assigned facility'}
                                     </span>
                                 )}
@@ -285,8 +285,8 @@ export default function HubDashboard({
                                 <div className="mt-3 flex items-baseline justify-between gap-2">
                                     <p
                                         className={`text-3xl font-bold tracking-tight tabular-nums ${
-                                            metric.accent ? 'text-red-700' : 'text-[#121316]'
-                                        }`}
+ metric.accent ? 'text-red-700' : 'text-ink-900'
+ }`}
                                     >
                                         {metric.value}
                                     </p>
@@ -307,7 +307,7 @@ export default function HubDashboard({
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-[#121316]">Parcel movement</h2>
+                                            <h2 className="text-sm font-semibold text-ink-900">Parcel movement</h2>
                                             <p className="text-xs text-zinc-500">Verified inbound and outbound scans · last 7 days</p>
                                         </div>
                                         <div className="flex items-center gap-3 text-xs font-medium text-zinc-600">
@@ -316,7 +316,7 @@ export default function HubDashboard({
                                                 Inbound
                                             </span>
                                             <span className="flex items-center gap-1.5">
-                                                <span className="h-2.5 w-2.5 rounded-xs bg-[#E00D42]" />
+                                                <span className="h-2.5 w-2.5 rounded-xs bg-brand-500" />
                                                 Outbound
                                             </span>
                                         </div>
@@ -333,7 +333,7 @@ export default function HubDashboard({
                                                             title={`${day.date}: ${day.inbound} inbound`}
                                                         />
                                                         <div
-                                                            className="w-3 rounded-t-xs bg-[#E00D42] sm:w-4 transition-all hover:opacity-80"
+                                                            className="w-3 rounded-t-xs bg-brand-500 sm:w-4 transition-all hover:opacity-80"
                                                             style={{ height: `${Math.max(day.outbound > 0 ? 10 : 2, (day.outbound / maxMovement) * 100)}%` }}
                                                             title={`${day.date}: ${day.outbound} outbound`}
                                                         />
@@ -354,7 +354,7 @@ export default function HubDashboard({
                                                     <ScanLine className="h-4 w-4" />
                                                 </span>
                                                 <div>
-                                                    <p className="text-xs font-semibold text-[#121316]">No parcel movement this week</p>
+                                                    <p className="text-xs font-semibold text-ink-900">No parcel movement this week</p>
                                                     <p className="text-xs text-zinc-500">Inbound and outbound scans will populate this 7-day chart.</p>
                                                 </div>
                                             </div>
@@ -368,7 +368,7 @@ export default function HubDashboard({
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                                     <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-[#121316]">Facilities</h2>
+                                            <h2 className="text-sm font-semibold text-ink-900">Facilities</h2>
                                             <p className="text-xs text-zinc-500">Capacity and operational load</p>
                                         </div>
                                         <PortalLink
@@ -399,7 +399,7 @@ export default function HubDashboard({
                                                     {facilities.map((facility) => (
                                                         <tr key={facility.id} className="transition-colors hover:bg-zinc-50/60">
                                                             <td className="px-5 py-3">
-                                                                <p className="font-semibold text-[#121316]">{facility.name}</p>
+                                                                <p className="font-semibold text-ink-900">{facility.name}</p>
                                                                 <p className="text-[11px] font-medium text-zinc-400">
                                                                     {facility.code} · {facility.city_municipality}
                                                                 </p>
@@ -409,19 +409,19 @@ export default function HubDashboard({
                                                                     {formatTier(facility.tier)}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-4 py-3 text-right font-semibold tabular-nums text-[#121316]">
+                                                            <td className="px-4 py-3 text-right font-semibold tabular-nums text-ink-900">
                                                                 {facility.parcels}
                                                             </td>
                                                             <td
                                                                 className={`px-4 py-3 text-right font-semibold tabular-nums ${
-                                                                    facility.exceptions > 0 ? 'text-red-700' : 'text-zinc-500'
-                                                                }`}
+ facility.exceptions > 0 ? 'text-red-700' : 'text-zinc-500'
+ }`}
                                                             >
                                                                 {facility.exceptions}
                                                             </td>
                                                             <td className="px-4 py-3 text-right tabular-nums text-zinc-600">{facility.active_fleet}</td>
                                                             <td className="px-5 py-3 text-right">
-                                                                <span className="font-semibold tabular-nums text-[#121316]">
+                                                                <span className="font-semibold tabular-nums text-ink-900">
                                                                     {facility.utilization_rate}%
                                                                 </span>
                                                                 <span className="ml-1 text-[11px] text-zinc-400">of {facility.capacity}</span>
@@ -445,7 +445,7 @@ export default function HubDashboard({
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                                     <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-[#121316]">Needs attention</h2>
+                                            <h2 className="text-sm font-semibold text-ink-900">Needs attention</h2>
                                             <p className="text-xs text-zinc-500">Ready for the next handover &amp; open work</p>
                                         </div>
                                         <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-zinc-800">
@@ -460,7 +460,7 @@ export default function HubDashboard({
                                                     <CheckCircle2 className="h-4 w-4" />
                                                 </span>
                                                 <div>
-                                                    <p className="text-xs font-semibold text-[#121316]">No urgent operational work</p>
+                                                    <p className="text-xs font-semibold text-ink-900">No urgent operational work</p>
                                                     <p className="text-xs text-zinc-500">No attention items are recorded in this view.</p>
                                                 </div>
                                             </div>
@@ -499,7 +499,7 @@ export default function HubDashboard({
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                                     <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-[#121316]">Recent scan activity</h2>
+                                            <h2 className="text-sm font-semibold text-ink-900">Recent scan activity</h2>
                                             <p className="text-xs text-zinc-500">Latest verified custody events</p>
                                         </div>
                                         <PortalLink
@@ -521,10 +521,10 @@ export default function HubDashboard({
                                                 >
                                                     <div className="min-w-0 flex-1">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-bold text-[#121316] tabular-nums">
+                                                            <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-bold text-ink-900 tabular-nums">
                                                                 {activity.tracking_number}
                                                             </span>
-                                                            <span className="truncate font-semibold text-[#121316]">
+                                                            <span className="truncate font-semibold text-ink-900">
                                                                 {formatEvent(activity.event)}
                                                             </span>
                                                         </div>

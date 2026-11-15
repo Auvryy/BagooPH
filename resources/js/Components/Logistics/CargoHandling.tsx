@@ -6,13 +6,13 @@ export const emptyHandling = (): HandlingInput => ({ weight_kg: '', length_cm: '
 
 export function HandlingFields({ value, onChange, disabled = false }: { value: HandlingInput; onChange: (value: HandlingInput) => void; disabled?: boolean }) {
     return <details className="rounded-lg border border-zinc-200 bg-white p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-[#121316]">Outer-package readings</summary>
+        <summary className="cursor-pointer text-sm font-semibold text-ink-900">Outer-package readings</summary>
         <p className="mt-2 text-xs text-slate-600">Required for multi-item or incomplete declarations. These handling readings do not change the purchased shipping fee.</p>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {([['weight_kg', 'Weight (kg)'], ['length_cm', 'Length (cm)'], ['width_cm', 'Width (cm)'], ['height_cm', 'Height (cm)']] as const).map(([key, label]) =>
                 <label key={key} className="text-xs font-semibold text-slate-700">{label}<input type="number" inputMode="decimal" min="0.001" max="10000" step="0.001" disabled={disabled} className={`${hubInput} mt-1.5`} value={value[key]} onChange={event => onChange({ ...value, [key]: event.target.value })} /></label>)}
         </div>
-        <label className="mt-3 flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" disabled={disabled} checked={value.confirmed} onChange={event => onChange({ ...value, confirmed: event.target.checked })} className="mt-0.5 rounded border-slate-300 text-[#121316] focus:ring-[#121316]" />I checked the weight and outside dimensions of this actual parcel.</label>
+        <label className="mt-3 flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" disabled={disabled} checked={value.confirmed} onChange={event => onChange({ ...value, confirmed: event.target.checked })} className="mt-0.5 rounded border-slate-300 text-ink-900 focus:ring-[#121316]" />I checked the weight and outside dimensions of this actual parcel.</label>
     </details>;
 }
 
@@ -23,7 +23,7 @@ export function HandlingSummary({ value }: { value?: Handling | null }) {
 
 export function CapacityMeter({ value, max, label, unit }: { value: number | null; max: number; label: string; unit: string }) {
     return <div className="rounded-lg border border-zinc-200 bg-zinc-50/40 p-3">
-        <div className="flex justify-between gap-2 text-xs text-slate-600"><span>{label}</span><strong className="text-[#121316]">{value === null ? 'Unknown' : value} / {max} {unit}</strong></div>
+        <div className="flex justify-between gap-2 text-xs text-slate-600"><span>{label}</span><strong className="text-ink-900">{value === null ? 'Unknown' : value} / {max} {unit}</strong></div>
         <progress aria-label={label} className="mt-2 h-2 w-full accent-[#121316]" max={max} value={value ?? 0} />
     </div>;
 }

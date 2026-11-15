@@ -46,7 +46,7 @@ function SackControls({ trip, bag, basePath }: {trip: PackingTrip; bag: ReturnSa
                 {['seal', 'open'].includes(action) && <label className="block text-xs font-semibold text-slate-700">Numbered seal<input required autoComplete="off" maxLength={80} className={`${hubInput} mt-1.5`} value={form.data.seal_number} onChange={event => form.setData('seal_number', event.target.value)} /></label>}
                 {action === 'remove' && <label className="block text-xs font-semibold text-slate-700">Return barcode to unpack<input required autoComplete="off" maxLength={40} className={`${hubInput} mt-1.5`} value={form.data.return_barcode} onChange={event => form.setData('return_barcode', event.target.value)} /></label>}
                 {['remove', 'reopen'].includes(action) && <label className="block text-xs font-semibold text-slate-700">Reason<textarea required minLength={10} maxLength={1000} rows={2} className={`${hubInput} mt-1.5`} value={form.data.notes} onChange={event => form.setData('notes', event.target.value)} /></label>}
-                {action === 'open' && <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" required checked={form.data.seal_intact} className="mt-0.5 rounded border-slate-300 text-[#121316] focus:ring-[#121316]" onChange={event => form.setData('seal_intact', event.target.checked)} />I checked this arriving sack and its intact numbered seal.</label>}
+                {action === 'open' && <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" required checked={form.data.seal_intact} className="mt-0.5 rounded border-slate-300 text-ink-900 focus:ring-[#121316]" onChange={event => form.setData('seal_intact', event.target.checked)} />I checked this arriving sack and its intact numbered seal.</label>}
             </>}
             <button className={hubButton} disabled={form.processing || !actions.includes(action)}>{form.processing ? 'Saving…' : labels[action] ?? 'Save sack action'}</button>
         </fieldset>
@@ -61,7 +61,7 @@ export default function ReturnTripPackingPanel({trip, basePath}: {trip: PackingT
     const parcels = trip.returnParcels ?? [];
     useEffect(() => { form.setData({version: trip.version, request_token: crypto.randomUUID(), barcode: '', physical_tag: '', physical_checked: false}); form.clearErrors(); }, [trip.id, trip.version]);
     return <section className="mt-5 space-y-4 border-t border-zinc-200 pt-5" aria-label="Return sacks and loose cargo">
-        <div className="flex items-center gap-2 text-sm font-semibold text-[#121316]"><Container className="h-4 w-4 text-zinc-600" /><h3>Return sacks and loose cargo</h3></div>
+        <div className="flex items-center gap-2 text-sm font-semibold text-ink-900"><Container className="h-4 w-4 text-zinc-600" /><h3>Return sacks and loose cargo</h3></div>
         <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 bg-white px-3">{parcels.map(parcel => <div key={parcel.barcode} className="flex flex-wrap justify-between gap-2 py-2.5 text-xs">
             <span className="break-all font-semibold text-slate-700">{parcel.barcode}</span><span className="text-slate-600">{parcel.weight_kg ?? 'Unknown'} kg · {parcel.baggable === null ? 'Readings needed' : parcel.baggable ? 'Sack required' : 'Individual loose cargo'}</span>
         </div>)}</div>
@@ -75,7 +75,7 @@ export default function ReturnTripPackingPanel({trip, basePath}: {trip: PackingT
             <fieldset disabled={form.processing} className="space-y-3"><legend className="text-sm font-semibold text-slate-800">Pack one actual return</legend>
                 <div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-slate-700">Return barcode<input required autoComplete="off" maxLength={40} className={`${hubInput} mt-1.5`} value={form.data.barcode} onChange={event => form.setData('barcode', event.target.value)} /></label>
                     <label className="text-xs font-semibold text-slate-700">Permanent sack tag<input required autoComplete="off" maxLength={80} className={`${hubInput} mt-1.5`} value={form.data.physical_tag} onChange={event => form.setData('physical_tag', event.target.value)} /></label></div>
-                <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" required checked={form.data.physical_checked} className="mt-0.5 rounded border-slate-300 text-[#121316] focus:ring-[#121316]" onChange={event => form.setData('physical_checked', event.target.checked)} />I checked this parcel and the physical sack tag.</label>
+                <label className="flex items-start gap-2 text-xs text-slate-700"><input type="checkbox" required checked={form.data.physical_checked} className="mt-0.5 rounded border-slate-300 text-ink-900 focus:ring-[#121316]" onChange={event => form.setData('physical_checked', event.target.checked)} />I checked this parcel and the physical sack tag.</label>
                 <button className={hubButton} disabled={form.processing}>{form.processing ? 'Packing…' : 'Pack scanned return'}</button>
             </fieldset><Errors errors={form.errors} />
         </form>}

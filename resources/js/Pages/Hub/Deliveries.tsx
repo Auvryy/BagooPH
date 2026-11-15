@@ -275,7 +275,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             value={searchTerm}
                             disabled={busy}
                             onChange={event => setSearchTerm(event.target.value)}
-                            className="w-full rounded-lg border border-zinc-300 bg-zinc-50/40 hover:bg-white focus:bg-white pl-10 pr-3.5 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition"
+                            className="w-full rounded-lg border border-zinc-300 bg-zinc-50/40 hover:bg-white focus:bg-white pl-10 pr-3.5 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition"
                             placeholder="Waybill, order or buyer…"
                         />
                     </div>
@@ -292,7 +292,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                         disabled={busy}
                         value={filters.status}
                         onChange={event => handleFilter(event.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white pl-3.5 pr-9 py-2 text-xs font-semibold text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition cursor-pointer"
+                        className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white pl-3.5 pr-9 py-2 text-xs font-semibold text-zinc-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition cursor-pointer"
                     >
                         <option value="all">All parcels</option>
                         <option value="in_hub">In hub custody</option>
@@ -305,7 +305,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                         disabled={busy}
                         value={filters.delivery_type}
                         onChange={event => handleFilter(undefined, event.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white pl-3.5 pr-9 py-2 text-xs font-semibold text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition cursor-pointer"
+                        className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white pl-3.5 pr-9 py-2 text-xs font-semibold text-zinc-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition cursor-pointer"
                     >
                         <option value="all">All methods</option>
                         <option value="doorstep">Doorstep delivery</option>
@@ -330,7 +330,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             <header className="flex items-start justify-between gap-4 border-b border-zinc-100 bg-zinc-50/40 px-5 py-4">
                                 <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 text-xs font-bold tabular-nums tracking-wide text-[#121316]">
+                                        <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 text-xs font-bold tabular-nums tracking-wide text-ink-900">
                                             <span className="text-[10px] font-sans font-bold uppercase text-zinc-500">WAYBILL:</span>
                                             {delivery.tracking_number}
                                         </span>
@@ -403,7 +403,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                                 <ArrowRight className="h-3 w-3 text-zinc-400 shrink-0" />
                                                 <span className="truncate">{delivery.destination_hub}</span>
                                                 <ArrowRight className="h-3 w-3 text-zinc-400 shrink-0" />
-                                                <span className="truncate text-[#E00D42]">
+                                                <span className="truncate text-brand-500">
                                                     {delivery.delivery_type === 'hub_self_pickup' ? 'Counter' : delivery.destination_barangay}
                                                 </span>
                                             </span>
@@ -412,7 +412,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                                     href={deliveryDirectionsUrl(delivery)!}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#121316] shadow-2xs transition hover:border-[#E00D42] hover:text-[#E00D42]"
+                                                    className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-900 shadow-2xs transition hover:border-brand-500 hover:text-brand-500"
                                                 >
                                                     <ExternalLink className="h-3 w-3" />
                                                     Route directions
@@ -448,7 +448,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                             type="button"
                                             disabled={busy}
                                             onClick={() => sortParcel(delivery)}
-                                            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#E00D42] bg-[#E00D42] px-4 py-2 text-xs font-bold text-white hover:bg-[#c70b3a] shadow-2xs transition cursor-pointer"
+                                            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-brand-500 bg-brand-500 px-4 py-2 text-xs font-bold text-white hover:bg-[#c70b3a] shadow-2xs transition cursor-pointer"
                                         >
                                             <Package className="h-3.5 w-3.5" />
                                             Sort to bin
@@ -460,7 +460,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                             type="button"
                                             disabled={busy}
                                             onClick={() => { setChoosingId(delivery.id); setReadError(''); }}
-                                            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-[#E00D42] bg-[#E00D42] px-4 py-2 text-xs font-bold text-white hover:bg-[#c70b3a] shadow-2xs transition cursor-pointer"
+                                            className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-brand-500 bg-brand-500 px-4 py-2 text-xs font-bold text-white hover:bg-[#c70b3a] shadow-2xs transition cursor-pointer"
                                         >
                                             <UserRound className="h-3.5 w-3.5" />
                                             Choose delivery rider
@@ -484,9 +484,9 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                     ))}
                 </div>
             )}
-            {deliveries.last_page > 1 && <nav aria-label="Parcel pages" className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500"><span>Page {deliveries.current_page} of {deliveries.last_page} · {deliveries.total} parcels</span><div className="flex flex-wrap gap-2">{deliveries.links.map((link, index) => link.url ? <PortalLink key={index} href={link.url} only={listProps} preserveScroll preserveState aria-current={link.active ? 'page' : undefined} className={`inline-flex min-h-9 items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-xs hover:bg-zinc-50 transition cursor-pointer ${link.active ? 'border-[#C20836] bg-[#E00D42] text-white font-bold' : ''}`}>{paginationLabel(link.label)}</PortalLink> : <span key={index} aria-disabled="true" className="px-3 py-1.5 text-zinc-400">{paginationLabel(link.label)}</span>)}</div></nav>}
+            {deliveries.last_page > 1 && <nav aria-label="Parcel pages" className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500"><span>Page {deliveries.current_page} of {deliveries.last_page} · {deliveries.total} parcels</span><div className="flex flex-wrap gap-2">{deliveries.links.map((link, index) => link.url ? <PortalLink key={index} href={link.url} only={listProps} preserveScroll preserveState aria-current={link.active ? 'page' : undefined} className={`inline-flex min-h-9 items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-xs hover:bg-zinc-50 transition cursor-pointer ${link.active ? 'border-brand-600 bg-brand-500 text-white font-bold' : ''}`}>{paginationLabel(link.label)}</PortalLink> : <span key={index} aria-disabled="true" className="px-3 py-1.5 text-zinc-400">{paginationLabel(link.label)}</span>)}</div></nav>}
         </div>
-        <CourierDialog open={Boolean(choosing)} onClose={() => setChoosingId(null)} busy={busy} title="Choose delivery rider">{choosing && <div className="space-y-4"><p className="text-sm leading-6 text-zinc-600">{choosing.tracking_number} · {choosing.destination_barangay}. Only riders eligible for this parcel are listed.</p><RiderPicker riders={eligibleRiders} eligibleIds={choosing.guidance.eligible_rider_ids} value={selectedRiders[choosing.id] ?? ''} onChange={value => setSelectedRiders(current => ({ ...current, [choosing.id]: value }))} disabled={busy} />{!ridersForChoice.length && <HubEmpty title="No eligible riders available" description="Riders need the right service area and vehicle, duty enabled and acknowledged COD. Ask the rider or company manager to review readiness." icon={UserRound} action={<PortalLink href={route('hub.network')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 shadow-xs transition cursor-pointer">Review hub team</PortalLink>} />}{readError && <p role="alert" className="text-sm text-red-700">{readError}</p>}<div className="flex justify-end gap-2 border-t border-zinc-200 pt-4"><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 shadow-xs transition cursor-pointer" disabled={busy} onClick={() => setChoosingId(null)}>Cancel</button><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#E00D42] bg-[#E00D42] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#c70b3a] shadow-xs transition cursor-pointer" disabled={busy || !choosing.guidance.eligible_rider_ids.includes(Number(selectedRiders[choosing.id]))} onClick={() => assignRider(choosing)}>{busy ? 'Assigning…' : 'Assign rider'}</button></div></div>}</CourierDialog>
+        <CourierDialog open={Boolean(choosing)} onClose={() => setChoosingId(null)} busy={busy} title="Choose delivery rider">{choosing && <div className="space-y-4"><p className="text-sm leading-6 text-zinc-600">{choosing.tracking_number} · {choosing.destination_barangay}. Only riders eligible for this parcel are listed.</p><RiderPicker riders={eligibleRiders} eligibleIds={choosing.guidance.eligible_rider_ids} value={selectedRiders[choosing.id] ?? ''} onChange={value => setSelectedRiders(current => ({ ...current, [choosing.id]: value }))} disabled={busy} />{!ridersForChoice.length && <HubEmpty title="No eligible riders available" description="Riders need the right service area and vehicle, duty enabled and acknowledged COD. Ask the rider or company manager to review readiness." icon={UserRound} action={<PortalLink href={route('hub.network')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 shadow-xs transition cursor-pointer">Review hub team</PortalLink>} />}{readError && <p role="alert" className="text-sm text-red-700">{readError}</p>}<div className="flex justify-end gap-2 border-t border-zinc-200 pt-4"><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 shadow-xs transition cursor-pointer" disabled={busy} onClick={() => setChoosingId(null)}>Cancel</button><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-brand-500 bg-brand-500 px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#c70b3a] shadow-xs transition cursor-pointer" disabled={busy || !choosing.guidance.eligible_rider_ids.includes(Number(selectedRiders[choosing.id]))} onClick={() => assignRider(choosing)}>{busy ? 'Assigning…' : 'Assign rider'}</button></div></div>}</CourierDialog>
         <CourierDialog open={Boolean(reassignTarget)} onClose={() => setReassignTarget(null)} busy={busy} title={reassignTarget?.can_reassign_final_mile ? 'Reassign delivery rider' : 'Reassign first-mile pickup rider'}>
             {reassignTarget && (
                 <div className="space-y-4">
@@ -499,7 +499,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             disabled={busy}
                             value={reassignRiderId}
                             onChange={(e) => setReassignRiderId(e.target.value)}
-                            className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:border-[#E00D42] focus:ring-[#E00D42]/15"
+                            className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:border-brand-500 focus:ring-brand-500/15"
                         >
                             {reassignTarget.can_reassign_first_mile && <option value="">Return to open pickup pool</option>}
                             {reassignTarget.can_reassign_final_mile && <option value="">Select eligible destination rider</option>}
@@ -519,7 +519,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             value={reassignReason}
                             onChange={(e) => setReassignReason(e.target.value)}
                             placeholder="e.g. Original rider unreachable; rebalancing route"
-                            className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:border-[#E00D42] focus:ring-[#E00D42]/15"
+                            className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:border-brand-500 focus:ring-brand-500/15"
                         />
                     </label>
                     {readError && <p role="alert" className="text-xs text-red-700">{readError}</p>}

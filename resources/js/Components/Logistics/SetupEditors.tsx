@@ -12,7 +12,7 @@ export function CoverageEditor({ hub, hubs, url, onClose }: { hub: CoverageHub; 
     return (
         <HubPanel title={`Service coverage · ${hub.name}`} description="Only future orders use this coverage. Purchased parcels keep their original route." icon={<MapPin className="h-4 w-4" />}>
             <form className="space-y-4" onSubmit={event => { event.preventDefault(); form.post(url, { preserveScroll: true, onSuccess: onClose }); }}>
-                <label className="block text-xs font-semibold text-[#121316]">
+                <label className="block text-xs font-semibold text-ink-900">
                     Parent Mother Hub
                     <select required className={`${hubInput} mt-1.5`} value={form.data.parent_hub_id} onChange={event => form.setData('parent_hub_id', event.target.value)}>
                         <option value="">Choose the actual parent</option>
@@ -21,7 +21,7 @@ export function CoverageEditor({ hub, hubs, url, onClose }: { hub: CoverageHub; 
                         ))}
                     </select>
                 </label>
-                <label className="block text-xs font-semibold text-[#121316]">
+                <label className="block text-xs font-semibold text-ink-900">
                     Served postal codes, separated by commas
                     <input
                         required
@@ -34,7 +34,7 @@ export function CoverageEditor({ hub, hubs, url, onClose }: { hub: CoverageHub; 
                         }}
                     />
                 </label>
-                <label className="block text-xs font-semibold text-[#121316]">
+                <label className="block text-xs font-semibold text-ink-900">
                     Barangay restrictions (optional)
                     <input
                         className={`${hubInput} mt-1.5`}

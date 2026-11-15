@@ -28,12 +28,12 @@ export default function SharedTripPanel({ trip, candidates, selectedId, token, b
     };
 
     return <section aria-label="Shared vehicle trip" className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-5">
-        <div className="flex items-center gap-2 text-sm font-semibold text-[#121316]"><Truck className="h-4 w-4 text-zinc-600" /><h2>Shared vehicle trip</h2></div>
+        <div className="flex items-center gap-2 text-sm font-semibold text-ink-900"><Truck className="h-4 w-4 text-zinc-600" /><h2>Shared vehicle trip</h2></div>
         {trip ? <>
             <p className="mt-2 text-sm font-medium capitalize text-zinc-800">{trip.status} · {trip.manifests.length} manifests</p>
             <p className="mt-1 break-all text-xs text-slate-600">Trip {trip.reference}</p>
             <ul className="mt-3 divide-y divide-zinc-200">{trip.manifests.map(member => <li key={member.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs">
-                <Link className="font-semibold text-[#121316] underline underline-offset-2" href={`${basePath}/${member.id}`}>{member.reference}</Link>
+                <Link className="font-semibold text-ink-900 underline underline-offset-2" href={`${basePath}/${member.id}`}>{member.reference}</Link>
                 <span className="capitalize text-zinc-600">{words(member.direction)} · {words(member.status ?? '')} · {member.outstanding ?? 0} awaiting receipt</span>
             </li>)}</ul>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -45,7 +45,7 @@ export default function SharedTripPanel({ trip, candidates, selectedId, token, b
         </> : <form className="mt-3" onSubmit={event => { event.preventDefault(); if (!form.processing) form.post(`${basePath}/trips`, { preserveScroll: true }); }}>
             <fieldset disabled={form.processing}><legend className="text-xs text-slate-600">Sealed manifests for this vehicle and next hub</legend>
                 <div className="mt-2 space-y-2">{candidates.map(member => <label key={member.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-200 bg-white p-3 text-xs">
-                    <input type="checkbox" className="mt-0.5 rounded border-slate-300 text-[#121316] focus:ring-[#121316]" checked={form.data.manifest_ids.includes(member.id)} disabled={member.id === selectedId}
+                    <input type="checkbox" className="mt-0.5 rounded border-slate-300 text-ink-900 focus:ring-[#121316]" checked={form.data.manifest_ids.includes(member.id)} disabled={member.id === selectedId}
                         onChange={event => form.setData('manifest_ids', event.target.checked ? [...form.data.manifest_ids, member.id] : form.data.manifest_ids.filter(id => id !== member.id))} />
                     <span className="break-all font-medium">{member.reference}<span className="ml-2 capitalize text-slate-600">{words(member.direction)}</span></span>
                 </label>)}</div>

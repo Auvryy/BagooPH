@@ -46,8 +46,8 @@ interface Props {
     preparationRoute?: { source_hub_id: number; destination_hub_id: number } | null;
     buyerReturns?: Array<{ id: number; reference: string; barcode: string; source_hub_id: number; destination_hub_id: number; weight_grams: number; recovery_id?: number | null }>;
 }
-const inputClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-[#121316] font-medium shadow-2xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors';
-const buttonClass = 'inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-[#121316] shadow-2xs hover:bg-zinc-50 hover:border-zinc-400 transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';
+const inputClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-ink-900 font-medium shadow-2xs placeholder:text-zinc-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-colors';
+const buttonClass = 'inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-ink-900 shadow-2xs hover:bg-zinc-50 hover:border-zinc-400 transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';
 const words = (value: string) => value.replaceAll('_', ' ').replaceAll('-', ' ');
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' });
 
@@ -141,12 +141,12 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                 {canCreate && !selected && (
                     <section className="rounded border border-zinc-300 bg-white shadow-xs overflow-hidden">
                         <header className="px-5 py-3.5 border-b border-zinc-300 bg-zinc-50/40">
-                            <h2 className="text-sm sm:text-base font-bold text-[#121316]">Prepare a draft</h2>
+                            <h2 className="text-sm sm:text-base font-bold text-ink-900">Prepare a draft</h2>
                         </header>
                         <form onSubmit={create} className="p-5 sm:p-6 space-y-6">
                             {/* Compact 3-option segmented/card selector */}
                             <fieldset>
-                                <legend className="mb-2.5 text-xs font-bold text-[#121316]">What is moving?</legend>
+                                <legend className="mb-2.5 text-xs font-bold text-ink-900">What is moving?</legend>
                                 <div className="grid gap-3 sm:grid-cols-3">
                                     {[
                                         { value: 'outbound', title: 'Delivery to buyer', detail: 'Normal hub-to-hub transfer', icon: Truck },
@@ -156,10 +156,10 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                         <label
                                             key={option.value}
                                             className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-all focus-within:ring-2 focus-within:ring-[#121316]/15 ${
-                                                creation.data.direction === option.value
-                                                    ? 'border-[#E00D42] bg-rose-50/40 shadow-xs ring-1 ring-[#E00D42]/20'
-                                                    : 'border-zinc-200/90 bg-white hover:bg-zinc-50/60 shadow-2xs'
-                                            }`}
+ creation.data.direction === option.value
+ ? 'border-brand-500 bg-rose-50/40 shadow-xs ring-1 ring-brand-500/20'
+ : 'border-zinc-200/90 bg-white hover:bg-zinc-50/60 shadow-2xs'
+ }`}
                                         >
                                             <input
                                                 type="radio"
@@ -179,9 +179,9 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                 }
                                                 className="sr-only"
                                             />
-                                            <option.icon className={`mt-0.5 h-4 w-4 shrink-0 ${creation.data.direction === option.value ? 'text-[#121316]' : 'text-zinc-400'}`} />
+                                            <option.icon className={`mt-0.5 h-4 w-4 shrink-0 ${creation.data.direction === option.value ? 'text-ink-900' : 'text-zinc-400'}`} />
                                             <span>
-                                                <span className="block text-xs font-bold text-[#121316]">{option.title}</span>
+                                                <span className="block text-xs font-bold text-ink-900">{option.title}</span>
                                                 <span className="mt-0.5 block text-xs leading-5 text-zinc-500">{option.detail}</span>
                                             </span>
                                         </label>
@@ -192,7 +192,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                             {creation.data.direction === 'buyer_return' && (
                                 <fieldset className="space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/30 p-4">
-                                    <legend className="mb-2 text-xs font-bold text-[#121316]">Accepted buyer return</legend>
+                                    <legend className="mb-2 text-xs font-bold text-ink-900">Accepted buyer return</legend>
                                     <div onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }}>
                                         <HubSearch
                                             label="Find a received return"
@@ -212,10 +212,10 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                 <label
                                                     key={item.id}
                                                     className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 shadow-xs transition-colors ${
-                                                        creation.data.buyer_return_case_id === String(item.id)
-                                                            ? 'border-[#E00D42] bg-rose-50/40 ring-1 ring-[#E00D42]/20'
-                                                            : 'border-zinc-200/90 bg-white hover:bg-zinc-50'
-                                                    }`}
+ creation.data.buyer_return_case_id === String(item.id)
+ ? 'border-brand-500 bg-rose-50/40 ring-1 ring-brand-500/20'
+ : 'border-zinc-200/90 bg-white hover:bg-zinc-50'
+ }`}
                                                 >
                                                     <input
                                                         type="radio"
@@ -224,11 +224,11 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                         value={item.id}
                                                         checked={creation.data.buyer_return_case_id === String(item.id)}
                                                         onChange={() => selectReturn(item)}
-                                                        className="mt-1 border-zinc-300 text-[#121316] focus:ring-[#121316]"
+                                                        className="mt-1 border-zinc-300 text-ink-900 focus:ring-[#121316]"
                                                     />
                                                     <Package className="mt-1 h-4 w-4 shrink-0 text-zinc-400" />
                                                     <span className="min-w-0">
-                                                        <span className="block text-xs sm:text-sm font-bold text-[#121316]">Return #{item.id}</span>
+                                                        <span className="block text-xs sm:text-sm font-bold text-ink-900">Return #{item.id}</span>
                                                         <span className="mt-1 block break-words text-xs tabular-nums text-zinc-600">{item.barcode}</span>
                                                         <span className="mt-1 block text-xs text-zinc-500">
                                                             {item.reference} · {(item.weight_grams / 1000).toFixed(3)} kg{item.recovery_id ? ' · Authorized recovery' : ''}
@@ -302,7 +302,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             ))}
                                         <button
                                             disabled={creation.processing || !sourceHub || !destinationHub || !creation.data.vehicle_id || !availableVehicles.length}
-                                            className="rounded border border-[#C20836] bg-[#E00D42] hover:bg-[#C20836] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition active:scale-[0.99] disabled:opacity-50"
+                                            className="rounded border border-brand-600 bg-brand-500 hover:bg-brand-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition active:scale-[0.99] disabled:opacity-50"
                                         >
                                             Prepare manifest
                                         </button>
@@ -334,8 +334,8 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                     {/* Left: Recorded Transfers List */}
                     <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                         <header className="flex items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                            <h2 className="text-sm font-bold text-[#121316]">Recorded transfers</h2>
-                            {selected && <Link href={basePath} className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs font-semibold text-[#121316] shadow-2xs transition hover:bg-zinc-50 hover:border-zinc-400">All manifests</Link>}
+                            <h2 className="text-sm font-bold text-ink-900">Recorded transfers</h2>
+                            {selected && <Link href={basePath} className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs font-semibold text-ink-900 shadow-2xs transition hover:bg-zinc-50 hover:border-zinc-400">All manifests</Link>}
                         </header>
                         <div className="space-y-3 p-3.5 border-b border-zinc-100">
                             <HubSearch label="Search loaded transfers" value={search} onChange={setSearch} placeholder="Hub, plate or manifest" />
@@ -361,19 +361,19 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                     className={
                                         'block rounded-xl border p-4 transition-all duration-150 ' +
                                         (selected?.id === manifest.id
-                                            ? 'border-[#E00D42] bg-rose-50/40 shadow-xs ring-1 ring-[#E00D42]/20'
+                                            ? 'border-brand-500 bg-rose-50/40 shadow-xs ring-1 ring-brand-500/20'
                                             : 'border-zinc-200/90 bg-white hover:border-zinc-300 hover:bg-zinc-50/40 shadow-2xs')
                                     }
                                 >
                                     <div className="flex items-center justify-between gap-2">
-                                        <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-[#121316]">
+                                        <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-ink-900">
                                             Transfer #{manifest.id}
                                         </span>
                                         <HubBadge tone={manifest.status === 'closed' ? 'success' : manifest.status === 'dispatched' ? 'brand' : 'neutral'}>
                                             {words(manifest.status)}
                                         </HubBadge>
                                     </div>
-                                    <p className="mt-2.5 text-xs sm:text-sm font-bold leading-5 text-[#121316]">
+                                    <p className="mt-2.5 text-xs sm:text-sm font-bold leading-5 text-ink-900">
                                         {manifest.source.name}
                                         <ArrowRight className="mx-1.5 inline h-3.5 w-3.5 text-zinc-400" />
                                         {manifest.destination.name}
@@ -407,7 +407,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                             <header className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-4">
                                 <div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-[#121316]">
+                                        <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-ink-900">
                                             Transfer #{selected.id}
                                         </span>
                                         <HubBadge tone={selected.status === 'closed' ? 'success' : selected.status === 'dispatched' ? 'brand' : 'neutral'}>
@@ -425,7 +425,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                     {selected.dispatched_at && <p className="mt-1 text-xs text-zinc-500">Departed {date(selected.dispatched_at)}</p>}
                                     {selected.received_at && <p className="mt-1 text-xs text-zinc-500">Received {date(selected.received_at)}</p>}
                                     <details className="mt-2.5 text-xs text-zinc-500">
-                                        <summary className="w-fit cursor-pointer font-bold text-[#121316] hover:text-zinc-700">
+                                        <summary className="w-fit cursor-pointer font-bold text-ink-900 hover:text-zinc-700">
                                             Transfer reference &amp; QR
                                         </summary>
                                         <div className="mt-3 w-fit max-w-full rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs">
@@ -444,13 +444,13 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                 {selected.source.latitude && selected.source.longitude && selected.destination.latitude && selected.destination.longitude && (
                                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 px-4 py-2.5 text-xs">
                                         <span className="text-zinc-600 font-medium">
-                                            Dispatch leg: <span className="font-semibold text-[#121316]">{selected.source.city_municipality || selected.source.name}</span> to <span className="font-semibold text-[#121316]">{selected.destination.city_municipality || selected.destination.name}</span>
+                                            Dispatch leg: <span className="font-semibold text-ink-900">{selected.source.city_municipality || selected.source.name}</span> to <span className="font-semibold text-ink-900">{selected.destination.city_municipality || selected.destination.name}</span>
                                         </span>
                                         <a
                                             href={`https://www.google.com/maps/dir/?api=1&origin=${selected.source.latitude},${selected.source.longitude}&destination=${selected.destination.latitude},${selected.destination.longitude}&travelmode=driving`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1.5 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#121316] shadow-2xs transition hover:border-[#E00D42] hover:text-[#E00D42]"
+                                            className="inline-flex items-center gap-1.5 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-900 shadow-2xs transition hover:border-brand-500 hover:text-brand-500"
                                         >
                                             <ExternalLink className="h-3.5 w-3.5" />
                                             Open transfer directions
@@ -459,10 +459,10 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                 )}
                                 {selected.transportArrival && <TransportArrival value={selected.transportArrival} manifestId={selected.id} version={selected.version} driver={selected.driver_name} plate={selected.vehicle_plate} basePath={basePath} />}
                                 {selected.wholeTransportLoss && <TransportLoss value={selected.wholeTransportLoss} manifestId={selected.id} version={selected.version} basePath={basePath} />}
-                                {selected.cargoCapacity && <section aria-label="Vehicle cargo capacity" className="rounded-xl border border-zinc-200/90 bg-zinc-50/60 p-4"><h3 className="mb-3 text-sm font-bold text-[#121316]">Vehicle cargo · {selected.cargoCapacity.loose_count} loose parcels</h3><CapacityMeter label="Total retained cargo weight" value={selected.cargoCapacity.weight_kg} max={selected.cargoCapacity.max_weight_kg} unit="kg" /></section>}
+                                {selected.cargoCapacity && <section aria-label="Vehicle cargo capacity" className="rounded-xl border border-zinc-200/90 bg-zinc-50/60 p-4"><h3 className="mb-3 text-sm font-bold text-ink-900">Vehicle cargo · {selected.cargoCapacity.loose_count} loose parcels</h3><CapacityMeter label="Total retained cargo weight" value={selected.cargoCapacity.weight_kg} max={selected.cargoCapacity.max_weight_kg} unit="kg" /></section>}
 
                                 {selected.recoveryUrl && (
-                                    <Link href={selected.recoveryUrl} className="inline-block text-xs font-bold text-[#121316] underline underline-offset-4 hover:text-zinc-700">
+                                    <Link href={selected.recoveryUrl} className="inline-block text-xs font-bold text-ink-900 underline underline-offset-4 hover:text-zinc-700">
                                         View this parcel recovery case →
                                     </Link>
                                 )}
@@ -489,7 +489,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                         ].map(([label, value]) => (
                                             <div key={label} className="p-3.5">
                                                 <dt className="text-[11px] text-zinc-500 font-medium">{label}</dt>
-                                                <dd className="mt-1 text-lg font-bold text-[#121316] tabular-nums">{value}</dd>
+                                                <dd className="mt-1 text-lg font-bold text-ink-900 tabular-nums">{value}</dd>
                                             </div>
                                         ))}
                                     </dl>
@@ -505,7 +505,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                     <section className="rounded-xl border border-zinc-200/90 bg-zinc-50/40 p-5 shadow-2xs">
                                         <div className="flex flex-wrap items-center justify-between gap-3">
                                             <div>
-                                                <h3 className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#121316]">
+                                                <h3 className="flex items-center gap-2 text-xs sm:text-sm font-bold text-ink-900">
                                                     <Container className="h-4 w-4 text-zinc-600" />
                                                     Sealed Mother Bags
                                                 </h3>
@@ -521,7 +521,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             <ul className="mt-3 divide-y divide-zinc-200/80">
                                                 {selected.motherBags.map(bag => (
                                                     <li key={bag.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                                                        <Link href={route('hub.mother-bags.index', { bag: bag.id })} className="text-xs tabular-nums font-bold text-[#121316] hover:text-zinc-700 underline underline-offset-4">
+                                                        <Link href={route('hub.mother-bags.index', { bag: bag.id })} className="text-xs tabular-nums font-bold text-ink-900 hover:text-zinc-700 underline underline-offset-4">
                                                             {bag.reference} · Seal {bag.seal_number}
                                                         </Link>
                                                         <HubBadge tone={bag.status === 'opened' || bag.status === 'received' ? 'success' : 'neutral'}>
@@ -544,7 +544,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                                 {selected.status === 'draft' && selected.canLoad && !hasCorrections && !selected.reviewedHold && (
                                     <details open={selected.direction === 'buyer_return' || Boolean(selected.recoveryUrl)} className="rounded-xl border border-zinc-200/90 bg-white overflow-hidden">
-                                        <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-[#121316]">
+                                        <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-ink-900">
                                             Individual loading & loose cargo
                                         </summary>
                                         <div className="border-t border-zinc-100 p-5">
@@ -556,7 +556,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                 {cargoMode === 'loose' && <HandlingFields value={handling} onChange={setHandling} disabled={busy} />}
                                             </div>}
                                             <form onSubmit={event => { event.preventDefault(); command('load', { barcode, ...(cargoMode ? { cargo_mode: cargoMode, handling } : {}) }); }} className="flex flex-wrap items-end gap-3">
-                                                <label className="min-w-0 flex-1 text-xs font-bold text-[#121316]">
+                                                <label className="min-w-0 flex-1 text-xs font-bold text-ink-900">
                                                     Actual outbound waybill
                                                     <input required maxLength={255} disabled={busy} autoComplete="off" spellCheck={false} className={inputClass} value={barcode} onChange={event => setBarcode(event.target.value)} />
                                                 </label>
@@ -568,7 +568,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                                 {selected.status === 'dispatched' && selected.canReceive && (
                                     <form onSubmit={event => { event.preventDefault(); command('receive', { barcode, condition: 'intact' }); }} className="flex flex-wrap items-end gap-3">
-                                        <label className="min-w-0 flex-1 text-xs font-bold text-[#121316]">
+                                        <label className="min-w-0 flex-1 text-xs font-bold text-ink-900">
                                             Actual arriving waybill
                                             <input required maxLength={255} disabled={busy} autoComplete="off" spellCheck={false} className={inputClass} value={barcode} onChange={event => setBarcode(event.target.value)} />
                                         </label>
@@ -577,7 +577,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                 )}
 
                                 {selected.status !== 'closed' && (selected.canManage || selected.canLoad || selected.canReceive) && (
-                                    <label className="block text-xs font-bold text-[#121316]">
+                                    <label className="block text-xs font-bold text-ink-900">
                                         Notes or correction reason
                                         <textarea maxLength={1000} disabled={busy} rows={2} className={inputClass} value={notes} onChange={event => setNotes(event.target.value)} />
                                     </label>
@@ -591,7 +591,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                         <button disabled={busy || !notes.trim()} onClick={() => command('reopen')} className={buttonClass}>Reopen with reason</button>
                                     )}
                                     {selected.canLoad && selected.status === 'sealed' && !hasCorrections && !selected.reviewedHold && !sharedTrip && (
-                                        <button disabled={busy} onClick={() => command('dispatch')} className="rounded-lg bg-[#E00D42] hover:bg-[#C20836] px-5 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99] disabled:opacity-50">
+                                        <button disabled={busy} onClick={() => command('dispatch')} className="rounded-lg bg-brand-500 hover:bg-brand-600 px-5 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99] disabled:opacity-50">
                                             Record departure
                                         </button>
                                     )}
@@ -607,7 +607,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                                 {(['dispatched', 'received'].includes(selected.status) || (hasCorrections && selected.status !== 'closed')) && selected.canReceive && (
                                     <details className="rounded-xl border border-zinc-200/90 bg-zinc-50/40 overflow-hidden">
-                                        <summary className="cursor-pointer px-5 py-3.5 text-xs sm:text-sm font-bold text-[#121316]">
+                                        <summary className="cursor-pointer px-5 py-3.5 text-xs sm:text-sm font-bold text-ink-900">
                                             Report an arrival problem
                                         </summary>
                                         <div className="border-t border-zinc-200/70 p-5">
@@ -615,7 +615,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                 Record what is actually present. A missing parcel needs an actual receipt or an independently supported loss outcome.
                                             </p>
                                             <form className="mt-3.5 space-y-3.5" onSubmit={event => { event.preventDefault(); command('report-discrepancy', { kind, ...(kind === 'missing' ? { parcel_id: parcelId } : { barcode }) }); }}>
-                                                <label className="block text-xs font-bold text-[#121316]">
+                                                <label className="block text-xs font-bold text-ink-900">
                                                     Observed issue
                                                     <select className={inputClass} value={kind} disabled={busy} onChange={event => setKind(event.target.value)}>
                                                         {['missing', 'extra', 'duplicate', 'damaged', 'wrong_hub'].map(value => (
@@ -624,7 +624,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                     </select>
                                                 </label>
                                                 {kind === 'missing' ? (
-                                                    <label className="block text-xs font-bold text-[#121316]">
+                                                    <label className="block text-xs font-bold text-ink-900">
                                                         Expected parcel
                                                         <select required className={inputClass} value={parcelId} disabled={busy} onChange={event => setParcelId(event.target.value)}>
                                                             <option value="">Choose missing parcel</option>
@@ -636,7 +636,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                         </select>
                                                     </label>
                                                 ) : (
-                                                    <label className="block text-xs font-bold text-[#121316]">
+                                                    <label className="block text-xs font-bold text-ink-900">
                                                         Actual observed waybill
                                                         <input required maxLength={255} className={inputClass} disabled={busy} autoComplete="off" spellCheck={false} value={barcode} onChange={event => setBarcode(event.target.value)} />
                                                     </label>
@@ -649,7 +649,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                                 {selected.discrepancies.length > 0 && (
                                     <section aria-label="Unresolved discrepancies" className="rounded-xl border border-amber-200 bg-amber-50/80 p-5 shadow-xs">
-                                        <h3 className="text-xs sm:text-sm font-bold text-[#121316]">Unresolved discrepancies</h3>
+                                        <h3 className="text-xs sm:text-sm font-bold text-ink-900">Unresolved discrepancies</h3>
                                         <ul className="mt-3.5 space-y-3">
                                             {selected.discrepancies.map(issue => (
                                                 <li key={issue.id} className="border-b border-amber-200/80 pb-3">
@@ -686,7 +686,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                                 <div className="overflow-x-auto rounded-xl border border-zinc-200/90">
                                     <table className="w-full min-w-[540px] text-left text-xs">
-                                        <caption className="px-5 py-3.5 text-left font-bold text-[#121316] border-b border-zinc-100 bg-zinc-50/40">Parcel list</caption>
+                                        <caption className="px-5 py-3.5 text-left font-bold text-ink-900 border-b border-zinc-100 bg-zinc-50/40">Parcel list</caption>
                                         <thead className="bg-zinc-50/30 border-b border-zinc-100 text-zinc-500 font-semibold">
                                             <tr>
                                                 <th className="px-5 py-3">Waybill</th>
@@ -698,7 +698,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             {selected.parcels.map(parcel => (
                                                 <tr key={parcel.id} className="hover:bg-zinc-50/50 transition-colors">
                                                     <td className="px-5 py-3.5">
-                                                        <p className="break-all tabular-nums font-bold text-[#121316]">{parcel.tracking_number}</p><span className="text-xs font-semibold text-zinc-600">{parcel.cargo_mode === 'loose' ? 'Loose cargo · individual unloading' : parcel.cargo_mode === 'bag' ? 'Sealed bag member' : 'Original transport record'}</span><HandlingSummary value={parcel.handling} />
+                                                        <p className="break-all tabular-nums font-bold text-ink-900">{parcel.tracking_number}</p><span className="text-xs font-semibold text-zinc-600">{parcel.cargo_mode === 'loose' ? 'Loose cargo · individual unloading' : parcel.cargo_mode === 'bag' ? 'Sealed bag member' : 'Original transport record'}</span><HandlingSummary value={parcel.handling} />
                                                         {!parcel.included && <p className="text-xs text-zinc-500 font-medium">Removed from draft</p>}
                                                         {parcel.included && selected.canManage && selected.status === 'draft' && !hasCorrections && !selected.reviewedHold && (
                                                             <button disabled={busy || !notes.trim() || parcel.cargo_mode === 'bag'} onClick={() => command('remove', { parcel_id: parcel.id })} className="mt-1 text-xs font-bold text-red-700 hover:text-red-800 disabled:opacity-50">
@@ -706,7 +706,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                             </button>
                                                         )}
                                                         {parcel.handover_hold && <p className="mt-1 text-xs font-bold text-amber-800">Awaiting supervised recovery</p>}
-                                                        {parcel.handover_issue_url && <Link href={parcel.handover_issue_url} className="mt-1 inline-block text-xs font-bold text-[#121316] underline underline-offset-4 hover:text-zinc-700">Review handover</Link>}
+                                                        {parcel.handover_issue_url && <Link href={parcel.handover_issue_url} className="mt-1 inline-block text-xs font-bold text-ink-900 underline underline-offset-4 hover:text-zinc-700">Review handover</Link>}
                                                     </td>
                                                     <td className="px-5 py-3.5 capitalize text-zinc-600">{parcel.confirmed_lost ? 'Confirmed lost' : words(parcel.status)}</td>
                                                     <td className="px-5 py-3.5 text-zinc-600">
@@ -733,11 +733,11 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                                 {hasCorrections && (
                                     <section aria-label="Corrective receipt evidence" className="rounded-xl border border-zinc-200/90 p-5 shadow-2xs">
-                                        <h3 className="text-xs sm:text-sm font-bold text-[#121316]">Corrective receipt evidence</h3>
+                                        <h3 className="text-xs sm:text-sm font-bold text-ink-900">Corrective receipt evidence</h3>
                                         <ul className="mt-3.5 space-y-3">
                                             {selected.correctiveReceipts?.map(receipt => (
                                                 <li key={receipt.reference} className="border-b border-zinc-100 pb-3">
-                                                    <p className="break-all text-xs tabular-nums font-bold text-[#121316]">{receipt.tracking_number}</p>
+                                                    <p className="break-all text-xs tabular-nums font-bold text-ink-900">{receipt.tracking_number}</p>
                                                     <p className="mt-1 text-xs text-zinc-700">
                                                         {receipt.original_member_id === null
                                                             ? 'Unlisted receipt — original expected count unchanged'
@@ -757,13 +757,13 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                 )}
 
                                 <details className="rounded-xl border border-zinc-200/90 bg-white overflow-hidden">
-                                    <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-[#121316]">
+                                    <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-ink-900">
                                         Transfer history ({selected.events.length})
                                     </summary>
                                     <ol className="border-t border-zinc-100 p-5 space-y-3.5">
                                         {selected.events.map(event => (
                                             <li key={event.id} className="border-l-2 border-zinc-200 pl-3.5">
-                                                <p className="text-xs sm:text-sm font-bold capitalize text-[#121316]">{words(event.type)} · {event.actor}</p>
+                                                <p className="text-xs sm:text-sm font-bold capitalize text-ink-900">{words(event.type)} · {event.actor}</p>
                                                 <p className="mt-0.5 break-words text-xs text-zinc-500">{date(event.created_at)} · {event.reference}</p>
                                                 {event.barcode && <p className="mt-1 break-all text-xs tabular-nums font-bold text-zinc-700">Submitted code: {event.barcode}</p>}
                                                 {event.reason && <p className="mt-1 whitespace-pre-wrap text-xs text-zinc-700">{event.reason}</p>}

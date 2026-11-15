@@ -128,12 +128,12 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
             <style>{`@media print { body * { visibility: hidden; } [data-bag-label], [data-bag-label] * { visibility: visible; } [data-bag-label] { position: absolute; left: 0; top: 0; width: 100%; padding: 24px; } [data-bag-label] svg { margin: 0 auto; width: 180px; height: 180px; } }`}</style>
             <div className="space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                    <h1 className="text-2xl font-bold tracking-tight text-[#121316]">Mother Bags</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-ink-900">Mother Bags</h1>
                     <div className="flex flex-wrap items-center gap-2">
                         {bag && (
                             <Link
                                 href={basePath}
-                                className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#121316] shadow-xs hover:border-zinc-300 hover:bg-zinc-50 transition"
+                                className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-ink-900 shadow-xs hover:border-zinc-300 hover:bg-zinc-50 transition"
                             >
                                 <ScanLine className="h-4 w-4 text-zinc-600" />
                                 Auto-pack parcel
@@ -141,7 +141,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                         )}
                         <Link
                             href={route('hub.manifests.index')}
-                            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#121316] shadow-xs hover:border-zinc-300 hover:bg-zinc-50 transition"
+                            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-ink-900 shadow-xs hover:border-zinc-300 hover:bg-zinc-50 transition"
                         >
                             <Truck className="h-4 w-4 text-zinc-600" />
                             Manifests
@@ -164,7 +164,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     <Container className="h-4 w-4" />
                                 </div>
                                 <div>
-                                    <h2 className="text-sm font-bold text-[#121316]">Prepare a Mother Bag</h2>
+                                    <h2 className="text-sm font-bold text-ink-900">Prepare a Mother Bag</h2>
                                     <p className="mt-0.5 text-xs text-zinc-500">Sending hub is auto-selected; choose next hub and bag limit preset.</p>
                                 </div>
                             </div>
@@ -176,7 +176,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                             <form onSubmit={event => { event.preventDefault(); create.post(basePath); }} className="mt-5 space-y-4">
                                 <HubPicker label="Sending hub" hubs={packableHubs} value={create.data.source_hub_id} onChange={id => create.setData({ ...create.data, source_hub_id: id, destination_hub_id: '' })} error={create.errors.source_hub_id} />
                                 <HubPicker label="Next hub" hubs={receivingHubs} value={create.data.destination_hub_id} onChange={id => create.setData('destination_hub_id', id)} disabled={!source} error={create.errors.destination_hub_id} />
-                                <label className="block min-w-0 text-xs font-bold text-[#121316]">
+                                <label className="block min-w-0 text-xs font-bold text-ink-900">
                                     Bag capacity preset
                                     <select
                                         className={`${hubInput} mt-1.5 truncate`}
@@ -223,7 +223,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                 <button
                                     type="submit"
                                     disabled={create.processing || !source || !destination}
-                                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#E00D42] hover:bg-[#C20836] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 hover:bg-brand-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <Box className="h-4 w-4" />
                                     Create bag
@@ -249,18 +249,18 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             aria-selected={selected}
                                             onClick={() => setBagCategory(tab.id)}
                                             className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition cursor-pointer ${
-                                                selected
-                                                    ? 'border-[#C20836] bg-[#E00D42] text-white shadow-xs'
-                                                    : 'border-zinc-200 bg-slate-100/80 text-zinc-700 hover:bg-slate-100 hover:text-[#121316]'
-                                            }`}
+ selected
+ ? 'border-brand-600 bg-brand-500 text-white shadow-xs'
+ : 'border-zinc-200 bg-slate-100/80 text-zinc-700 hover:bg-slate-100 hover:text-ink-900'
+ }`}
                                         >
                                             <span className="truncate">{tab.label}</span>
                                             <span
                                                 className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${
-                                                    selected
-                                                        ? 'bg-white/20 text-white'
-                                                        : 'border border-zinc-200 bg-white text-zinc-600'
-                                                }`}
+ selected
+ ? 'bg-white/20 text-white'
+ : 'border border-zinc-200 bg-white text-zinc-600'
+ }`}
                                             >
                                                 {tab.count}
                                             </span>
@@ -277,15 +277,15 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             href={`${basePath}?bag=${item.id}`}
                                             preserveScroll
                                             className={`block p-4 rounded-xl border transition-all duration-150 ${
-                                                bag?.id === item.id
-                                                    ? 'border-[#E00D42] bg-rose-50/40 ring-1 ring-[#E00D42]/20 shadow-xs'
-                                                    : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50/40 shadow-2xs'
-                                            }`}
+ bag?.id === item.id
+ ? 'border-brand-500 bg-rose-50/40 ring-1 ring-brand-500/20 shadow-xs'
+ : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50/40 shadow-2xs'
+ }`}
                                         >
                                             <div className="flex items-center justify-between gap-2">
                                                 <div className="flex items-center gap-1.5 min-w-0">
                                                     <span
-                                                        className="min-w-0 truncate rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-[#121316]"
+                                                        className="min-w-0 truncate rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-ink-900"
                                                         title={item.reference}
                                                     >
                                                         {item.reference}
@@ -298,7 +298,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                 </div>
                                                 <HubBadge tone={item.status === 'received' ? 'brand' : 'neutral'}>{words(item.status)}</HubBadge>
                                             </div>
-                                            <p className="mt-3 break-words text-xs sm:text-sm font-bold leading-5 text-[#121316]">
+                                            <p className="mt-3 break-words text-xs sm:text-sm font-bold leading-5 text-ink-900">
                                                 {item.source.name}
                                                 <ArrowRight className="mx-1.5 inline h-3.5 w-3.5 text-zinc-400" />
                                                 {item.destination.name}
@@ -322,7 +322,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-500">
                                         <Container className="h-4 w-4" />
                                     </div>
-                                    <p className="mt-3 text-xs font-semibold text-[#121316]">Choose a bag to continue</p>
+                                    <p className="mt-3 text-xs font-semibold text-ink-900">Choose a bag to continue</p>
                                 </div>
                             )}
 
@@ -347,7 +347,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                         {!bag && packingAvailable && (
                             <section className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xs">
                                 <header className="border-b border-zinc-100 bg-white px-5 py-4">
-                                    <h2 className="text-base font-bold text-[#121316]">Scan into the next open bag</h2>
+                                    <h2 className="text-base font-bold text-ink-900">Scan into the next open bag</h2>
                                 </header>
                                 <form
                                     onSubmit={event => {
@@ -375,7 +375,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                     required
                                                     maxLength={255}
                                                     autoComplete="off"
-                                                    className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm font-medium text-[#121316] shadow-xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition"
+                                                    className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm font-medium text-ink-900 shadow-xs placeholder:text-zinc-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition"
                                                     value={packing.data.barcode}
                                                     onChange={event => packing.setData('barcode', event.target.value)}
                                                 />
@@ -383,27 +383,27 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             <button
                                                 type="submit"
                                                 disabled={packing.processing || !packing.data.source_hub_id}
-                                                className="inline-flex min-h-[42px] items-center justify-center rounded-xl bg-[#E00D42] hover:bg-[#C20836] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                                                className="inline-flex min-h-[42px] items-center justify-center rounded-xl bg-brand-500 hover:bg-brand-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                                 Find bag &amp; add parcel
                                             </button>
                                         </div>
                                         <HandlingFields value={packing.data.handling} onChange={value => packing.setData('handling', value)} disabled={packing.processing} />
                                         <details className="rounded-lg border border-zinc-200 bg-white p-4">
-                                            <summary className="cursor-pointer text-sm font-semibold text-[#121316]">Reusable sack tag (optional)</summary>
+                                            <summary className="cursor-pointer text-sm font-semibold text-ink-900">Reusable sack tag (optional)</summary>
                                             <label className="mt-3 block text-xs font-semibold text-zinc-700">
                                                 Permanent sack tag
                                                 <input maxLength={80} pattern="[A-Z0-9-]+" className={`${hubInput} mt-1.5`} value={packing.data.physical_tag} onChange={event => packing.setData('physical_tag', event.target.value.toUpperCase())} />
                                             </label>
                                             <label className="mt-3 flex gap-2 text-xs text-zinc-700">
-                                                <input type="checkbox" checked={packing.data.physical_checked} onChange={event => packing.setData('physical_checked', event.target.checked)} className="rounded border-zinc-300 text-[#121316] focus:ring-[#121316]" />
+                                                <input type="checkbox" checked={packing.data.physical_checked} onChange={event => packing.setData('physical_checked', event.target.checked)} className="rounded border-zinc-300 text-ink-900 focus:ring-[#121316]" />
                                                 I checked this permanent tag on the sack at this hub.
                                             </label>
                                         </details>
                                     </div>
                                     <div className="border-t border-zinc-200/80 bg-slate-50/70 px-5 py-3 text-xs text-zinc-600">
                                         Over 15 kg or a side over 60 cm? Use{' '}
-                                        <Link className="font-semibold text-[#121316] underline underline-offset-4 hover:text-[#E00D42]" href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests`}>
+                                        <Link className="font-semibold text-ink-900 underline underline-offset-4 hover:text-brand-500" href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests`}>
                                             loose cargo in Manifests
                                         </Link>.
                                     </div>
@@ -417,7 +417,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-5 py-3.5 shadow-xs">
                                     <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-sm font-bold text-[#121316] tabular-nums">{bag.reference}</span>
+                                            <span className="text-sm font-bold text-ink-900 tabular-nums">{bag.reference}</span>
                                             <HubBadge tone={bag.status === 'received' ? 'brand' : 'neutral'}>{words(bag.status)}</HubBadge>
                                             {bag.seal_number && (
                                                 <span className="text-xs font-medium text-zinc-500 tabular-nums">Seal {bag.seal_number}</span>
@@ -429,7 +429,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     </div>
                                     {bag.manifest_id && (
                                         <Link
-                                            className="text-xs font-bold text-[#121316] underline underline-offset-4 hover:text-zinc-700"
+                                            className="text-xs font-bold text-ink-900 underline underline-offset-4 hover:text-zinc-700"
                                             href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests/${bag.manifest_id}`}
                                         >
                                             Open transport manifest
@@ -449,16 +449,16 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <ScanLine className="h-4 w-4 text-zinc-600" />
-                                                    <h2 className="text-sm font-bold text-[#121316]">Pack and seal</h2>
+                                                    <h2 className="text-sm font-bold text-ink-900">Pack and seal</h2>
                                                 </div>
                                                 <p className="mt-0.5 text-xs text-zinc-500">Keep this bag open, scan incoming parcels continuously, revert any mis-scan, then scan or type the seal.</p>
                                             </div>
-                                            <label className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#121316] cursor-pointer">
+                                            <label className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-ink-900 cursor-pointer">
                                                 <input
                                                     type="checkbox"
                                                     checked={continuousPack}
                                                     onChange={event => setContinuousPack(event.target.checked)}
-                                                    className="rounded border-zinc-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                                    className="rounded border-zinc-300 text-brand-500 focus:ring-brand-500"
                                                 />
                                                 Hands-free continuous auto-add
                                             </label>
@@ -468,13 +468,13 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                 <p className="max-w-md text-xs leading-5 text-zinc-600">
                                                     Arriving Mother Hub parcels need their sorting scan before the next bag. Check the parcel’s current stage if packing is blocked.
                                                 </p>
-                                                <Link href={route('hub.scan.station')} className="inline-flex items-center gap-1.5 text-xs font-bold text-[#121316] underline underline-offset-4 hover:text-zinc-700">
+                                                <Link href={route('hub.scan.station')} className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-900 underline underline-offset-4 hover:text-zinc-700">
                                                     <ScanLine className="h-4 w-4" />
                                                     Check in Scan Station
                                                 </Link>
                                             </div>
                                             <form onSubmit={event => submit(event, 'add')} className="flex flex-wrap items-end gap-3">
-                                                <label className="min-w-0 flex-1 text-xs font-bold text-[#121316]">
+                                                <label className="min-w-0 flex-1 text-xs font-bold text-ink-900">
                                                     Parcel waybill
                                                     <input
                                                         autoFocus
@@ -509,7 +509,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             {activeParcels.length > 0 && (
                                                 <div className="rounded-xl border border-zinc-200 bg-zinc-50/50 p-3.5 space-y-2.5">
                                                     <div className="flex items-center justify-between gap-2">
-                                                        <p className="text-xs font-bold text-[#121316]">
+                                                        <p className="text-xs font-bold text-ink-900">
                                                             Recently scanned in this bag ({activeParcels.length})
                                                         </p>
                                                         <span className="text-[11px] text-zinc-500">Revert a mis-scan before sealing</span>
@@ -519,7 +519,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                             <div key={item.id} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs">
                                                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="rounded border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 font-bold text-[#121316] tabular-nums">
+                                                                        <span className="rounded border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 font-bold text-ink-900 tabular-nums">
                                                                             {item.tracking_number}
                                                                         </span>
                                                                         <span className="text-zinc-500">{words(item.status)}</span>
@@ -573,7 +573,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             )}
                                             <form onSubmit={event => submit(event, 'seal')} className="space-y-3 border-t border-zinc-100 pt-5">
                                                 <div className="flex flex-wrap items-end gap-3">
-                                                    <label className="min-w-0 flex-1 text-xs font-bold text-[#121316]">
+                                                    <label className="min-w-0 flex-1 text-xs font-bold text-ink-900">
                                                         Numbered seal
                                                         <input
                                                             required
@@ -619,7 +619,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                             <div className="flex items-center gap-2">
                                                 <Truck className="h-4 w-4 text-zinc-600" />
-                                                <h2 className="text-sm font-bold text-[#121316]">Load by master tag</h2>
+                                                <h2 className="text-sm font-bold text-ink-900">Load by master tag</h2>
                                             </div>
                                             <p className="mt-0.5 text-xs text-zinc-500">One bag scan loads its complete sealed parcel list.</p>
                                         </header>
@@ -636,21 +636,21 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                                 seal_number: bag.seal_number || '',
                                                             });
                                                         }}
-                                                        className="text-xs font-bold text-[#121316] underline underline-offset-4 hover:text-zinc-700 cursor-pointer"
+                                                        className="text-xs font-bold text-ink-900 underline underline-offset-4 hover:text-zinc-700 cursor-pointer"
                                                     >
                                                         Auto-fill this bag&apos;s tag ({bag.reference}) &amp; seal ({bag.seal_number})
                                                     </button>
                                                 </div>
-                                                <label className="text-xs font-bold text-[#121316]">
+                                                <label className="text-xs font-bold text-ink-900">
                                                     Master bag barcode
                                                     <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
                                                 </label>
-                                                <label className="text-xs font-bold text-[#121316]">
+                                                <label className="text-xs font-bold text-ink-900">
                                                     Numbered seal
                                                     <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
                                                 </label>
                                                 <fieldset className="space-y-3 sm:col-span-2">
-                                                    <legend className="mb-2 text-xs font-bold text-[#121316]">Draft transport manifest</legend>
+                                                    <legend className="mb-2 text-xs font-bold text-ink-900">Draft transport manifest</legend>
                                                     <label className="block text-xs font-medium text-zinc-500">
                                                         Scan transfer reference (or choose a truck below)
                                                         <input
@@ -670,8 +670,8 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                             <label
                                                                 key={item.id}
                                                                 className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 shadow-xs transition-colors focus-within:ring-2 focus-within:ring-[#E00D42]/15 ${
-                                                                    action.data.manifest_id === String(item.id) ? 'border-[#E00D42] bg-rose-50/40 ring-1 ring-[#E00D42]/20' : 'border-zinc-200 bg-white hover:bg-zinc-50'
-                                                                }`}
+ action.data.manifest_id === String(item.id) ? 'border-brand-500 bg-rose-50/40 ring-1 ring-brand-500/20' : 'border-zinc-200 bg-white hover:bg-zinc-50'
+ }`}
                                                             >
                                                                 <input
                                                                     type="radio"
@@ -683,10 +683,10 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                                         action.setData('manifest_id', String(item.id));
                                                                         setManifestScan('');
                                                                     }}
-                                                                    className="mt-1 border-zinc-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                                                    className="mt-1 border-zinc-300 text-brand-500 focus:ring-brand-500"
                                                                 />
                                                                 <span className="min-w-0">
-                                                                    <span className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#121316]">
+                                                                    <span className="flex items-center gap-2 text-xs sm:text-sm font-bold text-ink-900">
                                                                         <Truck className="h-4 w-4 text-zinc-400" />
                                                                         {item.vehicle_plate ?? `Transfer #${item.id}`}
                                                                     </span>
@@ -716,17 +716,17 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                             <div className="flex items-center gap-2">
                                                 <CheckCheck className="h-4 w-4 text-zinc-600" />
-                                                <h2 className="text-sm font-bold text-[#121316]">Verify arriving seal</h2>
+                                                <h2 className="text-sm font-bold text-ink-900">Verify arriving seal</h2>
                                             </div>
                                             <p className="mt-0.5 text-xs text-zinc-500">Check the master tag and physical seal before individual receiving.</p>
                                         </header>
                                         <div className="p-5 sm:p-6">
                                             <form onSubmit={event => submit(event, 'open')} className="space-y-4">
-                                                <label className="block text-xs font-bold text-[#121316]">
+                                                <label className="block text-xs font-bold text-ink-900">
                                                     Scanned master bag tag
                                                     <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
                                                 </label>
-                                                <label className="block text-xs font-bold text-[#121316]">
+                                                <label className="block text-xs font-bold text-ink-900">
                                                     Seal number observed
                                                     <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
                                                 </label>
@@ -736,7 +736,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                         type="checkbox"
                                                         checked={action.data.seal_intact}
                                                         onChange={event => action.setData('seal_intact', event.target.checked)}
-                                                        className="rounded border-zinc-300 text-[#E00D42] focus:ring-[#E00D42]"
+                                                        className="rounded border-zinc-300 text-brand-500 focus:ring-brand-500"
                                                     />
                                                     The physical numbered seal is intact and matches.
                                                 </label>
@@ -749,7 +749,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                 {/* Received Notice */}
                                 {bag.status === 'received' && (
                                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 shadow-xs">
-                                        <p className="text-xs sm:text-sm font-semibold text-[#121316]">
+                                        <p className="text-xs sm:text-sm font-semibold text-ink-900">
                                             All parcels arrived. Scan each waybill to record sorting before its next transfer or rider assignment.
                                         </p>
                                         <Link href={route('hub.scan.station')} className={hubButton}>
@@ -762,7 +762,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                 {bag.capacity && (
                                     <section aria-label="Bag capacity" className="space-y-3 rounded-xl border border-zinc-200 bg-white p-5 shadow-xs">
                                         <div className="flex flex-wrap justify-between gap-2">
-                                            <h2 className="font-bold text-[#121316]">Packing capacity</h2>
+                                            <h2 className="font-bold text-ink-900">Packing capacity</h2>
                                             <span className="break-all text-xs text-zinc-600">Permanent sack: <strong>{bag.physical_tag ?? 'No reusable tag recorded'}</strong></span>
                                         </div>
                                         <div className="grid gap-3 sm:grid-cols-3">
@@ -779,7 +779,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                         <div className="flex items-center gap-2">
                                             <Package className="h-4 w-4 text-zinc-600" />
-                                            <h2 className="text-sm font-bold text-[#121316]">Parcel contents</h2>
+                                            <h2 className="text-sm font-bold text-ink-900">Parcel contents</h2>
                                         </div>
                                         <p className="mt-0.5 text-xs text-zinc-500">
                                             {bag.status === 'opened' ? 'Open the manifest and scan each arriving waybill.' : 'Membership and each actual receiving scan stay recorded.'}
@@ -798,7 +798,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                 {bag.parcels.map(item => (
                                                     <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors">
                                                         <td className="px-5 py-3.5">
-                                                            <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-[#121316]">
+                                                            <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-ink-900">
                                                                 {item.tracking_number}
                                                             </span><HandlingSummary value={item.handling} />
                                                         </td>
@@ -835,7 +835,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         <div className="flex items-center gap-2.5">
                                             <Container className="h-4 w-4 text-zinc-600" />
                                             <div>
-                                                <h2 className="text-sm font-bold text-[#121316] tabular-nums">{bag.reference}</h2>
+                                                <h2 className="text-sm font-bold text-ink-900 tabular-nums">{bag.reference}</h2>
                                                 <p className="text-xs text-zinc-500">Master tag, recorded route and numbered seal</p>
                                             </div>
                                         </div>
@@ -849,7 +849,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         <div className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-zinc-200/80 bg-zinc-50/30 p-4">
                                             <div className="space-y-2">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-[#121316]">
+                                                    <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-ink-900">
                                                         {bag.reference}
                                                     </span>
                                                     <HubBadge tone={bag.status === 'received' ? 'brand' : 'neutral'}>{words(bag.status)}</HubBadge>
@@ -859,7 +859,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                 </p>
                                                 {bag.manifest_id && (
                                                     <Link
-                                                        className="inline-block text-xs sm:text-sm font-bold text-[#121316] hover:text-zinc-700 underline underline-offset-4"
+                                                        className="inline-block text-xs sm:text-sm font-bold text-ink-900 hover:text-zinc-700 underline underline-offset-4"
                                                         href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests/${bag.manifest_id}`}
                                                     >
                                                         Open transport manifest
@@ -868,7 +868,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             </div>
                                             <div data-bag-label className="rounded-xl border border-zinc-200 bg-white p-4 text-center shadow-xs">
                                                 <QRCodeSVG value={bag.reference} size={96} />
-                                                <p className="mt-2.5 text-xs tabular-nums font-bold text-[#121316]">{bag.reference}</p>
+                                                <p className="mt-2.5 text-xs tabular-nums font-bold text-ink-900">{bag.reference}</p>
                                                 <p className="mt-1 text-xs text-zinc-500 font-medium">{bag.source.code} → {bag.destination.code}</p>
                                                 {bag.physical_tag && <p className="mt-1 break-all text-xs text-zinc-600">Sack {bag.physical_tag}</p>}
                                                 {bag.seal_number && <p className="mt-1 break-all text-xs tabular-nums text-zinc-600">Seal {bag.seal_number}</p>}
@@ -880,7 +880,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                 {/* Correct Packing or Loading */}
                                 {bag.canPack && ['open', 'sealed'].includes(bag.status) && (
                                     <details className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                        <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-[#121316] hover:bg-zinc-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
+                                        <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-ink-900 hover:bg-zinc-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
                                             Correct packing or loading
                                         </summary>
                                         <form onSubmit={event => submit(event, bag.status === 'open' ? 'remove' : bag.manifest_id ? 'unload' : 'reopen')} className="space-y-4 border-t border-zinc-100 p-5 sm:p-6">
@@ -892,18 +892,18 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                       : 'Reopen this undeparted bag to correct its contents. The old seal cannot be reused.'}
                                             </p>
                                             {(bag.status === 'open' || bag.manifest_id) && (
-                                                <label className="block text-xs font-bold text-[#121316]">
+                                                <label className="block text-xs font-bold text-ink-900">
                                                     {bag.status === 'open' ? 'Parcel waybill to remove' : 'Scanned master bag tag'}
                                                     <input required className={`${hubInput} mt-1.5`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} />
                                                 </label>
                                             )}
                                             {bag.manifest_id && (
-                                                <label className="block text-xs font-bold text-[#121316]">
+                                                <label className="block text-xs font-bold text-ink-900">
                                                     Numbered seal
                                                     <input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} />
                                                 </label>
                                             )}
-                                            <label className="block text-xs font-bold text-[#121316]">
+                                            <label className="block text-xs font-bold text-ink-900">
                                                 Actual correction reason
                                                 <textarea required maxLength={1000} rows={2} className={`${hubInput} mt-1.5`} value={action.data.notes} onChange={event => action.setData('notes', event.target.value)} />
                                             </label>
@@ -916,7 +916,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
 
                                 {/* Bag Activity Log */}
                                 <details className="rounded-xl border border-zinc-200 bg-white shadow-xs overflow-hidden">
-                                    <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-[#121316] hover:bg-zinc-50 transition-colors">
+                                    <summary className="cursor-pointer bg-zinc-50/40 px-5 py-3.5 text-xs sm:text-sm font-bold text-ink-900 hover:bg-zinc-50 transition-colors">
                                         Bag activity ({bag.events.length})
                                     </summary>
                                     <div className="border-t border-zinc-100 p-5 sm:p-6">
@@ -924,7 +924,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             {bag.events.map((event, index) => (
                                                 <li key={index} className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
                                                     <div>
-                                                        <p className="text-xs sm:text-sm font-semibold text-[#121316]">{words(event.event_type)}</p>
+                                                        <p className="text-xs sm:text-sm font-semibold text-ink-900">{words(event.event_type)}</p>
                                                         <p className="mt-0.5 text-xs text-zinc-500">
                                                             {event.actor}{event.barcode_scanned ? ` · ${event.barcode_scanned}` : ''}
                                                         </p>

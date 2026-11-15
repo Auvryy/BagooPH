@@ -43,7 +43,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                 <section className="overflow-hidden rounded border border-zinc-300 bg-white shadow-xs">
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-300 bg-zinc-50/40 px-5 py-3.5">
                         <div>
-                            <h2 className="text-sm font-semibold tracking-tight text-[#121316]">Every handover has a receipt</h2>
+                            <h2 className="text-sm font-semibold tracking-tight text-ink-900">Every handover has a receipt</h2>
                         </div>
                         <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200/90 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 shadow-2xs">
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
@@ -59,7 +59,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                                     </span>
                                 </div>
-                                <p className="mt-2.5 break-words tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{cashMoney(amount)}</p>
+                                <p className="mt-2.5 break-words tabular-nums text-2xl font-bold tabular-nums text-ink-900">{cashMoney(amount)}</p>
                                 <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">{note}</p>
                             </div>
                         ))}
@@ -79,7 +79,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                     <div className="flex flex-col justify-between gap-3 border-b border-zinc-300 bg-zinc-50/40 px-5 py-3.5 sm:flex-row sm:items-center">
                         <div>
-                            <h2 className="text-sm font-semibold tracking-tight text-[#121316]">Collection and handover queue</h2>
+                            <h2 className="text-sm font-semibold tracking-tight text-ink-900">Collection and handover queue</h2>
                         </div>
                         <form
                             onSubmit={event => {
@@ -95,11 +95,11 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                 onChange={event => setSearch(event.target.value)}
                                 maxLength={100}
                                 placeholder="Search order or waybill"
-                                className="min-h-9 w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs text-[#121316] shadow-2xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15"
+                                className="min-h-9 w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs text-ink-900 shadow-2xs placeholder:text-zinc-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15"
                             />
                             <button
                                 type="submit"
-                                className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-[#E00D42] bg-[#E00D42] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#C20836] cursor-pointer"
+                                className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-brand-500 bg-brand-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-brand-600 cursor-pointer"
                                 aria-label="Search cash records"
                             >
                                 <Search className="h-4 w-4" aria-hidden="true" />
@@ -113,7 +113,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                 <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200/90 bg-white text-zinc-500 shadow-2xs">
                                     <Receipt className="h-4 w-4" aria-hidden="true" />
                                 </span>
-                                <h3 className="mt-3 text-sm font-semibold text-[#121316]">{search ? 'No matching cash records' : 'No collections recorded yet'}</h3>
+                                <h3 className="mt-3 text-sm font-semibold text-ink-900">{search ? 'No matching cash records' : 'No collections recorded yet'}</h3>
                                 <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-zinc-500">
                                     {search ? 'Try another order number or waybill.' : 'Rider and counter collections will appear here after cash is received.'}
                                 </p>
@@ -124,7 +124,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                     <article key={account.id} className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-2xs transition-colors hover:border-zinc-300">
                                         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-4 py-3.5">
                                             <div>
-                                                <h3 className="text-sm font-bold text-[#121316]">{account.order_number}</h3>
+                                                <h3 className="text-sm font-bold text-ink-900">{account.order_number}</h3>
                                                 <p className="mt-0.5 break-all tabular-nums text-xs text-zinc-500">{account.tracking_number}</p>
                                             </div>
                                             <CashBadge status={account.status} />
@@ -133,14 +133,14 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                             <div className="flex items-start justify-between gap-4">
                                                 <div>
                                                     <p className="text-xs font-semibold text-zinc-500">Original COD due</p>
-                                                    <p className="mt-1 tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{cashMoney(account.expected_cents)}</p>
+                                                    <p className="mt-1 tabular-nums text-2xl font-bold tabular-nums text-ink-900">{cashMoney(account.expected_cents)}</p>
                                                 </div>
                                                 <span className="rounded-md border border-zinc-200/80 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-600">
                                                     {account.source_kind === 'rider_collection' ? 'Doorstep' : account.source_kind === 'counter_collection' ? 'Counter' : 'Older record'}
                                                 </span>
                                             </div>
                                             <div className="rounded-lg border border-zinc-200/70 bg-zinc-50/70 p-3 text-sm">
-                                                <p className="flex items-center gap-2 text-xs font-semibold text-[#121316]">
+                                                <p className="flex items-center gap-2 text-xs font-semibold text-ink-900">
                                                     <Building2 className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden="true" />
                                                     {account.hub_name}
                                                 </p>
@@ -155,7 +155,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                                                 {holder.name}
                                                                 <span className="ml-1 text-zinc-500">· {holder.stage === 'rider' ? 'Rider' : holder.stage === 'hub' ? 'Hub' : 'Platform'}</span>
                                                             </span>
-                                                            <strong className="shrink-0 tabular-nums font-bold tabular-nums text-[#121316]">{cashMoney(holder.amount_cents)}</strong>
+                                                            <strong className="shrink-0 tabular-nums font-bold tabular-nums text-ink-900">{cashMoney(holder.amount_cents)}</strong>
                                                         </div>
                                                     ))
                                                 ) : (
@@ -163,7 +163,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                                 )}
                                             </div>
                                             {account.pending && (
-                                                <p className="rounded-lg border border-rose-200/90 bg-rose-50/80 p-3 text-xs font-medium text-[#C20836]">
+                                                <p className="rounded-lg border border-rose-200/90 bg-rose-50/80 p-3 text-xs font-medium text-brand-600">
                                                     Awaiting {account.pending.recipient_name}’s receipt of {cashMoney(account.pending.amount_cents)}.
                                                 </p>
                                             )}
@@ -200,7 +200,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                             </span>
                             <div>
-                                <h2 className="text-sm font-semibold text-[#121316]">Older records need cash evidence</h2>
+                                <h2 className="text-sm font-semibold text-ink-900">Older records need cash evidence</h2>
                                 <p className="mt-1 max-w-3xl text-xs leading-relaxed text-zinc-500">
                                     A paid or delivered label cannot prove who collected or received cash. Review an original counter receipt where available, or record an unresolved evidence review.
                                 </p>
@@ -210,7 +210,7 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                             {legacy.map(record => (
                                 <li key={record.delivery_id} className="flex flex-col justify-between gap-3 py-3.5 sm:flex-row sm:items-center">
                                     <div>
-                                        <p className="text-sm font-semibold text-[#121316]">{record.order_number} · <span className="tabular-nums">{cashMoney(record.due_cents)}</span></p>
+                                        <p className="text-sm font-semibold text-ink-900">{record.order_number} · <span className="tabular-nums">{cashMoney(record.due_cents)}</span></p>
                                         <p className="mt-0.5 text-xs text-zinc-500">{record.has_counter_source ? 'Original counter source available for verification' : 'Collection has no verified source'}</p>
                                     </div>
                                     <button
@@ -231,12 +231,12 @@ export default function CodRecords({ accounts, totals, legacy, filters, base, mo
                     <p className="text-sm leading-relaxed text-zinc-600">
                         {review?.order_number}. Verified original counter cash keeps its recorded collector and time. Missing collection evidence leaves the cash unverified.
                     </p>
-                    <label className="block text-sm font-semibold text-[#121316]" htmlFor="legacy-reference">
+                    <label className="block text-sm font-semibold text-ink-900" htmlFor="legacy-reference">
                         Evidence reference
                         <input id="legacy-reference" required maxLength={120} value={reference} onChange={event => setReference(event.target.value)} className={cashInput} />
                         <CourierFieldError message={errors.evidence_reference} />
                     </label>
-                    <label className="block text-sm font-semibold text-[#121316]" htmlFor="legacy-reason">
+                    <label className="block text-sm font-semibold text-ink-900" htmlFor="legacy-reason">
                         What did you verify?
                         <textarea id="legacy-reason" required minLength={10} maxLength={1000} rows={3} value={reason} onChange={event => setReason(event.target.value)} className={cashInput} />
                         <CourierFieldError message={errors.reason} />
