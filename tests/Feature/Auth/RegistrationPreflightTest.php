@@ -50,9 +50,12 @@ class RegistrationPreflightTest extends TestCase
         Mail::fake();
         $data = array_replace($this->application($role), [
             'region' => '1300000000', 'province' => 'Metro Manila', 'city' => 'Makati',
-            'barangay' => 'Poblacion', 'municipality' => 'Wrong municipality', 'middle_initial' => 'md',
+            'barangay' => 'Poblacion', 'postal_code' => '1200', 'municipality' => 'Wrong municipality', 'middle_initial' => 'md',
         ]);
         $this->postJson('/register/validate', $data)->assertOk();
+        if ($role === 'buyer') {
+            $this->postJson('/register/validate', array_replace($data, ['postal_code' => null]))->assertUnprocessable()->assertJsonValidationErrors('postal_code');
+        }
         foreach ([['city' => 'City of Cebu'], ['barangay' => 'Unlisted Barangay'], ['region' => '0700000000'], ['region' => '']] as $invalid) {
             $this->postJson('/register/validate', array_replace($data, $invalid))->assertUnprocessable();
             $this->post('/register', array_replace($data, $invalid))->assertSessionHasErrors();

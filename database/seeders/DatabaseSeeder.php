@@ -40,7 +40,9 @@ class DatabaseSeeder extends Seeder
                 'role' => 'buyer',
                 'phone' => '+63 917 000 0002',
                 'address' => 'Pedro Guevara Avenue, Poblacion III',
+                'barangay' => 'Barangay III',
                 'city' => 'Santa Cruz, Laguna',
+                'province' => 'Laguna',
                 'postal_code' => '4009',
                 'status' => 'active',
                 'kyc_status' => 'approved',
@@ -104,5 +106,6 @@ class DatabaseSeeder extends Seeder
         $this->call(LogisticsNetworkSeeder::class);
         $this->call(SellerDemoSeeder::class);
         $this->call(LogisticsTestingEnvironmentSeeder::class);
+        $this->call(HubWorkerRolesSeeder::class);
     }
 }

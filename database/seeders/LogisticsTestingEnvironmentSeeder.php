@@ -118,6 +118,7 @@ class LogisticsTestingEnvironmentSeeder extends Seeder
                 [
                     'recipient_name' => 'Santa Cruz Buyer',
                     'phone' => '+63 917 000 0002',
+                    'region' => '0400000000',
                     'street' => 'Pedro Guevara Avenue',
                     'barangay' => 'Poblacion III',
                     'city' => 'Santa Cruz',

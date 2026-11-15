@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\CourierProfile;
+use App\Models\Delivery;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
@@ -31,18 +32,26 @@ class RegionalLogisticsDemoSeeder extends Seeder
                 throw new RuntimeException('Reserved regional demo company is restricted or has conflicting ownership.');
             }
             $laguna = $this->hub($company, 'BGR-MH-LAG', 'Laguna Mother Hub', 'Laguna', 'Calamba City', [], null);
+            $pila = $this->hub($company, 'BGR-MH-PIL', 'Pila Mother Hub', 'Laguna', 'Pila', [], null);
+            $sanPablo = $this->hub($company, 'BGR-MH-SPB', 'San Pablo Mother Hub', 'Laguna', 'San Pablo City', [], null);
+            $lipa = $this->hub($company, 'BGR-MH-LIP', 'Lipa Mother Hub', 'Batangas', 'Lipa City', [], null);
             $metro = $this->hub($company, 'BGR-MH-NCR', 'Metro Manila Mother Hub', 'Metro Manila', 'Pasig City', [], null);
             $apayao = $this->hub($company, 'BGR-MH-APY', 'Apayao Mother Hub', 'Apayao', 'Kabugao', [], null);
             foreach ([
-                ['CLN', 'Calanasan', 'Apayao', ['3814'], $apayao],
-                ['LBN', 'Los Banos', 'Laguna', ['4030'], $laguna],
-                ['SCZ', 'Santa Cruz', 'Laguna', ['4009'], $laguna],
-                ['CAL', 'Calamba City', 'Laguna', ['4027', '4028', '4029'], $laguna],
-                ['MNL', 'Manila', 'Metro Manila', ['1000', '1004', '1008', '1012'], $metro],
-                ['QC', 'Quezon City', 'Metro Manila', ['1100', '1101', '1104', '1105'], $metro],
-                ['MKT', 'Makati City', 'Metro Manila', ['1200', '1203', '1210', '1230'], $metro],
-            ] as [$code, $city, $province, $postal, $parent]) {
-                $this->hub($company, 'BGR-BH-'.$code, $city.' Child Hub', $province, $city, $postal, $parent);
+                ['CLN', 'Calanasan', 'Apayao', ['3814'], $apayao, null],
+                ['LBN', 'Los Banos', 'Laguna', ['4030'], $laguna, null],
+                ['CAL', 'Calamba City', 'Laguna', ['4027', '4028', '4029'], $laguna, null],
+                ['CBY', 'Cabuyao City', 'Laguna', ['4025'], $laguna, null],
+                ['SCZ', 'Santa Cruz', 'Laguna', ['4009'], $pila, $laguna],
+                ['NGC', 'Nagcarlan', 'Laguna', ['4002'], $sanPablo, null],
+                ['DLR', 'Dolores', 'Quezon', ['4326'], $sanPablo, null],
+                ['TAL', 'Taal', 'Batangas', ['4208'], $lipa, null],
+                ['IBN', 'Ibaan', 'Batangas', ['4230'], $lipa, null],
+                ['MNL', 'Manila', 'Metro Manila', ['1000', '1004', '1008', '1012'], $metro, null],
+                ['QC', 'Quezon City', 'Metro Manila', ['1100', '1101', '1104', '1105'], $metro, null],
+                ['MKT', 'Makati City', 'Metro Manila', ['1200', '1203', '1210', '1230'], $metro, null],
+            ] as [$code, $city, $province, $postal, $parent, $legacyParent]) {
+                $this->hub($company, 'BGR-BH-'.$code, $city.' Child Hub', $province, $city, $postal, $parent, $legacyParent);
             }
             $company->refresh();
             if ($company->rider_intake_version === 0 && ! $company->rider_intake_enabled) {
@@ -66,16 +75,47 @@ class RegionalLogisticsDemoSeeder extends Seeder
         return $user;
     }
 
-    private function hub(LogisticsCompany $company, string $code, string $name, string $province, string $city, array $postal, ?LogisticsHub $parent): LogisticsHub
+    private function hub(LogisticsCompany $company, string $code, string $name, string $province, string $city, array $postal, ?LogisticsHub $parent, ?LogisticsHub $legacyParent = null): LogisticsHub
     {
+        $coordinates = [
+            'BGR-MH-LAG' => [14.2078, 121.1558],
+            'BGR-MH-PIL' => [14.2333, 121.3636],
+            'BGR-MH-SPB' => [14.0683, 121.3256],
+            'BGR-MH-LIP' => [13.9411, 121.1631],
+            'BGR-MH-NCR' => [14.5764, 121.0851],
+            'BGR-MH-APY' => [18.0235, 121.1836],
+            'BGR-BH-CLN' => [18.2345, 121.0294],
+            'BGR-BH-LBN' => [14.1678, 121.2435],
+            'BGR-BH-CAL' => [14.2117, 121.1653],
+            'BGR-BH-CBY' => [14.2775, 121.1233],
+            'BGR-BH-SCZ' => [14.2789, 121.4172],
+            'BGR-BH-NGC' => [14.1369, 121.4139],
+            'BGR-BH-DLR' => [14.0156, 121.4014],
+            'BGR-BH-TAL' => [13.8808, 120.9235],
+            'BGR-BH-IBN' => [13.8186, 121.1333],
+            'BGR-BH-MNL' => [14.5995, 120.9842],
+            'BGR-BH-QC' => [14.6760, 121.0437],
+            'BGR-BH-MKT' => [14.5547, 121.0244],
+        ][$code] ?? [null, null];
+
         $hub = LogisticsHub::firstOrCreate(['code' => $code], [
             'logistics_company_id' => $company->id, 'name' => $name,
             'tier' => $parent ? 'local_bayan_hub' : 'regional_mother_hub', 'parent_hub_id' => $parent?->id,
             'province' => $province, 'city_municipality' => $city, 'postal_codes' => $postal,
             'coverage_barangays' => [], 'address' => 'Demo dispatch facility, '.$city.', '.$province,
+            'latitude' => $coordinates[0], 'longitude' => $coordinates[1],
             'capacity' => $parent ? 1500 : 12000, 'is_active' => true,
             'allows_self_pickup' => (bool) $parent, 'operating_hours' => 'Monday to Saturday, 8 AM to 6 PM',
         ]);
+
+        if (($hub->latitude === null || $hub->longitude === null) && $coordinates[0] !== null && $coordinates[1] !== null) {
+            $hub->update(['latitude' => $coordinates[0], 'longitude' => $coordinates[1]]);
+        }
+        if ($legacyParent && $parent && $hub->logistics_company_id === $company->id && $hub->is_active
+            && $hub->parent_hub_id === $legacyParent->id
+            && ! Delivery::where(fn ($q) => $q->where('origin_bayan_hub_id', $hub->id)->orWhere('destination_bayan_hub_id', $hub->id))->exists()) {
+            $hub->update(['parent_hub_id' => $parent->id]);
+        }
         if ($hub->logistics_company_id !== $company->id || ! $hub->is_active || $hub->parent_hub_id !== $parent?->id) {
             throw new RuntimeException('Reserved demo facility has conflicting ownership, status or parent.');
         }

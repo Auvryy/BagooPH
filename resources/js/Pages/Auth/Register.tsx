@@ -529,7 +529,11 @@ export default function Register({ birthDateLimits, policies }: { birthDateLimit
                         {/* Province, City, Barangay & Street Address */}
                         <PhilippineAddressSelector
                             onLoadingChange={setAddressLoading}
-                            postalCodeField={<RegistrationPostalCodeField value={data.postal_code} onChange={value => setData(previous => previous.postal_code === value ? previous : { ...previous, postal_code: value, delivery_latitude: null, delivery_longitude: null })} error={stepErrors.postal_code || errors.postal_code} />}
+                            postalCodeField={<RegistrationPostalCodeField required value={data.postal_code} onChange={value => {
+                                setData(previous => previous.postal_code === value ? previous : { ...previous, postal_code: value, delivery_latitude: null, delivery_longitude: null });
+                                clearErrors('postal_code');
+                                if (stepErrors.postal_code) setStepErrors(prev => ({ ...prev, postal_code: '' }));
+                            }} error={stepErrors.postal_code || errors.postal_code} />}
                             values={{
                                 region: data.region,
                                 province: data.province,

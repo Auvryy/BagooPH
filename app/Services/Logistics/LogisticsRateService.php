@@ -83,6 +83,23 @@ class LogisticsRateService
         return ['pickup' => $pickup, 'delivery' => $delivery, 'company' => $cents - $pickup - $delivery];
     }
 
+    /** Self-pickup waives final-mile doorstep rider pay while keeping origin pickup and hub line-haul charges. */
+    public function selfPickupQuote(int $doorstepCents, string $model): array
+    {
+        $doorstepSplit = $this->shippingSplit($doorstepCents, $model);
+        $payableCents = $doorstepCents - $doorstepSplit['delivery'];
+
+        return [
+            'payable_cents' => $payableCents,
+            'waived_delivery_cents' => $doorstepSplit['delivery'],
+            'split' => [
+                'pickup' => $doorstepSplit['pickup'],
+                'delivery' => 0,
+                'company' => $doorstepSplit['company'],
+            ],
+        ];
+    }
+
     /** New purchases retain exact entitlements; earlier quotes keep their original named model. */
     public function purchasedShippingSplit(Order $order): array
     {

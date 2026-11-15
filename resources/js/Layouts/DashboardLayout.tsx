@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import BagooLogo from '@/Components/BagooLogo';
+import BagooLogisticsLogo from '@/Components/BagooLogisticsLogo';
 import NotificationLink from '@/Components/NotificationLink';
 import PortalLink from '@/Components/PortalLink';
 import CatalogueNavigationNotice from '@/Components/CatalogueNavigationNotice';
@@ -303,7 +304,11 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 <div className="p-4 border-b border-[#1F2128] shrink-0 bg-[#121316]">
                     <div className="flex items-center justify-between">
                         <Link href={role === 'seller' ? route('seller.dashboard') : role === 'admin' ? route('admin.dashboard') : role === 'logistics' ? route('hub.dashboard') : '/'} className="flex items-center gap-2.5">
-                            <BagooLogo className="w-8 h-8 shadow-xs" rounded={role === 'logistics' ? 'rounded' : 'rounded-xl'} />
+                            {role === 'logistics' ? (
+                                <BagooLogisticsLogo className="w-8 h-8 shadow-xs" rounded="rounded-lg" />
+                            ) : (
+                                <BagooLogo className="w-8 h-8 shadow-xs" rounded="rounded-xl" />
+                            )}
                             <div>
                                 <span className="text-base font-black tracking-tight text-white">Bagoo<span className="text-[#E00D42]">PH</span></span>
                                 <span className="block text-[9px] uppercase font-bold tracking-widest text-zinc-400 -mt-0.5 font-sans">

@@ -1,8 +1,9 @@
-import { Check, Package } from 'lucide-react';
+import { Check, Navigation, Package } from 'lucide-react';
 import { type ReactNode } from 'react';
+import { Link } from '@inertiajs/react';
 import CourierJobMap from '@/Components/CourierJobMap';
-import { CourierBadge, CourierPanel, CourierParcelIdentifiers, CourierStopActions } from '@/Components/CourierUI';
-import { type CourierMapJob, type CourierPlace } from '@/utils/courier';
+import { CourierBadge, CourierPanel, CourierParcelIdentifiers, CourierStopActions, courierButton } from '@/Components/CourierUI';
+import { courierPath, type CourierMapJob, type CourierPlace } from '@/utils/courier';
 import { OrderTracking } from '@/types';
 import { trackingDate } from '@/Components/OrderTrackingPanel';
 
@@ -46,6 +47,17 @@ export default function CourierCurrentJob({ job, stops, currentStop, parcelLabel
                 </ol>
                 <p className="mb-4 text-sm leading-relaxed text-slate-600">{job.instruction}</p>
                 <CourierStopActions key={job.key} compact place={job.place} label={job.stopLabel} phone={phone} messageDeliveryId={messageDeliveryId} messagePhase={messagePhase} />
+                {!job.preview && (
+                    <div className="mt-3">
+                        <Link
+                            href={`${courierPath('/navigation')}?tracking=${encodeURIComponent(job.trackingNumber)}`}
+                            className={`${courierButton} w-full border-slate-300 text-slate-800 hover:border-[#E00D42] hover:text-[#C20836]`}
+                        >
+                            <Navigation className="h-4 w-4 text-[#E00D42]" aria-hidden="true" />
+                            <span>Open live road map</span>
+                        </Link>
+                    </div>
+                )}
                 {children}
             </div>
             <CourierJobMap job={job} embedded />

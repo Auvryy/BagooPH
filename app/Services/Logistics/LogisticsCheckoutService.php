@@ -78,7 +78,51 @@ class LogisticsCheckoutService
             'base_shipping_cents' => $company->base_shipping_cents,
             'included_weight_grams' => $company->included_weight_grams,
             'additional_kg_cents' => $company->additional_kg_cents,
+            'shipping_earnings_model' => $company->shipping_earnings_model ?? 'dedicated_fleet',
         ])->values()->all();
+    }
+
+    /** Return only self-pickup Bayan Hubs that are active, configured, and serve the destination route. */
+    public function pickupHubs(?Collection $items = null, array $address = []): array
+    {
+        $destinationReady = ! empty($address['shipping_province'])
+            && ! empty($address['shipping_city'])
+            && preg_match('/\A[0-9]{4}\z/', (string) ($address['shipping_postal_code'] ?? '')) === 1;
+
+        if ($items && ! $destinationReady) {
+            return [];
+        }
+
+        $hubs = LogisticsHub::readyForSelfPickup()
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'city_municipality', 'address', 'province', 'logistics_company_id', 'postal_codes', 'coverage_barangays', 'operating_hours']);
+
+        if ($items) {
+            $companies = LogisticsCompany::eligible()->get()->keyBy('id');
+            $shops = $items->pluck('product.shop')->unique('id')->values();
+            $routing = app(LogisticsRoutingEngine::class);
+
+            $hubs = $hubs->filter(function (LogisticsHub $hub) use ($companies, $shops, $address, $routing) {
+                $company = $companies->get($hub->logistics_company_id);
+                if (! $company) {
+                    return false;
+                }
+                try {
+                    return $shops->every(fn ($shop) => $routing->serves($company, $shop, [
+                        ...$address,
+                        'delivery_type' => 'hub_self_pickup',
+                        'pickup_hub_id' => $hub->id,
+                    ]));
+                } catch (DomainException) {
+                    return false;
+                }
+            });
+        }
+
+        return $hubs->map(fn (LogisticsHub $hub) => $hub->only([
+            'id', 'name', 'code', 'city_municipality', 'address', 'province',
+            'logistics_company_id', 'postal_codes', 'coverage_barangays', 'operating_hours',
+        ]))->values()->all();
     }
 
     /** Add a company-scoped route to each shop's current quote without creating a parcel. */

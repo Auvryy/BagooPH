@@ -7,6 +7,8 @@ type Props = {
     onChange: (values: AddressLocation, userChange: boolean) => void;
     errors?: Partial<Record<keyof AddressLocation, string>>;
     idPrefix?: string;
+    fieldIds?: Partial<Record<keyof AddressLocation, string>>;
+    errorIds?: Partial<Record<keyof AddressLocation, string>>;
     onLoadingChange?: (loading: boolean) => void;
     required?: boolean;
     appearance?: 'buyer' | 'registration';
@@ -16,7 +18,7 @@ const labels = { region: 'Region', province: 'Province / area', city: 'City / mu
 const groups = { region: 'regions', province: 'provinces', city: 'cities', barangay: 'barangays' } as const;
 const prompts = { region: 'Choose a region', province: 'Choose a province or area', city: 'Choose a city or municipality', barangay: 'Choose a barangay' };
 
-export default function AddressLocationFields({ values, onChange, errors = {}, idPrefix = 'address', onLoadingChange, required = true, appearance = 'buyer', accent = 'primary' }: Props) {
+export default function AddressLocationFields({ values, onChange, errors = {}, idPrefix = 'address', fieldIds = {}, errorIds = {}, onLoadingChange, required = true, appearance = 'buyer', accent = 'primary' }: Props) {
     const [options, setOptions] = useState(emptyLocationOptions);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -52,20 +54,24 @@ export default function AddressLocationFields({ values, onChange, errors = {}, i
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {(Object.keys(labels) as (keyof AddressLocation)[]).map(field => {
                 const choices = options[groups[field]];
+                const current = values[field];
+                const hasCustomOption = Boolean(current) && !choices.some(choice => choice.value === current);
                 const missingParent = field === 'province' ? !values.region : field === 'city' ? !values.province : field === 'barangay' ? !values.city : false;
-                const message = errors[field] || (touched[field] && required && !values[field] ? prompts[field] + '.' : '');
-                const id = `${idPrefix}-${field}`;
+                const message = errors[field] || (touched[field] && required && !current ? prompts[field] + '.' : '');
+                const id = fieldIds[field] ?? `${idPrefix}-${field}`;
+                const errorId = errorIds[field] ?? `${id}-error`;
                 return <div key={field}>
                     <label htmlFor={id} className="mb-1 block text-xs font-bold text-slate-700">{labels[field]} {required && <span aria-hidden="true">*</span>}</label>
-                    <select id={id} name={field} value={values[field]} required={required} disabled={loading || missingParent}
+                    <select id={id} name={field} value={current} required={required} disabled={loading || (!hasCustomOption && missingParent)}
                         onChange={event => { setTouched(previous => ({ ...previous, [field]: true })); onChange(changeAddressLocation(values, field, event.target.value), true); }}
                         onBlur={() => setTouched(previous => ({ ...previous, [field]: true }))}
-                        aria-invalid={Boolean(message)} aria-describedby={message ? id + '-error' : undefined}
+                        aria-invalid={Boolean(message)} aria-describedby={message ? errorId : undefined}
                         className={`w-full border border-slate-300 p-2.5 text-sm text-slate-900 disabled:cursor-not-allowed disabled:opacity-60 ${appearance === 'registration' ? 'rounded-lg bg-white' : 'rounded-xl bg-slate-50 focus:bg-white'} ${accent === 'emerald' ? 'focus:border-emerald-600 focus:ring-emerald-600' : 'focus:border-[#E00D42] focus:ring-[#E00D42]'}`}>
                         <option value="">{loading ? 'Loading locations...' : prompts[field]}</option>
+                        {hasCustomOption && <option value={current}>{current}</option>}
                         {choices.map((choice, index) => <option key={choice.value + index} value={choice.value}>{choice.label}</option>)}
                     </select>
-                    {message && <p id={id + '-error'} role="alert" className="mt-1 text-xs text-rose-700">{message}</p>}
+                    {message && <p id={errorId} role="alert" className="mt-1 text-xs text-rose-700">{message}</p>}
                 </div>;
             })}
         </div>

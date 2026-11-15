@@ -5,6 +5,9 @@ export interface CourierScope {
     hub?: string | null;
     hubCode?: string | null;
     hub_code?: string | null;
+    hubAddress?: string | null;
+    hubLatitude?: number | null;
+    hubLongitude?: number | null;
     barangay?: string | null;
     isAssigned?: boolean;
     isOperational?: boolean;

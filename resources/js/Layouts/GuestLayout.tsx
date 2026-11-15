@@ -1,6 +1,7 @@
 import React, { PropsWithChildren } from 'react';
 import { Link } from '@inertiajs/react';
 import BagooLogo from '@/Components/BagooLogo';
+import BagooLogisticsLogo from '@/Components/BagooLogisticsLogo';
 import { getDomainUrl } from '@/utils/domain';
 import { useGuestSessionGuard } from '@/hooks/useGuestSessionGuard';
 
@@ -27,6 +28,7 @@ interface Props {
     alternatePortal?: AlternatePortal;
     showFooter?: boolean;
     guestOnly?: boolean;
+    logoVariant?: 'default' | 'logistics';
 }
 
 function AuthEcosystemFooter() {
@@ -162,7 +164,9 @@ export default function GuestLayout({
     alternatePortal,
     showFooter = true,
     guestOnly = false,
+    logoVariant = 'default',
 }: PropsWithChildren<Props>) {
+    const BrandLogo = logoVariant === 'logistics' ? BagooLogisticsLogo : BagooLogo;
     useGuestSessionGuard(guestOnly);
     // If an image is provided, render the full-viewport split-screen layout
     if (imageSrc) {
@@ -181,7 +185,7 @@ export default function GuestLayout({
                             {/* Brand Header */}
                             <div className="flex items-center justify-between pb-8 w-full">
                                 <Link href="/" className="group flex items-center gap-2.5">
-                                    <BagooLogo className="w-8 h-8 group-hover:scale-105 transition-transform duration-200" rounded="rounded-xs" />
+                                    <BrandLogo className="w-8 h-8 group-hover:scale-105 transition-transform duration-200" rounded="rounded-xs" />
                                     <div className="flex items-center gap-1 font-sans text-sm tracking-tight">
                                         <span className="font-bold text-slate-900">Bagoo</span>
                                         <span className="text-[#E00D42] font-black">PH</span>
@@ -321,7 +325,7 @@ export default function GuestLayout({
             <div className="min-h-[100vh] min-h-[100dvh] flex flex-col justify-between p-4 sm:p-6 lg:p-8 flex-1">
                 <header className="w-full max-w-6xl mx-auto flex items-center justify-between font-sans text-xs py-2">
                     <Link href="/" className="group flex items-center gap-2.5">
-                        <BagooLogo className="w-8 h-8 group-hover:scale-105 transition-transform duration-200" rounded="rounded-xs" />
+                        <BrandLogo className="w-8 h-8 group-hover:scale-105 transition-transform duration-200" rounded="rounded-xs" />
                         <div className="flex items-center gap-1 font-sans text-sm tracking-tight">
                             <span className="font-bold text-slate-900">Bagoo</span>
                             <span className="text-[#E00D42] font-black">PH</span>

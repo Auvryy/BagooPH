@@ -175,6 +175,10 @@ export default function HubMap({ hubs, selectedId, onSelect, routeIds, className
                 box-shadow: 0 0 0 4px rgba(28, 26, 23, 0.28), 0 4px 12px rgba(28, 26, 23, 0.45) !important;
                 animation: hub-pin-pulse 2s infinite ease-in-out;
             }
+            .hub-map-selected .hub-map-pin-dot.hub-map-mother {
+                background: #EA580C !important;
+                box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.34), 0 4px 12px rgba(234, 88, 12, 0.45) !important;
+            }
             @keyframes hub-pin-pulse {
                 0%, 100% {
                     box-shadow: 0 0 0 4px rgba(28, 26, 23, 0.28), 0 4px 12px rgba(28, 26, 23, 0.45);

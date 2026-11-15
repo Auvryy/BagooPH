@@ -27,21 +27,33 @@ class RegionalLogisticsDemoSeederTest extends TestCase
         $this->seed(RegionalLogisticsDemoSeeder::class);
         $company = LogisticsCompany::eligible()->where('code', 'BGR')->firstOrFail();
         $this->assertTrue($company->rider_intake_enabled);
-        $this->assertSame(24, CourierProfile::operational()->where('logistics_company_id', $company->id)->count());
-        $this->assertSame(10, HubHandler::eligible()->where('logistics_company_id', $company->id)->count());
-        $this->assertSame(3, $company->motherHubs()->count());
-        $this->assertSame(7, $company->bayanHubs()->count());
-        $this->assertSame(24, $company->fleet()->count());
-        $this->assertSame(24, $company->couriers()->count());
+        $this->assertSame(42, CourierProfile::operational()->where('logistics_company_id', $company->id)->count());
+        $this->assertSame(18, HubHandler::eligible()->where('logistics_company_id', $company->id)->count());
+        $this->assertSame(6, $company->motherHubs()->count());
+        $this->assertSame(12, $company->bayanHubs()->count());
+        $this->assertSame(42, $company->fleet()->count());
+        $this->assertSame(42, $company->couriers()->count());
         $owner = $company->user;
         $owner->update(['name' => 'Retained owner name']);
         $password = $owner->password;
         $this->seed(RegionalLogisticsDemoSeeder::class);
         $this->assertSame($password, $owner->fresh()->password);
         $this->assertSame('Retained owner name', $owner->fresh()->name);
-        $this->assertSame(10, $company->hubs()->count());
-        $this->assertSame(24, $company->fleet()->count());
-        $this->assertSame(7, LogisticsHub::readyForSelfPickup()->where('logistics_company_id', $company->id)->count());
+        $this->assertSame(18, $company->hubs()->count());
+        $this->assertSame(0, $company->hubs()->where(fn ($q) => $q->whereNull('latitude')->orWhereNull('longitude'))->count());
+        $this->assertSame(42, $company->fleet()->count());
+        $this->assertSame(12, LogisticsHub::readyForSelfPickup()->where('logistics_company_id', $company->id)->count());
+
+        $pila = LogisticsHub::where('code', 'BGR-MH-PIL')->sole();
+        $lipa = LogisticsHub::where('code', 'BGR-MH-LIP')->sole();
+        $sanPablo = LogisticsHub::where('code', 'BGR-MH-SPB')->sole();
+        $laguna = LogisticsHub::where('code', 'BGR-MH-LAG')->sole();
+        $this->assertSame($pila->id, LogisticsHub::where('code', 'BGR-BH-SCZ')->sole()->parent_hub_id);
+        $this->assertSame($lipa->id, LogisticsHub::where('code', 'BGR-BH-TAL')->sole()->parent_hub_id);
+        $this->assertSame($lipa->id, LogisticsHub::where('code', 'BGR-BH-IBN')->sole()->parent_hub_id);
+        $this->assertSame($sanPablo->id, LogisticsHub::where('code', 'BGR-BH-DLR')->sole()->parent_hub_id);
+        $this->assertSame($sanPablo->id, LogisticsHub::where('code', 'BGR-BH-NGC')->sole()->parent_hub_id);
+        $this->assertSame($laguna->id, LogisticsHub::where('code', 'BGR-BH-CBY')->sole()->parent_hub_id);
         $shop = Shop::factory()->create(['city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030']);
         $items = collect([(object) ['product' => Product::factory()->create(['shop_id' => $shop->id])]]);
         $checkout = app(LogisticsCheckoutService::class);
@@ -59,6 +71,15 @@ class RegionalLogisticsDemoSeederTest extends TestCase
         $company->update(['is_active' => false]);
         $this->assertSame([], $checkout->choices($items, $address));
         $this->assertFalse($engine->serves($company, $shop, ['shipping_province' => 'Cebu', 'shipping_city' => 'Cebu City', 'shipping_postal_code' => '6000']));
+
+        $company->update(['is_active' => true]);
+        $taalShop = Shop::factory()->create(['city' => 'Taal', 'pickup_province' => 'Batangas', 'pickup_postal_code' => '4208']);
+        $crossRoute = $engine->previewRoute($company, $taalShop, ['shipping_province' => 'Laguna', 'shipping_city' => 'Cabuyao City', 'shipping_postal_code' => '4025']);
+        $this->assertSame(['BGR-BH-TAL', 'BGR-MH-LIP', 'BGR-MH-LAG', 'BGR-BH-CBY'], array_column($crossRoute['route'], 'code'));
+
+        $cabuyaoShop = Shop::factory()->create(['city' => 'Cabuyao City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4025']);
+        $sharedMotherRoute = $engine->previewRoute($company, $cabuyaoShop, ['shipping_province' => 'Laguna', 'shipping_city' => 'Los Banos', 'shipping_postal_code' => '4030']);
+        $this->assertSame(['BGR-BH-CBY', 'BGR-MH-LAG', 'BGR-BH-LBN'], array_column($sharedMotherRoute['route'], 'code'));
     }
 
     public function test_rerunning_preserves_the_owners_decision_to_pause_rider_applications(): void

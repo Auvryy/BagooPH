@@ -25,6 +25,7 @@ export interface DynamicNavStop {
 export interface UseDynamicCourierNavigationOptions {
     stops: DynamicNavStop[];
     selectedStopId?: string | number | null;
+    fallbackOrigin?: RoadPoint | null;
     apiKey?: string;
     defaultMode?: RoadMode;
 }
@@ -32,6 +33,7 @@ export interface UseDynamicCourierNavigationOptions {
 export function useDynamicCourierNavigation({
     stops,
     selectedStopId: initialStopId,
+    fallbackOrigin = null,
     apiKey = import.meta.env?.VITE_GEOAPIFY_API_KEY ?? '',
     defaultMode = 'motorcycle',
 }: UseDynamicCourierNavigationOptions) {
@@ -109,10 +111,24 @@ export function useDynamicCourierNavigation({
         [apiKey, mode]
     );
 
+    const validFallbackOrigin: RoadPoint | null =
+        fallbackOrigin && validRoadPoint(fallbackOrigin) ? fallbackOrigin : null;
+
+    // Route from assigned hub fallback until live GPS arrives
+    useEffect(() => {
+        if (!currentPosition && destination && validFallbackOrigin) {
+            void calculateRoute(validFallbackOrigin, destination);
+        }
+    }, [currentPosition, destination?.[0], destination?.[1], validFallbackOrigin?.[0], validFallbackOrigin?.[1], calculateRoute]);
+
     // Watch Geolocation
     useEffect(() => {
         if (!navigator.geolocation) {
-            setStatusMessage('Geolocation unavailable in this browser.');
+            setStatusMessage(
+                validFallbackOrigin
+                    ? 'Browser GPS unavailable; routing from assigned hub.'
+                    : 'Geolocation unavailable in this browser.'
+            );
             return;
         }
 
@@ -135,7 +151,11 @@ export function useDynamicCourierNavigation({
         };
 
         const handleError = () => {
-            setStatusMessage('Waiting for GPS permission or high-accuracy signal…');
+            setStatusMessage(
+                validFallbackOrigin
+                    ? 'GPS unavailable; showing route from your assigned hub.'
+                    : 'Waiting for GPS permission or high-accuracy signal…'
+            );
         };
 
         watchIdRef.current = navigator.geolocation.watchPosition(handleSuccess, handleError, {
@@ -151,20 +171,22 @@ export function useDynamicCourierNavigation({
             }
             routeAbortController.current?.abort();
         };
-    }, [destination, calculateRoute]);
+    }, [destination, calculateRoute, validFallbackOrigin]);
 
     // Recalculate when selected stop changes
     const selectStop = (id: string | number) => {
         setSelectedId(id);
         const target = stops.find((s) => String(s.id) === String(id));
-        if (target && currentPosition) {
-            void calculateRoute(currentPosition, [target.latitude, target.longitude]);
+        const originPoint = currentPosition || validFallbackOrigin;
+        if (target && originPoint) {
+            void calculateRoute(originPoint, [target.latitude, target.longitude]);
         }
     };
 
     const recenterRoute = () => {
-        if (currentPosition && destination) {
-            void calculateRoute(currentPosition, destination);
+        const originPoint = currentPosition || validFallbackOrigin;
+        if (originPoint && destination) {
+            void calculateRoute(originPoint, destination);
         }
     };
 

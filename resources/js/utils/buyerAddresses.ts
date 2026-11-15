@@ -10,6 +10,7 @@ export function buyerAddressErrors(data: BuyerAddressInput): Partial<Record<keyo
     set('phone', mobileNumberError(data.phone, true));
     set('street', registrationTextError(data.street, 5, 500, true));
     for (const field of ['region', 'province', 'city', 'barangay'] as const) if (!data[field].trim()) errors[field] = 'Choose a ' + (field === 'province' ? 'province or area' : field) + '.';
-    if (data.postal_code && !/^[0-9]{4}$/.test(data.postal_code)) errors.postal_code = 'Use a four-digit Philippine postal code.';
+    if (!data.postal_code.trim()) errors.postal_code = 'Postal code is required (4 digits).';
+    else if (!/^[0-9]{4}$/.test(data.postal_code)) errors.postal_code = 'Use a four-digit Philippine postal code.';
     return errors;
 }

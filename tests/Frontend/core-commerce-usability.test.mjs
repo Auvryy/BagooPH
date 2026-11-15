@@ -8,7 +8,7 @@ import { build } from 'esbuild';
 const temporary = mkdtempSync(join(import.meta.dirname, '.tmp-core-commerce-'));
 after(() => { rmSync(temporary, { recursive: true, force: true }); delete globalThis.coreCommerceHarness; delete globalThis.route; });
 const result = await build({
-    stdin: { contents: `export { default as Checkout } from '@/Pages/Checkout/Index'; export { default as Detail } from '@/Pages/Buyer/OrderDetail'; export { default as SellerOrders } from '@/Pages/Seller/Orders'; export { default as BuyAgain } from '@/Components/BuyAgainButton'; export { default as Bag } from '@/Pages/Cart/Index'; export { default as LocationPinPicker } from '@/Components/LocationPinPicker';`, loader: 'tsx', resolveDir: resolve(import.meta.dirname, '../..') },
+    stdin: { contents: `export { default as Checkout } from '@/Pages/Checkout/Index'; export { default as AddressLocationFields } from '@/Components/AddressLocationFields'; export { default as Detail } from '@/Pages/Buyer/OrderDetail'; export { default as SellerOrders } from '@/Pages/Seller/Orders'; export { default as BuyAgain } from '@/Components/BuyAgainButton'; export { default as Bag } from '@/Pages/Cart/Index'; export { default as LocationPinPicker } from '@/Components/LocationPinPicker';`, loader: 'tsx', resolveDir: resolve(import.meta.dirname, '../..') },
     bundle: true, packages: 'external', platform: 'node', format: 'esm', jsx: 'automatic', write: false,
     plugins: [{ name: 'controlled-page-hooks', setup(builder) {
         builder.onResolve({ filter: /^react-dom$/ }, () => ({ path: 'portal', namespace: 'page-portal' }));
@@ -42,7 +42,7 @@ const result = await build({
 });
 const bundlePath = join(temporary, 'checkout.mjs');
 writeFileSync(bundlePath, result.outputFiles[0].text);
-const { Checkout, Detail, SellerOrders, BuyAgain, Bag, LocationPinPicker } = await import(pathToFileURL(bundlePath).href);
+const { Checkout, AddressLocationFields, Detail, SellerOrders, BuyAgain, Bag, LocationPinPicker } = await import(pathToFileURL(bundlePath).href);
 globalThis.route = name => '/' + name.replaceAll('.', '/');
 const address = { id: 1, recipient_name: 'Ana Santos', phone: '+639171234567', street: '10 Mabini Street', city: 'Santa Cruz', province: 'Laguna', barangay: 'Poblacion', postal_code: '4009', latitude: 14.28, longitude: 121.42, landmark: 'Beside the municipal hall' };
 const props = { user: { name: 'Ana Santos', phone: '+639171234567' }, addresses: [address], cart: { id: 1 }, items: [{ id: 1, quantity: 1, product: { id: 1, name: 'Everyday Bag', price: 10 } }], checkoutToken: 'isolated-checkout', kycStatus: 'approved',
@@ -70,6 +70,11 @@ function harness(overrides = {}) {
     };
     globalThis.coreCommerceHarness = h;
     return h;
+}
+function renderIsolated(Component, properties) {
+    const previous = globalThis.coreCommerceHarness;
+    try { return harness().renderPage(Component, properties); }
+    finally { globalThis.coreCommerceHarness = previous; }
 }
 function all(node, predicate, found = []) {
     if (Array.isArray(node)) node.forEach(child => all(child, predicate, found));
@@ -111,15 +116,33 @@ test('the Bag selects the returned repurchase lines instead of an unrelated most
 test('self-pickup keeps every required address field editable and never replaces buyer address or coordinates with the hub', () => {
     const h = harness(); let tree = h.render(); const original = structuredClone(h.data);
     radio(tree, 'hub_self_pickup').props.onChange(); tree = h.render();
-    for (const id of ['shipping_address', 'destination_barangay', 'shipping_city', 'shipping_province', 'shipping_postal_code']) {
+    all(tree, node => node.type === 'button' && node.props['aria-controls'] === 'checkout-address-editor')[0].props.onClick();
+    tree = h.render();
+    for (const id of ['shipping_address', 'shipping_postal_code']) {
         const input = field(tree, `checkout-${id}`);
         assert.ok(input, `${id} remains present for self-pickup`); assert.equal(input.props.required, true); assert.equal(input.props.disabled, undefined);
+    }
+    const locationNode = all(tree, node => node.type === AddressLocationFields)[0];
+    assert.ok(locationNode, 'AddressLocationFields dropdown group remains present for self-pickup');
+    assert.deepEqual(locationNode.props.fieldIds, {
+        region: 'checkout-shipping_region',
+        province: 'checkout-shipping_province',
+        city: 'checkout-shipping_city',
+        barangay: 'checkout-destination_barangay',
+    });
+    const locTree = renderIsolated(AddressLocationFields, locationNode.props);
+    for (const id of ['shipping_province', 'shipping_city', 'destination_barangay']) {
+        const select = field(locTree, `checkout-${id}`);
+        assert.equal(select.type, 'select', `${id} renders as a select dropdown`);
+        assert.equal(select.props.required, true);
     }
     field(tree, 'checkout-pickup-hub').props.onChange({ target: { value: '3' } }); tree = h.render();
     assert.deepEqual(h.data, { ...original, delivery_type: 'hub_self_pickup', pickup_hub_id: '3' });
     assert.equal(h.quoteInput.shipping_city, 'Santa Cruz');
     assert.equal(h.quoteInput.pickup_hub_id, '3');
-    assert.match(text(tree), /hub serves your area/);
+    assert.match(text(tree), /Santa Cruz Bayan Hub/);
+    assert.match(text(tree), /REDUCED FEE/);
+    assert.doesNotMatch(text(tree), /100% FREE/);
     assert.equal(h.data.payment_method, 'cod');
     assert.match(text(tree), /Payment mode:.*Cash on Delivery \(COD\)/);
     assert.doesNotMatch(text(tree), /SMS|100% Escrow|guaranteed delivery|Mon–Sat 8:00/);
@@ -131,13 +154,47 @@ test('self-pickup keeps every required address field editable and never replaces
 test('a buyer without saved addresses can supply missing self-pickup fields instead of being blocked by hidden requirements', () => {
     const h = harness({ addresses: [] }); let tree = h.render();
     radio(tree, 'hub_self_pickup').props.onChange(); tree = h.render();
-    for (const id of ['shipping_address', 'destination_barangay', 'shipping_city', 'shipping_province', 'shipping_postal_code']) field(tree, `checkout-${id}`).props.onChange({ target: { value: id === 'shipping_postal_code' ? '4009' : address[{ shipping_address: 'street', destination_barangay: 'barangay', shipping_city: 'city', shipping_province: 'province' }[id]] } });
+    field(tree, 'checkout-shipping_address').props.onChange({ target: { value: address.street } });
+    field(tree, 'checkout-shipping_postal_code').props.onChange({ target: { value: '4009' } });
+    all(tree, node => node.type === AddressLocationFields)[0].props.onChange({
+        region: '0400000000',
+        province: address.province,
+        city: address.city,
+        barangay: address.barangay,
+    }, true);
     tree = h.render();
-    all(tree, node => node.type === 'select')[0].props.onChange({ target: { value: '8' } }); tree = h.render();
+    field(tree, 'checkout-carrier-select').props.onChange({ target: { value: '8' } }); tree = h.render();
     field(tree, 'checkout-pickup-hub').props.onChange({ target: { value: '3' } }); tree = h.render();
     all(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {} }); tree = h.render();
     assert.equal(all(tree, node => typeof node.props?.open === 'boolean')[0].props.open, true);
     assert.equal(h.data.shipping_postal_code, '4009'); assert.equal(h.data.destination_barangay, 'Poblacion');
+    assert.equal(h.data.shipping_region, '0400000000');
+});
+
+test('checkout saved address dropdown stays visible and caret toggles expand or minimize the editor', () => {
+    const second = { ...address, id: 2, recipient_name: 'Office Contact', region: '0400000000', barangay: 'Barangay III', street: '99 Rizal St', is_default: false };
+    const h = harness({ addresses: [address, second] }); let tree = h.render();
+    assert.ok(field(tree, 'checkout-saved-address'), 'saved address selector is visible while minimized');
+    assert.equal(field(tree, 'checkout-address-editor'), undefined, 'pinned saved address starts minimized');
+    const headerExpand = all(tree, node => node.type === 'button' && node.props['aria-controls'] === 'checkout-address-editor' && text(node).includes('Edit / Change'))[0];
+    assert.equal(headerExpand.props['aria-expanded'], false);
+    assert.ok(all(headerExpand, node => node.type?.displayName === 'ChevronDown').length, 'collapsed toggle renders ChevronDown');
+    headerExpand.props.onClick(); tree = h.render();
+    assert.ok(field(tree, 'checkout-address-editor'), 'clicking caret toggle expands the address editor');
+    assert.ok(field(tree, 'checkout-saved-address'), 'saved address selector stays visible while expanded');
+    const footerMinimize = all(tree, node => node.type === 'button' && node.props['aria-controls'] === 'checkout-address-editor' && text(node).includes('Minimize Address'))[0];
+    assert.equal(footerMinimize.props['aria-expanded'], true);
+    assert.ok(all(footerMinimize, node => node.type?.displayName === 'ChevronUp').length, 'expanded minimize button renders ChevronUp');
+    footerMinimize.props.onClick(); tree = h.render();
+    assert.equal(field(tree, 'checkout-address-editor'), undefined, 'clicking minimize caret collapses the address editor');
+    field(tree, 'checkout-saved-address').props.onChange({ target: { value: '2' } }); tree = h.render();
+    assert.equal(h.data.saved_address_id, 2);
+    assert.equal(h.data.shipping_region, '0400000000');
+    assert.equal(h.data.destination_barangay, 'Barangay III');
+    assert.equal(field(tree, 'checkout-address-editor'), undefined);
+    field(tree, 'checkout-saved-address').props.onChange({ target: { value: 'new' } }); tree = h.render();
+    assert.equal(h.data.saved_address_id, null);
+    assert.ok(field(tree, 'checkout-address-editor'), 'selecting new opens the address editor with dropdowns');
 });
 
 test('final order confirmation accepts one pending write, retains safe details and permits retry only after completion', () => {
@@ -161,16 +218,26 @@ test('final order confirmation accepts one pending write, retains safe details a
 });
 
 test('checkout fields expose server-matching limits and map-friendly rejection text', () => {
-    const h = harness(); h.render(); h.errors = { destination_barangay: 'Choose a supported barangay.', shipping_province: 'Enter a province.', shipping_postal_code: 'Use four digits.', shipping_latitude: 'Use up to seven decimal places.', shipping_longitude: 'Enter a valid longitude.' };
-    const tree = h.render();
-    for (const [name, minimum, maximum] of [['shipping_address', 5, 500], ['destination_barangay', 2, 100], ['shipping_city', 2, 100], ['shipping_province', 2, 100], ['shipping_postal_code', 4, 4], ['landmark', 5, 255]]) {
+    const h = harness(); let tree = h.render();
+    all(tree, node => node.type === 'button' && node.props['aria-controls'] === 'checkout-address-editor')[0].props.onClick();
+    h.errors = { destination_barangay: 'Choose a supported barangay.', shipping_province: 'Enter a province.', shipping_postal_code: 'Use four digits.', shipping_latitude: 'Use up to seven decimal places.', shipping_longitude: 'Enter a valid longitude.' };
+    tree = h.render();
+    for (const [name, minimum, maximum] of [['shipping_address', 5, 500], ['shipping_postal_code', 4, 4], ['landmark', 5, 255]]) {
         const input = field(tree, `checkout-${name}`);
         assert.equal(input.props.minLength, minimum); assert.equal(input.props.maxLength, maximum);
         assert.ok(all(tree, node => node.type === 'label' && node.props.htmlFor === input.props.id).length);
     }
-    for (const name of Object.keys(h.data).filter(name => ['destination_barangay', 'shipping_province', 'shipping_postal_code'].includes(name))) {
-        const input = field(tree, `checkout-${name}`);
-        assert.equal(input.props['aria-invalid'], true); assert.equal(text(field(tree, input.props['aria-describedby'])), ({ destination_barangay: 'Choose a supported barangay.', shipping_province: 'Enter a province.', shipping_postal_code: 'Use four digits.' })[name]);
+    const postal = field(tree, 'checkout-shipping_postal_code');
+    assert.equal(postal.props['aria-invalid'], true);
+    assert.equal(text(field(tree, postal.props['aria-describedby'])), 'Use four digits.');
+    const locationNode = all(tree, node => node.type === AddressLocationFields)[0];
+    const locTree = renderIsolated(AddressLocationFields, locationNode.props);
+    for (const [fieldId, expectedError] of [['checkout-destination_barangay', 'Choose a supported barangay.'], ['checkout-shipping_province', 'Enter a province.']]) {
+        const select = field(locTree, fieldId);
+        assert.equal(select.type, 'select');
+        assert.equal(select.props['aria-invalid'], true);
+        assert.equal(text(field(locTree, select.props['aria-describedby'])), expectedError);
+        assert.ok(all(locTree, node => node.type === 'label' && node.props.htmlFor === select.props.id).length);
     }
     assert.ok(all(tree, node => node.type === LocationPinPicker).length);
     assert.match(text(all(tree, node => node.props?.role === 'alert')), /Choose a valid delivery location on the map or use GPS\./);

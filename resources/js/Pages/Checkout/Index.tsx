@@ -9,8 +9,10 @@ import PhoneInput from '@/Components/PhoneInput';
 import ShippingCalculation from '@/Components/ShippingCalculation';
 import CheckoutRoutePreview from '@/Components/CheckoutRoutePreview';
 import LocationPinPicker from '@/Components/LocationPinPicker';
+import AddressLocationFields from '@/Components/AddressLocationFields';
 import useCheckoutGps from '@/hooks/useCheckoutGps';
-import { changedDeliveryAddress, withDoorstepDelivery, validDeliveryPin, defaultLogisticsCompanyId, type CheckoutAddressField } from '@/utils/checkoutLocation';
+import { changedDeliveryAddress, changedDeliveryLocation, withDoorstepDelivery, validDeliveryPin, defaultLogisticsCompanyId, matchingPickupHubs, defaultPickupHubId, estimateSelfPickupFeeFromDoorstep, type CheckoutAddressField } from '@/utils/checkoutLocation';
+import type { AddressLocation } from '@/utils/addressLocations';
 import { checkoutErrorMessages, deliveryLocationErrorMessage } from '@/utils/checkoutErrorMessages';
 import BuyerVoucherPicker from '@/Components/Vouchers/BuyerVoucherPicker';
 import CheckoutVoucherBreakdown from '@/Components/Vouchers/CheckoutVoucherBreakdown';
@@ -21,6 +23,8 @@ import { Cart, CartItem, PageProps, User, Address } from '@/types';
 import { 
     ShoppingBag, 
     ArrowLeft, 
+    ChevronDown,
+    ChevronUp,
     Truck, 
     Wallet, 
     ShieldCheck, 
@@ -51,6 +55,9 @@ export interface PickupHubItem {
     city_municipality: string;
     address: string;
     province: string;
+    postal_codes?: string[] | null;
+    coverage_barangays?: string[] | null;
+    operating_hours?: string | null;
 }
 
 interface Props {
@@ -72,7 +79,7 @@ interface Props {
     itemQuantities?: Record<number, number>;
     walletBalanceCents?: number | null;
     codRestriction?: { id: number; reference: string; reason_code: string; reason: string; expires_at?: string | null } | null;
-    logisticsCompanies?: { id: number; name: string; logo?: string | null; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number }[];
+    logisticsCompanies?: { id: number; name: string; logo?: string | null; base_shipping_cents: number; included_weight_grams: number; additional_kg_cents: number; shipping_earnings_model?: 'standard' | 'dedicated_fleet' }[];
 }
 
 export default function CheckoutIndex({ 
@@ -144,6 +151,7 @@ export default function CheckoutIndex({
         recipient_name: initialAddress?.recipient_name || user.name || '',
         recipient_phone: initialAddress?.phone || user.phone || '',
         shipping_address: initialAddress?.street || user.address || '',
+        shipping_region: initialAddress?.region || '',
         shipping_city: initialAddress?.city || user.city || '',
         shipping_province: initialAddress?.province || user.province || '',
         shipping_postal_code: initialAddress?.postal_code || user.postal_code || '',
@@ -175,6 +183,7 @@ export default function CheckoutIndex({
                 recipient_name: user.name || '',
                 recipient_phone: user.phone || '',
                 shipping_address: '',
+                shipping_region: '',
                 shipping_city: '',
                 shipping_province: '',
                 shipping_postal_code: '',
@@ -196,6 +205,7 @@ export default function CheckoutIndex({
                     recipient_name: found.recipient_name || user.name || '',
                     recipient_phone: found.phone,
                     shipping_address: found.street,
+                    shipping_region: found.region || '',
                     shipping_city: found.city,
                     shipping_province: found.province || '',
                     shipping_postal_code: found.postal_code || '',
@@ -219,6 +229,27 @@ export default function CheckoutIndex({
         if (data.saved_address_id !== null) setSelectedAddressId('new');
         setData(previous => ({
             ...changedDeliveryAddress(previous, field, value, addresses.length < addressBookLimit),
+            logistics_company_id: '',
+            pickup_hub_id: '',
+        }));
+    };
+
+    const updateDeliveryLocationFields = (location: AddressLocation, userChange: boolean) => {
+        if (!userChange) {
+            if (location.region && data.shipping_region !== location.region) {
+                setData(previous => ({ ...previous, shipping_region: location.region }));
+            }
+            return;
+        }
+        gps.cancel();
+        if (data.saved_address_id !== null) setSelectedAddressId('new');
+        setData(previous => ({
+            ...changedDeliveryLocation(previous, {
+                shipping_region: location.region,
+                shipping_province: location.province,
+                shipping_city: location.city,
+                destination_barangay: location.barangay,
+            }, addresses.length < addressBookLimit),
             logistics_company_id: '',
             pickup_hub_id: '',
         }));
@@ -251,31 +282,58 @@ export default function CheckoutIndex({
     };
     const pricing = usePurchaseQuote(quoteInput, initialQuote, availableVouchers);
     const quote = pricing.quote;
-    const servingCompanies = pricing.companies ?? logisticsCompanies;
-    const completeDoorstepDestination = Boolean(data.shipping_province.trim() && data.shipping_city.trim()
-        && /^[0-9]{4}$/.test(data.shipping_postal_code));
-    const noServingCompany = data.delivery_type === 'doorstep' && completeDoorstepDestination
+    const servingCompanies = pricing.companies ?? (pricing.failure ? [] : logisticsCompanies);
+    const missingLocation = !data.shipping_province.trim() || !data.shipping_city.trim();
+    const missingValidPostal = !/^[0-9]{4}$/.test(data.shipping_postal_code.trim());
+    const completeDoorstepDestination = !missingLocation && !missingValidPostal;
+    const noServingCompany = completeDoorstepDestination
         && pricing.current && pricing.companies !== undefined && pricing.companies.length === 0;
     const selectedCompany = servingCompanies.find(company => String(company.id) === String(data.logistics_company_id));
+    const effectivePickupHubs = pricing.pickupHubs ?? (pricing.failure ? [] : pickupHubs);
+    const companyPickupHubs = selectedCompany
+        ? matchingPickupHubs(effectivePickupHubs, selectedCompany.id, {
+            province: data.shipping_province,
+            city: data.shipping_city,
+            postal_code: data.shipping_postal_code,
+            barangay: data.destination_barangay,
+        })
+        : [];
+    const noSelfPickupHubsForCompany = data.delivery_type === 'hub_self_pickup' && completeDoorstepDestination && Boolean(selectedCompany) && companyPickupHubs.length === 0;
+    const logisticsUnavailableReason = pricing.pending ? ''
+        : missingLocation ? 'Delivery province and city are required before matching a logistics company.'
+            : missingValidPostal ? 'A valid 4-digit postal code is required for your delivery address to match a logistics hub. Add or edit the postal code in Delivery Address.'
+                : pricing.failure ? pricing.failure
+                    : noServingCompany ? `No available logistics company near ${[data.shipping_city, data.shipping_province].filter(Boolean).join(', ')} (${data.shipping_postal_code})${quote.shops.length > 1 ? ' serves all sellers in your bag' : ' serves this route'}.`
+                        : noSelfPickupHubsForCompany ? `No Bayan Hub self-pickup counter is available near ${[data.shipping_city, data.shipping_province].filter(Boolean).join(', ')} (${data.shipping_postal_code}) for ${selectedCompany?.name}. Choose Doorstep Delivery or another address.`
+                            : '';
     const hasInvalidDeliveryLocation = Boolean(errors.shipping_latitude || errors.shipping_longitude);
     const visibleCheckoutErrors = checkoutErrorMessages(errors);
     const routeDetailsReady = completeDoorstepDestination
         && (data.delivery_type === 'doorstep' || Boolean(data.pickup_hub_id));
     const canShowQuote = pricing.ready && routeDetailsReady && Boolean(selectedCompany);
     const quoteStatus = pricing.pending ? 'Updating prices, delivery fees and voucher eligibility…'
-        : pricing.failure ? pricing.failure
-            : noServingCompany ? 'No eligible logistics company serves this address and every seller in your Bag. Try another address.'
-                : !completeDoorstepDestination ? 'Enter a province, city and four-digit postal code to check delivery coverage.'
-                    : data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id ? 'Choose a Bayan Hub to check collection coverage.'
-                    : !selectedCompany ? 'Choose an eligible logistics company to confirm your delivery total.'
-                        : 'Current prices and delivery fees checked.';
+        : logisticsUnavailableReason ? logisticsUnavailableReason
+            : data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id ? 'Choose a Bayan Hub to check collection coverage.'
+                : !selectedCompany ? 'Choose an eligible logistics company to confirm your delivery total.'
+                    : 'Current prices and delivery fees checked.';
     useEffect(() => {
-        if (!pricing.companies) return;
-        const defaultCompanyId = defaultLogisticsCompanyId(pricing.companies, data.logistics_company_id);
+        if (pricing.pending) return;
+        const defaultCompanyId = defaultLogisticsCompanyId(servingCompanies, data.logistics_company_id);
         if (String(defaultCompanyId) !== String(data.logistics_company_id)) {
             setData(previous => ({ ...previous, logistics_company_id: defaultCompanyId, pickup_hub_id: '' }));
+            return;
         }
-    }, [pricing.companies, data.logistics_company_id]);
+        if (data.delivery_type !== 'hub_self_pickup') {
+            if (data.pickup_hub_id !== '') {
+                setData('pickup_hub_id', '');
+            }
+            return;
+        }
+        const defaultHubId = defaultPickupHubId(companyPickupHubs, data.pickup_hub_id);
+        if (String(defaultHubId) !== String(data.pickup_hub_id)) {
+            setData('pickup_hub_id', defaultHubId);
+        }
+    }, [pricing.pending, servingCompanies, data.logistics_company_id, data.delivery_type, companyPickupHubs, data.pickup_hub_id]);
     const [pickerSlot, setPickerSlot] = useState<number | null | undefined>(undefined);
     const [bestBusy, setBestBusy] = useState(false);
     const bestPending = useRef(false);
@@ -286,7 +344,9 @@ export default function CheckoutIndex({
     const quotedItems = new Map(quote.items.map(item => [item.id, item]));
     const subtotal = quote.subtotal;
     const isHubPickup = data.delivery_type === 'hub_self_pickup';
-    const selectedPickupHub = pickupHubs.find(hub => String(hub.id) === String(data.pickup_hub_id));
+    const selectedPickupHub = companyPickupHubs.find(hub => String(hub.id) === String(data.pickup_hub_id));
+    const displayedSelfPickupFee = quote.self_pickup_shipping_fee
+        ?? (isHubPickup ? quote.shipping_fee : estimateSelfPickupFeeFromDoorstep(quote.doorstep_shipping_fee, selectedCompany?.shipping_earnings_model));
     const appliedVouchers = pricing.current ? quote.vouchers ?? (quote.voucher ? [quote.voucher] : []) : [];
     const finalShippingFee = quote.shipping_fee - quote.shipping_discount;
     const grandTotal = quote.total;
@@ -368,15 +428,13 @@ export default function CheckoutIndex({
             return;
         }
 
-        if (data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id) {
-            setValidationError('Please select a designated Bayan Station Hub for self-pickup collection.');
+        if (data.delivery_type === 'hub_self_pickup' && (!data.pickup_hub_id || !selectedPickupHub)) {
+            setValidationError(logisticsUnavailableReason || 'Please select an available Bayan Station Hub serving this delivery address.');
             return;
         }
 
-        if (noServingCompany || !data.logistics_company_id || !selectedCompany) {
-            setValidationError(noServingCompany
-                ? 'No eligible logistics company currently serves this address and every seller in your Bag. Try another address.'
-                : 'Choose a logistics company that serves this delivery route.');
+        if (noServingCompany || logisticsUnavailableReason || !data.logistics_company_id || !selectedCompany) {
+            setValidationError(logisticsUnavailableReason || 'Choose a logistics company that serves this delivery route.');
             return;
         }
 
@@ -602,25 +660,42 @@ export default function CheckoutIndex({
 
                             {/* Minimalist Logistics Carrier Dropdown */}
                             <div>
-                                <label htmlFor="checkout-carrier-select" className="block text-xs font-bold text-slate-800 mb-1.5">
-                                    Logistics Carrier
-                                </label>
+                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                    <label htmlFor="checkout-carrier-select" className="block text-xs font-bold text-slate-800">
+                                        Logistics Carrier
+                                    </label>
+                                    {selectedCompany && !pricing.pending && (
+                                        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                            {servingCompanies.length === 1 ? 'Auto-matched for your route' : 'Auto-selected'}
+                                        </span>
+                                    )}
+                                </div>
                                 <select
                                     id="checkout-carrier-select"
                                     required
+                                    disabled={servingCompanies.length === 0}
                                     value={data.logistics_company_id}
                                     onChange={event => setData({ ...data, logistics_company_id: event.target.value, pickup_hub_id: '' })}
-                                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 shadow-2xs focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-900 shadow-2xs focus:border-[#E00D42] focus:ring-[#E00D42] disabled:bg-slate-100 disabled:text-slate-500"
                                 >
-                                    <option value="">Choose a logistics carrier</option>
+                                    <option value="">{servingCompanies.length === 0 ? 'No available logistics company' : 'Choose a logistics carrier'}</option>
                                     {servingCompanies.map(company => (
                                         <option key={company.id} value={company.id}>{company.name}</option>
                                     ))}
                                 </select>
-                                {noServingCompany && (
-                                    <span className="mt-1.5 block text-xs text-rose-600">
-                                        No approved logistics carrier currently serves this route.
-                                    </span>
+                                {logisticsUnavailableReason && (
+                                    <div role="alert" className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-900">
+                                        <span className="font-medium">{logisticsUnavailableReason}</span>
+                                        {(missingLocation || missingValidPostal) && !isEditingAddress && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditingAddress(true)}
+                                                className="shrink-0 rounded-lg border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-900 hover:bg-amber-100 transition cursor-pointer"
+                                            >
+                                                Add postal code / edit address
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
                                 {errors.logistics_company_id && (
                                     <span className="mt-1 block text-xs text-rose-700">{errors.logistics_company_id}</span>
@@ -665,7 +740,7 @@ export default function CheckoutIndex({
                                     </div>
                                 </label>
 
-                                {/* Option 2: Free Bayan Hub Self-Pickup */}
+                                {/* Option 2: Reduced-Fee Bayan Hub Self-Pickup */}
                                 <label
                                     className={`relative focus-within:ring-2 focus-within:ring-[#E00D42] focus-within:ring-offset-2 p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
                                         data.delivery_type === 'hub_self_pickup'
@@ -683,14 +758,14 @@ export default function CheckoutIndex({
                                                 <div className="flex items-center gap-1.5">
                                                     <p className="text-xs font-bold text-slate-900">Bayan Hub Self-Pickup</p>
                                                     <span className="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-rose-100 text-[#E00D42] font-sans">
-                                                        100% FREE
+                                                        REDUCED FEE
                                                     </span>
                                                 </div>
-                                                <p className="text-[11px] text-slate-500">Pick up at municipal station</p>
+                                                <p className="text-[11px] text-slate-500">Pick up at local hub · Final-mile delivery waived</p>
                                             </div>
                                         </div>
                                         <span className="text-xs font-black font-sans text-[#E00D42]">
-                                            ₱0.00
+                                            {quotePrice(displayedSelfPickupFee)}
                                         </span>
                                     </div>
                                 </label>
@@ -704,66 +779,130 @@ export default function CheckoutIndex({
                                         <div>
                                             <h3 className="text-xs font-bold text-slate-900">Select Collection Station (Bayan Hub)</h3>
                                             <p className="text-[11px] text-slate-500 mt-0.5">
-                                                Select your local Bayan Hub for free self-collection.
+                                                Showing active Bayan Hubs serving your delivery city &amp; postal code. Final-mile doorstep rider delivery is waived.
                                             </p>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label htmlFor="checkout-pickup-hub" className="block text-xs font-semibold text-slate-800 mb-1.5">
-                                            Designated Bayan Station *
-                                        </label>
+                                        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                                            <label htmlFor="checkout-pickup-hub" className="block text-xs font-semibold text-slate-800">
+                                                Designated Bayan Station *
+                                            </label>
+                                            {selectedPickupHub && !pricing.pending && (
+                                                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                                    {companyPickupHubs.length === 1 ? 'Auto-matched for your area' : 'Auto-selected'}
+                                                </span>
+                                            )}
+                                        </div>
                                         <select
                                             id="checkout-pickup-hub"
                                             aria-invalid={Boolean(errors.pickup_hub_id)}
                                             aria-describedby={errors.pickup_hub_id ? 'checkout-pickup-hub-error' : undefined}
                                             required
+                                            disabled={companyPickupHubs.length === 0}
                                             value={data.pickup_hub_id}
                                             onChange={(e) => setData('pickup_hub_id', e.target.value)}
-                                            className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] shadow-2xs"
+                                            className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] shadow-2xs disabled:bg-slate-100 disabled:text-slate-500"
                                         >
-                                            <option value="">-- Choose a Local Bayan Hub Station --</option>
-                                            {pickupHubs.filter(hub => String(hub.logistics_company_id) === String(data.logistics_company_id)).map((hub) => (
+                                            <option value="">
+                                                {missingLocation || missingValidPostal
+                                                    ? 'Complete city, province, and 4-digit postal code first'
+                                                    : companyPickupHubs.length === 0
+                                                        ? 'No self-pickup Bayan Hub covers this area'
+                                                        : '-- Choose a Local Bayan Hub Station --'}
+                                            </option>
+                                            {companyPickupHubs.map((hub) => (
                                                 <option key={hub.id} value={hub.id}>
                                                     [{hub.code}] {hub.name} — {hub.city_municipality}, {hub.province}
                                                 </option>
                                             ))}
                                         </select>
+                                        {(missingLocation || missingValidPostal || noSelfPickupHubsForCompany) && (
+                                            <div role="alert" className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-900">
+                                                <span className="font-medium">
+                                                    {missingLocation
+                                                        ? 'Select your delivery province and city to see available Bayan Hubs.'
+                                                        : missingValidPostal
+                                                            ? 'Add your 4-digit postal code in Delivery Address to match nearby Bayan Hubs.'
+                                                            : `No Bayan Hub self-pickup counter covers ${[data.shipping_city, data.shipping_province].filter(Boolean).join(', ')} (${data.shipping_postal_code}) for ${selectedCompany?.name}.`}
+                                                </span>
+                                                {(missingLocation || missingValidPostal) && !isEditingAddress && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsEditingAddress(true)}
+                                                        className="shrink-0 rounded-lg border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-900 hover:bg-amber-100 transition cursor-pointer"
+                                                    >
+                                                        Add postal code / edit address
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                         {errors.pickup_hub_id && (
                                             <p id="checkout-pickup-hub-error" className="text-rose-700 text-[11px] mt-1">{errors.pickup_hub_id}</p>
                                         )}
                                     </div>
 
-                                    {data.pickup_hub_id && (
+                                    {selectedPickupHub && (
                                         <div className="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1">
-                                            {(() => {
-                                                const selectedHub = pickupHubs.find(h => String(h.id) === String(data.pickup_hub_id));
-                                                if (!selectedHub) return null;
-                                                return (
-                                                    <>
-                                                        <p className="font-bold text-slate-900">{selectedHub.name} ({selectedHub.code})</p>
-                                                        <p className="text-slate-600">{selectedHub.address}, {selectedHub.city_municipality}, {selectedHub.province}</p>
-                                                    </>
-                                                );
-                                            })()}
+                                            <p className="font-bold text-slate-900">{selectedPickupHub.name} ({selectedPickupHub.code})</p>
+                                            <p className="text-slate-600">{selectedPickupHub.address}, {selectedPickupHub.city_municipality}, {selectedPickupHub.province}</p>
+                                            {selectedPickupHub.operating_hours && (
+                                                <p className="text-[11px] text-slate-500">Counter hours: {selectedPickupHub.operating_hours}</p>
+                                            )}
                                         </div>
                                     )}
 
                                 </div>
                             )}
                             <div className="space-y-4">
-                                <div className="flex items-center justify-between pb-1">
+                                <div className="flex items-center justify-between gap-2 pb-1">
                                     <h3 className="text-sm font-bold text-slate-900">Delivery Address</h3>
-                                    {addresses.length > 0 && (
+                                    <div className="flex items-center gap-3">
+                                        <Link
+                                            href={route('buyer.profile', { tab: 'addresses' })}
+                                            className="text-[11px] font-semibold text-[#E00D42] hover:underline"
+                                        >
+                                            Manage Address Book
+                                        </Link>
                                         <button
                                             type="button"
                                             onClick={() => setIsEditingAddress(!isEditingAddress)}
-                                            className="text-xs font-bold text-[#E00D42] hover:underline cursor-pointer"
+                                            aria-expanded={isEditingAddress}
+                                            aria-controls="checkout-address-editor"
+                                            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50/85 px-2.5 py-1 text-xs font-bold text-[#C20836] hover:bg-[#E00D42] hover:text-white transition cursor-pointer"
                                         >
-                                            {isEditingAddress ? 'Minimize' : 'Edit / Change'}
+                                            <span>{isEditingAddress ? 'Minimize' : 'Edit / Change'}</span>
+                                            {isEditingAddress ? <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" /> : <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />}
                                         </button>
-                                    )}
+                                    </div>
                                 </div>
+
+                                {/* Saved Address Dropdown Selector (always visible when buyer has saved addresses) */}
+                                {addresses.length > 0 && (
+                                    <div className="p-3.5 bg-slate-50/80 border border-slate-200 rounded-xl space-y-2">
+                                        <label htmlFor="checkout-saved-address" className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                                            <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
+                                            <span>Select Saved Delivery Destination ({addresses.length})</span>
+                                        </label>
+                                        <select
+                                            id="checkout-saved-address"
+                                            value={selectedAddressId}
+                                            onChange={(e) => {
+                                                handleAddressChange(e.target.value);
+                                                setIsEditingAddress(e.target.value === 'new');
+                                            }}
+                                            className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition cursor-pointer shadow-2xs"
+                                        >
+                                            {addresses.map((addr) => (
+                                                <option key={addr.id} value={String(addr.id)}>
+                                                    {addr.is_default ? '[DEFAULT] ' : ''}{addr.recipient_name} — {addr.street}, {addr.barangay ? `${addr.barangay}, ` : ''}{addr.city}{addr.province ? `, ${addr.province}` : ''} ({addr.phone})
+                                                </option>
+                                            ))}
+                                            <option value="new">+ Enter New / Different Address</option>
+                                        </select>
+                                    </div>
+                                )}
 
                                 {/* Minimized Single-Line Address Summary */}
                                 {!isEditingAddress && (
@@ -782,52 +921,19 @@ export default function CheckoutIndex({
                                         <button
                                             type="button"
                                             onClick={() => setIsEditingAddress(true)}
-                                            className="text-xs font-bold text-[#E00D42] hover:text-[#C20836] shrink-0 ml-3 px-3 py-1.5 rounded-lg border border-slate-300 bg-white shadow-2xs hover:bg-slate-50 transition cursor-pointer"
+                                            aria-expanded={false}
+                                            aria-controls="checkout-address-editor"
+                                            className="inline-flex items-center gap-1 text-xs font-bold border border-rose-200 bg-rose-50/85 text-[#C20836] hover:bg-[#E00D42] hover:text-white shrink-0 ml-3 px-3 py-1.5 rounded-lg shadow-2xs transition cursor-pointer"
                                         >
-                                            Edit
+                                            <span>Edit</span>
+                                            <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
                                         </button>
                                     </div>
                                 )}
 
                                 {/* Collapsible Address Editor Form and Map Pin Picker */}
                                 {isEditingAddress && (
-                                    <div className="space-y-4 pt-1">
-                                        {/* Saved Address Dropdown Selector */}
-                                        {addresses.length > 0 && (
-                                            <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-xl space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <label htmlFor="checkout-saved-address" className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                                                        <MapPin className="w-3.5 h-3.5 text-[#E00D42]" />
-                                                        <span>Select Saved Delivery Destination</span>
-                                                    </label>
-                                                    <Link
-                                                        href={route('buyer.profile', { tab: 'addresses' })}
-                                                        className="text-[11px] font-semibold text-[#E00D42] hover:underline"
-                                                        target="_blank"
-                                                    >
-                                                        Manage Address Book
-                                                    </Link>
-                                                </div>
-                                                <select
-                                                    id="checkout-saved-address"
-                                                    value={selectedAddressId}
-                                                    onChange={(e) => {
-                                                        handleAddressChange(e.target.value);
-                                                        if (e.target.value !== 'new') {
-                                                            setIsEditingAddress(false);
-                                                        }
-                                                    }}
-                                                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs font-medium focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition cursor-pointer shadow-2xs"
-                                                >
-                                                    {addresses.map((addr) => (
-                                                        <option key={addr.id} value={String(addr.id)}>
-                                                            {addr.is_default ? '[DEFAULT] ' : ''}{addr.recipient_name} — {addr.street}, {addr.city} ({addr.phone})
-                                                        </option>
-                                                    ))}
-                                                    <option value="new">+ Enter New / Different Address</option>
-                                                </select>
-                                            </div>
-                                        )}
+                                    <div id="checkout-address-editor" className="space-y-4 pt-1">
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans">
                                             <div>
@@ -871,58 +977,34 @@ export default function CheckoutIndex({
                                                 {errors.shipping_address && <p id="checkout-shipping_address-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_address}</p>}
                                             </div>
 
-                                            <div>
-                                                <label htmlFor="checkout-destination_barangay" className="block font-semibold text-slate-700 mb-1.5">Barangay *</label>
-                                                <input
-                                                    id="checkout-destination_barangay"
-                                                    aria-invalid={Boolean(errors.destination_barangay)}
-                                                    aria-describedby={errors.destination_barangay ? 'checkout-destination_barangay-error' : undefined}
-                                                    type="text"
-                                                    minLength={2}
-                                                    value={data.destination_barangay}
-                                                    required
-                                                    maxLength={100}
-                                                    onChange={(e) => updateDeliveryAddress('destination_barangay', e.target.value)}
-                                                    placeholder="e.g. Brgy. Santisimo Rosario"
-                                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
+                                            <div className="sm:col-span-2">
+                                                <AddressLocationFields
+                                                    values={{
+                                                        region: data.shipping_region,
+                                                        province: data.shipping_province,
+                                                        city: data.shipping_city,
+                                                        barangay: data.destination_barangay,
+                                                    }}
+                                                    onChange={updateDeliveryLocationFields}
+                                                    errors={{
+                                                        province: errors.shipping_province,
+                                                        city: errors.shipping_city,
+                                                        barangay: errors.destination_barangay,
+                                                    }}
+                                                    fieldIds={{
+                                                        region: 'checkout-shipping_region',
+                                                        province: 'checkout-shipping_province',
+                                                        city: 'checkout-shipping_city',
+                                                        barangay: 'checkout-destination_barangay',
+                                                    }}
+                                                    errorIds={{
+                                                        province: 'checkout-shipping_province-error',
+                                                        city: 'checkout-shipping_city-error',
+                                                        barangay: 'checkout-destination_barangay-error',
+                                                    }}
+                                                    appearance="buyer"
+                                                    accent="primary"
                                                 />
-                                                {errors.destination_barangay && <p id="checkout-destination_barangay-error" className="text-rose-700 text-[11px] mt-1">{errors.destination_barangay}</p>}
-                                            </div>
-
-                                            <div>
-                                                <label htmlFor="checkout-shipping_city" className="block font-semibold text-slate-700 mb-1.5">City / Municipality *</label>
-                                                <input
-                                                    id="checkout-shipping_city"
-                                                    aria-invalid={Boolean(errors.shipping_city)}
-                                                    aria-describedby={errors.shipping_city ? 'checkout-shipping_city-error' : undefined}
-                                                    type="text"
-                                                    maxLength={100}
-                                                    minLength={2}
-                                                    value={data.shipping_city}
-                                                    onChange={(e) => updateDeliveryAddress('shipping_city', e.target.value)}
-                                                    required
-                                                    placeholder="e.g. San Pablo City"
-                                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                                />
-                                                {errors.shipping_city && <p id="checkout-shipping_city-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_city}</p>}
-                                            </div>
-
-                                            <div>
-                                                <label htmlFor="checkout-shipping_province" className="block font-semibold text-slate-700 mb-1.5">Province *</label>
-                                                <input
-                                                    id="checkout-shipping_province"
-                                                    aria-invalid={Boolean(errors.shipping_province)}
-                                                    aria-describedby={errors.shipping_province ? 'checkout-shipping_province-error' : undefined}
-                                                    type="text"
-                                                    minLength={2}
-                                                    value={data.shipping_province}
-                                                    required
-                                                    maxLength={100}
-                                                    onChange={(e) => updateDeliveryAddress('shipping_province', e.target.value)}
-                                                    placeholder="e.g. Laguna"
-                                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42] transition"
-                                                />
-                                                {errors.shipping_province && <p id="checkout-shipping_province-error" className="text-rose-700 text-[11px] mt-1">{errors.shipping_province}</p>}
                                             </div>
 
                                             <div>
@@ -1023,9 +1105,12 @@ export default function CheckoutIndex({
                                             <button
                                                 type="button"
                                                 onClick={() => setIsEditingAddress(false)}
-                                                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition shadow-2xs cursor-pointer"
+                                                aria-expanded={true}
+                                                aria-controls="checkout-address-editor"
+                                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#E00D42] text-white text-xs font-bold hover:bg-[#C20836] transition shadow-2xs cursor-pointer"
                                             >
-                                                Done / Minimize Address
+                                                <span>Minimize Address</span>
+                                                <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
                                             </button>
                                         </div>
                                     </div>

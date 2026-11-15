@@ -13,17 +13,48 @@ class HubHandler extends Model
     use HasFactory;
     use RetainsRestrictionHistory;
 
+    public const JOB_ROLE_ALL = 'all';
+
+    public const JOB_ROLE_INTAKE = 'intake';
+
+    public const JOB_ROLE_PACK_DISPATCH = 'pack_dispatch';
+
+    public const JOB_ROLES = [
+        self::JOB_ROLE_ALL,
+        self::JOB_ROLE_INTAKE,
+        self::JOB_ROLE_PACK_DISPATCH,
+    ];
+
     protected $fillable = [
         'user_id',
         'logistics_company_id',
         'hub_id',
         'role_title',
+        'job_role',
         'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public static function roleTitleFor(string $jobRole): string
+    {
+        return match ($jobRole) {
+            self::JOB_ROLE_INTAKE => 'Entry / Intake Worker',
+            self::JOB_ROLE_PACK_DISPATCH => 'Pack & Dispatch Worker',
+            default => 'Hub Operator (All Tasks)',
+        };
+    }
+
+    public static function jobRoleLabel(?string $jobRole): string
+    {
+        return match ($jobRole) {
+            self::JOB_ROLE_INTAKE => 'Entry / Intake only',
+            self::JOB_ROLE_PACK_DISPATCH => 'Pack & Dispatch only',
+            default => 'Full Hub Operations',
+        };
+    }
 
     public function user(): BelongsTo
     {

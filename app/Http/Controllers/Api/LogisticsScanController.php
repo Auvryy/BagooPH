@@ -17,7 +17,12 @@ class LogisticsScanController extends Controller
         $request->merge(app(WaybillScanInputService::class)->normalize($request->only(['barcode', 'action', 'expected_status']), allowTrackingUrl: true));
         $data = $request->validate(['hub_id' => 'required|integer|min:1', 'mode' => 'required|in:inspect,confirm',
             'action' => 'nullable|string|not_in:AUTO_PROGRESS', 'expected_status' => 'nullable|string', 'continuous' => 'prohibited', 'auto_advance' => 'prohibited']);
-        abort_unless($accounts->hubs($request->user())->contains('id', $data['hub_id']), 403, 'This facility is not assigned to your operator account.');
+        $hub = $accounts->hubs($request->user())->firstWhere('id', $data['hub_id']);
+        abort_unless($hub, 403, 'This facility is not assigned to your operator account.');
+        if ($data['mode'] === 'confirm') {
+            abort_unless(app(\App\Services\Logistics\LogisticsEligibilityService::class)->canIntake($request->user(), $hub), 403,
+                'Your current hub job role is Pack & Dispatch only. Ask a manager to switch your role to Entry / Intake.');
+        }
 
         $barcode = $request->input('barcode');
         $isBag = is_string($barcode) && (str_starts_with($barcode, 'BAG-') || str_starts_with($barcode, 'RMB-'));
@@ -47,7 +52,10 @@ class LogisticsScanController extends Controller
             'auto_advance' => 'prohibited',
             'pinned_action' => 'nullable|string|not_in:AUTO_PROGRESS',
         ]);
-        abort_unless($accounts->hubs($request->user())->contains('id', $data['hub_id']), 403, 'This facility is not assigned to your operator account.');
+        $hub = $accounts->hubs($request->user())->firstWhere('id', $data['hub_id']);
+        abort_unless($hub, 403, 'This facility is not assigned to your operator account.');
+        abort_unless(app(\App\Services\Logistics\LogisticsEligibilityService::class)->canIntake($request->user(), $hub), 403,
+            'Your current hub job role is Pack & Dispatch only. Ask a manager to switch your role to Entry / Intake.');
 
         return $workstation->scanBatch($request, $batchService);
     }

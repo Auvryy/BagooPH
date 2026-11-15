@@ -22,6 +22,100 @@ class CargoHandlingService
 
     public const PARCEL_SIDE_CM = 60;
 
+    public const BAG_PRESETS = [
+        'standard' => [
+            'key' => 'standard',
+            'label' => 'Standard Sack (50 parcels · 25 kg · 0.30 m³)',
+            'max_count' => self::BAG_PARCELS,
+            'max_weight_kg' => self::BAG_WEIGHT_KG,
+            'max_volume_cm3' => self::BAG_VOLUME_CM3,
+        ],
+        'compact' => [
+            'key' => 'compact',
+            'label' => 'Small Pouch Sack (80 parcels · 15 kg · 0.20 m³)',
+            'max_count' => 80,
+            'max_weight_kg' => 15,
+            'max_volume_cm3' => 200000,
+        ],
+        'bulk' => [
+            'key' => 'bulk',
+            'label' => 'Bulk / Cage Bag (120 parcels · 50 kg · 0.60 m³)',
+            'max_count' => 120,
+            'max_weight_kg' => 50,
+            'max_volume_cm3' => 600000,
+        ],
+    ];
+
+    public function presets(): array
+    {
+        return array_values(self::BAG_PRESETS);
+    }
+
+    public function resolvePreset(array $input): array
+    {
+        $preset = isset($input['capacity_preset']) && is_string($input['capacity_preset'])
+            ? trim($input['capacity_preset'])
+            : 'standard';
+        if ($preset === '' || $preset === 'standard') {
+            $base = self::BAG_PRESETS['standard'];
+
+            return [
+                'capacity_preset' => 'standard',
+                'max_count' => $base['max_count'],
+                'max_weight_kg' => (float) $base['max_weight_kg'],
+                'max_volume_cm3' => $base['max_volume_cm3'],
+            ];
+        }
+        if (isset(self::BAG_PRESETS[$preset])) {
+            $base = self::BAG_PRESETS[$preset];
+
+            return [
+                'capacity_preset' => $preset,
+                'max_count' => $base['max_count'],
+                'max_weight_kg' => (float) $base['max_weight_kg'],
+                'max_volume_cm3' => $base['max_volume_cm3'],
+            ];
+        }
+        if ($preset !== 'custom') {
+            throw new DomainException('Choose a valid Mother Bag capacity preset or custom limit.');
+        }
+
+        $maxCount = isset($input['max_count']) && is_numeric($input['max_count']) ? (int) $input['max_count'] : self::BAG_PARCELS;
+        $maxWeight = isset($input['max_weight_kg']) && is_numeric($input['max_weight_kg']) ? round((float) $input['max_weight_kg'], 3) : (float) self::BAG_WEIGHT_KG;
+        $maxVolumeCm3 = isset($input['max_volume_cm3']) && is_numeric($input['max_volume_cm3'])
+            ? (int) $input['max_volume_cm3']
+            : (isset($input['max_volume_m3']) && is_numeric($input['max_volume_m3'])
+                ? (int) round((float) $input['max_volume_m3'] * 1000000)
+                : self::BAG_VOLUME_CM3);
+
+        if ($maxCount < 1 || $maxCount > 500) {
+            throw new DomainException('Custom parcel limit must be between 1 and 500 parcels.');
+        }
+        if ($maxWeight < 1 || $maxWeight > 200) {
+            throw new DomainException('Custom weight limit must be between 1 and 200 kg.');
+        }
+        if ($maxVolumeCm3 < 10000 || $maxVolumeCm3 > 2000000) {
+            throw new DomainException('Custom volume limit must be between 0.01 and 2.00 cubic metres.');
+        }
+
+        return [
+            'capacity_preset' => 'custom',
+            'max_count' => $maxCount,
+            'max_weight_kg' => $maxWeight,
+            'max_volume_cm3' => $maxVolumeCm3,
+        ];
+    }
+
+    public function limits(MotherBag $bag): array
+    {
+        return [
+            'preset' => $bag->capacity_preset ?: 'standard',
+            'max_count' => (int) ($bag->max_count ?? self::BAG_PARCELS),
+            'max_weight_kg' => (float) ($bag->max_weight_kg ?? self::BAG_WEIGHT_KG),
+            'max_volume_cm3' => (int) ($bag->max_volume_cm3 ?? self::BAG_VOLUME_CM3),
+        ];
+    }
+
     public function available(): bool
     {
         return Schema::hasColumn('mother_bags', 'packing_policy_version');
@@ -82,10 +176,12 @@ class CargoHandlingService
             $members = $members->concat($bag->returnParcels()->whereNull('removed_at')->get());
         }
         $known = $members->every(fn ($member) => $member->handling_snapshot !== null);
+        $limits = $this->limits($bag);
 
         return ['count' => $members->count(), 'weight_kg' => $known ? round($members->sum(fn ($m) => $m->handling_snapshot['weight_kg']), 3) : null,
             'volume_cm3' => $known ? $members->sum(fn ($m) => $m->handling_snapshot['volume_cm3']) : null,
-            'max_count' => self::BAG_PARCELS, 'max_weight_kg' => self::BAG_WEIGHT_KG, 'max_volume_cm3' => self::BAG_VOLUME_CM3];
+            'preset' => $limits['preset'],
+            'max_count' => $limits['max_count'], 'max_weight_kg' => $limits['max_weight_kg'], 'max_volume_cm3' => $limits['max_volume_cm3']];
     }
 
     public function assertFits(MotherBag $bag, array $profile): void
@@ -97,9 +193,11 @@ class CargoHandlingService
         if ($capacity['weight_kg'] === null || $capacity['volume_cm3'] === null) {
             throw new DomainException('Recheck the existing bag members before adding cargo with unknown capacity.');
         }
-        if ($capacity['count'] >= self::BAG_PARCELS || $capacity['weight_kg'] + $profile['weight_kg'] > self::BAG_WEIGHT_KG
-            || $capacity['volume_cm3'] + $profile['volume_cm3'] > self::BAG_VOLUME_CM3) {
-            throw new DomainException('This bag would exceed 50 parcels, 25 kg or 0.30 cubic metres. Use another open bag.');
+        if ($capacity['count'] >= $capacity['max_count'] || $capacity['weight_kg'] + $profile['weight_kg'] > $capacity['max_weight_kg']
+            || $capacity['volume_cm3'] + $profile['volume_cm3'] > $capacity['max_volume_cm3']) {
+            $volM3 = number_format($capacity['max_volume_cm3'] / 1000000, 2, '.', '');
+            $weight = rtrim(rtrim(number_format($capacity['max_weight_kg'], 3, '.', ''), '0'), '.');
+            throw new DomainException("This bag would exceed {$capacity['max_count']} parcels, {$weight} kg or {$volM3} cubic metres. Use another open bag.");
         }
     }
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BuyerReturnParcel;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\HubHandler;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
@@ -443,6 +444,58 @@ class LogisticsHubWorkstationController extends Controller
                 ];
             });
 
+        $accessibleIds = $accessibleHubs->pluck('id')->all();
+        $directoryHubs = $company && $accessibleIds !== []
+            ? LogisticsHub::eligible()
+                ->with('company')
+                ->where('logistics_company_id', $company->id)
+                ->orderBy('tier')
+                ->orderBy('name')
+                ->get()
+                ->map(fn (LogisticsHub $h) => [
+                    'id' => $h->id,
+                    'name' => $h->name,
+                    'code' => $h->code,
+                    'tier' => $h->tier,
+                    'parent_hub_id' => $h->parent_hub_id,
+                    'company_name' => $h->company?->name ?? $company->name,
+                    'company_code' => $h->company?->code ?? $company->code,
+                    'province' => $h->province,
+                    'city_municipality' => $h->city_municipality,
+                    'barangay' => $h->barangay,
+                    'address' => $h->address,
+                    'latitude' => $h->latitude,
+                    'longitude' => $h->longitude,
+                    'allows_self_pickup' => (bool) $h->allows_self_pickup,
+                    'is_active' => (bool) $h->is_active,
+                ])
+                ->values()
+            : collect();
+
+        $canManageNetwork = $this->eligibility->isCompanyManager($user, $company?->id);
+        $handlers = $canManageNetwork && $company
+            ? HubHandler::query()
+                ->where('logistics_company_id', $company->id)
+                ->where('is_active', true)
+                ->with(['user:id,name,email', 'hub:id,name,code,tier'])
+                ->orderBy('hub_id')
+                ->orderBy('id')
+                ->get()
+                ->filter(fn (HubHandler $assignment) => $assignment->user && $assignment->hub)
+                ->values()
+                ->map(fn (HubHandler $assignment) => [
+                    'id' => $assignment->id,
+                    'user_id' => $assignment->user_id,
+                    'name' => $assignment->user->name,
+                    'email' => $assignment->user->email,
+                    'hub_id' => $assignment->hub_id,
+                    'hub_name' => $assignment->hub->name,
+                    'hub_code' => $assignment->hub->code,
+                    'job_role' => in_array($assignment->job_role, HubHandler::JOB_ROLES, true) ? $assignment->job_role : HubHandler::JOB_ROLE_ALL,
+                    'role_title' => $assignment->role_title,
+                ])
+            : collect();
+
         return Inertia::render('Hub/Network', [
             'riderIntake' => app(RiderCompanyRequestService::class)->companyWorkspace($user, $request->query()),
             'scope' => [
@@ -450,9 +503,12 @@ class LogisticsHubWorkstationController extends Controller
                 'company_code' => $company?->code,
                 'active_hub_id' => $activeHub?->id,
                 'can_switch_facility' => $isCompanyAdministrator,
+                'can_manage_workers' => $canManageNetwork,
                 'can_scan' => $activeHub && $this->eligibility->canScan($user, $activeHub),
             ],
             'hubs' => $networkHubs,
+            'companyDirectoryHubs' => $directoryHubs,
+            'handlers' => $handlers,
             'placementVehicles' => $isCompanyAdministrator
                 ? LogisticsFleet::ready()->where('logistics_company_id', $company?->id ?? 0)
                     ->orderBy('plate_number')->get(['id', 'hub_id', 'plate_number', 'assigned_driver_id'])
@@ -471,6 +527,7 @@ class LogisticsHubWorkstationController extends Controller
             'kind' => 'required|in:handler,courier',
             'email' => 'required|string|email|max:254',
             'hub_id' => 'required|integer|exists:logistics_hubs,id',
+            'job_role' => 'exclude_unless:kind,handler|nullable|in:all,intake,pack_dispatch',
             'vehicle_id' => 'exclude_unless:kind,courier|nullable|integer|exists:logistics_fleet,id',
             'barangay' => ['exclude_unless:kind,courier', 'nullable', 'string', new ApplicationText('notes', 1, 255)],
             'current_hub_id' => 'exclude_unless:kind,courier|nullable|integer|exists:logistics_hubs,id',
@@ -487,7 +544,12 @@ class LogisticsHubWorkstationController extends Controller
         }
         try {
             if ($validated['kind'] === 'handler') {
-                $placements->assignHandler($request->user(), $hub, $account);
+                $placements->assignHandler(
+                    $request->user(),
+                    $hub,
+                    $account,
+                    $validated['job_role'] ?? HubHandler::JOB_ROLE_ALL,
+                );
             } else {
                 $placements->placeCourier($request->user(), $hub, $account,
                     isset($validated['vehicle_id']) ? (int) $validated['vehicle_id'] : null,
@@ -512,6 +574,31 @@ class LogisticsHubWorkstationController extends Controller
         }
 
         return back()->with('success', 'Personnel placement saved.');
+    }
+
+    public function updateHandlerJobRole(Request $request, HubHandler $handler, LogisticsPlacementService $placements): JsonResponse|RedirectResponse
+    {
+        abort_unless($this->eligibility->isCompanyManager($request->user(), $handler->logistics_company_id), 403, 'Only a company or Mother Hub manager can switch worker job locks.');
+        $validated = $request->validate([
+            'job_role' => 'required|in:all,intake,pack_dispatch',
+        ]);
+
+        try {
+            $updated = $placements->updateHandlerJobRole($request->user(), $handler, $validated['job_role']);
+        } catch (DomainException $exception) {
+            if (! $request->wantsJson()) {
+                throw ValidationException::withMessages(['job_role' => $exception->getMessage()]);
+            }
+
+            return $this->operationError($request, $exception->getMessage());
+        }
+
+        $label = HubHandler::jobRoleLabel($updated->job_role);
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'job_role' => $updated->job_role, 'message' => "Worker locked to {$label}."]);
+        }
+
+        return back()->with('success', "Worker job lock updated to {$label}.");
     }
 
     /**
@@ -690,8 +777,15 @@ class LogisticsHubWorkstationController extends Controller
                     'order_number' => $d->order?->order_number ?? 'N/A',
                     'buyer_name' => $d->order?->buyer?->name ?? 'Customer',
                     'buyer_phone' => $d->order?->buyer?->phone ?? 'N/A',
+                    'pickup_store_name' => $d->pickup_store_name,
+                    'pickup_address' => $d->pickup_address,
+                    'pickup_latitude' => $d->pickup_latitude !== null ? (float) $d->pickup_latitude : null,
+                    'pickup_longitude' => $d->pickup_longitude !== null ? (float) $d->pickup_longitude : null,
+                    'delivery_address' => $d->delivery_address,
                     'destination_barangay' => $d->order?->destination_barangay ?? 'N/A',
                     'shipping_city' => $d->order?->shipping_city ?? 'N/A',
+                    'destination_latitude' => $d->order?->destination_latitude !== null ? (float) $d->order->destination_latitude : null,
+                    'destination_longitude' => $d->order?->destination_longitude !== null ? (float) $d->order->destination_longitude : null,
                     'status' => $d->status,
                     'delivery_type' => $d->delivery_type,
                     'destination_bin' => $workstation->recordedBin($d),
@@ -701,7 +795,12 @@ class LogisticsHubWorkstationController extends Controller
                         'name' => $item->product?->name ?? 'Item',
                         'quantity' => $item->quantity,
                     ])->values() ?? [],
+                    'origin_hub' => $d->originBayanHub?->name,
+                    'origin_hub_latitude' => $d->originBayanHub?->latitude !== null ? (float) $d->originBayanHub->latitude : null,
+                    'origin_hub_longitude' => $d->originBayanHub?->longitude !== null ? (float) $d->originBayanHub->longitude : null,
                     'destination_hub' => $d->destinationBayanHub?->name ?? 'Local Hub',
+                    'destination_hub_latitude' => $d->destinationBayanHub?->latitude !== null ? (float) $d->destinationBayanHub->latitude : null,
+                    'destination_hub_longitude' => $d->destinationBayanHub?->longitude !== null ? (float) $d->destinationBayanHub->longitude : null,
                     'rider_name' => $d->assignedRider?->name ?? ($d->courier?->name ?? 'Unassigned'),
                     'first_mile_rider_name' => $d->courier?->name,
                     'final_mile_rider_name' => $d->assignedRider?->name,
@@ -979,6 +1078,9 @@ class LogisticsHubWorkstationController extends Controller
         $barcode = trim($validated['barcode']);
         [$hub] = $this->getActiveHub($request, $request->user());
         abort_unless($hub && $this->eligibility->canScan($request->user(), $hub), 403, 'An active handler assignment is required for floor scans.');
+        if (($validated['mode'] ?? 'inspect') === 'confirm') {
+            abort_unless($this->eligibility->canIntake($request->user(), $hub), 403, 'Your current hub job role is Pack & Dispatch only. Ask a manager to switch your role to Entry / Intake.');
+        }
         if (str_starts_with($barcode, 'BRT-')) {
             $return = BuyerReturnParcel::where('barcode', $barcode)->first();
             abort_unless($return && $return->logistics_company_id === $hub->logistics_company_id, 404, 'This return barcode is not expected in your facility scope.');
@@ -1277,6 +1379,7 @@ class LogisticsHubWorkstationController extends Controller
 
         [$hub] = $this->getActiveHub($request, $request->user());
         abort_unless($hub && $this->eligibility->canScan($request->user(), $hub), 403, 'An active handler assignment is required for floor scans.');
+        abort_unless($this->eligibility->canIntake($request->user(), $hub), 403, 'Your current hub job role is Pack & Dispatch only. Ask a manager to switch your role to Entry / Intake.');
 
         $sourceChannel = $request->is('api/v1/logistics/*') ? 'api' : 'web';
         $result = $batchService->processBatch($request->user(), $hub, $validated, $sourceChannel);
@@ -1678,7 +1781,7 @@ class LogisticsHubWorkstationController extends Controller
         return $this->scanResponse(['success' => true, 'confirmed' => false, 'is_master_bag' => true,
             'message' => 'Bag identified. Verify its seal in bag receiving, then receive individual parcels through their manifest.',
             'prompt' => ['action' => 'INSPECT_BAG', 'expected_status' => $bag->status, 'requires_confirmation' => false],
-            'bag' => ['reference' => $bag->reference, 'seal_number' => $bag->seal_number,
+            'bag' => ['id' => $bag->id, 'reference' => $bag->reference, 'seal_number' => $bag->seal_number,
                 'source_hub' => $bag->source->name, 'destination_hub' => $bag->destination->name,
                 'parcel_count' => $bag->parcels()->whereNull('removed_at')->count(), 'status' => $bag->status,
                 'receiving_url' => $base.'/mother-bags?hub_id='.$hub->id.'&bag='.$bag->id,

@@ -234,7 +234,7 @@ class ExceptionJourneyAcceptanceTest extends TestCase
         $this->assertUncollected($parcel);
         $this->postJson('/hub/release', $input)->assertOk();
         $cash = CodAccount::sole();
-        $this->assertSame([90000, 0, 0, 90000], [$cash->product_subtotal_cents, $cash->shipping_cents, $cash->discount_cents, $cash->expected_cents]);
+        $this->assertSame([90000, 2917, 0, 92917], [$cash->product_subtotal_cents, $cash->shipping_cents, $cash->discount_cents, $cash->expected_cents]);
         $this->assertSame($handler->id, $cash->collector_id);
         $this->assertSame('customer_collected', $parcel->fresh()->status);
         $this->assertSame('delivered', $order->fresh()->status);
@@ -356,7 +356,7 @@ class ExceptionJourneyAcceptanceTest extends TestCase
         $this->assertSame(SellerSettlementService::pesos($record->commission_cents), $ledger->platform_commission);
         $this->assertSame($record->product_cents, $record->seller_cents + $record->commission_cents);
         $this->assertSame(['810.00', '90.00'], [$ledger->seller_amount, $ledger->platform_commission]);
-        $this->assertSame($parcel->delivery_type === 'hub_self_pickup' ? '0.00' : '60.00', $ledger->delivery_fee);
+        $this->assertSame($parcel->delivery_type === 'hub_self_pickup' ? '29.17' : '50.00', $ledger->delivery_fee);
     }
 
     private function originalCheckpoints(Delivery $parcel, ?array $ids = null): array

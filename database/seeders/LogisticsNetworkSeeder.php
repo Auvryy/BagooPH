@@ -132,7 +132,7 @@ class LogisticsNetworkSeeder extends Seeder
                 'latitude' => 14.2789,
                 'longitude' => 121.4172,
                 'capacity' => 2500,
-                'coverage_barangays' => ['Poblacion I', 'Poblacion II', 'Poblacion III', 'Poblacion IV'],
+                'coverage_barangays' => ['Poblacion I', 'Poblacion II', 'Poblacion III', 'Poblacion IV', 'Barangay I', 'Barangay II', 'Barangay III', 'Barangay IV', 'Barangay V'],
                 'allows_self_pickup' => true,
                 'is_active' => true,
             ]
@@ -209,6 +209,7 @@ class LogisticsNetworkSeeder extends Seeder
             ['user_id' => $buyer->id, 'recipient_name' => $buyer->name],
             [
                 'phone' => $buyer->phone,
+                'region' => '0400000000',
                 'province' => 'Laguna',
                 'city' => 'Santa Cruz',
                 'barangay' => 'Poblacion III',

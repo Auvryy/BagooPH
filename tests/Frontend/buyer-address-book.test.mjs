@@ -15,7 +15,7 @@ globalThis.route = name => name ? `/${name.replaceAll('.', '/')}` : { current: (
 const bundle = await build({ stdin: { contents: `export { default as Profile } from '@/Pages/Buyer/Profile';
  export { default as Editor } from '@/Components/BuyerAddressEditor'; export { default as Checkout } from '@/Pages/Checkout/Index';
  export { default as LocationPinPicker } from '@/Components/LocationPinPicker';
- export { validDeliveryPin, changedDeliveryAddress, withDoorstepDelivery, defaultLogisticsCompanyId } from '@/utils/checkoutLocation';
+ export { validDeliveryPin, changedDeliveryAddress, withDoorstepDelivery, defaultLogisticsCompanyId, matchingPickupHubs, defaultPickupHubId, estimateSelfPickupFeeFromDoorstep } from '@/utils/checkoutLocation';
  export * from '@/utils/checkoutErrorMessages';
  export { default as Recipient } from '@/Components/OrderRecipientSummary'; export * from '@/utils/buyerAddresses'; export * from '@/utils/addressLocations';
  export { personalNameError } from '@/utils/registrationValidation';`, resolveDir: root, loader: 'tsx' },
@@ -189,6 +189,35 @@ test('checkout payment, voucher and product areas provide clear icons and first 
  assert.match(html, /src="\/storage\/a-logistics\.svg"/);
  assert.match(html, /Selected carrier: A Logistics/);
 });
+test('address editor requires a four-digit postal code and checkout auto-selects carrier or explains why none is available', async () => {
+ const editorHtml = await render(ui.Editor, { user, address, count: 1, limit: 10, onClose() {} });
+ assert.match(editorHtml, /id="address-postal-code"[^>]*required=""[^>]*aria-required="true"[^>]*maxLength="4"/i);
+ assert.match(editorHtml, /Postal code \*/);
+ assert.doesNotMatch(editorHtml, /Postal code \(optional\)/);
+
+ const checkoutHtml = await render(ui.Checkout, {
+  cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user,
+  kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [address],
+  logisticsCompanies: [{ id: 8, name: 'A Logistics', logo: '/storage/a-logistics.svg' }, { id: 12, name: 'B Logistics', logo: null }],
+ });
+ assert.match(checkoutHtml, /<option value="8" selected=""/);
+ assert.match(checkoutHtml, /Auto-selected/);
+
+ const singleCarrierHtml = await render(ui.Checkout, {
+  cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user,
+  kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [address],
+  logisticsCompanies: [{ id: 8, name: 'A Logistics', logo: '/storage/a-logistics.svg' }],
+ });
+ assert.match(singleCarrierHtml, /<option value="8" selected=""/);
+ assert.match(singleCarrierHtml, /Auto-matched for your route/);
+
+ const noPostalHtml = await render(ui.Checkout, {
+  cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user: { ...user, postal_code: '' },
+  kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [{ ...address, postal_code: '', latitude: 14.28, longitude: 121.42 }], logisticsCompanies: [],
+ });
+ assert.match(noPostalHtml, /A valid 4-digit postal code is required/);
+ assert.match(noPostalHtml, /Add postal code \/ edit address/);
+});
 test('coordinate validation details are replaced with actionable map/GPS guidance', () => {
  const messages = ui.checkoutErrorMessages({
   shipping_latitude: 'The shipping latitude field must be a number.',
@@ -246,12 +275,13 @@ test('address names accept apostrophes and accents but reject numbers, hidden te
  for (const name of ['A', ' ', 'Name 123', 'A'.repeat(101), 'And\u200brea', '<b>Andrea</b>']) assert.ok(ui.buyerAddressErrors({ ...base, recipient_name: name }).recipient_name);
  assert.ok(ui.personalNameError('A'.repeat(51), 'First name'), 'Registration parts retain their existing fifty-character maximum.');
 });
-test('address client feedback covers every required field, mobile formats and optional postal format', () => {
- for (const field of ['recipient_name', 'phone', 'region', 'province', 'city', 'barangay', 'street']) assert.ok(ui.buyerAddressErrors({ ...address, [field]: '' })[field]);
+test('address client feedback covers every required field including postal code and mobile formats', () => {
+ for (const field of ['recipient_name', 'phone', 'region', 'province', 'city', 'barangay', 'street', 'postal_code']) assert.ok(ui.buyerAddressErrors({ ...address, [field]: '' })[field]);
  for (const phone of ['09171234567', '+639171234567']) assert.equal(ui.buyerAddressErrors({ ...address, phone }).phone, undefined);
  for (const phone of ['0917123', '091712345678', '+14155552671']) assert.ok(ui.buyerAddressErrors({ ...address, phone }).phone);
- assert.equal(ui.buyerAddressErrors({ ...address, postal_code: '' }).postal_code, undefined);
+ assert.match(ui.buyerAddressErrors({ ...address, postal_code: '' }).postal_code, /required/i);
  assert.ok(ui.buyerAddressErrors({ ...address, postal_code: '123' }).postal_code);
+ assert.equal(ui.buyerAddressErrors({ ...address, postal_code: '4009' }).postal_code, undefined);
 });
 test('changing ancestors clears dependent location fields while selecting the same value preserves them', () => {
  const values = { region: address.region, province: address.province, city: address.city, barangay: address.barangay };
@@ -295,5 +325,28 @@ test('failed location reads keep saving unavailable and retry without losing ent
  const retry=nodes(h.tree).find(x=>x.type==='button'&&x.props.children==='Try again');retry.props.onClick();h.render();assert.equal(h.requests.length,2);
  h.requests[1].resolve({data:choices});await tick();h.render();assert.equal(h.loading.at(-1),false);
  assert.deepEqual(h.values,{region:'',province:'',city:'',barangay:''});
+ test.after(() => {});
  assert.deepEqual(Object.keys(h.requests[1].options.params).sort(),['city','province','region']);
+});
+test('checkout filters bayan hubs by carrier and destination and shows reduced calculated self-pickup fees', async () => {
+ const santaCruzHub = { id: 3, logistics_company_id: 8, name: 'Santa Cruz Bayan Hub', code: 'BH-SCZ-01', city_municipality: 'Santa Cruz', address: '456 Market Road', province: 'Laguna', postal_codes: ['4009'], operating_hours: 'Monday to Saturday, 8 AM to 6 PM' };
+ const lipaHub = { id: 9, logistics_company_id: 8, name: 'Taal Bayan Hub', code: 'BH-TAAL-01', city_municipality: 'Taal', address: '12 Taal Plaza', province: 'Batangas', postal_codes: ['4208'], operating_hours: 'Monday to Saturday, 8 AM to 6 PM' };
+ const otherCarrierHub = { id: 10, logistics_company_id: 12, name: 'Other Carrier SCZ', code: 'OC-SCZ-01', city_municipality: 'Santa Cruz', address: '99 Other Road', province: 'Laguna', postal_codes: ['4009'] };
+
+ assert.deepEqual(ui.matchingPickupHubs([santaCruzHub, lipaHub, otherCarrierHub], 8, { province: 'Laguna', city: 'Santa Cruz', postal_code: '4009' }).map(h => h.id), [3]);
+ assert.deepEqual(ui.matchingPickupHubs([santaCruzHub, lipaHub, otherCarrierHub], 8, { province: 'Laguna', city: 'Santa Cruz', postal_code: '' }), []);
+ assert.equal(ui.estimateSelfPickupFeeFromDoorstep(60, 'dedicated_fleet'), 35);
+ assert.equal(ui.estimateSelfPickupFeeFromDoorstep(60, 'standard'), 30);
+
+ const pickupHtml = await render(ui.Checkout, {
+  cart: { id: 1 }, items, quote: { ...quote, doorstep_shipping_fee: 60, self_pickup_shipping_fee: 35 },
+  subtotal: 250, shippingFee: 50, total: 300, user, kycStatus: 'approved', checkoutToken: 'confirmation',
+  addresses: [address],
+  logisticsCompanies: [{ id: 8, name: 'A Logistics', logo: null, base_shipping_cents: 6000, included_weight_grams: 1000, additional_kg_cents: 2000, shipping_earnings_model: 'dedicated_fleet' }],
+  pickupHubs: [santaCruzHub, lipaHub, otherCarrierHub],
+ });
+ assert.match(pickupHtml, /REDUCED FEE/);
+ assert.match(pickupHtml, /Final-mile delivery waived/);
+ assert.doesNotMatch(pickupHtml, /100% FREE/);
+ assert.match(pickupHtml, /₱35\.00/);
 });

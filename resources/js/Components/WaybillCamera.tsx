@@ -10,12 +10,20 @@ export default function WaybillCamera({
     onScan,
     disabled = false,
     autoStart = false,
+    continuous = false,
+    cooldownMs = 1800,
+    buttonLabel = 'Scan actual waybill with camera',
+    stopLabel = 'Stop camera',
     instruction = 'Scan the parcel waybill to fill this field. Check the scanned code and complete the required details below.',
     layout = 'default',
 }: {
     onScan: (value: string) => void;
     disabled?: boolean;
     autoStart?: boolean;
+    continuous?: boolean;
+    cooldownMs?: number;
+    buttonLabel?: string;
+    stopLabel?: string;
     instruction?: string;
     layout?: 'default' | 'split';
 }) {
@@ -26,10 +34,12 @@ export default function WaybillCamera({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const generation = useRef(0);
     const autoStarted = useRef(false);
+    const lastSeen = useRef<{ code: string; at: number }>({ code: '', at: 0 });
     const [active, setActive] = useState(false);
     const [starting, setStarting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [streamBlocked, setStreamBlocked] = useState(false);
+    const [lastCode, setLastCode] = useState<string | null>(null);
+    const [, setStreamBlocked] = useState(false);
     const recognized = useRef(onScan);
     recognized.current = onScan;
 
@@ -161,7 +171,23 @@ export default function WaybillCamera({
                 if (cancelled) return;
                 const result = selectWaybill(values, window.location.origin);
                 if (result.error) setError(result.error);
-                if (result.code) { stop(); setError(null); recognized.current(result.code); return; }
+                if (result.code) {
+                    if (continuous) {
+                        const now = Date.now();
+                        if (lastSeen.current.code !== result.code || now - lastSeen.current.at >= cooldownMs) {
+                            lastSeen.current = { code: result.code, at: now };
+                            setError(null);
+                            setLastCode(result.code);
+                            recognized.current(result.code);
+                        }
+                    } else {
+                        stop();
+                        setError(null);
+                        setLastCode(result.code);
+                        recognized.current(result.code);
+                        return;
+                    }
+                }
             } catch {
                 if (cancelled) return;
                 stop();
@@ -172,7 +198,7 @@ export default function WaybillCamera({
         };
         void detect();
         return () => { cancelled = true; if (timer) clearTimeout(timer); };
-    }, [active, disabled, stop]);
+    }, [active, continuous, cooldownMs, disabled, stop]);
 
     if (layout === 'split') {
         return (
@@ -215,7 +241,13 @@ export default function WaybillCamera({
                     aria-label="Actual waybill camera"
                 />
 
-                {instruction && (
+                {active && continuous && lastCode && (
+                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">
+                    Continuous camera live — last scanned: <span className="tabular-nums">{lastCode}</span>
+                </p>
+            )}
+
+            {instruction && (
                     <p className="text-xs text-zinc-500 leading-relaxed">
                         {instruction}
                     </p>
@@ -240,7 +272,7 @@ export default function WaybillCamera({
                     className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50/85 px-3 py-2 text-xs font-semibold text-[#C20836] shadow-2xs hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] transition disabled:opacity-50 cursor-pointer"
                 >
                     <Camera className="h-4 w-4" />
-                    <span>{active ? 'Stop camera' : starting ? 'Starting camera...' : 'Scan actual waybill with camera'}</span>
+                    <span>{active ? stopLabel : starting ? 'Starting camera...' : buttonLabel}</span>
                 </button>
 
                 {/* Direct photo capture fallback for mobile browsers on HTTP */}
@@ -266,6 +298,12 @@ export default function WaybillCamera({
                 className={active ? 'max-h-64 w-full rounded-xl bg-black object-contain border border-zinc-300' : 'hidden'}
                 aria-label="Actual waybill camera"
             />
+
+            {active && continuous && lastCode && (
+                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">
+                    Continuous camera live — last scanned: <span className="tabular-nums">{lastCode}</span>
+                </p>
+            )}
 
             {instruction && (
                 <p className="text-xs text-zinc-500 leading-relaxed">

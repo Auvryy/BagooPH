@@ -78,6 +78,7 @@ class CompanySetupService
     {
         $data = Validator::make($input, [
             'kind' => 'required|in:operator,rider', 'hub_id' => 'required|integer|min:1',
+            'job_role' => 'nullable|in:all,intake,pack_dispatch',
             'first_name' => ['required', 'string', new ApplicationText('name', 2, 100)],
             'last_name' => ['required', 'string', new ApplicationText('name', 2, 100)],
             'birthday' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.app(BirthDateEligibility::class)->limits()['adult_maximum']],
@@ -104,7 +105,15 @@ class CompanySetupService
                 'provisioned_company_id' => $company->id, 'temporary_password_expires_at' => now()->addDays(7)]);
             $user->save();
             if ($role === 'logistics') {
-                HubHandler::create(['user_id' => $user->id, 'logistics_company_id' => $company->id, 'hub_id' => $hub->id, 'is_active' => true]);
+                $jobRole = $data['job_role'] ?? HubHandler::JOB_ROLE_ALL;
+                HubHandler::create([
+                    'user_id' => $user->id,
+                    'logistics_company_id' => $company->id,
+                    'hub_id' => $hub->id,
+                    'job_role' => $jobRole,
+                    'role_title' => HubHandler::roleTitleFor($jobRole),
+                    'is_active' => true,
+                ]);
             } else {
                 CourierProfile::create(['user_id' => $user->id, 'logistics_company_id' => $company->id, 'assigned_hub_id' => $hub->id, 'is_available' => false]);
             }

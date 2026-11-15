@@ -343,6 +343,17 @@ test('public product reviews distinguish legacy rows and render persisted seller
     assert.match(html, /0 Verified Reviews/);
     assert.doesNotMatch(html, /Lowest Price Guaranteed|MALL VERIFIED|PREFERRED|within hours|5\.0 Stars|Guaranteed delivery in/);
 });
+test('product detail renders You may also like grid when related products exist', async () => {
+    const html = await render(ui.Product, 'Buyer/ProductDetail', {
+        product: { ...product, reviews: [] },
+        variations: { colors: [], sizes: [] },
+        relatedProducts: [{ ...product, id: 99, name: 'Matching Pouch', slug: 'matching-pouch' }],
+        shopStats: summary,
+    });
+    assert.match(html, /You may also like/);
+    assert.match(html, /Matching Pouch/);
+    assert.match(html, /aria-label="Add one Matching Pouch to Bag"/);
+});
 test('seller reviews render saved replies and edit controls after refresh', async () => {
     const html = await render(ui.Reviews, 'Seller/Reviews', {
         shop, reviews: paginated([{ id: 1, rating: 3, verified_purchase: true, comment: 'The bag arrived.', buyer: { name: 'Ana Santos' }, reply: { text: 'Your feedback has been recorded.', created_at: '2026-10-01', updated_at: '2026-10-02' } }]),

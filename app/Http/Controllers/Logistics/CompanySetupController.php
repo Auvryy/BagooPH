@@ -31,8 +31,13 @@ class CompanySetupController extends Controller
                 ->map(fn ($hub) => $hub->toArray() + ['coverage_token' => $service->coverageToken($hub), 'location_token' => $service->locationToken($hub)]),
             'staff' => DB::table('company_staff_provisions')->join('users', 'users.id', '=', 'company_staff_provisions.user_id')
                 ->join('logistics_hubs', 'logistics_hubs.id', '=', 'company_staff_provisions.hub_id')
+                ->leftJoin('hub_handlers', function ($join): void {
+                    $join->on('hub_handlers.user_id', '=', 'company_staff_provisions.user_id')
+                        ->on('hub_handlers.hub_id', '=', 'company_staff_provisions.hub_id')
+                        ->where('hub_handlers.is_active', true);
+                })
                 ->where('company_staff_provisions.logistics_company_id', $company->id)
-                ->get(['users.id', 'users.name', 'users.email', 'users.must_change_password', 'users.email_verified_at', 'kind', 'logistics_hubs.name as hub_name']),
+                ->get(['users.id', 'users.name', 'users.email', 'users.must_change_password', 'users.email_verified_at', 'kind', 'logistics_hubs.name as hub_name', 'hub_handlers.id as handler_id', 'hub_handlers.job_role']),
             'basePath' => $request->is('hub/*') ? '/hub/company-setup' : '/company-setup',
         ]);
     }

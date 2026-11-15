@@ -45,7 +45,7 @@ class GoogleRegistrationService
         $rules += app(RegistrationAddressService::class)->rules();
         $rules = app(RegistrationDeliveryPinService::class)->addRules($rules);
         unset($rules['name']);
-        $validated = app(RegistrationAddressService::class)->resolve(Validator::make($values, $rules)->validate());
+        $validated = app(RegistrationAddressService::class)->resolve(Validator::make($values, $rules)->validate(), 'buyer');
         $parts = ['first_name' => $validated['first_name'], 'middle_name' => $validated['middle_initial'] ?? null, 'last_name' => $validated['last_name']];
         $name = implode(' ', array_filter($parts, fn ($value) => $value !== null && $value !== ''));
         Validator::make(['name' => $name], ['name' => $applications->rules('buyer')['name']])->validate();

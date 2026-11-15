@@ -474,6 +474,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::post('/counter/hours', [LogisticsHubWorkstationController::class, 'pickupHours']);
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub']);
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource']);
+        Route::patch('/handlers/{handler}/job-role', [LogisticsHubWorkstationController::class, 'updateHandlerJobRole'])->whereNumber('handler');
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
         Route::post('/scan/batch', [LogisticsHubWorkstationController::class, 'scanBatch'])->middleware('throttle:120,1');
@@ -1027,6 +1028,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/counter/hours', [LogisticsHubWorkstationController::class, 'pickupHours'])->name('counter.hours');
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub'])->name('switchHub');
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource'])->name('placements');
+        Route::patch('/handlers/{handler}/job-role', [LogisticsHubWorkstationController::class, 'updateHandlerJobRole'])->whereNumber('handler')->name('handlers.job-role');
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');
         Route::post('/scan/batch', [LogisticsHubWorkstationController::class, 'scanBatch'])->middleware('throttle:120,1')->name('scan.batch');

@@ -92,6 +92,37 @@ class LogisticsEligibilityService
         return HubHandler::eligible()->where('user_id', $actor->id)->where('hub_id', $hub->id)->exists();
     }
 
+    public function handlerAssignment(User $actor, LogisticsHub $hub): ?HubHandler
+    {
+        return HubHandler::eligible()->where('user_id', $actor->id)->where('hub_id', $hub->id)->first();
+    }
+
+    public function jobRole(User $actor, LogisticsHub $hub): ?string
+    {
+        $assignment = $this->handlerAssignment($actor, $hub);
+        if (! $assignment) {
+            return null;
+        }
+
+        return in_array($assignment->job_role, HubHandler::JOB_ROLES, true)
+            ? $assignment->job_role
+            : HubHandler::JOB_ROLE_ALL;
+    }
+
+    public function canIntake(User $actor, LogisticsHub $hub): bool
+    {
+        $role = $this->jobRole($actor, $hub);
+
+        return $role !== null && in_array($role, [HubHandler::JOB_ROLE_ALL, HubHandler::JOB_ROLE_INTAKE], true);
+    }
+
+    public function canPackDispatch(User $actor, LogisticsHub $hub): bool
+    {
+        $role = $this->jobRole($actor, $hub);
+
+        return $role !== null && in_array($role, [HubHandler::JOB_ROLE_ALL, HubHandler::JOB_ROLE_PACK_DISPATCH], true);
+    }
+
     public function isOperational(?CourierProfile $profile): bool
     {
         return $profile && CourierProfile::operational()->whereKey($profile->id)->exists();

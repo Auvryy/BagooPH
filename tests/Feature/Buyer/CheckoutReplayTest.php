@@ -462,7 +462,7 @@ class CheckoutReplayTest extends TestCase
         $order = Order::with('delivery')->firstOrFail();
         $this->assertSame($second->id, $order->pickup_hub_id);
         $this->assertSame($second->id, $order->delivery->destination_bayan_hub_id);
-        $this->assertSame('0.00', $order->shipping_fee);
+        $this->assertSame('29.17', $order->shipping_fee);
         $this->assertNotNull($order->delivery->origin_mother_hub_id);
         $this->assertFalse($second->fresh()->is_active);
         $this->assertSame($before, $this->snapshots());

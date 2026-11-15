@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { ArrowRight, Check, Circle, MapPin, Package, Search, type LucideIcon } from 'lucide-react';
 
 export const hubInput =
-    'w-full rounded border border-zinc-400 bg-white px-3.5 py-2 text-sm text-[#121316] shadow-2xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 disabled:bg-zinc-100 disabled:text-zinc-400 transition-all';
+    'w-full min-w-0 max-w-full rounded border border-zinc-400 bg-white px-3.5 py-2 text-sm text-[#121316] shadow-2xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 disabled:bg-zinc-100 disabled:text-zinc-400 transition-all';
 
 const buttonBase =
     'inline-flex min-h-9 items-center justify-center gap-2 rounded border px-3.5 py-2 text-xs font-semibold shadow-xs transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E00D42] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';

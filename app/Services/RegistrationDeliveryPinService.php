@@ -10,7 +10,7 @@ class RegistrationDeliveryPinService
     {
         $rules['delivery_latitude'] = ['bail', 'nullable', 'required_with:delivery_longitude', 'numeric', 'regex:/\A-?[0-9]+(?:\.[0-9]{1,7})?\z/', 'between:-90,90'];
         $rules['delivery_longitude'] = ['bail', 'nullable', 'required_with:delivery_latitude', 'numeric', 'regex:/\A-?[0-9]+(?:\.[0-9]{1,7})?\z/', 'between:-180,180'];
-        foreach (['phone', 'region', 'province', 'city', 'barangay', 'address'] as $field) {
+        foreach (['phone', 'region', 'province', 'city', 'barangay', 'address', 'postal_code'] as $field) {
             $rules[$field][] = 'required_with:delivery_latitude,delivery_longitude';
         }
 

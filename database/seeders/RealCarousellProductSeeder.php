@@ -54,21 +54,21 @@ class RealCarousellProductSeeder extends Seeder
             ]);
 
             $shopLocations = [
-                'TechCore Gadgets PH' => ['address' => 'Cyberzone, Aurora Blvd, Cubao', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1100'],
-                'Atelier Femme Studio' => ['address' => 'Salcedo Village, L.P. Leviste St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1200'],
-                'Urban Threads Manila' => ['address' => 'Escolta St, Binondo Heritage District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1000'],
-                'Little Wonders Nursery & Toys' => ['address' => 'Tomas Morato Ave, South Triangle', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1104'],
-                'Living Space Home & Garden' => ['address' => 'Batong Malake, Forestry Road', 'city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030'],
-                'Summit Trail & Fitness' => ['address' => 'Canlubang Commercial Complex', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4027'],
-                'PureGlow Skincare Studio' => ['address' => 'Legazpi Village, Dela Rosa St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1203'],
-                'The Media Collector PH' => ['address' => 'Poblacion Heritage District', 'city' => 'Santa Cruz', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4009'],
-                'Artisan Pantry Gourmet' => ['address' => 'Poblacion, Anos Highway', 'city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030'],
-                'MotoGear Performance PH' => ['address' => 'Bucal Bypass Road, National Highway', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4029'],
-                'ErgoWork Workspace Furniture' => ['address' => 'Poblacion, Century City Walk', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1210'],
-                'Heritage Horology & Gems' => ['address' => 'Ongpin St, Chinatown District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1008'],
-                'Papercraft & Scholar Supplies' => ['address' => 'Katipunan Ave, Loyola Heights', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1105'],
-                'Apex Tactical & Carry Goods' => ['address' => 'Taft Ave, Ermita Commercial Plaza', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1004'],
-                'Manila Pet Supplies Depot' => ['address' => 'Bel-Air Village, Jupiter St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1230'],
+                'TechCore Gadgets PH' => ['address' => 'Cyberzone, Aurora Blvd, Cubao', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1100', 'pickup_latitude' => 14.6208, 'pickup_longitude' => 121.0531],
+                'Atelier Femme Studio' => ['address' => 'Salcedo Village, L.P. Leviste St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1200', 'pickup_latitude' => 14.5596, 'pickup_longitude' => 121.0218],
+                'Urban Threads Manila' => ['address' => 'Escolta St, Binondo Heritage District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1000', 'pickup_latitude' => 14.5992, 'pickup_longitude' => 120.9749],
+                'Little Wonders Nursery & Toys' => ['address' => 'Calle Marcella Agoncillo, Poblacion', 'city' => 'Taal', 'pickup_province' => 'Batangas', 'pickup_postal_code' => '4208', 'pickup_latitude' => 13.8808, 'pickup_longitude' => 120.9235],
+                'Living Space Home & Garden' => ['address' => 'Brgy. Bayanihan, Silangan Highway', 'city' => 'Dolores', 'pickup_province' => 'Quezon', 'pickup_postal_code' => '4326', 'pickup_latitude' => 14.0156, 'pickup_longitude' => 121.4014],
+                'Summit Trail & Fitness' => ['address' => 'Canlubang Commercial Complex', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4027', 'pickup_latitude' => 14.2059, 'pickup_longitude' => 121.1169],
+                'PureGlow Skincare Studio' => ['address' => 'Poblacion East Commercial Strip', 'city' => 'Ibaan', 'pickup_province' => 'Batangas', 'pickup_postal_code' => '4230', 'pickup_latitude' => 13.8186, 'pickup_longitude' => 121.1333],
+                'The Media Collector PH' => ['address' => 'Poblacion Heritage District', 'city' => 'Santa Cruz', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4009', 'pickup_latitude' => 14.2814, 'pickup_longitude' => 121.4161],
+                'Artisan Pantry Gourmet' => ['address' => 'P. Paterno St., Poblacion I', 'city' => 'Nagcarlan', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4002', 'pickup_latitude' => 14.1369, 'pickup_longitude' => 121.4139],
+                'MotoGear Performance PH' => ['address' => 'Bucal Bypass Road, National Highway', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4029', 'pickup_latitude' => 14.1872, 'pickup_longitude' => 121.1684],
+                'ErgoWork Workspace Furniture' => ['address' => 'Sala Business Park, National Hwy', 'city' => 'Cabuyao City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4025', 'pickup_latitude' => 14.2775, 'pickup_longitude' => 121.1233],
+                'Heritage Horology & Gems' => ['address' => 'Ongpin St, Chinatown District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1008', 'pickup_latitude' => 14.6011, 'pickup_longitude' => 120.9765],
+                'Papercraft & Scholar Supplies' => ['address' => 'Katipunan Ave, Loyola Heights', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1105', 'pickup_latitude' => 14.6368, 'pickup_longitude' => 121.0746],
+                'Apex Tactical & Carry Goods' => ['address' => 'Taft Ave, Ermita Commercial Plaza', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1004', 'pickup_latitude' => 14.5812, 'pickup_longitude' => 120.9845],
+                'Manila Pet Supplies Depot' => ['address' => 'Bel-Air Village, Jupiter St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1230', 'pickup_latitude' => 14.5621, 'pickup_longitude' => 121.0258],
             ];
 
             foreach ($categoriesData as $catData) {
@@ -118,17 +118,36 @@ class RealCarousellProductSeeder extends Seeder
                         'city' => $loc['city'],
                         'pickup_province' => $loc['pickup_province'] ?? null,
                         'pickup_postal_code' => $loc['pickup_postal_code'] ?? null,
+                        'pickup_latitude' => $loc['pickup_latitude'] ?? null,
+                        'pickup_longitude' => $loc['pickup_longitude'] ?? null,
                         'status' => 'active',
                         'review_status' => 'approved',
                         'is_default' => true,
                     ]);
                 } else {
+                    $locationChanged = $shop->city !== $loc['city']
+                        || $shop->pickup_province !== ($loc['pickup_province'] ?? null)
+                        || $shop->pickup_postal_code !== ($loc['pickup_postal_code'] ?? null);
                     $shop->update([
                         'address' => $loc['address'],
                         'city' => $loc['city'],
                         'pickup_province' => $loc['pickup_province'] ?? null,
                         'pickup_postal_code' => $loc['pickup_postal_code'] ?? null,
                     ]);
+                    if (($locationChanged || $shop->pickup_latitude === null || $shop->pickup_longitude === null)
+                        && isset($loc['pickup_latitude'], $loc['pickup_longitude'])) {
+                        $shop->update([
+                            'pickup_latitude' => $loc['pickup_latitude'],
+                            'pickup_longitude' => $loc['pickup_longitude'],
+                        ]);
+                    }
+                    if ($locationChanged) {
+                        $seller->update([
+                            'city' => $loc['city'],
+                            'address' => $loc['address'],
+                            'postal_code' => $loc['pickup_postal_code'] ?? $seller->postal_code,
+                        ]);
+                    }
                 }
 
                 // Admin review decision for shop eligibility
@@ -199,6 +218,18 @@ class RealCarousellProductSeeder extends Seeder
                             'price' => $prodData['price'],
                             'compare_at_price' => $prodData['compare_at_price'],
                             'sub_category_id' => $subCategory?->id,
+                            'weight_kg' => (is_numeric($existingProduct->weight_kg) && (float) $existingProduct->weight_kg > 0)
+                                ? $existingProduct->weight_kg
+                                : round(mt_rand(20, 350) / 100, 2),
+                            'length_cm' => (is_numeric($existingProduct->length_cm) && (float) $existingProduct->length_cm > 0)
+                                ? $existingProduct->length_cm
+                                : 25.00,
+                            'width_cm' => (is_numeric($existingProduct->width_cm) && (float) $existingProduct->width_cm > 0)
+                                ? $existingProduct->width_cm
+                                : 18.00,
+                            'height_cm' => (is_numeric($existingProduct->height_cm) && (float) $existingProduct->height_cm > 0)
+                                ? $existingProduct->height_cm
+                                : 10.00,
                             'status' => 'active',
                         ]);
                         continue;
@@ -225,6 +256,9 @@ class RealCarousellProductSeeder extends Seeder
                         'sku' => $sku,
                         'featured_image' => $prodData['image_path'],
                         'weight_kg' => round(mt_rand(20, 350) / 100, 2),
+                        'length_cm' => 25.00,
+                        'width_cm' => 18.00,
+                        'height_cm' => 10.00,
                         'status' => 'active',
                         'rating' => round(4.7 + (mt_rand(0, 3) / 10), 1),
                         'sales_count' => mt_rand(45, 680),

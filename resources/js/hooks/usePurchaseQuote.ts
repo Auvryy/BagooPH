@@ -26,14 +26,28 @@ export interface VoucherOffer {
     uses?: { id: number; used_at: string; saving: number; code: string; name: string }[];
 }
 
+export interface PickupHubQuoteOption {
+    id: number;
+    name: string;
+    code: string;
+    city_municipality: string;
+    address: string;
+    province: string;
+    logistics_company_id: number;
+    postal_codes?: string[] | null;
+    coverage_barangays?: string[] | null;
+    operating_hours?: string | null;
+}
+
 export interface PurchaseQuote {
     subtotal: number;
     shipping_fee: number;
     doorstep_shipping_fee: number;
+    self_pickup_shipping_fee?: number;
     discount: number;
     shipping_discount: number;
     total: number;
-    shops: { shop_id: number; shop_name: string; subtotal: number; shipping: number; doorstep_shipping: number; discount: number; product_discount?: number; shipping_discount?: number; total: number; shipping_quote?: import('@/types').ShippingCalculation }[];
+    shops: { shop_id: number; shop_name: string; subtotal: number; shipping: number; doorstep_shipping: number; self_pickup_shipping?: number; discount: number; product_discount?: number; shipping_discount?: number; total: number; shipping_quote?: import('@/types').ShippingCalculation }[];
     items: { id: number; quantity: number; unit_price: number; subtotal: number; price_segments?: import('@/Components/PriceSegments').PriceSegment[] }[];
     voucher: VoucherOffer | null;
     voucher_error: string | null;
@@ -70,7 +84,8 @@ export default function usePurchaseQuote(input: QuoteInput, initialQuote = empty
     });
     const [fetching, setFetching] = useState(false);
     const [failure, setFailure] = useState('');
-    const [companies, setCompanies] = useState<{ key: string; values: { id: number; name: string; logo?: string | null }[] } | null>(null);
+    const [companies, setCompanies] = useState<{ key: string; values: { id: number; name: string; logo?: string | null; shipping_earnings_model?: 'standard' | 'dedicated_fleet' }[] } | null>(null);
+    const [pickupHubs, setPickupHubs] = useState<{ key: string; values: PickupHubQuoteOption[] } | null>(null);
 
     useEffect(() => {
         const { bag, revision, ...body } = JSON.parse(key) as QuoteInput;
@@ -102,8 +117,10 @@ export default function usePurchaseQuote(input: QuoteInput, initialQuote = empty
             const request = bag
                 ? axios.get(route('cart.index'), { ...options, params: { item_ids: body.item_ids } })
                 : axios.post(route('buyer.vouchers.apply'), body, options);
-            const acceptCompanies = (data: { logisticsCompanies?: { id: number; name: string; logo?: string | null }[] }) => {
-                if (!controller.signal.aborted && Array.isArray(data?.logisticsCompanies)) setCompanies({ key, values: data.logisticsCompanies });
+            const acceptCompanies = (data: { logisticsCompanies?: { id: number; name: string; logo?: string | null; shipping_earnings_model?: 'standard' | 'dedicated_fleet' }[]; pickupHubs?: PickupHubQuoteOption[] }) => {
+                if (controller.signal.aborted) return;
+                if (Array.isArray(data?.logisticsCompanies)) setCompanies({ key, values: data.logisticsCompanies });
+                if (Array.isArray(data?.pickupHubs)) setPickupHubs({ key, values: data.pickupHubs });
             };
             request.then(response => { acceptCompanies(response.data); accept(response.data); }).catch(error => {
                 if (controller.signal.aborted) return;
@@ -134,6 +151,7 @@ export default function usePurchaseQuote(input: QuoteInput, initialQuote = empty
         quote: empty ? emptyPurchaseQuote : snapshot.quote,
         offers: snapshot.offers, pending, failure, current,
         companies: companies?.key === key ? companies.values : undefined,
+        pickupHubs: pickupHubs?.key === key ? pickupHubs.values : undefined,
         validSelection: current ? snapshot.validSelection : undefined,
         selectionErrors: current ? snapshot.selectionErrors : undefined,
         ready: !empty && current && !pending && !failure && !snapshot.quote.voucher_error,
