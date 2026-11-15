@@ -18,7 +18,7 @@ import {
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import CompanyRiderIntake from '@/Components/CompanyRiderIntake';
 import HubMap from '@/Components/Logistics/HubMap';
-import { HubPageHeader, HubPanel } from '@/Components/Logistics/Workspace';
+import { HubPageHeader, HubPanel, InfoHint } from '@/Components/Logistics/Workspace';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import type { CompanyRiderIntake as Intake } from '@/types/riderCompany';
 
@@ -202,17 +202,11 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                 <HubPageHeader
                     title="Hub network"
                     icon={Building2}
-                    actions={activeHub && (
-                        <div className="inline-flex items-center gap-2 rounded border border-zinc-300 bg-white px-3 py-1.5 text-xs shadow-2xs">
-                            <span className="text-zinc-500">Working facility:</span>
-                            <span className="font-semibold text-ink-900">{activeHub.name}</span>
-                            <span className="tabular-nums font-semibold text-brand-500">{activeHub.code}</span>
-                        </div>
-                    )}
+                    roleLabel={scope.company_name}
                 />
 
                 <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
-                    <div className="overflow-hidden rounded border border-zinc-300 bg-white shadow-xs">
+                    <div className="overflow-hidden rounded-card border border-line-200 bg-white">
                         <HubMap
                             hubs={filteredMapHubs}
                             selectedId={selectedHub?.id ?? selectedPeerHub?.id ?? activeHub?.id}
@@ -230,39 +224,31 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                             className="h-[360px]"
                         />
                     </div>
-                    <HubPanel title="Your network at a glance" icon={<Warehouse className="h-4 w-4" />}>
-                        <div className="grid grid-cols-2 divide-x divide-zinc-300 rounded border border-zinc-300 bg-zinc-50/40 p-3.5">
-                            <div className="pr-3">
-                                <p className="tabular-nums text-2xl font-bold tracking-tight tabular-nums text-ink-900">{networkMotherCount}</p>
-                                <p className="mt-0.5 text-xs font-medium text-zinc-500">Mother Hubs</p>
+                    <HubPanel title="Network">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="rounded-control bg-surface-50 p-3">
+                                <p className="flex items-center gap-1.5 text-[13px] text-ink-600"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-[#F97316]" />Mother hubs</p>
+                                <p className="mt-1 text-[28px] font-bold leading-9 tabular-nums text-ink-900">{networkMotherCount}</p>
                             </div>
-                            <div className="pl-3">
-                                <p className="tabular-nums text-2xl font-bold tracking-tight tabular-nums text-ink-900">{networkBayanCount}</p>
-                                <p className="mt-0.5 text-xs font-medium text-zinc-500">Bayan Hubs</p>
+                            <div className="rounded-control bg-surface-50 p-3">
+                                <p className="flex items-center gap-1.5 text-[13px] text-ink-600"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-brand-500" />Bayan hubs</p>
+                                <p className="mt-1 text-[28px] font-bold leading-9 tabular-nums text-ink-900">{networkBayanCount}</p>
                             </div>
-                        </div>
-                        <div className="mt-4 space-y-2.5 border-t border-zinc-300 pt-4 text-xs text-zinc-600">
-                            <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-[#F97316]" />Mother Hub · transfers between service areas</p>
-                            <p className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-brand-500" />Bayan Hub · pickup, local sorting and delivery</p>
                         </div>
                         {activeHub && (
-                            <div className="mt-4 rounded border border-zinc-300 bg-zinc-50/70 p-3">
-                                <p className="text-[11px] font-medium text-zinc-500">Current facility view</p>
-                                <p className="mt-0.5 text-xs font-semibold text-ink-900">{activeHub.name}</p>
-                                {parentHubName(activeHub.parent_hub_id) && (
-                                    <p className="mt-1 text-[11px] text-zinc-500">
-                                        Parent: <span className="font-semibold text-zinc-700">{parentHubName(activeHub.parent_hub_id)}</span>
-                                    </p>
-                                )}
-                            </div>
+                            <dl className="mt-4 space-y-2 text-sm">
+                                <div className="flex justify-between gap-3"><dt className="text-ink-600">You are at</dt><dd className="text-right font-medium text-ink-900">{activeHub.name}</dd></div>
+                                {parentHubName(activeHub.parent_hub_id) && <div className="flex justify-between gap-3"><dt className="text-ink-600">Mother hub</dt><dd className="text-right font-medium text-ink-900">{parentHubName(activeHub.parent_hub_id)}</dd></div>}
+                                <div className="flex justify-between gap-3"><dt className="text-ink-600">Parcels in custody</dt><dd className="font-medium tabular-nums text-ink-900">{parcelsInCustody}</dd></div>
+                            </dl>
                         )}
                     </HubPanel>
                 </div>
 
                 {(scope.can_switch_facility || scope.can_manage_workers) && (
-                    <details open={handlers.length > 0 && !scope.can_switch_facility} className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                        <summary className="cursor-pointer px-5 py-4 text-xs font-semibold text-ink-900 transition-colors hover:bg-zinc-50/50 sm:text-sm">
-                            People & placements <span className="ml-2 text-xs font-normal text-zinc-500">Worker job locks, handler assignments, and rider requests</span>
+                    <details open={handlers.length > 0 && !scope.can_switch_facility} className="overflow-hidden rounded-card border border-line-200 bg-white">
+                        <summary className="cursor-pointer px-5 py-4 text-base font-semibold text-ink-900 transition-colors hover:bg-surface-50">
+                            People &amp; placements {handlers.length > 0 && <span className="ml-1 font-normal text-ink-500">· {handlers.length}</span>}
                         </summary>
                         <div className="space-y-4 border-t border-zinc-100 p-5 sm:p-6">
                             {handlers.length > 0 && (
@@ -270,7 +256,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <div>
                                             <h2 className="text-sm font-semibold text-ink-900">Hub workers &amp; exclusive job locks</h2>
-                                            <p className="mt-1 text-xs text-zinc-500">Each worker can only hold one job role at a time at their assigned hub.</p>
+
                                         </div>
                                         <span className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 tabular-nums">
                                             {handlers.length} active assignments
@@ -318,7 +304,7 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                                     }}
                                 >
                                     <h2 className="text-sm font-semibold text-ink-900">Assign a hub handler</h2>
-                                    <p className="mt-1 text-xs leading-5 text-zinc-500">Use an approved logistics account’s email. New rider assignments use company offers and rider acceptance above.</p>
+
                                     <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                         <label className="space-y-1.5 text-xs font-semibold text-ink-900">
                                             <span>Account email</span>
@@ -533,99 +519,82 @@ export default function HubNetwork({ scope, hubs, companyDirectoryHubs = [], han
                     </section>
                 )}
 
-                {peerDirectoryHubs.length > 0 && (
-                    <section className="space-y-3" aria-label="Connected company family facilities">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                                <h2 className="text-sm font-bold text-ink-900">
-                                    Connected company family ({peerDirectoryHubs.length})
+                {peerDirectoryHubs.length > 0 && (() => {
+                    const mothers = allCompanyHubs.filter(hub => hub.tier === 'regional_mother_hub' && (peerDirectoryHubs.some(peer => peer.id === hub.id) || peerDirectoryHubs.some(peer => peer.parent_hub_id === hub.id)));
+                    const motherIds = new Set(mothers.map(hub => hub.id));
+                    const groups = [
+                        ...mothers.map(mother => ({ mother, children: peerDirectoryHubs.filter(hub => hub.parent_hub_id === mother.id && hub.tier !== 'regional_mother_hub') })),
+                        { mother: null as DirectoryHubItem | null, children: peerDirectoryHubs.filter(hub => hub.tier !== 'regional_mother_hub' && !(hub.parent_hub_id && motherIds.has(hub.parent_hub_id))) },
+                    ].filter(group => group.mother || group.children.length);
+                    const directions = (hub: DirectoryHubItem) => hub.latitude !== null && hub.longitude !== null && (
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${hub.latitude},${hub.longitude}&travelmode=driving`} target="_blank" rel="noopener noreferrer"
+                            aria-label={`Directions to ${hub.name}`} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-500 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
+                            <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                        </a>
+                    );
+                    const viewButton = (hub: DirectoryHubItem) => (
+                        <button type="button" onClick={() => { setSelectedHub(null); setSelectedPeerHub(hub); }}
+                            className="shrink-0 rounded-control px-2.5 py-1 text-[13px] font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
+                            View
+                        </button>
+                    );
+                    return (
+                        <section className="rounded-card border border-line-200 bg-white" aria-label="Connected company family facilities">
+                            <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-5">
+                                <h2 className="flex items-center gap-1 text-base font-semibold text-ink-900">
+                                    Company network <span className="font-normal text-ink-500">· {peerDirectoryHubs.length}</span>
+                                    <InfoHint>View-only directory of mother hubs and sister branches in {scope.company_name}, for transit planning.</InfoHint>
                                 </h2>
-                                <p className="text-xs text-zinc-500">
-                                    Mother hubs and sister branches in {scope.company_name}. View-only directory for transit planning.
-                                </p>
                             </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                            {peerDirectoryHubs.map((hub) => {
-                                const isParent = Boolean(activeHub?.parent_hub_id && hub.id === activeHub.parent_hub_id);
-                                const relation = familyRelationLabel(hub);
-                                const parentLabel = parentHubName(hub.parent_hub_id);
-                                const hasCoords = hub.latitude !== null && hub.longitude !== null;
-
-                                return (
-                                    <article
-                                        key={hub.id}
-                                        className={`flex flex-col rounded-xl border bg-white p-5 shadow-xs transition-all duration-150 ${
- selectedPeerHub?.id === hub.id
- ? 'border-brand-500 ring-1 ring-brand-500/15'
- : isParent
- ? 'border-orange-300 bg-orange-50/20'
- : 'border-zinc-200/90'
- }`}
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
- hub.tier === 'regional_mother_hub'
- ? 'border-orange-200 bg-orange-50 text-orange-600'
- : 'border-rose-200 bg-rose-50 text-brand-500'
- }`}>
-                                                {hub.tier === 'regional_mother_hub'
-                                                    ? <Warehouse className="h-4 w-4" />
-                                                    : <Store className="h-4 w-4" />}
-                                            </span>
-                                            <span className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
- isParent
- ? 'border-orange-200 bg-orange-50 text-orange-800'
- : 'border-zinc-200/90 bg-zinc-50 text-zinc-700'
- }`}>
-                                                {relation}
-                                            </span>
-                                        </div>
-
-                                        <div className="mt-3.5">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="line-clamp-1 text-sm font-bold text-ink-900">{hub.name}</h3>
-                                                <span className="shrink-0 tabular-nums text-xs font-semibold text-zinc-400">{hub.code}</span>
-                                            </div>
-                                            <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-600">
-                                                <MapPin className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
-                                                <span className="line-clamp-1">{hub.city_municipality}, {hub.province}</span>
-                                            </p>
-                                            <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{hub.address}</p>
-                                            {parentLabel && (
-                                                <p className="mt-1.5 text-[11px] font-medium text-zinc-500">
-                                                    Parent Mother Hub: <span className="text-zinc-700">{parentLabel}</span>
-                                                </p>
+                            <div className="mt-3 divide-y divide-line-200">
+                                {groups.map(group => {
+                                    const mother = group.mother;
+                                    const isParent = Boolean(mother && activeHub?.parent_hub_id === mother.id);
+                                    return (
+                                        <div key={mother?.id ?? 'other'} className="px-5 py-4">
+                                            {mother ? (
+                                                <div className={`flex items-center gap-3 rounded-control ${selectedPeerHub?.id === mother.id ? 'bg-brand-50' : ''}`}>
+                                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning">
+                                                        <Warehouse className="h-4 w-4" aria-hidden="true" />
+                                                    </span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-900">
+                                                            <span className="truncate">{mother.name}</span>
+                                                            {isParent && <span className="rounded-chip bg-brand-50 px-1.5 py-0.5 text-xs font-medium text-brand-600">Your mother hub</span>}
+                                                        </p>
+                                                        <p className="truncate text-xs text-ink-600">{mother.code} · {mother.city_municipality}, {mother.province} · {group.children.length} {group.children.length === 1 ? 'child hub' : 'child hubs'}</p>
+                                                    </div>
+                                                    {peerDirectoryHubs.some(peer => peer.id === mother.id) && viewButton(mother)}
+                                                    {directions(mother)}
+                                                </div>
+                                            ) : (
+                                                <p className="text-[13px] font-medium text-ink-600">Other hubs</p>
+                                            )}
+                                            {group.children.length > 0 && (
+                                                <ul className={`mt-2 space-y-0.5 ${mother ? 'ml-[18px] border-l border-line-200 pl-6' : ''}`}>
+                                                    {group.children.map(hub => (
+                                                        <li key={hub.id} className={`flex items-center gap-3 rounded-control px-2 py-1.5 ${selectedPeerHub?.id === hub.id ? 'bg-brand-50' : 'hover:bg-surface-50'}`}>
+                                                            <Store className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="truncate text-sm text-ink-900">
+                                                                    {hub.name} <span className="text-xs text-ink-500">{hub.code}</span>
+                                                                    {activeHub?.parent_hub_id && hub.parent_hub_id === activeHub.parent_hub_id && <span className="ml-2 rounded-chip bg-surface-100 px-1.5 py-0.5 text-xs text-ink-600">Sister hub</span>}
+                                                                </p>
+                                                                <p className="truncate text-xs text-ink-500">{hub.city_municipality}, {hub.province}</p>
+                                                            </div>
+                                                            {viewButton(hub)}
+                                                            {directions(hub)}
+                                                        </li>
+                                                    ))}
+                                                </ul>
                                             )}
                                         </div>
-
-                                        <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-3 text-xs">
-                                            <button
-                                                type="button"
-                                                onClick={() => { setSelectedHub(null); setSelectedPeerHub(hub); }}
-                                                className="inline-flex items-center gap-1 font-semibold text-brand-500 hover:text-brand-600"
-                                            >
-                                                Inspect location
-                                                <ChevronRight className="h-3.5 w-3.5" />
-                                            </button>
-                                            {hasCoords && (
-                                                <a
-                                                    href={`https://www.google.com/maps/dir/?api=1&destination=${hub.latitude},${hub.longitude}&travelmode=driving`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-900 shadow-2xs transition hover:border-brand-500 hover:text-brand-500"
-                                                >
-                                                    <ExternalLink className="h-3 w-3" />
-                                                    Directions
-                                                </a>
-                                            )}
-                                        </div>
-                                    </article>
-                                );
-                            })}
-                        </div>
-                    </section>
-                )}
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    );
+                })()}
 
                 {filteredMapHubs.length === 0 && (
                     <section className="rounded-xl border border-dashed border-zinc-200 bg-white p-12 text-center">
