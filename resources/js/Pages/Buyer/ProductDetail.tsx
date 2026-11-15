@@ -6,6 +6,8 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import VoucherOfferList from '@/Components/VoucherOfferList';
 import SavedProductButton from '@/Components/SavedProductButton';
+import ProductCard from '@/Components/ProductCard';
+import BagHeartButton from '@/Components/BagHeartButton';
 import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import { productQuantityError } from '@/utils/productQuantity';
 import RatingStars, { ratingLabel } from '@/Components/RatingStars';
@@ -929,6 +931,36 @@ export default function BuyerProductDetail({
                         )}
                     </div>
                 </div>
+
+                {/* You May Also Like */}
+                {relatedProducts && relatedProducts.length > 0 && (
+                    <section aria-labelledby="you-may-also-like-heading" className="mt-6 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+                        <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-[#E00D42]" />
+                                <h2 id="you-may-also-like-heading" className="text-sm font-black uppercase tracking-wider text-slate-900 font-sans">
+                                    You may also like
+                                </h2>
+                            </div>
+                            <Link
+                                href={route('buyer.search', product.category?.slug ? { category: product.category.slug } : {})}
+                                className="text-xs font-bold text-[#E00D42] hover:underline font-sans flex items-center gap-0.5"
+                            >
+                                See more <ChevronRight className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3">
+                            {relatedProducts.map((related) => (
+                                <ProductCard
+                                    key={related.id}
+                                    product={related}
+                                    heartControl={<BagHeartButton product={related} />}
+                                    href={route('buyer.products.show', related.slug)}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
 
             </div>
 

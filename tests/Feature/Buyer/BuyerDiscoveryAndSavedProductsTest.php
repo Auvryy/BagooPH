@@ -335,4 +335,28 @@ class BuyerDiscoveryAndSavedProductsTest extends TestCase
         $this->expectException(AuthorizationException::class);
         app(SavedProductService::class)->save($buyer, $product);
     }
+
+    public function test_product_detail_prioritizes_related_products_from_same_category_and_fills_up_to_six(): void
+    {
+        $shop = Shop::factory()->approved()->create();
+        $otherCategory = Category::firstOrCreate(
+            ['name' => 'Home and Garden', 'parent_id' => null],
+            ['slug' => 'home-and-garden', 'is_active' => true]
+        );
+        $otherShop = Shop::factory()->approved()->create(['root_category_id' => $otherCategory->id]);
+
+        $viewed = Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $shop->root_category_id, 'name' => 'Studio Headphones']);
+        $sameCategoryLowSales = Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $shop->root_category_id, 'name' => 'Monitor Earphones', 'sales_count' => 2]);
+        $sameCategoryTopSales = Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $shop->root_category_id, 'name' => 'DAC Amp', 'sales_count' => 80]);
+        $fallbackPopular = Product::factory()->create(['shop_id' => $otherShop->id, 'category_id' => $otherCategory->id, 'name' => 'Desk Lamp', 'sales_count' => 200]);
+
+        $this->get(route('buyer.products.show', $viewed->slug))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Buyer/ProductDetail')
+                ->has('relatedProducts', 3)
+                ->where('relatedProducts.0.id', $sameCategoryTopSales->id)
+                ->where('relatedProducts.1.id', $sameCategoryLowSales->id)
+                ->where('relatedProducts.2.id', $fallbackPopular->id));
+    }
 }

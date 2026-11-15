@@ -98,12 +98,33 @@ class BuyerProductController extends Controller
 
         $product->load(['storeTags' => fn ($query) => $query->where('store_tags.shop_id', $product->shop_id)]);
 
-        $relatedProducts = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
-            ->where('category_id', $product->category_id)
+        $relatedBaseQuery = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])
+            ->availableForSale()
+            ->withReviewSummary()
             ->where('id', '!=', $product->id)
-            ->where('status', 'active')
+            ->where('status', 'active');
+
+        $relatedProducts = (clone $relatedBaseQuery)
+            ->where('category_id', $product->category_id)
+            ->when(
+                $product->sub_category_id,
+                fn ($query, $subCategoryId) => $query->orderByRaw('CASE WHEN sub_category_id = ? THEN 0 ELSE 1 END', [$subCategoryId])
+            )
+            ->orderByDesc('sales_count')
+            ->orderByDesc('id')
             ->take(6)
             ->get();
+
+        if ($relatedProducts->count() < 6) {
+            $excludedIds = $relatedProducts->pluck('id')->push($product->id)->all();
+            $fallbackProducts = (clone $relatedBaseQuery)
+                ->whereNotIn('id', $excludedIds)
+                ->orderByDesc('sales_count')
+                ->orderByDesc('id')
+                ->take(6 - $relatedProducts->count())
+                ->get();
+            $relatedProducts = $relatedProducts->concat($fallbackProducts)->values();
+        }
 
         // Product variations (Colorways & Sizes configured by merchant)
         $variations = $product->variants ?: [
