@@ -189,7 +189,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             <div className="space-y-5 font-sans">
                 <HubPageHeader
                     title="Counter pickup"
-                    roleLabel="Counter releasing desk"
+                    roleLabel={!isCounterHub ? 'Not a pickup counter' : activeHub?.operating_hours ? `Open · ${activeHub.operating_hours}` : 'Counter hours not set'}
                     icon={Store}
                     actions={isCounterHub && canScan ? (
                         <Link
@@ -205,77 +205,20 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                 {isCounterHub && canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-xs"><label className="text-sm font-bold text-[#1C1A17]">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-2 w-full rounded-xl border border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white px-3.5 py-2.5 text-xs text-[#1C1A17] font-medium shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-colors" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3.5 rounded-xl bg-brand-500 hover:bg-brand-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99]">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-xs text-red-700">{errors.operating_hours}</p>}</form>}
                 {isCounterHub && !activeHub?.operating_hours && <p className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs font-medium text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
 
-                {/* 1. 4-COLUMN NOTION METRIC STRIP */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80 rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
-                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
-                        <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                Ready for Buyer Verification (this page)
-                            </p>
-                            <div className="mt-1.5 flex items-baseline gap-2">
-                                <p className="text-2xl font-bold text-zinc-900 tabular-nums">
-                                    {readyNow}
-                                </p>
-                                <span className="text-xs font-semibold text-zinc-500">ready · Staging & valid claim</span>
-                            </div>
-                        </div>
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/90 bg-zinc-50 text-zinc-700">
-                            <Store className="w-4 h-4" />
-                        </div>
-                    </div>
-
-                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
-                        <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                Needs Attention (this page)
-                            </p>
-                            <div className="mt-1.5 flex items-baseline gap-2">
-                                <p className="text-2xl font-bold text-amber-800 tabular-nums">
-                                    {blockedNow}
-                                </p>
-                                <span className="text-xs font-semibold text-amber-700">parcels · Review the blocker</span>
-                            </div>
-                        </div>
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/90 bg-zinc-50 text-zinc-700">
-                            <AlertCircle className="w-4 h-4" />
-                        </div>
-                    </div>
-
-                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
-                        <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                Recent Verified Collections
-                            </p>
-                            <div className="mt-1.5 flex items-baseline gap-2">
-                                <p className="text-2xl font-bold text-zinc-900 tabular-nums">
-                                    {recentlyCollected.length}
-                                </p>
-                                <span className="text-xs font-semibold text-zinc-500">released · Up to five shown</span>
-                            </div>
-                        </div>
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/90 bg-zinc-50 text-zinc-700">
-                            <CheckCircle2 className="w-4 h-4" />
-                        </div>
-                    </div>
-
-                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                Station Location
-                            </p>
-                            <p className="mt-1.5 text-sm font-bold text-zinc-900 truncate">
-                                {activeHub?.name || 'Local Bayan Hub'}
-                            </p>
-                            <p className="mt-0.5 text-xs text-zinc-500 truncate">
-                                {activeHub?.city_municipality || 'Laguna'} ·{' '}
-                                <span className={`font-semibold ${!isCounterHub ? 'text-zinc-500' : activeHub?.operating_hours ? 'text-emerald-700' : 'text-amber-700'}`}>
-                                    {!isCounterHub ? 'Not a pickup counter' : activeHub?.operating_hours ? 'Hours recorded' : 'Setup required'}
-                                </span>
-                            </p>
-                        </div>
-                        <span className="shrink-0 text-xs tabular-nums font-bold px-2 py-0.5 rounded-md bg-zinc-100 text-ink-900 border border-zinc-200">
-                            {activeHub?.code || 'STATION'}
-                        </span>
+                <div className="grid grid-cols-1 overflow-hidden rounded-card border border-line-200 bg-white sm:grid-cols-3">
+                    <button type="button" onClick={() => setCategoryFilter('ready')} aria-pressed={categoryFilter === 'ready'}
+                        className={`border-b border-line-200 p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:border-b-0 sm:border-r sm:p-5 ${categoryFilter === 'ready' ? 'bg-brand-50/60' : 'hover:bg-surface-50'}`}>
+                        <span className="block text-[13px] text-ink-600">Ready to release on this page</span>
+                        <p className="mt-1 text-[28px] font-bold leading-9 tabular-nums text-success">{readyNow}</p>
+                    </button>
+                    <button type="button" onClick={() => setCategoryFilter('attention')} aria-pressed={categoryFilter === 'attention'}
+                        className={`border-b border-line-200 p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:border-b-0 sm:border-r sm:p-5 ${categoryFilter === 'attention' ? 'bg-brand-50/60' : 'hover:bg-surface-50'}`}>
+                        <span className="block text-[13px] text-ink-600">Needs attention on this page</span>
+                        <p className={`mt-1 text-[28px] font-bold leading-9 tabular-nums ${blockedNow > 0 ? 'text-warning' : 'text-ink-900'}`}>{blockedNow}</p>
+                    </button>
+                    <div className="p-4 sm:p-5">
+                        <span className="block text-[13px] text-ink-600">Released recently</span>
+                        <p className="mt-1 text-[28px] font-bold leading-9 tabular-nums text-ink-900">{recentlyCollected.length}</p>
                     </div>
                 </div>
 
@@ -285,19 +228,10 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                     {/* LEFT (8 COLS): STAGED PARCELS FOR HANDOVER */}
                     <div className="lg:col-span-8 bg-white rounded-xl border border-zinc-200/90 shadow-xs overflow-hidden">
                         {/* Cohesive Notion Database Header + Search + Verification Strip */}
-                        <div className="border-b border-zinc-200/80 bg-zinc-50/50 p-5 space-y-3.5">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white border border-zinc-200/90 text-zinc-700 shadow-2xs">
-                                        <Store className="w-3.5 h-3.5" />
-                                    </span>
-                                    <h3 className="text-xs font-bold text-[#1C1A17] font-sans uppercase tracking-wider">
-                                        Counter Parcel Queue
-                                    </h3>
-                                </div>
-                                <span className="inline-flex items-center rounded-md border border-zinc-200/90 bg-white px-2.5 py-0.5 text-xs tabular-nums font-semibold text-zinc-700">
-                                    {counterParcels.total} matching parcels
-                                </span>
+                        <div className="space-y-3 px-5 pt-5">
+                            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                <h3 className="text-base font-semibold text-ink-900">Counter queue</h3>
+                                <span className="text-[13px] tabular-nums text-ink-600">{counterParcels.total} matching parcels</span>
                             </div>
 
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -308,8 +242,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                         aria-label="Search counter parcels"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        placeholder="Tracking code, order number, buyer name or phone..."
-                                        className="w-full pl-9 pr-3.5 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-medium text-[#1C1A17] placeholder:text-zinc-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 shadow-2xs transition-colors"
+                                        placeholder="Search code, order, buyer or phone"
+                                        className={`${hubInput} pl-9`}
                                     />
                                 </form>
                             </div>
@@ -320,8 +254,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 onChange={(id) => setCategoryFilter(id as 'all' | 'ready' | 'attention')}
                                 tabs={[
                                     { id: 'all', label: 'All on page', count: pageParcels.length },
-                                    { id: 'ready', label: 'Ready for Release', count: readyParcels.length },
-                                    { id: 'attention', label: 'Needs Attention / Staging', count: attentionParcels.length },
+                                    { id: 'ready', label: 'Ready to release', count: readyParcels.length },
+                                    { id: 'attention', label: 'Needs attention', count: attentionParcels.length },
                                 ]}
                             />
                         </div>
@@ -330,13 +264,10 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                         {pageParcels.length === 0 ? (
                             <div className="py-14 text-center font-sans">
-                                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-400 mb-3">
-                                    <Store className="w-5 h-5" />
+                                <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface-100 text-ink-500">
+                                    <Store className="h-5 w-5" aria-hidden="true" />
                                 </span>
-                                <p className="text-sm font-bold text-[#1C1A17]">{counterParcels.total > 0 ? 'No parcels on this page' : 'No matching parcels at this counter'}</p>
-                                <p className="text-xs text-zinc-400 mt-1">
-                                    Arrived parcels appear here before staging. Search or change pages to find a parcel.
-                                </p>
+                                <p className="text-sm font-semibold text-ink-900">{counterParcels.total > 0 ? 'No parcels on this page' : 'No matching parcels at this counter'}</p>
                             </div>
                         ) : visibleParcels.length === 0 ? (
                             <div className="py-10 text-center font-sans">
