@@ -212,6 +212,9 @@ test('seller form explains the minimum a fixed shop discount needs and lets the 
         nodes(tree, node => node.type === 'input' && node.props.placeholder === 'e.g. 50')[0].props.onChange({ target: { value: '50' } });
         nodes(tree, node => node.type === 'input' && node.props.placeholder === 'e.g. 100')[0].props.onChange({ target: { value: '10' } });
         tree = h.render();
+        assert.match(text(tree), /Left blank, we use\s+₱55\.56/);
+        nodes(tree, node => node.type === 'input' && node.props.placeholder === 'Auto: 55.56')[0].props.onChange({ target: { value: '30' } });
+        tree = h.render();
         assert.match(text(tree), /Needs to be at least\s+₱55\.56/);
         nodes(tree, node => node.type === 'button' && /^Use\s+₱55\.56$/.test(text(node).trim()))[0].props.onClick();
         tree = h.render();

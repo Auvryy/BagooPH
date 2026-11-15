@@ -345,7 +345,7 @@ class VoucherCampaignService
         $input['discount_value'] = $this->normalizePercent($input['discount_type'] ?? null, $input['discount_value'] ?? null);
         $input['code'] = is_string($input['code'] ?? null) && trim($input['code'], ' ') !== ''
             ? strtoupper(trim($input['code'], ' ')) : ($voucher?->code ?? 'BGO'.strtoupper(substr(hash('sha256', $key), 0, 9)));
-        $input = $this->withSimpleDefaults($input);
+        $input = $this->withSimpleDefaults($input, $issuer);
         $data = Validator::make($input, [
             'code' => $voucher
                 ? ['required', 'string', Rule::in([$voucher->code])]
@@ -399,12 +399,27 @@ class VoucherCampaignService
      * a fixed or shipping discount caps itself at its own amount, one use per buyer by default, no minimum
      * unless set, and a spending ceiling of "max saving per order x number of vouchers". Explicit values win.
      */
-    private function withSimpleDefaults(array $input): array
+    private function withSimpleDefaults(array $input, string $issuer): array
     {
         $blank = fn (string $key) => ! array_key_exists($key, $input) || $input[$key] === null || (is_string($input[$key]) && trim($input[$key]) === '');
         $money = fn ($value) => is_string($value) || is_int($value) || is_float($value) ? preg_match(CodMoney::RULE, (string) $value) === 1 : false;
         if ($blank('min_spend')) {
+            // A shop's peso-off voucher must fit inside the seller's share of the qualifying items, so a blank
+            // minimum becomes the smallest order that keeps the payout covered. Percent and Bagoo offers need none.
             $input['min_spend'] = '0';
+            if ($issuer === 'shop' && ($input['discount_type'] ?? null) === 'fixed' && $money($input['discount_value'] ?? null)) {
+                $discount = CodMoney::cents((string) $input['discount_value']);
+                if (! $blank('max_discount') && $money($input['max_discount'])) {
+                    $discount = min($discount, CodMoney::cents((string) $input['max_discount']));
+                }
+                if ($discount > 0) {
+                    $minimum = (int) ceil($discount / 0.9);
+                    while (SellerSettlementService::split($minimum)['seller_cents'] < $discount) {
+                        $minimum++;
+                    }
+                    $input['min_spend'] = number_format($minimum / 100, 2, '.', '');
+                }
+            }
         }
         if ($blank('per_buyer_limit')) {
             $input['per_buyer_limit'] = 1;

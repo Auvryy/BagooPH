@@ -47,14 +47,34 @@ class SimpleVoucherFormTest extends TestCase
         $this->assertSame(20, $revision->global_limit);
     }
 
-    public function test_seller_minimum_must_still_cover_the_discount_from_the_seller_share(): void
+    public function test_blank_minimum_is_set_to_the_smallest_order_that_keeps_the_seller_share_covered(): void
     {
         $seller = User::factory()->seller()->create();
         Shop::factory()->approved()->create(['user_id' => $seller->id]);
 
-        $this->actingAs($seller)->post('/seller/vouchers', $this->essentials())
+        $this->actingAs($seller)->post('/seller/vouchers', $this->essentials(['publish_after_save' => true]))
+            ->assertSessionHasNoErrors();
+        $this->assertSame(5556, Voucher::sole()->currentRevision->minimum_cents, '50 off needs a 55.56 order so the 90% share covers it.');
+    }
+
+    public function test_a_typed_minimum_that_is_too_low_is_still_rejected(): void
+    {
+        $seller = User::factory()->seller()->create();
+        Shop::factory()->approved()->create(['user_id' => $seller->id]);
+
+        $this->actingAs($seller)->post('/seller/vouchers', $this->essentials(['min_spend' => '30']))
             ->assertSessionHasErrors('min_spend');
         $this->assertDatabaseCount('voucher_revisions', 0);
+    }
+
+    public function test_percent_and_bagoo_vouchers_need_no_minimum(): void
+    {
+        $seller = User::factory()->seller()->create();
+        Shop::factory()->approved()->create(['user_id' => $seller->id]);
+
+        $this->actingAs($seller)->post('/seller/vouchers', $this->essentials(['discount_type' => 'percent', 'discount_value' => '10', 'max_discount' => '50', 'publish_after_save' => true]))
+            ->assertSessionHasNoErrors();
+        $this->assertSame(0, Voucher::sole()->currentRevision->minimum_cents);
     }
 
     public function test_percent_discount_still_needs_a_cap(): void

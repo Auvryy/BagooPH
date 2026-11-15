@@ -56,10 +56,17 @@ export default function CampaignForm({ campaign, platform, onClose }: { campaign
     const uses = /^[1-9][0-9]*$/.test(form.data.usage_limit) ? Number(form.data.usage_limit) : 0;
     const ceiling = toCents(form.data.budget) || perUseCap * uses;
     const minimumCents = toCents(form.data.min_spend);
-    // Shop vouchers must fit inside the seller's 90% share of the minimum order.
-    const requiredMinimum = !platform && type === 'fixed' && valueCents > 0 ? Math.ceil(valueCents / 0.9) : 0;
-    const minimumTooLow = requiredMinimum > 0 && minimumCents < requiredMinimum;
-    const example = previewPromotion({ discount_type: type, discount_value: form.data.discount_value, max_discount: plainAmount(perUseCap || valueCents) }, plainAmount(Math.max(minimumCents, requiredMinimum)));
+    // A shop's peso-off voucher must fit inside the seller's 90% share of the qualifying items. Same rounding as the server:
+    // a blank minimum is filled with this value automatically; percent and Bagoo vouchers need no minimum.
+    const requiredMinimum = (() => {
+        if (platform || type !== 'fixed' || valueCents <= 0) return 0;
+        let cents = Math.ceil(valueCents / 0.9);
+        while (cents - Math.floor((cents + 5) / 10) < valueCents) cents++;
+        return cents;
+    })();
+    const minimumTooLow = requiredMinimum > 0 && minimumCents > 0 && minimumCents < requiredMinimum;
+    const effectiveMinimum = minimumCents || requiredMinimum;
+    const example = previewPromotion({ discount_type: type, discount_value: form.data.discount_value, max_discount: plainAmount(perUseCap || valueCents) }, plainAmount(effectiveMinimum));
 
     const setNumber = (name: 'discount_value' | 'min_spend' | 'max_discount' | 'budget', value: string, allowPercent = false) => {
         const pattern = allowPercent ? /^(?:0|[1-9][0-9]*)?(?:\.[0-9]{0,2})?%?$/ : /^(?:0|[1-9][0-9]*)?(?:\.[0-9]{0,2})?$/;
@@ -146,9 +153,13 @@ export default function CampaignForm({ campaign, platform, onClose }: { campaign
 
                 <Section step={2} title="Who can use it?">
                     <label className={label}>
-                        Minimum order (₱)
-                        <input type="text" inputMode="decimal" maxLength={12} value={form.data.min_spend} placeholder={requiredMinimum ? `At least ${plainAmount(requiredMinimum)}` : 'No minimum'}
+                        Minimum order (₱) <span className="font-normal text-ink-500">(optional)</span>
+                        <input type="text" inputMode="decimal" maxLength={12} value={form.data.min_spend} placeholder={requiredMinimum ? `Auto: ${plainAmount(requiredMinimum)}` : 'No minimum'}
                             onChange={event => setNumber('min_spend', event.target.value)} aria-invalid={!!form.errors.min_spend || minimumTooLow} className={`${field} sm:max-w-xs`} />
+                        {!minimumTooLow && !form.errors.min_spend && requiredMinimum > 0 && minimumCents === 0 && (
+                            <p className="mt-1.5 text-xs text-ink-600">Left blank, we use {campaignMoney(requiredMinimum)} so the discount always fits your share{form.data.product_scope === 'selected' ? ' (counting only the selected products)' : ''}.</p>
+                        )}
+                        {form.data.product_scope === 'selected' && (minimumCents > 0 || requiredMinimum === 0) && <p className="mt-1.5 text-xs text-ink-600">Only the selected products count toward the minimum.</p>}
                         {minimumTooLow && !form.errors.min_spend && (
                             <p className="mt-1.5 text-[13px] text-warning">
                                 Needs to be at least {campaignMoney(requiredMinimum)} so your share covers the discount.{' '}
@@ -248,7 +259,7 @@ export default function CampaignForm({ campaign, platform, onClose }: { campaign
                         {valueCents > 0
                             ? <>{type === 'percent' ? `${form.data.discount_value.replace(/%$/, '')}% off` : type === 'free_shipping' ? `${campaignMoney(valueCents)} off shipping` : `${campaignMoney(valueCents)} off`}
                                 {type === 'percent' && perUseCap > 0 && `, up to ${campaignMoney(perUseCap)}`}
-                                {minimumCents > 0 ? ` on orders of ${campaignMoney(minimumCents)} or more` : ''}</>
+                                {effectiveMinimum > 0 ? ` on ${form.data.product_scope === 'selected' ? 'selected items' : 'orders'} of ${campaignMoney(effectiveMinimum)} or more` : ''}</>
                             : 'Enter a discount to see what buyers get.'}
                     </p>
                     <dl className="mt-3 space-y-1 border-t border-black/5 pt-3 text-[13px]">
