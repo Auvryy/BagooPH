@@ -11,6 +11,7 @@ use App\Services\Logistics\LogisticsAccountService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\MotherBagService;
 use DomainException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -90,6 +91,7 @@ class LogisticsMotherBagController extends Controller
                 'bags' => $bags,
                 'next_hubs' => $nextHubs,
                 'manifests' => $manifests,
+                'vehicles' => MotherBagService::dispatchVehicles($hub),
                 'presets' => $handling->presets(),
             ],
         ]);
@@ -168,6 +170,27 @@ class LogisticsMotherBagController extends Controller
                 default => 'Mother Bag updated.',
             },
             'data' => $this->detail($updated, $actor, $eligibility, $handling),
+        ]);
+    }
+
+    /** Seal (if open), create the manifest, load and dispatch the bag in one call. */
+    public function dispatch(
+        Request $request,
+        MotherBag $bag,
+        MotherBagService $service,
+        LogisticsEligibilityService $eligibility,
+        CargoHandlingService $handling,
+    ): JsonResponse {
+        try {
+            $result = $service->dispatchBag($bag, $request->user(), $request->all());
+        } catch (DomainException|AuthorizationException $error) {
+            return response()->json(['message' => $error->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => "Bag sealed and dispatched on {$result['manifest']->reference}.",
+            'data' => $this->detail($result['bag'], $request->user(), $eligibility, $handling),
+            'manifest' => ['id' => $result['manifest']->id, 'reference' => $result['manifest']->reference, 'status' => $result['manifest']->status],
         ]);
     }
 

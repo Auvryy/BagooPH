@@ -4,6 +4,7 @@ namespace App\Services\Logistics;
 
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
+use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
@@ -140,8 +141,8 @@ class MotherBagService
             if ($bag) {
                 $c = app(CargoHandlingService::class)->capacity($bag);
                 if ($c['weight_kg'] !== null && ($c['count'] >= $c['max_count']
-                    || $c['weight_kg'] + $profile['weight_kg'] > $c['max_weight_kg']
-                    || $c['volume_cm3'] + $profile['volume_cm3'] > $c['max_volume_cm3'])) {
+                    || $c['max_weight_kg'] < $c['weight_kg'] + $profile['weight_kg']
+                    || $c['max_volume_cm3'] < $c['volume_cm3'] + $profile['volume_cm3'])) {
                     if (! empty($data['physical_tag'])) {
                         throw new DomainException('This sack is full for the scanned parcel. Seal its current contents, then use another physical sack.');
                     }
@@ -360,6 +361,69 @@ class MotherBagService
             }
 
             return $bag;
+        });
+    }
+
+    /** Trucks at this hub that have a driver and can carry a bag to its next hub. */
+    public static function dispatchVehicles(LogisticsHub $hub, ?LogisticsHub $destination = null): array
+    {
+        // Feeder runs use a closed van and Mother-to-Mother line-haul a wing truck; pickup bikes never carry bags.
+        $types = $destination ? [app(LogisticsManifestService::class)->legType($hub, $destination) === 'line_haul' ? 'wing_truck' : 'l300_van'] : ['l300_van', 'wing_truck'];
+
+        return LogisticsFleet::ready()->where('logistics_company_id', $hub->logistics_company_id)->where('hub_id', $hub->id)->whereIn('vehicle_type', $types)
+            ->whereNotNull('assigned_driver_id')
+            ->whereNotIn('id', LogisticsManifest::awaitingPhysicalReceipt()->whereNotNull('vehicle_id')->select('vehicle_id'))
+            ->with('driver:id,name')->orderBy('plate_number')->get()
+            ->map(fn (LogisticsFleet $vehicle) => ['id' => $vehicle->id, 'hub_id' => $vehicle->hub_id, 'plate' => $vehicle->plate_number,
+                'type' => $vehicle->vehicle_type, 'driver' => $vehicle->driver?->name])->values()->all();
+    }
+
+    /**
+     * One step from a packed bag to a departed bag: seal it (if still open), create its manifest for the chosen
+     * truck, load it, seal the manifest and dispatch. Workers never build manifests by hand for Mother Bags.
+     * Every inner step keeps its own checks; a retry with the same request token returns the same dispatch.
+     */
+    public function dispatchBag(MotherBag $snapshot, User $actor, array $input): array
+    {
+        $data = Validator::make(app(WaybillScanInputService::class)->normalize($input), [
+            'vehicle_id' => ['required', new AsciiPositiveInteger, 'integer', 'min:1'],
+            'seal_number' => ['nullable', 'string', 'max:80', 'regex:/\A[A-Za-z0-9-]+\z/'],
+            'request_token' => ['required', 'uuid'],
+        ], ['vehicle_id.required' => 'Choose the truck carrying this bag.'])->validate();
+        abort_unless($this->readable($actor)->whereKey($snapshot->id)->exists(), 403);
+        $this->packOperator($actor, LogisticsHub::eligible()->findOrFail($snapshot->source_hub_id));
+        $manifests = app(LogisticsManifestService::class);
+
+        return DB::transaction(function () use ($snapshot, $actor, $data, $manifests) {
+            $bag = MotherBag::whereKey($snapshot->id)->lockForUpdate()->firstOrFail();
+            if ($bag->manifest_id && $bag->manifest?->creation_token === $data['request_token'] && $bag->manifest->status === 'dispatched') {
+                return ['bag' => $bag, 'manifest' => $bag->manifest];
+            }
+            if ($bag->status === 'open') {
+                if (empty($data['seal_number'])) {
+                    throw new DomainException('Enter the seal number before dispatching.');
+                }
+                $bag = $this->command($bag, $actor, 'seal', ['version' => $bag->version, 'seal_number' => $data['seal_number']])->fresh();
+            }
+            if ($bag->status !== 'sealed') {
+                throw new DomainException('This bag already left. Open it from its manifest at the receiving hub.');
+            }
+            if (! $bag->manifest_id) {
+                $manifest = $manifests->create($actor, ['source_hub_id' => $bag->source_hub_id, 'destination_hub_id' => $bag->destination_hub_id,
+                    'vehicle_id' => (int) $data['vehicle_id'], 'creation_token' => $data['request_token']], $data['request_token']);
+                $bag = $this->command($bag, $actor, 'load', ['version' => $bag->version, 'barcode' => $bag->reference,
+                    'seal_number' => $bag->seal_number, 'manifest_id' => $manifest->id])->fresh();
+            }
+            $manifest = LogisticsManifest::findOrFail($bag->manifest_id);
+            if ($manifest->status === 'draft') {
+                $manifest = $manifests->command($manifest, $actor, 'seal', ['version' => $manifest->version, 'request_token' => (string) Str::uuid()])['manifest']->fresh();
+            }
+            if ($manifest->status === 'sealed') {
+                $manifest = $manifests->command($manifest, $actor, 'dispatch', ['version' => $manifest->version, 'request_token' => (string) Str::uuid(),
+                    'notes' => 'Dispatched with Mother Bag '.$bag->reference.'.'])['manifest']->fresh();
+            }
+
+            return ['bag' => $bag->fresh(), 'manifest' => $manifest];
         });
     }
 

@@ -116,6 +116,8 @@ Route::prefix('v1/logistics')->middleware(PrivateRiderResponse::class)->group(fu
     Route::get('mother-bags', [LogisticsMotherBagController::class, 'index'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:60,1']);
     Route::post('mother-bags', [LogisticsMotherBagController::class, 'store'])->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:30,1']);
     Route::get('mother-bags/{bag}', [LogisticsMotherBagController::class, 'show'])->whereUuid('bag')->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:60,1']);
+    Route::post('mother-bags/{bag}/dispatch', [LogisticsMotherBagController::class, 'dispatch'])->whereUuid('bag')
+        ->middleware([EnsureLogisticsAccountToken::class.':scan', 'throttle:30,1']);
     Route::post('mother-bags/{bag}/{action}', [LogisticsMotherBagController::class, 'command'])
         ->whereUuid('bag')
         ->where('action', 'add|remove|seal|reopen|load|unload|open')

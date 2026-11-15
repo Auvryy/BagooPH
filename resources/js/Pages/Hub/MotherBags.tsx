@@ -10,10 +10,11 @@ import WaybillCamera from '@/Components/WaybillCamera';
 import { nextTransferHubs } from '@/utils/hubWorkspace';
 
 type Hub = HubPlace & { id: number; name: string; code: string; tier: string; logistics_company_id: number; canScan: boolean; canPackDispatch?: boolean; canIntake?: boolean; jobRole?: string };
+type DispatchVehicle = { id: number; hub_id: number; plate: string; type: string; driver: string | null };
 type BagPreset = { key: string; label: string; max_count: number; max_weight_kg: number; max_volume_cm3: number };
 type Bag = { capacity_preset?: string | null; packing_policy_version?: number | null; physical_tag?: string | null; capacity?: { count: number; weight_kg: number | null; volume_cm3: number | null; max_count: number; max_weight_kg: number; max_volume_cm3: number } | null; id: string; reference: string; status: string; seal_number: string | null; version: number; source_hub_id: number; destination_hub_id: number; manifest_id: number | null; parcels_count: number; source: Pick<Hub, 'id' | 'name' | 'code'>; destination: Pick<Hub, 'id' | 'name' | 'code'> };
 type Detail = Bag & { canPack: boolean; canOpen: boolean; sourceJobRole?: string; destinationJobRole?: string; parcels: { handling?: Handling | null; id: number; tracking_number: string; status: string; removed: boolean; received: boolean }[]; events: { event_type: string; barcode_scanned: string | null; actor: string; created_at: string }[] };
-type Props = { activeHubId?: number | null; bagPresets?: BagPreset[]; packingAvailable?: boolean; packingToken?: string; commandToken?: string; bags: { data: Bag[]; links: { url: string | null; label: string; active: boolean }[] }; selectedBag: Detail | null; hubs: Hub[]; manifests: { id: number; reference: string; source_hub_id: number; destination_hub_id: number; vehicle_plate?: string; driver_name?: string }[]; creationToken: string; basePath: string };
+type Props = { activeHubId?: number | null; bagPresets?: BagPreset[]; packingAvailable?: boolean; packingToken?: string; commandToken?: string; bags: { data: Bag[]; links: { url: string | null; label: string; active: boolean }[] }; selectedBag: Detail | null; hubs: Hub[]; manifests: { id: number; reference: string; source_hub_id: number; destination_hub_id: number; vehicle_plate?: string; driver_name?: string }[]; creationToken: string; basePath: string; dispatchVehicles?: DispatchVehicle[] };
 const words = (value: string) => value.replaceAll('_', ' ');
 const DEFAULT_BAG_PRESETS: BagPreset[] = [
     { key: 'standard', label: 'Standard Sack (50 parcels · 25 kg · 0.30 m³)', max_count: 50, max_weight_kg: 25, max_volume_cm3: 300000 },
@@ -21,7 +22,7 @@ const DEFAULT_BAG_PRESETS: BagPreset[] = [
     { key: 'bulk', label: 'Bulk / Cage Bag (120 parcels · 50 kg · 0.60 m³)', max_count: 120, max_weight_kg: 50, max_volume_cm3: 600000 },
 ];
 
-export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, creationToken, basePath, packingAvailable = false, packingToken = creationToken, commandToken = creationToken, activeHubId = null, bagPresets = DEFAULT_BAG_PRESETS }: Props) {
+export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, creationToken, basePath, packingAvailable = false, packingToken = creationToken, commandToken = creationToken, activeHubId = null, bagPresets = DEFAULT_BAG_PRESETS, dispatchVehicles = [] }: Props) {
     const [search, setSearch] = useState('');
     const [bagCategory, setBagCategory] = useState<'all' | 'open' | 'sealed' | 'transit'>('all');
     const [manifestScan, setManifestScan] = useState('');
@@ -75,6 +76,16 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
         notes: '',
         seal_intact: bag?.status === 'in_transit',
     });
+    const send = useForm({ vehicle_id: dispatchVehicles.length === 1 ? String(dispatchVehicles[0].id) : '', seal_number: bag?.seal_number ?? '', request_token: commandToken });
+    useEffect(() => {
+        send.setData({ vehicle_id: dispatchVehicles.length === 1 ? String(dispatchVehicles[0].id) : '', seal_number: bag?.seal_number ?? '', request_token: commandToken });
+    }, [bag?.id, bag?.version]);
+    const dispatchBag = (event: FormEvent) => {
+        event.preventDefault();
+        if (!bag || pending.current) return;
+        pending.current = true;
+        send.post(`${basePath}/${bag.id}/dispatch`, { preserveScroll: true, onFinish: () => { pending.current = false; } });
+    };
     useEffect(() => {
         setManifestScan('');
         setRevertingTracking(null);
@@ -522,8 +533,8 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     <section aria-labelledby="pack-seal-title" className={card}>
                                         <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
                                             <h2 id="pack-seal-title" className="flex items-center gap-1 text-lg font-semibold text-ink-900">
-                                                Pack and seal
-                                                <InfoHint>Scan parcels into this bag, revert any mis-scan, then scan or type the numbered seal. Arriving Mother Hub parcels need their sorting scan in Scan Station first.</InfoHint>
+                                                Pack parcels
+                                                <InfoHint>Scan parcels into this bag and revert any mis-scan. Then seal and dispatch below.</InfoHint>
                                             </h2>
                                             <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] font-medium text-ink-700">
                                                 <input type="checkbox" checked={continuousPack} onChange={event => setContinuousPack(event.target.checked)} className="rounded-chip border-line-300 text-brand-500 focus:ring-brand-500" />
@@ -582,110 +593,68 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                 </div>
                                             )}
 
-                                            <form onSubmit={event => submit(event, 'seal')} className="space-y-3 border-t border-line-200 pt-5">
-                                                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                                                    <label className="min-w-0 flex-1">
-                                                        <span className={fieldLabel}>Numbered seal</span>
-                                                        <input required maxLength={80} className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} placeholder="Scan or type SL-XXXXX" />
-                                                    </label>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => action.setData('seal_number', `SL-${bag.reference.replace(/^BAG-|^RMB-/, '').slice(0, 6)}-${bag.version}`)}
-                                                        className={hubButton}
-                                                    >
-                                                        Auto-fill seal
-                                                    </button>
-                                                    <button type="button" onClick={() => setShowSealScanner(value => !value)} className={hubButton}>
-                                                        <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
-                                                        {showSealScanner ? 'Hide seal camera' : 'Scan seal'}
-                                                    </button>
-                                                    <HubButton primary disabled={action.processing || !bag.parcels_count}>
-                                                        <LockKeyhole className="h-4 w-4" aria-hidden="true" />
-                                                        Seal bag
-                                                    </HubButton>
-                                                </div>
-                                                {showSealScanner && (
-                                                    <WaybillCamera onScan={code => { action.setData('seal_number', code); setShowSealScanner(false); }} buttonLabel="Scan printed seal with camera" instruction="Point the camera at the seal barcode or QR." disabled={action.processing} />
-                                                )}
-                                            </form>
+
                                         </div>
                                     </section>
                                 )}
 
-                                {bag.canPack && bag.status === 'sealed' && !bag.manifest_id && (
-                                    <section aria-labelledby="load-title" className={card}>
-                                        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
+                                {bag.canPack && ['open', 'sealed'].includes(bag.status) && !bag.manifest_id && (
+                                    <section aria-labelledby="dispatch-title" className={card}>
+                                        <form onSubmit={dispatchBag} className="space-y-4 p-5 sm:p-6">
+                                            <h2 id="dispatch-title" className="text-lg font-semibold text-ink-900">Seal &amp; dispatch to {bag.destination.name}</h2>
+                                            {bag.status === 'sealed' ? <p className="text-sm text-ink-700">Sealed · {bag.seal_number}</p> : (
                                             <div>
-                                                <h2 id="load-title" className="text-lg font-semibold text-ink-900">Load onto a vehicle</h2>
-                                                <p className="mt-0.5 text-xs text-ink-600">Master bag tag and seal are pre-filled from this sealed bag. Scan with camera or confirm the vehicle trip below.</p>
+                                                <label className="block">
+                                                    <span className={fieldLabel}>Seal number</span>
+                                                    <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+                                                        <input required maxLength={80} className={`${hubInput} tabular-nums`} value={send.data.seal_number} onChange={event => send.setData('seal_number', event.target.value)} placeholder="Scan or type SL-XXXXX" />
+                                                        <button type="button" onClick={() => send.setData('seal_number', `SL-${bag.reference.replace(/^BAG-|^RMB-/, '').slice(0, 6)}-${bag.version}`)} className={`${hubButton} shrink-0 whitespace-nowrap`}>Auto-fill</button>
+                                                        <button type="button" onClick={() => setShowSealScanner(value => !value)} className={`${hubButton} shrink-0 whitespace-nowrap`}>
+                                                            <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
+                                                            {showSealScanner ? 'Hide camera' : 'Scan seal'}
+                                                        </button>
+                                                    </div>
+                                                </label>
+                                                {showSealScanner && (
+                                                    <div className="mt-3"><WaybillCamera onScan={code => { send.setData('seal_number', code); setShowSealScanner(false); }} buttonLabel="Scan printed seal with camera" instruction="Point the camera at the seal barcode or QR." disabled={send.processing} /></div>
+                                                )}
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setLoadScannerTarget(current => (current === 'barcode' ? null : 'barcode'))}
-                                                    className={hubButton}
-                                                >
-                                                    <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
-                                                    {loadScannerTarget === 'barcode' ? 'Hide bag camera' : 'Scan bag tag'}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setLoadScannerTarget(current => (current === 'seal' ? null : 'seal'))}
-                                                    className={hubButton}
-                                                >
-                                                    <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
-                                                    {loadScannerTarget === 'seal' ? 'Hide seal camera' : 'Scan seal'}
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <form onSubmit={event => submit(event, 'load')} className="space-y-5 p-5 sm:p-6">
-                                            {loadScannerTarget && (
-                                                <WaybillCamera
-                                                    onScan={code => {
-                                                        action.setData(loadScannerTarget === 'barcode' ? 'barcode' : 'seal_number', code);
-                                                        setLoadScannerTarget(null);
-                                                    }}
-                                                    buttonLabel={loadScannerTarget === 'barcode' ? 'Scan master bag QR / barcode' : 'Scan numbered seal barcode'}
-                                                    instruction={loadScannerTarget === 'barcode' ? 'Point the camera at the master bag QR code or barcode.' : 'Point the camera at the numbered seal barcode.'}
-                                                    disabled={action.processing}
-                                                />
                                             )}
-                                            <div className="grid gap-4 sm:grid-cols-2">
-                                                <label><span className={fieldLabel}>Master bag barcode</span><input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.barcode} onChange={event => action.setData('barcode', event.target.value)} /></label>
-                                                <label><span className={fieldLabel}>Numbered seal</span><input required className={`${hubInput} mt-1.5 tabular-nums`} value={action.data.seal_number} onChange={event => action.setData('seal_number', event.target.value)} /></label>
-                                            </div>
-                                            <fieldset className="space-y-3">
-                                                <legend className={`${fieldLabel} mb-1.5`}>Vehicle trip</legend>
-                                                {matchingManifests.length > 0 ? (
-                                                    <div className="grid gap-2 sm:grid-cols-2">
-                                                        {matchingManifests.map(item => {
-                                                            const selected = action.data.manifest_id === String(item.id);
+                                            <fieldset>
+                                                <legend className={`${fieldLabel} mb-1.5`}>Truck</legend>
+                                                {dispatchVehicles.length > 0 ? (
+                                                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                                        {dispatchVehicles.map(vehicle => {
+                                                            const selected = send.data.vehicle_id === String(vehicle.id);
                                                             return (
-                                                                <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-control border px-3 py-2.5 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 ${selected ? 'border-brand-500 bg-brand-50/60' : 'border-line-300 hover:border-ink-400'}`}>
-                                                                    <input type="radio" name="bag-manifest" required value={item.id} checked={selected} onChange={() => { action.setData('manifest_id', String(item.id)); setManifestScan(''); }} className="sr-only" />
+                                                                <label key={vehicle.id} className={`flex cursor-pointer items-center gap-3 rounded-control border px-3 py-2.5 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 ${selected ? 'border-brand-500 bg-brand-50/60' : 'border-line-300 hover:border-ink-400'}`}>
+                                                                    <input type="radio" name="bag-vehicle" required value={vehicle.id} checked={selected} onChange={() => send.setData('vehicle_id', String(vehicle.id))} className="sr-only" />
                                                                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-soft text-warning"><Truck className="h-4 w-4" aria-hidden="true" /></span>
                                                                     <span className="min-w-0">
-                                                                        <span className="block truncate text-sm font-medium text-ink-900">{item.vehicle_plate ?? `Transfer #${item.id}`}</span>
-                                                                        <span className="block truncate text-xs text-ink-600">{item.driver_name ?? 'Recorded driver'} · {item.reference}</span>
+                                                                        <span className="block truncate text-sm font-medium text-ink-900">{vehicle.plate}</span>
+                                                                        <span className="block truncate text-xs text-ink-600">{vehicle.driver ?? 'Driver'} · {vehicle.type.replaceAll('_', ' ')}</span>
                                                                     </span>
                                                                 </label>
                                                             );
                                                         })}
                                                     </div>
                                                 ) : (
-                                                    <p className="rounded-control bg-warning-soft p-3 text-[13px] text-warning">No vehicle trip matches this route yet. Prepare one in Manifests, then come back.</p>
+                                                    <p className="rounded-control bg-warning-soft p-3 text-[13px] text-warning">No truck with a driver at {bag.source.name}. Assign one in Fleet.</p>
                                                 )}
-                                                <details className="text-[13px]">
-                                                    <summary className="cursor-pointer font-medium text-ink-700">Scan a trip reference instead</summary>
-                                                    <input className={`${hubInput} mt-2`} value={manifestScan} autoComplete="off" placeholder="Scan manifest reference"
-                                                        onChange={event => {
-                                                            setManifestScan(event.target.value);
-                                                            const match = matchingManifests.find(item => item.reference.toUpperCase() === event.target.value.trim().toUpperCase());
-                                                            action.setData('manifest_id', match ? String(match.id) : '');
-                                                        }} />
-                                                </details>
                                             </fieldset>
-                                            <HubButton primary disabled={action.processing || !action.data.manifest_id}>Load sealed bag</HubButton>
+                                            {Object.values(send.errors).map((message, index) => <p key={index} role="alert" className="text-sm text-brand-700">{message}</p>)}
+                                            <div className="flex flex-wrap gap-2">
+                                                <HubButton primary disabled={send.processing || !send.data.vehicle_id || !bag.parcels_count || (bag.status === 'open' && !send.data.seal_number.trim())}>
+                                                    <Truck className="h-4 w-4" aria-hidden="true" />
+                                                    {send.processing ? 'Dispatching…' : bag.status === 'open' ? 'Seal & dispatch' : 'Dispatch'}
+                                                </HubButton>
+                                                {bag.status === 'open' && (
+                                                    <button type="button" disabled={action.processing || !bag.parcels_count || !send.data.seal_number.trim()} className={hubButton}
+                                                        onClick={() => { if (!pending.current) { pending.current = true; router.post(`${basePath}/${bag.id}/seal`, { version: bag.version, seal_number: send.data.seal_number }, { preserveScroll: true, onFinish: () => { pending.current = false; } }); } }}>
+                                                        <LockKeyhole className="h-4 w-4" aria-hidden="true" /> Seal only
+                                                    </button>
+                                                )}
+                                            </div>
                                         </form>
                                     </section>
                                 )}

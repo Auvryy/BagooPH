@@ -50,7 +50,7 @@ test('packing page exposes automatic packing when no bag is selected and selecte
     for(const phrase of ['Pack a parcel','Reusable sack tag','Add to bag'])assert.ok(idleContent.includes(phrase),phrase);
 
     const h=harness(t);h.render();const content=text(h.tree);
-    for(const phrase of ['Pack and seal','SACK-001','Packing capacity','Auto-pack parcel'])assert.ok(content.includes(phrase),phrase);
+    for(const phrase of ['Pack parcels','Seal & dispatch','SACK-001','Packing capacity','Auto-pack parcel'])assert.ok(content.includes(phrase),phrase);
     assert.doesNotMatch(content,/Scan into the next open bag|Mother Bag progress|Load truck|Verify seal/);
     const meters=nodes(h.tree).filter(n=>n.type===ui.CapacityMeter);assert.equal(meters.length,3);
     assert.equal(meters.find(n=>n.props.label==='Weight').props.value,13);
@@ -169,10 +169,10 @@ test('mother bags auto-select active hub, expose capacity presets, continuous pa
     assert.equal(h.posts[0][1].barcode, 'BGO-REVERT-1');
 });
 
-test('sealed and arriving in-transit bags auto-fill tag, seal, and single matching trip while exposing camera scanners', t => {
+test('a sealed bag dispatches in one step with its only truck preselected, and arriving bags auto-fill tag and seal', t => {
     const sealedH = harness(t, ui.Bags, {
         ...props,
-        manifests: [{ id: 77, reference: 'MF-77', source_hub_id: 1, destination_hub_id: 2, vehicle_plate: 'VAN-77', driver_name: 'Rico' }],
+        dispatchVehicles: [{ id: 9, hub_id: 1, plate: 'VAN-9', type: 'l300_van', driver: 'Rico' }],
         selectedBag: {
             ...bag,
             status: 'sealed',
@@ -181,11 +181,11 @@ test('sealed and arriving in-transit bags auto-fill tag, seal, and single matchi
         },
     });
     sealedH.render();
-    assert.equal(sealedH.forms[2].data.barcode, 'BAG-ONE');
-    assert.equal(sealedH.forms[2].data.seal_number, 'SEAL-1');
-    assert.equal(sealedH.forms[2].data.manifest_id, '77');
-    assert.match(text(sealedH.tree), /Scan bag tag/);
-    assert.doesNotMatch(text(sealedH.tree), /Fill tag and seal from this bag/);
+    const dispatch = sealedH.forms.find(form => 'vehicle_id' in form.data);
+    assert.equal(dispatch.data.vehicle_id, '9');
+    assert.match(text(sealedH.tree), /Seal & dispatch to/);
+    assert.match(text(sealedH.tree), /VAN-9/);
+    assert.doesNotMatch(text(sealedH.tree), /Load onto a vehicle|Vehicle trip/);
 
     const transitH = harness(t, ui.Bags, {
         ...props,
