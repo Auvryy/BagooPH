@@ -13,6 +13,7 @@ import { claimWindow, nextClaimBoundary } from '@/utils/orderTracking';
 import { Order, PageProps } from '@/types';
 import { type BuyerOrderNotice } from '@/utils/buyerParcelProgress';
 import { ArrowLeft, CheckCircle2, Check, Star, X, Camera } from 'lucide-react';
+import { Button, Notice, buttonClasses, inputClasses, labelClasses } from '@/Components/ui';
 
 interface Props {
     order: Order;
@@ -190,225 +191,214 @@ export default function BuyerOrderDetail({ order, canUsePortal, buyAgainUrl, buy
         });
     };
 
+
+    const cardClasses = 'rounded-card border border-line-200 bg-white p-5 sm:p-6';
+    const linkClasses = 'font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900';
+
     return (
         <BuyerOrderAccessLayout canUsePortal={canUsePortal}>
             <Head title={`Order #${order.order_number} Details — BagooPH`} />
-            <div className="w-full space-y-6">
-                
-                {/* Header & Back Link */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
-                    <div className="min-w-0">
-                        <Link href={route(adminOversight ? 'admin.dashboard' : 'buyer.orders.index')} className="text-xs text-slate-500 hover:text-[#E00D42] flex items-center gap-1.5 mb-1 font-semibold transition">
-                            <ArrowLeft className="w-4 h-4" />
+            <div className="mx-auto w-full max-w-[960px] space-y-6 pb-12 pt-2 text-ink-900">
+
+                <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0 space-y-2">
+                        <Link href={route(adminOversight ? 'admin.dashboard' : 'buyer.orders.index')} className="inline-flex items-center gap-1.5 text-sm text-ink-600 hover:text-ink-900">
+                            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                             <span>{adminOversight ? 'Back to Admin' : 'Back to My Purchases'}</span>
                         </Link>
-                        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight break-words">
-                            Order #{order.order_number}
-                        </h1>
-                        <p className="text-xs text-slate-500 font-sans mt-0.5">
-                            Placed on {trackingDate(order.created_at)} · Philippine time
-                        </p>
+                        <div>
+                            <h1 className="break-words text-[28px] font-bold leading-[34px] tracking-tight text-ink-900">
+                                Order #{order.order_number}
+                            </h1>
+                            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-600">
+                                <span>Placed {trackingDate(order.created_at)} · Philippine time</span>
+                                {order.status === 'completed' && (
+                                    <span className="inline-flex items-center gap-1 rounded-chip bg-success-soft px-2 py-0.5 text-xs font-medium text-success">
+                                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                                        <span>Order Completed</span>
+                                    </span>
+                                )}
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 font-sans text-xs w-full sm:w-auto">
+                    <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                         {canConfirmReceipt && (
-                            <button
-                                type="button"
-                                disabled={receiptBusy || trackingRefreshing || codeBusy}
-                                onClick={confirmReceipt}
-                                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
-                            >
-                                <CheckCircle2 className="w-4 h-4" />
+                            <button type="button" className={buttonClasses('primary', 'md')} disabled={receiptBusy || trackingRefreshing || codeBusy} onClick={confirmReceipt}>
+                                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                                 <span>{receiptBusy ? 'Confirming receipt…' : 'Confirm Order Received'}</span>
                             </button>
                         )}
                         {!order.tracking && canUsePortal && order.status === 'completed' && reviewableItems.length > 0 && (
-                            <button
-                                type="button"
-                                onClick={openReview}
-                                className="px-4 py-2.5 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.98] text-white font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
-                            >
-                                <Star className="w-4 h-4 fill-white" />
+                            <Button variant="primary" onClick={openReview}>
+                                <Star className="h-4 w-4" aria-hidden="true" />
                                 <span>Rate & Upload Photos</span>
-                            </button>
+                            </Button>
                         )}
                         {canUsePortal && buyAgainUrl && buyAgainToken && <BuyAgainButton url={buyAgainUrl} token={buyAgainToken} disabled={trackingRefreshing || receiptBusy || codeBusy} />}
                         {canUsePortal && (cancelOrderUrl || cancellationRequestUrl) && <BuyerCancelOrder url={(cancellationRequestUrl || cancelOrderUrl)!} mode={cancellationRequestUrl ? 'request' : 'direct'} description={cancellationFeedback?.message} paymentMessage={cancellationFeedback?.payment_message} reasons={cancellationReasons} disabled={trackingRefreshing || receiptBusy || codeBusy} />}
-                        {order.status === 'completed' && (
-                            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-xl flex items-center gap-1.5">
-                                <Check className="w-4 h-4 text-emerald-600" />
-                                <span>Order Completed</span>
-                            </span>
-                        )}
                     </div>
-                </div>
+                </header>
 
-                {receiptError && <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800">{receiptError}</p>}
+                {receiptError && <Notice tone="danger" role="alert">{receiptError}</Notice>}
 
-                {order.payment_method === 'wallet' && order.wallet_payment && <section aria-label="Wallet payment" className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-300 bg-white p-4"><div><h2 className="text-sm font-bold text-slate-900">Bagoo Wallet · virtual credits</h2><p className="mt-1 text-xs leading-6 text-slate-600">{order.payment_status === 'paid' ? 'This order was paid with virtual credits. No cash is due at delivery.' : order.payment_status === 'refunded' ? 'The original payment was returned to your wallet.' : order.payment_status === 'cancelled' ? 'This unpaid wallet order is closed.' : 'Complete payment within one hour of placing the order. The seller can prepare it after payment.'}</p></div><Link href={`/wallet/payments/${order.wallet_payment.id}`} className="rounded-lg border border-slate-300 px-4 py-2.5 text-xs font-semibold text-[#C20836]">{order.payment_status === 'pending' ? 'Pay with wallet' : 'View payment'}</Link></section>}
+                {order.payment_method === 'wallet' && order.wallet_payment && (
+                    <section aria-label="Wallet payment" className={`${cardClasses} flex flex-wrap items-center justify-between gap-4`}>
+                        <div className="min-w-0">
+                            <h2 className="text-base font-semibold text-ink-900">Bagoo Wallet · virtual credits</h2>
+                            <p className="mt-0.5 text-sm text-ink-600">{order.payment_status === 'paid' ? 'This order was paid with virtual credits. No cash is due at delivery.' : order.payment_status === 'refunded' ? 'The original payment was returned to your wallet.' : order.payment_status === 'cancelled' ? 'This unpaid wallet order is closed.' : 'Complete payment within one hour of placing the order. The seller can prepare it after payment.'}</p>
+                        </div>
+                        <Link href={`/wallet/payments/${order.wallet_payment.id}`} className={buttonClasses(order.payment_status === 'pending' ? 'primary' : 'secondary', 'md')}>{order.payment_status === 'pending' ? 'Pay with wallet' : 'View payment'}</Link>
+                    </section>
+                )}
 
                 <OrderCancellationFeedback feedback={cancellationFeedback} />
-                {order.status === 'cancelled' && cancellationReason && <p role="status" className="rounded-xl border border-slate-300 bg-white p-4 text-sm text-slate-700">Cancellation reason: {cancellationReason}</p>}
+                {order.status === 'cancelled' && cancellationReason && <Notice tone="neutral" role="status">Cancellation reason: {cancellationReason}</Notice>}
+
                 <OrderTrackingPanel variant="buyer" tracking={order.tracking} buyerOrder={order} notices={orderNotices}
                     onReview={canUsePortal && order.status === 'completed' && reviewableItems.length > 0 ? openReview : undefined}
                     onRefresh={refreshTracking} refreshing={trackingRefreshing || codeBusy || receiptBusy} error={trackingError} />
+
+                {pickupClaim && (
+                    <section aria-label="Your hub pickup" className={`${cardClasses} space-y-3`}>
+                        <h2 className="text-lg font-semibold text-ink-900">Your hub pickup</h2>
+                        <div className="rounded-control bg-surface-100 p-4 text-sm">
+                            <p className="font-medium text-ink-900">{pickupHub?.name ?? 'Hub details not recorded'}</p>
+                            {pickupHub?.address && <p className="mt-0.5 text-ink-700">{pickupHub.address}</p>}
+                            <p className="mt-1 text-[13px] text-ink-600">{pickupHub?.operating_hours ?? 'Contact the hub for its actual operating hours.'}</p>
+                        </div>
+                        {(counterWindow === 'ready' || counterWindow === 'locked') && <p className="text-sm text-ink-700">Collect before <span className="font-medium text-ink-900">{trackingDate(pickupClaim.expires_at)}</span> Philippine time. Bring your valid photo ID{order.payment_method === 'cod' ? ' and exact COD payment.' : '. This wallet parcel requires no cash.'}</p>}
+                        {counterWindow === 'expired' && <Notice tone="warning" role="status">The collection deadline has passed. Refresh tracking for the hub's return review.</Notice>}
+                        {counterWindow === 'locked' && <Notice tone="warning" role="status">Counter verification is locked until {trackingDate(pickupClaim.locked_until)} Philippine time. Refresh after that time.</Notice>}
+                        {counterWindow === 'unavailable' && <p className="text-sm font-medium text-ink-700">{pickupClaim.status === 'collected'
+                            ? (order.logistics_flow_version ?? 1) >= 2
+                                ? (order.status === 'completed' ? 'Your verified collection completed this order automatically.' : 'Your collection is recorded. Refresh tracking to check order completion.')
+                                : (order.status === 'completed' ? 'Collection and your receipt confirmation are recorded.' : 'Collection is recorded. Confirm receipt after checking your items.')
+                            : 'The recorded pickup state needs hub review.'}</p>}
+                        {counterWindow === 'ready' && pickupCodeAvailable && !pickupCode && !pickupClaim.code_issued_at && <>
+                            <p className="text-sm text-ink-700">Your private code is shown once. Save it when it appears; it cannot be revealed again.</p>
+                            <Button variant="primary" disabled={codeBusy || trackingRefreshing} onClick={showPickupCode}>{codeBusy ? 'Preparing code…' : 'Show my code once'}</Button>
+                        </>}
+                        {counterWindow === 'ready' && pickupCode && <p className="break-all rounded-control border-2 border-dashed border-brand-200 bg-brand-50 p-4 text-center text-2xl font-bold tracking-widest text-ink-900" aria-live="polite">{pickupCode}</p>}
+                        {counterWindow === 'ready' && pickupClaim.code_issued_at && !pickupCode && <p className="text-sm text-ink-700">Your code was already shown. Use the code you saved; contact the hub if it was lost.</p>}
+                        {counterWindow === 'ready' && !pickupCodeAvailable && !pickupCode && !pickupClaim.code_issued_at && <p className="text-sm text-ink-700">Refresh tracking to check whether code access is available. Contact the hub if it remains unavailable.</p>}
+                        {codeError && <p role="alert" className="text-[13px] text-brand-700">{codeError}</p>}
+                    </section>
+                )}
+
                 <BuyerOrderPackage order={order} canUsePortal={canUsePortal} />
                 <FinancialReviewLinks value={shipmentFinances} fallbackUrl={shipmentFinance ? `/shipment-finances/${shipmentFinance.id}` : null} />
 
-                {(returnAvailability?.can_request || buyerReturns.length > 0) && <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-300 bg-white p-4"><div><h2 className="font-bold text-slate-900">Returns and refunds</h2>{returnAvailability?.can_request && <p className="mt-1 text-sm text-slate-600">You can request a return within seven days of delivery, including after confirming receipt.</p>}</div><div className="flex flex-wrap gap-2">{returnAvailability?.can_request && <Link href={`/buyer-returns/orders/${order.id}/create`} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-[#C20836]">Request a return</Link>}{buyerReturns.map(item => <Link key={item.id} href={`/buyer-returns/${item.id}`} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">{item.reference}</Link>)}</div></section>}
-                {pickupClaim && <section aria-label="Your hub pickup" className="space-y-3 rounded-xl border border-slate-300 bg-white p-4">
-                    <h2 className="font-bold text-slate-900">Your hub pickup</h2>
-                    <p className="text-sm text-slate-700">{pickupHub?.name ?? 'Hub details not recorded'} · {pickupHub?.address}</p>
-                    <p className="text-sm text-slate-700">{pickupHub?.operating_hours ?? 'Contact the hub for its actual operating hours.'}</p>
-                    {(counterWindow === 'ready' || counterWindow === 'locked') && <p className="text-sm text-slate-700">Collect before {trackingDate(pickupClaim.expires_at)} Philippine time. Bring your valid photo ID{order.payment_method === 'cod' ? ' and exact COD payment.' : '. This wallet parcel requires no cash.'}</p>}
-                    {counterWindow === 'expired' && <p role="status" className="text-sm font-semibold text-amber-900">The collection deadline has passed. Refresh tracking for the hub's return review.</p>}
-                    {counterWindow === 'locked' && <p role="status" className="text-sm font-semibold text-amber-900">Counter verification is locked until {trackingDate(pickupClaim.locked_until)} Philippine time. Refresh after that time.</p>}
-                    {counterWindow === 'unavailable' && <p className="text-sm font-semibold text-slate-700">{pickupClaim.status === 'collected'
-                        ? (order.logistics_flow_version ?? 1) >= 2
-                            ? (order.status === 'completed' ? 'Your verified collection completed this order automatically.' : 'Your collection is recorded. Refresh tracking to check order completion.')
-                            : (order.status === 'completed' ? 'Collection and your receipt confirmation are recorded.' : 'Collection is recorded. Confirm receipt after checking your items.')
-                        : 'The recorded pickup state needs hub review.'}</p>}
-                    {counterWindow === 'ready' && pickupCodeAvailable && !pickupCode && !pickupClaim.code_issued_at && <><p className="text-sm text-slate-700">Your private code is shown once. Save it when it appears; it cannot be revealed again.</p><button disabled={codeBusy || trackingRefreshing} onClick={showPickupCode} className="rounded-lg bg-[#E00D42] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{codeBusy ? 'Preparing code…' : 'Show my code once'}</button></>}
-                    {counterWindow === 'ready' && pickupCode && <p className="break-all rounded-lg border border-slate-300 p-3 text-lg font-bold" aria-live="polite">{pickupCode}</p>}
-                    {counterWindow === 'ready' && pickupClaim.code_issued_at && !pickupCode && <p className="text-sm text-slate-700">Your code was already shown. Use the code you saved; contact the hub if it was lost.</p>}
-                    {counterWindow === 'ready' && !pickupCodeAvailable && !pickupCode && !pickupClaim.code_issued_at && <p className="text-sm text-slate-700">Refresh tracking to check whether code access is available. Contact the hub if it remains unavailable.</p>}
-                    {codeError && <p role="alert" className="text-sm text-red-700">{codeError}</p>}
-                </section>}
-                {reviewSaved && <p role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700">Your purchase review has been saved.</p>}
+                {(returnAvailability?.can_request || buyerReturns.length > 0) && (
+                    <section className={`${cardClasses} flex flex-wrap items-center justify-between gap-3`}>
+                        <div className="min-w-0">
+                            <h2 className="text-base font-semibold text-ink-900">Returns and refunds</h2>
+                            {returnAvailability?.can_request && <p className="mt-0.5 text-sm text-ink-600">You can request a return within seven days of delivery, including after confirming receipt.</p>}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {returnAvailability?.can_request && <Link href={`/buyer-returns/orders/${order.id}/create`} className={buttonClasses('secondary', 'md')}>Request a return</Link>}
+                            {buyerReturns.map(item => <Link key={item.id} href={`/buyer-returns/${item.id}`} className={buttonClasses('ghost', 'md')}>{item.reference}</Link>)}
+                        </div>
+                    </section>
+                )}
+
+                {reviewSaved && <Notice tone="success" role="status">Your purchase review has been saved.</Notice>}
                 <AccountEnforcementNotices sanctions={activeSanctions} title="Account Restrictions Affecting Checkout or Reviews" />
                 <CourierDeliveryFeedbackSection deliveryFeedback={deliveryFeedback} deliveryFeedbackUrl={deliveryFeedbackUrl} safetyCheckinSignals={safetyCheckinSignals} />
 
                 {/* Product review */}
                 {canUsePortal && reviewModalOpen && (
-                    <div className="fixed inset-0 z-50 overscroll-contain bg-black/75 flex items-center justify-center p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
-                        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-200 space-y-5 font-sans my-auto max-h-[92vh] overflow-y-auto">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                                <div className="flex items-center gap-2 text-slate-900 font-bold text-base">
-                                    <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
-                                    <span>Rate & Review Purchased Items</span>
-                                </div>
-                                <button onClick={() => setReviewModalOpen(false)} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg">
-                                    <X className="w-5 h-5" />
+                    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto overscroll-contain bg-brand-900/45 animate-fade-in sm:items-center sm:p-4">
+                        <div role="dialog" aria-modal="true" aria-labelledby="review-title" className="my-auto max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-card bg-white shadow-float sm:rounded-card">
+                            <div className="flex items-center justify-between gap-4 border-b border-line-200 px-6 py-4">
+                                <h2 id="review-title" className="text-lg font-semibold text-ink-900">Rate your purchase</h2>
+                                <button type="button" onClick={() => setReviewModalOpen(false)} aria-label="Close review" className="rounded-control p-1.5 text-ink-500 hover:bg-surface-100 hover:text-ink-900">
+                                    <X className="h-5 w-5" aria-hidden="true" />
                                 </button>
                             </div>
 
-                            <form onSubmit={submitReview} className="space-y-4">
-                                {Object.keys(errors).length > 0 && <div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-700">{Object.values(errors).map((error, index) => <p key={index}>{error}</p>)}</div>}
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                        Select Purchased Item to Review:
-                                    </label>
-                                    <select
-                                        value={data.order_item_id || ''}
-                                        onChange={(e) => setData('order_item_id', Number(e.target.value))}
-                                        className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42]"
-                                    >
-                                        {reviewableItems.map((item) => (
-                                            <option key={item.id} value={item.id}>
-                                                {item.product?.name} — Item #{item.id}{item.color ? ` · ${item.color}` : ''}{item.size ? ` · ${item.size}` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-700 mb-2">
-                                        Your Rating (1 to 5 Stars):
-                                    </label>
-                                    <div role="group" aria-label="Your product rating" aria-describedby={errors.rating ? 'review-rating-error' : undefined} className="flex items-center gap-2">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                            <button
-                                                key={star}
-                                                type="button"
-                                                aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
-                                                aria-pressed={data.rating === star}
-                                                onClick={() => { setData('rating', star); clearErrors('rating'); }}
-                                                className="p-1 focus:outline-hidden hover:scale-110 transition-transform cursor-pointer"
-                                            >
-                                                <Star className={`w-8 h-8 ${
-                                                    star <= data.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'
-                                                }`} />
-                                            </button>
-                                        ))}
+                            <form onSubmit={submitReview}>
+                                <div className="space-y-5 px-6 py-5">
+                                    {Object.keys(errors).length > 0 && <Notice tone="danger" role="alert">{Object.values(errors).map((error, index) => <p key={index}>{error}</p>)}</Notice>}
+                                    <div>
+                                        <label htmlFor="review-item" className={labelClasses}>Item</label>
+                                        <select id="review-item" value={data.order_item_id || ''} onChange={(e) => setData('order_item_id', Number(e.target.value))} className={inputClasses}>
+                                            {reviewableItems.map((item) => (
+                                                <option key={item.id} value={item.id}>
+                                                    {item.product?.name}{item.color ? ` · ${item.color}` : ''}{item.size ? ` · ${item.size}` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
-                                    {errors.rating && <p id="review-rating-error" role="alert" className="mt-2 text-xs font-medium text-rose-700">{errors.rating}</p>}
-                                </div>
 
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                        Detailed Review & Feedback:
-                                    </label>
-                                    <textarea
-                                        value={data.comment}
-                                        onChange={(e) => setData('comment', e.target.value)}
-                                        rows={3}
-                                        maxLength={1000}
-                                        placeholder="Tell other buyers about product sizing, quality, and material..."
-                                        className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#E00D42]/15 focus:border-[#E00D42]"
-                                        required
-                                    />
-                                </div>
-
-                                {/* Multi-Image Upload Section */}
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                        Attach Product Photos (Up to 5 Photos):
-                                    </label>
-                                    
-                                    {/* Upload Trigger & Previews */}
-                                    <div className="flex flex-wrap gap-2.5 items-center">
-                                        {previewImages.map((src, idx) => (
-                                            <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 group">
-                                                <img src={src} alt="Upload preview" className="w-full h-full object-cover" />
+                                    <div>
+                                        <p className={labelClasses}>Your rating</p>
+                                        <div role="group" aria-label="Your product rating" aria-describedby={errors.rating ? 'review-rating-error' : undefined} className="flex items-center gap-1">
+                                            {[1, 2, 3, 4, 5].map((star) => (
                                                 <button
+                                                    key={star}
                                                     type="button"
-                                                    onClick={() => removeImage(idx)}
-                                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition"
+                                                    aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
+                                                    aria-pressed={data.rating === star}
+                                                    onClick={() => { setData('rating', star); clearErrors('rating'); }}
+                                                    className="rounded-control p-1 transition-transform hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 motion-reduce:transition-none"
                                                 >
-                                                    <X className="w-3 h-3" />
+                                                    <Star className={`h-8 w-8 ${star <= data.rating ? 'fill-brand-500 text-brand-500' : 'text-line-300'}`} aria-hidden="true" />
                                                 </button>
-                                            </div>
-                                        ))}
-
-                                        {data.images.length < 5 && (
-                                            <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#E00D42] bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center cursor-pointer transition text-slate-400 hover:text-[#E00D42]">
-                                                <Camera className="w-5 h-5 mb-0.5" />
-                                                <span className="text-[9px] font-sans font-bold uppercase">+ Add</span>
-                                                <input
-                                                    type="file"
-                                                    accept="image/jpeg,image/png,image/webp"
-                                                    multiple
-                                                    onChange={handleImageChange}
-                                                    className="hidden"
-                                                />
-                                            </label>
-                                        )}
+                                            ))}
+                                        </div>
+                                        {errors.rating && <p id="review-rating-error" role="alert" className="mt-1.5 text-[13px] text-brand-700">{errors.rating}</p>}
                                     </div>
+
+                                    <div>
+                                        <label htmlFor="review-comment" className={labelClasses}>Your review</label>
+                                        <textarea
+                                            id="review-comment"
+                                            value={data.comment}
+                                            onChange={(e) => setData('comment', e.target.value)}
+                                            rows={3}
+                                            maxLength={1000}
+                                            placeholder="Tell other buyers about product sizing, quality, and material..."
+                                            className={`${inputClasses} h-auto py-2`}
+                                            required
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <p className={labelClasses}>Photos <span className="font-normal text-ink-500">(up to 5)</span></p>
+                                        <div className="flex flex-wrap items-center gap-2.5">
+                                            {previewImages.map((src, idx) => (
+                                                <div key={idx} className="group relative h-16 w-16 overflow-hidden rounded-control bg-surface-100">
+                                                    <img src={src} alt="Upload preview" className="h-full w-full object-cover" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeImage(idx)}
+                                                        aria-label="Remove photo"
+                                                        className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border border-line-200 bg-white text-ink-900 opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100"
+                                                    >
+                                                        <X className="h-3 w-3" aria-hidden="true" />
+                                                    </button>
+                                                </div>
+                                            ))}
+
+                                            {data.images.length < 5 && (
+                                                <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-control border-2 border-dashed border-line-300 text-ink-500 transition hover:border-brand-500 hover:text-brand-600">
+                                                    <Camera className="h-5 w-5" aria-hidden="true" />
+                                                    <span className="mt-0.5 text-[11px] font-medium">Add</span>
+                                                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleImageChange} className="hidden" />
+                                                </label>
+                                            )}
+                                        </div>
+                                        <div className="mt-2"><UploadHint formats="JPG, PNG or WEBP" /></div>
+                                        {photoError && <p role="alert" className="mt-1.5 text-[13px] text-brand-700">{photoError}</p>}
+                                    </div>
+
+                                    {recentlySuccessful && <Notice tone="success">Review and photos submitted.</Notice>}
                                 </div>
 
-                                <UploadHint formats="JPG, PNG or WEBP" />
-                                {photoError && <p role="alert" className="text-xs text-red-700">{photoError}</p>}
-                                {recentlySuccessful && (
-                                    <p className="text-xs text-emerald-600 font-sans font-bold flex items-center gap-1.5 p-2 bg-emerald-50 rounded-xl border border-emerald-200">
-                                        <Check className="w-4 h-4" /> Review & photos submitted successfully!
-                                    </p>
-                                )}
-
-                                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-                                    <button
-                                        type="button"
-                                        onClick={() => setReviewModalOpen(false)}
-                                        className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 font-sans uppercase"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#E00D42] hover:bg-[#C20836] text-white font-sans uppercase shadow-md disabled:opacity-50 flex items-center gap-1.5"
-                                    >
-                                        {processing ? 'Submitting...' : 'Post Verified Review'}
-                                    </button>
+                                <div className="flex flex-col-reverse gap-3 border-t border-line-200 px-6 py-4 sm:flex-row sm:justify-end">
+                                    <Button onClick={() => setReviewModalOpen(false)}>Cancel</Button>
+                                    <Button type="submit" variant="primary" disabled={processing}>{processing ? 'Submitting…' : 'Post review'}</Button>
                                 </div>
                             </form>
                         </div>
