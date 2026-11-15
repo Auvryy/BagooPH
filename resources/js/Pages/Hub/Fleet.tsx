@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import { Bike, Building2, CheckCircle2, Phone, Truck, UserRound } from 'lucide-react';
+import { Bike, Phone, Truck, type LucideIcon } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { HubBadge, HubEmpty, HubPageHeader, HubSearch, hubButton } from '@/Components/Logistics/Workspace';
+import { HubEmpty, HubPageHeader, HubSearch, hubButton } from '@/Components/Logistics/Workspace';
 
 interface FleetVehicle {
     id: number; plate_number: string; vehicle_type: string; model: string; capacity_kg: number;
@@ -14,13 +14,52 @@ interface Props {
     stats: { total: number; active: number; motorcycles: number; vans: number; trucks: number };
     filters: { tier: string; status: string };
 }
-const vehicleNames: Record<string, string> = { motorcycle: 'Motorcycle', tricycle: 'Tricycle', l300_van: 'Feeder van', wing_truck: 'Wing truck' };
-const vehicleWork: Record<string, string> = { motorcycle: 'Pickup and doorstep delivery', tricycle: 'Pickup and doorstep delivery', l300_van: 'Child hub ↔ Mother Hub', wing_truck: 'Mother Hub ↔ Mother Hub' };
+
+/** Categorical colors so each vehicle type is recognisable at a glance. */
+const TYPES: { key: string; name: string; plural: string; work: string; Icon: LucideIcon; tile: string; bar: string }[] = [
+    { key: 'motorcycle', name: 'Motorcycle', plural: 'Motorcycles', work: 'Pickup and doorstep delivery', Icon: Bike, tile: 'bg-info-soft text-info', bar: 'bg-info' },
+    { key: 'tricycle', name: 'Tricycle', plural: 'Tricycles', work: 'Pickup and doorstep delivery', Icon: Bike, tile: 'bg-success-soft text-success', bar: 'bg-success' },
+    { key: 'l300_van', name: 'Feeder van', plural: 'Feeder vans', work: 'Child hub to Mother Hub', Icon: Truck, tile: 'bg-warning-soft text-warning', bar: 'bg-warning' },
+    { key: 'wing_truck', name: 'Wing truck', plural: 'Wing trucks', work: 'Mother Hub to Mother Hub', Icon: Truck, tile: 'bg-brand-50 text-brand-600', bar: 'bg-brand-500' },
+];
+const typeOf = (key: string) => TYPES.find(type => type.key === key) ?? { key, name: key.replaceAll('_', ' '), plural: key.replaceAll('_', ' '), work: 'Assigned hub work', Icon: Truck, tile: 'bg-surface-100 text-ink-600', bar: 'bg-ink-400' };
+
+const STATUSES = [
+    { key: 'active', label: 'Active', chip: 'bg-success-soft text-success', bar: 'bg-success' },
+    { key: 'idle', label: 'Idle', chip: 'bg-surface-100 text-ink-700', bar: 'bg-line-300' },
+    { key: 'maintenance', label: 'Maintenance', chip: 'bg-warning-soft text-warning', bar: 'bg-warning' },
+];
+const statusOf = (key: string) => STATUSES.find(status => status.key === key) ?? { key, label: key, chip: 'bg-surface-100 text-ink-700', bar: 'bg-line-300' };
+
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || '?';
+
+function Chip({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
+    return (
+        <button
+            type="button"
+            aria-pressed={selected}
+            onClick={onClick}
+            className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 ${selected ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-line-300 bg-white text-ink-700 hover:border-ink-400'}`}
+        >
+            {children}
+        </button>
+    );
+}
 
 export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
     const [search, setSearch] = useState('');
     const handleFilter = (tier: string, status: string) => router.get(route('hub.fleet'), { tier, status, ...(activeHub ? { hub_id: activeHub.id } : {}) }, { preserveState: true, preserveScroll: true });
     const shown = fleet.filter(vehicle => [vehicle.plate_number, vehicle.model, vehicle.driver_name, vehicle.hub_name].join(' ').toLowerCase().includes(search.trim().toLowerCase()));
+
+    const totalCapacity = fleet.reduce((sum, vehicle) => sum + (vehicle.capacity_kg || 0), 0);
+    const maxCapacity = Math.max(1, ...fleet.map(vehicle => vehicle.capacity_kg || 0));
+    const statusCounts = STATUSES.map(status => ({ ...status, count: fleet.filter(vehicle => vehicle.status === status.key).length }));
+    const mix = TYPES.map(type => {
+        const vehicles = fleet.filter(vehicle => vehicle.vehicle_type === type.key);
+        return { ...type, count: vehicles.length, capacity: vehicles.reduce((sum, vehicle) => sum + (vehicle.capacity_kg || 0), 0) };
+    }).filter(type => type.count > 0);
+    const fleetSize = Math.max(1, fleet.length);
+
     return (
         <DashboardLayout title="Fleet & drivers">
             <Head title="Fleet & drivers — BagooPH" />
@@ -28,123 +67,141 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                 <HubPageHeader
                     title="Fleet & drivers"
                     icon={Truck}
-                    actions={<Link href={route('hub.manifests.index')} className={hubButton}><Truck className="h-4 w-4" />Open transfers</Link>}
+                    roleLabel={activeHub ? `${activeHub.name} · ${activeHub.code}` : 'All facilities'}
+                    actions={<Link href={route('hub.manifests.index')} className={hubButton}><Truck className="h-4 w-4 text-ink-500" aria-hidden="true" />Open transfers</Link>}
                 />
 
-                <div className="grid grid-cols-2 divide-x divide-y divide-zinc-200/80 overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs lg:grid-cols-4 lg:divide-y-0">
-                    {[
-                        { label: 'Vehicles at this hub', value: stats.total, Icon: Building2 },
-                        { label: 'Eligible active vehicles', value: stats.active, Icon: CheckCircle2 },
-                        { label: 'Feeder vans', value: stats.vans, Icon: Truck },
-                        { label: 'Wing trucks', value: stats.trucks, Icon: Truck },
-                    ].map(({ label, value, Icon }) => (
-                        <div key={label} className="p-4 sm:p-5">
-                            <div className="flex items-center justify-between gap-2">
-                                <p className="text-xs font-semibold text-zinc-500">{label}</p>
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200/80 bg-zinc-50 text-zinc-600">
-                                    <Icon className="h-3.5 w-3.5" />
-                                </span>
-                            </div>
-                            <p className="mt-2 tabular-nums text-2xl font-bold tabular-nums text-ink-900">{value}</p>
+                {/* Visual summary */}
+                <section aria-label="Fleet summary" className="grid gap-6 rounded-card border border-line-200 bg-white p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+                    <div>
+                        <p className="text-[13px] text-ink-600">Vehicles</p>
+                        <p className="mt-1 flex items-baseline gap-2">
+                            <span className="text-[40px] font-bold leading-none tabular-nums text-ink-900">{stats.total}</span>
+                            <span className="text-sm text-ink-600"><span className="font-semibold text-success">{stats.active}</span> ready to work</span>
+                        </p>
+                        <div className="mt-5 flex h-2.5 w-full overflow-hidden rounded-full bg-surface-100" role="img" aria-label={statusCounts.map(status => `${status.count} ${status.label.toLowerCase()}`).join(', ')}>
+                            {statusCounts.filter(status => status.count > 0).map(status => (
+                                <span key={status.key} className={`h-full ${status.bar}`} style={{ width: `${(status.count / fleetSize) * 100}%` }} />
+                            ))}
                         </div>
-                    ))}
-                </div>
-
-                <section className="space-y-4" aria-label="Facility vehicles">
-                    <div className="flex flex-wrap items-end gap-3.5 rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs sm:p-5">
-                        <div className="min-w-48 flex-1">
-                            <HubSearch label="Search loaded vehicles" value={search} onChange={setSearch} placeholder="Plate, driver or model" />
-                        </div>
-                        <label className="min-w-40 text-xs font-semibold text-ink-900">
-                            Vehicle type
-                            <select
-                                value={filters.tier}
-                                onChange={event => handleFilter(event.target.value, filters.status)}
-                                className="mt-1.5 block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-ink-900 shadow-2xs transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
-                            >
-                                <option value="all">All vehicle types</option>
-                                <option value="motorcycle">Motorcycles</option>
-                                <option value="tricycle">Tricycles</option>
-                                <option value="l300_van">Feeder vans</option>
-                                <option value="wing_truck">Wing trucks</option>
-                            </select>
-                        </label>
-                        <label className="min-w-40 text-xs font-semibold text-ink-900">
-                            Vehicle activity
-                            <select
-                                value={filters.status}
-                                onChange={event => handleFilter(filters.tier, event.target.value)}
-                                className="mt-1.5 block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-ink-900 shadow-2xs transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
-                            >
-                                <option value="all">All activity</option>
-                                <option value="active">Active</option>
-                                <option value="idle">Idle</option>
-                                <option value="maintenance">Maintenance</option>
-                            </select>
-                        </label>
+                        <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-ink-700">
+                            {statusCounts.map(status => (
+                                <li key={status.key} className="flex items-center gap-1.5">
+                                    <span aria-hidden="true" className={`h-2 w-2 rounded-full ${status.bar}`} />
+                                    {status.label} <span className="tabular-nums text-ink-500">{status.count}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="mt-4 text-[13px] text-ink-600">Total capacity <span className="font-semibold tabular-nums text-ink-900">{totalCapacity.toLocaleString()} kg</span></p>
                     </div>
 
-                    <p className="text-xs font-medium leading-5 text-zinc-600">
-                        {shown.length} matching vehicle{shown.length === 1 ? '' : 's'}
-                    </p>
+                    <div>
+                        <p className="text-[13px] text-ink-600">Fleet mix</p>
+                        {mix.length === 0 ? (
+                            <p className="mt-3 text-sm text-ink-600">No vehicles placed yet.</p>
+                        ) : (
+                            <ul className="mt-3 space-y-3">
+                                {mix.map(type => (
+                                    <li key={type.key} className="flex items-center gap-3">
+                                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${type.tile}`}>
+                                            <type.Icon className="h-4 w-4" aria-hidden="true" />
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-baseline justify-between gap-2 text-sm">
+                                                <span className="font-medium text-ink-900">{type.plural} <span className="font-normal tabular-nums text-ink-500">{type.count}</span></span>
+                                                <span className="tabular-nums text-ink-600">{type.capacity.toLocaleString()} kg</span>
+                                            </div>
+                                            <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-surface-100">
+                                                <span className={`block h-full rounded-full ${type.bar}`} style={{ width: `${Math.max(4, (type.capacity / Math.max(1, totalCapacity)) * 100)}%` }} />
+                                            </span>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                </section>
+
+                <section className="space-y-4" aria-label="Facility vehicles">
+                    <div className="space-y-3">
+                        <div className="max-w-md">
+                            <HubSearch label="Search loaded vehicles" value={search} onChange={setSearch} placeholder="Search plate, driver or model" />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Vehicle type">
+                            <Chip selected={filters.tier === 'all'} onClick={() => handleFilter('all', filters.status)}>All types</Chip>
+                            {TYPES.map(type => (
+                                <Chip key={type.key} selected={filters.tier === type.key} onClick={() => handleFilter(type.key, filters.status)}>
+                                    <type.Icon className="h-3.5 w-3.5" aria-hidden="true" />{type.plural}
+                                </Chip>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Vehicle activity">
+                            <Chip selected={filters.status === 'all'} onClick={() => handleFilter(filters.tier, 'all')}>Any status</Chip>
+                            {STATUSES.map(status => (
+                                <Chip key={status.key} selected={filters.status === status.key} onClick={() => handleFilter(filters.tier, status.key)}>
+                                    <span aria-hidden="true" className={`h-2 w-2 rounded-full ${status.bar}`} />{status.label}
+                                </Chip>
+                            ))}
+                        </div>
+                    </div>
 
                     {!shown.length ? (
-                        <div className="rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs">
-                            <HubEmpty icon={Truck} title="No vehicles in this view" description="Try another type or activity filter, or clear the search. Vehicle placement is managed in Hub network." />
+                        <div className="rounded-card border border-line-200 bg-white p-4">
+                            <HubEmpty icon={Truck} title="No vehicles match" description="Try another filter or clear the search." />
                         </div>
                     ) : (
-                        <div className="grid gap-4 lg:grid-cols-2">
+                        <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                             {shown.map(vehicle => {
-                                const Icon = ['motorcycle', 'tricycle'].includes(vehicle.vehicle_type) ? Bike : Truck;
+                                const type = typeOf(vehicle.vehicle_type);
+                                const status = statusOf(vehicle.status);
+                                const share = Math.round(((vehicle.capacity_kg || 0) / maxCapacity) * 100);
+                                const hasPhone = vehicle.driver_phone && vehicle.driver_phone !== 'N/A';
                                 return (
-                                    <article
-                                        key={vehicle.id}
-                                        className="flex flex-col justify-between overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs transition-all duration-150 hover:border-zinc-300"
-                                    >
-                                        <div className="flex items-start justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200/80 bg-white text-zinc-600 shadow-2xs">
-                                                    <Icon className="h-4 w-4" />
+                                    <li key={vehicle.id} className="rounded-card border border-line-200 bg-white p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex min-w-0 items-center gap-3">
+                                                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${type.tile}`}>
+                                                    <type.Icon className="h-5 w-5" aria-hidden="true" />
                                                 </span>
-                                                <div>
-                                                    <h2 className="tabular-nums text-sm font-bold text-ink-900">{vehicle.plate_number}</h2>
-                                                    <p className="mt-0.5 text-xs text-zinc-500">
-                                                        {vehicleNames[vehicle.vehicle_type] ?? vehicle.vehicle_type.replaceAll('_', ' ')}
-                                                        {vehicle.model ? ` · ${vehicle.model}` : ''}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <HubBadge tone={vehicle.status === 'maintenance' ? 'warning' : 'neutral'}>
-                                                {vehicle.status}
-                                            </HubBadge>
-                                        </div>
-                                        <div className="space-y-4 p-5">
-                                            <div className="flex flex-wrap justify-between gap-2 text-xs">
-                                                <p className="font-semibold text-ink-900">{vehicleWork[vehicle.vehicle_type] ?? 'Assigned hub work'}</p>
-                                                <p className="tabular-nums font-medium text-zinc-500">{vehicle.capacity_kg.toLocaleString()} kg capacity</p>
-                                            </div>
-                                            <div className="flex items-start gap-3 rounded-lg border border-zinc-200/80 bg-zinc-50/50 p-3.5">
-                                                <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
                                                 <div className="min-w-0">
-                                                    <p className="text-[11px] font-medium text-zinc-500">Assigned driver</p>
-                                                    <p className="mt-0.5 text-xs font-semibold text-ink-900">{vehicle.driver_name}</p>
-                                                    {vehicle.driver_phone !== 'N/A' && (
-                                                        <p className="mt-1 flex items-center gap-1.5 tabular-nums text-xs text-zinc-500">
-                                                            <Phone className="h-3 w-3 text-zinc-400" />
-                                                            {vehicle.driver_phone}
-                                                        </p>
-                                                    )}
+                                                    <h2 className="truncate text-sm font-semibold tabular-nums text-ink-900">{vehicle.plate_number}</h2>
+                                                    <p className="truncate text-[13px] text-ink-600">{type.name}{vehicle.model ? ` · ${vehicle.model}` : ''}</p>
                                                 </div>
                                             </div>
-                                            <p className="flex items-center gap-2 text-xs text-zinc-500">
-                                                <Building2 className="h-3.5 w-3.5 text-zinc-400" />
-                                                {vehicle.hub_name} · <span className="tabular-nums font-semibold text-zinc-600">{vehicle.hub_code}</span>
-                                            </p>
+                                            <span className={`inline-flex shrink-0 items-center gap-1 rounded-chip px-2 py-0.5 text-xs font-medium ${status.chip}`}>
+                                                <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${status.bar}`} />
+                                                {status.label}
+                                            </span>
                                         </div>
-                                    </article>
+
+                                        <div className="mt-4">
+                                            <div className="flex items-baseline justify-between text-[13px]">
+                                                <span className="text-ink-600">{type.work}</span>
+                                                <span className="font-medium tabular-nums text-ink-900">{vehicle.capacity_kg.toLocaleString()} kg</span>
+                                            </div>
+                                            <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-surface-100" role="img" aria-label={`Capacity ${vehicle.capacity_kg} kg`}>
+                                                <span className={`block h-full rounded-full ${type.bar}`} style={{ width: `${Math.max(4, share)}%` }} />
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-4 flex items-center justify-between gap-3 border-t border-line-200 pt-3">
+                                            <div className="flex min-w-0 items-center gap-2.5">
+                                                <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-100 text-xs font-semibold text-ink-700">{initials(vehicle.driver_name)}</span>
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-sm font-medium text-ink-900">{vehicle.driver_name}</p>
+                                                    {!activeHub && <p className="truncate text-xs text-ink-500">{vehicle.hub_name} · {vehicle.hub_code}</p>}
+                                                </div>
+                                            </div>
+                                            {hasPhone && (
+                                                <a href={`tel:${vehicle.driver_phone}`} aria-label={`Call ${vehicle.driver_name}`} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-600 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
+                                                    <Phone className="h-4 w-4" aria-hidden="true" />
+                                                </a>
+                                            )}
+                                        </div>
+                                    </li>
                                 );
                             })}
-                        </div>
+                        </ul>
                     )}
                 </section>
             </div>
