@@ -199,6 +199,18 @@ class RealCarousellProductSeeder extends Seeder
                             'price' => $prodData['price'],
                             'compare_at_price' => $prodData['compare_at_price'],
                             'sub_category_id' => $subCategory?->id,
+                            'weight_kg' => (is_numeric($existingProduct->weight_kg) && (float) $existingProduct->weight_kg > 0)
+                                ? $existingProduct->weight_kg
+                                : round(mt_rand(20, 350) / 100, 2),
+                            'length_cm' => (is_numeric($existingProduct->length_cm) && (float) $existingProduct->length_cm > 0)
+                                ? $existingProduct->length_cm
+                                : 25.00,
+                            'width_cm' => (is_numeric($existingProduct->width_cm) && (float) $existingProduct->width_cm > 0)
+                                ? $existingProduct->width_cm
+                                : 18.00,
+                            'height_cm' => (is_numeric($existingProduct->height_cm) && (float) $existingProduct->height_cm > 0)
+                                ? $existingProduct->height_cm
+                                : 10.00,
                             'status' => 'active',
                         ]);
                         continue;
@@ -225,6 +237,9 @@ class RealCarousellProductSeeder extends Seeder
                         'sku' => $sku,
                         'featured_image' => $prodData['image_path'],
                         'weight_kg' => round(mt_rand(20, 350) / 100, 2),
+                        'length_cm' => 25.00,
+                        'width_cm' => 18.00,
+                        'height_cm' => 10.00,
                         'status' => 'active',
                         'rating' => round(4.7 + (mt_rand(0, 3) / 10), 1),
                         'sales_count' => mt_rand(45, 680),

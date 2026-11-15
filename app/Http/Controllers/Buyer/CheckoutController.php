@@ -93,10 +93,10 @@ class CheckoutController extends Controller
         $initialAddress = $defaultAddress ?? $addresses->firstWhere('is_default') ?? $addresses->first();
         $initialLogisticsChoices = app(LogisticsCheckoutService::class)->choices($checkoutItems, [
             'delivery_type' => 'doorstep',
-            'shipping_province' => $initialAddress?->province,
-            'shipping_city' => $initialAddress?->city,
-            'shipping_postal_code' => $initialAddress?->postal_code,
-            'destination_barangay' => $initialAddress?->barangay,
+            'shipping_province' => $initialAddress?->province ?? $user->province,
+            'shipping_city' => $initialAddress?->city ?? $user->city,
+            'shipping_postal_code' => $initialAddress?->postal_code ?? $user->postal_code,
+            'destination_barangay' => $initialAddress?->barangay ?? $user->barangay,
         ]);
 
         $pickupHubs = LogisticsHub::readyForSelfPickup()

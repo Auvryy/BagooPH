@@ -40,6 +40,7 @@ class SellerDemoSeeder extends Seeder
                     'name' => 'Apex Gear & Studio', 'slug' => 'apex-gear-and-studio',
                     'description' => 'Commuter bags and everyday accessories for the Bagoo demo.',
                     'phone' => $seller->phone, 'address' => $seller->address, 'city' => $seller->city,
+                    'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030',
                     'status' => 'active', 'rating' => 0,
                 ]);
                 $shop = Shop::whereKey($shop->id)->lockForUpdate()->firstOrFail();
