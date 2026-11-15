@@ -20,6 +20,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Prepare a readable pull request description for the final branch handoff, covering the combined outcome and validation. Individual commit descriptions explain their own logical changes; a branch description must reflect the final scope.
 - Commit bodies do not automatically populate GitHub's pull request description. Prepare a separate PR title and body, and report whether they were saved on GitHub or remain a local draft. Use an authorized connected integration when available; never publish commits on the user's behalf.
 - Report every commit created, including its short hash and subject.
+- The repository owner is the sole author of every commit and pull request. Never add co-author trailers, AI tool or model names, or "generated with" footers to commits, PRs, code or documentation, and never change the Git author identity.
 - Preserve unrelated user changes.
 - Never store real IP addresses, hostnames, credentials, private keys, or secrets. Use placeholders such as `<SERVER_IP>`.
 - Tests must use isolated SQLite `:memory:` and must never wipe the PostgreSQL development/production database.
