@@ -389,6 +389,7 @@ class LogisticsHubSuiteTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->has('hubs', 1)
             ->where('hubs.0.id', $this->bayanHub->id)
+            ->has('companyDirectoryHubs', 2)
             ->where('scope.active_hub_id', $this->bayanHub->id)
             ->where('scope.can_switch_facility', false)
         );

@@ -443,6 +443,34 @@ class LogisticsHubWorkstationController extends Controller
                 ];
             });
 
+        $accessibleIds = $accessibleHubs->pluck('id')->all();
+        $directoryHubs = $company && $accessibleIds !== []
+            ? LogisticsHub::eligible()
+                ->with('company')
+                ->where('logistics_company_id', $company->id)
+                ->orderBy('tier')
+                ->orderBy('name')
+                ->get()
+                ->map(fn (LogisticsHub $h) => [
+                    'id' => $h->id,
+                    'name' => $h->name,
+                    'code' => $h->code,
+                    'tier' => $h->tier,
+                    'parent_hub_id' => $h->parent_hub_id,
+                    'company_name' => $h->company?->name ?? $company->name,
+                    'company_code' => $h->company?->code ?? $company->code,
+                    'province' => $h->province,
+                    'city_municipality' => $h->city_municipality,
+                    'barangay' => $h->barangay,
+                    'address' => $h->address,
+                    'latitude' => $h->latitude,
+                    'longitude' => $h->longitude,
+                    'allows_self_pickup' => (bool) $h->allows_self_pickup,
+                    'is_active' => (bool) $h->is_active,
+                ])
+                ->values()
+            : collect();
+
         return Inertia::render('Hub/Network', [
             'riderIntake' => app(RiderCompanyRequestService::class)->companyWorkspace($user, $request->query()),
             'scope' => [
@@ -453,6 +481,7 @@ class LogisticsHubWorkstationController extends Controller
                 'can_scan' => $activeHub && $this->eligibility->canScan($user, $activeHub),
             ],
             'hubs' => $networkHubs,
+            'companyDirectoryHubs' => $directoryHubs,
             'placementVehicles' => $isCompanyAdministrator
                 ? LogisticsFleet::ready()->where('logistics_company_id', $company?->id ?? 0)
                     ->orderBy('plate_number')->get(['id', 'hub_id', 'plate_number', 'assigned_driver_id'])
