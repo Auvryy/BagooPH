@@ -39,7 +39,7 @@ export default function AccountSessionPanel({ sessions, signIns, lastSignIn, ses
     owner.current = userId;
     const previousOwner = useRef(userId);
     const radius = rider ? 'rounded-[8px]' : 'rounded-xl';
-    const card = rider ? 'courier-panel rounded-[8px] bg-white shadow-sm' : 'rounded-3xl border border-slate-300 bg-white shadow-xs';
+    const card = rider ? 'courier-panel rounded-[8px] bg-white shadow-sm' : user?.role === 'buyer' ? 'rounded-3xl border border-slate-300 bg-white shadow-xs' : 'rounded-xl border border-slate-300 bg-white shadow-xs';
     const visibleSessions = showAllSessions ? sessions.data : sessions.data.slice(0, 5);
     const visibleSignIns = showAllSignIns ? signIns.data : signIns.data.slice(0, 5);
     const button = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-[8px] border border-slate-300 px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:cursor-not-allowed disabled:opacity-50';

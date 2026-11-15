@@ -22,7 +22,7 @@ function ArrivalForm({ manifestId, version, driver, plate, basePath }: Props) {
         form.transform(data => ({ ...data, vehicle_plate: data.vehicle_plate.trim().toUpperCase(), reason: data.reason.trim() }));
         form.post(`${basePath}/${manifestId}/transport-arrival`, { preserveScroll: true, onFinish: () => { pending.current = false; } });
     };
-    const field = 'mt-2 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 focus:border-[#121316] focus:ring-[#121316]/15';
+    const field = 'mt-2 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 focus:border-[#E00D42] focus:ring-[#E00D42]/15';
     return <form onSubmit={submit} className="space-y-4" aria-busy={form.processing || undefined}>
         <p className="text-sm leading-6 text-slate-600">Record the original vehicle arriving here. Missing parcels and unopened sacks keep their separate holds.</p>
         <label className="block text-sm font-semibold">Plate observed on the vehicle<input required maxLength={40} autoComplete="off" disabled={form.processing} value={form.data.vehicle_plate} onChange={event => form.setData('vehicle_plate', event.target.value)} className={field} /></label>

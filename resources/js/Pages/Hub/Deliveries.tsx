@@ -11,7 +11,6 @@ import {
     HubCategoryTabs,
     HubEmpty,
     HubPageHeader,
-    RoleNextStepCard,
     hubButton,
     hubInput,
     hubPrimary,
@@ -193,29 +192,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                 title="Parcels & waybills"
                 roleLabel={canScan ? 'Hub Handler & Sorter' : 'Facility Dispatcher / Viewer'}
                 icon={Package}
-                description="Find a parcel, check who holds it and take its next permitted action."
                 actions={canScan && <PortalLink href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`} className={hubPrimary}><ScanLine className="h-4 w-4" />Open scanner</PortalLink>}
-            />
-            <RoleNextStepCard
-                roleTitle={canScan ? 'Hub Floor Sorter & Dispatcher' : 'Dispatch Supervisor / Viewer'}
-                summary={
-                    actionRequiredCount > 0
-                        ? `${actionRequiredCount} parcel(s) on this page are ready for sorting, rider assignment, or scan confirmation.`
-                        : 'No immediate parcel actions on this page. Use the queue filters or category tabs to inspect incoming or staged shipments.'
-                }
-                steps={
-                    canScan
-                        ? [
-                              'Check Needs Action Now for parcels ready for bin sorting or rider dispatch.',
-                              'Open the highlighted parcel action directly from each ready parcel card.',
-                              'Switch to Counter Pickup to monitor walk-in buyer self-pickup releases.',
-                          ]
-                        : [
-                              'Filter by Queue or Category to see parcels currently at the facility.',
-                              'Review ready-for-dispatch parcels when rider assignment is permitted.',
-                              'Inspect any blocked parcel guidance to see which station holds custody.',
-                          ]
-                }
             />
             <p role="status" className={busy ? 'text-sm text-zinc-600' : 'sr-only'}>{busy ? 'Updating parcel records…' : ''}</p>
             {readError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-xs">{readError}</p>}
@@ -267,7 +244,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             value={searchTerm}
                             disabled={busy}
                             onChange={event => setSearchTerm(event.target.value)}
-                            className="w-full rounded-lg border border-zinc-300 bg-zinc-50/40 hover:bg-white focus:bg-white pl-10 pr-3.5 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 shadow-2xs focus:border-[#121316] focus:ring-2 focus:ring-zinc-900/10 transition"
+                            className="w-full rounded-lg border border-zinc-300 bg-zinc-50/40 hover:bg-white focus:bg-white pl-10 pr-3.5 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition"
                             placeholder="Waybill, order or buyer…"
                         />
                     </div>
@@ -284,7 +261,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                         disabled={busy}
                         value={filters.status}
                         onChange={event => handleFilter(event.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white pl-3.5 pr-9 py-2 text-xs font-semibold text-zinc-900 shadow-2xs focus:border-[#121316] focus:ring-2 focus:ring-zinc-900/10 transition cursor-pointer"
+                        className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white pl-3.5 pr-9 py-2 text-xs font-semibold text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition cursor-pointer"
                     >
                         <option value="all">All parcels</option>
                         <option value="in_hub">In hub custody</option>
@@ -297,7 +274,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                         disabled={busy}
                         value={filters.delivery_type}
                         onChange={event => handleFilter(undefined, event.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white pl-3.5 pr-9 py-2 text-xs font-semibold text-zinc-900 shadow-2xs focus:border-[#121316] focus:ring-2 focus:ring-zinc-900/10 transition cursor-pointer"
+                        className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white pl-3.5 pr-9 py-2 text-xs font-semibold text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition cursor-pointer"
                     >
                         <option value="all">All methods</option>
                         <option value="doorstep">Doorstep delivery</option>
@@ -436,7 +413,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                     ))}
                 </div>
             )}
-            {deliveries.last_page > 1 && <nav aria-label="Parcel pages" className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500"><span>Page {deliveries.current_page} of {deliveries.last_page} · {deliveries.total} parcels</span><div className="flex flex-wrap gap-2">{deliveries.links.map((link, index) => link.url ? <PortalLink key={index} href={link.url} only={listProps} preserveScroll preserveState aria-current={link.active ? 'page' : undefined} className={`inline-flex min-h-9 items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-xs hover:bg-zinc-50 transition cursor-pointer ${link.active ? 'border-[#121316] bg-[#121316] text-white font-bold' : ''}`}>{paginationLabel(link.label)}</PortalLink> : <span key={index} aria-disabled="true" className="px-3 py-1.5 text-zinc-400">{paginationLabel(link.label)}</span>)}</div></nav>}
+            {deliveries.last_page > 1 && <nav aria-label="Parcel pages" className="flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500"><span>Page {deliveries.current_page} of {deliveries.last_page} · {deliveries.total} parcels</span><div className="flex flex-wrap gap-2">{deliveries.links.map((link, index) => link.url ? <PortalLink key={index} href={link.url} only={listProps} preserveScroll preserveState aria-current={link.active ? 'page' : undefined} className={`inline-flex min-h-9 items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-xs hover:bg-zinc-50 transition cursor-pointer ${link.active ? 'border-[#C20836] bg-[#E00D42] text-white font-bold' : ''}`}>{paginationLabel(link.label)}</PortalLink> : <span key={index} aria-disabled="true" className="px-3 py-1.5 text-zinc-400">{paginationLabel(link.label)}</span>)}</div></nav>}
         </div>
         <CourierDialog open={Boolean(choosing)} onClose={() => setChoosingId(null)} busy={busy} title="Choose delivery rider">{choosing && <div className="space-y-4"><p className="text-sm leading-6 text-zinc-600">{choosing.tracking_number} · {choosing.destination_barangay}. Only riders eligible for this parcel are listed.</p><RiderPicker riders={eligibleRiders} eligibleIds={choosing.guidance.eligible_rider_ids} value={selectedRiders[choosing.id] ?? ''} onChange={value => setSelectedRiders(current => ({ ...current, [choosing.id]: value }))} disabled={busy} />{!ridersForChoice.length && <HubEmpty title="No eligible riders available" description="Riders need the right service area and vehicle, duty enabled and acknowledged COD. Ask the rider or company manager to review readiness." icon={UserRound} action={<PortalLink href={route('hub.network')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 shadow-xs transition cursor-pointer">Review hub team</PortalLink>} />}{readError && <p role="alert" className="text-sm text-red-700">{readError}</p>}<div className="flex justify-end gap-2 border-t border-zinc-200 pt-4"><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 shadow-xs transition cursor-pointer" disabled={busy} onClick={() => setChoosingId(null)}>Cancel</button><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#E00D42] bg-[#E00D42] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[#c70b3a] shadow-xs transition cursor-pointer" disabled={busy || !choosing.guidance.eligible_rider_ids.includes(Number(selectedRiders[choosing.id]))} onClick={() => assignRider(choosing)}>{busy ? 'Assigning…' : 'Assign rider'}</button></div></div>}</CourierDialog>
         <CourierDialog open={Boolean(reassignTarget)} onClose={() => setReassignTarget(null)} busy={busy} title={reassignTarget?.can_reassign_final_mile ? 'Reassign delivery rider' : 'Reassign first-mile pickup rider'}>
@@ -451,7 +428,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             disabled={busy}
                             value={reassignRiderId}
                             onChange={(e) => setReassignRiderId(e.target.value)}
-                            className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:border-[#121316] focus:ring-zinc-900/10"
+                            className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:border-[#E00D42] focus:ring-[#E00D42]/15"
                         >
                             {reassignTarget.can_reassign_first_mile && <option value="">Return to open pickup pool</option>}
                             {reassignTarget.can_reassign_final_mile && <option value="">Select eligible destination rider</option>}
@@ -471,7 +448,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             value={reassignReason}
                             onChange={(e) => setReassignReason(e.target.value)}
                             placeholder="e.g. Original rider unreachable; rebalancing route"
-                            className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:border-[#121316] focus:ring-zinc-900/10"
+                            className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:border-[#E00D42] focus:ring-[#E00D42]/15"
                         />
                     </label>
                     {readError && <p role="alert" className="text-xs text-red-700">{readError}</p>}

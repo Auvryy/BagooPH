@@ -10,10 +10,12 @@ export default function UpdateProfileInformation({
     mustVerifyEmail,
     status,
     className = '',
+    showHeader = true,
 }: {
     mustVerifyEmail: boolean;
     status?: string;
     className?: string;
+    showHeader?: boolean;
 }) {
     const user = usePage().props.auth.user!;
     const reviewedIdentity = user.role === 'admin' || ['approved', 'verified'].includes(user.kyc_status ?? '');
@@ -33,17 +35,19 @@ export default function UpdateProfileInformation({
 
     return (
         <section className={className}>
-            <header>
-                <h2 className="text-lg font-medium text-gray-900">
-                    Profile Information
-                </h2>
+            {showHeader && (
+                <header>
+                    <h2 className="text-lg font-medium text-gray-900">
+                        Profile Information
+                    </h2>
 
-                <p className="mt-1 text-sm text-gray-600">
-                    Your reviewed name and original sign-in email stay with your account. Manage contact emails below.
-                </p>
-            </header>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Your reviewed name and original sign-in email stay with your account. Manage contact emails below.
+                    </p>
+                </header>
+            )}
 
-            <form onSubmit={submit} className="mt-6 space-y-6">
+            <form onSubmit={submit} className={`${showHeader ? 'mt-6 ' : ''}space-y-4`}>
                 <div>
                     <InputLabel htmlFor="name" value="Name" />
 

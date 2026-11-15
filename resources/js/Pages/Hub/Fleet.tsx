@@ -28,7 +28,6 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                 <HubPageHeader
                     title="Fleet & drivers"
                     icon={Truck}
-                    description={`Vehicles based at ${activeHub?.name ?? 'your assigned facility'}. Check the vehicle, driver and job before preparing a transfer.`}
                     actions={<Link href={route('hub.manifests.index')} className={hubButton}><Truck className="h-4 w-4" />Open transfers</Link>}
                 />
 
@@ -85,8 +84,8 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                         </label>
                     </div>
 
-                    <p className="text-xs leading-5 text-zinc-500">
-                        {shown.length} matching vehicles. Active status alone does not reserve a vehicle or confirm driver availability. The transfer form checks the actual route and driver.
+                    <p className="text-xs font-medium leading-5 text-zinc-600">
+                        {shown.length} matching vehicle{shown.length === 1 ? '' : 's'}
                     </p>
 
                     {!shown.length ? (

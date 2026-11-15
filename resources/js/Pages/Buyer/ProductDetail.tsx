@@ -1,4 +1,4 @@
-import ProductSaleOffer, { type SaleReminderState } from '@/Components/ProductSaleOffer';
+import ProductSaleOffer from '@/Components/ProductSaleOffer';
 import ProductSpecifications, { ProductFactsSummary } from '@/Components/ProductSpecifications';
 import { defaultVariantRegularPrice, firstAvailableVariantSelection, selectedRegularPrice, saleUnitPrice } from '@/utils/productPricing';
 import React, { useEffect, useRef, useState } from 'react';
@@ -72,7 +72,6 @@ interface ShopStats {
 }
 
 interface Props {
-    saleReminder?: SaleReminderState | null;
     shopOffers?: import('@/hooks/usePurchaseQuote').VoucherOffer[];
     product: Product & {
         reviews?: Review[];
@@ -91,7 +90,6 @@ interface Props {
 export default function BuyerProductDetail({
     product,
     variations,
-    saleReminder = null,
     relatedProducts,
     shopStats,
     cartQuantities = [],
@@ -552,7 +550,7 @@ export default function BuyerProductDetail({
                         </div>
 
                         {/* VARIATION SELECTOR 1 */}
-                        <ProductSaleOffer product={product} reminder={saleReminder} />
+                        <ProductSaleOffer product={product} />
                         {product.shop?.vacation_mode && <p role="status" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">On vacation. This shop has paused new purchases. Your Bag and existing orders stay available.</p>}
                         {product.purchase_limit && <p className="mb-4 text-sm text-slate-600">Limit {product.purchase_limit} per buyer across orders. You can buy {purchaseAllowance ?? product.purchase_limit} more.</p>}
                         {colorsList.length > 0 && (

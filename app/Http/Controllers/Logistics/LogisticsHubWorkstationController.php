@@ -461,23 +461,6 @@ class LogisticsHubWorkstationController extends Controller
         ]);
     }
 
-    /**
-     * Corporate Enterprise Modules & Future Roadmap Explorer.
-     */
-    public function roadmap(Request $request): Response
-    {
-        $user = $request->user();
-        [$activeHub, $hubs] = $this->getActiveHub($request, $user);
-
-        $selectedModule = $request->query('module', 'personnel');
-
-        return Inertia::render('Hub/Roadmap', [
-            'activeHub' => $activeHub,
-            'hubs' => $hubs,
-            'selectedModule' => $selectedModule,
-        ]);
-    }
-
     public function placeResource(Request $request, LogisticsPlacementService $placements): JsonResponse|RedirectResponse
     {
         abort_unless($this->eligibility->isCompanyManager($request->user()), 403, 'Only an assigned Mother Hub manager can manage personnel placement.');
@@ -831,7 +814,7 @@ class LogisticsHubWorkstationController extends Controller
         $basePath = $request->is('hub/*') ? '/hub' : '';
         $previous = parse_url(url()->previous());
         $path = $previous['path'] ?? '';
-        $pages = array_map(fn ($page) => $basePath.'/'.$page, ['dashboard', 'network', 'fleet', 'deliveries', 'scan', 'counter', 'manifests', 'roadmap']);
+        $pages = array_map(fn ($page) => $basePath.'/'.$page, ['dashboard', 'network', 'fleet', 'deliveries', 'scan', 'counter', 'manifests']);
         $query = [];
         if (($previous['host'] ?? $request->getHost()) === $request->getHost() && in_array($path, $pages, true)) {
             parse_str($previous['query'] ?? '', $query);

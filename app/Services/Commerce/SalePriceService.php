@@ -13,13 +13,12 @@ use Illuminate\Validation\ValidationException;
 
 class SalePriceService
 {
-    /** A product lock serializes all sale edits, quota writes and stock changes. */
+    /** A product lock serializes all sale edits and stock changes. */
     public function context(Product $product): array
     {
         $product->loadMissing(['sales' => fn ($sales) => $sales->whereNull('ended_at')->where('ends_at', '>', now())->orderBy('id')]);
         $live = $product->sales->filter(fn (ProductSale $sale) => $sale->isLive());
         $store = $live->firstWhere('kind', 'store');
-        $flash = $live->first(fn (ProductSale $sale) => $sale->kind === 'flash' && $sale->used_quantity < $sale->quantity);
         $regular = CodMoney::cents($product->price);
 
         return ['regular_cents' => $regular,
@@ -27,25 +26,25 @@ class SalePriceService
             'store_id' => $store?->id,
             'store_type' => $store?->discount_type ?? 'fixed', 'store_percentage' => $store?->percentage,
             'store_price' => $store ? CodMoney::cents($store->price) : null,
-            'flash_cents' => $flash ? $this->saleCents($flash, $regular, $regular) : null,
-            'flash_id' => $flash?->id,
-            'flash_type' => $flash?->discount_type ?? 'fixed', 'flash_percentage' => $flash?->percentage,
-            'flash_price' => $flash ? CodMoney::cents($flash->price) : null,
-            'flash_remaining' => $flash ? max(0, $flash->quantity - $flash->used_quantity) : 0];
+            'flash_cents' => null,
+            'flash_id' => null,
+            'flash_type' => 'fixed', 'flash_percentage' => null,
+            'flash_price' => null,
+            'flash_remaining' => 0];
     }
 
     public function unitPrice(Product $product, string $regularUnitPrice): string
     {
         $context = $this->context($product);
 
-        return number_format($this->contextCents($context, CodMoney::cents($regularUnitPrice), $context['flash_id'] !== null) / 100, 2, '.', '');
+        return number_format($this->contextCents($context, CodMoney::cents($regularUnitPrice)) / 100, 2, '.', '');
     }
 
     public function range(Product $product): array
     {
         $context = $this->context($product);
         $regular = $this->regularPrices($product);
-        $prices = array_map(fn ($cents) => $this->contextCents($context, $cents, $context['flash_id'] !== null), $regular);
+        $prices = array_map(fn ($cents) => $this->contextCents($context, $cents), $regular);
 
         return ['min' => number_format(min($prices) / 100, 2, '.', ''), 'max' => number_format(max($prices) / 100, 2, '.', ''),
             'regular_min' => number_format(min($regular) / 100, 2, '.', ''), 'regular_max' => number_format(max($regular) / 100, 2, '.', '')];
@@ -83,36 +82,27 @@ class SalePriceService
             : max(1, $regular - max(0, $base - CodMoney::cents($sale->price)));
     }
 
-    private function contextCents(array $context, int $regular, bool $flash): int
+    private function contextCents(array $context, int $regular): int
     {
-        $prefix = $flash ? 'flash' : 'store';
-        if (! $context[$prefix.'_id']) {
+        if (! $context['store_id']) {
             return $regular;
         }
 
-        return $context[$prefix.'_type'] === 'percentage' ? $this->discountedCents($regular, $context[$prefix.'_percentage'])
-            : max(1, $regular - max(0, $context['regular_cents'] - $context[$prefix.'_price']));
+        return $context['store_type'] === 'percentage' ? $this->discountedCents($regular, $context['store_percentage'])
+            : max(1, $regular - max(0, $context['regular_cents'] - $context['store_price']));
     }
 
     /** @return array<int, array<string, mixed>> */
     public function plan(Collection $items): array
     {
-        $remaining = [];
         $plans = [];
         foreach ($items->sortBy('id') as $item) {
             $product = $item->product;
             $context = $this->context($product);
             $regular = CodMoney::cents(app(InventoryService::class)->regularUnitPrice($product, $item->color, $item->size));
-            $remaining[$product->id] ??= $context['flash_remaining'];
-            $flashQuantity = min($item->quantity, $remaining[$product->id]);
-            $remaining[$product->id] -= $flashQuantity;
-            $segments = [];
-            if ($flashQuantity > 0) {
-                $segments[] = $this->segment($flashQuantity, $this->contextCents($context, $regular, true), $context['flash_id'], 'flash');
-            }
-            if ($item->quantity > $flashQuantity) {
-                $segments[] = $this->segment($item->quantity - $flashQuantity, $this->contextCents($context, $regular, false), $context['store_id'], $context['store_id'] ? 'store' : null);
-            }
+            $segments = [
+                $this->segment($item->quantity, $this->contextCents($context, $regular), $context['store_id'], $context['store_id'] ? 'store' : null),
+            ];
             $plans[$item->id] = ['id' => $item->id, 'quantity' => $item->quantity,
                 'unit_price' => $segments[0]['unit_price'],
                 'subtotal' => array_sum(array_column($segments, 'subtotal')),
@@ -133,12 +123,8 @@ class SalePriceService
     public function reserve(Product $product, int $saleId, int $quantity): void
     {
         $sale = ProductSale::whereKey($saleId)->where('product_id', $product->id)->lockForUpdate()->firstOrFail();
-        if (! $sale->isLive() || ($sale->kind === 'flash' && $sale->used_quantity + $quantity > $sale->quantity)) {
-            throw new CheckoutException('A sale ended or its remaining quantity changed. Reload checkout and review your total.');
-        }
-        if ($sale->kind === 'flash') {
-            $sale->increment('used_quantity', $quantity);
-            $product->unsetRelation('sales');
+        if (! $sale->isLive() || $sale->kind !== 'store') {
+            throw new CheckoutException('A sale ended or is no longer active. Reload checkout and review your total.');
         }
     }
 
@@ -147,11 +133,8 @@ class SalePriceService
         if (! $item->product_sale_id) {
             return;
         }
-        $sale = ProductSale::whereKey($item->product_sale_id)->where('product_id', $item->product_id)->lockForUpdate()->firstOrFail();
-        if ($sale->kind === 'flash') {
-            if ($sale->used_quantity < $item->quantity) {
-                throw new CheckoutException('The original sale allocation needs review before this order can be cancelled.');
-            }
+        $sale = ProductSale::whereKey($item->product_sale_id)->where('product_id', $item->product_id)->lockForUpdate()->first();
+        if ($sale && $sale->kind === 'flash' && $sale->used_quantity >= $item->quantity) {
             $sale->decrement('used_quantity', $item->quantity);
         }
     }
@@ -159,13 +142,11 @@ class SalePriceService
     public function present(Product $product): array
     {
         $context = $this->context($product);
-        $activeId = $context['flash_id'] ?? $context['store_id'];
-        $active = $product->sales->firstWhere('id', $activeId);
-        $upcoming = $product->sales->filter(fn (ProductSale $sale) => $sale->kind === 'flash' && ! $sale->ended_at && $sale->starts_at->isFuture() && $sale->ends_at->isFuture())->sortBy('starts_at')->first();
+        $active = $context['store_id'] ? $product->sales->firstWhere('id', $context['store_id']) : null;
 
         return ['server_now' => now()->toIso8601String(), 'effective_price' => (float) $this->range($product)['min'],
             'active' => $active ? $this->saleSummary($active, $product) : null,
-            'upcoming' => $upcoming ? $this->saleSummary($upcoming, $product) : null];
+            'upcoming' => null];
     }
 
     public function saleSummary(ProductSale $sale, ?Product $product = null): array
@@ -175,7 +156,7 @@ class SalePriceService
         return ['id' => $sale->id, 'kind' => $sale->kind, 'name' => $sale->name, 'price' => $price,
             'discount_type' => $sale->discount_type ?? 'fixed', 'percentage' => $sale->percentage,
             'starts_at' => $sale->starts_at->toIso8601String(), 'ends_at' => $sale->ends_at->toIso8601String(),
-            'remaining_quantity' => $sale->kind === 'flash' ? max(0, $sale->quantity - $sale->used_quantity) : null];
+            'remaining_quantity' => null];
     }
 
     /** Correlated expression used by catalogue price filters and sorting on both supported databases. */
@@ -192,7 +173,7 @@ class SalePriceService
         $clamp = $postgres ? "greatest(0.01, ({$price}))" : "max(0.01, ({$price}))";
         $select = 'select '.$clamp.' from product_sales s where s.product_id = products.id and s.ended_at is null and s.starts_at <= ? and s.ends_at > ? and s.kind = ?';
 
-        return ['sql' => 'coalesce(('.$select.' and s.used_quantity < s.quantity order by s.id limit 1), ('.$select.' order by s.id limit 1), '.$regular.')',
-            'bindings' => [now(), now(), 'flash', now(), now(), 'store']];
+        return ['sql' => 'coalesce(('.$select.' order by s.id limit 1), '.$regular.')',
+            'bindings' => [now(), now(), 'store']];
     }
 }

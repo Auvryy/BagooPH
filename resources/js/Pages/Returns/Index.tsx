@@ -21,7 +21,6 @@ export default function ReturnsIndex({ cases }: { cases: PaginatedData<Summary> 
                             <HubPageHeader
                                 title="Buyer returns"
                                 icon={PackageCheck}
-                                description="Follow accepted returns through their actual hub handovers. Decisions, physical receipt and repayment keep separate evidence."
                             />
                         ) : (
                             <h1 className="text-2xl font-bold text-[#121316]">Returns and refunds</h1>

@@ -71,7 +71,7 @@ class LogisticsPageReliabilityTest extends TestCase
     {
         [$actor] = $this->operator($kind);
         $this->actingAs($actor);
-        $pages = ['dashboard', 'network', 'fleet', 'manifests', 'deliveries', 'delivery-recovery', 'parcel-recovery', 'counter', 'cod', 'roadmap'];
+        $pages = ['dashboard', 'network', 'fleet', 'manifests', 'deliveries', 'delivery-recovery', 'parcel-recovery', 'counter', 'cod'];
         if (in_array($kind, ['bayan', 'mother'], true)) {
             $pages[] = 'scan';
         }

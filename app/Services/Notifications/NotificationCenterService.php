@@ -7,10 +7,8 @@ use App\Models\AccountReviewRequest;
 use App\Models\Advertisement;
 use App\Models\BuyerReturnCase;
 use App\Models\Order;
-use App\Models\Product;
 use App\Models\RestrictionAffectedWork;
 use App\Models\RiderCompanyRequest;
-use App\Models\SaleReminder;
 use App\Models\User;
 use App\Services\Advertisements\SellerPromotionService;
 use App\Services\BuyerAccessService;
@@ -196,13 +194,7 @@ class NotificationCenterService
 
             return null;
         }
-        if ($target === 'buyer-sale' && $user->isBuyer() && $user->canAccessPortal()) {
-            $product = Product::availableForSale()->whereKey((int) ($data['product_id'] ?? 0))->first();
-            if ($product && SaleReminder::whereKey((int) ($data['sale_reminder_id'] ?? 0))->where('buyer_id', $user->id)
-                ->whereHas('sale', fn ($sale) => $sale->where('product_id', $product->id))->exists()) {
-                return route('buyer.products.show', $product->slug, absolute: false);
-            }
-
+        if ($target === 'buyer-sale') {
             return null;
         }
         if ($target === 'buyer-wallet' && $user->isBuyer() && app(BuyerAccessService::class)->canViewOrderHistory($user)) {

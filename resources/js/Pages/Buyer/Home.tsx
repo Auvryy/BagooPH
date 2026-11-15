@@ -3,7 +3,6 @@ import { Head, Link, router } from '@inertiajs/react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import BuyerAdvertisements, { Advertisement } from '@/Components/BuyerAdvertisements';
 import ProductCard from '@/Components/ProductCard';
-import FlashDealCard from '@/Components/FlashDealCard';
 import CatalogueErrors from '@/Components/CatalogueErrors';
 import BagHeartButton from '@/Components/BagHeartButton';
 import CataloguePagination from '@/Components/CataloguePagination';
@@ -15,10 +14,8 @@ import {
     ChevronRight, 
     ShoppingBag, 
     ShoppingCart, 
-    Check, 
     Clock, 
     ArrowRight,
-    Store,
     Sparkles,
     Laptop,
     Shirt,
@@ -27,7 +24,6 @@ import {
     Home as HomeIcon,
     Smartphone,
     Headphones,
-    Activity,
     Watch,
     Car,
     PenTool,
@@ -38,9 +34,6 @@ import {
     RotateCcw,
     X,
     ChevronDown,
-    Zap,
-    Ticket,
-    ShieldCheck,
     Flame
 } from 'lucide-react';
 
@@ -74,7 +67,6 @@ interface Props {
     categories: (Category & { products_count?: number })[];
     subcategories?: SubCategory[];
     feedProducts: PaginatedData<Product>;
-    flashSaleProducts?: Product[];
     topPersonalizedProducts?: Array<Product & { personalized_ribbon?: string; collection_tag?: string; collection_sub?: string; collection_title?: string; sales_badge?: string }>;
     topCuratedCollections?: CuratedCollection[];
     relatedProducts?: Product[];
@@ -98,7 +90,6 @@ export default function BuyerHome({
     categories,
     subcategories = [],
     feedProducts,
-    flashSaleProducts: initialFlashSales,
     topPersonalizedProducts: initialTopProducts,
     topCuratedCollections = [],
     relatedProducts = [],
@@ -111,24 +102,6 @@ export default function BuyerHome({
     const [minPrice, setMinPrice] = useState(filters.min_price || '');
     const [maxPrice, setMaxPrice] = useState(filters.max_price || '');
     const [showFiltersPanel, setShowFiltersPanel] = useState(false);
-
-    // Live ticking countdown for Flash Deals
-    const [timeLeft, setTimeLeft] = useState({ hours: 3, minutes: 27, seconds: 48 });
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => {
-                if (prev.seconds > 0) {
-                    return { ...prev, seconds: prev.seconds - 1 };
-                } else if (prev.minutes > 0) {
-                    return { ...prev, minutes: 59, seconds: 59 };
-                } else if (prev.hours > 0) {
-                    return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-                }
-                return { hours: 4, minutes: 0, seconds: 0 };
-            });
-        }, 1000);
-        return () => clearInterval(timer);
-    }, []);
 
     useEffect(() => {
         setActiveTab(filters.tab || 'all');
@@ -170,18 +143,6 @@ export default function BuyerHome({
         });
     };
 
-    // Real dynamic or fallback flash sales
-    const liveFlashProducts = useMemo(() => {
-        if (initialFlashSales && initialFlashSales.length > 0) {
-            return initialFlashSales.slice(0, 6);
-        }
-        return feedProducts.data.filter((p) => {
-            const hasCompare = p.compare_at_price && Number(p.compare_at_price) > Number(p.price);
-            const hasOffer = p.sale_offer?.active;
-            return hasCompare || hasOffer;
-        }).slice(0, 6);
-    }, [initialFlashSales, feedProducts.data]);
-
     // Algorithmic top personalized products
     const topProductsList = useMemo(() => {
         if (initialTopProducts && initialTopProducts.length > 0) {
@@ -190,22 +151,7 @@ export default function BuyerHome({
         return feedProducts.data.slice(0, 4);
     }, [initialTopProducts, feedProducts.data]);
 
-    // Row 2: Official Shopee-style Feature Action Shortcuts
-    const featureShortcuts = [
-        { label: 'Siguradong Mura', badge: 'Best Price', icon: ShieldCheck, color: 'bg-rose-50 text-[#E00D42]', action: () => handleTabChange('top_sales') },
-        { label: 'Fulfilled by Bagoo', badge: 'Express COD', icon: Truck, color: 'bg-emerald-50 text-emerald-600', action: () => applyFilterChange({ in_stock: true }) },
-        { label: 'Flash Deals', badge: 'Up to 70%', icon: Zap, color: 'bg-amber-50 text-amber-600', action: () => {
-            const el = document.getElementById('flash-deals');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-        } },
-        { label: 'Free Shipping', badge: '₱0 Min Spend', icon: Ticket, color: 'bg-sky-50 text-sky-600', action: () => router.get('/vouchers') },
-        { label: 'Bagoo Mall', badge: '100% Authentic', icon: Store, color: 'bg-indigo-50 text-indigo-600', action: () => applyFilterChange({ rating: '4' }) },
-        { label: 'Partner Promos', badge: 'Extra 15%', icon: Sparkles, color: 'bg-orange-50 text-orange-600', action: () => router.get('/vouchers') },
-        { label: 'Loyalty Rewards', badge: 'Earn Coins', icon: Activity, color: 'bg-purple-50 text-purple-600', action: () => router.get(route('buyer.profile', { tab: 'account' })) },
-        { label: 'Cash on Delivery', badge: 'Doorstep Escrow', icon: Check, color: 'bg-teal-50 text-teal-600', action: () => applyFilterChange({ category: undefined }) },
-    ];
-
-    // Row 3: Official 14 Master Categories with Custom Transparent Icons
+    // Row 2: Official 14 Master Categories with Custom Transparent Icons
     const categoryCatalog = [
         { name: "Men's Apparel", slug: 'mens-apparel', image: '/images/categories/icons/cat-mens-apparel.png', count: '1.2k+ items' },
         { name: 'Bags & EDC', slug: 'backpacks-and-bags', image: '/images/categories/icons/cat-backpacks-and-bags.png', count: '890+ items' },
@@ -274,31 +220,7 @@ export default function BuyerHome({
                     <BuyerAdvertisements banners={banners} />
                 </div>
 
-                {/* 2. OFFICIAL FEATURE ACTION SHORTCUTS (ROW 2) */}
-                <section aria-label="Feature shortcuts" className="pt-0.5">
-                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 sm:gap-2">
-                        {featureShortcuts.map((item, idx) => {
-                            const IconComponent = item.icon;
-                            return (
-                                <button
-                                    key={idx}
-                                    type="button"
-                                    onClick={item.action}
-                                    className="p-1.5 sm:p-2 rounded-xl border border-slate-200/80 bg-white hover:border-red-200 hover:shadow-xs transition-all duration-200 flex flex-col items-center justify-center gap-1 cursor-pointer group text-center"
-                                >
-                                    <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-transform group-hover:scale-105 shadow-2xs ${item.color}`}>
-                                        <IconComponent className="w-4 h-4" />
-                                    </div>
-                                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 group-hover:text-[#E00D42] truncate max-w-full font-sans leading-tight">
-                                        {item.label}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                {/* 3. CATEGORIES (ROW 3) - CLEAN SURFACE */}
+                {/* 2. CATEGORIES - CLEAN SURFACE */}
                 <section aria-label="Product Categories" className="space-y-2 pt-0.5">
                     <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80">
                         <div className="flex items-center gap-2">
@@ -415,77 +337,7 @@ export default function BuyerHome({
                     )}
                 </section>
 
-                {/* 4. FLASH DEALS WITH COUNTDOWN TIMER (ROW 4) */}
-                {liveFlashProducts.length > 0 && !filters.search && (
-                    <section id="flash-deals" aria-label="Flash Deals" className="space-y-2">
-                        {/* Flash Sale Header Bar */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1.5 border-b border-slate-200/80">
-                            <div className="flex items-center gap-2.5">
-                                <div className="bg-[#E00D42] text-white p-1.5 rounded-lg flex items-center justify-center shadow-xs">
-                                    <Zap className="w-4 h-4 fill-white" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight font-sans">
-                                            FLASH DEALS
-                                        </h3>
-                                        <span className="bg-[#E00D42] text-white text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md tracking-wider">
-                                            LIMITED TIME
-                                        </span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-500 font-sans">
-                                        Hot promotional pricing with limited warehouse allocation
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Live Countdown Timer Box (Signature Red & Warm Orange - Zero Black) */}
-                            <div className="flex items-center gap-2.5">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-[11px] font-bold text-slate-500 font-sans uppercase tracking-wider">
-                                        Ends in:
-                                    </span>
-                                    <div className="flex items-center gap-1 font-mono text-xs font-black">
-                                        <span className="bg-[#E00D42] text-white px-1.5 py-0.5 rounded shadow-xs">
-                                            {String(timeLeft.hours).padStart(2, '0')}
-                                        </span>
-                                        <span className="text-[#E00D42] font-black">:</span>
-                                        <span className="bg-[#E00D42] text-white px-1.5 py-0.5 rounded shadow-xs">
-                                            {String(timeLeft.minutes).padStart(2, '0')}
-                                        </span>
-                                        <span className="text-[#E00D42] font-black">:</span>
-                                        <span className="bg-[#F97316] text-white px-1.5 py-0.5 rounded shadow-xs animate-pulse">
-                                            {String(timeLeft.seconds).padStart(2, '0')}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={() => handleTabChange('top_sales')}
-                                    className="text-xs font-bold text-[#E00D42] hover:underline flex items-center gap-0.5 cursor-pointer ml-1"
-                                >
-                                    <span>See All</span>
-                                    <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Flash Sale Product Row (Compact dense 6-column grid) */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
-                            {liveFlashProducts.map((product) => (
-                                <FlashDealCard
-                                    key={product.id}
-                                    product={product}
-                                    heartControl={<BagHeartButton product={product} />}
-                                    href={route('buyer.products.show', product.slug)}
-                                />
-                            ))}
-                        </div>
-                    </section>
-                )}
-
-                {/* 5. TOP PRODUCTS // ALGORITHMIC CURATED PICKS (ROW 5) */}
+                {/* 3. TOP PRODUCTS // ALGORITHMIC CURATED PICKS */}
                 {((topCuratedCollections && topCuratedCollections.length > 0) || topProductsList.length > 0) && !filters.search && (
                     <section id="top-products" aria-label="Top Products" className="space-y-2">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1.5 border-b border-slate-200/80">

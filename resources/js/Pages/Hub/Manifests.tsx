@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { ArrowRight, CheckCircle2, Container, Package, Truck, Undo2 } from 'lucide-react';
-import { HubBadge, HubCategoryTabs, HubEmpty, HubNextStep, HubPageHeader, HubRoute, HubSearch, HubStepRail, RoleNextStepCard, hubButton, type HubPlace } from '@/Components/Logistics/Workspace';
+import { HubBadge, HubCategoryTabs, HubEmpty, HubNextStep, HubPageHeader, HubRoute, HubSearch, HubStepRail, hubButton, type HubPlace } from '@/Components/Logistics/Workspace';
 import HubPicker from '@/Components/Logistics/HubPicker';
 import VehiclePicker from '@/Components/Logistics/VehiclePicker';
 import HubMap from '@/Components/Logistics/HubMap';
@@ -46,7 +46,7 @@ interface Props {
     preparationRoute?: { source_hub_id: number; destination_hub_id: number } | null;
     buyerReturns?: Array<{ id: number; reference: string; barcode: string; source_hub_id: number; destination_hub_id: number; weight_grams: number; recovery_id?: number | null }>;
 }
-const inputClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-[#121316] font-medium shadow-2xs placeholder:text-zinc-400 focus:border-[#121316] focus:outline-none focus:ring-2 focus:ring-[#121316]/10 transition-colors';
+const inputClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-[#121316] font-medium shadow-2xs placeholder:text-zinc-400 focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors';
 const buttonClass = 'inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-[#121316] shadow-2xs hover:bg-zinc-50 hover:border-zinc-400 transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] cursor-pointer';
 const words = (value: string) => value.replaceAll('_', ' ').replaceAll('-', ' ');
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' });
@@ -119,19 +119,8 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                 <HubPageHeader
                     title="Transfers & manifests"
                     roleLabel="Line-haul dispatch & receiving"
-                    description="Prepare cargo for its next hub. Compatible sealed manifests can share one vehicle trip."
                     icon={Truck}
                     actions={<Link className={hubButton} href={route('hub.mother-bags.index')}><Container className="h-4 w-4" />Mother Bags</Link>}
-                />
-
-                <RoleNextStepCard
-                    roleTitle="Dispatch & receiving staff · What to do next"
-                    summary="Organize hub-to-hub truck or van dispatches by stage so sending handlers seal on time and receiving hubs close arrivals cleanly."
-                    steps={[
-                        'Switch between Draft, Sealed, In Transit, and Received / Closed in the left transfer list.',
-                        'Attach sealed Mother Bags or eligible loose cargo to a draft, seal the list, and record departure.',
-                        'At the receiving hub, confirm Mother Bag seals and scan every arriving parcel before closing.',
-                    ]}
                 />
 
                 <SharedTripPanel trip={sharedTrip} candidates={tripCandidates} selectedId={selected?.id ?? null} token={commandToken} basePath={basePath} />
@@ -150,10 +139,9 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                 {/* Dispatch Trip Builder */}
                 {canCreate && !selected && (
-                    <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
-                        <header className="px-5 py-3.5 border-b border-zinc-100 bg-zinc-50/40">
+                    <section className="rounded border border-zinc-300 bg-white shadow-xs overflow-hidden">
+                        <header className="px-5 py-3.5 border-b border-zinc-300 bg-zinc-50/40">
                             <h2 className="text-sm sm:text-base font-bold text-[#121316]">Prepare a draft</h2>
-                            <p className="mt-0.5 text-xs text-zinc-500">Choose the next hub and assigned vehicle, then load the sealed master bag in Mother Bags.</p>
                         </header>
                         <form onSubmit={create} className="p-5 sm:p-6 space-y-6">
                             {/* Compact 3-option segmented/card selector */}
@@ -169,7 +157,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             key={option.value}
                                             className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-all focus-within:ring-2 focus-within:ring-[#121316]/15 ${
                                                 creation.data.direction === option.value
-                                                    ? 'border-[#121316] bg-zinc-50/90 shadow-xs ring-1 ring-zinc-300'
+                                                    ? 'border-[#E00D42] bg-rose-50/40 shadow-xs ring-1 ring-[#E00D42]/20'
                                                     : 'border-zinc-200/90 bg-white hover:bg-zinc-50/60 shadow-2xs'
                                             }`}
                                         >
@@ -225,7 +213,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                                     key={item.id}
                                                     className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 shadow-xs transition-colors ${
                                                         creation.data.buyer_return_case_id === String(item.id)
-                                                            ? 'border-[#121316] bg-zinc-50/90 ring-1 ring-zinc-300'
+                                                            ? 'border-[#E00D42] bg-rose-50/40 ring-1 ring-[#E00D42]/20'
                                                             : 'border-zinc-200/90 bg-white hover:bg-zinc-50'
                                                     }`}
                                                 >
@@ -314,17 +302,14 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             ))}
                                         <button
                                             disabled={creation.processing || !sourceHub || !destinationHub || !creation.data.vehicle_id || !availableVehicles.length}
-                                            className="rounded-lg bg-[#E00D42] hover:bg-[#C20836] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition active:scale-[0.99] disabled:opacity-50"
+                                            className="rounded border border-[#C20836] bg-[#E00D42] hover:bg-[#C20836] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition active:scale-[0.99] disabled:opacity-50"
                                         >
                                             Prepare manifest
                                         </button>
-                                        <p className="mt-2 text-xs text-zinc-500">
-                                            Feeder runs use a closed van; Mother-to-Mother line-haul uses a wing truck. The source-hub vehicle needs an active, available assigned driver.
-                                        </p>
                                     </div>
                                 </div>
 
-                                <div className="rounded-xl border border-zinc-200/90 bg-zinc-50/40 p-3 space-y-2.5">
+                                <div className="rounded border border-zinc-300 bg-zinc-50/40 p-3 space-y-2.5">
                                     <HubMap
                                         hubs={hubs}
                                         routeIds={sourceHub && destinationHub ? [sourceHub.id, destinationHub.id] : undefined}
@@ -336,11 +321,8 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                             else if (sendingHubs.some(item => item.id === hub.id))
                                                 creation.setData({ ...creation.data, source_hub_id: String(hub.id), destination_hub_id: '', vehicle_id: '' });
                                         }}
-                                        className="h-64 rounded-lg overflow-hidden border border-zinc-200/80"
+                                        className="h-64 rounded overflow-hidden border border-zinc-300"
                                     />
-                                    <p className="px-1 text-[11px] leading-5 text-zinc-500">
-                                        Choose a hub pin or use the searchable fields. Only a permitted next hub can be selected.
-                                    </p>
                                 </div>
                             </div>
                         </form>
@@ -379,7 +361,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                     className={
                                         'block rounded-xl border p-4 transition-all duration-150 ' +
                                         (selected?.id === manifest.id
-                                            ? 'border-[#121316] bg-zinc-50/90 shadow-xs ring-1 ring-zinc-300'
+                                            ? 'border-[#E00D42] bg-rose-50/40 shadow-xs ring-1 ring-[#E00D42]/20'
                                             : 'border-zinc-200/90 bg-white hover:border-zinc-300 hover:bg-zinc-50/40 shadow-2xs')
                                     }
                                 >
@@ -777,7 +759,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                         </section>
                     ) : (
                         <section className="rounded-xl border border-zinc-200/90 bg-white p-6 shadow-xs">
-                            <HubEmpty title="Choose a recorded transfer" description="Its next action, truck, sealed bags and receiving scans will appear here." icon={Truck} />
+                            <HubEmpty title="Choose a recorded transfer" icon={Truck} />
                         </section>
                     )}
                 </div>

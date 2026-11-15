@@ -177,12 +177,12 @@ class EnforcementAndPenaltyTest extends TestCase
 
         ProductSale::create([
             'product_id' => $product->id,
-            'kind' => 'flash',
+            'kind' => 'store',
             'name' => 'Visible Before Debt Hold',
             'price' => 199.00,
             'starts_at' => now()->subMinute(),
             'ends_at' => now()->addHour(),
-            'quantity' => 5,
+            'quantity' => null,
             'used_quantity' => 0,
         ]);
 
@@ -226,7 +226,7 @@ class EnforcementAndPenaltyTest extends TestCase
         $this->actingAs($order->buyer)->get(route('marketplace'))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('flashSaleProducts', fn ($items) => collect($items)->where('id', $product->id)->isEmpty()));
+                ->where('feedProducts.data', fn ($items) => collect($items)->where('id', $product->id)->isEmpty()));
 
         // Existing order settlement is blocked while unpaid_debt_hold / payout_hold is active.
         $sellerEligibility = app(SellerSettlementService::class)->eligibility($order->fresh());

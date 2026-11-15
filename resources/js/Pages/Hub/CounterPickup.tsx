@@ -3,7 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import WaybillCamera from '@/Components/WaybillCamera';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { HubCategoryTabs, HubNextStep, HubPageHeader, HubStepRail, RoleNextStepCard, hubInput } from '@/Components/Logistics/Workspace';
+import { HubCategoryTabs, HubNextStep, HubPageHeader, hubInput } from '@/Components/Logistics/Workspace';
 import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import { 
     Store, 
@@ -191,31 +191,18 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                     title="Counter pickup"
                     roleLabel="Counter releasing desk"
                     icon={Store}
-                    description="Stage the parcel, then verify the buyer and their private claim code before handing it over."
+                    actions={isCounterHub && canScan ? (
+                        <Link
+                            href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
+                            className="inline-flex items-center gap-2 rounded border border-zinc-400 bg-white px-3.5 py-2 text-xs font-semibold text-[#121316] shadow-2xs transition hover:bg-zinc-50 hover:border-zinc-600"
+                        >
+                            <ScanLine className="h-4 w-4 text-zinc-600" />
+                            Open parcel check-in
+                        </Link>
+                    ) : undefined}
                 />
-                {isCounterHub ? (
-                    <RoleNextStepCard
-                        roleTitle="Counter releasing staff · What to do next"
-                        summary="Hand over walk-in self-pickup orders only after matching the physical waybill, buyer photo ID, and one-time claim code."
-                        steps={[
-                            'Start with the Ready for Release tab below to spot walk-in pickups that are ready now.',
-                            'Click Release on the customer’s parcel row and scan the physical waybill.',
-                            'Verify photo ID, claim code, and COD cash (only when payment is COD) before confirming.',
-                        ]}
-                        action={canScan ? (
-                            <Link
-                                href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
-                                className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs font-semibold text-[#121316] shadow-2xs transition hover:bg-zinc-50"
-                            >
-                                <ScanLine className="h-4 w-4 text-zinc-600" />
-                                Open parcel check-in
-                            </Link>
-                        ) : undefined}
-                    />
-                ) : null}
-                {isCounterHub && <HubStepRail label="Counter release checks" steps={[{ title: 'Stage parcel', detail: 'Recorded hub arrival', state: 'waiting' }, { title: 'Verify buyer', detail: 'Photo ID and claim code', state: 'waiting' }, { title: 'Check payment', detail: 'Collect cash only for COD', state: 'waiting' }, { title: 'Record handover', detail: 'Release the actual parcel', state: 'waiting' }]} />}
                 {!isCounterHub && <HubNextStep title={activeHub?.tier === 'local_bayan_hub' ? 'Counter pickup is disabled at this hub' : 'Counter pickup is handled by child hubs'} icon={Store}><p>{canConfigureHours ? 'Choose an eligible child hub in the facility switcher to manage its pickup counter. Changing the view does not grant physical handler access.' : 'Use your assigned facility for its recorded parcel work. The company manager and assigned child-hub handler manage counter pickup.'}</p></HubNextStep>}
-                {isCounterHub && canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-xs"><label className="text-sm font-bold text-[#1C1A17]">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-2 w-full rounded-xl border border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white px-3.5 py-2.5 text-xs text-[#1C1A17] font-medium shadow-xs focus:border-[#121316] focus:outline-none focus:ring-2 focus:ring-[#121316]/10 transition-colors" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] px-4 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99]">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-xs text-red-700">{errors.operating_hours}</p>}</form>}
+                {isCounterHub && canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-xs"><label className="text-sm font-bold text-[#1C1A17]">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-2 w-full rounded-xl border border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white px-3.5 py-2.5 text-xs text-[#1C1A17] font-medium shadow-xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] px-4 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99]">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-xs text-red-700">{errors.operating_hours}</p>}</form>}
                 {isCounterHub && !activeHub?.operating_hours && <p className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs font-medium text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
 
                 {/* 1. 4-COLUMN NOTION METRIC STRIP */}
@@ -322,19 +309,10 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         placeholder="Tracking code, order number, buyer name or phone..."
-                                        className="w-full pl-9 pr-3.5 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-medium text-[#1C1A17] placeholder:text-zinc-400 focus:outline-none focus:border-[#121316] focus:ring-2 focus:ring-[#121316]/10 shadow-2xs transition-colors"
+                                        className="w-full pl-9 pr-3.5 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-medium text-[#1C1A17] placeholder:text-zinc-400 focus:outline-none focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 shadow-2xs transition-colors"
                                     />
                                 </form>
-
-                                <div className="text-xs font-sans text-zinc-600 flex items-center gap-1.5">
-                                    <ShieldCheck className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                                    <span>Verify photo ID, the one-time claim code and payment before release. Collect cash only for COD.</span>
-                                </div>
                             </div>
-
-                            <p className="text-[11px] text-zinc-500 font-medium border-t border-zinc-200/60 pt-2.5">
-                                Readiness and attention counts apply to this page. The queue total includes all matching parcels. Check the buyer's photo ID, private claim code and original payment before release.
-                            </p>
 
                             <HubCategoryTabs
                                 label="Filter counter parcels"
@@ -496,16 +474,6 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     ))}
                                 </div>
                             )}
-                        </div>
-
-                        <div className="mt-5 p-3.5 rounded-xl bg-zinc-50 border border-zinc-200/80 text-xs text-zinc-800">
-                            <p className="font-bold flex items-center gap-1.5 font-sans text-xs text-[#1C1A17]">
-                                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                                Verified Station Handover
-                            </p>
-                            <p className="text-xs text-zinc-500 font-sans mt-1 leading-relaxed">
-                                Counter handovers automatically resolve status to "Customer Collected" with audit timestamps.
-                            </p>
                         </div>
                     </div>
 

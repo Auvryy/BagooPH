@@ -40,21 +40,19 @@ export default function DeliveryRecovery({ deliveries, requestToken, basePath }:
                 <HubPageHeader
                     title="Delivery recovery"
                     icon={RotateCcw}
-                    description="Review failed delivery attempts and the next permitted retry or return. Actual return scans end rider custody."
                 />
 
                 {flash?.error && (
-                    <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm font-medium text-rose-800 shadow-xs">
+                    <p role="alert" className="rounded border border-rose-300 bg-rose-50 p-4 text-sm font-medium text-rose-800 shadow-xs">
                         {flash.error}
                     </p>
                 )}
 
                 {!deliveries.data.length && (
-                    <div className="rounded-xl border border-zinc-200/90 bg-white p-6 shadow-xs">
+                    <div className="rounded border border-zinc-300 bg-white p-6 shadow-xs">
                         <HubEmpty
                             icon={CheckCircle2}
                             title="No failed deliveries in this view"
-                            description="Failed attempts within your facility scope will appear here with their retained evidence and next action."
                         />
                     </div>
                 )}

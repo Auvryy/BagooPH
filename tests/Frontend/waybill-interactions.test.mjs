@@ -123,7 +123,7 @@ test('an invalid next scan preserves its validation error and cannot leave the o
 test('changing a facility discards a late lookup and removes the previous confirmation', async t => {
     const h = harness(t, ui.Scanner, props); const gate = deferred(); h.response = () => gate.promise;
     h.render(); nodes(h.tree).find(n => n.props?.id === 'barcode-field').props.onChange({ target: { value: 'BGO-ONE' } }); h.render();
-    const camera = () => nodes(h.tree).find(n => n.props?.instruction?.startsWith('Scan the tracking barcode'));
+    const camera = () => nodes(h.tree).find(n => typeof n.props?.onScan === 'function' && 'disabled' in (n.props ?? {}));
     assert.equal(camera().key, '1');
     nodes(h.tree).find(n => n.type === 'form').props.onSubmit({ preventDefault() {} });
     h.props = { ...props, activeHub: { ...hub, id: 2 } }; h.render();

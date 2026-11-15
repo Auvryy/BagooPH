@@ -1,16 +1,16 @@
 .logistics-workspace {
     height: 100dvh;
     background: #F7F7F5;
-    --hub-outline: #E4E4E7;
+    --hub-outline: #CBD5E1;
 }
 .logistics-workspace > aside {
-    box-shadow: 1px 0 0 rgba(18, 19, 22, 0.08);
+    box-shadow: 1px 0 0 rgba(18, 19, 22, 0.14);
 }
 .logistics-workspace > div > header {
     height: 60px;
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(12px);
-    box-shadow: 0 1px 2px rgba(18, 19, 22, 0.03);
+    box-shadow: 0 1px 2px rgba(18, 19, 22, 0.04);
 }
 .logistics-workspace main {
     background: #F8F9FA;
@@ -19,20 +19,20 @@
 .logistics-workspace main > div {
     max-width: 1400px;
 }
-.logistics-workspace :where(.rounded-md) {
-    border-radius: 8px;
+.logistics-workspace :where(.rounded-sm) {
+    border-radius: 3px;
 }
-.logistics-workspace :where(.rounded-lg) {
-    border-radius: 10px;
+.logistics-workspace :where(.rounded, .rounded-md) {
+    border-radius: 4px;
 }
-.logistics-workspace :where(.rounded-xl) {
-    border-radius: 14px;
+.logistics-workspace :where(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl) {
+    border-radius: 5px;
 }
-.logistics-workspace :where(.rounded-2xl) {
-    border-radius: 18px;
+.logistics-workspace :where(.border-zinc-100, .border-zinc-200, .border-zinc-200\/60, .border-zinc-200\/70, .border-zinc-200\/80, .border-zinc-200\/90, .border-slate-100, .border-slate-200, .border-slate-200\/60, .border-slate-200\/80, .border-slate-200\/90) {
+    border-color: #CBD5E1;
 }
-.logistics-workspace :where(.rounded-3xl) {
-    border-radius: 22px;
+.logistics-workspace :where(.divide-zinc-100, .divide-zinc-200, .divide-zinc-200\/80, .divide-slate-100, .divide-slate-200) > :not(:first-child) {
+    border-color: #CBD5E1;
 }
 .logistics-workspace :where(.font-mono, code, kbd, samp, pre) {
     font-family: inherit;
@@ -42,10 +42,11 @@
     letter-spacing: -0.025em;
 }
 .logistics-workspace main :where(section.bg-white, article.bg-white, .shadow-sm.bg-white, .shadow-xs.bg-white) {
-    box-shadow: 0 1px 2px rgba(18, 19, 22, 0.04), 0 3px 10px rgba(18, 19, 22, 0.02);
+    box-shadow: 0 1px 2px rgba(18, 19, 22, 0.05);
 }
 .logistics-workspace main :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
-    border-radius: 10px;
+    border-radius: 4px;
+    border-color: #94A3B8;
 }
 .logistics-workspace main :where(select) {
     background-position: right 0.75rem center;
@@ -63,10 +64,10 @@
     background-color: #FAFAFA;
 }
 .logistics-workspace main :where(td, th) {
-    border-color: #E4E4E7;
+    border-color: #CBD5E1;
 }
 .logistics-workspace main :where(button, a, input, select, textarea):focus-visible {
-    outline: 2px solid #121316;
+    outline: 2px solid #E00D42;
     outline-offset: 2px;
 }
 .logistics-navigation-drawer :where(button, a, input, select, textarea):focus-visible {
@@ -82,8 +83,8 @@
     font-family: inherit;
 }
 .hub-network-map .leaflet-control-zoom {
-    border: 1px solid #E4E4E7;
-    border-radius: 10px;
+    border: 1px solid #CBD5E1;
+    border-radius: 4px;
     overflow: hidden;
     box-shadow: 0 2px 6px rgba(18, 19, 22, 0.08);
 }
@@ -97,8 +98,8 @@
 }
 .hub-network-map .leaflet-tooltip {
     padding: 7px 10px;
-    border: 1px solid #E4E4E7;
-    border-radius: 10px;
+    border: 1px solid #CBD5E1;
+    border-radius: 4px;
     color: #18181B;
     font-family: inherit;
     font-size: 11px;
@@ -114,13 +115,13 @@
     height: 28px;
     border: 4px solid white;
     border-radius: 50%;
-    background: #18181B;
-    box-shadow: 0 2px 8px rgba(18, 19, 22, 0.25);
+    background: #E00D42;
+    box-shadow: 0 2px 8px rgba(194, 8, 54, 0.25);
     transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 .hub-map-mother {
     border-radius: 8px;
-    background: #3F3F46;
+    background: #9F1239;
 }
 .hub-map-selected .hub-map-pin-dot {
     background: #E00D42 !important;
@@ -138,7 +139,7 @@
     }
 }
 .hub-network-map .leaflet-marker-icon:focus-visible {
-    outline: 3px solid #121316;
+    outline: 3px solid #E00D42;
     outline-offset: 4px;
     border-radius: 50%;
 }

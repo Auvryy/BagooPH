@@ -107,7 +107,6 @@ const HELPER_COMPONENTS = new Set([
     'ScanModeControls',
     'BatchQueueWorkbench',
     'GatePassDialog',
-    'RoleNextStepCard',
     'HubCategoryTabs',
 ]);
 
@@ -333,7 +332,7 @@ test('ScanStation always boots in 2-Step Verify mode even with stale localStorag
     });
 
     h.render();
-    const verifyRadio = h.button('2-Step Verify (Default)');
+    const verifyRadio = h.button('2-Step Verify');
     assert.equal(verifyRadio.props['aria-checked'], true);
 
     await submitBarcode(h, 'BGO-VERIFY-01');
@@ -432,9 +431,9 @@ test('1-Scan Direct Confirm posts to batch endpoint for parcels, forces inspect 
     };
 
     h.render();
-    h.button('1-Scan Direct Confirm').props.onClick();
+    h.button('1-Scan Direct').props.onClick();
     h.render();
-    assert.equal(h.button('1-Scan Direct Confirm').props['aria-checked'], true);
+    assert.equal(h.button('1-Scan Direct').props['aria-checked'], true);
 
     await submitBarcode(h, 'BGO-DIRECT-21');
     h.render();
@@ -466,7 +465,7 @@ test('1-Scan Direct Confirm posts to batch endpoint for parcels, forces inspect 
     assert.equal(h.calls[4].body.mode, 'inspect');
 });
 
-test('Offline / Batch Queue saves offline scans with tokens, syncs when online, and retains rejected items', async (t) => {
+test('Offline buffering works automatically in any mode on network cutoff, syncs when online, and retains rejected items', async (t) => {
     const h = createScannerHarness(t);
     h.response = (_path, body) =>
         Response.json({
@@ -507,10 +506,12 @@ test('Offline / Batch Queue saves offline scans with tokens, syncs when online, 
     h.window.dispatchEvent(new Event('offline'));
     h.render();
 
-    h.button('Offline / Batch Queue').props.onClick();
+    // Still in default 2-Step Verify mode — no manual Offline mode toggle needed!
+    submitBarcode(h, 'BGO-OFF-1');
     h.render();
 
-    submitBarcode(h, 'BGO-OFF-1');
+    // Even in 1-Scan Direct mode, offline scans buffer automatically instead of hitting the network.
+    h.button('1-Scan Direct').props.onClick();
     h.render();
     submitBarcode(h, 'BGO-OFF-BAD');
     h.render();
@@ -610,7 +611,7 @@ test('All Hub and Courier views render role guidance, category tabs, and calm no
         },
         '/hub/dashboard',
     );
-    assert.match(dashboardHtml, /What to do next/);
+    assert.doesNotMatch(dashboardHtml, /What to do next|Real-time parcel custody|SLA clocks, recovery|Parcel journey pipeline/);
     assert.match(dashboardHtml, /role="tablist"/);
 
     const deliveriesHtml = await renderPage(
@@ -627,7 +628,7 @@ test('All Hub and Courier views render role guidance, category tabs, and calm no
         },
         '/hub/deliveries',
     );
-    assert.match(deliveriesHtml, /What to do next/);
+    assert.doesNotMatch(deliveriesHtml, /What to do next|Find a parcel, check who holds it/);
     assert.match(deliveriesHtml, /role="tablist"/);
 
     const counterHtml = await renderPage(
@@ -646,7 +647,7 @@ test('All Hub and Courier views render role guidance, category tabs, and calm no
         },
         '/hub/counter',
     );
-    assert.match(counterHtml, /What to do next/);
+    assert.doesNotMatch(counterHtml, /What to do next|Verified Station Handover|Counter release checks/);
     assert.match(counterHtml, /role="tablist"/);
 
     const bagsHtml = await renderPage(
@@ -662,7 +663,7 @@ test('All Hub and Courier views render role guidance, category tabs, and calm no
         },
         '/hub/mother-bags',
     );
-    assert.match(bagsHtml, /What to do next/);
+    assert.doesNotMatch(bagsHtml, /What to do next|The parcel’s stored route/);
     assert.match(bagsHtml, /role="tablist"/);
 
     const manifestsHtml = await renderPage(
@@ -680,7 +681,7 @@ test('All Hub and Courier views render role guidance, category tabs, and calm no
         },
         '/hub/manifests',
     );
-    assert.match(manifestsHtml, /What to do next/);
+    assert.doesNotMatch(manifestsHtml, /What to do next|Feeder runs use a closed van|Choose a hub pin or use the searchable fields/);
     assert.match(manifestsHtml, /role="tablist"/);
 
     const courierHtml = await renderPage(
@@ -714,12 +715,15 @@ test('All Hub and Courier views render role guidance, category tabs, and calm no
         },
         '/courier/deliveries',
     );
-    assert.match(courierHtml, /Rider what to do next/);
+    assert.doesNotMatch(courierHtml, /Courier Rider · What to do next/);
 
     for (const html of [dashboardHtml, deliveriesHtml, counterHtml, bagsHtml, manifestsHtml, courierHtml]) {
         assert.doesNotMatch(html, /font-mono/);
         assert.doesNotMatch(html, /🛑|⚠️/);
     }
+    const workspaceCss = readFileSync(join(root, 'resources/css/logistics-workspace.css'), 'utf8');
+    assert.match(workspaceCss, /border-radius:\s*4px;/);
+    assert.match(workspaceCss, /border-color:\s*#CBD5E1;/);
 });
 
 test('All touched Hub and Courier UI files keep zero font-mono and zero emoji characters in source', () => {

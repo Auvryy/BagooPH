@@ -411,7 +411,7 @@ export default function CourierNavigation({
                                 type="button"
                                 onClick={toggleFullscreen}
                                 title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Mount View'}
-                                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#18181B] px-3 text-xs font-bold text-white shadow-sm hover:bg-zinc-800 transition-colors"
+                                className="inline-flex h-9 items-center gap-1.5 rounded bg-[#E00D42] border border-[#C20836] px-3 text-xs font-bold text-white shadow-sm hover:bg-[#C20836] transition-colors"
                             >
                                 {isFullscreen ? (
                                     <>

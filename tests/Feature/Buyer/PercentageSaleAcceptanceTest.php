@@ -162,51 +162,6 @@ class PercentageSaleAcceptanceTest extends TestCase
         $this->assertSame(6, $this->product->fresh()->variants['combinations'][0]['stock']);
     }
 
-    public function test_flash_quota_limits_full_stock_and_running_percentage_terms_cannot_change(): void
-    {
-        $this->post(route('seller.products.sales.store', $this->product), $this->terms(['kind' => 'flash', 'quantity' => 11]))->assertSessionHasErrors('quantity');
-        $sale = $this->schedule(['kind' => 'flash', 'quantity' => 10]);
-        $this->assertSame(10, $this->product->fresh()->stock);
-        foreach ([['percentage' => '20'], ['discount_type' => 'fixed', 'price' => '400.00'], ['quantity' => 9]] as $change) {
-            $this->put(route('seller.products.sales.update', [$this->product, $sale]), $change)->assertSessionHasErrors('sale');
-        }
-        $this->assertSame(15, $sale->fresh()->percentage);
-    }
-
-    public function test_scheduled_flash_quota_edit_accounts_for_used_units_without_creating_stock(): void
-    {
-        $sale = $this->schedule(['kind' => 'flash', 'quantity' => 10, 'starts_at' => now()->addHour()->setTimezone('Asia/Manila')->format('Y-m-d\TH:i'), 'ends_at' => now()->addHours(2)->setTimezone('Asia/Manila')->format('Y-m-d\TH:i')]);
-        $sale->update(['used_quantity' => 4]);
-        $this->product->update(['stock' => 6]);
-        $this->put(route('seller.products.sales.update', [$this->product, $sale]), ['quantity' => 11])->assertSessionHasErrors('quantity');
-        $this->put(route('seller.products.sales.update', [$this->product, $sale]), ['quantity' => 3])->assertSessionHasErrors('quantity');
-        $this->put(route('seller.products.sales.update', [$this->product, $sale]), ['quantity' => 10])->assertSessionHasNoErrors();
-        $this->assertSame(6, $this->product->fresh()->stock);
-        $this->assertSame(4, $sale->fresh()->used_quantity);
-    }
-
-    public function test_percentage_flash_and_store_units_split_and_cancel_once_with_original_snapshots(): void
-    {
-        $this->schedule(['percentage' => '20']);
-        $flash = $this->schedule(['kind' => 'flash', 'percentage' => '50', 'quantity' => 1]);
-        $cart = $this->bag(3);
-        $input = $this->input($cart);
-        $this->post(route('checkout.store'), $input)->assertSessionHasNoErrors();
-        $order = Order::sole();
-        $this->assertSame('419.90', $order->subtotal);
-        $this->assertSame(['99.98', '159.96'], $order->items()->orderBy('id')->pluck('unit_price')->all());
-        $this->assertSame(['BGO-COMPACT', 'BGO-COMPACT'], $order->items()->orderBy('id')->pluck('sku_snapshot')->all());
-        $this->assertSame(1, $flash->fresh()->used_quantity);
-        $this->post(route('checkout.store'), $input)->assertSessionHasNoErrors();
-        $this->assertSame(7, $this->product->fresh()->stock);
-        $this->assertDatabaseCount('orders', 1);
-        $this->post(route('buyer.orders.cancel', $order), ['reason' => 'Ordered by mistake'])->assertSessionHas('success');
-        $this->post(route('buyer.orders.cancel', $order), ['reason' => 'Ordered by mistake'])->assertSessionHas('success');
-        $this->assertSame(10, $this->product->fresh()->stock);
-        $this->assertSame(0, $flash->fresh()->used_quantity);
-        $this->assertSame('419.90', $order->fresh()->subtotal);
-    }
-
     public function test_fixed_sales_and_later_variant_edits_cannot_make_an_option_free(): void
     {
         $this->post(route('seller.products.sales.store', $this->product), $this->terms(['discount_type' => 'fixed', 'price' => '250.00']))->assertSessionHasErrors('price');
@@ -222,13 +177,12 @@ class PercentageSaleAcceptanceTest extends TestCase
         $this->assertSame('199.95', $this->product->fresh()->variants['combinations'][0]['price']);
     }
 
-    public function test_running_percentage_flash_name_edit_keeps_authored_terms_after_a_base_price_edit(): void
+    public function test_running_percentage_store_sale_name_edit_keeps_authored_terms_after_a_base_price_edit(): void
     {
-        $sale = $this->schedule(['kind' => 'flash', 'quantity' => 2]);
+        $sale = $this->schedule(['kind' => 'store']);
         $this->product->update(['price' => '600.00']);
-        $this->put(route('seller.products.sales.update', [$this->product, $sale]), ['name' => 'Studio flash offer'])->assertSessionHasNoErrors();
+        $this->put(route('seller.products.sales.update', [$this->product, $sale]), ['name' => 'Studio store offer'])->assertSessionHasNoErrors();
         $this->assertSame(15, $sale->fresh()->percentage);
-        $this->assertSame(2, $sale->fresh()->quantity);
         $this->assertSame('169.96', app(InventoryService::class)->unitPrice($this->product->fresh(), null, 'Compact'));
     }
 }

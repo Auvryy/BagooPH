@@ -25,7 +25,7 @@ export default function AccountEmailSettings({ theme = 'buyer' }: { theme?: 'buy
         return () => window.clearTimeout(timeout);
     }, [cooldown]);
     if (!emailSettings) return null;
-    const card = theme === 'courier' ? 'courier-panel rounded-[8px] bg-white p-4 shadow-sm sm:p-6' : theme === 'seller' ? 'rounded-2xl border border-slate-300 bg-white p-6 shadow-2xs' : 'rounded-3xl border border-slate-300 bg-white p-6 shadow-xs sm:p-8';
+    const card = theme === 'courier' ? 'courier-panel rounded-[8px] bg-white p-4 shadow-sm sm:p-6' : theme === 'seller' ? 'rounded-xl border border-slate-300 bg-white p-6 shadow-xs' : 'rounded-3xl border border-slate-300 bg-white p-6 shadow-xs sm:p-8';
     const input = `mt-1 w-full border border-slate-300 bg-white p-2.5 text-sm focus:border-[#E00D42] focus:ring-[#E00D42] ${theme === 'courier' ? 'rounded-[8px]' : 'rounded-xl'}`;
     const action = async (kind: string, address?: number) => {
         if (busy) return;

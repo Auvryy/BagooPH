@@ -17,7 +17,7 @@ import Modal from '@/Components/Modal';
 import { hubButton, hubInput, hubPrimary } from '@/Components/Logistics/Workspace';
 import { waybillCsrfHeaders, WaybillRequestError } from '@/utils/waybillScan';
 
-export type ScanOperationMode = 'verify' | 'direct' | 'batch';
+export type ScanOperationMode = 'verify' | 'direct';
 
 export interface QueuedScanItem {
     request_token: string;
@@ -326,6 +326,7 @@ export function ScanModeControls({
     onLocationBarcodeChange,
     queuedCount,
     isOnline,
+    onOpenBatchQueue,
 }: {
     scanMode: ScanOperationMode;
     onModeChange: (mode: ScanOperationMode) => void;
@@ -335,74 +336,82 @@ export function ScanModeControls({
     onLocationBarcodeChange: (code: string) => void;
     queuedCount: number;
     isOnline: boolean;
+    onOpenBatchQueue?: () => void;
 }) {
-    const modes: Array<{ id: ScanOperationMode; label: string; hint: string }> = [
+    const modes: Array<{ id: ScanOperationMode; label: string }> = [
         {
             id: 'verify',
-            label: '2-Step Verify (Default)',
-            hint: 'Inspect first, then confirm custody.',
+            label: '2-Step Verify',
         },
         {
             id: 'direct',
-            label: '1-Scan Direct Confirm',
-            hint: 'Confirm eligible parcel intake/sort in one scan.',
-        },
-        {
-            id: 'batch',
-            label: `Offline / Batch Queue${queuedCount > 0 ? ` (${queuedCount})` : ''}`,
-            hint: 'Buffer scans offline and sync in bulk.',
+            label: '1-Scan Direct',
         },
     ];
 
     return (
         <section
             aria-label="Scanner speed and safety mode"
-            className="rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs space-y-3"
+            className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-xs space-y-3"
         >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                    <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-600">
-                        Scanning Speed &amp; Safety Mode
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                        Scan mode
                     </h2>
-                    <p className="mt-0.5 text-xs text-zinc-500">
-                        Switch to 1-Scan Direct Confirm for continuous chute intake, or queue scans offline for one-click replay.
-                    </p>
+                    <div
+                        role="radiogroup"
+                        aria-label="Scanning workflow mode"
+                        className="inline-flex items-center rounded-lg border border-zinc-200 bg-slate-100/80 p-0.5 gap-0.5"
+                    >
+                        {modes.map((option) => {
+                            const active = scanMode === option.id;
+                            return (
+                                <button
+                                    key={option.id}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={active}
+                                    onClick={() => onModeChange(option.id)}
+                                    className={`rounded-md px-3 py-1 text-xs font-semibold transition cursor-pointer ${
+                                        active
+                                            ? option.id === 'direct'
+                                                ? 'border border-[#C20836] bg-[#E00D42] text-white shadow-2xs'
+                                                : 'border border-zinc-200 bg-white text-[#121316] shadow-2xs'
+                                            : 'border border-transparent text-zinc-600 hover:text-[#121316]'
+                                    }`}
+                                >
+                                    {option.label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
-                {!isOnline && (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900">
-                        <WifiOff className="h-3.5 w-3.5" />
-                        Offline network detected
-                    </span>
+
+                {(!isOnline || queuedCount > 0) && (
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                        {!isOnline && (
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-900">
+                                <WifiOff className="h-3.5 w-3.5" />
+                                Offline · Auto-queuing scans
+                            </span>
+                        )}
+                        {isOnline && queuedCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={onOpenBatchQueue}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-[#C20836] hover:bg-rose-100 transition cursor-pointer"
+                            >
+                                <Layers className="h-3.5 w-3.5" />
+                                <span>{queuedCount} queued offline · Sync</span>
+                            </button>
+                        )}
+                    </div>
                 )}
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Scanning workflow mode">
-                {modes.map((option) => {
-                    const active = scanMode === option.id;
-                    return (
-                        <button
-                            key={option.id}
-                            type="button"
-                            role="radio"
-                            aria-checked={active}
-                            onClick={() => onModeChange(option.id)}
-                            className={`rounded-xl border px-3.5 py-2.5 text-left transition cursor-pointer ${
-                                active
-                                    ? 'border-[#121316] bg-zinc-900 text-white shadow-2xs'
-                                    : 'border-zinc-200 bg-zinc-50/70 text-zinc-800 hover:border-zinc-300 hover:bg-white'
-                            }`}
-                        >
-                            <div className="text-xs font-semibold">{option.label}</div>
-                            <div className={`mt-0.5 text-xs ${active ? 'text-zinc-300' : 'text-zinc-500'}`}>
-                                {option.hint}
-                            </div>
-                        </button>
-                    );
-                })}
-            </div>
-
-            {scanMode !== 'verify' && (
-                <div className="grid gap-3 border-t border-zinc-100 pt-3 sm:grid-cols-2">
+            {scanMode === 'direct' && (
+                <div className="grid gap-3 border-t border-zinc-200 pt-3 sm:grid-cols-2">
                     <label className="block text-xs font-semibold text-zinc-700">
                         Lane Action Lock (optional guard)
                         <select
@@ -418,7 +427,7 @@ export function ScanModeControls({
                         </select>
                     </label>
                     <label className="block text-xs font-semibold text-zinc-700">
-                        Station Bin / Shelf Barcode (Poka-Yoke optional)
+                        Station Bin / Shelf Barcode (optional)
                         <input
                             type="text"
                             maxLength={100}
@@ -500,8 +509,8 @@ export function BatchQueueWorkbench({
             </div>
 
             {queue.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/60 px-4 py-6 text-center text-xs text-zinc-500">
-                    No parcels queued right now. Switch above to Offline / Batch Queue and scan waybills continuously, then click Sync when online.
+                <div className="rounded border border-dashed border-zinc-300 bg-zinc-50/60 px-4 py-6 text-center text-xs text-zinc-500">
+                    No parcels queued right now. If internet connection drops during scanning, parcel scans are automatically buffered here and ready to sync when online.
                 </div>
             ) : (
                 <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200/80 bg-zinc-50/40 max-h-60 overflow-y-auto">
@@ -535,7 +544,7 @@ export function BatchQueueWorkbench({
                 <div className="rounded-xl border border-zinc-200/90 bg-zinc-50/60 p-4 space-y-3" aria-label="Latest batch replay report">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2 text-xs font-semibold text-[#121316]">
-                            <Zap className="h-4 w-4 text-emerald-700" />
+                            <Zap className="h-4 w-4 text-[#E00D42]" />
                             <span>Last Batch Replay Results</span>
                         </div>
                         <span className="text-xs font-medium text-zinc-600 tabular-nums">
@@ -548,9 +557,9 @@ export function BatchQueueWorkbench({
                             <span className="block text-zinc-500">Submitted</span>
                             <strong className="text-sm font-bold text-[#121316] tabular-nums">{lastSync.summary.submitted}</strong>
                         </div>
-                        <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2">
-                            <span className="block text-emerald-800">Confirmed</span>
-                            <strong className="text-sm font-bold text-emerald-900 tabular-nums">{lastSync.summary.confirmed}</strong>
+                        <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
+                            <span className="block text-zinc-600">Confirmed</span>
+                            <strong className="text-sm font-bold text-[#121316] tabular-nums">{lastSync.summary.confirmed}</strong>
                         </div>
                         <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
                             <span className="block text-zinc-600">Idempotent replay</span>
@@ -572,13 +581,13 @@ export function BatchQueueWorkbench({
                                         {item.outcome === 'rejected' ? (
                                             <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-600" />
                                         ) : (
-                                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#E00D42]" />
                                         )}
                                         <span className="font-semibold text-[#121316] tabular-nums">{item.barcode}</span>
                                         <span
                                             className={`rounded-md border px-2 py-0.5 text-xs font-semibold ${
                                                 item.outcome === 'confirmed'
-                                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                                    ? 'border-zinc-300 bg-zinc-100 text-[#121316]'
                                                     : item.outcome === 'duplicate_replay'
                                                     ? 'border-zinc-200 bg-zinc-100 text-zinc-700'
                                                     : 'border-red-200 bg-red-50 text-red-800'
@@ -614,7 +623,7 @@ export function GatePassDialog({
         <Modal show={Boolean(gatePass)} onClose={onClose} maxWidth="lg">
             {gatePass && (
                 <div className="overflow-hidden bg-white font-sans">
-                    <div className="bg-[#121316] p-6 text-white">
+                    <div className="bg-[#E00D42] p-6 text-white">
                         <div className="flex items-center justify-between">
                             <span className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">
                                 <ShieldCheck className="h-3.5 w-3.5" />
@@ -627,7 +636,7 @@ export function GatePassDialog({
                         <h2 id="gate-pass-title" className="mt-2 text-xl font-bold tracking-tight text-white">
                             {gatePass.gate_pass_code}
                         </h2>
-                        <p className="mt-1 text-xs text-zinc-300">
+                        <p className="mt-1 text-xs text-rose-100">
                             Manifest Reference: <strong className="text-white">{gatePass.manifest_reference}</strong>
                         </p>
                     </div>
@@ -667,7 +676,7 @@ export function GatePassDialog({
                             </div>
                             <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
                                 <div
-                                    className="h-2 rounded-full bg-[#121316]"
+                                    className="h-2 rounded-full bg-[#E00D42]"
                                     style={{ width: `${Math.min(100, Math.max(8, gatePass.utilization_pct))}%` }}
                                 />
                             </div>
@@ -703,7 +712,7 @@ export function GatePassDialog({
                                     </span>
                                 </div>
                             </div>
-                            <span className="rounded border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-bold uppercase text-emerald-800">
+                            <span className="rounded border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-xs font-bold uppercase text-[#121316]">
                                 CLEARED
                             </span>
                         </div>

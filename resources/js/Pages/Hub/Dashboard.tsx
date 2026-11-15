@@ -7,7 +7,6 @@ import {
     Building2,
     CheckCircle2,
     ChevronRight,
-    MapPin,
     Package,
     ScanLine,
     Send,
@@ -18,7 +17,6 @@ import DashboardLayout from '@/Layouts/DashboardLayout';
 import {
     HubCategoryTabs,
     HubPageHeader,
-    RoleNextStepCard,
     hubButton,
     hubPrimary,
 } from '@/Components/Logistics/Workspace';
@@ -132,12 +130,8 @@ export default function HubDashboard({
     stats,
     attentionQueue,
     movement,
-    parcelFlow,
     facilities,
     recentActivity,
-    monitoring,
-    activeSlaPauses = [],
-    openInvestigationsCount = 0,
 }: DashboardProps) {
     const [activeCategory, setActiveCategory] = useState<'all' | 'urgent' | 'pipeline' | 'facilities'>('all');
     const activeAttention = attentionQueue.filter((item) => item.count > 0);
@@ -185,14 +179,6 @@ export default function HubDashboard({
         },
     ];
 
-    const flowStages = [
-        { step: '01', label: 'Origin Bayan Hub', value: parcelFlow.origin_hub, icon: Building2, href: route('hub.deliveries', { status: 'arrived_at_origin_hub' }) },
-        { step: '02', label: 'Mother Hub route', value: parcelFlow.mother_hub_transit, icon: Truck, href: route('hub.deliveries', { status: 'arrived_at_mother_hub' }) },
-        { step: '03', label: 'Destination Bayan Hub', value: parcelFlow.destination_hub, icon: MapPin, href: route('hub.deliveries', { status: 'arrived_at_destination_hub' }) },
-        { step: '04', label: 'Counter pickup branch', value: parcelFlow.counter_pickup, icon: Store, href: route('hub.counter') },
-        { step: '05', label: 'Final-mile delivery', value: parcelFlow.final_mile, icon: Send, href: route('hub.deliveries', { status: 'out_for_delivery' }) },
-    ];
-
     return (
         <DashboardLayout
             title="Operations Overview"
@@ -222,11 +208,10 @@ export default function HubDashboard({
                 <HubPageHeader
                     title="Operations overview"
                     roleLabel={scope.can_view_company ? 'Logistics Manager' : 'Assigned Facility Handler'}
-                    description="Real-time parcel custody, dispatch readiness, and station telemetry for the active facility scope."
                     icon={Building2}
                     actions={
                         <div className="flex flex-wrap items-center gap-2.5">
-                            <label className="flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs">
+                            <label className="flex items-center gap-2 rounded border border-zinc-400 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs">
                                 <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Scope</span>
                                 {scope.can_view_company ? (
                                     <select
@@ -268,28 +253,6 @@ export default function HubDashboard({
                     }
                 />
 
-                <RoleNextStepCard
-                    roleTitle={scope.can_view_company ? 'Logistics Network Manager' : 'Facility Operations Handler'}
-                    summary={
-                        totalAttentionCount > 0
-                            ? `${totalAttentionCount} open attention item(s) need review across custody, SLA clocks, or dispatch readiness.`
-                            : 'Station queues are balanced. Focus on timely parcel scanning, consolidation, and on-time manifest departures.'
-                    }
-                    steps={
-                        scope.can_scan
-                            ? [
-                                  'Open Scan Station to receive incoming riders, Mother Bags, or counter pickups.',
-                                  'Check Needs Attention items for parcels waiting for sorting or rider assignment.',
-                                  'Seal Mother Bags and prepare outbound manifests before cutoff.',
-                              ]
-                            : [
-                                  'Review Needs Attention items and SLA pauses for overloaded barangays.',
-                                  'Track hub custody across Origin, Mother Hub, and Destination stages.',
-                                  'Inspect Facilities load and open Parcels or Manifests for exceptions.',
-                              ]
-                    }
-                />
-
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <HubCategoryTabs
                         label="Operations sections"
@@ -297,8 +260,8 @@ export default function HubDashboard({
                         onChange={(id) => setActiveCategory(id as typeof activeCategory)}
                         tabs={[
                             { id: 'all', label: 'All Workspace' },
-                            { id: 'urgent', label: 'Needs Action Now', count: totalAttentionCount + (monitoring?.counts.breached_clocks ?? 0) },
-                            { id: 'pipeline', label: 'Parcel Pipeline', count: parcelFlow.origin_hub + parcelFlow.mother_hub_transit + parcelFlow.destination_hub },
+                            { id: 'urgent', label: 'Needs Action Now', count: totalAttentionCount },
+                            { id: 'pipeline', label: 'Parcel Movement' },
                             { id: 'facilities', label: 'Facilities & Logs', count: facilities.length },
                         ]}
                     />
@@ -334,127 +297,6 @@ export default function HubDashboard({
                     })}
                 </section>
 
-                {(activeCategory === 'all' || activeCategory === 'urgent') && (activeSlaPauses.length > 0 || monitoring) && (
-                    <section className="rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs space-y-3" aria-label="SLA & Dispatch Telemetry">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <h2 className="text-sm font-semibold text-[#121316]">SLA clocks, recovery &amp; area density</h2>
-                                <p className="text-xs text-zinc-500">Live threshold monitoring, urgent seller pickups, overloaded barangays, and Force-Majeure advisories</p>
-                            </div>
-                            <PortalLink href="/governance/monitoring" className={hubButton}>
-                                Open SLA monitoring
-                            </PortalLink>
-                        </div>
-
-                        {activeSlaPauses.length > 0 && (
-                            <div className="rounded-lg border border-amber-200 bg-amber-50/90 p-3 text-xs text-amber-900 space-y-1">
-                                <p className="font-bold">Active Force-Majeure SLA pause affecting this scope:</p>
-                                {activeSlaPauses.map((pause) => (
-                                    <p key={pause.id}>
-                                        {pause.reference} · {pause.title} ({pause.reason_code.replaceAll('_', ' ')})
-                                    </p>
-                                ))}
-                            </div>
-                        )}
-
-                        {monitoring && (
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                                {[
-                                    ['Breached SLA clocks', monitoring.counts.breached_clocks],
-                                    ['Stalled hub alerts', monitoring.counts.stalled_hub_alerts],
-                                    ['Urgent pickups', monitoring.counts.urgent_pickups],
-                                    ['Overloaded barangays', monitoring.counts.overloaded_barangays],
-                                    ['Open investigations', openInvestigationsCount],
-                                ].map(([label, value]) => (
-                                    <div key={String(label)} className="rounded-lg border border-zinc-200/80 bg-zinc-50/60 px-3.5 py-2.5">
-                                        <p className="text-[11px] font-medium text-zinc-500">{label}</p>
-                                        <p className={`mt-1 text-xl font-bold tabular-nums ${Number(value) > 0 ? 'text-amber-700' : 'text-[#121316]'}`}>{value}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {monitoring && monitoring.pickup_pauses.length > 0 && (
-                            <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-950 space-y-2">
-                                <p className="font-bold">Active hub pickup pauses:</p>
-                                {monitoring.pickup_pauses.map((pause) => (
-                                    <div key={pause.id} className="flex flex-wrap items-center justify-between gap-2">
-                                        <span>{pause.reference} · {pause.hub?.name ?? 'Hub'} {pause.barangay ? `(${pause.barangay})` : '(All barangays)'}: {pause.reason}</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => router.post(`/governance/monitoring/pickup-pauses/${pause.id}/resume`, {}, { preserveScroll: true })}
-                                            className="rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-zinc-800 hover:bg-zinc-50 cursor-pointer"
-                                        >
-                                            Resume pickup
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {monitoring && monitoring.overload_alerts.length > 0 && (
-                            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
-                                <p className="font-semibold text-zinc-900 mb-1">High-density barangay zones (&gt;= 40 active parcels):</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {monitoring.overload_alerts.map((row, idx) => (
-                                        <span key={`${row.hub_id}-${row.barangay}-${idx}`} className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 font-medium">
-                                            {row.hub_name}: {row.barangay} ({row.parcel_count} parcels)
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </section>
-                )}
-
-                {/* Above-the-Fold Network Custody Pipeline (Parcel Journey) */}
-                {(activeCategory === 'all' || activeCategory === 'pipeline') && (
-                    <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                            <div className="flex items-center gap-2.5">
-                                <h2 className="text-sm font-semibold text-[#121316]">Parcel journey pipeline</h2>
-                                <span className="hidden sm:inline text-xs text-zinc-400">·</span>
-                                <p className="hidden sm:block text-xs text-zinc-500">Live physical custody across the hub hierarchy</p>
-                            </div>
-                            <PortalLink
-                                href={route('hub.deliveries')}
-                                className={hubButton}
-                            >
-                                <span>View all waybills</span>
-                                <ArrowRight className="h-3.5 w-3.5" />
-                            </PortalLink>
-                        </div>
-
-                        <div className="grid grid-cols-1 divide-y divide-zinc-100 sm:grid-cols-2 sm:divide-y-0 sm:divide-x lg:grid-cols-5">
-                            {flowStages.map((stage) => {
-                                const Icon = stage.icon;
-                                return (
-                                    <PortalLink
-                                        key={stage.label}
-                                        href={stage.href}
-                                        className="group flex items-center justify-between gap-3 p-4 transition-all hover:bg-zinc-50/80 sm:flex-col sm:items-start sm:justify-between"
-                                    >
-                                        <div className="flex items-center gap-2.5 sm:w-full sm:justify-between">
-                                            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 group-hover:text-zinc-700">Stage {stage.step}</span>
-                                            <span className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 text-zinc-700 transition-colors group-hover:border-[#121316] group-hover:bg-[#121316] group-hover:text-white">
-                                                <Icon className="h-3.5 w-3.5" />
-                                            </span>
-                                        </div>
-                                        <div className="sm:mt-3">
-                                            <p className="text-2xl font-bold tracking-tight tabular-nums text-[#121316] transition-colors">
-                                                {stage.value}
-                                            </p>
-                                            <p className="mt-0.5 text-xs font-medium text-zinc-600 group-hover:text-[#121316]">
-                                                {stage.label}
-                                            </p>
-                                        </div>
-                                    </PortalLink>
-                                );
-                            })}
-                        </div>
-                    </section>
-                )}
-
                 {/* Two-Column Operational Command Grid */}
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
                     {/* Left Column (7 cols): 7-Day Telemetry + Facilities Capacity Table */}
@@ -474,7 +316,7 @@ export default function HubDashboard({
                                                 Inbound
                                             </span>
                                             <span className="flex items-center gap-1.5">
-                                                <span className="h-2.5 w-2.5 rounded-xs bg-[#121316]" />
+                                                <span className="h-2.5 w-2.5 rounded-xs bg-[#E00D42]" />
                                                 Outbound
                                             </span>
                                         </div>
@@ -491,7 +333,7 @@ export default function HubDashboard({
                                                             title={`${day.date}: ${day.inbound} inbound`}
                                                         />
                                                         <div
-                                                            className="w-3 rounded-t-xs bg-[#121316] sm:w-4 transition-all hover:opacity-80"
+                                                            className="w-3 rounded-t-xs bg-[#E00D42] sm:w-4 transition-all hover:opacity-80"
                                                             style={{ height: `${Math.max(day.outbound > 0 ? 10 : 2, (day.outbound / maxMovement) * 100)}%` }}
                                                             title={`${day.date}: ${day.outbound} outbound`}
                                                         />

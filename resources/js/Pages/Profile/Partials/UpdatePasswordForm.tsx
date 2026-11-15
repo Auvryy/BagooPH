@@ -21,9 +21,11 @@ function responseError(reason: unknown, fallback: string): string {
 export default function UpdatePasswordForm({
     className = '',
     action = '/password',
+    showHeader = true,
 }: {
     className?: string;
     action?: string;
+    showHeader?: boolean;
 }) {
     const user = usePage<PageProps>().props.auth.user;
     const googleLinked = Boolean(user?.has_google_identity);
@@ -111,28 +113,30 @@ export default function UpdatePasswordForm({
 
     return (
         <section className={className}>
-            <header>
-                <h2 className="text-lg font-medium text-gray-900">
-                    Update Password
-                </h2>
+            {showHeader && (
+                <header>
+                    <h2 className="text-lg font-medium text-gray-900">
+                        Update Password
+                    </h2>
 
-                <p className="mt-1 text-sm text-gray-600">
-                    Use 8–128 characters with uppercase and lowercase letters, a number and a symbol.
-                </p>
-            </header>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Use 8–128 characters with uppercase and lowercase letters, a number and a symbol.
+                    </p>
+                </header>
+            )}
 
             {user && (
                 <EmailVerificationStatus
                     email={user.email}
                     verifiedAt={user.email_verified_at}
-                    className="mt-5"
+                    className={showHeader ? 'mt-5' : 'mb-4'}
                 />
             )}
-            {googleMessage && <p role="status" className="mt-5 text-sm text-emerald-700">{googleMessage}</p>}
+            {googleMessage && <p role="status" className="mt-4 text-sm text-emerald-700">{googleMessage}</p>}
 
             {user?.email_verified_at && (
                 googleLinked && needsGooglePasswordSetup ? (
-                    <form onSubmit={setGoogleAccountPassword} className="mt-6 space-y-6">
+                    <form onSubmit={setGoogleAccountPassword} className={`${showHeader ? 'mt-6 ' : ''}space-y-4`}>
                         <p className="text-sm leading-relaxed text-gray-600">Your account uses Google sign-in. To add email and password sign-in, first verify your Bagoo email with a fresh code.</p>
                         <div>
                             <InputLabel htmlFor="google-password-code" value="Email verification code" />
@@ -156,7 +160,7 @@ export default function UpdatePasswordForm({
                         <PrimaryButton disabled={settingGooglePassword || code.length !== 6}>{settingGooglePassword ? 'Setting password…' : 'Set email password'}</PrimaryButton>
                     </form>
                 ) : (
-                <form onSubmit={updatePassword} className="mt-6 space-y-6">
+                <form onSubmit={updatePassword} className={`${showHeader ? 'mt-6 ' : ''}space-y-4`}>
                     {googleLinked && <p className="text-sm leading-relaxed text-gray-600">Email and password sign-in is enabled. Google sign-in remains available.</p>}
                     <div>
                         <InputLabel

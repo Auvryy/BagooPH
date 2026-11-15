@@ -9,8 +9,8 @@ import { PageProps } from '@/types';
 export { CourierFieldError as IssueError };
 export const issueButton = `${courierButton} !border-slate-300`;
 export const issuePrimary = courierPrimary;
-export const issueInput = `${courierInput} !border-slate-300`;
-export const issueSurface = 'rounded-[8px] border border-slate-300 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.035)] sm:p-6';
+export const issueInput = `${courierInput} !border-slate-400`;
+export const issueSurface = 'rounded border border-slate-300 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] sm:p-6';
 
 export interface IssueSummary {
     id: number; reference: string; state: 'pending_review' | 'needs_recovery' | 'dismissed' | 'recovered'; kind: 'missed_ready' | 'missed_scan';
@@ -60,9 +60,8 @@ const stage = (value: string) => value.replaceAll('_', ' ').replace(/^./, letter
 export function IssueFrame({ children, title, isOnline = false }: PropsWithChildren<{ title: string; isOnline?: boolean }>) {
     const { auth } = usePage<PageProps>().props;
     const content = <><Head title={title} />{children}</>;
-    const subtitle = 'Report what happened and keep the original parcel history clear.';
-    if (auth.user?.role === 'courier') return <CourierLayout title={title} subtitle={subtitle} isOnline={isOnline} pageLabel="Handover issues">{content}</CourierLayout>;
-    return <DashboardLayout title={title} subtitle={subtitle}>{content}</DashboardLayout>;
+    if (auth.user?.role === 'courier') return <CourierLayout title={title} isOnline={isOnline} pageLabel="Handover issues">{content}</CourierLayout>;
+    return <DashboardLayout title={title}>{content}</DashboardLayout>;
 }
 
 export function IssueBadge({ state }: { state: IssueSummary['state'] }) {

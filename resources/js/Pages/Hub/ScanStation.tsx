@@ -4,9 +4,7 @@ import { Head, router, Link, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import {
     HubNextStep,
-    HubPageHeader,
     HubRoute,
-    RoleNextStepCard,
     hubButton,
 } from '@/Components/Logistics/Workspace';
 import {
@@ -23,7 +21,6 @@ import {
     requestBatchScan,
     saveQueuedScans,
 } from '@/Components/Logistics/ScanBatchPanel';
-import HubConveyorRail from '@/Components/Logistics/HubConveyorRail';
 import HubCounterPreview, { CounterPreviewParcel } from '@/Components/HubCounterPreview';
 import { HubParcelAction, HubParcelState, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import WaybillCamera from '@/Components/WaybillCamera';
@@ -346,7 +343,17 @@ export default function ScanStation({
     const [locationBarcode, setLocationBarcode] = useState<string>('');
     const [queuedScans, setQueuedScans] = useState<QueuedScanItem[]>([]);
     const [lastBatchSync, setLastBatchSync] = useState<BatchSyncResponse<ScanApiPayload> | null>(null);
-    const [isOnline, setIsOnline] = useState<boolean>(true);
+    const readNavigatorOnline = (): boolean => {
+        if (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') {
+            return navigator.onLine;
+        }
+        if (typeof window !== 'undefined' && typeof window.navigator?.onLine === 'boolean') {
+            return window.navigator.onLine;
+        }
+        return true;
+    };
+
+    const [isOnline, setIsOnline] = useState<boolean>(() => readNavigatorOnline());
     const [slottingBusy, setSlottingBusy] = useState<boolean>(false);
     const [slotFeedback, setSlotFeedback] = useState<string | null>(null);
 
@@ -361,15 +368,14 @@ export default function ScanStation({
     useOperationalRefresh(isSubmitting, ['activeHub', 'hubs', 'basePath', 'recentScans', 'pendingOriginIntake', 'counterPickups', 'counterTotal', 'stats', 'corridorStaging']);
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        const syncNetworkState = () => {
-            setIsOnline(typeof window.navigator?.onLine === 'boolean' ? window.navigator.onLine : true);
-        };
-        syncNetworkState();
-        window.addEventListener('online', syncNetworkState);
-        window.addEventListener('offline', syncNetworkState);
+        const handleOnline = () => setIsOnline(readNavigatorOnline());
+        const handleOffline = () => setIsOnline(false);
+        handleOnline();
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
         return () => {
-            window.removeEventListener('online', syncNetworkState);
-            window.removeEventListener('offline', syncNetworkState);
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
         };
     }, []);
     useEffect(() => {
@@ -469,6 +475,13 @@ export default function ScanStation({
             }
         } catch (error) {
             if (pendingRequest.current !== request || request.signal.aborted) return;
+            const rawCode = String(body.barcode ?? '').trim();
+            const upperRaw = rawCode.toUpperCase();
+            const isSpecialTag = upperRaw.startsWith('BAG-') || upperRaw.startsWith('RMB-') || upperRaw.startsWith('BRT-');
+            if (!(error instanceof WaybillRequestError) && !confirming && rawCode && !isSpecialTag) {
+                enqueueScanForBatch(rawCode, `Connection interrupted — buffered ${rawCode} offline for sync.`);
+                return;
+            }
             playSound('error');
             setLastResult(null);
             setMasterBagResult(null);
@@ -484,7 +497,7 @@ export default function ScanStation({
         }
     };
 
-    const enqueueScanForBatch = (code: string) => {
+    const enqueueScanForBatch = (code: string, customMessage?: string) => {
         const { next, added, duplicateBarcode } = enqueueScanItem(queuedScans, code, {
             locationBarcode,
             expectedAction: pinnedAction,
@@ -498,7 +511,7 @@ export default function ScanStation({
         if (added) {
             updateQueue(next);
             playSound('beep');
-            setScanMessage(`Queued ${code} offline (${next.length} pending in batch queue).`);
+            setScanMessage(customMessage ?? `Queued ${code} offline (${next.length} pending in batch queue).`);
             setBarcodeInput('');
         } else if (duplicateBarcode) {
             playSound('beep');
@@ -571,6 +584,12 @@ export default function ScanStation({
             }
         } catch (error) {
             if (pendingRequest.current !== request || request.signal.aborted) return;
+            const upperCode = code.toUpperCase();
+            const isSpecialTag = upperCode.startsWith('BAG-') || upperCode.startsWith('RMB-') || upperCode.startsWith('BRT-');
+            if (!(error instanceof WaybillRequestError) && !isSpecialTag) {
+                enqueueScanForBatch(code, `Connection interrupted — buffered ${code} offline for sync.`);
+                return;
+            }
             playSound('error');
             setBarcodeInput(code);
             setScanError(error instanceof Error ? error.message : 'Direct confirmation failed. Try again.');
@@ -703,17 +722,23 @@ export default function ScanStation({
         const isNonDirectDocument =
             upperCode.startsWith('BAG-') || upperCode.startsWith('RMB-') || upperCode.startsWith('BRT-');
 
+        const effectivelyOffline = !isOnline || !readNavigatorOnline();
+        if (effectivelyOffline) {
+            if (isNonDirectDocument) {
+                playSound('error');
+                setScanError('Mother Bags and buyer return tags require an active connection to inspect before confirming.');
+                return;
+            }
+            enqueueScanForBatch(code);
+            return;
+        }
+
         if (scanMode === 'verify' || isNonDirectDocument) {
             return runScan({
                 barcode: extracted,
                 mode: 'inspect',
                 ...(locationBarcode.trim() ? { location_barcode: locationBarcode.trim() } : {}),
             });
-        }
-
-        if (scanMode === 'batch' || !isOnline) {
-            enqueueScanForBatch(code);
-            return;
         }
 
         return runDirectConfirmScan(code);
@@ -803,110 +828,54 @@ export default function ScanStation({
     return (
         <DashboardLayout
             title="Scan station"
-            subtitle="Scan a waybill, check its next stop and confirm the physical handover"
         >
             <Head title="Scan Station — Logistics Hub — BagooPH" />
-            <HubPageHeader
-                title="Scan station"
-                roleLabel={canManageHubResources ? 'Hub Manager & Dispatcher' : 'Floor Scan Operator'}
-                description="Scan the parcel in front of you. Check the current holder and next stop, then confirm only the handover you actually received."
-                icon={ScanLine}
-            />
 
-            <div className="mb-5">
-                <RoleNextStepCard
-                    roleTitle={canManageHubResources ? 'Hub Manager / Dispatcher' : 'Floor Scan Operator'}
-                    summary={
-                        canManageHubResources
-                            ? 'Monitor station queue flow, resolve exception holds, and clear outbound corridors once Mother Bags and readings are complete.'
-                            : 'Keep scanning waybills, Mother Bags (BAG-), or buyer returns (BRT-). Use 1-Scan Direct or Batch Queue when clearing high-volume chutes.'
-                    }
-                    steps={
-                        canManageHubResources
-                            ? [
-                                  'Watch Awaiting Origin Intake & blocked corridors below.',
-                                  'Verify exceptions or missing DWS readings before truck loading.',
-                                  'Dispatch outbound corridors via Prepare manifest when ready.',
-                              ]
-                            : [
-                                  'Choose 2-Step Verify (safe default), 1-Scan Direct, or Batch Queue.',
-                                  'Scan parcel barcode or camera QR — never batch-confirm BAG- or BRT- tags.',
-                                  'Slot baggable parcels directly into the open Mother Bag or follow the bin prompt.',
-                              ]
-                    }
-                />
+            {/* Compact Workstation Header */}
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-2xl font-bold tracking-tight text-[#121316]">Scan station</h1>
+                    {activeHub && (
+                        <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs shadow-2xs">
+                            <Building2 className="h-3.5 w-3.5 text-zinc-500" />
+                            <span className="font-semibold text-[#121316]">{activeHub.name}</span>
+                            <span className="rounded border border-zinc-200 bg-slate-100/80 px-1.5 py-0.5 text-[11px] font-bold text-zinc-700 tabular-nums">
+                                {activeHub.code}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                <section aria-label="Station counts and expected arrivals" className="flex flex-wrap items-center gap-5 text-xs">
+                    <div className="flex items-baseline gap-1.5">
+                        <span className="text-base font-bold text-[#121316] tabular-nums">{stats.parcels_in_hub}</span>
+                        <span className="font-medium text-zinc-500">In custody</span>
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                        <span className="text-base font-bold text-[#121316] tabular-nums">{stats.ready_pickup}</span>
+                        <span className="font-medium text-zinc-500">Counter ready</span>
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                        <span className="text-base font-bold text-[#121316] tabular-nums">{stats.dispatched_today}</span>
+                        <span className="font-medium text-zinc-500">Dispatched</span>
+                    </div>
+                </section>
             </div>
 
-            {/* Top Unified 3-Column Metric Strip */}
-            <section aria-label="Station counts and expected arrivals" className="mb-5 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80 rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
-                    <div className="p-4 sm:p-5 flex items-center justify-between gap-4">
-                        <div>
-                            <p className="text-[11px] font-bold text-zinc-500 tracking-wider uppercase font-sans">
-                                Parcels in Station
-                            </p>
-                            <div className="mt-1 flex items-baseline gap-2">
-                                <p className="text-2xl font-bold font-sans text-zinc-900 tabular-nums">
-                                    {stats.parcels_in_hub}
-                                </p>
-                                <span className="text-xs text-zinc-500 font-medium">in custody</span>
-                            </div>
-                        </div>
-                        <div className="w-9 h-9 rounded-lg bg-zinc-50 border border-zinc-200/90 flex items-center justify-center text-zinc-700 shrink-0">
-                            <Package className="w-4 h-4" />
-                        </div>
-                    </div>
-
-                    <div className="p-4 sm:p-5 flex items-center justify-between gap-4">
-                        <div>
-                            <p className="text-[11px] font-bold text-zinc-500 tracking-wider uppercase font-sans">
-                                Self-Pickup Staged
-                            </p>
-                            <div className="mt-1 flex items-baseline gap-2">
-                                <p className="text-2xl font-bold font-sans text-zinc-900 tabular-nums">
-                                    {stats.ready_pickup}
-                                </p>
-                                <span className="text-xs text-zinc-500 font-medium">counter ready</span>
-                            </div>
-                        </div>
-                        <div className="w-9 h-9 rounded-lg bg-zinc-50 border border-zinc-200/90 flex items-center justify-center text-zinc-700 shrink-0">
-                            <Boxes className="w-4 h-4" />
-                        </div>
-                    </div>
-
-                    <div className="p-4 sm:p-5 flex items-center justify-between gap-4">
-                        <div>
-                            <p className="text-[11px] font-bold text-zinc-500 tracking-wider uppercase font-sans">
-                                Dispatched Today
-                            </p>
-                            <div className="mt-1 flex items-baseline gap-2">
-                                <p className="text-2xl font-bold font-sans text-[#121316] tabular-nums">
-                                    {stats.dispatched_today}
-                                </p>
-                                <span className="text-xs text-zinc-500 font-medium">outbound</span>
-                            </div>
-                        </div>
-                        <div className="w-9 h-9 rounded-lg bg-zinc-50 border border-zinc-200/90 flex items-center justify-center text-zinc-700 shrink-0">
-                            <ScanLine className="w-4 h-4" />
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Scanner views */}
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <div role="group" aria-label="Scanner views" className="inline-flex p-1 bg-zinc-100/90 border border-zinc-200/90 rounded-xl font-sans text-xs max-w-full overflow-x-auto gap-1">
+            {/* Underline Navigation Tabs + Live Wedge Status */}
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200">
+                <div role="group" aria-label="Scanner views" className="-mb-px flex max-w-full items-center gap-6 overflow-x-auto text-xs font-sans">
                     <button
                         type="button"
                         onClick={() => setActiveTab('scan')}
                         aria-pressed={activeTab === 'scan'}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition cursor-pointer shrink-0 ${
+                        className={`inline-flex items-center gap-2 border-b-2 py-2.5 font-semibold transition cursor-pointer shrink-0 ${
                             activeTab === 'scan'
-                                ? 'bg-[#121316] text-white shadow-xs'
-                                : 'bg-white/80 text-zinc-700 hover:text-[#121316] hover:bg-white'
+                                ? 'border-[#E00D42] text-[#E00D42]'
+                                : 'border-transparent text-zinc-600 hover:text-[#121316]'
                         }`}
                     >
-                        <ScanLine className="w-4 h-4" />
+                        <ScanLine className="w-3.5 h-3.5" />
                         <span>Scan parcels</span>
                     </button>
 
@@ -914,20 +883,16 @@ export default function ScanStation({
                         type="button"
                         onClick={() => setActiveTab('batch')}
                         aria-pressed={activeTab === 'batch'}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition cursor-pointer shrink-0 ${
+                        className={`inline-flex items-center gap-2 border-b-2 py-2.5 font-semibold transition cursor-pointer shrink-0 ${
                             activeTab === 'batch'
-                                ? 'bg-[#121316] text-white shadow-xs'
-                                : 'bg-white/80 text-zinc-700 hover:text-[#121316] hover:bg-white'
+                                ? 'border-[#E00D42] text-[#E00D42]'
+                                : 'border-transparent text-zinc-600 hover:text-[#121316]'
                         }`}
                     >
-                        <Layers className="w-4 h-4" />
+                        <Layers className="w-3.5 h-3.5" />
                         <span>Batch queue</span>
                         {queuedScans.length > 0 && (
-                            <span className={`px-2 py-0.5 text-xs rounded-md border font-bold tabular-nums ${
-                                activeTab === 'batch'
-                                    ? 'bg-white/20 text-white border-white/30'
-                                    : 'bg-amber-50 text-amber-900 border-amber-200'
-                            }`}>
+                            <span className="rounded border border-rose-300 bg-rose-50 px-1.5 py-0.5 text-[11px] font-bold text-[#C20836] tabular-nums">
                                 {queuedScans.length}
                             </span>
                         )}
@@ -938,20 +903,16 @@ export default function ScanStation({
                             type="button"
                             onClick={() => setActiveTab('counter')}
                             aria-pressed={activeTab === 'counter'}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition cursor-pointer shrink-0 ${
+                            className={`inline-flex items-center gap-2 border-b-2 py-2.5 font-semibold transition cursor-pointer shrink-0 ${
                                 activeTab === 'counter'
-                                    ? 'bg-[#121316] text-white shadow-xs'
-                                    : 'bg-white/80 text-zinc-700 hover:text-[#121316] hover:bg-white'
+                                    ? 'border-[#E00D42] text-[#E00D42]'
+                                    : 'border-transparent text-zinc-600 hover:text-[#121316]'
                             }`}
                         >
-                            <Boxes className="w-4 h-4" />
+                            <Boxes className="w-3.5 h-3.5" />
                             <span>Counter queue</span>
                             {counterTotal > 0 && (
-                                <span className={`px-2 py-0.5 text-xs rounded-md border font-bold tabular-nums ${
-                                    activeTab === 'counter'
-                                        ? 'bg-white/20 text-white border-white/30'
-                                        : 'bg-zinc-100 text-zinc-800 border-zinc-200'
-                                }`}>
+                                <span className="rounded border border-zinc-300 bg-zinc-100 px-1.5 py-0.5 text-[11px] font-bold text-zinc-800 tabular-nums">
                                     {counterTotal}
                                 </span>
                             )}
@@ -962,52 +923,53 @@ export default function ScanStation({
                         type="button"
                         onClick={() => setActiveTab('logs')}
                         aria-pressed={activeTab === 'logs'}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition cursor-pointer shrink-0 ${
+                        className={`inline-flex items-center gap-2 border-b-2 py-2.5 font-semibold transition cursor-pointer shrink-0 ${
                             activeTab === 'logs'
-                                ? 'bg-[#121316] text-white shadow-xs'
-                                : 'bg-white/80 text-zinc-700 hover:text-[#121316] hover:bg-white'
+                                ? 'border-[#E00D42] text-[#E00D42]'
+                                : 'border-transparent text-zinc-600 hover:text-[#121316]'
                         }`}
                     >
-                        <Clock className="w-4 h-4" />
+                        <Clock className="w-3.5 h-3.5" />
                         <span>Scan history</span>
                     </button>
                 </div>
 
-                {activeHub && (
-                    <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-sans shadow-2xs">
-                        <Building2 className="h-3.5 w-3.5 text-zinc-600" />
-                        <span className="font-semibold text-zinc-800">{activeHub.name}</span>
-                        <span className="rounded bg-zinc-100 px-2 py-0.5 text-[11px] font-bold text-zinc-800 border border-zinc-200">
-                            {activeHub.code}
-                        </span>
-                    </div>
-                )}
+                <div className="pb-2">
+                    <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
+                        isOnline
+                            ? 'border-zinc-200 bg-white text-[#121316]'
+                            : 'border-amber-300 bg-amber-50 text-amber-900'
+                    }`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${isOnline ? 'bg-[#E00D42]' : 'bg-amber-600'}`} />
+                        {isOnline ? 'Wedge Ready' : 'Offline · Auto-queue'}
+                    </span>
+                </div>
             </div>
 
-            {/* TAB 1: Scan Workstation (2-Column Bento Layout) */}
+            {/* TAB 1: Scan Workstation */}
             {activeTab === 'scan' && (
                 <div className="space-y-4">
                     {/* Error Banner */}
                     {scanError && (
-                        <div role="alert" className="bg-red-50 border border-red-200 text-red-900 rounded-xl p-4 flex items-start gap-3 shadow-xs">
+                        <div role="alert" className="bg-red-50 border border-red-300 text-red-900 rounded-xl p-4 flex items-start gap-3 shadow-xs">
                             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                             <div className="text-xs font-sans leading-relaxed">
                                 <span className="font-bold">Scan Routing Error:</span> {scanError}
                                 {recoveryUrl && <Link href={recoveryUrl} className="mt-2 block font-semibold underline underline-offset-4 text-red-700 hover:text-red-900">Open parcel review</Link>}
                                 {sessionExpired && <button type="button" onClick={() => window.location.reload()}
-                                    className="mt-2 block rounded-xl border border-red-300 bg-white px-3 py-1.5 font-semibold text-red-800 shadow-xs hover:bg-red-50 transition cursor-pointer">Reload scanner</button>}
+                                    className="mt-2 block rounded-lg border border-red-300 bg-white px-3 py-1.5 font-semibold text-red-800 shadow-xs hover:bg-red-50 transition cursor-pointer">Reload scanner</button>}
                             </div>
                         </div>
                     )}
 
                     {scanMessage && (
-                        <div role="status" className={`${lastResult?.alreadyReceived ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-emerald-50 border-emerald-200 text-emerald-900'} border rounded-xl p-4 flex items-start gap-3 shadow-xs`}>
-                            <CheckCircle2 className={`w-5 h-5 ${lastResult?.alreadyReceived ? 'text-amber-700' : 'text-emerald-600'} flex-shrink-0 mt-0.5`} />
+                        <div role="status" className={`${lastResult?.alreadyReceived ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-white border-zinc-200 text-[#121316]'} border rounded-xl p-4 flex items-start gap-3 shadow-xs`}>
+                            <CheckCircle2 className={`w-5 h-5 ${lastResult?.alreadyReceived ? 'text-amber-700' : 'text-[#E00D42]'} flex-shrink-0 mt-0.5`} />
                             <div className="text-xs font-medium font-sans leading-relaxed">{scanMessage}</div>
                         </div>
                     )}
 
-                    {returnResult && <section className="mb-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-xs"><h2 className="font-bold text-zinc-900">Buyer return {returnResult.reference}</h2><p className="mt-2 break-all text-xs text-zinc-600">{returnResult.barcode}</p><p className="mt-2 text-xs text-zinc-600">This scan identifies the return. Record its actual intake or manifest receipt from the case.</p><Link href={returnResult.href} className="mt-4 inline-flex rounded-xl bg-[#E00D42] px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#C20836] transition cursor-pointer">Open buyer return</Link></section>}
+                    {returnResult && <section className="mb-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-xs"><h2 className="font-bold text-zinc-900">Buyer return {returnResult.reference}</h2><p className="mt-2 break-all text-xs text-zinc-600">{returnResult.barcode}</p><p className="mt-2 text-xs text-zinc-600">This scan identifies the return. Record its actual intake or manifest receipt from the case.</p><Link href={returnResult.href} className="mt-4 inline-flex rounded-lg bg-[#E00D42] px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#C20836] transition cursor-pointer">Open buyer return</Link></section>}
 
                     <ScanModeControls
                         scanMode={scanMode}
@@ -1018,47 +980,35 @@ export default function ScanStation({
                         onLocationBarcodeChange={setLocationBarcode}
                         queuedCount={queuedScans.length}
                         isOnline={isOnline}
-                    />
-
-                    {/* Interactive Animated Conveyor Rail (Hub 6 Stations) */}
-                    <HubConveyorRail
-                        currentStatus={lastResult?.delivery?.status || ''}
-                        deliveryType={lastResult?.delivery?.delivery_type || 'standard'}
-                        basePath={basePath}
-                        isScanning={isSubmitting}
-                        trackingNumber={lastResult?.delivery?.tracking_number}
+                        onOpenBatchQueue={() => setActiveTab('batch')}
                     />
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                         {/* LEFT COLUMN: Physical & Optical Barcode Scanner (col-span-6) */}
                         <div className="lg:col-span-6 space-y-4">
-                            {/* Unified Hardware Gun, Keyboard & Optical Camera Console Card */}
-                            <div className="bg-white rounded-xl border border-zinc-200/90 shadow-xs overflow-hidden">
-                                <div className="p-6">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <label htmlFor="barcode-field" className="block text-xs font-bold text-zinc-800 font-sans uppercase tracking-wider">
-                                            Scan or enter a waybill
+                            <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden">
+                                <div className="p-5 space-y-4">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <label htmlFor="barcode-field" className="text-sm font-bold text-[#121316] font-sans">
+                                            Scan or enter waybill
                                         </label>
 
-                                        <div className="flex items-center gap-2">
-                                            {/* Audio Feedback Toggle */}
-                                            <button
-                                                type="button"
-                                                onClick={() => setAudioEnabled(!audioEnabled)}
-                                                className={`px-3 py-1.5 rounded-lg border transition shadow-2xs flex items-center gap-1.5 text-xs font-semibold font-sans cursor-pointer ${
-                                                    audioEnabled
-                                                        ? 'bg-zinc-900 border-zinc-900 text-white hover:bg-zinc-800'
-                                                        : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'
-                                                }`}
-                                                title={audioEnabled ? 'Sound Enabled' : 'Sound Muted'}
-                                            >
-                                                {audioEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-                                                <span>{audioEnabled ? 'Audio ON' : 'Muted'}</span>
-                                            </button>
-                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAudioEnabled(!audioEnabled)}
+                                            className={`px-3 py-1 rounded-lg border transition shadow-2xs flex items-center gap-1.5 text-xs font-semibold font-sans cursor-pointer ${
+                                                audioEnabled
+                                                    ? 'bg-white border-zinc-200 text-[#121316] hover:bg-zinc-50'
+                                                    : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'
+                                            }`}
+                                            title={audioEnabled ? 'Sound Enabled' : 'Sound Muted'}
+                                        >
+                                            {audioEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#E00D42]" /> : <VolumeX className="w-3.5 h-3.5" />}
+                                            <span>{audioEnabled ? 'Audio ON' : 'Muted'}</span>
+                                        </button>
                                     </div>
 
-                                    <form onSubmit={handleInputSubmit} className="space-y-3">
+                                    <form onSubmit={handleInputSubmit} className="space-y-2.5">
                                         <div className="flex gap-2.5">
                                             <div className="relative flex-1">
                                                 <ScanLine className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -1071,56 +1021,42 @@ export default function ScanStation({
                                                     spellCheck={false}
                                                     value={barcodeInput}
                                                     onChange={(e) => setBarcodeInput(e.target.value)}
-                                                    placeholder="Ready for your scanner — or type the tracking code"
+                                                    placeholder="Ready for scanner — or type tracking code..."
                                                     disabled={isSubmitting}
                                                     autoFocus
-                                                    className="min-h-12 w-full bg-zinc-50/40 hover:bg-white focus:bg-white border border-zinc-300 text-zinc-900 placeholder-zinc-400 rounded-xl pl-10 pr-3.5 py-2.5 text-sm font-sans focus:border-[#121316] focus:ring-2 focus:ring-zinc-900/10 shadow-2xs outline-hidden transition"
+                                                    className="min-h-11 w-full bg-white border border-zinc-300 text-zinc-900 placeholder-zinc-400 rounded-xl pl-10 pr-3.5 py-2 text-sm font-sans focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 shadow-2xs outline-hidden transition"
                                                 />
                                             </div>
                                             <button
                                                 type="submit"
                                                 disabled={isSubmitting || !barcodeInput.trim()}
-                                                className="px-5 py-2.5 bg-[#E00D42] hover:bg-[#C20836] disabled:bg-zinc-200 disabled:text-zinc-400 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 uppercase font-sans tracking-wider cursor-pointer"
+                                                className="px-5 py-2 bg-[#E00D42] hover:bg-[#C20836] border border-[#C20836] disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 font-sans cursor-pointer shrink-0 disabled:cursor-not-allowed"
                                             >
                                                 {isSubmitting ? (
                                                     <RefreshCw className="w-4 h-4 animate-spin" />
                                                 ) : (
                                                     <>
                                                         <span>Scan</span>
-                                                        <ArrowRight className="w-4 h-4" />
+                                                        <ArrowRight className="w-3.5 h-3.5" />
                                                     </>
                                                 )}
                                             </button>
                                         </div>
-                                    </form>
 
-                                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500 border-t border-zinc-100 pt-3.5">
-                                        <span className="flex items-center gap-1.5 text-zinc-800 font-semibold">
-                                            <Zap className="h-3.5 w-3.5 text-emerald-700" />
-                                            Hardware Laser Wedge Active
-                                        </span>
-                                        <span className="text-zinc-500 flex items-center gap-1.5 flex-wrap">
-                                            Commands: <span className="text-zinc-800 font-bold">[CMD-CONFIRM]</span> · <span className="text-zinc-800 font-bold">[CMD-DISPATCH]</span> · <span className="text-zinc-800 font-bold">[CMD-CLEAR]</span>
-                                            <a
-                                                href={`${basePath}/command-sheet`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-xs text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 font-semibold ml-1 transition"
-                                            >
-                                                <Printer className="h-3.5 w-3.5" />
-                                                Print Sheet
-                                            </a>
-                                        </span>
-                                    </div>
+                                        <div className="text-xs text-zinc-500">
+                                            Press <kbd className="rounded border border-zinc-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-700">Enter</kbd> or trigger laser wedge
+                                        </div>
+                                    </form>
                                 </div>
 
                                 {/* Integrated Optical Camera Footer Section */}
-                                <div className="border-t border-zinc-200/80 bg-zinc-50/60 px-6 py-4">
+                                <div className="border-t border-zinc-100 px-5 py-4 bg-white">
                                     <WaybillCamera
                                         key={activeHub?.id}
                                         onScan={handleBarcodeProcess}
                                         disabled={isSubmitting}
-                                        instruction="Scan the tracking barcode or parcel QR to check the next permitted step."
+                                        instruction=""
+                                        layout="split"
                                     />
                                 </div>
                             </div>
@@ -1145,9 +1081,9 @@ export default function ScanStation({
                                                 </span>
                                             </div>
                                         </div>
-                                        <span className={`text-xs px-2.5 py-1 rounded-full font-bold uppercase tabular-nums ${
+                                        <span className={`text-xs px-2.5 py-1 rounded-sm font-bold uppercase tabular-nums ${
                                             masterBagResult.status === 'received'
-                                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                                ? 'bg-zinc-100 text-[#121316] border border-zinc-300'
                                                 : 'bg-amber-100 text-amber-800 border border-amber-300'
                                         }`}>
                                             {masterBagResult.status}
@@ -1209,15 +1145,15 @@ export default function ScanStation({
                                                 </div>
                                             </div>
                                             <div className="shrink-0 text-right">
-                                                <span className="inline-flex items-center justify-center rounded-xl bg-[#121316] px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs">
+                                                <span className="inline-flex items-center justify-center rounded-xl bg-[#E00D42] px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs">
                                                     {lastResult.delivery.destination_bin ? `BIN: ${lastResult.delivery.destination_bin}` : 'SORT QUEUE'}
                                                 </span>
                                             </div>
                                         </div>
                                     )}
 
-                                    {lastResult.delivery.next_hop && lastResult.delivery.next_hop.hub_id === activeHub?.id && <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-4">
-                                        <p className="text-xs font-semibold uppercase text-emerald-800">Local delivery staging</p>
+                                    {lastResult.delivery.next_hop && lastResult.delivery.next_hop.hub_id === activeHub?.id && <div className="rounded-lg border border-zinc-200 bg-slate-50/70 p-4">
+                                        <p className="text-xs font-semibold uppercase text-zinc-700">Local delivery staging</p>
                                         <p className="mt-1 font-semibold text-slate-900">{lastResult.delivery.next_hop.recommended_bin}</p>
                                     </div>}
 
@@ -1267,7 +1203,7 @@ export default function ScanStation({
                                                 <span className={`px-2 py-0.5 rounded font-bold uppercase text-[10px] ${
                                                     lastResult.delivery.dws.is_oversized
                                                         ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                                        : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                                        : 'bg-zinc-100 text-[#121316] border border-zinc-300'
                                                 }`}>
                                                     {lastResult.delivery.dws.is_oversized ? 'Loose Freight (Oversized)' : 'Standard Mother Bag Pouch'}
                                                 </span>
@@ -1301,7 +1237,7 @@ export default function ScanStation({
                                                 </div>
                                                 <div className="w-full bg-zinc-200/80 rounded-full h-2 overflow-hidden">
                                                     <div
-                                                        className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                                                        className="bg-[#E00D42] h-2 rounded-full transition-all duration-300"
                                                         style={{ width: `${Math.min(100, Math.max(5, lastResult.delivery.mother_bag_slotting.capacity_pct || 2))}%` }}
                                                     />
                                                 </div>
@@ -1332,7 +1268,7 @@ export default function ScanStation({
                                                     </div>
                                                 )}
                                             {slotFeedback && (
-                                                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900">
+                                                <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-[#121316]">
                                                     {slotFeedback}
                                                 </p>
                                             )}
@@ -1369,7 +1305,7 @@ export default function ScanStation({
                                     {(lastResult.delivery.guidance.action === 'manifest' || lastResult.prompt.manifest_url) && lastResult.delivery.guidance.can_act && (
                                         <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-6 shadow-xs space-y-4">
                                             <div className="flex items-start gap-3.5">
-                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#121316] text-white shadow-xs">
+                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E00D42] text-white shadow-xs">
                                                     <Truck className="h-5 w-5" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
@@ -1378,7 +1314,7 @@ export default function ScanStation({
                                                             Next Operational Step
                                                         </span>
                                                         {lastResult.alreadyReceived && (
-                                                            <span className="rounded-lg bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                                                            <span className="rounded-lg border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-bold text-[#121316]">
                                                                 Intake Verified
                                                             </span>
                                                         )}
@@ -1474,7 +1410,7 @@ export default function ScanStation({
                                                         placeholder="0.0"
                                                         value={dwsLength}
                                                         onChange={(e) => setDwsLength(e.target.value)}
-                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#121316] focus:ring-2 focus:ring-zinc-900/10 transition"
+                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition"
                                                     />
                                                 </div>
                                                 <div>
@@ -1486,7 +1422,7 @@ export default function ScanStation({
                                                         placeholder="0.0"
                                                         value={dwsWidth}
                                                         onChange={(e) => setDwsWidth(e.target.value)}
-                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#121316] focus:ring-2 focus:ring-zinc-900/10 transition"
+                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition"
                                                     />
                                                 </div>
                                                 <div>
@@ -1498,7 +1434,7 @@ export default function ScanStation({
                                                         placeholder="0.0"
                                                         value={dwsHeight}
                                                         onChange={(e) => setDwsHeight(e.target.value)}
-                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#121316] focus:ring-2 focus:ring-zinc-900/10 transition"
+                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition"
                                                     />
                                                 </div>
                                                 <div>
@@ -1510,7 +1446,7 @@ export default function ScanStation({
                                                         placeholder="0"
                                                         value={dwsWeightGrams}
                                                         onChange={(e) => setDwsWeightGrams(e.target.value)}
-                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#121316] focus:ring-2 focus:ring-zinc-900/10 transition"
+                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition"
                                                     />
                                                 </div>
                                             </div>
@@ -1603,66 +1539,67 @@ export default function ScanStation({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="bg-white rounded-xl border border-zinc-200/90 shadow-xs overflow-hidden font-sans">
+                                <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden font-sans">
                                     {/* Command Terminal Header */}
-                                    <div className="flex items-center justify-between border-b border-zinc-200/80 bg-zinc-50/70 px-5 py-3">
+                                    <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3">
                                         <div className="flex items-center gap-2">
-                                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white border border-zinc-200 text-zinc-700 shadow-2xs">
-                                                <ScanLine className="h-3.5 w-3.5 text-zinc-700" />
-                                            </span>
-                                            <span className="text-xs font-bold uppercase tracking-wider text-zinc-800">
+                                            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
                                                 Routing Terminal
                                             </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 tabular-nums text-xs">
-                                            <span className="rounded-md bg-white border border-zinc-200/90 px-2 py-0.5 font-bold text-zinc-700">
+                                            <span className="rounded bg-slate-100/80 border border-zinc-200 px-2 py-0.5 text-[11px] font-bold text-zinc-700 tabular-nums">
                                                 {activeHub?.code || 'STATION'}
                                             </span>
-                                            <span className="rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 font-bold text-emerald-800">
-                                                WEDGE READY
-                                            </span>
                                         </div>
+                                        <a
+                                            href={`${basePath}/command-sheet`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-xs text-zinc-600 hover:text-[#E00D42] font-semibold transition"
+                                        >
+                                            <Printer className="h-3.5 w-3.5" />
+                                            <span>Print Sheet</span>
+                                        </a>
                                     </div>
 
-                                    {/* Idle Body */}
-                                    <div className="p-6 sm:p-7">
-                                        <div className="flex items-start gap-4">
-                                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-200/90 bg-zinc-50 text-zinc-700">
-                                                <ScanLine className="w-5 h-5" />
+                                    {/* Centered Idle Body */}
+                                    <div className="px-5 pt-7 pb-5">
+                                        <div className="flex flex-col items-center text-center py-4">
+                                            <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-500">
+                                                <QrCode className="w-5 h-5" />
                                             </div>
-                                            <div>
-                                                <h4 className="font-bold text-sm text-zinc-900 font-sans">
-                                                    Ready for the next parcel
-                                                </h4>
-                                                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
-                                                    Scan a parcel waybill or enter its tracking code to see the next permitted action and receiving hub.
-                                                </p>
-                                            </div>
+                                            <h4 className="mt-3 font-bold text-sm text-[#121316] font-sans">
+                                                Ready for the next parcel
+                                            </h4>
+                                            <p className="mt-1 text-xs text-zinc-500">
+                                                Scan a waybill or barcode command to begin routing.
+                                            </p>
                                         </div>
 
                                         {/* Hardware & Keyboard Command Matrix */}
-                                        <div className="mt-6 rounded-xl border border-zinc-200/80 bg-zinc-50/50 divide-y divide-zinc-200/70">
-                                            <div className="px-3.5 py-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                                <span>Hardware Command Shortcuts</span>
-                                                <span className="tabular-nums text-zinc-400">2D / 1D WEDGE</span>
+                                        <div className="mt-6 border-t border-zinc-100 pt-4 space-y-2.5">
+                                            <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700">
+                                                <Zap className="h-3.5 w-3.5 text-[#E00D42]" />
+                                                <span>2D / 1D Laser Wedge Commands</span>
                                             </div>
-                                            <div className="px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
-                                                <span className="text-zinc-600 font-medium">Confirm physical intake or bag seal</span>
-                                                <kbd className="rounded-md border border-zinc-300 bg-white px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800 shadow-2xs">
-                                                    CMD-CONFIRM
-                                                </kbd>
-                                            </div>
-                                            <div className="px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
-                                                <span className="text-zinc-600 font-medium">1-click fast dispatch to route target</span>
-                                                <kbd className="rounded-md border border-zinc-300 bg-white px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800 shadow-2xs">
-                                                    CMD-DISPATCH
-                                                </kbd>
-                                            </div>
-                                            <div className="px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
-                                                <span className="text-zinc-600 font-medium">Reset terminal and focus waybill input</span>
-                                                <kbd className="rounded-md border border-zinc-300 bg-white px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800 shadow-2xs">
-                                                    CMD-CLEAR
-                                                </kbd>
+                                            <div className="space-y-2 text-xs">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-zinc-600">Confirm intake or bag seal</span>
+                                                    <kbd className="rounded border border-zinc-200 bg-slate-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800">
+                                                        CMD-CONFIRM
+                                                    </kbd>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-zinc-600">Fast dispatch to route target</span>
+                                                    <kbd className="rounded border border-zinc-200 bg-slate-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800">
+                                                        CMD-DISPATCH
+                                                    </kbd>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-zinc-600">Reset terminal &amp; focus input</span>
+                                                    <kbd className="rounded border border-zinc-200 bg-slate-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800">
+                                                        CMD-CLEAR
+                                                    </kbd>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1671,7 +1608,7 @@ export default function ScanStation({
                         </div>
                     </div>
 
-                    {scanMode === 'batch' && (
+                    {(queuedScans.length > 0 || lastBatchSync !== null || !isOnline) && (
                         <BatchQueueWorkbench
                             queue={queuedScans}
                             isSyncing={isSubmitting}
@@ -1755,7 +1692,7 @@ export default function ScanStation({
                                                                 className={`h-1.5 rounded-full ${
                                                                     (corridor.sizing.payload_utilization_pct ?? 0) > 90
                                                                         ? 'bg-amber-500'
-                                                                        : 'bg-[#121316]'
+                                                                        : 'bg-[#E00D42]'
                                                                 }`}
                                                                 style={{ width: `${Math.min(100, Math.max(0, corridor.sizing.payload_utilization_pct ?? 0))}%` }}
                                                             />
@@ -1793,16 +1730,6 @@ export default function ScanStation({
             {/* TAB 4: Offline & Batch Queue Workbench */}
             {activeTab === 'batch' && (
                 <div className="space-y-4">
-                    <ScanModeControls
-                        scanMode={scanMode}
-                        onModeChange={setScanMode}
-                        pinnedAction={pinnedAction}
-                        onPinnedActionChange={setPinnedAction}
-                        locationBarcode={locationBarcode}
-                        onLocationBarcodeChange={setLocationBarcode}
-                        queuedCount={queuedScans.length}
-                        isOnline={isOnline}
-                    />
                     <BatchQueueWorkbench
                         queue={queuedScans}
                         isSyncing={isSubmitting}

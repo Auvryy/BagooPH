@@ -57,7 +57,7 @@ const defaultMainSlides: Advertisement[] = [
     },
     {
         id: 998,
-        title: 'Bagoo Halloween Spooky Spree — Midnight Flash Steals & Treats',
+        title: 'Bagoo Halloween Spooky Spree — Midnight Steals & Treats',
         image: '/images/buyer/advertisements/halloween.webp',
         alt_text: 'Halloween Spooky Spree Promotion',
         width: 1880,
