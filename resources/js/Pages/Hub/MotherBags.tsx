@@ -3,7 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ArrowRight, Box, CheckCheck, Container, LockKeyhole, Package, Printer, RotateCcw, ScanLine, Truck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { HubBadge, HubButton, InfoHint, HubRoute, HubSearch, hubButton, hubInput, type HubPlace } from '@/Components/Logistics/Workspace';
+import { HubBadge, HubButton, HubCategoryTabs, InfoHint, HubRoute, HubSearch, hubButton, hubInput, hubPrimary, type HubPlace } from '@/Components/Logistics/Workspace';
 import HubPicker from '@/Components/Logistics/HubPicker';
 import { CapacityMeter, HandlingFields, HandlingSummary, emptyHandling, type Handling } from '@/Components/Logistics/CargoHandling';
 import WaybillCamera from '@/Components/WaybillCamera';
@@ -126,228 +126,225 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
         <DashboardLayout title="Mother Bags">
             <Head title="Mother Bags" />
             <style>{`@media print { body * { visibility: hidden; } [data-bag-label], [data-bag-label] * { visibility: visible; } [data-bag-label] { position: absolute; left: 0; top: 0; width: 100%; padding: 24px; } [data-bag-label] svg { margin: 0 auto; width: 180px; height: 180px; } }`}</style>
-            <div className="space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <h1 className="text-2xl font-bold tracking-tight text-ink-900">Mother Bags</h1>
+            <div className="space-y-6">
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                        <h1 className="text-[28px] font-bold leading-[34px] tracking-tight text-ink-900">Mother bags</h1>
+                        {packableHubs.length === 1 && <p className="mt-1 text-sm text-ink-600">{packableHubs[0].name} · {packableHubs[0].code}</p>}
+                    </div>
                     <div className="flex flex-wrap items-center gap-2">
                         {bag && (
-                            <Link
-                                href={basePath}
-                                className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-ink-900 shadow-xs hover:border-zinc-300 hover:bg-zinc-50 transition"
-                            >
-                                <ScanLine className="h-4 w-4 text-zinc-600" />
+                            <Link href={basePath} className={hubButton}>
+                                <ScanLine className="h-4 w-4 text-ink-500" aria-hidden="true" />
                                 Auto-pack parcel
                             </Link>
                         )}
-                        <Link
-                            href={route('hub.manifests.index')}
-                            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-ink-900 shadow-xs hover:border-zinc-300 hover:bg-zinc-50 transition"
-                        >
-                            <Truck className="h-4 w-4 text-zinc-600" />
+                        <Link href={route('hub.manifests.index')} className={hubButton}>
+                            <Truck className="h-4 w-4 text-ink-500" aria-hidden="true" />
                             Manifests
                         </Link>
                     </div>
                 </div>
 
                 {error.length > 0 && (
-                    <div role="alert" className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-xs">
+                    <div role="alert" className="rounded-control border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-700">
                         {error.join(' ')}
                     </div>
                 )}
 
-                <div className="grid items-start gap-6 lg:grid-cols-[360px_1fr]">
-                    {/* Left Column: Prepare Mother Bag + Bag Directory */}
-                    <div className="space-y-5">
-                        <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-xs">
-                            <div className="flex items-start gap-3">
-                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-600">
-                                    <Container className="h-4 w-4" />
-                                </div>
-                                <div>
-                                    <h2 className="text-base font-semibold text-ink-900">Prepare a Mother Bag</h2>
-                                </div>
+                <div className="grid items-start gap-6 lg:grid-cols-[380px_1fr]">
+                    <div className="space-y-6">
+                        {/* Bags directory */}
+                        <section aria-label="Your bags" className="rounded-card border border-line-200 bg-white">
+                            <div className="space-y-3 px-5 pt-5">
+                                <h2 className="text-base font-semibold text-ink-900">Bags</h2>
+                                <HubSearch label="Search loaded bags" value={search} onChange={setSearch} placeholder="Search hub, tag or seal" />
                             </div>
-                            {activeHubRecord && activeHubRecord.canPackDispatch === false && (
-                                <p role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                                    Your active hub role at {activeHubRecord.name} is locked to Entry / Intake only. Ask a manager to switch your role to Pack &amp; Dispatch to prepare or seal bags.
-                                </p>
-                            )}
-                            <form onSubmit={event => { event.preventDefault(); create.post(basePath); }} className="mt-5 space-y-4">
-                                <HubPicker label="Sending hub" hubs={packableHubs} value={create.data.source_hub_id} onChange={id => create.setData({ ...create.data, source_hub_id: id, destination_hub_id: '' })} error={create.errors.source_hub_id} />
-                                <HubPicker label="Next hub" hubs={receivingHubs} value={create.data.destination_hub_id} onChange={id => create.setData('destination_hub_id', id)} disabled={!source} error={create.errors.destination_hub_id} />
-                                <label className="block min-w-0 text-xs font-bold text-ink-900">
-                                    Bag capacity preset
-                                    <select
-                                        className={`${hubInput} mt-1.5 truncate`}
-                                        value={create.data.capacity_preset}
-                                        onChange={event => {
-                                            const key = event.target.value;
-                                            const preset = bagPresets.find(item => item.key === key);
-                                            if (preset) {
-                                                create.setData({
-                                                    ...create.data,
-                                                    capacity_preset: key,
-                                                    max_count: String(preset.max_count),
-                                                    max_weight_kg: String(preset.max_weight_kg),
-                                                    max_volume_m3: String(Number((preset.max_volume_cm3 / 1000000).toFixed(2))),
-                                                });
-                                            } else {
-                                                create.setData('capacity_preset', key);
-                                            }
-                                        }}
-                                    >
-                                        {bagPresets.map(preset => (
-                                            <option key={preset.key} value={preset.key}>{preset.label}</option>
+                            <div className="mt-3 overflow-x-auto px-3">
+                                <HubCategoryTabs
+                                    label="Filter mother bags"
+                                    activeId={bagCategory}
+                                    onChange={id => setBagCategory(id as typeof bagCategory)}
+                                    tabs={[
+                                        { id: 'all', label: 'All', count: bags.data.length },
+                                        { id: 'open', label: 'Packing', count: openBagsCount },
+                                        { id: 'sealed', label: 'Sealed', count: sealedBagsCount },
+                                        { id: 'transit', label: 'Moving', count: transitBagsCount },
+                                    ]}
+                                />
+                            </div>
+
+                            <div className="p-3">
+                                {visibleBags.length > 0 && (
+                                    <ul className="space-y-1">
+                                        {visibleBags.map(item => {
+                                            const fill = item.capacity && item.capacity.max_count > 0 ? Math.min(100, Math.round((item.capacity.count / item.capacity.max_count) * 100)) : null;
+                                            const selected = bag?.id === item.id;
+                                            return (
+                                                <li key={item.id}>
+                                                    <Link
+                                                        href={`${basePath}?bag=${item.id}`}
+                                                        preserveScroll
+                                                        aria-current={selected ? 'true' : undefined}
+                                                        className={`block rounded-control px-3 py-3 transition-colors ${selected ? 'bg-brand-50 ring-1 ring-brand-200' : 'hover:bg-surface-50'}`}
+                                                    >
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span className="min-w-0 truncate text-sm font-semibold tabular-nums text-ink-900" title={item.reference}>{item.reference}</span>
+                                                            <span className="flex shrink-0 items-center gap-1.5">
+                                                                {item.reference.startsWith('RMB-') && <HubBadge tone="warning">Return</HubBadge>}
+                                                                <HubBadge tone={item.status === 'open' ? 'brand' : item.status === 'received' ? 'success' : 'neutral'}>{words(item.status)}</HubBadge>
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-1 flex min-w-0 items-center gap-1.5 text-[13px] text-ink-700">
+                                                            <span className="truncate">{item.source.name}</span>
+                                                            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
+                                                            <span className="truncate">{item.destination.name}</span>
+                                                        </p>
+                                                        <div className="mt-2 flex items-center gap-3">
+                                                            {fill !== null && (
+                                                                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-100" role="img" aria-label={`${fill}% full`}>
+                                                                    <span className={`block h-full rounded-full ${fill >= 90 ? 'bg-brand-500' : 'bg-brand-200'}`} style={{ width: `${fill}%` }} />
+                                                                </span>
+                                                            )}
+                                                            <span className="shrink-0 text-xs tabular-nums text-ink-600">
+                                                                {item.capacity ? `${item.capacity.count}/${item.capacity.max_count}` : item.parcels_count} parcels{item.seal_number ? ` · Seal ${item.seal_number}` : ''}
+                                                            </span>
+                                                        </div>
+                                                    </Link>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )}
+
+                                {bags.data.length > 0 && visibleBags.length === 0 && (
+                                    <p className="px-3 py-6 text-center text-sm text-ink-600">No bags match.</p>
+                                )}
+
+                                {bags.data.length === 0 && (
+                                    <p className="px-3 py-6 text-center text-sm text-ink-600">No bags yet. Create one below.</p>
+                                )}
+
+                                {bags.links.filter(link => link.url).length > 1 && (
+                                    <div className="flex flex-wrap gap-2 px-3 pt-2">
+                                        {bags.links.filter(link => link.url).map((link, i) => (
+                                            <Link key={i} href={link.url!} preserveScroll className={hubButton} dangerouslySetInnerHTML={{ __html: link.label }} />
                                         ))}
-                                        <option value="custom">Custom limits</option>
-                                    </select>
-                                </label>
-                                {create.data.capacity_preset === 'custom' && (
-                                    <div className="grid grid-cols-3 gap-2 rounded-lg border border-zinc-200 bg-zinc-50/70 p-3">
-                                        <label className="text-[11px] font-semibold text-zinc-700">
-                                            Max parcels
-                                            <input type="number" min={1} max={500} required className={`${hubInput} mt-1 tabular-nums`} value={create.data.max_count} onChange={event => create.setData('max_count', event.target.value)} />
-                                        </label>
-                                        <label className="text-[11px] font-semibold text-zinc-700">
-                                            Max kg
-                                            <input type="number" min={1} max={200} step="0.5" required className={`${hubInput} mt-1 tabular-nums`} value={create.data.max_weight_kg} onChange={event => create.setData('max_weight_kg', event.target.value)} />
-                                        </label>
-                                        <label className="text-[11px] font-semibold text-zinc-700">
-                                            Max m³
-                                            <input type="number" min={0.01} max={2} step="0.01" required className={`${hubInput} mt-1 tabular-nums`} value={create.data.max_volume_m3} onChange={event => create.setData('max_volume_m3', event.target.value)} />
-                                        </label>
                                     </div>
                                 )}
-                                {source && destination && <HubRoute stops={[source, destination]} label="Selected bag route" />}
-                                <button
-                                    type="submit"
-                                    disabled={create.processing || !source || !destination}
-                                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 hover:bg-brand-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    <Box className="h-4 w-4" />
-                                    Create bag
-                                </button>
-                            </form>
+                            </div>
                         </section>
 
-                        <aside className="rounded-xl border border-zinc-200 bg-white p-4 shadow-xs space-y-3.5">
-                            <HubSearch label="Search loaded bags" value={search} onChange={setSearch} placeholder="Hub, tag or seal" />
-                            <div role="tablist" aria-label="Filter mother bags" className="grid grid-cols-2 gap-2">
-                                {([
-                                    { id: 'all', label: 'All Bags', count: bags.data.length },
-                                    { id: 'open', label: 'Open Packing', count: openBagsCount },
-                                    { id: 'sealed', label: 'Sealed', count: sealedBagsCount },
-                                    { id: 'transit', label: 'In Transit & Received', count: transitBagsCount },
-                                ] as const).map((tab) => {
-                                    const selected = bagCategory === tab.id;
-                                    return (
-                                        <button
-                                            key={tab.id}
-                                            role="tab"
-                                            type="button"
-                                            aria-selected={selected}
-                                            onClick={() => setBagCategory(tab.id)}
-                                            className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition cursor-pointer ${
- selected
- ? 'border-brand-600 bg-brand-500 text-white shadow-xs'
- : 'border-zinc-200 bg-slate-100/80 text-zinc-700 hover:bg-slate-100 hover:text-ink-900'
- }`}
-                                        >
-                                            <span className="truncate">{tab.label}</span>
-                                            <span
-                                                className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${
- selected
- ? 'bg-white/20 text-white'
- : 'border border-zinc-200 bg-white text-zinc-600'
- }`}
-                                            >
-                                                {tab.count}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                        {/* New bag */}
+                        <details open={bags.data.length === 0} className="group rounded-card border border-line-200 bg-white">
+                            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-card px-5 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 [&::-webkit-details-marker]:hidden">
+                                <span className="flex items-center gap-2 text-base font-semibold text-ink-900">
+                                    <Box className="h-4 w-4 text-brand-500" aria-hidden="true" />
+                                    New bag
+                                </span>
+                                <span className="text-sm text-ink-600 group-open:hidden">Create</span>
+                            </summary>
+                            <div className="border-t border-line-200 px-5 pb-5 pt-4">
+                                {activeHubRecord && activeHubRecord.canPackDispatch === false && (
+                                    <p role="status" className="mb-4 rounded-control bg-warning-soft px-3 py-2 text-[13px] text-warning">
+                                        Your role at {activeHubRecord.name} is Entry / Intake only. Ask a manager for Pack &amp; Dispatch to create bags.
+                                    </p>
+                                )}
+                                <form onSubmit={event => { event.preventDefault(); create.post(basePath); }} className="space-y-5">
+                                    {packableHubs.length === 1 ? (
+                                        <div>
+                                            <p className="mb-1.5 text-[13px] font-medium text-ink-700">From</p>
+                                            <p className="rounded-control bg-surface-100 px-3 py-2.5 text-sm font-medium text-ink-900">{packableHubs[0].name} <span className="font-normal text-ink-500">· {packableHubs[0].code}</span></p>
+                                        </div>
+                                    ) : (
+                                        <HubPicker label="From" hubs={packableHubs} value={create.data.source_hub_id} onChange={id => create.setData({ ...create.data, source_hub_id: id, destination_hub_id: '' })} error={create.errors.source_hub_id} />
+                                    )}
 
-                            {visibleBags.length > 0 && (
-                                <div className="space-y-2.5 pt-1">
-                                    {visibleBags.map(item => (
-                                        <Link
-                                            key={item.id}
-                                            href={`${basePath}?bag=${item.id}`}
-                                            preserveScroll
-                                            className={`block p-4 rounded-xl border transition-all duration-150 ${
- bag?.id === item.id
- ? 'border-brand-500 bg-rose-50/40 ring-1 ring-brand-500/20 shadow-xs'
- : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50/40 shadow-2xs'
- }`}
-                                        >
-                                            <div className="flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                    <span
-                                                        className="min-w-0 truncate rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 tabular-nums text-xs font-bold text-ink-900"
-                                                        title={item.reference}
-                                                    >
-                                                        {item.reference}
-                                                    </span>
-                                                    {item.reference.startsWith('RMB-') && (
-                                                        <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 shrink-0">
-                                                            REVERSE RTS
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <HubBadge tone={item.status === 'received' ? 'brand' : 'neutral'}>{words(item.status)}</HubBadge>
+                                    {receivingHubs.length > 0 && receivingHubs.length <= 4 ? (
+                                        <fieldset>
+                                            <legend className="mb-1.5 text-[13px] font-medium text-ink-700">To</legend>
+                                            <div className="grid gap-2">
+                                                {receivingHubs.map(hub => {
+                                                    const selected = create.data.destination_hub_id === String(hub.id);
+                                                    return (
+                                                        <label key={hub.id} className={`flex cursor-pointer items-center gap-3 rounded-control border px-3 py-2.5 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 ${selected ? 'border-brand-500 bg-brand-50/60' : 'border-line-300 hover:border-ink-400'}`}>
+                                                            <input type="radio" name="destination_hub_id" value={hub.id} checked={selected} onChange={() => create.setData('destination_hub_id', String(hub.id))} className="sr-only" />
+                                                            <span aria-hidden="true" className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${selected ? 'border-brand-500' : 'border-line-300'}`}>{selected && <span className="h-2 w-2 rounded-full bg-brand-500" />}</span>
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block truncate text-sm font-medium text-ink-900">{hub.name}</span>
+                                                                <span className="block text-xs text-ink-600">{hub.code} · {hub.tier === 'regional_mother_hub' ? 'Mother hub' : 'Bayan hub'}</span>
+                                                            </span>
+                                                        </label>
+                                                    );
+                                                })}
                                             </div>
-                                            <p className="mt-3 break-words text-xs sm:text-sm font-bold leading-5 text-ink-900">
-                                                {item.source.name}
-                                                <ArrowRight className="mx-1.5 inline h-3.5 w-3.5 text-zinc-400" />
-                                                {item.destination.name}
-                                            </p>
-                                            <p className="mt-2 text-xs text-zinc-500 font-medium">
-                                                {item.parcels_count} parcels{item.seal_number ? ` · Seal ${item.seal_number}` : ''}
-                                            </p>
-                                        </Link>
-                                    ))}
-                                </div>
-                            )}
+                                            {create.errors.destination_hub_id && <p className="mt-1.5 text-[13px] text-brand-700">{create.errors.destination_hub_id}</p>}
+                                        </fieldset>
+                                    ) : (
+                                        <HubPicker label="To" hubs={receivingHubs} value={create.data.destination_hub_id} onChange={id => create.setData('destination_hub_id', id)} disabled={!source} error={create.errors.destination_hub_id} />
+                                    )}
 
-                            {bags.data.length > 0 && visibleBags.length === 0 && (
-                                <p className="rounded-xl border border-dashed border-zinc-200 bg-white p-5 text-center text-xs text-zinc-500 font-medium">
-                                    No bags match this category or search filter.
-                                </p>
-                            )}
-
-                            {bags.data.length === 0 && (
-                                <div className="rounded-xl border border-dashed border-zinc-200 bg-white px-4 py-10 text-center">
-                                    <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-500">
-                                        <Container className="h-4 w-4" />
-                                    </div>
-                                    <p className="mt-3 text-xs font-semibold text-ink-900">Choose a bag to continue</p>
-                                </div>
-                            )}
-
-                            {bags.links.filter(link => link.url).length > 1 && (
-                                <div className="flex flex-wrap gap-2 pt-1">
-                                    {bags.links.filter(link => link.url).map((link, i) => (
-                                        <Link key={i} href={link.url!} preserveScroll className={hubButton} dangerouslySetInnerHTML={{ __html: link.label }} />
-                                    ))}
-                                </div>
-                            )}
-                        </aside>
+                                    <fieldset>
+                                        <legend className="mb-1.5 text-[13px] font-medium text-ink-700">Bag size</legend>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {[...bagPresets.map(preset => ({ key: preset.key, title: preset.label.split('(')[0].trim(), detail: `${preset.max_count} parcels · ${preset.max_weight_kg} kg`, preset })), { key: 'custom', title: 'Custom', detail: 'Set your own limits', preset: null as BagPreset | null }].map(option => {
+                                                const selected = create.data.capacity_preset === option.key;
+                                                return (
+                                                    <label key={option.key} className={`cursor-pointer rounded-control border px-3 py-2.5 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 ${selected ? 'border-brand-500 bg-brand-50/60' : 'border-line-300 hover:border-ink-400'}`}>
+                                                        <input type="radio" name="capacity_preset" value={option.key} checked={selected} className="sr-only" onChange={() => {
+                                                            if (option.preset) {
+                                                                create.setData({
+                                                                    ...create.data,
+                                                                    capacity_preset: option.key,
+                                                                    max_count: String(option.preset.max_count),
+                                                                    max_weight_kg: String(option.preset.max_weight_kg),
+                                                                    max_volume_m3: String(Number((option.preset.max_volume_cm3 / 1000000).toFixed(2))),
+                                                                });
+                                                            } else {
+                                                                create.setData('capacity_preset', option.key);
+                                                            }
+                                                        }} />
+                                                        <span className={`block truncate text-sm font-medium ${selected ? 'text-brand-600' : 'text-ink-900'}`}>{option.title}</span>
+                                                        <span className="block text-xs tabular-nums text-ink-600">{option.detail}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </fieldset>
+                                    {create.data.capacity_preset === 'custom' && (
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <label className="text-xs font-medium text-ink-700">
+                                                Max parcels
+                                                <input type="number" min={1} max={500} required className={`${hubInput} mt-1 tabular-nums`} value={create.data.max_count} onChange={event => create.setData('max_count', event.target.value)} />
+                                            </label>
+                                            <label className="text-xs font-medium text-ink-700">
+                                                Max kg
+                                                <input type="number" min={1} max={200} step="0.5" required className={`${hubInput} mt-1 tabular-nums`} value={create.data.max_weight_kg} onChange={event => create.setData('max_weight_kg', event.target.value)} />
+                                            </label>
+                                            <label className="text-xs font-medium text-ink-700">
+                                                Max m³
+                                                <input type="number" min={0.01} max={2} step="0.01" required className={`${hubInput} mt-1 tabular-nums`} value={create.data.max_volume_m3} onChange={event => create.setData('max_volume_m3', event.target.value)} />
+                                            </label>
+                                        </div>
+                                    )}
+                                    <button type="submit" disabled={create.processing || !source || !destination} className={`${hubPrimary} w-full`}>
+                                        {create.processing ? 'Creating…' : 'Create bag'}
+                                    </button>
+                                </form>
+                            </div>
+                        </details>
                     </div>
 
                     {/* Right Column: Auto-pack (default) OR Selected Bag Workspace */}
                     <div className="min-w-0 space-y-5">
                         {!packingAvailable && (
-                            <p role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                            <p role="status" className="rounded-control bg-warning-soft p-4 text-sm text-warning">
                                 Packing upgrades need the additive database migration. Existing trip history remains available.
                             </p>
                         )}
 
                         {!bag && packingAvailable && (
-                            <section className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xs">
-                                <header className="border-b border-zinc-100 bg-white px-5 py-4">
-                                    <h2 className="text-base font-bold text-ink-900">Scan into the next open bag</h2>
-                                </header>
+                            <section aria-labelledby="pack-title" className="rounded-card border border-line-200 bg-white">
                                 <form
                                     onSubmit={event => {
                                         event.preventDefault();
@@ -365,44 +362,52 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         });
                                     }}
                                 >
-                                    <div className="space-y-3.5 p-5">
-                                        <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                                            <HubPicker label="Packing hub" hubs={packableHubs} value={packing.data.source_hub_id} onChange={id => packing.setData('source_hub_id', id)} />
-                                            <label className="min-w-0 block text-xs font-semibold text-zinc-700">
-                                                Actual parcel waybill
+                                    <div className="space-y-4 p-5 sm:p-6">
+                                        <div className="flex items-start gap-3">
+                                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-500">
+                                                <ScanLine className="h-5 w-5" aria-hidden="true" />
+                                            </span>
+                                            <div>
+                                                <h2 id="pack-title" className="text-lg font-semibold text-ink-900">Pack a parcel</h2>
+                                                <p className="text-sm text-ink-600">Scan a waybill. It goes into the open bag for its next hub.</p>
+                                            </div>
+                                        </div>
+                                        {packableHubs.length > 1 && (
+                                            <HubPicker label="Packing at" hubs={packableHubs} value={packing.data.source_hub_id} onChange={id => packing.setData('source_hub_id', id)} />
+                                        )}
+                                        <div className="flex flex-col gap-2 sm:flex-row">
+                                            <label className="min-w-0 flex-1">
+                                                <span className="sr-only">Parcel waybill</span>
                                                 <input
                                                     required
                                                     maxLength={255}
                                                     autoComplete="off"
-                                                    className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm font-medium text-ink-900 shadow-xs placeholder:text-zinc-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition"
+                                                    placeholder="Scan or type waybill"
+                                                    className={`${hubInput} h-12 text-base`}
                                                     value={packing.data.barcode}
                                                     onChange={event => packing.setData('barcode', event.target.value)}
                                                 />
                                             </label>
-                                            <button
-                                                type="submit"
-                                                disabled={packing.processing || !packing.data.source_hub_id}
-                                                className="inline-flex min-h-[42px] items-center justify-center rounded-xl bg-brand-500 hover:bg-brand-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                                Find bag &amp; add parcel
+                                            <button type="submit" disabled={packing.processing || !packing.data.source_hub_id} className={`${hubPrimary} h-12 px-6`}>
+                                                {packing.processing ? 'Adding…' : 'Add to bag'}
                                             </button>
                                         </div>
                                         <HandlingFields value={packing.data.handling} onChange={value => packing.setData('handling', value)} disabled={packing.processing} />
-                                        <details className="rounded-lg border border-zinc-200 bg-white p-4">
-                                            <summary className="cursor-pointer text-sm font-semibold text-ink-900">Reusable sack tag (optional)</summary>
-                                            <label className="mt-3 block text-xs font-semibold text-zinc-700">
+                                        <details className="rounded-control bg-surface-50 px-4 py-3">
+                                            <summary className="cursor-pointer text-sm font-medium text-ink-900">Reusable sack tag (optional)</summary>
+                                            <label className="mt-3 block text-xs font-medium text-ink-700">
                                                 Permanent sack tag
                                                 <input maxLength={80} pattern="[A-Z0-9-]+" className={`${hubInput} mt-1.5`} value={packing.data.physical_tag} onChange={event => packing.setData('physical_tag', event.target.value.toUpperCase())} />
                                             </label>
-                                            <label className="mt-3 flex gap-2 text-xs text-zinc-700">
-                                                <input type="checkbox" checked={packing.data.physical_checked} onChange={event => packing.setData('physical_checked', event.target.checked)} className="rounded border-zinc-300 text-ink-900 focus:ring-[#121316]" />
+                                            <label className="mt-3 flex gap-2 text-[13px] text-ink-700">
+                                                <input type="checkbox" checked={packing.data.physical_checked} onChange={event => packing.setData('physical_checked', event.target.checked)} className="rounded-chip border-line-300 text-brand-500 focus:ring-brand-500" />
                                                 I checked this permanent tag on the sack at this hub.
                                             </label>
                                         </details>
                                     </div>
-                                    <div className="border-t border-zinc-200/80 bg-slate-50/70 px-5 py-3 text-xs text-zinc-600">
+                                    <div className="border-t border-line-200 px-5 py-3 text-[13px] text-ink-600 sm:px-6">
                                         Over 15 kg or a side over 60 cm? Use{' '}
-                                        <Link className="font-semibold text-ink-900 underline underline-offset-4 hover:text-brand-500" href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests`}>
+                                        <Link className="font-medium text-ink-900 underline decoration-line-300 underline-offset-4 hover:decoration-ink-900" href={`${basePath.startsWith('/hub') ? '/hub' : ''}/manifests`}>
                                             loose cargo in Manifests
                                         </Link>.
                                     </div>
