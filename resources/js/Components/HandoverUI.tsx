@@ -69,7 +69,7 @@ export function IssueBadge({ state }: { state: IssueSummary['state'] }) {
 }
 
 export function IssueNotice() {
-    return <div className="flex gap-3 rounded-[8px] border border-amber-300 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" /><p>Reporting or reviewing an issue does not record a parcel handover. Do not repeat a physical transfer just to recreate a missing scan. Your company must verify what happened before arranging recovery.</p></div>;
+    return <div className="flex gap-2.5 rounded-control bg-warning-soft px-3.5 py-2.5 text-[13px] leading-5 text-ink-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" /><div><p className="inline">Reporting or reviewing an issue does not record a parcel handover. </p><details className="inline [&[open]>summary]:hidden"><summary className="inline cursor-pointer font-medium text-ink-900 underline decoration-line-300 underline-offset-4">More</summary><span> Do not repeat a physical transfer just to recreate a missing scan. Your company must verify what happened before arranging recovery.</span></details></div></div>;
 }
 
 export function RecordedParcel({ snapshot, title }: { snapshot: ParcelSnapshot; title: string }) {

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Plus, FileText } from 'lucide-react';
 import { PageProps } from '@/types';
 import UploadHint from '@/Components/UploadHint';
-import { IssueFrame, IssueBadge, IssueNotice, IssueError, issueButton, issuePrimary, issueKind, issueDate, type IssueSummary } from '@/Components/HandoverUI';
+import { IssueFrame, IssueBadge, IssueNotice, IssueError, issueButton, issueKind, issueDate, type IssueSummary } from '@/Components/HandoverUI';
 import { AuthRequestError, AuthRequestScope, authRequest } from '@/utils/authRequests';
 
 interface Props {
@@ -59,8 +59,8 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                 <IssueNotice />
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs font-semibold text-zinc-600">
-                        {issues.total} {issues.total === 1 ? 'report' : 'reports'} in this view
+                    <p className="text-[13px] text-ink-600">
+                        {issues.total} {issues.total === 1 ? 'report' : 'reports'}
                     </p>
                     {canReport && (
                         <button
@@ -193,13 +193,13 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                     </section>
                 )}
 
-                <nav aria-label="Handover report filters" className={`flex gap-2 ${auth.user?.role === 'logistics' ? 'overflow-x-auto pb-1 [&>*]:shrink-0' : 'flex-wrap'}`}>
+                <nav aria-label="Handover report filters" className="flex gap-1 overflow-x-auto border-b border-line-200 [&>*]:shrink-0">
                     {(['open', 'recovered', 'dismissed', 'all'] as const).map(value => (
                         <Link
                             key={value}
                             href={`/handover-issues?status=${value}`}
                             preserveScroll
-                            className={status === value ? issuePrimary : issueButton}
+                            className={`-mb-px inline-flex min-h-10 items-center border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${status === value ? 'border-brand-500 text-brand-600' : 'border-transparent text-ink-600 hover:border-line-300 hover:text-ink-900'}`}
                             aria-current={status === value ? 'page' : undefined}
                         >
                             {value === 'open' ? 'Open' : value === 'dismissed' ? 'Dismissed' : value === 'recovered' ? 'Recovered' : 'All reports'}
@@ -208,12 +208,9 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                 </nav>
 
                 {issues.data.length === 0 ? (
-                    <section className="flex min-h-60 flex-col items-center justify-center rounded-xl border border-zinc-200/90 bg-white p-6 text-center shadow-xs">
-                        <FileText className="h-8 w-8 text-zinc-400" aria-hidden="true" />
-                        <h2 className="mt-3 text-base font-bold text-ink-900">No handover reports here</h2>
-                        <p className="mt-1.5 max-w-md text-xs sm:text-sm text-zinc-500">
-                            {canReport ? 'Report a missed step on a parcel you handle when there is an actual issue.' : 'Reports from involved staff appear here for independent review.'}
-                        </p>
+                    <section className="flex min-h-48 flex-col items-center justify-center rounded-card border border-line-200 bg-white p-6 text-center">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-success-soft text-success"><FileText className="h-5 w-5" aria-hidden="true" /></span>
+                        <h2 className="mt-3 text-base font-semibold text-ink-900">No handover reports here</h2>
                     </section>
                 ) : (
                     <div className="grid gap-4 lg:grid-cols-2">
