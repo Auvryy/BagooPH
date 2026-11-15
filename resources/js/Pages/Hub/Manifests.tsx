@@ -254,14 +254,21 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
                                 <div className="space-y-5">
                                     <div className="grid items-start gap-4 sm:grid-cols-2">
-                                        <HubPicker
-                                            label="Sending hub"
-                                            hubs={sendingHubs}
-                                            value={creation.data.source_hub_id}
-                                            disabled={creation.data.direction === 'buyer_return'}
-                                            onChange={id => creation.setData({ ...creation.data, source_hub_id: id, destination_hub_id: '', vehicle_id: '' })}
-                                            error={creation.errors.source_hub_id}
-                                        />
+                                        {sendingHubs.length === 1 && sourceHub ? (
+                                            <div>
+                                                <p className="mb-1.5 text-[13px] font-medium text-ink-700">Sending hub</p>
+                                                <p className="rounded-control bg-surface-100 px-3 py-2.5 text-sm font-medium text-ink-900">{sourceHub.name} <span className="font-normal text-ink-500">· {sourceHub.code}</span></p>
+                                            </div>
+                                        ) : (
+                                            <HubPicker
+                                                label="Sending hub"
+                                                hubs={sendingHubs}
+                                                value={creation.data.source_hub_id}
+                                                disabled={creation.data.direction === 'buyer_return'}
+                                                onChange={id => creation.setData({ ...creation.data, source_hub_id: id, destination_hub_id: '', vehicle_id: '' })}
+                                                error={creation.errors.source_hub_id}
+                                            />
+                                        )}
                                         <HubPicker
                                             label="Receiving hub"
                                             hubs={receivingHubs}

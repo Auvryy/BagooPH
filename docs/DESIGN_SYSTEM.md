@@ -22,11 +22,11 @@ The only element carried over from the previous design is the Bagoo brand red.
 4. **Red is a signal.** The brand red marks the primary action, the active
    location, step markers, the final amount to pay and the brand mark. If
    everything is red, nothing is.
-5. **No black shades.** Black and near-black fills fight the brand red. Never
-   use them for buttons, badges, step markers, avatars, chart bars, map pins,
-   cards, overlays or any other filled shape. Filled accents use the brand
-   reds; neutral fills stay light (`surface-50`, `surface-100`, `line-200`).
-   Dark ink is only for text and thin icons.
+5. **Black is never the accent.** Near-black is fine as a normal neutral
+   (text, icons, dividers, a dark surface when it genuinely helps), but it
+   is never used to make something stand out: no black primary buttons,
+   selected states, step markers, badges or highlight fills. Emphasis uses
+   the brand reds; status uses the semantic colors.
 6. **Say less.** Every line of text must earn its place. No subtitles under
    page or section titles unless they change what the user does next. No
    helper captions under numbers, no repeated explanations, no "Verify your
@@ -267,8 +267,8 @@ restyling them.
   that restate the obvious (see principle 6).
 - Red used for anything that is not an action, a step marker, the final total,
   the brand mark or an error.
-- Black or near-black fills of any kind (see principle 5), including black
-  modal backdrops and dark badges.
+- Black or near-black used as the accent for selected, primary or highlighted
+  elements (see principle 5).
 
 ## 11. Implementation order
 

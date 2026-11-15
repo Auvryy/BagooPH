@@ -383,11 +383,13 @@ export default function HubDashboard({
                                                                 {facility.exceptions}
                                                             </td>
                                                             <td className="px-4 py-3 text-right tabular-nums text-zinc-600">{facility.active_fleet}</td>
-                                                            <td className="px-5 py-3 text-right">
-                                                                <span className="font-semibold tabular-nums text-ink-900">
-                                                                    {facility.utilization_rate}%
-                                                                </span>
-                                                                <span className="ml-1 text-[11px] text-zinc-400">of {facility.capacity}</span>
+                                                            <td className="px-5 py-3">
+                                                                <div className="ml-auto flex w-32 flex-col items-end gap-1" title={`${facility.utilization_rate}% of ${facility.capacity} parcels`}>
+                                                                    <span className="text-[13px] font-medium tabular-nums text-ink-900">{facility.utilization_rate}%</span>
+                                                                    <span className="h-1.5 w-full overflow-hidden rounded-full bg-surface-100" role="img" aria-label={`${facility.utilization_rate}% of ${facility.capacity} parcel capacity used`}>
+                                                                        <span className={`block h-full rounded-full ${facility.utilization_rate >= 90 ? 'bg-brand-500' : facility.utilization_rate >= 70 ? 'bg-warning' : 'bg-success'}`} style={{ width: `${Math.max(2, Math.min(100, facility.utilization_rate))}%` }} />
+                                                                    </span>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     ))}
