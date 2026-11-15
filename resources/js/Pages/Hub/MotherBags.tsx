@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowRight, Box, CheckCheck, LockKeyhole, Printer, RotateCcw, ScanLine, Truck } from 'lucide-react';
+import { ArrowRight, Box, CheckCheck, ChevronRight, LockKeyhole, Printer, RotateCcw, ScanLine, Truck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { HubBadge, HubButton, HubCategoryTabs, InfoHint, HubSearch, hubButton, hubInput, hubPrimary, type HubPlace } from '@/Components/Logistics/Workspace';
@@ -176,7 +176,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
 
                             <div className="p-3">
                                 {visibleBags.length > 0 && (
-                                    <ul className="space-y-1">
+                                    <ul className="space-y-2">
                                         {visibleBags.map(item => {
                                             const fill = item.capacity && item.capacity.max_count > 0 ? Math.min(100, Math.round((item.capacity.count / item.capacity.max_count) * 100)) : null;
                                             const selected = bag?.id === item.id;
@@ -186,8 +186,9 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                                         href={`${basePath}?bag=${item.id}`}
                                                         preserveScroll
                                                         aria-current={selected ? 'true' : undefined}
-                                                        className={`block rounded-control px-3 py-3 transition-colors ${selected ? 'bg-brand-50 ring-1 ring-brand-200' : 'hover:bg-surface-50'}`}
+                                                        className={`group relative block rounded-control border px-3 py-3 pr-9 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${selected ? 'border-brand-500 bg-brand-50' : 'border-line-200 bg-white hover:border-ink-400 hover:bg-surface-50'}`}
                                                     >
+                                                        <ChevronRight aria-hidden="true" className={`absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 transition-transform group-hover:translate-x-0.5 ${selected ? 'text-brand-500' : 'text-ink-400'}`} />
                                                         <div className="flex items-center justify-between gap-2">
                                                             <span className="min-w-0 truncate text-sm font-semibold tabular-nums text-ink-900" title={item.reference}>{item.reference}</span>
                                                             <span className="flex shrink-0 items-center gap-1.5">
@@ -242,7 +243,6 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                     <Box className="h-4 w-4 text-brand-500" aria-hidden="true" />
                                     New bag
                                 </span>
-                                <span className="text-sm text-ink-600 group-open:hidden">Create</span>
                             </summary>
                             <div className="border-t border-line-200 px-5 pb-5 pt-4">
                                 {activeHubRecord && activeHubRecord.canPackDispatch === false && (

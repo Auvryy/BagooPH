@@ -38,9 +38,15 @@ The only element carried over from the previous design is the Bagoo brand red.
    "Next: ..." prompt when work is waiting). Every action gives immediate
    feedback: a busy state on the button, then a clear success or error
    message near where the user acted, in plain words.
-8. **Real states, real data.** Every view is designed with real Bagoo content
+8. **Clickable things look clickable.** Anything that responds to a tap has a
+   visible affordance: buttons have a fill or border, text links are
+   underlined, list rows and cards that open something have a border, a hover
+   state and a chevron, fold-out sections show a turning chevron, and
+   clickable numbers carry a chevron hint. Non-interactive text and cards
+   never borrow these cues.
+9. **Real states, real data.** Every view is designed with real Bagoo content
    and covers loading, empty, error, partial and success states.
-9. **Consistency over novelty.** A pattern solved once (filters, tables,
+10. **Consistency over novelty.** A pattern solved once (filters, tables,
    status, money) is reused everywhere. New patterns need a reason.
 
 ## 2. Color
@@ -168,6 +174,8 @@ restyling them.
 - Loading state keeps the button width and disables repeat submission.
 
 ### Forms
+- Values the server requires are never hidden in a collapsed section; required
+  groups stay visible and are marked "Required".
 - Label above the field, helper text below, error text below in danger color
   with an icon. Never use placeholder text as the label.
 - Inputs 40px tall (48px on rider), `line-300` border, focus ring 2px

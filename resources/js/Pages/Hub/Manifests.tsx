@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { ArrowRight, CheckCircle2, Container, ExternalLink, Package, Truck, Undo2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ChevronRight, Container, ExternalLink, Package, Truck, Undo2 } from 'lucide-react';
 import { HubBadge, HubCategoryTabs, HubEmpty, HubNextStep, HubPageHeader, HubRoute, HubSearch, HubStepRail, InfoHint, hubButton, type HubPlace } from '@/Components/Logistics/Workspace';
 import HubPicker from '@/Components/Logistics/HubPicker';
 import VehiclePicker from '@/Components/Logistics/VehiclePicker';
@@ -359,14 +359,15 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                 ]}
                             />
                         </div>
-                        <div className="space-y-1 p-3">
+                        <div className="space-y-2 p-3">
                             {!manifests.data.length && <p className="py-6 text-center text-sm text-ink-600">No transfers yet.</p>}
                             {visibleManifests.map(manifest => (
                                 <Link
                                     key={manifest.id}
                                     href={basePath + '/' + manifest.id}
-                                    className={'block rounded-control px-3 py-3 transition-colors ' + (selected?.id === manifest.id ? 'bg-brand-50 ring-1 ring-brand-200' : 'hover:bg-surface-50')}
+                                    className={'group relative block rounded-control border px-3 py-3 pr-9 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ' + (selected?.id === manifest.id ? 'border-brand-500 bg-brand-50' : 'border-line-200 bg-white hover:border-ink-400 hover:bg-surface-50')}
                                 >
+                                    <ChevronRight aria-hidden="true" className={'absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 transition-transform group-hover:translate-x-0.5 ' + (selected?.id === manifest.id ? 'text-brand-500' : 'text-ink-400')} />
                                     <div className="flex items-center justify-between gap-2">
                                         <span className="text-sm font-semibold tabular-nums text-ink-900">Transfer #{manifest.id}</span>
                                         <HubBadge tone={manifest.status === 'closed' ? 'success' : manifest.status === 'dispatched' ? 'brand' : 'neutral'}>
@@ -550,7 +551,7 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
                                         <div className="border-t border-line-200 p-5">
                                             {selected.cargoCapacity && ['outbound', 'return'].includes(selected.direction) && <div className="mb-4 space-y-3">
                                                 <label className="block text-xs font-semibold text-slate-700">Cargo type<select className={inputClass} value={cargoMode} onChange={event => setCargoMode(event.target.value)} disabled={busy}><option value="">Historical individual parcel</option><option value="loose">Loose cargo — over 15 kg or a side over 60 cm</option></select></label>
-                                                {cargoMode === 'loose' && <HandlingFields value={handling} onChange={setHandling} disabled={busy} />}
+                                                {cargoMode === 'loose' && <HandlingFields value={handling} onChange={setHandling} disabled={busy} required />}
                                             </div>}
                                             <form onSubmit={event => { event.preventDefault(); command('load', { barcode, ...(cargoMode ? { cargo_mode: cargoMode, handling } : {}) }); }} className="flex flex-wrap items-end gap-3">
                                                 <label className="min-w-0 flex-1 text-xs font-bold text-ink-900">

@@ -18,7 +18,8 @@ import {
     ArrowRight,
     Tag,
     AlertCircle,
-    X
+    X,
+    ChevronRight
 } from 'lucide-react';
 
 interface CounterParcel {
@@ -207,12 +208,14 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                 <div className="grid grid-cols-1 overflow-hidden rounded-card border border-line-200 bg-white sm:grid-cols-3">
                     <button type="button" onClick={() => setCategoryFilter('ready')} aria-pressed={categoryFilter === 'ready'}
-                        className={`border-b border-line-200 p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:border-b-0 sm:border-r sm:p-5 ${categoryFilter === 'ready' ? 'bg-brand-50/60' : 'hover:bg-surface-50'}`}>
+                        className={`group relative border-b border-line-200 p-4 pr-9 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:border-b-0 sm:border-r sm:p-5 ${categoryFilter === 'ready' ? 'bg-brand-50/60' : 'hover:bg-surface-50'}`}>
+                        <ChevronRight aria-hidden="true" className="absolute right-3 top-4 h-4 w-4 text-ink-400 transition-transform group-hover:translate-x-0.5" />
                         <span className="block text-[13px] text-ink-600">Ready to release on this page</span>
                         <p className="mt-1 text-[28px] font-bold leading-9 tabular-nums text-success">{readyNow}</p>
                     </button>
                     <button type="button" onClick={() => setCategoryFilter('attention')} aria-pressed={categoryFilter === 'attention'}
-                        className={`border-b border-line-200 p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:border-b-0 sm:border-r sm:p-5 ${categoryFilter === 'attention' ? 'bg-brand-50/60' : 'hover:bg-surface-50'}`}>
+                        className={`group relative border-b border-line-200 p-4 pr-9 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:border-b-0 sm:border-r sm:p-5 ${categoryFilter === 'attention' ? 'bg-brand-50/60' : 'hover:bg-surface-50'}`}>
+                        <ChevronRight aria-hidden="true" className="absolute right-3 top-4 h-4 w-4 text-ink-400 transition-transform group-hover:translate-x-0.5" />
                         <span className="block text-[13px] text-ink-600">Needs attention on this page</span>
                         <p className={`mt-1 text-[28px] font-bold leading-9 tabular-nums ${blockedNow > 0 ? 'text-warning' : 'text-ink-900'}`}>{blockedNow}</p>
                     </button>

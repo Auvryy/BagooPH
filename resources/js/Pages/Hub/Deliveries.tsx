@@ -17,7 +17,7 @@ import {
 } from '@/Components/Logistics/Workspace';
 import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import type { EtaPresentation } from '@/types';
-import { Package, Search, Store, MapPin, ScanLine, UserRound, RefreshCw, ArrowRight, ExternalLink } from 'lucide-react';
+import { ChevronRight, Package, Search, Store, MapPin, ScanLine, UserRound, RefreshCw, ArrowRight, ExternalLink } from 'lucide-react';
 
 interface DeliveryItem {
     id: number;
@@ -243,9 +243,10 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                             disabled={busy}
                             aria-pressed={selected}
                             onClick={() => handleFilter(key)}
-                            className={`relative border-b border-r border-line-200 p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:p-5 lg:border-b-0 ${selected ? 'bg-brand-50/60' : 'hover:bg-surface-50'}`}
+                            className={`group relative border-b border-r border-line-200 p-4 pr-9 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:p-5 lg:border-b-0 ${selected ? 'bg-brand-50/60' : 'hover:bg-surface-50'}`}
                         >
                             {selected && <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-brand-500" />}
+                            <ChevronRight aria-hidden="true" className={`absolute right-3 top-4 h-4 w-4 transition-transform group-hover:translate-x-0.5 ${selected ? 'text-brand-500' : 'text-ink-400'}`} />
                             <span className={`block text-[13px] ${selected ? 'font-medium text-brand-600' : 'text-ink-600'}`}>{label}</span>
                             <span className="mt-1 block text-[28px] font-bold leading-9 tabular-nums text-ink-900">{value}</span>
                         </button>
