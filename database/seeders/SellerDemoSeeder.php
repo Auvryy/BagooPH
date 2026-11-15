@@ -41,9 +41,13 @@ class SellerDemoSeeder extends Seeder
                     'description' => 'Commuter bags and everyday accessories for the Bagoo demo.',
                     'phone' => $seller->phone, 'address' => $seller->address, 'city' => $seller->city,
                     'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030',
+                    'pickup_latitude' => 14.1674, 'pickup_longitude' => 121.2430,
                     'status' => 'active', 'rating' => 0,
                 ]);
                 $shop = Shop::whereKey($shop->id)->lockForUpdate()->firstOrFail();
+                if ($shop->pickup_latitude === null || $shop->pickup_longitude === null) {
+                    $shop->update(['pickup_latitude' => 14.1674, 'pickup_longitude' => 121.2430]);
+                }
                 if ($shop->review_status === null && $shop->review_decision_id === null
                     && ! $shop->reviewDecisions()->exists() && $shop->slug === 'apex-gear-and-studio'
                     && $shop->status === 'active' && $seller->identity_version === 0

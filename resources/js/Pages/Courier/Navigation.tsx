@@ -37,6 +37,14 @@ interface DeliveryItem {
     } | null;
     originHub?: {
         name: string;
+        code?: string;
+        address?: string;
+        latitude?: number | null;
+        longitude?: number | null;
+    } | null;
+    destinationHub?: {
+        name: string;
+        code?: string;
         address?: string;
         latitude?: number | null;
         longitude?: number | null;
@@ -69,6 +77,9 @@ interface NavigationProps {
     };
 }
 
+const hasPin = (lat?: number | null, lng?: number | null): boolean =>
+    lat !== null && lat !== undefined && lng !== null && lng !== undefined && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+
 export default function CourierNavigation({
     scope,
     isOnline = false,
@@ -80,52 +91,100 @@ export default function CourierNavigation({
     const routeLayerRef = useRef<LeafletLayerGroup | null>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
 
-    // Flatten pickup tasks and final mile tasks into normalized stops
+    const requestedTracking = useMemo(() => {
+        if (typeof window === 'undefined') return null;
+        return new URLSearchParams(window.location.search).get('tracking');
+    }, []);
+
+    // Flatten pickup tasks and final mile tasks into normalized stops matching rider custody stage
     const stops: DynamicNavStop[] = useMemo(() => {
         const list: DynamicNavStop[] = [];
 
         for (const item of queues?.pickupTasks || []) {
-            if (item.merchant?.latitude && item.merchant?.longitude) {
+            if (item.status === 'picked_up') {
+                if (hasPin(item.originHub?.latitude, item.originHub?.longitude)) {
+                    list.push({
+                        id: `hub-origin-${item.id}`,
+                        trackingNumber: item.trackingNumber,
+                        orderNumber: item.orderNumber,
+                        phase: 'hub',
+                        phaseLabel: 'Bayan Hub Dropoff',
+                        targetName: item.originHub?.name || 'Origin Bayan Hub',
+                        targetAddress: item.originHub?.address || 'Hub dropoff destination',
+                        latitude: Number(item.originHub!.latitude),
+                        longitude: Number(item.originHub!.longitude),
+                    });
+                }
+            } else if (hasPin(item.merchant?.latitude, item.merchant?.longitude)) {
                 list.push({
                     id: `pickup-${item.id}`,
                     trackingNumber: item.trackingNumber,
                     orderNumber: item.orderNumber,
                     phase: 'pickup',
                     phaseLabel: 'Merchant Pickup',
-                    targetName: item.merchant.name || 'Merchant Store',
-                    targetAddress: item.merchant.address || 'Address not provided',
-                    targetPhone: item.merchant.phone,
-                    latitude: Number(item.merchant.latitude),
-                    longitude: Number(item.merchant.longitude),
+                    targetName: item.merchant?.name || 'Merchant Store',
+                    targetAddress: item.merchant?.address || 'Address not provided',
+                    targetPhone: item.merchant?.phone,
+                    latitude: Number(item.merchant!.latitude),
+                    longitude: Number(item.merchant!.longitude),
                 });
-            } else if (item.originHub?.latitude && item.originHub?.longitude) {
+            } else if (hasPin(item.originHub?.latitude, item.originHub?.longitude)) {
                 list.push({
-                    id: `hub-${item.id}`,
+                    id: `hub-origin-${item.id}`,
                     trackingNumber: item.trackingNumber,
                     orderNumber: item.orderNumber,
                     phase: 'hub',
-                    phaseLabel: 'Bayan Hub Dropoff',
-                    targetName: item.originHub.name || 'Bayan Logistics Hub',
-                    targetAddress: item.originHub.address || 'Hub destination',
-                    latitude: Number(item.originHub.latitude),
-                    longitude: Number(item.originHub.longitude),
+                    phaseLabel: 'Origin Bayan Hub',
+                    targetName: item.originHub?.name || 'Origin Bayan Hub',
+                    targetAddress: item.originHub?.address || 'Hub destination',
+                    latitude: Number(item.originHub!.latitude),
+                    longitude: Number(item.originHub!.longitude),
                 });
             }
         }
 
         for (const item of queues?.finalMileTasks || []) {
-            if (item.recipient?.latitude && item.recipient?.longitude) {
+            if (item.status === 'delivery_failed' && hasPin(item.destinationHub?.latitude, item.destinationHub?.longitude)) {
+                list.push({
+                    id: `hub-return-${item.id}`,
+                    trackingNumber: item.trackingNumber,
+                    orderNumber: item.orderNumber,
+                    phase: 'hub',
+                    phaseLabel: 'Return to Destination Hub',
+                    targetName: item.destinationHub?.name || 'Destination Bayan Hub',
+                    targetAddress: item.destinationHub?.address || 'Hub inbound return station',
+                    latitude: Number(item.destinationHub!.latitude),
+                    longitude: Number(item.destinationHub!.longitude),
+                });
+                continue;
+            }
+
+            if (item.status === 'assigned_to_rider' && hasPin(item.destinationHub?.latitude, item.destinationHub?.longitude)) {
+                list.push({
+                    id: `hub-collect-${item.id}`,
+                    trackingNumber: item.trackingNumber,
+                    orderNumber: item.orderNumber,
+                    phase: 'hub',
+                    phaseLabel: 'Collect at Destination Hub',
+                    targetName: item.destinationHub?.name || 'Destination Bayan Hub',
+                    targetAddress: item.destinationHub?.address || 'Dispatch bay',
+                    latitude: Number(item.destinationHub!.latitude),
+                    longitude: Number(item.destinationHub!.longitude),
+                });
+            }
+
+            if (hasPin(item.recipient?.latitude, item.recipient?.longitude)) {
                 list.push({
                     id: `delivery-${item.id}`,
                     trackingNumber: item.trackingNumber,
                     orderNumber: item.orderNumber,
                     phase: 'delivery',
-                    phaseLabel: 'Doorstep Delivery',
-                    targetName: item.recipient.name || 'Customer Recipient',
-                    targetAddress: item.recipient.address || 'Doorstep destination',
-                    targetPhone: item.recipient.phone,
-                    latitude: Number(item.recipient.latitude),
-                    longitude: Number(item.recipient.longitude),
+                    phaseLabel: item.status === 'assigned_to_rider' ? 'Planned Buyer Delivery' : 'Doorstep Delivery',
+                    targetName: item.recipient?.name || 'Customer Recipient',
+                    targetAddress: item.recipient?.address || 'Doorstep destination',
+                    targetPhone: item.recipient?.phone,
+                    latitude: Number(item.recipient!.latitude),
+                    longitude: Number(item.recipient!.longitude),
                     codAmount: item.payment?.codAmount,
                 });
             }
@@ -139,15 +198,27 @@ export default function CourierNavigation({
                 orderNumber: 'BGO-ORD-101',
                 phase: 'delivery',
                 phaseLabel: 'Sample Destination',
-                targetName: 'Bayan Logistics Laguna Hub',
-                targetAddress: 'National Highway, Calamba, Laguna',
-                latitude: 14.2084,
-                longitude: 121.1574,
+                targetName: scope?.hub || 'Bayan Logistics Hub',
+                targetAddress: scope?.hubAddress || 'National Highway, Calamba, Laguna',
+                latitude: hasPin(scope?.hubLatitude, scope?.hubLongitude) ? Number(scope!.hubLatitude) : 14.2084,
+                longitude: hasPin(scope?.hubLatitude, scope?.hubLongitude) ? Number(scope!.hubLongitude) : 121.1574,
             });
         }
 
         return list;
-    }, [queues]);
+    }, [queues, scope]);
+
+    const initialStopId = useMemo(() => {
+        if (!requestedTracking) return stops[0]?.id ?? null;
+        return stops.find((stop) => stop.trackingNumber === requestedTracking)?.id ?? stops[0]?.id ?? null;
+    }, [requestedTracking, stops]);
+
+    const fallbackOrigin: [number, number] | null = useMemo(() => {
+        if (hasPin(scope?.hubLatitude, scope?.hubLongitude)) {
+            return [Number(scope!.hubLatitude), Number(scope!.hubLongitude)];
+        }
+        return [14.1675, 121.2434];
+    }, [scope?.hubLatitude, scope?.hubLongitude]);
 
     const {
         activeStop,
@@ -163,6 +234,8 @@ export default function CourierNavigation({
         recenterRoute,
     } = useDynamicCourierNavigation({
         stops,
+        selectedStopId: initialStopId,
+        fallbackOrigin,
     });
 
     // Toggle Fullscreen API
@@ -273,7 +346,7 @@ export default function CourierNavigation({
             }
 
             // Rider GPS Marker
-            const riderPos: [number, number] = currentPosition || [14.1675, 121.2434];
+            const riderPos: [number, number] = currentPosition || fallbackOrigin || [14.1675, 121.2434];
             allPoints.push(riderPos);
 
             const riderHtml = `
@@ -336,11 +409,12 @@ export default function CourierNavigation({
         return () => {
             cancelled = true;
         };
-    }, [routeDetails, currentPosition, activeStop, heading]);
+    }, [routeDetails, currentPosition, activeStop, heading, fallbackOrigin]);
 
     // External Google Maps directions URL
+    const originPointForExternal = currentPosition || fallbackOrigin;
     const externalDirectionsUrl = activeStop
-        ? `https://www.google.com/maps/dir/?api=1&destination=${activeStop.latitude},${activeStop.longitude}&travelmode=driving`
+        ? `https://www.google.com/maps/dir/?api=1&${originPointForExternal ? `origin=${originPointForExternal[0]},${originPointForExternal[1]}&` : ''}destination=${activeStop.latitude},${activeStop.longitude}&travelmode=driving`
         : null;
 
     return (
@@ -466,6 +540,11 @@ export default function CourierNavigation({
                                         <p className="mt-0.5 text-xs text-slate-600 line-clamp-1">
                                             {activeStop.targetAddress}
                                         </p>
+                                        {statusMessage && (
+                                            <p className="mt-1 text-[11px] font-medium text-slate-500">
+                                                {routeLoading ? 'Calculating route…' : statusMessage}
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* Distance & ETA Metrics */}

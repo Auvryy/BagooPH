@@ -54,21 +54,21 @@ class RealCarousellProductSeeder extends Seeder
             ]);
 
             $shopLocations = [
-                'TechCore Gadgets PH' => ['address' => 'Cyberzone, Aurora Blvd, Cubao', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1100'],
-                'Atelier Femme Studio' => ['address' => 'Salcedo Village, L.P. Leviste St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1200'],
-                'Urban Threads Manila' => ['address' => 'Escolta St, Binondo Heritage District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1000'],
-                'Little Wonders Nursery & Toys' => ['address' => 'Tomas Morato Ave, South Triangle', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1104'],
-                'Living Space Home & Garden' => ['address' => 'Batong Malake, Forestry Road', 'city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030'],
-                'Summit Trail & Fitness' => ['address' => 'Canlubang Commercial Complex', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4027'],
-                'PureGlow Skincare Studio' => ['address' => 'Legazpi Village, Dela Rosa St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1203'],
-                'The Media Collector PH' => ['address' => 'Poblacion Heritage District', 'city' => 'Santa Cruz', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4009'],
-                'Artisan Pantry Gourmet' => ['address' => 'Poblacion, Anos Highway', 'city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030'],
-                'MotoGear Performance PH' => ['address' => 'Bucal Bypass Road, National Highway', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4029'],
-                'ErgoWork Workspace Furniture' => ['address' => 'Poblacion, Century City Walk', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1210'],
-                'Heritage Horology & Gems' => ['address' => 'Ongpin St, Chinatown District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1008'],
-                'Papercraft & Scholar Supplies' => ['address' => 'Katipunan Ave, Loyola Heights', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1105'],
-                'Apex Tactical & Carry Goods' => ['address' => 'Taft Ave, Ermita Commercial Plaza', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1004'],
-                'Manila Pet Supplies Depot' => ['address' => 'Bel-Air Village, Jupiter St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1230'],
+                'TechCore Gadgets PH' => ['address' => 'Cyberzone, Aurora Blvd, Cubao', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1100', 'pickup_latitude' => 14.6208, 'pickup_longitude' => 121.0531],
+                'Atelier Femme Studio' => ['address' => 'Salcedo Village, L.P. Leviste St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1200', 'pickup_latitude' => 14.5596, 'pickup_longitude' => 121.0218],
+                'Urban Threads Manila' => ['address' => 'Escolta St, Binondo Heritage District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1000', 'pickup_latitude' => 14.5992, 'pickup_longitude' => 120.9749],
+                'Little Wonders Nursery & Toys' => ['address' => 'Tomas Morato Ave, South Triangle', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1104', 'pickup_latitude' => 14.6373, 'pickup_longitude' => 121.0339],
+                'Living Space Home & Garden' => ['address' => 'Batong Malake, Forestry Road', 'city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030', 'pickup_latitude' => 14.1672, 'pickup_longitude' => 121.2431],
+                'Summit Trail & Fitness' => ['address' => 'Canlubang Commercial Complex', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4027', 'pickup_latitude' => 14.2059, 'pickup_longitude' => 121.1169],
+                'PureGlow Skincare Studio' => ['address' => 'Legazpi Village, Dela Rosa St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1203', 'pickup_latitude' => 14.5540, 'pickup_longitude' => 121.0173],
+                'The Media Collector PH' => ['address' => 'Poblacion Heritage District', 'city' => 'Santa Cruz', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4009', 'pickup_latitude' => 14.2814, 'pickup_longitude' => 121.4161],
+                'Artisan Pantry Gourmet' => ['address' => 'Poblacion, Anos Highway', 'city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030', 'pickup_latitude' => 14.1753, 'pickup_longitude' => 121.2274],
+                'MotoGear Performance PH' => ['address' => 'Bucal Bypass Road, National Highway', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4029', 'pickup_latitude' => 14.1872, 'pickup_longitude' => 121.1684],
+                'ErgoWork Workspace Furniture' => ['address' => 'Poblacion, Century City Walk', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1210', 'pickup_latitude' => 14.5653, 'pickup_longitude' => 121.0281],
+                'Heritage Horology & Gems' => ['address' => 'Ongpin St, Chinatown District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1008', 'pickup_latitude' => 14.6011, 'pickup_longitude' => 120.9765],
+                'Papercraft & Scholar Supplies' => ['address' => 'Katipunan Ave, Loyola Heights', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1105', 'pickup_latitude' => 14.6368, 'pickup_longitude' => 121.0746],
+                'Apex Tactical & Carry Goods' => ['address' => 'Taft Ave, Ermita Commercial Plaza', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1004', 'pickup_latitude' => 14.5812, 'pickup_longitude' => 120.9845],
+                'Manila Pet Supplies Depot' => ['address' => 'Bel-Air Village, Jupiter St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1230', 'pickup_latitude' => 14.5621, 'pickup_longitude' => 121.0258],
             ];
 
             foreach ($categoriesData as $catData) {
@@ -118,17 +118,24 @@ class RealCarousellProductSeeder extends Seeder
                         'city' => $loc['city'],
                         'pickup_province' => $loc['pickup_province'] ?? null,
                         'pickup_postal_code' => $loc['pickup_postal_code'] ?? null,
+                        'pickup_latitude' => $loc['pickup_latitude'] ?? null,
+                        'pickup_longitude' => $loc['pickup_longitude'] ?? null,
                         'status' => 'active',
                         'review_status' => 'approved',
                         'is_default' => true,
                     ]);
                 } else {
-                    $shop->update([
+                    $shopUpdate = [
                         'address' => $loc['address'],
                         'city' => $loc['city'],
                         'pickup_province' => $loc['pickup_province'] ?? null,
                         'pickup_postal_code' => $loc['pickup_postal_code'] ?? null,
-                    ]);
+                    ];
+                    if ($shop->pickup_latitude === null || $shop->pickup_longitude === null) {
+                        $shopUpdate['pickup_latitude'] = $loc['pickup_latitude'] ?? null;
+                        $shopUpdate['pickup_longitude'] = $loc['pickup_longitude'] ?? null;
+                    }
+                    $shop->update($shopUpdate);
                 }
 
                 // Admin review decision for shop eligibility

@@ -4,6 +4,7 @@ import {
     Building2,
     Check,
     ChevronRight,
+    ExternalLink,
     MapPin,
     Package,
     ScanLine,
@@ -520,8 +521,30 @@ export default function HubNetwork({ scope, hubs, riderIntake }: Props) {
                                             {selectedHub.address}, {selectedHub.barangay}, {selectedHub.city_municipality}, {selectedHub.province}
                                         </span>
                                     </div>
-                                    <div className="mt-3 border-t border-zinc-200/80 pt-3 text-xs text-zinc-500">
-                                        GPS pin: <span className="tabular-nums font-semibold text-[#121316]">{Number(selectedHub.latitude).toFixed(4)}° N, {Number(selectedHub.longitude).toFixed(4)}° E</span>
+                                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200/80 pt-3 text-xs text-zinc-500">
+                                        <span>
+                                            {selectedHub.latitude !== null && selectedHub.latitude !== undefined && selectedHub.longitude !== null && selectedHub.longitude !== undefined ? (
+                                                <>
+                                                    GPS pin:{' '}
+                                                    <span className="tabular-nums font-semibold text-[#121316]">
+                                                        {Number(selectedHub.latitude).toFixed(4)}° N, {Number(selectedHub.longitude).toFixed(4)}° E
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <span>GPS pin not saved yet</span>
+                                            )}
+                                        </span>
+                                        {selectedHub.latitude !== null && selectedHub.latitude !== undefined && selectedHub.longitude !== null && selectedHub.longitude !== undefined && (
+                                            <a
+                                                href={`https://www.google.com/maps/dir/?api=1&destination=${selectedHub.latitude},${selectedHub.longitude}&travelmode=driving`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#121316] shadow-2xs transition hover:border-[#E00D42] hover:text-[#E00D42]"
+                                            >
+                                                <ExternalLink className="h-3 w-3" />
+                                                Directions
+                                            </a>
+                                        )}
                                     </div>
                                 </div>
                             </section>

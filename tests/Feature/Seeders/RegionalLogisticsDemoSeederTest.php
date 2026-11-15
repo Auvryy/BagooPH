@@ -40,6 +40,7 @@ class RegionalLogisticsDemoSeederTest extends TestCase
         $this->assertSame($password, $owner->fresh()->password);
         $this->assertSame('Retained owner name', $owner->fresh()->name);
         $this->assertSame(10, $company->hubs()->count());
+        $this->assertSame(0, $company->hubs()->where(fn ($q) => $q->whereNull('latitude')->orWhereNull('longitude'))->count());
         $this->assertSame(24, $company->fleet()->count());
         $this->assertSame(7, LogisticsHub::readyForSelfPickup()->where('logistics_company_id', $company->id)->count());
         $shop = Shop::factory()->create(['city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030']);

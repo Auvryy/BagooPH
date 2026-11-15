@@ -68,14 +68,32 @@ class RegionalLogisticsDemoSeeder extends Seeder
 
     private function hub(LogisticsCompany $company, string $code, string $name, string $province, string $city, array $postal, ?LogisticsHub $parent): LogisticsHub
     {
+        $coordinates = [
+            'BGR-MH-LAG' => [14.2078, 121.1558],
+            'BGR-MH-NCR' => [14.5764, 121.0851],
+            'BGR-MH-APY' => [18.0235, 121.1836],
+            'BGR-BH-CLN' => [18.2345, 121.0294],
+            'BGR-BH-LBN' => [14.1678, 121.2435],
+            'BGR-BH-SCZ' => [14.2789, 121.4172],
+            'BGR-BH-CAL' => [14.2117, 121.1653],
+            'BGR-BH-MNL' => [14.5995, 120.9842],
+            'BGR-BH-QC' => [14.6760, 121.0437],
+            'BGR-BH-MKT' => [14.5547, 121.0244],
+        ][$code] ?? [null, null];
+
         $hub = LogisticsHub::firstOrCreate(['code' => $code], [
             'logistics_company_id' => $company->id, 'name' => $name,
             'tier' => $parent ? 'local_bayan_hub' : 'regional_mother_hub', 'parent_hub_id' => $parent?->id,
             'province' => $province, 'city_municipality' => $city, 'postal_codes' => $postal,
             'coverage_barangays' => [], 'address' => 'Demo dispatch facility, '.$city.', '.$province,
+            'latitude' => $coordinates[0], 'longitude' => $coordinates[1],
             'capacity' => $parent ? 1500 : 12000, 'is_active' => true,
             'allows_self_pickup' => (bool) $parent, 'operating_hours' => 'Monday to Saturday, 8 AM to 6 PM',
         ]);
+
+        if (($hub->latitude === null || $hub->longitude === null) && $coordinates[0] !== null && $coordinates[1] !== null) {
+            $hub->update(['latitude' => $coordinates[0], 'longitude' => $coordinates[1]]);
+        }
         if ($hub->logistics_company_id !== $company->id || ! $hub->is_active || $hub->parent_hub_id !== $parent?->id) {
             throw new RuntimeException('Reserved demo facility has conflicting ownership, status or parent.');
         }

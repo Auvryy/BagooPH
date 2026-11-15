@@ -17,7 +17,7 @@ import {
 } from '@/Components/Logistics/Workspace';
 import { HubParcelState, HubParcelNextStep, ParcelGuidance } from '@/Components/HubParcelGuidance';
 import type { EtaPresentation } from '@/types';
-import { Package, Search, Store, MapPin, ScanLine, CheckCircle2, UserRound, RefreshCw } from 'lucide-react';
+import { Package, Search, Store, MapPin, ScanLine, CheckCircle2, UserRound, RefreshCw, ArrowRight, ExternalLink } from 'lucide-react';
 
 interface DeliveryItem {
     id: number;
@@ -25,14 +25,26 @@ interface DeliveryItem {
     order_number: string;
     buyer_name: string;
     buyer_phone: string;
+    pickup_store_name?: string | null;
+    pickup_address?: string | null;
+    pickup_latitude?: number | null;
+    pickup_longitude?: number | null;
+    delivery_address?: string | null;
     destination_barangay: string;
     shipping_city: string;
+    destination_latitude?: number | null;
+    destination_longitude?: number | null;
     status: string;
     delivery_type: string;
     destination_bin: string | null;
     current_hub: string;
     awaiting_origin_intake: boolean;
+    origin_hub?: string | null;
+    origin_hub_latitude?: number | null;
+    origin_hub_longitude?: number | null;
     destination_hub: string;
+    destination_hub_latitude?: number | null;
+    destination_hub_longitude?: number | null;
     rider_name: string;
     total_amount: number;
     payment_method: string;
@@ -91,6 +103,25 @@ interface Props {
     }>;
     basePath: string;
     canScan: boolean;
+}
+
+function deliveryDirectionsUrl(delivery: DeliveryItem): string | null {
+    const origin =
+        delivery.pickup_latitude && delivery.pickup_longitude
+            ? `${delivery.pickup_latitude},${delivery.pickup_longitude}`
+            : delivery.origin_hub_latitude && delivery.origin_hub_longitude
+                ? `${delivery.origin_hub_latitude},${delivery.origin_hub_longitude}`
+                : delivery.pickup_address || null;
+    const destination =
+        delivery.delivery_type === 'hub_self_pickup' && delivery.destination_hub_latitude && delivery.destination_hub_longitude
+            ? `${delivery.destination_hub_latitude},${delivery.destination_hub_longitude}`
+            : delivery.destination_latitude && delivery.destination_longitude
+                ? `${delivery.destination_latitude},${delivery.destination_longitude}`
+                : delivery.delivery_address || `${delivery.destination_barangay}, ${delivery.shipping_city}`;
+    if (!destination) return null;
+    const params = new URLSearchParams({ api: '1', destination, travelmode: 'driving' });
+    if (origin) params.set('origin', origin);
+    return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
 export default function HubDeliveries({ activeHub, deliveries, counts, filters, eligibleRiders, basePath, canScan }: Props) {
@@ -362,6 +393,46 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                         )}
                                     </div>
                                 </div>
+
+                                {(delivery.pickup_address || delivery.delivery_address) && (
+                                    <div className="rounded-lg border border-zinc-200/80 bg-white p-3 text-xs space-y-2">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <span className="inline-flex items-center gap-1.5 font-semibold text-zinc-800">
+                                                <Store className="h-3.5 w-3.5 text-zinc-500" />
+                                                <span className="truncate">{delivery.pickup_store_name || 'Seller Pickup'}</span>
+                                                <ArrowRight className="h-3 w-3 text-zinc-400 shrink-0" />
+                                                <span className="truncate">{delivery.destination_hub}</span>
+                                                <ArrowRight className="h-3 w-3 text-zinc-400 shrink-0" />
+                                                <span className="truncate text-[#E00D42]">
+                                                    {delivery.delivery_type === 'hub_self_pickup' ? 'Counter' : delivery.destination_barangay}
+                                                </span>
+                                            </span>
+                                            {deliveryDirectionsUrl(delivery) && (
+                                                <a
+                                                    href={deliveryDirectionsUrl(delivery)!}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#121316] shadow-2xs transition hover:border-[#E00D42] hover:text-[#E00D42]"
+                                                >
+                                                    <ExternalLink className="h-3 w-3" />
+                                                    Route directions
+                                                </a>
+                                            )}
+                                        </div>
+                                        <div className="grid gap-1.5 text-[11px] text-zinc-600 sm:grid-cols-2">
+                                            {delivery.pickup_address && (
+                                                <p className="truncate" title={delivery.pickup_address}>
+                                                    <span className="font-semibold text-zinc-700">Pickup:</span> {delivery.pickup_address}
+                                                </p>
+                                            )}
+                                            {delivery.delivery_address && (
+                                                <p className="truncate" title={delivery.delivery_address}>
+                                                    <span className="font-semibold text-zinc-700">Dropoff:</span> {delivery.delivery_address}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {delivery.dispatch_delay_label && (
                                     <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">

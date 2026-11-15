@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
-import { ArrowRight, CheckCircle2, Container, Package, Truck, Undo2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Container, ExternalLink, Package, Truck, Undo2 } from 'lucide-react';
 import { HubBadge, HubCategoryTabs, HubEmpty, HubNextStep, HubPageHeader, HubRoute, HubSearch, HubStepRail, hubButton, type HubPlace } from '@/Components/Logistics/Workspace';
 import HubPicker from '@/Components/Logistics/HubPicker';
 import VehiclePicker from '@/Components/Logistics/VehiclePicker';
@@ -441,6 +441,22 @@ export default function Manifests({ manifests, selectedManifest: selected, canCr
 
                             <div className="p-5 sm:p-6 space-y-5">
                                 <HubRoute stops={[selected.source, selected.destination]} />
+                                {selected.source.latitude && selected.source.longitude && selected.destination.latitude && selected.destination.longitude && (
+                                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 px-4 py-2.5 text-xs">
+                                        <span className="text-zinc-600 font-medium">
+                                            Dispatch leg: <span className="font-semibold text-[#121316]">{selected.source.city_municipality || selected.source.name}</span> to <span className="font-semibold text-[#121316]">{selected.destination.city_municipality || selected.destination.name}</span>
+                                        </span>
+                                        <a
+                                            href={`https://www.google.com/maps/dir/?api=1&origin=${selected.source.latitude},${selected.source.longitude}&destination=${selected.destination.latitude},${selected.destination.longitude}&travelmode=driving`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 rounded border border-zinc-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#121316] shadow-2xs transition hover:border-[#E00D42] hover:text-[#E00D42]"
+                                        >
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                            Open transfer directions
+                                        </a>
+                                    </div>
+                                )}
                                 {selected.transportArrival && <TransportArrival value={selected.transportArrival} manifestId={selected.id} version={selected.version} driver={selected.driver_name} plate={selected.vehicle_plate} basePath={basePath} />}
                                 {selected.wholeTransportLoss && <TransportLoss value={selected.wholeTransportLoss} manifestId={selected.id} version={selected.version} basePath={basePath} />}
                                 {selected.cargoCapacity && <section aria-label="Vehicle cargo capacity" className="rounded-xl border border-zinc-200/90 bg-zinc-50/60 p-4"><h3 className="mb-3 text-sm font-bold text-[#121316]">Vehicle cargo · {selected.cargoCapacity.loose_count} loose parcels</h3><CapacityMeter label="Total retained cargo weight" value={selected.cargoCapacity.weight_kg} max={selected.cargoCapacity.max_weight_kg} unit="kg" /></section>}
