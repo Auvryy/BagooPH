@@ -57,14 +57,14 @@ class RealCarousellProductSeeder extends Seeder
                 'TechCore Gadgets PH' => ['address' => 'Cyberzone, Aurora Blvd, Cubao', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1100', 'pickup_latitude' => 14.6208, 'pickup_longitude' => 121.0531],
                 'Atelier Femme Studio' => ['address' => 'Salcedo Village, L.P. Leviste St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1200', 'pickup_latitude' => 14.5596, 'pickup_longitude' => 121.0218],
                 'Urban Threads Manila' => ['address' => 'Escolta St, Binondo Heritage District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1000', 'pickup_latitude' => 14.5992, 'pickup_longitude' => 120.9749],
-                'Little Wonders Nursery & Toys' => ['address' => 'Tomas Morato Ave, South Triangle', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1104', 'pickup_latitude' => 14.6373, 'pickup_longitude' => 121.0339],
-                'Living Space Home & Garden' => ['address' => 'Batong Malake, Forestry Road', 'city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030', 'pickup_latitude' => 14.1672, 'pickup_longitude' => 121.2431],
+                'Little Wonders Nursery & Toys' => ['address' => 'Calle Marcella Agoncillo, Poblacion', 'city' => 'Taal', 'pickup_province' => 'Batangas', 'pickup_postal_code' => '4208', 'pickup_latitude' => 13.8808, 'pickup_longitude' => 120.9235],
+                'Living Space Home & Garden' => ['address' => 'Brgy. Bayanihan, Silangan Highway', 'city' => 'Dolores', 'pickup_province' => 'Quezon', 'pickup_postal_code' => '4326', 'pickup_latitude' => 14.0156, 'pickup_longitude' => 121.4014],
                 'Summit Trail & Fitness' => ['address' => 'Canlubang Commercial Complex', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4027', 'pickup_latitude' => 14.2059, 'pickup_longitude' => 121.1169],
-                'PureGlow Skincare Studio' => ['address' => 'Legazpi Village, Dela Rosa St.', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1203', 'pickup_latitude' => 14.5540, 'pickup_longitude' => 121.0173],
+                'PureGlow Skincare Studio' => ['address' => 'Poblacion East Commercial Strip', 'city' => 'Ibaan', 'pickup_province' => 'Batangas', 'pickup_postal_code' => '4230', 'pickup_latitude' => 13.8186, 'pickup_longitude' => 121.1333],
                 'The Media Collector PH' => ['address' => 'Poblacion Heritage District', 'city' => 'Santa Cruz', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4009', 'pickup_latitude' => 14.2814, 'pickup_longitude' => 121.4161],
-                'Artisan Pantry Gourmet' => ['address' => 'Poblacion, Anos Highway', 'city' => 'Los Banos', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4030', 'pickup_latitude' => 14.1753, 'pickup_longitude' => 121.2274],
+                'Artisan Pantry Gourmet' => ['address' => 'P. Paterno St., Poblacion I', 'city' => 'Nagcarlan', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4002', 'pickup_latitude' => 14.1369, 'pickup_longitude' => 121.4139],
                 'MotoGear Performance PH' => ['address' => 'Bucal Bypass Road, National Highway', 'city' => 'Calamba City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4029', 'pickup_latitude' => 14.1872, 'pickup_longitude' => 121.1684],
-                'ErgoWork Workspace Furniture' => ['address' => 'Poblacion, Century City Walk', 'city' => 'Makati City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1210', 'pickup_latitude' => 14.5653, 'pickup_longitude' => 121.0281],
+                'ErgoWork Workspace Furniture' => ['address' => 'Sala Business Park, National Hwy', 'city' => 'Cabuyao City', 'pickup_province' => 'Laguna', 'pickup_postal_code' => '4025', 'pickup_latitude' => 14.2775, 'pickup_longitude' => 121.1233],
                 'Heritage Horology & Gems' => ['address' => 'Ongpin St, Chinatown District', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1008', 'pickup_latitude' => 14.6011, 'pickup_longitude' => 120.9765],
                 'Papercraft & Scholar Supplies' => ['address' => 'Katipunan Ave, Loyola Heights', 'city' => 'Quezon City', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1105', 'pickup_latitude' => 14.6368, 'pickup_longitude' => 121.0746],
                 'Apex Tactical & Carry Goods' => ['address' => 'Taft Ave, Ermita Commercial Plaza', 'city' => 'Manila', 'pickup_province' => 'Metro Manila', 'pickup_postal_code' => '1004', 'pickup_latitude' => 14.5812, 'pickup_longitude' => 120.9845],
@@ -125,17 +125,29 @@ class RealCarousellProductSeeder extends Seeder
                         'is_default' => true,
                     ]);
                 } else {
-                    $shopUpdate = [
+                    $locationChanged = $shop->city !== $loc['city']
+                        || $shop->pickup_province !== ($loc['pickup_province'] ?? null)
+                        || $shop->pickup_postal_code !== ($loc['pickup_postal_code'] ?? null);
+                    $shop->update([
                         'address' => $loc['address'],
                         'city' => $loc['city'],
                         'pickup_province' => $loc['pickup_province'] ?? null,
                         'pickup_postal_code' => $loc['pickup_postal_code'] ?? null,
-                    ];
-                    if ($shop->pickup_latitude === null || $shop->pickup_longitude === null) {
-                        $shopUpdate['pickup_latitude'] = $loc['pickup_latitude'] ?? null;
-                        $shopUpdate['pickup_longitude'] = $loc['pickup_longitude'] ?? null;
+                    ]);
+                    if (($locationChanged || $shop->pickup_latitude === null || $shop->pickup_longitude === null)
+                        && isset($loc['pickup_latitude'], $loc['pickup_longitude'])) {
+                        $shop->update([
+                            'pickup_latitude' => $loc['pickup_latitude'],
+                            'pickup_longitude' => $loc['pickup_longitude'],
+                        ]);
                     }
-                    $shop->update($shopUpdate);
+                    if ($locationChanged) {
+                        $seller->update([
+                            'city' => $loc['city'],
+                            'address' => $loc['address'],
+                            'postal_code' => $loc['pickup_postal_code'] ?? $seller->postal_code,
+                        ]);
+                    }
                 }
 
                 // Admin review decision for shop eligibility
