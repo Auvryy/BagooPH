@@ -204,21 +204,22 @@ test('ineligible checkout choices remain disabled while showing scope and the us
     assert.match(text(tree), /qualifying products/); assert.equal(nodes(tree, node => node.type === ui.Scope)[0].props.offer, offer);
 });
 
-test('selected product price guide auto-fills minimum spend and applies suggested limits', () => {
+test('seller form explains the minimum a fixed shop discount needs and lets the server fill optional limits', () => {
     const h = harness(ui.Form, { campaign: null, platform: false, onClose() {} });
     try {
         let tree = h.render();
-        nodes(tree, node => node.type === ui.Selection)[0].props.onScope('selected');
+        assert.match(text(tree), /Paid by your shop/);
+        nodes(tree, node => node.type === 'input' && node.props.placeholder === 'e.g. 50')[0].props.onChange({ target: { value: '50' } });
+        nodes(tree, node => node.type === 'input' && node.props.placeholder === 'e.g. 100')[0].props.onChange({ target: { value: '10' } });
         tree = h.render();
-        nodes(tree, node => node.type === ui.Selection)[0].props.onChange([1]);
-        nodes(tree, node => node.type === ui.Selection)[0].props.onProductsChange([{ id: 1, name: 'Matcha Powder', sku: 'M-300', price: 300, featured_image: null }]);
+        assert.match(text(tree), /Needs to be at least\s+₱55\.56/);
+        nodes(tree, node => node.type === 'button' && /^Use\s+₱55\.56$/.test(text(node).trim()))[0].props.onClick();
         tree = h.render();
-        assert.match(text(tree), /Selected product price guide:\s+₱300\.00/);
-        button(tree, 'Apply suggested prices').props.onClick();
-        tree = h.render();
+        assert.match(text(tree), /Most in total\s*₱500\.00/);
         nodes(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {}, nativeEvent: { submitter: { value: 'draft' } } });
-        assert.equal(h.submitted[0].data.min_spend, '300');
-        assert.equal(h.submitted[0].data.max_discount, '30');
-        assert.equal(h.submitted[0].data.budget, '300');
+        assert.equal(h.submitted[0].data.min_spend, '55.56');
+        assert.equal(h.submitted[0].data.max_discount, '');
+        assert.equal(h.submitted[0].data.budget, '');
+        assert.equal(h.submitted[0].data.per_buyer_limit, '1');
     } finally { h.close(); }
 });
