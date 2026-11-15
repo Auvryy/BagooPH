@@ -91,9 +91,8 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                             key={key}
                             role="tab"
                             aria-selected={tab === key}
-                            aria-pressed={tab === key}
                             onClick={() => { setTab(key); setCreating(false); setSearch(''); }}
-                            className={`-mb-px inline-flex min-h-10 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${
+                            className={`-mb-px inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap border-x-0 border-t-0 border-b-2 px-3 py-2 focus-visible:-outline-offset-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${
  tab === key ? 'border-brand-500 text-brand-600' : 'border-transparent text-ink-600 hover:border-line-300 hover:text-ink-900'
  }`}
                         >

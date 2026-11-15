@@ -199,7 +199,7 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                             key={value}
                             href={`/handover-issues?status=${value}`}
                             preserveScroll
-                            className={`-mb-px inline-flex min-h-10 items-center border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${status === value ? 'border-brand-500 text-brand-600' : 'border-transparent text-ink-600 hover:border-line-300 hover:text-ink-900'}`}
+                            className={`-mb-px inline-flex min-h-10 items-center border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 ${status === value ? 'border-brand-500 text-brand-600' : 'border-transparent text-ink-600 hover:border-line-300 hover:text-ink-900'}`}
                             aria-current={status === value ? 'page' : undefined}
                         >
                             {value === 'open' ? 'Open' : value === 'dismissed' ? 'Dismissed' : value === 'recovered' ? 'Recovered' : 'All reports'}

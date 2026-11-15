@@ -425,7 +425,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                             <div className="space-y-5">
                                 {/* Bag overview: identity, lifecycle, route, capacity and printable tag */}
                                 <section aria-label="Selected bag" className={`${card} p-5 sm:p-6`}>
-                                    <div className="flex flex-wrap items-start justify-between gap-5">
+                                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="min-w-0 flex-1 space-y-4">
                                             <div>
                                                 <div className="flex flex-wrap items-center gap-2">
@@ -465,7 +465,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                             )}
                                         </div>
 
-                                        <div className="flex shrink-0 flex-col items-center gap-2">
+                                        <div className="flex shrink-0 flex-row items-center gap-3 sm:flex-col sm:gap-2">
                                             <div data-bag-label className="rounded-control border border-line-200 bg-white p-3 text-center">
                                                 <QRCodeSVG value={bag.reference} size={88} />
                                                 <p className="mt-2 text-xs font-semibold tabular-nums text-ink-900">{bag.reference}</p>
