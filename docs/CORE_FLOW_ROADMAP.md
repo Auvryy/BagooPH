@@ -1,5 +1,31 @@
 # BagooPH Core Flow Roadmap
 
+## November 17: vehicle registration at every hub
+
+Fleet & drivers now offers Add vehicle to full-access hub operators, company
+owners and admins for their accessible facility. Supports wing trucks (8,000 kg),
+feeder vans (1,200 kg), motorcycles (40 kg) and tricycles (100 kg), with editable
+capacity and optional model. Server validation normalizes plates, rejects
+duplicates and invalid capacities, and derives company/hub ownership from the
+authorized context. New vehicles are active and unassigned; existing driver
+placement and dispatch eligibility rules continue to apply.
+
+Scoped assessment: registration 0/10 before (no web form), 8/10 after (validated
+creation and responsive feedback). Driver placement remains a separate existing
+workflow. No migration or demo-data reset is required.
+
+Verification: registration and company setup tests passed 16 tests / 250
+assertions; registration and existing hub suite passed 22 tests / 415 assertions
+(overlapping runs). Registration tests cover every eligible fixture hub and all
+four vehicle types, forged fields, duplicates, invalid values and unauthorized
+workers. Docker production build and PHP formatting passed. Desktop (1440 px)
+and phone (390 px) screenshots inspected; browser checked capacity defaults,
+no horizontal overflow and rejected duplicate submission. Full TypeScript check
+remains blocked by errors in four unchanged files: VoucherProductSelection,
+Buyer/Campaign, Finance/DeliveryEarnings and Hub/CompanyDirectory; Fleet has no
+reported errors.
+
+
 ## November 11 brainstorming B02: worker invitations and native scanner accounts
 
 Company owners now invite named operators and riders by email; workers verify

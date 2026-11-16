@@ -26,6 +26,7 @@ use App\Services\Logistics\DispatchRecoveryService;
 use App\Services\Logistics\FleetDispatchEngine;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\HubBatchScanService;
+use App\Services\Logistics\HubFleetService;
 use App\Services\Logistics\HubParcelWorkstationService;
 use App\Services\Logistics\HubScanTransferService;
 use App\Services\Logistics\LogisticsEligibilityService;
@@ -611,6 +612,17 @@ class LogisticsHubWorkstationController extends Controller
     /**
      * Multi-tier vehicle fleet management.
      */
+    public function storeFleet(Request $request, HubFleetService $fleet): RedirectResponse
+    {
+        $request->validate(['hub_id' => ['required', 'integer', 'min:1']]);
+        [$hub] = $this->getActiveHub($request, $request->user());
+        abort_unless($hub, 403);
+        $fleet->register($request->user(), $hub, $request->all());
+
+        return redirect()->route('hub.fleet', ['hub_id' => $hub->id])
+            ->with('success', 'Vehicle added. Assign a driver through your hub team before dispatch.');
+    }
+
     public function fleet(Request $request): Response
     {
         $user = $request->user();
@@ -664,6 +676,8 @@ class LogisticsHubWorkstationController extends Controller
         ];
 
         return Inertia::render('Hub/Fleet', [
+            'canRegisterVehicle' => $activeHub && app(HubFleetService::class)->canRegister($user, $activeHub),
+            'vehicleDefaults' => HubFleetService::DEFAULT_CAPACITIES,
             'activeHub' => $activeHub,
             'hubs' => $hubs,
             'fleet' => $fleet,
