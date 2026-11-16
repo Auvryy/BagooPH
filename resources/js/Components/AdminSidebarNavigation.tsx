@@ -1,5 +1,5 @@
-import { useEffect, useId, useState } from 'react';
-import { Banknote, ChevronDown, ShieldCheck, Store, Truck, Users, type LucideIcon } from 'lucide-react';
+import { Fragment, useEffect, useId, useState } from 'react';
+import { ChevronDown, ShieldCheck, Store, Truck, Users, type LucideIcon } from 'lucide-react';
 import PortalLink from '@/Components/PortalLink';
 import NavigationAttentionDot from '@/Components/NavigationAttentionDot';
 
@@ -9,8 +9,7 @@ const sections = [
     { key: 'accounts', label: 'Accounts & reviews', icon: Users, names: ['KYC Queue', 'Shop reviews', 'Users', 'Review requests'] },
     { key: 'marketplace', label: 'Marketplace', icon: Store, names: ['Products', 'Sale events', 'Voucher campaigns', 'Advertisements'] },
     { key: 'deliveries', label: 'Deliveries & returns', icon: Truck, names: ['Logistics', 'SLA monitoring', 'Delivery exceptions', 'Buyer returns', 'Handover issues'] },
-    { key: 'finance', label: 'Finance', icon: Banknote, names: ['COD cash', 'Seller proceeds', 'Delivery earnings', 'Return liabilities', 'Shipping settings', 'Wallet credits', 'Virtual proceeds', 'Financial oversight'] },
-    { key: 'governance', label: 'Governance', icon: ShieldCheck, names: ['Governance history', 'Resource activity'] },
+    { key: 'governance', label: 'Governance', icon: ShieldCheck, names: ['Moderation & penalties', 'Governance history', 'Resource activity'] },
 ];
 
 function NavigationLink({ item }: { item: AdminNavigationItem }) {
@@ -39,8 +38,13 @@ function NavigationSection({ section, items }: { section: typeof sections[number
 }
 
 export default function AdminSidebarNavigation({ items }: { items: AdminNavigationItem[] }) {
+    const ungrouped = items.filter(item => item.name !== 'Dashboard' && !sections.some(section => section.names.includes(item.name)));
     return <div className="space-y-2" aria-label="Admin sections">
         {items.filter(item => item.name === 'Dashboard').map(item => <NavigationLink key={item.name} item={item} />)}
-        {sections.map(section => <NavigationSection key={section.key} section={section} items={items.filter(item => section.names.includes(item.name))} />)}
+        {sections.map(section => <Fragment key={section.key}>
+            {/* Areas with their own page tabs (Finance) are one link, placed before Governance; anything ungrouped stays reachable. */}
+            {section.key === 'governance' && ungrouped.map(item => <NavigationLink key={item.name} item={item} />)}
+            <NavigationSection section={section} items={items.filter(item => section.names.includes(item.name))} />
+        </Fragment>)}
     </div>;
 }

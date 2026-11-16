@@ -3,6 +3,7 @@
 namespace Tests\Feature\Logistics;
 
 use App\Mail\OtpVerificationMail;
+use App\Models\CourierProfile;
 use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
@@ -72,6 +73,30 @@ class NewEraCompanySetupTest extends TestCase
                     && $saved['parent_hub_id'] === $hub->parent_hub_id && $saved['address'] === $hub->address
                     && ! collect($hubs)->contains('id', $foreign->id);
             }));
+    }
+
+    public function test_admin_sees_every_company_with_real_counts_and_opens_one_with_its_real_staff(): void
+    {
+        $company = $this->company();
+        $otherOwner = User::factory()->create(['role' => 'logistics', 'status' => 'active']);
+        $other = LogisticsCompany::create(['user_id' => $otherOwner->id, 'name' => 'Second Fleet', 'slug' => 'second-fleet',
+            'code' => 'QA-TWO', 'status' => 'active', 'is_active' => true]);
+        LogisticsHub::create(['logistics_company_id' => $other->id, 'name' => 'Second Mother Hub', 'code' => 'QA-TWO-MH',
+            'tier' => 'regional_mother_hub', 'province' => 'Cebu', 'city_municipality' => 'Cebu City', 'address' => 'Test address',
+            'latitude' => 10.3, 'longitude' => 123.9, 'is_active' => true]);
+        $workers = HubHandler::where('logistics_company_id', $company->id)->where('is_active', true)->distinct()->count('user_id');
+        $riders = CourierProfile::where('logistics_company_id', $company->id)->count();
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active', 'kyc_status' => 'approved']);
+
+        $this->actingAs($admin)->get('/hub/company-setup')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Hub/CompanyDirectory')->has('companies', LogisticsCompany::count())
+            ->where('companies', fn ($rows) => collect($rows)->firstWhere('id', $company->id)['hubs'] === $company->hubs()->count()
+                && collect($rows)->firstWhere('id', $company->id)['workers'] === $workers
+                && collect($rows)->firstWhere('id', $company->id)['riders'] === $riders
+                && collect($rows)->firstWhere('id', $other->id)['hubs'] === 1)
+            ->where('hubs', fn ($hubs) => collect($hubs)->pluck('logistics_company_id')->unique()->count() === LogisticsCompany::has('hubs')->count()));
+        $this->get('/hub/company-setup?company_id='.$company->id)->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Hub/CompanySetup')->where('company.id', $company->id)->where('counts.operators', $workers)->where('counts.riders', $riders)->where('isAdmin', true));
     }
 
     public function test_owner_invites_a_scoped_operator_and_email_setup_gates_work(): void

@@ -47,7 +47,7 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
                                         <HubBadge tone={entry.status === 'Released' ? 'success' : 'warning'}>{entry.status}</HubBadge>
                                     </div>
                                     <p className="mt-2 break-all text-xs text-zinc-500">Receipt: {entry.source_reference}</p>
-                                    {entry.amount_cents !== entry.net_amount_cents && <p className="mt-2 text-xs text-zinc-500">Before adjustments: {money(entry.amount_cents)}</p>}
+                                    {entry.amount_cents !== entry.net_amount_cents && <p className="mt-2 text-xs text-zinc-500">{money(entry.amount_cents)} before vouchers this party funded</p>}
                                 </article>
                             ))}
                         </div>
@@ -73,7 +73,7 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
                                         <td className="py-3.5 pr-4 text-zinc-600">{entry.pool.replaceAll('_', ' ')}{entry.virtual_only ? ' · Virtual' : ' · COD'}</td>
                                         <td className="py-3.5 pr-4 tabular-nums font-semibold tabular-nums text-ink-900">
                                             {money(entry.net_amount_cents)}
-                                            {entry.amount_cents !== entry.net_amount_cents && <p className="mt-0.5 font-sans text-xs font-normal text-zinc-500">Gross {money(entry.amount_cents)}</p>}
+                                            {entry.amount_cents !== entry.net_amount_cents && <p className="mt-0.5 font-sans text-xs font-normal text-zinc-500">{money(entry.amount_cents)} before funded vouchers</p>}
                                         </td>
                                         <td className="py-3.5">
                                             <HubBadge tone={entry.status === 'Released' ? 'success' : 'warning'}>{entry.status}</HubBadge>

@@ -116,12 +116,12 @@ function resolveRoadWaypoints(from: [number, number], to: [number, number]): [nu
     return [from, to];
 }
 
-export default function HubMap({ hubs, selectedId, onSelect, routeIds, className = '' }: { hubs: HubPlace[]; selectedId?: number | null; onSelect?: (hub: HubPlace) => void; routeIds?: number[]; className?: string }) {
+export default function HubMap({ hubs, selectedId, onSelect, routeIds, className = '', colorFor }: { hubs: HubPlace[]; selectedId?: number | null; onSelect?: (hub: HubPlace) => void; routeIds?: number[]; className?: string; colorFor?: (hub: HubPlace) => string | undefined }) {
     const element = useRef<HTMLDivElement>(null), map = useRef<LeafletMap | null>(null), markers = useRef(new Map<number, Marker>());
     const select = useRef(onSelect);select.current = onSelect;
     const [tileError, setTileError] = useState(false);
     const valid = hubs.filter(hub => hub.id != null && hubPoint(hub));
-    const signature = JSON.stringify(hubs.map(hub => [hub.id, hub.latitude, hub.longitude, hub.parent_hub_id, hub.name, hub.code, hub.tier]));
+    const signature = JSON.stringify(hubs.map(hub => [hub.id, hub.latitude, hub.longitude, hub.parent_hub_id, hub.name, hub.code, hub.tier, colorFor?.(hub)]));
     const routeKey = JSON.stringify(routeIds ?? []);
     const missing = hubs.length - valid.length;
     const selected = hubs.find(hub => hub.id === selectedId);
@@ -152,7 +152,9 @@ export default function HubMap({ hubs, selectedId, onSelect, routeIds, className
                 }
             }
             for (const hub of valid) {
-                const icon = L.divIcon({ className: 'hub-map-pin', html: `<span class="hub-map-pin-dot ${hub.tier === 'regional_mother_hub' ? 'hub-map-mother' : ''}"></span>`, iconSize: [28, 28], iconAnchor: [14, 14] });
+                // An optional per-hub colour (for example one colour per company) overrides the default pin fill.
+                const fill = colorFor?.(hub);
+                const icon = L.divIcon({ className: 'hub-map-pin', html: `<span class="hub-map-pin-dot ${hub.tier === 'regional_mother_hub' ? 'hub-map-mother' : ''}"${fill && /^#[0-9A-Fa-f]{6}$/.test(fill) ? ` style="background:${fill}"` : ''}></span>`, iconSize: [28, 28], iconAnchor: [14, 14] });
                 const marker = L.marker(hubPoint(hub)!, { icon, title: hub.name, keyboard: true }).addTo(instance);
                 const tooltip = document.createElement('span');tooltip.textContent = `${hub.name} · ${hub.code ?? ''}`;
                 marker.bindTooltip(tooltip, { direction: 'top', offset: [0, -12] });

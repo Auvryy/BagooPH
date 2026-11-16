@@ -8,6 +8,7 @@ import NotificationLink from '@/Components/NotificationLink';
 import PortalLink from '@/Components/PortalLink';
 import CatalogueNavigationNotice from '@/Components/CatalogueNavigationNotice';
 import AdminSidebarNavigation from '@/Components/AdminSidebarNavigation';
+import AdminSectionTabs, { adminAreaTabs } from '@/Components/AdminSectionTabs';
 import LogisticsSidebarNavigation from '@/Components/Logistics/SidebarNavigation';
 import LogisticsNavigationDrawer from '@/Components/Logistics/NavigationDrawer';
 import '../../css/logistics-workspace.css';
@@ -78,6 +79,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const user = auth.user;
     const financialReturn = ['Returns/Liability', 'Returns/Liabilities', 'Finance/ShipmentReview', 'Finance/ShipmentOutcome'].includes(component);
     const role = user?.role || 'buyer';
+    const adminArea = role === 'admin' ? adminAreaTabs(component, { returnLiabilities: Boolean(user?.canManageReturnLiabilities), financialReturn }) : null;
     useBodyScrollLock(sidebarOpen && role !== 'logistics');
     const currentShop = user?.shop;
     const activeHub = (user as any)?.activeHub;
@@ -125,21 +127,15 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Sale events', href: route('admin.sale-events.index'), icon: CalendarClock, current: component.startsWith('Admin/SaleEvents/') },
                 { name: 'Voucher campaigns', href: route('admin.vouchers.index'), icon: Tag, current: component.startsWith('Admin/Voucher') },
                 { name: 'Advertisements', href: route('admin.advertisements.index'), icon: ImagePlus, current: component.startsWith('Admin/Advertisements/') },
-                { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: component.startsWith('Admin/Logistics') || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
+                { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: adminArea?.label === 'Logistics' || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
                 { name: 'SLA monitoring', href: '/governance/monitoring', icon: AlertTriangle, current: component === 'Governance/Monitoring', attention: Boolean(sidebarAttention?.monitoring), attentionLabel: 'Open SLA or missing-parcel monitoring alerts' },
                 { name: 'Moderation & penalties', href: '/governance/moderation', icon: ShieldCheck, current: component === 'Governance/Moderation', attention: Boolean(sidebarAttention?.moderation), attentionLabel: 'Open sanctions, appeals, or review moderation queue' },
-                { name: 'Shipping settings', href: route('hub.company-setup.index'), icon: Settings, current: component === 'Hub/CompanySetup' },
-                { name: 'Delivery earnings', href: '/delivery-earnings', icon: Banknote, current: component === 'Finance/DeliveryEarnings' },
+                // Finance is one destination; its pages are tabs inside the Finance area.
+                { name: 'Finance', href: '/financial-oversight', icon: Banknote, current: adminArea?.label === 'Finance' },
                 { name: 'Governance history', href: '/governance-history', icon: ShieldCheck, current: component === 'Governance/History' || component === 'Governance/HistoryDetail' },
                 { name: 'Delivery exceptions', href: '/exceptions', icon: ShieldAlert, current: component === 'Governance/Exceptions' || component === 'Governance/ExceptionDetail' },
                 { name: 'Buyer returns', href: '/buyer-returns', icon: ShieldAlert, current: !financialReturn && component.startsWith('Returns/') },
-                ...(user?.canManageReturnLiabilities ? [{ name: 'Return liabilities', href: '/return-liabilities', icon: Banknote, current: financialReturn }] : []),
                 { name: 'Handover issues', href: '/handover-issues', icon: AlertTriangle, current: component.startsWith('Handover/') },
-                { name: 'COD cash', href: route('admin.cod.index'), icon: Banknote, current: component === 'Finance/Cod' || component === 'Finance/CodDetail' },
-                { name: 'Seller proceeds', href: '/seller-settlements', icon: Banknote, current: component === 'Finance/Settlements' || component === 'Finance/SettlementDetail' },
-                { name: 'Wallet credits', href: '/wallet/admin', icon: Banknote, current: component === 'Admin/WalletCredits' },
-                { name: 'Virtual proceeds', href: '/wallet/proceeds', icon: Banknote, current: component === 'Finance/WalletProceeds' },
-                { name: 'Financial oversight', href: '/financial-oversight', icon: Banknote, current: component === 'Finance/Overview' || component === 'Finance/Evidence' },
                 ...(user?.canManageResources && user.resourceGovernanceUrl ? [{ name: 'Resource activity', href: user.resourceGovernanceUrl, icon: ShieldAlert, current: component === 'Governance/Resources' || component === 'Governance/ResourceRestriction' }] : []),
             ];
         }
@@ -757,6 +753,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 {/* Body Content */}
                 <main className={`flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 ${lx ? 'bg-surface-50' : 'bg-[#F8FAFC]'}`} id="portal-main">
                     <div className="max-w-7xl mx-auto space-y-6">
+                        {adminArea && <AdminSectionTabs label={adminArea.label} tabs={adminArea.tabs} />}
                         {sharedHubHeading && <HubPageHeader title={title} description={subtitle} icon={hubPageIcon} />}
                         {children}
                     </div>
