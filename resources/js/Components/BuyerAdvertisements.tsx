@@ -39,10 +39,16 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
     const measurement = useRef(new AdvertisementMeasurementSession()).current;
     const [failed, setFailed] = useState<string[]>([]);
     const available = banners.filter(banner => banner.image && !failed.includes(banner.image));
-    const slides = available.filter(banner => banner.placement === 'main');
-    const side = available.filter(banner => banner.placement === 'side').slice(0, 2);
+    // Layout follows how many banners are live: 1 fills the row, 2 sit side by side (no sliding),
+    // 3 or more use the sliding main banner plus two tiles (side banners first, then spare main ones).
+    const mains = available.filter(banner => banner.placement === 'main');
+    const sides = available.filter(banner => banner.placement === 'side');
+    const total = available.length;
+    const tiles = total >= 3 ? [...sides, ...mains.slice(1).reverse()].slice(0, 2) : [];
+    const slides = total >= 3 ? mains.filter(banner => !tiles.includes(banner)) : mains;
+    const side = tiles;
     const [selected, setSelected] = useState(() => Math.max(0, slides.findIndex(banner => banner.id === initialSelectedId)));
-    if (slides.length === 0 && side.length === 0) return null;
+    if (total === 0) return null;
 
     const fail = (image: string) => setFailed(images => (images.includes(image) ? images : [...images, image]));
     const picture = (banner: Advertisement, className: string, eager: boolean) => (
@@ -57,8 +63,10 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
         </PictureLink>
     );
 
-    if (slides.length === 0) {
-        return <section aria-label="Promotions" className="mb-4 max-w-md overflow-hidden rounded-card bg-surface-100 sm:mb-6">{picture(side[0], '', true)}</section>;
+    if (total <= 2) {
+        return <section aria-label="Promotions" className={`mb-4 grid gap-2 sm:mb-6 ${total === 2 ? 'sm:grid-cols-2' : ''}`}>
+            {available.map(banner => <div key={banner.id} className="min-w-0 overflow-hidden rounded-card bg-surface-100">{picture(banner, '', true)}</div>)}
+        </section>;
     }
 
     const index = selected % slides.length;
@@ -85,10 +93,6 @@ export default function BuyerAdvertisements({ banners, interactive = true, initi
             )}
         </div>
     );
-
-    if (side.length === 0) {
-        return <section aria-label="Promotions" className={`mb-4 overflow-hidden rounded-card sm:mb-6 ${slides.length === 1 ? 'max-w-3xl' : ''}`}>{carousel}</section>;
-    }
 
     return (
         <section aria-label="Promotions" className="mb-4 grid gap-2 overflow-hidden rounded-card sm:mb-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">

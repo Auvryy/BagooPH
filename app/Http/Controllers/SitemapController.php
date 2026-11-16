@@ -42,12 +42,6 @@ class SitemapController extends Controller
                 'priority' => '0.8',
             ],
             [
-                'url' => "{$baseUrl}/overview",
-                'lastmod' => $now,
-                'changefreq' => 'monthly',
-                'priority' => '0.6',
-            ],
-            [
                 'url' => "{$baseUrl}/about",
                 'lastmod' => $now,
                 'changefreq' => 'monthly',

@@ -215,8 +215,8 @@ export default function BuyerHome({
                     </div>
                 )}
 
-                {/* 1. HERO PROMOTIONAL BANNER SECTION (Seamless full bleed against header with zero white peeking lines or gaps) */}
-                <div className="-mt-4 sm:-mt-5 md:-mt-5.5 -mx-2 sm:-mx-3 md:-mx-4">
+                {/* 1. Promotions: a small gap below the sticky header so the banner is never hidden under it. */}
+                <div className="mt-1 sm:mt-2">
                     <BuyerAdvertisements banners={banners} />
                 </div>
 

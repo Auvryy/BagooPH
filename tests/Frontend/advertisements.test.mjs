@@ -84,16 +84,25 @@ test('full grid keeps overlay controls and matching real destinations without ca
     assert.match(html, /alt="Artwork for collection 1" width="1880" height="880"/);
     assert.doesNotMatch(html, /href="#product-feed"|<figcaption|animate-|setInterval/);
 });
-test('one main image stays bounded and has no carousel controls', async () => {
+test('one banner fills the row and has no carousel controls', async () => {
     const html = await render(ui.Banners, { banners: [banner(1)] });
-    assert.match(html, /max-w-3xl/);
+    assert.doesNotMatch(html, /max-w-3xl/);
     assert.doesNotMatch(html, /Previous advertisement|Next advertisement|Choose an advertisement/);
 });
-test('side-only content is visible with a compact layout', async () => {
+test('a single side banner also fills the row', async () => {
     const html = await render(ui.Banners, { banners: [banner(1, 'side')] });
     assert.equal((html.match(/<img /g) ?? []).length, 1);
-    assert.match(html, /max-w-md/);
+    assert.doesNotMatch(html, /max-w-md/);
     assert.doesNotMatch(html, /aria-roledescription="carousel"/);
+});
+test('two banners sit side by side and three show as three tiles, neither slides', async () => {
+    const two = await render(ui.Banners, { banners: [banner(1), banner(2)] });
+    assert.equal((two.match(/<img /g) ?? []).length, 2);
+    assert.match(two, /sm:grid-cols-2/);
+    assert.doesNotMatch(two, /aria-roledescription="carousel"/);
+    const three = await render(ui.Banners, { banners: [banner(1), banner(2), banner(3)] });
+    assert.equal((three.match(/<img /g) ?? []).length, 3);
+    assert.doesNotMatch(three, /Next advertisement/);
 });
 
 function nodes(tree, predicate) {
@@ -109,12 +118,13 @@ function interactions(props) {
     return () => { cursor = 0; globalThis.adTestHooks = hooks; try { return ui.Banners(props); } finally { delete globalThis.adTestHooks; } };
 }
 test('arrows change the actual image and broken images are removed until the section is empty', () => {
-    const draw = interactions({ banners: [banner(1), banner(2), banner(3)] });
+    // Five main banners: two become tiles, three slide.
+    const draw = interactions({ banners: [banner(1), banner(2), banner(3), banner(4), banner(5)] });
     let tree = draw();
     nodes(tree, node => node.props['aria-label'] === 'Next advertisement')[0].props.onClick();
     tree = draw();
     assert.equal(nodes(tree, node => node.type === 'img')[0].props.src, '/artwork/2.webp');
-    for (let i = 0; i < 3; i++) { nodes(tree, node => node.type === 'img')[0].props.onError(); tree = draw(); }
+    for (let i = 0; i < 5; i++) { nodes(tree, node => node.type === 'img')[0].props.onError(); tree = draw(); }
     assert.equal(tree, null);
 });
 test('private preview opens its selected draft and does not render buyer links', async () => {
@@ -306,7 +316,7 @@ test('carousel controls send no click while an image activation is recorded once
     globalThis.document = { querySelector: () => ({ content: 'test-csrf' }), cookie: '' };
     globalThis.fetch = async (url, request) => { requests.push({ url, request }); return { ok: true }; };
     try {
-        const measured = banners.slice(0, 3).map(item => ({ ...item, measurement: { token: `test-token-${item.id}`, revision_id: item.id, endpoint: '/advertisement-events' } }));
+        const measured = [...banners.slice(0, 3), banner(6), banner(7)].map(item => ({ ...item, measurement: { token: `test-token-${item.id}`, revision_id: item.id, endpoint: '/advertisement-events' } }));
         const draw = interactions({ banners: measured });
         let tree = draw();
         nodes(tree, node => node.props['aria-label'] === 'Next advertisement')[0].props.onClick();

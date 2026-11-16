@@ -70,7 +70,7 @@ class SeoAndIndexingTest extends TestCase
         // Core static pages
         $response->assertSee('/buyer/catalog');
         $response->assertSee('/seller');
-        $response->assertSee('/overview');
+        $response->assertDontSee('/overview');
         $response->assertSee('/track');
 
         // Dynamic entities
