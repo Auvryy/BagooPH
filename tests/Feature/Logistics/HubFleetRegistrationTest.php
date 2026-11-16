@@ -53,7 +53,8 @@ class HubFleetRegistrationTest extends TestCase
         $this->actingAs(User::findOrFail($hub->company->user_id));
         $this->get(route('hub.fleet', ['hub_id' => $hub->id]))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
             ->component('Hub/Fleet')->where('canRegisterVehicle', true)->where('vehicleDefaults.wing_truck', 8000)->where('vehicleDefaults.l300_van', 1200));
-        $this->post(route('hub.fleet.store'), $this->input($hub))->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->post(route('hub.fleet.store'), $this->input($hub, ['model' => null]))->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertDatabaseHas('logistics_fleet', ['plate_number' => 'NEW-123', 'model' => 'Wing truck', 'capacity_kg' => 8000, 'status' => 'active']);
     }
 
     public function test_duplicate_plates_and_invalid_values_do_not_create_vehicles(): void

@@ -1,5 +1,34 @@
 # BagooPH Core Flow Roadmap
 
+## November 17: editable vehicles and hub assignment
+
+Fleet creation and editing now include an Assigned hub dropdown. Company owners
+and admins can choose eligible hubs in the selected company; full-access Mother
+Hub operators can choose their Mother Hub and its child hubs. Child operators
+remain limited to their own hub. The fleet list includes these managed hubs and
+shows the saved assignment on each vehicle. Existing vehicles retain their saved
+values when opened for editing. Default wing truck capacity is 8,000 kg and
+feeder van capacity is 1,200 kg, matching the regional seeder. Empty models use a
+vehicle-type fallback; company, hub and active status are supplied by the server.
+
+Vehicle edits reject stale forms, duplicate plates, cross-company moves and
+active deliveries/manifests/trips. An idle assigned vehicle moves with its driver
+profile in one transaction, records placement history, checks COD shift closure
+and leaves the driver off duty. Existing consent, cash and parcel history remain
+retained. Truck/van onboarding checks create vehicles through the real endpoint,
+accept a driver offer, go on duty and pass the manifest vehicle eligibility check.
+
+Scoped assessment: hub assignment/editing **0/10 to 8/10**. Four editing tests
+passed with 32 assertions, covering scoped creation, existing edits, stale forms,
+driver links and active-transfer rejection. The final fleet, hiring, hub and
+company-setup acceptance run passed **45 tests / 760 assertions**. Production
+build and PHP formatting passed. Desktop and phone screenshots of an existing
+seeded wing truck were inspected; the Mother Hub dropdown exposed its four
+eligible hub choices. The full TypeScript check still reports only the four
+unchanged-file errors already recorded below. These checks cover the scoped
+feature; they do not establish a clean full repository suite.
+
+
 ## November 17: vehicle registration at every hub
 
 Fleet & drivers now offers Add vehicle to full-access hub operators, company

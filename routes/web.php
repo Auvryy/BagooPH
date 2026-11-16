@@ -461,6 +461,8 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::post('/rider-company-requests/{companyRequest}/reject', [RiderCompanyOfferController::class, 'reject'])->middleware('throttle:10,1');
         Route::post('/rider-company-requests/{companyRequest}/cancel', [RiderCompanyOfferController::class, 'cancel'])->middleware('throttle:10,1');
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet']);
+        Route::post('/fleet', [LogisticsHubWorkstationController::class, 'storeFleet'])->middleware('throttle:20,1');
+        Route::put('/fleet/{vehicle}', [LogisticsHubWorkstationController::class, 'updateFleet'])->middleware('throttle:20,1');
         Route::get('/manifests', [LogisticsManifestController::class, 'index']);
         Route::get('/mother-bags', [MotherBagController::class, 'index']);
         Route::post('/mother-bags', [MotherBagController::class, 'store'])->middleware('throttle:30,1');
@@ -1053,6 +1055,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/rider-company-requests/{companyRequest}/cancel', [RiderCompanyOfferController::class, 'cancel'])->middleware('throttle:10,1')->name('rider-company-requests.cancel');
         Route::get('/fleet', [LogisticsHubWorkstationController::class, 'fleet'])->name('fleet');
         Route::post('/fleet', [LogisticsHubWorkstationController::class, 'storeFleet'])->middleware('throttle:20,1')->name('fleet.store');
+        Route::put('/fleet/{vehicle}', [LogisticsHubWorkstationController::class, 'updateFleet'])->middleware('throttle:20,1')->name('fleet.update');
         Route::get('/manifests', [LogisticsManifestController::class, 'index'])->name('manifests.index');
         Route::get('/mother-bags', [MotherBagController::class, 'index'])->name('mother-bags.index');
         Route::post('/mother-bags', [MotherBagController::class, 'store'])->middleware('throttle:30,1')->name('mother-bags.store');

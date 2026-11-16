@@ -623,6 +623,16 @@ class LogisticsHubWorkstationController extends Controller
             ->with('success', 'Vehicle added. Assign a driver through your hub team before dispatch.');
     }
 
+    public function updateFleet(Request $request, LogisticsFleet $vehicle, HubFleetService $fleet): RedirectResponse
+    {
+        $request->validate(['hub_id' => ['required', 'integer', 'min:1']]);
+        [$hub] = $this->getActiveHub($request, $request->user());
+        abort_unless($hub, 403);
+        $fleet->update($request->user(), $hub, $vehicle, $request->all());
+
+        return redirect()->route('hub.fleet', ['hub_id' => $hub->id])->with('success', 'Vehicle updated. A moved driver is off duty at the new hub.');
+    }
+
     public function fleet(Request $request): Response
     {
         $user = $request->user();
@@ -632,7 +642,7 @@ class LogisticsHubWorkstationController extends Controller
         $selectedStatus = $request->query('status', 'all');
 
         $fleetBase = LogisticsFleet::query()
-            ->where('hub_id', $activeHub?->id ?? 0)
+            ->whereIn('hub_id', $activeHub ? app(HubFleetService::class)->destinations($user, $activeHub)->pluck('id')->push($activeHub->id)->unique() : [])
             ->where('logistics_company_id', $activeHub?->logistics_company_id ?? 0);
         $fleetQuery = (clone $fleetBase)->with(['hub', 'driver.courierProfile', 'company']);
 
@@ -654,6 +664,8 @@ class LogisticsHubWorkstationController extends Controller
 
             return [
                 'id' => $f->id,
+                'hub_id' => $f->hub_id,
+                'edit_token' => HubFleetService::stateToken($f),
                 'plate_number' => $f->plate_number,
                 'vehicle_type' => $f->vehicle_type,
                 'model' => $f->model,
@@ -678,6 +690,7 @@ class LogisticsHubWorkstationController extends Controller
         return Inertia::render('Hub/Fleet', [
             'canRegisterVehicle' => $activeHub && app(HubFleetService::class)->canRegister($user, $activeHub),
             'vehicleDefaults' => HubFleetService::DEFAULT_CAPACITIES,
+            'assignmentHubs' => $activeHub ? app(HubFleetService::class)->destinations($user, $activeHub)->map(fn ($hub) => ['id' => $hub->id, 'name' => $hub->name, 'code' => $hub->code]) : [],
             'activeHub' => $activeHub,
             'hubs' => $hubs,
             'fleet' => $fleet,
