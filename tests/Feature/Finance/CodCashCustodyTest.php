@@ -298,7 +298,7 @@ class CodCashCustodyTest extends TestCase
             'float' => [['cash_received' => 1999.99]], 'precision' => [['cash_received' => '1000.001']],
             'exponent' => [['cash_received' => '1e6']], 'negative' => [['cash_received' => '-1000']],
             'not received' => [['cash_confirmed' => false]], 'wrong waybill' => [['barcode' => 'BGO-FOREIGN']],
-            'injected total' => [['total_amount' => '0.01']], 'missing recipient' => [['recipient_name' => '']],
+            'injected total' => [['total_amount' => '0.01']], 'unnamed representative' => [['recipient_name' => '', 'recipient_relationship' => 'authorized_recipient']],
             'missing retry' => [['request_token' => null]]];
     }
 
