@@ -226,7 +226,11 @@ class ChallengerM1Test extends TestCase
         $this->assertEquals('Verified & Registered', $profile->or_cr_status);
         $this->assertFalse((bool) $profile->is_available, 'Approval must preserve rider duty');
 
-        // Approved courier can access courier deliveries portal
+        // An approved courier who has not verified their email is sent to verify it first (riders handle cash).
+        $this->actingAs($courier)->get('/courier/deliveries')->assertRedirect(route('verification.notice'));
+        $courier->markEmailAsVerified();
+
+        // Approved, verified courier can access courier deliveries portal
         $courierDeliveriesResponse = $this->actingAs($courier)->get('/courier/deliveries');
         $courierDeliveriesResponse->assertStatus(200);
 
@@ -266,7 +270,7 @@ class ChallengerM1Test extends TestCase
 
         $product = Product::create([
             'shop_id' => $shop->id,
-            'category_id' => $category->id,
+            'category_id' => $shop->root_category_id, 'weight_kg' => 0.5, 'length_cm' => 20, 'width_cm' => 15, 'height_cm' => 10,
             'name' => 'Premium Heritage Linen Shirt',
             'slug' => 'premium-heritage-linen-shirt',
             'sku' => 'LINEN-SHIRT-001',
@@ -412,7 +416,7 @@ class ChallengerM1Test extends TestCase
 
         $product = Product::create([
             'shop_id' => $shop->id,
-            'category_id' => $category->id,
+            'category_id' => $shop->root_category_id, 'weight_kg' => 0.5, 'length_cm' => 20, 'width_cm' => 15, 'height_cm' => 10,
             'name' => 'Single Origin Arabica Beans',
             'slug' => 'single-origin-arabica-beans',
             'sku' => 'COFFEE-001',

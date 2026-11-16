@@ -48,8 +48,12 @@ class CourierDeliveryController extends Controller
         private readonly CourierMessagingService $messaging,
     ) {}
 
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
+        // Riders collect cash on delivery, which needs a verified email; send them to verify it instead of a blank refusal.
+        if (! $request->user()->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
         $user = $request->user()->load([
             'courierProfile.company',
             'courierProfile.hub',

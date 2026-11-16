@@ -74,7 +74,7 @@ class PurchaseToSettlementAcceptanceTest extends TestCase
         $itemIds = $cart->items()->orderBy('id')->pluck('id')->all();
         $checkoutPage = $this->get('/checkout?'.http_build_query(['items' => $itemIds]))->assertOk();
         $checkoutPage->assertInertia(fn (Assert $page) => $page->component('Checkout/Index')
-            ->where('quote.subtotal', 320.07)->where('quote.shipping_fee', 60)->where('quote.total', 380.07));
+            ->where('quote.subtotal', 320.07)->where('quote.shipping_fee', 70)->where('quote.total', 390.07)); // 1-2 kg weight-based tariff
         $checkout = [
             'checkout_token' => $checkoutPage->inertiaProps('checkoutToken'), 'item_ids' => $itemIds,
             'recipient_name' => $buyer->name, 'recipient_phone' => '09171234567',
@@ -99,7 +99,7 @@ class PurchaseToSettlementAcceptanceTest extends TestCase
         $order->update(['logistics_flow_version' => 1]);
         app(LogisticsRoutingEngine::class)->planDeliveryRoute($order->delivery, $order, $shop);
         $parcel = $order->fresh()->delivery;
-        $this->assertSame(['320.07', '60.00', $funded ? '30.00' : '0.00', $funded ? '350.07' : '380.07'],
+        $this->assertSame(['320.07', '70.00', $funded ? '30.00' : '0.00', $funded ? '360.07' : '390.07'],
             [$order->subtotal, $order->shipping_fee, $order->voucher_discount, $order->total_amount]);
         $this->assertSame([7, 5], [$first->fresh()->stock, $second->fresh()->stock]);
         $this->assertSame(0, $cart->items()->count());
@@ -127,9 +127,9 @@ class PurchaseToSettlementAcceptanceTest extends TestCase
         $this->actingAs($finalRider)->patch(route('courier.updateStatus', $parcel), $deliveryInput)
             ->assertSessionHasNoErrors()->assertSessionHas('success');
         $cash = CodAccount::where('order_id', $order->id)->sole();
-        $cashCents = $funded ? 35007 : 38007;
+        $cashCents = $funded ? 36007 : 39007;
         $this->assertSame($cashCents, $cash->expected_cents);
-        $this->assertSame([32007, 6000, $funded ? 3000 : 0],
+        $this->assertSame([32007, 7000, $funded ? 3000 : 0],
             [$cash->product_subtotal_cents, $cash->shipping_cents, $cash->discount_cents]);
         $this->assertSame(['delivered', 'pending'], [$order->fresh()->status, $order->fresh()->payment_status]);
         $this->assertSame(['rider:'.$finalRider->id => $cashCents], $cash->state['balances']);
@@ -176,7 +176,7 @@ class PurchaseToSettlementAcceptanceTest extends TestCase
         $this->assertDatabaseCount('commission_ledgers', 0);
         $this->actingAs($seller)->getJson('/seller-settlements/'.$order->id)->assertOk()
             ->assertJsonPath('record.status', 'eligible')->assertJsonPath('record.commission_cents', 3201)
-            ->assertJsonPath('record.seller_cents', 28806)->assertJsonPath('record.shipping_cents', 6000)
+            ->assertJsonPath('record.seller_cents', 28806)->assertJsonPath('record.shipping_cents', 7000)
             ->assertJsonPath('record.net_seller_cents', $funded ? 26806 : 28806);
 
         $before = $this->financialSnapshot($order);
@@ -233,7 +233,7 @@ class PurchaseToSettlementAcceptanceTest extends TestCase
         $this->assertSame($funded ? 26806 : 28806, $paymentEvent->amount_cents);
         $this->assertTrue(Storage::disk('local')->exists($paymentEvent->proof_path));
         $ledger = CommissionLedger::sole();
-        $this->assertSame(['320.07', '32.01', '288.06', '60.00', 'settled'],
+        $this->assertSame(['320.07', '32.01', '288.06', '70.00', 'settled'],
             [$ledger->gross_amount, $ledger->platform_commission, $ledger->seller_amount, $ledger->delivery_fee, $ledger->status]);
         $this->assertSame(1, $cash->events()->where('event_type', 'rider_collection')->count());
         $this->assertSame(1, $cash->events()->where('event_type', 'platform_reconciled')->count());

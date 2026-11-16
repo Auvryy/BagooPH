@@ -86,7 +86,8 @@ class RealWorldExceptionsAndFleetTest extends TestCase
         $this->actingAs($seller)->post(route('seller.orders.cancel', $beforeClaim), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('success');
         $this->assertSame('cancelled', $beforeClaim->fresh()->status);
         $this->assertSame(10, $product->fresh()->stock);
-        $this->actingAs($seller)->post(route('seller.orders.cancel', $beforeClaim), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHas('error');
+        // A repeated cancel is a safe retry: no error and nothing changes.
+        $this->actingAs($seller)->post(route('seller.orders.cancel', $beforeClaim), ['reason' => 'Out of stock / Inventory shortage'])->assertSessionHasNoErrors();
         $this->assertSame(10, $product->fresh()->stock);
         $afterClaim = $this->checkoutFlowOrder($buyer, $shop, [['product' => $product->fresh()]], 'ready_for_pickup');
         $parcel = $this->flowDelivery($afterClaim, 'assigned_pickup');
