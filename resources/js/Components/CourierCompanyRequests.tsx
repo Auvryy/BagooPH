@@ -35,7 +35,7 @@ function AvailableCompanyRequests({ workspace }: { workspace: Extract<CompanyJoi
     const [withdrawalUnconfirmed, setWithdrawalUnconfirmed] = useState(false);
     const submissionPending = useRef(false);
     const withdrawalPending = useRef(false);
-    const application = useForm({ company_id: '', intake_version: 0, note: '', sharing_acknowledged: false, request_token: workspace.request_token });
+    const application = useForm({ company_id: '', requested_hub_id: '', intake_version: 0, note: '', sharing_acknowledged: false, request_token: workspace.request_token });
     const withdrawal = useForm({ expected_version: 1, request_token: '' });
     useCourierRequestError(submissionPending, (message) => { setUnconfirmed(true); application.setError('company_id', message); });
     useCourierRequestError(withdrawalPending, (message) => { setWithdrawalUnconfirmed(true); withdrawal.setError('expected_version', message); });
@@ -48,7 +48,7 @@ function AvailableCompanyRequests({ workspace }: { workspace: Extract<CompanyJoi
     const openApplication = (choice: RiderCompany) => {
         if (busy) return;
         application.clearErrors();
-        application.setData({ company_id: choice.id, intake_version: choice.intake_version, note: '', sharing_acknowledged: false, request_token: workspace.request_token });
+        application.setData({ company_id: choice.id, requested_hub_id: choice.hubs?.[0]?.id ?? '', intake_version: choice.intake_version, note: '', sharing_acknowledged: false, request_token: workspace.request_token });
         setUnconfirmed(false);
         setCompany(choice);
     };
@@ -124,7 +124,7 @@ function AvailableCompanyRequests({ workspace }: { workspace: Extract<CompanyJoi
                 <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words font-semibold">{request.company.name}</h3><p className="mt-1 break-all text-xs text-slate-500">{request.reference}</p></div><CourierBadge tone={request.status === 'pending' ? 'waiting' : 'neutral'}>{companyRequestStatus(request)}</CourierBadge></div>
                 <p className="mt-3 text-sm text-slate-600">Submitted {courierDate(request.submitted_at)}{request.withdrawn_at && <span className="block mt-1">Withdrawn {courierDate(request.withdrawn_at)}</span>}</p>
                 {request.note && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700">{request.note}</p>}
-                <details className="mt-3 text-sm"><summary className="cursor-pointer rounded-[8px] py-2 font-medium text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">Shared profile</summary><div className="mt-2 rounded-[8px] bg-white p-4"><SharedCompanyProfile profile={request.shared_profile} /></div></details>
+                {request.requested_hub && <p className="mt-2 text-sm font-semibold">{request.invited ? 'Invited to' : 'Applied to'} {request.requested_hub.name}</p>}<details className="mt-3 text-sm"><summary className="cursor-pointer rounded-[8px] py-2 font-medium text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">Shared profile</summary><div className="mt-2 rounded-[8px] bg-white p-4"><SharedCompanyProfile profile={request.shared_profile} /></div></details>
                 <RiderAssignmentDecision key={`${request.id}-${request.version}`} request={request} />
                 {request.can_withdraw && <button type="button" disabled={busy} onClick={() => openWithdrawal(request)} className={`${courierButton} mt-3`}>Withdraw request</button>}
             </article>)}</div> : <div className="py-8 text-center"><Building2 className="mx-auto h-7 w-7 text-slate-400" aria-hidden="true" /><p className="mt-3 text-sm font-medium text-slate-600">No company requests yet</p></div>}
@@ -135,6 +135,7 @@ function AvailableCompanyRequests({ workspace }: { workspace: Extract<CompanyJoi
                 <p className="break-words text-base font-semibold">{company.name}</p>
                 <p className="text-sm leading-relaxed text-slate-600">This company receives the details below and your optional note. Your identity files, licence documents and birth date remain private.</p>
                 <div className="rounded-[8px] bg-[#FFFAFB] p-4"><SharedCompanyProfile profile={workspace.sharing_summary} /></div>
+                {company.hubs && <label className="block text-sm font-semibold">Working hub<select required value={application.data.requested_hub_id} onChange={event => application.setData('requested_hub_id', event.target.value)} className={courierInput}><option value="">Choose a hub</option>{company.hubs.map(hub => <option key={hub.id} value={hub.id}>{hub.name}</option>)}</select><CourierFieldError message={application.errors.requested_hub_id} /></label>}
                 <div><label htmlFor="company-join-note" className="text-sm font-semibold">Availability or preferred area (optional)</label><textarea id="company-join-note" rows={3} maxLength={1000} value={application.data.note} disabled={application.processing || unconfirmed} onChange={(event) => { application.setData('note', event.target.value); application.clearErrors('note'); }} aria-invalid={Boolean(noteError || application.errors.note)} aria-describedby="company-note-help company-note-error" className={courierInput} /><p id="company-note-help" className="mt-2 text-xs text-slate-500">5–500 characters if supplied. {Array.from(application.data.note).length}/500</p><CourierFieldError id="company-note-error" message={noteError || application.errors.note} /></div>
                 <label className="flex min-h-12 cursor-pointer items-start gap-3 rounded-[8px] bg-slate-50 p-3 text-sm leading-relaxed"><input type="checkbox" required checked={application.data.sharing_acknowledged} disabled={application.processing || unconfirmed} onChange={(event) => application.setData('sharing_acknowledged', event.target.checked)} aria-describedby="company-sharing-error" className="mt-1 h-5 w-5 shrink-0 rounded-[8px] border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /><span>I agree to share these details with {company.name} for my rider request.</span></label>
                 <CourierFieldError id="company-sharing-error" message={application.errors.sharing_acknowledged} />

@@ -1,5 +1,99 @@
 # BagooPH Core Flow Roadmap
 
+## November 17: hub applications and existing-rider invitations
+
+Courier signup now offers an optional working-hub selector and explicit profile
+sharing acknowledgement. It records a pending hub application without assigning
+a company or bypassing identity review. Approved existing riders can also select
+a hub in Profile > Assignment. Full-access operators at both hub tiers review
+their own applications; company owners can approve/reject or issue offers across
+their company. Targeted applications cannot be decided by sibling hubs.
+
+Hub Team > Riders > Add rider now invites an existing approved rider by exact
+sign-in email. Owners use Hub network > People. The invitation names the hub,
+optional available vehicle and working arrangement; it does not impersonate a
+rider application or claim profile-sharing consent. Direct invitations can be
+sent while public applications are paused. The rider accepts or declines in
+Profile > Assignment. Only accepted current offers assign company, hub and
+vehicle atomically, retain consent and placement evidence and leave duty off.
+Existing new-account invitations remain available separately.
+
+Scoped assessment: the requested hiring flow **5/10 to 8/10**. Existing request,
+offer and rider consent behavior was present; owner decisions, Mother Hub hiring,
+signup hub selection and direct invitations were missing. Seven new acceptance
+cases passed **142 assertions**, including real new truck/van registration,
+invitation retries, stranger rejection, driver acceptance and manifest vehicle
+eligibility after duty activation. The wider rider request/offer/native/seed and
+pickup-to-completion run passed **263 tests / 2,791 assertions**. The later combined
+fleet/hiring/hub setup run passed **45 tests / 760 assertions**, and registration
+checks passed in a **108-test / 1,751-assertion** run. These runs overlap and must
+not be summed as unique coverage. Frontend auth/registration and rider interaction
+checks passed **64 tests**. Production build and PHP formatting passed; full
+TypeScript still reports the four unchanged-file errors listed below.
+
+Desktop and phone forms were checked for the owner, Mother Hub and child hub;
+signup exposed all 18 eligible local regional hubs. Invalid invitation email
+feedback was exercised without creating a rider or changing demo assignments.
+The additive hiring migration was applied successfully to local PostgreSQL;
+no reset or reseeding was used. Deployment must run that migration. Native
+service/API compatibility is tested; no mobile application files were changed.
+
+
+## November 17: editable vehicles and hub assignment
+
+Fleet creation and editing now include an Assigned hub dropdown. Company owners
+and admins can choose eligible hubs in the selected company; full-access Mother
+Hub operators can choose their Mother Hub and its child hubs. Child operators
+remain limited to their own hub. The fleet list includes these managed hubs and
+shows the saved assignment on each vehicle. Existing vehicles retain their saved
+values when opened for editing. Default wing truck capacity is 8,000 kg and
+feeder van capacity is 1,200 kg, matching the regional seeder. Empty models use a
+vehicle-type fallback; company, hub and active status are supplied by the server.
+
+Vehicle edits reject stale forms, duplicate plates, cross-company moves and
+active deliveries/manifests/trips. An idle assigned vehicle moves with its driver
+profile in one transaction, records placement history, checks COD shift closure
+and leaves the driver off duty. Existing consent, cash and parcel history remain
+retained. Truck/van onboarding checks create vehicles through the real endpoint,
+accept a driver offer, go on duty and pass the manifest vehicle eligibility check.
+
+Scoped assessment: hub assignment/editing **0/10 to 8/10**. Four editing tests
+passed with 32 assertions, covering scoped creation, existing edits, stale forms,
+driver links and active-transfer rejection. The final fleet, hiring, hub and
+company-setup acceptance run passed **45 tests / 760 assertions**. Production
+build and PHP formatting passed. Desktop and phone screenshots of an existing
+seeded wing truck were inspected; the Mother Hub dropdown exposed its four
+eligible hub choices. The full TypeScript check still reports only the four
+unchanged-file errors already recorded below. These checks cover the scoped
+feature; they do not establish a clean full repository suite.
+
+
+## November 17: vehicle registration at every hub
+
+Fleet & drivers now offers Add vehicle to full-access hub operators, company
+owners and admins for their accessible facility. Supports wing trucks (8,000 kg),
+feeder vans (1,200 kg), motorcycles (40 kg) and tricycles (100 kg), with editable
+capacity and optional model. Server validation normalizes plates, rejects
+duplicates and invalid capacities, and derives company/hub ownership from the
+authorized context. New vehicles are active and unassigned; existing driver
+placement and dispatch eligibility rules continue to apply.
+
+Scoped assessment: registration 0/10 before (no web form), 8/10 after (validated
+creation and responsive feedback). Driver placement remains a separate existing
+workflow. No migration or demo-data reset is required.
+
+Verification: registration and company setup tests passed 16 tests / 250
+assertions; registration and existing hub suite passed 22 tests / 415 assertions
+(overlapping runs). Registration tests cover every eligible fixture hub and all
+four vehicle types, forged fields, duplicates, invalid values and unauthorized
+workers. Docker production build and PHP formatting passed. Desktop (1440 px)
+and phone (390 px) screenshots inspected; browser checked capacity defaults,
+no horizontal overflow and rejected duplicate submission. Full TypeScript check
+remains blocked by errors in four unchanged files: VoucherProductSelection,
+Buyer/Campaign, Finance/DeliveryEarnings and Hub/CompanyDirectory; Fleet has no
+reported errors.
+
+
 ## November 11 brainstorming B02: worker invitations and native scanner accounts
 
 Company owners now invite named operators and riders by email; workers verify

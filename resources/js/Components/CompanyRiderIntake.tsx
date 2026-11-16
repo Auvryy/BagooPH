@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { Link, useForm, usePage } from '@inertiajs/react';
+import InviteExistingRider from '@/Components/InviteExistingRider';
 import { Users } from 'lucide-react';
 import { CompanyRequestReview, CompanyRiderRoster } from '@/Components/CompanyRiderAssignments';
 import CompanyRequestPagination from '@/Components/CompanyRequestPagination';
@@ -10,7 +11,7 @@ import type { CompanyRiderIntake as Intake } from '@/types/riderCompany';
 export default function CompanyRiderIntake({ workspace }: { workspace?: Intake | null }) {
     if (!workspace) return null;
     if (!workspace.available) return <section className="rounded-lg border border-slate-300 bg-white p-6 text-center"><h2 className="text-base font-bold text-slate-900">Rider requests unavailable</h2><p className="mt-2 text-sm text-slate-600">Please try again later.</p></section>;
-    return <div className="space-y-5"><AvailableRiderIntake workspace={workspace} /><CompanyRiderRoster workspace={workspace} /></div>;
+    return <div className="space-y-5">{workspace.can_decide && <InviteExistingRider workspace={workspace} />}<AvailableRiderIntake workspace={workspace} /><CompanyRiderRoster workspace={workspace} /></div>;
 }
 
 function AvailableRiderIntake({ workspace }: { workspace: Extract<Intake, { available: true }> }) {
@@ -57,7 +58,7 @@ function AvailableRiderIntake({ workspace }: { workspace: Extract<Intake, { avai
             <h3 className="text-sm font-bold text-slate-900">Requests and offers ({workspace.requests.total})</h3>
             {workspace.requests.data.length ? <div className="mt-3 grid gap-3 xl:grid-cols-2">{workspace.requests.data.map((request) => <article key={request.id} className="min-w-0 rounded-md border border-slate-300 bg-slate-50 p-4">
                 <div className="flex flex-wrap justify-between gap-2"><h4 className="break-words text-sm font-bold text-slate-900">{request.shared_profile.name}</h4><span className="text-xs text-slate-500">Submitted {courierDate(request.submitted_at)}</span></div>
-                <p className="mt-1 break-all text-xs text-slate-500">{request.reference}</p>
+                <p className="mt-1 break-all text-xs text-slate-500">{request.reference}</p>{request.requested_hub && <p className="mt-2 text-sm font-semibold text-slate-700">{request.invited ? 'Invited to' : 'Applied to'} {request.requested_hub.name}</p>}
                 <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">{[
                     ['Email', request.shared_profile.email], ['Contact number', request.shared_profile.phone],
                     ['Locality', [request.shared_profile.city, request.shared_profile.province].filter(Boolean).join(', ')],

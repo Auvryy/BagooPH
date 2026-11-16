@@ -24,7 +24,7 @@ const FIELD_ALLOWLIST: Record<RegistrationDraftRole, readonly string[]> = {
     courier: [
         'first_name', 'middle_initial', 'last_name', 'birthday', 'sex', 'email', 'phone', 'address',
         'postal_code', 'city', 'region', 'province', 'municipality', 'barangay', 'vehicle_type',
-        'plate_number', 'license_number',
+        'plate_number', 'license_number', 'requested_hub_id',
     ],
     logistics: [
         'first_name', 'middle_initial', 'last_name', 'birthday', 'sex', 'company_name', 'company_code',

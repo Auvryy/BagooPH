@@ -1,15 +1,18 @@
 import { useState, type ReactNode } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Bike, Phone, Truck, type LucideIcon } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { HubEmpty, HubPageHeader, HubSearch, hubButton } from '@/Components/Logistics/Workspace';
 
 interface FleetVehicle {
-    id: number; plate_number: string; vehicle_type: string; model: string; capacity_kg: number;
+    id: number; hub_id: number; edit_token: string; plate_number: string; vehicle_type: string; model: string; capacity_kg: number;
     status: string; hub_name: string; hub_code: string; driver_name: string; driver_phone: string; driver_email: string;
 }
 interface Props {
     activeHub: { id: number; name: string; code: string; tier: string } | null;
+    canRegisterVehicle: boolean;
+    vehicleDefaults: Record<string, number>;
+    assignmentHubs: { id: number; name: string; code: string }[];
     fleet: FleetVehicle[];
     stats: { total: number; active: number; motorcycles: number; vans: number; trucks: number };
     filters: { tier: string; status: string };
@@ -46,7 +49,12 @@ function Chip({ selected, onClick, children }: { selected: boolean; onClick: () 
     );
 }
 
-export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
+export default function HubFleet({ activeHub, fleet, stats, filters, canRegisterVehicle, vehicleDefaults, assignmentHubs }: Props) {
+    const [adding, setAdding] = useState(false);
+    const [saved, setSaved] = useState('');
+    const [editing, setEditing] = useState<number | null>(null);
+    const form = useForm({ hub_id: activeHub?.id, target_hub_id: activeHub?.id ?? 0, expected_state: '', plate_number: '', vehicle_type: 'l300_van', model: '', capacity_kg: String(vehicleDefaults.l300_van) });
+    const fieldClass = 'mt-1 block w-full rounded-lg border-line-300 text-sm focus:border-brand-500 focus:ring-brand-500';
     const [search, setSearch] = useState('');
     const handleFilter = (tier: string, status: string) => router.get(route('hub.fleet'), { tier, status, ...(activeHub ? { hub_id: activeHub.id } : {}) }, { preserveState: true, preserveScroll: true });
     const shown = fleet.filter(vehicle => [vehicle.plate_number, vehicle.model, vehicle.driver_name, vehicle.hub_name].join(' ').toLowerCase().includes(search.trim().toLowerCase()));
@@ -68,8 +76,53 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                     title="Fleet & drivers"
                     icon={Truck}
                     roleLabel={activeHub ? `${activeHub.name} · ${activeHub.code}` : 'All facilities'}
-                    actions={<Link href={route('hub.manifests.index')} className={hubButton}><Truck className="h-4 w-4 text-ink-500" aria-hidden="true" />Open transfers</Link>}
+                    actions={<div className="flex flex-wrap gap-2"><Link href={route('hub.manifests.index')} className={hubButton}><Truck className="h-4 w-4 text-ink-500" aria-hidden="true" />Open transfers</Link>{canRegisterVehicle && <button type="button" className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600" aria-expanded={adding} aria-controls="add-vehicle" onClick={() => { setEditing(null); form.reset(); form.clearErrors(); setAdding(true); setSaved(''); }}>Add vehicle</button>}</div>}
                 />
+
+                {saved && <p role="status" className="rounded-lg bg-success-soft p-3 text-sm text-success">{saved}</p>}
+                {canRegisterVehicle && adding && <form id="add-vehicle" className="space-y-4 rounded-card border border-line-200 bg-white p-5 sm:p-6" onSubmit={event => {
+                    event.preventDefault();
+                    form.transform(data => ({ ...data, hub_id: activeHub?.id }));
+                    const options = {
+                        preserveScroll: true,
+                        onSuccess: () => { form.reset(); setAdding(false); setSaved(editing ? 'Vehicle updated. A moved driver is off duty at the new hub.' : 'Vehicle added. Assign a driver through your hub team before dispatch.'); setEditing(null); setSearch(''); },
+                    };
+                    if (editing) form.put(route('hub.fleet.update', editing), options);
+                    else form.post(route('hub.fleet.store'), options);
+                }}>
+                    <h2 className="text-lg font-semibold text-ink-900">{editing ? 'Edit vehicle' : 'Add vehicle'}</h2>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="text-sm font-medium text-ink-700 sm:col-span-2">Assigned hub
+                            <select required className={fieldClass} value={form.data.target_hub_id} onChange={event => form.setData('target_hub_id', Number(event.target.value))}>
+                                {assignmentHubs.map(hub => <option key={hub.id} value={hub.id}>{hub.name} · {hub.code}</option>)}
+                            </select>
+                            {form.errors.target_hub_id && <span role="alert" className="text-brand-700">{form.errors.target_hub_id}</span>}
+                        </label>
+                        <label className="text-sm font-medium text-ink-700">Vehicle type
+                            <select className={fieldClass} value={form.data.vehicle_type} onChange={event => {
+                                form.setData({ ...form.data, vehicle_type: event.target.value, capacity_kg: String(vehicleDefaults[event.target.value]) });
+                            }}>{TYPES.map(type => <option key={type.key} value={type.key}>{type.name}</option>)}</select>
+                            {form.errors.vehicle_type && <span role="alert" className="text-brand-700">{form.errors.vehicle_type}</span>}
+                        </label>
+                        <label className="text-sm font-medium text-ink-700">Plate number
+                            <input className={fieldClass} required maxLength={50} value={form.data.plate_number} onChange={event => form.setData('plate_number', event.target.value.toUpperCase())} />
+                            {form.errors.plate_number && <span role="alert" className="text-brand-700">{form.errors.plate_number}</span>}
+                        </label>
+                        <label className="text-sm font-medium text-ink-700">Model (optional)
+                            <input className={fieldClass} maxLength={255} value={form.data.model} onChange={event => form.setData('model', event.target.value)} />
+                            {form.errors.model && <span role="alert" className="text-brand-700">{form.errors.model}</span>}
+                        </label>
+                        <label className="text-sm font-medium text-ink-700">Capacity (kg)
+                            <input className={fieldClass} type="number" required min="0.01" max="999999.99" step="0.01" value={form.data.capacity_kg} onChange={event => form.setData('capacity_kg', event.target.value)} />
+                            {form.errors.capacity_kg && <span role="alert" className="text-brand-700">{form.errors.capacity_kg}</span>}
+                        </label>
+                    </div>
+                    {Object.entries(form.errors).filter(([key]) => !['plate_number', 'model', 'vehicle_type', 'capacity_kg', 'target_hub_id'].includes(key)).map(([key, message]) => <p key={key} role="alert" className="text-sm text-brand-700">{message}</p>)}
+                    <div className="flex gap-2">
+                        <button type="submit" disabled={form.processing} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50">{form.processing ? 'Saving…' : 'Save vehicle'}</button>
+                        <button type="button" disabled={form.processing} className={hubButton} onClick={() => setAdding(false)}>Cancel</button>
+                    </div>
+                </form>}
 
                 {/* Visual summary */}
                 <section aria-label="Fleet summary" className="grid gap-6 rounded-card border border-line-200 bg-white p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -158,6 +211,13 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                 const hasPhone = vehicle.driver_phone && vehicle.driver_phone !== 'N/A';
                                 return (
                                     <li key={vehicle.id} className="rounded-card border border-line-200 bg-white p-4">
+                                        {canRegisterVehicle && <button type="button" aria-label={`Edit ${vehicle.plate_number}`} className="mb-3 rounded-lg border border-line-300 px-3 py-1.5 text-sm font-medium text-ink-700 hover:bg-surface-100" onClick={() => {
+                                            form.clearErrors(); form.setData({ hub_id: activeHub?.id, target_hub_id: vehicle.hub_id, expected_state: vehicle.edit_token,
+                                                plate_number: vehicle.plate_number, vehicle_type: vehicle.vehicle_type, model: vehicle.model ?? '', capacity_kg: String(vehicle.capacity_kg) });
+                                            setEditing(vehicle.id); setAdding(true); setSaved('');
+                                            setTimeout(() => document.getElementById('add-vehicle')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+                                        }}>Edit vehicle</button>}
+
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex min-w-0 items-center gap-3">
                                                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${type.tile}`}>
@@ -189,7 +249,7 @@ export default function HubFleet({ activeHub, fleet, stats, filters }: Props) {
                                                 <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-100 text-xs font-semibold text-ink-700">{initials(vehicle.driver_name)}</span>
                                                 <div className="min-w-0">
                                                     <p className="truncate text-sm font-medium text-ink-900">{vehicle.driver_name}</p>
-                                                    {!activeHub && <p className="truncate text-xs text-ink-500">{vehicle.hub_name} · {vehicle.hub_code}</p>}
+                                                    <p className="truncate text-xs text-ink-500">{vehicle.hub_name} · {vehicle.hub_code}</p>
                                                 </div>
                                             </div>
                                             {hasPhone && (

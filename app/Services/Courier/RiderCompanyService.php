@@ -54,6 +54,7 @@ class RiderCompanyService
 
         return ['id' => (string) $company->id, 'name' => $company->name, 'intake_version' => $company->rider_intake_version,
             'areas' => $areas->take(50)->map(fn ($area) => ['province' => $area->province, 'city' => $area->city_municipality])->all(),
+            'hubs' => $company->hubs()->eligible()->orderBy('name')->get(['id', 'name', 'code', 'tier'])->map(fn ($hub) => ['id' => (string) $hub->id, 'name' => $hub->name, 'code' => $hub->code, 'tier' => $hub->tier])->all(),
             'areas_truncated' => $areas->count() > 50];
     }
 
@@ -92,7 +93,7 @@ class RiderCompanyService
     public function submit(Request $request): array
     {
         $input = $this->validate($request->all(), ['company_id' => ['required', $this->number()],
-            'intake_version' => ['required', $this->number()], 'sharing_acknowledged' => ['required', 'boolean', 'accepted'],
+            'requested_hub_id' => ['nullable', $this->number()], 'intake_version' => ['required', $this->number()], 'sharing_acknowledged' => ['required', 'boolean', 'accepted'],
             'note' => ['nullable', 'string', new ApplicationText('notes', 5, 500)]], ['note' => 500]);
         $this->trueBoolean($input, 'sharing_acknowledged');
         $input['company_id'] = (int) $input['company_id'];

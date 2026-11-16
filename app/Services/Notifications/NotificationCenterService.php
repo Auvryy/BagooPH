@@ -222,6 +222,11 @@ class NotificationCenterService
             && RiderCompanyRequest::whereKey($data['company_request_id'] ?? 0)->whereIn('logistics_company_id', app(LogisticsEligibilityService::class)->managedCompanies($user)->select('id'))->exists()) {
             return '/hub/network';
         }
+        if ($target === 'company-rider-requests' && ($hub = app(LogisticsEligibilityService::class)->teamHub($user))
+            && RiderCompanyRequest::whereKey($data['company_request_id'] ?? 0)->where('logistics_company_id', $hub->logistics_company_id)
+                ->where(fn ($q) => $q->where('requested_hub_id', $hub->id)->orWhereNull('requested_hub_id'))->exists()) {
+            return '/hub/team?tab=applications';
+        }
         if ($target === 'hub-recovery' && $user->isLogistics() && $user->canAccessPortal()) {
             return '/hub/delivery-recovery';
         }

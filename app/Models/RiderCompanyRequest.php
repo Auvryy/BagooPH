@@ -25,7 +25,7 @@ class RiderCompanyRequest extends Model
     protected static function booted(): void
     {
         static::updating(function (self $request) {
-            if ($request->isDirty(['reference', 'logistics_company_id', 'rider_id', 'request_token', 'submission_fingerprint', 'intake_version', 'company_snapshot', 'profile_snapshot', 'note', 'sharing_acknowledged', 'submitted_at'])) {
+            if ($request->isDirty(['reference', 'logistics_company_id', 'rider_id', 'request_token', 'submission_fingerprint', 'intake_version', 'company_snapshot', 'profile_snapshot', 'note', 'sharing_acknowledged', 'submitted_at', 'requested_hub_id', 'invited_by_id'])) {
                 throw new LogicException('Rider company submissions are immutable.');
             }
         });

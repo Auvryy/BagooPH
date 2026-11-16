@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import { Bike, Plus, UserRound, Users, X } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
+import InviteExistingRider from '@/Components/InviteExistingRider';
 import CompanyRiderIntake from '@/Components/CompanyRiderIntake';
 import { HubBadge, HubButton, HubCategoryTabs, HubEmpty, HubPageHeader, hubInput } from '@/Components/Logistics/Workspace';
 import type { CompanyRiderIntake as Intake } from '@/types/riderCompany';
@@ -23,12 +24,12 @@ export const JOBS: { value: JobRole; label: string }[] = [
 ];
 
 export default function HubTeam({ hub, workers, riders, riderIntake }: Props) {
-    const [tab, setTab] = useState('workers');
-    const [adding, setAdding] = useState<'operator' | 'rider' | null>(null);
+    const [tab, setTab] = useState(new URLSearchParams(window.location.search).get('tab') === 'applications' ? 'applications' : 'workers');
+    const [adding, setAdding] = useState<'operator' | 'rider' | 'new_rider' | null>(null);
     const applications = riderIntake && riderIntake.available ? riderIntake.requests.total : 0;
     const tabs = [
         { id: 'workers', label: 'Workers', count: workers.length },
-        ...(hub.is_bayan ? [{ id: 'riders', label: 'Riders', count: riders.length }, { id: 'applications', label: 'Rider applications', count: applications }] : []),
+        ...[{ id: 'riders', label: 'Riders', count: riders.length }, { id: 'applications', label: 'Rider applications', count: applications }],
     ];
 
     return (
@@ -47,7 +48,11 @@ export default function HubTeam({ hub, workers, riders, riderIntake }: Props) {
                 />
                 <HubCategoryTabs tabs={tabs} activeId={tab} onChange={(id) => { setTab(id); setAdding(null); }} label="Team sections" />
 
-                {adding && <AddPerson kind={adding} onClose={() => setAdding(null)} />}
+                {adding === 'rider' && riderIntake?.available && <>
+                    <InviteExistingRider workspace={riderIntake} onClose={() => setAdding(null)} />
+                    {hub.is_bayan && <button type="button" className="text-sm font-semibold text-brand-700 underline" onClick={() => setAdding('new_rider')}>Create a new rider account instead</button>}
+                </>}
+                {(adding === 'operator' || adding === 'new_rider') && <AddPerson kind={adding === 'operator' ? 'operator' : 'rider'} onClose={() => setAdding(null)} />}
 
                 {tab === 'workers' && (
                     workers.length ? (

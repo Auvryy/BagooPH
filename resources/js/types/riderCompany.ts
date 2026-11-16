@@ -22,6 +22,7 @@ export interface RiderCompany {
     name: string;
     logo: string | null;
     intake_version: number;
+    hubs?: { id: string; name: string; code: string; tier: string }[];
     areas: { city: string | null; province: string | null }[];
 }
 
@@ -32,6 +33,8 @@ export interface CompanyJoinRequest {
     status: 'pending' | 'withdrawn' | 'offered' | 'accepted' | 'rejected' | 'declined' | 'cancelled' | 'expired';
     version: number;
     note: string | null;
+    requested_hub?: { id: string; name: string; code: string };
+    invited?: boolean;
     sharing_acknowledged: boolean;
     shared_profile: SharedRiderProfile;
     submitted_at: string;

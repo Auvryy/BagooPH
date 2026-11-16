@@ -136,7 +136,7 @@ export function registrationErrorStep(role: string, fields: Record<string, strin
     if (keys.some(key => identity.includes(key))) return 1;
     if (role === 'buyer') return 2;
     const middle = role === 'seller' ? ['phone', 'region', 'address', 'city', 'province', 'municipality', 'barangay', 'postal_code']
-        : role === 'courier' ? ['vehicle_type', 'plate_number', 'license_number']
+        : role === 'courier' ? ['vehicle_type', 'plate_number', 'license_number', 'requested_hub_id', 'hub_sharing_acknowledged']
         : ['operating_province', 'service_areas', 'franchise_number', 'fleet_size', 'vehicle_types'];
     return keys.some(key => middle.includes(key)) ? 2 : 3;
 }

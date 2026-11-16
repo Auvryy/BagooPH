@@ -39,7 +39,7 @@ import RegistrationEmailFeedback from '@/Components/RegistrationEmailFeedback';
 import { normalizeRegistrationEmail } from '@/utils/authRequests';
 import BirthDateInput, { BirthDateLimits } from '@/Components/BirthDateInput';
 
-export default function CourierRegister({ birthDateLimits, policies }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies }) {
+export default function CourierRegister({ birthDateLimits, policies, hiringHubs = [] }: { birthDateLimits: BirthDateLimits; policies: RegistrationPolicies; hiringHubs?: { id: string; name: string; company: string; tier: string }[] }) {
     const [currentStep, setCurrentStep] = useState(1);
     const [addressLoading, setAddressLoading] = useState(false);
     const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
@@ -75,6 +75,8 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
         province: string;
         municipality: string;
         barangay: string;
+        requested_hub_id: string;
+        hub_sharing_acknowledged: boolean;
         vehicle_type: string;
         plate_number: string;
         license_number: string;
@@ -103,6 +105,8 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
         province: '',
         municipality: '',
         barangay: '',
+        requested_hub_id: '',
+        hub_sharing_acknowledged: false,
         vehicle_type: 'Motorcycle',
         plate_number: '',
         license_number: '',
@@ -492,6 +496,20 @@ export default function CourierRegister({ birthDateLimits, policies }: { birthDa
                 {/* STEP 2: VEHICLE SPECS */}
                 {currentStep === 2 && (
                     <div className="space-y-4">
+                        <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+                            <label htmlFor="requested-hub" className="block text-sm font-semibold text-slate-800">Apply to a hub (optional)</label>
+                            <select id="requested-hub" className="w-full rounded-lg border-slate-300 text-sm focus:border-brand-500 focus:ring-brand-500" value={data.requested_hub_id} onChange={event => { setData('requested_hub_id', event.target.value); setData('hub_sharing_acknowledged', false); }}>
+                                <option value="">Choose after account approval</option>
+                                {hiringHubs.map(hub => <option key={hub.id} value={hub.id}>{hub.company} · {hub.name}</option>)}
+                            </select>
+                            <InputError message={stepErrors.requested_hub_id || errors.requested_hub_id} />
+                            {data.requested_hub_id && <label className="flex items-start gap-2 text-sm text-slate-700">
+                                <input type="checkbox" required checked={data.hub_sharing_acknowledged} onChange={event => setData('hub_sharing_acknowledged', event.target.checked)} className="mt-1 rounded border-slate-300 text-brand-500 focus:ring-brand-500" />
+                                Share my name, email, contact, locality and vehicle type with this hub for my application. Placement requires account approval and my acceptance of an offer.
+                            </label>}
+                            <InputError message={stepErrors.hub_sharing_acknowledged || errors.hub_sharing_acknowledged} />
+                        </div>
+
                         <div>
                             <label className="block text-xs font-semibold text-slate-800 uppercase tracking-wider mb-1 font-sans">
                                 Delivery Vehicle Type *
