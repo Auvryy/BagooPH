@@ -56,6 +56,9 @@ export default function BuyerLayout({
     const page = usePage<PageProps>();
     const { auth, cartCount = 0, unreadMessagesCount = 0, flash, buyerApplication } = page.props;
     const user = auth.user;
+    // Sellers, riders, hub staff and admins can browse the storefront, but buyer pages (Bag, orders, messages) are not theirs.
+    const shopper = !user || user.role === 'buyer';
+    const portalHome = ({ seller: '/seller/dashboard', admin: '/admin/dashboard', logistics: '/hub', courier: '/courier/deliveries' } as Record<string, string>)[user?.role ?? ''] ?? '/';
 
     const [logoutFeedback, setLogoutFeedback] = useState<string | null>(null);
 
@@ -192,7 +195,7 @@ export default function BuyerLayout({
                     </div>
 
                     <div className="flex items-center gap-4 text-white/90 font-medium">
-                        <PortalLink href={route('buyer.orders.index')} className="hover:text-white transition hidden sm:inline">Track Order</PortalLink>
+                        {shopper && <PortalLink href={route('buyer.orders.index')} className="hover:text-white transition hidden sm:inline">Track Order</PortalLink>}
                         <span className="text-white/30 hidden sm:inline">|</span>
                         <span className="text-amber-300 font-bold hidden sm:inline">PHP ₱ (PH)</span>
                     </div>
@@ -275,7 +278,8 @@ export default function BuyerLayout({
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                             {/* BAG ACTION */}
                             <NotificationLink />
-                            <Link 
+                            {!shopper && <PortalLink href={portalHome} className="rounded-control border border-white/50 px-3 py-1.5 text-sm font-bold text-white hover:bg-white/10">My portal</PortalLink>}
+                            {shopper && <Link 
                                 href={route('buyer.cart')} 
                                 className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-white hover:text-rose-100 transition font-sans text-sm font-bold tracking-tight group focus:outline-hidden"
                                 aria-label={`Shopping Bag (${cartCount} items)`}
@@ -289,7 +293,7 @@ export default function BuyerLayout({
                                     )}
                                 </div>
                                 <span className="hidden sm:inline font-bold">Bag</span>
-                            </Link>
+                            </Link>}
 
                             {/* PROFILE BUTTON WITH SEAMLESS HOVER BRIDGE */}
                             {auth.user ? (
@@ -301,7 +305,7 @@ export default function BuyerLayout({
                                 >
                                     <div className="flex items-center gap-1.5 py-1 px-1.5 text-white hover:text-rose-100 transition font-sans text-xs sm:text-sm font-bold group cursor-pointer">
                                         <PortalLink
-                                            href={route('buyer.orders.index')}
+                                            href={shopper ? route('buyer.orders.index') : portalHome}
                                             onClick={event => openMenuOnFirstTap(event, userDropdownOpen, setUserDropdownOpen)}
                                             className="flex min-w-0 items-center gap-2 focus:outline-hidden"
                                         >
@@ -359,19 +363,23 @@ export default function BuyerLayout({
                                                     </div>
                                                 </div>
 
-                                                <PortalLink
+                                                {!shopper && <PortalLink href={portalHome} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition">
+                                                    <Store className="w-4 h-4 text-[#E00D42]" /><span>Open my portal</span>
+                                                </PortalLink>}
+                                                {shopper && <PortalLink
                                                     href={route('buyer.profile', { tab: 'account' })} 
                                                     className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
                                                 >
                                                     <UserIcon className="w-4 h-4 text-[#E00D42]" />
                                                     <span>Profile & Settings</span>
-                                                </PortalLink>
+                                                </PortalLink>}
 
                                                 <Link href={route('account.status')} className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition">
                                                     <UserIcon className="w-4 h-4 text-slate-400" /><span>Account status</span>
                                                 </Link>
 
 
+                                                {shopper && <>
                                                 <PortalLink
                                                     href={route('buyer.orders.index')}
                                                     className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#E00D42] transition"
@@ -401,6 +409,7 @@ export default function BuyerLayout({
                                                         </span>
                                                     )}
                                                 </Link>
+                                                </>}
 
                                                 <div className="border-t border-slate-100 mt-1 pt-1">
                                                     <Link 
@@ -517,7 +526,7 @@ export default function BuyerLayout({
                 </div>
             )}
 
-            {!hideHeader && !route().current('buyer.messages') && !route().current('messages') && (
+            {!hideHeader && shopper && !route().current('buyer.messages') && !route().current('messages') && (
                 <BuyerChatLauncher href={user ? route('buyer.messages') : route('login')} unreadCount={unreadMessagesCount} />
             )}
 
@@ -533,8 +542,8 @@ export default function BuyerLayout({
                         <ul className="space-y-2 text-slate-500">
                             <li><PortalLink href={route('marketplace')} className="hover:text-[#E00D42]">Marketplace Home</PortalLink></li>
                             <li><PortalLink href={route('buyer.search')} className="hover:text-[#E00D42]">Search 14 Departments</PortalLink></li>
-                            <li><PortalLink href={route('buyer.orders.index')} className="hover:text-[#E00D42]">Track Purchases</PortalLink></li>
-                            <li><Link href={route('buyer.cart')} className="hover:text-[#E00D42]">Shopping Bag</Link></li>
+                            {shopper && <li><PortalLink href={route('buyer.orders.index')} className="hover:text-[#E00D42]">Track Purchases</PortalLink></li>}
+                            {shopper && <li><Link href={route('buyer.cart')} className="hover:text-[#E00D42]">Shopping Bag</Link></li>}
                         </ul>
                     </div>
 

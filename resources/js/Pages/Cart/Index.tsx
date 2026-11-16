@@ -485,7 +485,7 @@ export default function CartIndex({ cart, items, quote: initialQuote, selectedBa
                                         onClick={() => setFilterBy('all')}
                                         className={`px-2.5 py-1 rounded-lg font-semibold transition text-xs ${
                                             filterBy === 'all'
-                                                ? 'bg-slate-900 text-white'
+                                                ? 'bg-brand-50 text-brand-700'
                                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                         }`}
                                     >

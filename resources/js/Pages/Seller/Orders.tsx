@@ -737,7 +737,8 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                             )}
                                         </div>
                                     </div>
-                                    {item.order.fulfillment_feedback && <p role="status" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-[#9F1239]">{item.order.fulfillment_feedback.message}</p>}
+                                    {/* Closed orders get a neutral note; only blocked work is shown as a warning. */}
+                                    {item.order.fulfillment_feedback && <p role="status" className={`mt-3 rounded-lg px-3 py-2 text-sm ${['completed', 'cancelled', 'returned'].includes(item.order.fulfillment_feedback.code) ? 'bg-surface-100 text-ink-700' : 'bg-rose-50 text-[#9F1239]'}`}>{item.order.fulfillment_feedback.message}</p>}
                                     {(item.order.cancellation_request || orderStatus === 'cancelled') && <div className="mt-3 space-y-3">
                                         <OrderCancellationFeedback feedback={item.order.cancellation_feedback} />
                                         {item.order.cancellation_request && <OrderCancellationReview key={`${item.order.cancellation_request.id}:${item.order.cancellation_request.version}`} request={item.order.cancellation_request} disabled={isSubmitting || trackingRefreshing} />}

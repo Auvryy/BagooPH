@@ -195,9 +195,9 @@ export default function BuyerHome({
                             </div>
                             <div>
                                 <div className="flex items-center gap-1.5 text-[10px] text-amber-200 font-bold uppercase tracking-wider">
-                                    <span>● LIVE DISPATCH TELEMETRY</span>
+                                    <span>Your parcel</span>
                                     <span>•</span>
-                                    <span>{activeShipment.status.replace('_', ' ').toUpperCase()}</span>
+                                    <span>{activeShipment.status.replaceAll('_', ' ')}</span>
                                 </div>
                                 <p className="font-bold text-white text-xs mt-0.5">
                                     Order #{activeShipment.order_number} ({activeShipment.item_name}) — Est. Arrival: <strong className="text-white underline">{activeShipment.estimated_delivery}</strong>

@@ -192,7 +192,8 @@ export default function CourierLayout({ children, title, subtitle, isOnline = fa
             </div>
 
             <nav aria-label="Rider navigation" className="courier-mobile-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 gap-2 border-t border-slate-200 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2 xl:hidden">
-                {navItems.map(({ name, path, page, icon: Icon }) => (
+                {/* Four items fit one row on a phone; Profile stays in the account menu and the sidebar. */}
+                {navItems.filter(item => item.name !== 'Profile').map(({ name, path, page, icon: Icon }) => (
                     <PortalLink key={path} href={courierPath(path)} aria-current={component === page ? 'page' : undefined} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42] ${component === page ? 'bg-slate-100 text-slate-950' : 'text-slate-600'}`}><Icon className="h-5 w-5" aria-hidden="true" /><span className="break-words">{name}</span></PortalLink>
                 ))}
             </nav>

@@ -242,7 +242,7 @@ export default function Catalog({ products, categories, activeShipment, filters 
                                     <div className="flex items-center gap-2 font-sans text-[10px] uppercase text-white/60">
                                         <span>LIVE SHIPMENT TELEMETRY</span>
                                         <span>•</span>
-                                        <span className="text-emerald-400 font-bold">STATUS: {activeShipment.status.replace('_', ' ').toUpperCase()}</span>
+                                        <span className="text-emerald-400 font-bold">STATUS: {activeShipment.status.replaceAll('_', ' ').toUpperCase()}</span>
                                     </div>
                                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
                                         <span>Order #{activeShipment.order_number}</span>

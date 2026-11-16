@@ -80,6 +80,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
     const financialReturn = ['Returns/Liability', 'Returns/Liabilities', 'Finance/ShipmentReview', 'Finance/ShipmentOutcome'].includes(component);
     const role = user?.role || 'buyer';
     const adminArea = role === 'admin' ? adminAreaTabs(component, { returnLiabilities: Boolean(user?.canManageReturnLiabilities), financialReturn }) : null;
+    const accountSubPage = url.split('?')[0].match(/^\/admin\/users\/(\d+)\/(activity|closure|identity-corrections)$/);
     useBodyScrollLock(sidebarOpen && role !== 'logistics');
     const currentShop = user?.shop;
     const activeHub = (user as any)?.activeHub;
@@ -754,6 +755,12 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 <main className={`flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 ${lx ? 'bg-surface-50' : 'bg-[#F8FAFC]'}`} id="portal-main">
                     <div className="max-w-7xl mx-auto space-y-6">
                         {adminArea && <AdminSectionTabs label={adminArea.label} tabs={adminArea.tabs} />}
+                        {/* Account sub-pages (activity, closure, identity corrections) always lead back to the account and the list. */}
+                        {role === 'admin' && accountSubPage && <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[13px] text-ink-600">
+                            <PortalLink href="/admin/users" className="font-medium text-ink-700 underline underline-offset-2 hover:text-ink-900">Users</PortalLink>
+                            <span aria-hidden="true">/</span>
+                            <PortalLink href={`/admin/users/${accountSubPage[1]}/context`} className="font-medium text-ink-700 underline underline-offset-2 hover:text-ink-900">Account</PortalLink>
+                        </nav>}
                         {sharedHubHeading && <HubPageHeader title={title} description={subtitle} icon={hubPageIcon} />}
                         {children}
                     </div>
