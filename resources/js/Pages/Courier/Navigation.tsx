@@ -311,6 +311,8 @@ export default function CourierNavigation({
         };
     }, []);
 
+    const lastFitKey = useRef('');
+
     // Redraw Road Route & Markers
     useEffect(() => {
         const map = mapRef.current;
@@ -397,7 +399,11 @@ export default function CourierNavigation({
                 destMarker.bindTooltip(activeStop.targetName);
             }
 
-            // Fit bounds
+            // Fit only when the stop or its route changes. GPS and compass updates move the rider marker without
+            // re-centering, so the map no longer jumps every moment; use Recenter to fit again.
+            const fitKey = `${activeStop?.id ?? ''}|${routeDetails ? JSON.stringify(routeDetails.lines?.[0]?.[0] ?? '') + (routeDetails.lines?.length ?? 0) : 'none'}`;
+            if (lastFitKey.current === fitKey) return;
+            lastFitKey.current = fitKey;
             if (allPoints.length >= 2) {
                 map.fitBounds(L.latLngBounds(allPoints), {
                     padding: [60, 60],

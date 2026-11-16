@@ -252,7 +252,7 @@ class CourierDeliveryController extends Controller
             ])],
             'barcode' => $inputs->barcodeRules(),
             'courier_notes' => $inputs->notesRules(500),
-            'recipient_name' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', 'string', new ApplicationText('name', 2, 255)],
+            'recipient_name' => [Rule::requiredIf($request->input('status') === 'delivered' && $request->input('recipient_relationship') !== 'buyer'), 'nullable', 'string', new ApplicationText('name', 2, 255)],
             'recipient_relationship' => [Rule::requiredIf($request->input('status') === 'delivered'), 'nullable', Rule::in(['buyer', 'household', 'authorized_recipient'])],
             'cash_received' => [Rule::requiredIf($cashRequired), 'nullable', 'string', 'regex:'.CodMoney::RULE],
             'change_given' => [Rule::requiredIf($cashRequired), 'nullable', 'string', 'regex:'.CodMoney::RULE],
@@ -304,7 +304,9 @@ class CourierDeliveryController extends Controller
                     'notes' => $courierNote !== '' ? $courierNote : null,
                     'proof_image' => $proofPath,
                     'proof_hash' => isset($validated['proof_image_file']) ? hash_file('sha256', $validated['proof_image_file']->getRealPath()) : null,
-                    'recipient_name' => $validated['recipient_name'] ?? null,
+                    // Direct handover to the buyer: the name is optional and defaults to the order's recipient.
+                    'recipient_name' => filled($validated['recipient_name'] ?? null) ? $validated['recipient_name']
+                        : ($targetStatus === OrderStateMachineService::STATUS_DELIVERED ? ($delivery->order->recipient_name ?: $delivery->order->buyer?->name) : null),
                     'recipient_relationship' => $validated['recipient_relationship'] ?? null,
                     'cash_received' => $validated['cash_received'] ?? null, 'change_given' => $validated['change_given'] ?? null,
                     'cash_confirmed' => $validated['cash_confirmed'] ?? null, 'request_token' => $validated['request_token'] ?? null,

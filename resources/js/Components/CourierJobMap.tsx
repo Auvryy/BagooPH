@@ -27,7 +27,7 @@ export default function CourierJobMap({ job, embedded = false }: { job?: Courier
     const riderLocation: [number, number] = road.origin || riderGps || LAGUNA_CENTER;
 
     useEffect(() => {
-        if (!job && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     if (pos.coords.latitude && pos.coords.longitude) {
@@ -101,7 +101,22 @@ export default function CourierJobMap({ job, embedded = false }: { job?: Courier
             map.current?.remove();
             map.current = null;
         };
-    }, [job?.key, job?.status, job?.place.name, title, latitude, longitude, Boolean(job), riderLocation[0], riderLocation[1], attempt]);
+    }, [job?.key, job?.status, job?.place.name, title, latitude, longitude, Boolean(job), job ? null : riderLocation[0], job ? null : riderLocation[1], attempt]);
+
+    // Before road navigation starts, show a dashed preview line from the rider (or the stop alone) and fit both once.
+    useEffect(() => {
+        if (!mapReady || !job || road.lines || !riderGps || latitude === undefined || longitude === undefined || !map.current) return;
+        let cancelled = false;
+        let layer: import('leaflet').LayerGroup | undefined;
+        void import('leaflet').then(L => {
+            if (cancelled || !map.current) return;
+            layer = L.layerGroup().addTo(map.current);
+            L.polyline([riderGps, [latitude, longitude]], { color: '#E00D42', weight: 4, dashArray: '8 8', opacity: 0.85, interactive: false }).addTo(layer);
+            L.circleMarker(riderGps, { radius: 8, color: '#FFFFFF', weight: 3, fillColor: '#18181B', fillOpacity: 1 }).addTo(layer).bindTooltip('You are here');
+            map.current.fitBounds(L.latLngBounds([riderGps, [latitude, longitude]]), { padding: [48, 64], maxZoom: 16, animate: false });
+        });
+        return () => { cancelled = true; layer?.remove(); };
+    }, [mapReady, Boolean(job), Boolean(road.lines), riderGps?.[0], riderGps?.[1], latitude, longitude]);
 
     useEffect(() => {
         if (!mapReady || !job || !road.lines || !road.origin || !map.current) return;
