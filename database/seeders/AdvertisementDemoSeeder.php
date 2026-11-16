@@ -70,11 +70,9 @@ class AdvertisementDemoSeeder extends Seeder
                 $disk = Storage::disk('local');
                 $checksum = hash('sha256', $bytes);
                 foreach ($paths as $path) {
-                    if ($disk->exists($path)) {
-                        if (! hash_equals($checksum, hash('sha256', $disk->get($path)))) {
-                            throw new RuntimeException('The reserved Bagoo demo banner file contains different data. Existing data was preserved.');
-                        }
-
+                    // No campaign row exists here, so a file at this reserved path is left over from an earlier,
+                    // wiped database (for example ./bagoo.sh fresh). Replace it with the bundled artwork.
+                    if ($disk->exists($path) && hash_equals($checksum, hash('sha256', $disk->get($path)))) {
                         continue;
                     }
                     if (! $disk->put($path, $bytes)) {

@@ -105,7 +105,7 @@ Route::prefix('v1')->middleware([PrivateRiderResponse::class, 'throttle:rider-ap
 });
 
 Route::prefix('v1/logistics')->middleware(PrivateRiderResponse::class)->group(function () {
-    Route::post('auth/tokens', [LogisticsAuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('auth/tokens', [LogisticsAuthController::class, 'login'])->middleware('throttle:logistics-login');
     Route::post('activation/send', [StaffInvitationController::class, 'send'])->middleware('throttle:5,1');
     Route::post('activation/verify', [StaffInvitationController::class, 'verify'])->middleware('throttle:10,1');
     Route::post('activation/complete', [StaffInvitationController::class, 'activate'])->middleware('throttle:5,1');

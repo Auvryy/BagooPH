@@ -17,7 +17,6 @@ use App\Services\BuyerAccessService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\LogisticsTripService;
 use App\Services\Notifications\GovernanceNoticeService;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Auth\Events\CurrentDeviceLogout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -28,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -76,6 +76,8 @@ class AppServiceProvider extends ServiceProvider
         }
 
         RateLimiter::for('rider-api', fn (Request $request) => Limit::perMinute(30)->by(hash('sha256', (string) $request->ip())));
+        // Hub workers share the hub's Wi-Fi, so their sign-in limit counts per account and network, like riders'.
+        RateLimiter::for('logistics-login', fn (Request $request) => Limit::perMinute(5)->by(hash('sha256', (is_string($request->input('email')) ? strtolower($request->input('email')) : '').'|'.$request->ip())));
         RateLimiter::for('rider-login', fn (Request $request) => Limit::perMinute(5)->by(hash('sha256', (is_string($request->input('email')) ? strtolower($request->input('email')) : '').'|'.$request->ip())));
         Gate::define('buyer.existing-orders', fn (User $user) => app(BuyerAccessService::class)->hasExistingOrderEligibility($user));
         Gate::define('buyer.order-history', fn (User $user) => app(BuyerAccessService::class)->canViewHolding($user));

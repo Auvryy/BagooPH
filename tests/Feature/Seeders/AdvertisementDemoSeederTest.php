@@ -3,6 +3,7 @@
 namespace Tests\Feature\Seeders;
 
 use App\Models\Advertisement;
+use App\Models\AdvertisementAction;
 use App\Models\AdvertisementPublication;
 use App\Services\Advertisements\AdvertisementReader;
 use Database\Seeders\AdvertisementDemoSeeder;
@@ -43,7 +44,7 @@ class AdvertisementDemoSeederTest extends TestCase
         $this->assertSame('Synthetic demo content for local review; not a paid seller placement.', $advertisement->latestRevision->summary);
         $mine = fn () => collect(app(AdvertisementReader::class)->homepage(false))->filter(fn ($banner) => str_contains($banner['href'], 'bagoo-demo-homepage-banner'));
         $this->assertCount(1, $mine());
-        $this->assertSame(2, \App\Models\AdvertisementAction::where('advertisement_id', $advertisement->id)->count());
+        $this->assertSame(2, AdvertisementAction::where('advertisement_id', $advertisement->id)->count());
         $this->assertDatabaseCount('orders', 0);
         $this->assertTrue(Storage::disk('local')->exists('advertisements/bagoo-demo-homepage-banner/image.webp'));
 
@@ -51,7 +52,7 @@ class AdvertisementDemoSeederTest extends TestCase
         $ads = Advertisement::count();
         $this->seed(AdvertisementDemoSeeder::class);
         $this->assertSame($ads, Advertisement::count());
-        $this->assertSame(2, \App\Models\AdvertisementAction::where('advertisement_id', $advertisement->id)->count());
+        $this->assertSame(2, AdvertisementAction::where('advertisement_id', $advertisement->id)->count());
         $this->assertCount(1, $mine());
 
         $publication->update(['ended_at' => now()]);
@@ -59,5 +60,16 @@ class AdvertisementDemoSeederTest extends TestCase
         $this->assertNotNull($publication->fresh()->ended_at);
         $this->assertCount(0, $mine());
         $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_a_fresh_database_replaces_banner_files_left_by_an_earlier_seed(): void
+    {
+        // ./bagoo.sh fresh wipes the database but keeps stored files; the seed must not stop on them.
+        Storage::disk('local')->put('advertisements/bagoo-demo-homepage-banner/image.webp', 'old artwork from a wiped database');
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertTrue(Advertisement::where('slug', 'bagoo-demo-homepage-banner')->exists());
+        $this->assertSame(hash_file('sha256', public_path('images/buyer/advertisements/demo-preview.webp')),
+            hash('sha256', Storage::disk('local')->get('advertisements/bagoo-demo-homepage-banner/image.webp')));
     }
 }

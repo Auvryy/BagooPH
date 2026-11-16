@@ -379,8 +379,9 @@ class HubParcelWorkstationService
                     ->whereHas('parcels', fn ($members) => $members->where('delivery_id', $parcel->id)->where('included', true)->whereNull('received_at'))
                     ->first();
             if ($incoming) {
-                return $next('Receive the parcel on its incoming manifest', 'Assigned receiving handler', 'manifest', $handler,
-                    '/manifests/'.$incoming->id, $handler ? null : 'An assigned receiving handler must record the manifest receipt.');
+                // One scan records the manifest receipt (see LogisticsHubWorkstationController::receiveOnArrivingManifest).
+                return $next('Scan to receive the parcel from its incoming manifest', 'Assigned receiving handler', 'scan', $handler,
+                    '/scan', $handler ? null : 'An assigned receiving handler must record the manifest receipt.');
             }
         }
         if ($atHub) {

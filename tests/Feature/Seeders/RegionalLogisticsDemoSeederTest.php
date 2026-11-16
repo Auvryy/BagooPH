@@ -11,6 +11,7 @@ use App\Models\Shop;
 use App\Models\User;
 use App\Services\Logistics\LogisticsCheckoutService;
 use App\Services\Logistics\LogisticsRoutingEngine;
+use App\Services\Logistics\MotherBagService;
 use App\Services\Logistics\RiderCompanyOfferService;
 use App\Services\Logistics\RiderCompanyRequestService;
 use Database\Seeders\RegionalLogisticsDemoSeeder;
@@ -27,12 +28,18 @@ class RegionalLogisticsDemoSeederTest extends TestCase
         $this->seed(RegionalLogisticsDemoSeeder::class);
         $company = LogisticsCompany::eligible()->where('code', 'BGR')->firstOrFail();
         $this->assertTrue($company->rider_intake_enabled);
-        $this->assertSame(42, CourierProfile::operational()->where('logistics_company_id', $company->id)->count());
+        $this->assertSame(48, CourierProfile::operational()->where('logistics_company_id', $company->id)->count());
         $this->assertSame(18, HubHandler::eligible()->where('logistics_company_id', $company->id)->count());
         $this->assertSame(6, $company->motherHubs()->count());
         $this->assertSame(12, $company->bayanHubs()->count());
-        $this->assertSame(42, $company->fleet()->count());
-        $this->assertSame(42, $company->couriers()->count());
+        $this->assertSame(48, $company->fleet()->count());
+        $this->assertSame(48, $company->couriers()->count());
+        // Every Mother Hub can send a line-haul Mother Bag to another Mother Hub on a wing truck with its driver.
+        $motherHubs = $company->motherHubs()->get();
+        foreach ($motherHubs as $mother) {
+            $other = $motherHubs->firstWhere(fn ($hub) => $hub->id !== $mother->id);
+            $this->assertNotEmpty(MotherBagService::dispatchVehicles($mother, $other), $mother->code.' has no line-haul truck.');
+        }
         $owner = $company->user;
         $owner->update(['name' => 'Retained owner name']);
         $password = $owner->password;
@@ -41,7 +48,7 @@ class RegionalLogisticsDemoSeederTest extends TestCase
         $this->assertSame('Retained owner name', $owner->fresh()->name);
         $this->assertSame(18, $company->hubs()->count());
         $this->assertSame(0, $company->hubs()->where(fn ($q) => $q->whereNull('latitude')->orWhereNull('longitude'))->count());
-        $this->assertSame(42, $company->fleet()->count());
+        $this->assertSame(48, $company->fleet()->count());
         $this->assertSame(12, LogisticsHub::readyForSelfPickup()->where('logistics_company_id', $company->id)->count());
 
         $pila = LogisticsHub::where('code', 'BGR-MH-PIL')->sole();
@@ -110,7 +117,7 @@ class RegionalLogisticsDemoSeederTest extends TestCase
             'sharing_acknowledged' => true, 'request_token' => (string) Str::uuid(),
         ]);
         // The seeded child hub's full-access account answers the application.
-        $hubAccount = User::findOrFail(\App\Models\HubHandler::where('hub_id', $hub->id)->where('job_role', 'all')->value('user_id'));
+        $hubAccount = User::findOrFail(HubHandler::where('hub_id', $hub->id)->where('job_role', 'all')->value('user_id'));
         $offer = $this->actingAs($hubAccount)->postJson('/hub/rider-company-requests/'.$request['id'].'/offers', [
             'expected_version' => 1, 'request_token' => (string) Str::uuid(),
             'hub_id' => $hub->id, 'terms' => 'Report to the recorded child hub for the agreed work schedule.',

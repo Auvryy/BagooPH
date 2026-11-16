@@ -157,4 +157,48 @@ class OneScanIntakeAndBagDispatchTest extends TestCase
         $this->assertSame('in_transit', MotherBag::findOrFail($added['id'])->status);
         $this->assertSame('in_transit_to_mother_hub', $second->fresh()->status);
     }
+
+    public function test_mother_hub_intake_worker_receives_with_one_phone_scan_and_bagging_waits_for_the_sort(): void
+    {
+        $parcel = $this->flowDelivery($this->newFlowOrder('ready_for_pickup'), 'picked_up');
+        $origin = LogisticsHub::findOrFail($parcel->origin_bayan_hub_id);
+        $mother = LogisticsHub::findOrFail($parcel->origin_mother_hub_id);
+        $this->confirmFlowScan($parcel, $origin, 'RECEIVE_FROM_PICKUP_RIDER');
+        $bags = app(MotherBagService::class);
+        $handling = ['weight_kg' => 1, 'length_cm' => 20, 'width_cm' => 20, 'height_cm' => 20, 'confirmed' => true];
+        $bagger = $this->worker($origin, HubHandler::JOB_ROLE_PACK_DISPATCH);
+        $bag = $bags->create($bagger, ['source_hub_id' => $origin->id, 'destination_hub_id' => $mother->id, 'creation_token' => (string) Str::uuid(), 'capacity_preset' => 'compact']);
+        $bag = $bags->command($bag, $bagger, 'add', ['version' => $bag->version, 'barcode' => $parcel->tracking_number, 'handling' => $handling]);
+        $bags->dispatchBag($bag, $bagger, ['vehicle_id' => $this->truck($origin)->id, 'seal_number' => 'SL-MOTHER-1', 'request_token' => (string) Str::uuid()]);
+        $manifest = LogisticsManifest::sole();
+
+        $phone = $this->phoneToken($this->worker($mother, HubHandler::JOB_ROLE_INTAKE));
+        // Before the bag is opened the parcel cannot be received on its own.
+        $early = $this->withToken($phone)->postJson('/api/v1/logistics/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $mother->id, 'mode' => 'inspect'])
+            ->assertOk()->assertJsonPath('prompt.action', 'RECEIVE_AT_MOTHER_HUB')->json('prompt');
+        $this->withToken($phone)->postJson('/api/v1/logistics/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $mother->id, 'mode' => 'confirm',
+            'action' => $early['action'], 'expected_status' => $early['expected_status']])->assertStatus(409);
+        $bag = MotherBag::findOrFail($bag->id);
+        $this->withToken($phone)->postJson("/api/v1/logistics/mother-bags/{$bag->id}/open", ['version' => $bag->version, 'barcode' => $bag->reference,
+            'seal_number' => 'SL-MOTHER-1', 'seal_intact' => true])->assertOk();
+
+        // One scan now receives it on the manifest, which then closes because nothing is outstanding.
+        $prompt = $this->withToken($phone)->postJson('/api/v1/logistics/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $mother->id, 'mode' => 'inspect'])
+            ->assertOk()->assertJsonPath('prompt.requires_confirmation', true)->json('prompt');
+        $this->withToken($phone)->postJson('/api/v1/logistics/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $mother->id, 'mode' => 'confirm',
+            'action' => $prompt['action'], 'expected_status' => $prompt['expected_status']])->assertOk()->assertJsonPath('confirmed', true);
+        $this->assertSame('arrived_at_mother_hub', $parcel->fresh()->status);
+        $this->assertSame('closed', $manifest->fresh()->status);
+
+        // A parcel still waiting for its sort is not bagged; the worker is told to sort it first.
+        $destination = LogisticsHub::findOrFail($parcel->fresh()->destination_mother_hub_id !== $mother->id ? $parcel->destination_mother_hub_id : $parcel->destination_bayan_hub_id);
+        $motherBagger = $this->worker($mother, HubHandler::JOB_ROLE_PACK_DISPATCH);
+        $next = $bags->create($motherBagger, ['source_hub_id' => $mother->id, 'destination_hub_id' => $destination->id, 'creation_token' => (string) Str::uuid(), 'capacity_preset' => 'compact']);
+        try {
+            $bags->command($next, $motherBagger, 'add', ['version' => $next->version, 'barcode' => $parcel->tracking_number, 'handling' => $handling]);
+            $this->fail('An unsorted parcel was bagged.');
+        } catch (\DomainException $error) {
+            $this->assertSame('Sort this parcel for its next hub before bagging it: scan it once at intake.', $error->getMessage());
+        }
+    }
 }
