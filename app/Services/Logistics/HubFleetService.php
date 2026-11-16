@@ -8,6 +8,7 @@ use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsPlacementRecord;
+use App\Models\LogisticsTransportDriver;
 use App\Models\LogisticsTransportTrip;
 use App\Models\User;
 use App\Rules\ApplicationText;
@@ -62,6 +63,60 @@ class HubFleetService
         }
     }
 
+    public function transportDrivers(User $actor, LogisticsHub $source): Collection
+    {
+        return LogisticsTransportDriver::eligible()->where('logistics_company_id', $source->logistics_company_id)
+            ->whereIn('hub_id', $this->destinations($actor, $source)->pluck('id'))->orderBy('name')->get(['id', 'name', 'hub_id']);
+    }
+
+    private function assignTransportDriver(User $actor, LogisticsHub $source, LogisticsFleet $vehicle, array $input): bool
+    {
+        $name = is_string($input['transport_driver_name'] ?? null) ? trim($input['transport_driver_name']) : ($input['transport_driver_name'] ?? null);
+        if (! filled($name) && empty($input['transport_driver_id'])) {
+            return $vehicle->transport_driver_id !== null;
+        }
+        $data = Validator::make(['transport_driver_name' => $name, 'transport_driver_id' => $input['transport_driver_id'] ?? null], [
+            'transport_driver_id' => ['nullable', 'integer', 'min:1'],
+            'transport_driver_name' => ['nullable', 'required_without:transport_driver_id', 'string', new ApplicationText('name', 2, 100)],
+        ])->validate();
+        abort_unless($this->canRegister($actor, $source) && $this->destinations($actor, $source)->contains('id', $vehicle->hub_id), 403);
+        if (! in_array($vehicle->vehicle_type, ['l300_van', 'wing_truck'], true)) {
+            throw ValidationException::withMessages(['transport_driver_name' => 'Company transport drivers operate feeder vans and wing trucks. Pickup and delivery riders keep their courier accounts.']);
+        }
+        app(LogisticsEligibilityService::class)->lockNetwork($vehicle->logistics_company_id, [$actor->id, $vehicle->assigned_driver_id], [$vehicle->hub_id]);
+        $fleet = LogisticsFleet::whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
+        if (LogisticsManifest::where('vehicle_id', $fleet->id)->where(fn ($q) => $q->whereIn('status', ['draft', 'sealed', 'dispatched'])->orWhereIn('id', LogisticsManifest::awaitingPhysicalReceipt()->select('id')))->exists()
+            || LogisticsTransportTrip::where('vehicle_id', $fleet->id)->whereIn('status', ['ready', 'dispatched'])->exists()) {
+            throw ValidationException::withMessages(['transport_driver_name' => 'Finish the vehicle’s current transport before changing its driver.']);
+        }
+        if (! empty($data['transport_driver_id'])) {
+            $driver = LogisticsTransportDriver::eligible()->whereKey($data['transport_driver_id'])->where('logistics_company_id', $fleet->logistics_company_id)->where('hub_id', $fleet->hub_id)->lockForUpdate()->first();
+            if (! $driver || LogisticsFleet::where('transport_driver_id', $driver->id)->whereKeyNot($fleet->id)->exists()) {
+                throw ValidationException::withMessages(['transport_driver_id' => 'Choose an available transport driver at this company and hub, or add a new name.']);
+            }
+        } else {
+            $driver = LogisticsTransportDriver::create(['logistics_company_id' => $fleet->logistics_company_id, 'hub_id' => $fleet->hub_id, 'name' => $data['transport_driver_name'], 'status' => 'active']);
+        }
+        if ($fleet->assigned_driver_id !== null) {
+            $profile = CourierProfile::where('user_id', $fleet->assigned_driver_id)->lockForUpdate()->first();
+            if (! $profile || $profile->vehicle_id !== $fleet->id || Delivery::riderHasActiveWork($profile->user_id)) {
+                throw ValidationException::withMessages(['transport_driver_name' => 'Review the existing rider assignment and custody before replacing it.']);
+            }
+            try {
+                app(CourierOperationsService::class)->setAvailability(User::findOrFail($profile->user_id), false);
+            } catch (\DomainException $error) {
+                throw ValidationException::withMessages(['transport_driver_name' => $error->getMessage()]);
+            }
+            $before = $profile->only(['logistics_company_id', 'assigned_hub_id', 'vehicle_id', 'assigned_barangay']);
+            $profile->update(['vehicle_id' => null, 'is_available' => false]);
+            LogisticsPlacementRecord::create(['logistics_company_id' => $fleet->logistics_company_id, 'actor_id' => $actor->id, 'user_id' => $profile->user_id,
+                'kind' => 'courier', 'before_state' => $before, 'after_state' => $profile->only(['logistics_company_id', 'assigned_hub_id', 'vehicle_id', 'assigned_barangay']), 'recorded_at' => now()]);
+        }
+        $fleet->update(['assigned_driver_id' => null, 'transport_driver_id' => $driver->id]);
+
+        return true;
+    }
+
     public function drivers(User $actor, LogisticsHub $source): Collection
     {
         return CourierProfile::operational()->where('logistics_company_id', $source->logistics_company_id)
@@ -74,6 +129,9 @@ class HubFleetService
 
     private function assignDriver(User $actor, LogisticsHub $source, LogisticsFleet $vehicle, array $input): void
     {
+        if ($this->assignTransportDriver($actor, $source, $vehicle, $input)) {
+            return;
+        }
         Validator::make($input, ['driver_id' => ['nullable', 'integer', 'min:1']])->validate();
         if (empty($input['driver_id'])) {
             return;
@@ -86,6 +144,9 @@ class HubFleetService
         if (! $profile || ! CourierProfile::operational()->whereKey($profile->id)->exists()
             || $profile->logistics_company_id !== $fleet->logistics_company_id || $profile->assigned_hub_id !== $fleet->hub_id) {
             throw ValidationException::withMessages(['driver_id' => 'Choose an approved rider already assigned to this company and hub. Invite and accept the rider first if needed.']);
+        }
+        if ($fleet->transport_driver_id !== null) {
+            throw ValidationException::withMessages(['driver_id' => 'This vehicle has a named transport driver, separate from pickup/delivery riders.']);
         }
         if ($fleet->assigned_driver_id === $profile->user_id && $profile->vehicle_id === $fleet->id) {
             return;
@@ -141,7 +202,7 @@ class HubFleetService
 
     public static function stateToken(LogisticsFleet $vehicle): string
     {
-        $state = $vehicle->only(['id', 'logistics_company_id', 'hub_id', 'assigned_driver_id', 'plate_number', 'vehicle_type', 'model', 'capacity_kg', 'status', 'restriction_version']);
+        $state = $vehicle->only(['id', 'logistics_company_id', 'hub_id', 'assigned_driver_id', 'transport_driver_id', 'plate_number', 'vehicle_type', 'model', 'capacity_kg', 'status', 'restriction_version']);
         $state['restriction_version'] = (int) ($state['restriction_version'] ?? 0);
 
         return hash('sha256', json_encode($state, JSON_THROW_ON_ERROR));
@@ -206,6 +267,9 @@ class HubFleetService
                         'after_state' => $profile->only(['logistics_company_id', 'assigned_hub_id', 'vehicle_id', 'assigned_barangay']), 'recorded_at' => now()]);
                 }
                 $current->fill([...$data, 'model' => $data['model'] ?? self::DEFAULT_MODELS[$data['vehicle_type']], 'hub_id' => $target->id])->save();
+                if ($moving && $current->transport_driver_id) {
+                    LogisticsTransportDriver::whereKey($current->transport_driver_id)->update(['hub_id' => $target->id]);
+                }
                 $this->assignDriver($actor, $source, $current, $input);
             });
         } catch (UniqueConstraintViolationException $exception) {

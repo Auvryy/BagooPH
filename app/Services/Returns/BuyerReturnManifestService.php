@@ -61,7 +61,8 @@ class BuyerReturnManifestService
             $case = BuyerReturnCase::findOrFail($data['buyer_return_case_id']);
             Order::whereKey($case->order_id)->lockForUpdate()->firstOrFail();
             Delivery::whereKey($case->delivery_id)->lockForUpdate()->firstOrFail();
-            $driverId = LogisticsFleet::whereKey($data['vehicle_id'])->value('assigned_driver_id');
+            $selectedFleet = LogisticsFleet::findOrFail($data['vehicle_id']);
+            $driverId = $selectedFleet->assigned_driver_id;
             $this->eligibility->lockNetwork($company->id, [$actor->id, $driverId], [$data['source_hub_id'], $data['destination_hub_id']]);
             $actor = User::findOrFail($actor->id);
             abort_unless($this->manifests->handlesCargoAtHub($actor, LogisticsHub::findOrFail($data['source_hub_id'])), 403);
@@ -113,10 +114,10 @@ class BuyerReturnManifestService
             $source = LogisticsHub::findOrFail($data['source_hub_id']);
             $destination = LogisticsHub::findOrFail($data['destination_hub_id']);
             $type = $this->manifests->legType($source, $destination);
-            $vehicle = $this->manifests->vehicle($company->id, $source->id, $data['vehicle_id'], $driverId, true, $type);
+            $vehicle = $this->manifests->vehicle($company->id, $source->id, $data['vehicle_id'], $driverId, true, $type, $selectedFleet->transport_driver_id);
             $this->capacity($vehicle, $parcel);
             $manifest = LogisticsManifest::create(['logistics_company_id' => $company->id, 'source_hub_id' => $source->id,
-                'destination_hub_id' => $destination->id, 'vehicle_id' => $vehicle->id, 'driver_id' => $driverId, 'created_by_id' => $actor->id,
+                'destination_hub_id' => $destination->id, 'vehicle_id' => $vehicle->id, 'driver_id' => $driverId, 'transport_driver_id' => $vehicle->transport_driver_id, 'transport_driver_name' => $vehicle->transportDriver?->name, 'created_by_id' => $actor->id,
                 'creation_token' => $data['creation_token'], 'creation_fingerprint' => $fingerprint, 'direction' => 'buyer_return', 'type' => $type,
                 'status' => 'draft', 'version' => 1]);
             if ($recovery) {
@@ -244,16 +245,16 @@ class BuyerReturnManifestService
                         throw new DomainException('Depart this recovery through its dedicated vehicle trip with actual package readings and sack or loose-cargo checks.');
                     }
                     $this->ready($manifest, $case, $parcel, $member);
-                    $vehicle = $this->manifests->vehicle($manifest->logistics_company_id, $manifest->source_hub_id, $manifest->vehicle_id, $manifest->driver_id, true, $manifest->type);
+                    $vehicle = $this->manifests->vehicle($manifest->logistics_company_id, $manifest->source_hub_id, $manifest->vehicle_id, $manifest->driver_id, true, $manifest->type, $manifest->transport_driver_id);
                     $this->capacity($vehicle, $parcel);
                     if (LogisticsManifest::awaitingPhysicalReceipt()->whereKeyNot($manifest->id)
                         ->whereNotIn('id', app(LogisticsTripService::class)->departingManifestIds())
-                        ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->orWhere('driver_id', $manifest->driver_id))->exists()) {
+                        ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->when($manifest->driver_id, fn ($q) => $q->orWhere('driver_id', $manifest->driver_id))->when($manifest->transport_driver_id, fn ($q) => $q->orWhere('transport_driver_id', $manifest->transport_driver_id)))->exists()) {
                         throw new DomainException('This driver or vehicle already has transport in progress.');
                     }
                     $manifest->fill(['status' => 'dispatched', 'dispatched_at' => now(), 'dispatcher_id' => $actor->id]);
                     $parcel->fill(['status' => 'in_transit', 'current_hub_id' => null,
-                        'custody' => ['kind' => 'manifest', 'manifest_id' => $manifest->id, 'driver_id' => $manifest->driver_id]]);
+                        'custody' => ['kind' => 'manifest', 'manifest_id' => $manifest->id, 'driver_id' => $manifest->driver_id, 'transport_driver_id' => $manifest->transport_driver_id, 'transport_driver_name' => $manifest->transport_driver_name]]);
                     $cargo = app(BuyerReturnCargoService::class);
                     $handling = $cargo->reading($parcel) ? $cargo->profile($parcel) : null;
                     $payload += ['return_member_id' => $member->id,

@@ -120,7 +120,7 @@ class LogisticsPlacementService
             }
             $fleet = LogisticsFleet::whereIn('id', array_filter([$profile->vehicle_id, $vehicleId]))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $vehicle = $vehicleId ? $fleet->get($vehicleId) : null;
-            if ($vehicleId && (! $vehicle || ! LogisticsFleet::ready()->whereKey($vehicleId)->exists()
+            if ($vehicleId && (! $vehicle || $vehicle->transport_driver_id !== null || ! LogisticsFleet::ready()->whereKey($vehicleId)->exists()
                 || $vehicle->logistics_company_id !== $company->id || $vehicle->hub_id !== $hub->id
                 || ($vehicle->assigned_driver_id && $vehicle->assigned_driver_id !== $courier->id)
                 || CourierProfile::where('vehicle_id', $vehicleId)->where('user_id', '!=', $courier->id)->exists())) {

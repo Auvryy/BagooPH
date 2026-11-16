@@ -51,7 +51,7 @@ class LogisticsTripService
                 return $previous;
             }
             foreach ($manifests as $manifest) {
-                foreach (['logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'type'] as $key) {
+                foreach (['logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'transport_driver_id', 'type'] as $key) {
                     if ($manifest->$key !== $first->$key) {
                         throw new DomainException('Co-loaded manifests must share the exact company, next hub, source, vehicle and driver.');
                     }
@@ -62,8 +62,8 @@ class LogisticsTripService
                 }
             }
             $capacity = $this->capacity($manifests);
-            app(LogisticsManifestService::class)->vehicle($first->logistics_company_id, $first->source_hub_id, $first->vehicle_id, $first->driver_id, true, $first->type);
-            $trip = LogisticsTransportTrip::create($first->only(['logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id'])
+            app(LogisticsManifestService::class)->vehicle($first->logistics_company_id, $first->source_hub_id, $first->vehicle_id, $first->driver_id, true, $first->type, $first->transport_driver_id);
+            $trip = LogisticsTransportTrip::create($first->only(['logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'transport_driver_id', 'transport_driver_name'])
                 + ['created_by_id' => $actor->id, 'creation_token' => $data['request_token'], 'creation_fingerprint' => $fingerprint, 'status' => 'ready', 'version' => 1]);
             foreach ($manifests as $manifest) {
                 DB::table('logistics_trip_manifests')->insert(['trip_id' => $trip->id, 'manifest_id' => $manifest->id,
@@ -99,7 +99,7 @@ class LogisticsTripService
                 $context['capacity'] = $this->capacity($manifests);
                 app(BuyerReturnBagService::class)->assertReady($trip);
                 $first = $manifests->firstOrFail();
-                app(LogisticsManifestService::class)->vehicle($trip->logistics_company_id, $trip->source_hub_id, $trip->vehicle_id, $trip->driver_id, true, $first->type);
+                app(LogisticsManifestService::class)->vehicle($trip->logistics_company_id, $trip->source_hub_id, $trip->vehicle_id, $trip->driver_id, true, $first->type, $trip->transport_driver_id);
                 $this->departing = $manifests->pluck('id')->all();
                 try {
                     foreach ($manifests as $manifest) {

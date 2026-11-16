@@ -303,7 +303,7 @@ class RiderCompanyOfferService
             'Choose a covered barangay at the selected Bayan Hub, or leave it unassigned.');
         if ($vehicleId !== null) {
             $vehicle = LogisticsFleet::ready()->whereKey($vehicleId)->where('logistics_company_id', $company->id)
-                ->where('hub_id', $hubId)->whereNull('assigned_driver_id')->first();
+                ->where('hub_id', $hubId)->whereNull('assigned_driver_id')->whereNull('transport_driver_id')->first();
             abort_unless($vehicle && ! CourierProfile::where('vehicle_id', $vehicleId)->exists(), 409,
                 'That vehicle is unavailable at the chosen facility.');
         }
@@ -483,7 +483,7 @@ class RiderCompanyOfferService
             'hubs' => LogisticsHub::eligible()->where('logistics_company_id', $company->id)->when($hubId, fn ($q) => $q->whereKey($hubId))->orderBy('name')->get()
                 ->map(fn ($hub) => ['id' => (string) $hub->id, 'name' => $hub->name, 'tier' => $hub->tier,
                     'barangays' => $hub->isBayanHub() ? ($hub->coverage_barangays ?? []) : []]),
-            'vehicles' => LogisticsFleet::ready()->where('logistics_company_id', $company->id)->when($hubId, fn ($q) => $q->where('hub_id', $hubId))->whereNull('assigned_driver_id')
+            'vehicles' => LogisticsFleet::ready()->where('logistics_company_id', $company->id)->when($hubId, fn ($q) => $q->where('hub_id', $hubId))->whereNull('assigned_driver_id')->whereNull('transport_driver_id')
                 ->whereNotIn('id', CourierProfile::whereNotNull('vehicle_id')->select('vehicle_id'))->orderBy('plate_number')->get()->map(fn ($vehicle) => [
                     'id' => (string) $vehicle->id, 'hub_id' => (string) $vehicle->hub_id, 'plate' => $vehicle->plate_number])];
     }

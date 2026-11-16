@@ -155,7 +155,7 @@ class LogisticsEligibilityService
         $busy = fn () => Delivery::query()->whereRaw("deliveries.status in ({$statuses})", Delivery::RIDER_ACTIVE_STATUSES)->withoutReceivedFailure();
 
         return $query->where('logistics_company_id', $hub->logistics_company_id)->where('assigned_hub_id', $hub->id)
-            ->whereNotIn('user_id', LogisticsManifest::awaitingPhysicalReceipt()->select('driver_id'))
+            ->whereNotIn('user_id', LogisticsManifest::awaitingPhysicalReceipt()->whereNotNull('driver_id')->select('driver_id'))
             ->whereNotIn('user_id', $busy()->whereNotNull('courier_id')->select('courier_id'))
             ->whereNotIn('user_id', $busy()->whereNotNull('assigned_rider_id')->select('assigned_rider_id'));
     }

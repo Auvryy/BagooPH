@@ -5,6 +5,7 @@ namespace App\Services\Logistics;
 use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsTransportDriver;
 use App\Models\User;
 use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Orders\OrderCancellationService;
@@ -58,8 +59,11 @@ class ParcelCustodyGuard
         }
     }
 
-    public function independentTransport(User $actor, ?int $driverId): void
+    public function independentTransport(User $actor, ?int $driverId, ?int $transportDriverId = null): void
     {
+        if ($transportDriverId !== null && $driverId === null && LogisticsTransportDriver::eligible()->whereKey($transportDriverId)->exists()) {
+            return;
+        }
         if (! $driverId || $driverId === $actor->id || ! User::whereKey($driverId)->where('role', 'courier')->exists()) {
             throw new DomainException('A separate named courier driver must hold this transport handover. Hub operators cannot acknowledge their own vehicle handover.');
         }

@@ -73,7 +73,7 @@ class LogisticsMotherBagController extends Controller
                 'source_hub_id' => $manifest->source_hub_id,
                 'destination_hub_id' => $manifest->destination_hub_id,
                 'vehicle_plate' => $manifest->vehicle?->plate_number,
-                'driver_name' => $manifest->driver?->name,
+                'driver_name' => $manifest->driverName(),
             ])
             ->values();
 

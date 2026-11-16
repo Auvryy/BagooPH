@@ -620,7 +620,7 @@ class LogisticsHubWorkstationController extends Controller
         $fleet->register($request->user(), $hub, $request->all());
 
         return redirect()->route('hub.fleet', ['hub_id' => $hub->id])
-            ->with('success', 'Vehicle added. An assigned driver must be on duty before dispatch.');
+            ->with('success', 'Vehicle added. A named transport driver makes an active truck or van available for dispatch.');
     }
 
     public function updateFleet(Request $request, LogisticsFleet $vehicle, HubFleetService $fleet): RedirectResponse
@@ -666,7 +666,8 @@ class LogisticsHubWorkstationController extends Controller
                 'id' => $f->id,
                 'hub_id' => $f->hub_id,
                 'assigned_driver_id' => $f->assigned_driver_id,
-                'driver_on_duty' => (bool) $driver?->courierProfile?->is_available,
+                'transport_driver_id' => $f->transport_driver_id,
+                'driver_on_duty' => $f->transport_driver_id ? $f->transportDriver?->status === 'active' : (bool) $driver?->courierProfile?->is_available,
                 'edit_token' => HubFleetService::stateToken($f),
                 'plate_number' => $f->plate_number,
                 'vehicle_type' => $f->vehicle_type,
@@ -675,8 +676,8 @@ class LogisticsHubWorkstationController extends Controller
                 'status' => $f->status,
                 'hub_name' => $f->hub?->name ?? 'Unassigned Hub',
                 'hub_code' => $f->hub?->code ?? 'N/A',
-                'driver_name' => $driver?->name ?? 'Unassigned Driver',
-                'driver_phone' => $driver?->phone ?? 'N/A',
+                'driver_name' => $f->transportDriver?->name ?? $driver?->name ?? 'Unassigned Driver',
+                'driver_phone' => $f->transportDriver?->phone ?? $driver?->phone ?? 'N/A',
                 'driver_email' => $driver?->email ?? 'N/A',
             ];
         });
@@ -692,6 +693,7 @@ class LogisticsHubWorkstationController extends Controller
         return Inertia::render('Hub/Fleet', [
             'canRegisterVehicle' => $activeHub && app(HubFleetService::class)->canRegister($user, $activeHub),
             'vehicleDefaults' => HubFleetService::DEFAULT_CAPACITIES,
+            'transportDrivers' => $activeHub ? app(HubFleetService::class)->transportDrivers($user, $activeHub) : [],
             'drivers' => $activeHub ? app(HubFleetService::class)->drivers($user, $activeHub) : [],
             'assignmentHubs' => $activeHub ? app(HubFleetService::class)->destinations($user, $activeHub)->map(fn ($hub) => ['id' => $hub->id, 'name' => $hub->name, 'code' => $hub->code, 'tier' => $hub->tier]) : [],
             'activeHub' => $activeHub,

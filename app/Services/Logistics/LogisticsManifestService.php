@@ -12,6 +12,7 @@ use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsManifestParcel;
+use App\Models\LogisticsTransportDriver;
 use App\Models\MotherBag;
 use App\Models\MotherBagParcel;
 use App\Models\Order;
@@ -100,7 +101,8 @@ class LogisticsManifestService
                 $recoveryParcel = Delivery::whereKey($recovery->delivery_id)->lockForUpdate()->firstOrFail();
                 $recoveryParcel->setRelation('order', $order);
             }
-            $driverId = LogisticsFleet::whereKey($input['vehicle_id'])->value('assigned_driver_id');
+            $selectedFleet = LogisticsFleet::findOrFail($input['vehicle_id']);
+            $driverId = $selectedFleet->assigned_driver_id;
             $this->eligibility->lockNetwork($company->id, [$actor->id, $driverId], [$input['source_hub_id'], $input['destination_hub_id'], ...($recovery?->hub_ids ?? [])]);
             $actor = User::findOrFail($actor->id);
             if (! $this->handlesCargoAtHub($actor, LogisticsHub::findOrFail($input['source_hub_id']))) {
@@ -135,10 +137,10 @@ class LogisticsManifestService
             $source = LogisticsHub::findOrFail($input['source_hub_id']);
             $destination = LogisticsHub::findOrFail($input['destination_hub_id']);
             $type = $this->legType($source, $destination);
-            $vehicle = $this->vehicle($company->id, $source->id, (int) $input['vehicle_id'], $driverId, newWork: true, legType: $type);
+            $vehicle = $this->vehicle($company->id, $source->id, (int) $input['vehicle_id'], $driverId, newWork: true, legType: $type, transportDriverId: $selectedFleet->transport_driver_id);
             $manifest = LogisticsManifest::create([
                 'logistics_company_id' => $company->id, 'source_hub_id' => $source->id, 'destination_hub_id' => $destination->id,
-                'vehicle_id' => $vehicle->id, 'driver_id' => $driverId, 'created_by_id' => $actor->id,
+                'vehicle_id' => $vehicle->id, 'driver_id' => $driverId, 'transport_driver_id' => $vehicle->transport_driver_id, 'transport_driver_name' => $vehicle->transportDriver?->name, 'created_by_id' => $actor->id,
                 'creation_token' => $input['creation_token'], 'creation_fingerprint' => $fingerprint, 'type' => $type, 'direction' => $input['direction'],
                 'status' => 'draft', 'version' => 1,
                 'parcel_recovery_case_id' => $recovery?->id, 'recovery_leg_index' => $recovery?->leg_index,
@@ -338,12 +340,12 @@ class LogisticsManifestService
                     $this->requireStatus($manifest, 'sealed');
                     $this->verifyList($manifest, $deliveries);
                     app(MotherBagService::class)->assertManifest($manifest, $deliveries->only($manifest->parcels()->where('included', true)->pluck('delivery_id')->all()));
-                    $vehicle = $this->vehicle($manifest->logistics_company_id, $manifest->source_hub_id, $manifest->vehicle_id, $manifest->driver_id, newWork: true, legType: $manifest->type);
+                    $vehicle = $this->vehicle($manifest->logistics_company_id, $manifest->source_hub_id, $manifest->vehicle_id, $manifest->driver_id, newWork: true, legType: $manifest->type, transportDriverId: $manifest->transport_driver_id);
                     $manifest->setRelation('vehicle', $vehicle);
                     app(CargoHandlingService::class)->assertManifestCapacity($manifest);
                     if (LogisticsManifest::awaitingPhysicalReceipt()->whereKeyNot($manifest->id)
                         ->whereNotIn('id', app(LogisticsTripService::class)->departingManifestIds())
-                        ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->orWhere('driver_id', $manifest->driver_id))->exists()) {
+                        ->where(fn ($query) => $query->where('vehicle_id', $vehicle->id)->when($manifest->driver_id, fn ($q) => $q->orWhere('driver_id', $manifest->driver_id))->when($manifest->transport_driver_id, fn ($q) => $q->orWhere('transport_driver_id', $manifest->transport_driver_id)))->exists()) {
                         throw new DomainException('This vehicle or driver already has a manifest in transit.');
                     }
                     $manifest->fill(['status' => 'dispatched', 'dispatched_at' => now(), 'dispatcher_id' => $actor->id])->save();
@@ -864,8 +866,26 @@ class LogisticsManifestService
         }
     }
 
-    public function vehicle(int $companyId, int $hubId, int $vehicleId, ?int $driverId, bool $newWork, string $legType): LogisticsFleet
+    public function vehicle(int $companyId, int $hubId, int $vehicleId, ?int $driverId, bool $newWork, string $legType, ?int $transportDriverId = null): LogisticsFleet
     {
+        $fleet = LogisticsFleet::whereKey($vehicleId)->lockForUpdate()->first();
+        if ($transportDriverId !== null) {
+            $driver = LogisticsTransportDriver::whereKey($transportDriverId)->lockForUpdate()->first();
+            if ($driverId !== null || ! $fleet || $fleet->transport_driver_id !== $transportDriverId
+                || $fleet->assigned_driver_id !== null || $fleet->logistics_company_id !== $companyId || $fleet->hub_id !== $hubId
+                || ! $driver || ! LogisticsTransportDriver::eligible()->whereKey($driver->id)->exists()
+                || $driver->logistics_company_id !== $companyId || $driver->hub_id !== $hubId
+                || ! LogisticsFleet::ready()->whereKey($fleet->id)->exists()
+                || $fleet->vehicle_type !== ($legType === 'line_haul' ? 'wing_truck' : 'l300_van')) {
+                throw new DomainException('Choose an active source-hub truck or van with its named company transport driver.');
+            }
+            if ($newWork && ! app(LogisticsTripService::class)->departingVehicle($vehicleId)
+                && LogisticsManifest::awaitingPhysicalReceipt()->where(fn ($q) => $q->where('vehicle_id', $vehicleId)->orWhere('transport_driver_id', $transportDriverId))->exists()) {
+                throw new DomainException('This truck or transport driver is still carrying an unreceived transfer.');
+            }
+
+            return $fleet;
+        }
         $profile = $driverId ? CourierProfile::where('user_id', $driverId)->lockForUpdate()->first() : null;
         $vehicle = LogisticsFleet::whereKey($vehicleId)->lockForUpdate()->first();
         if (! $vehicle || ! $driverId || $vehicle->assigned_driver_id !== $driverId || $vehicle->logistics_company_id !== $companyId

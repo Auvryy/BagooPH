@@ -103,17 +103,15 @@ class DispatchStagingService
         if (! in_array($type, ['l300_van', 'wing_truck'], true)) {
             return null;
         }
-        $vehicles = LogisticsFleet::ready()->where('logistics_company_id', $hub->logistics_company_id)
-            ->where('hub_id', $hub->id)->where('vehicle_type', $type)->whereNotNull('assigned_driver_id')
+        $vehicles = LogisticsFleet::dispatchReady()->where('logistics_company_id', $hub->logistics_company_id)
+            ->where('hub_id', $hub->id)->where('vehicle_type', $type)
             ->where('capacity_kg', '>', 0)->where('capacity_kg', '>=', $weightKg)
-            ->whereHas('driver.courierProfile', fn ($q) => $q->operational()->where('is_available', true))
             ->whereNotIn('id', LogisticsManifest::where(fn ($query) => $query->where('status', 'sealed')->orWhere(fn ($query) => $query->awaitingPhysicalReceipt()))->select('vehicle_id'))
-            ->whereNotIn('assigned_driver_id', LogisticsManifest::where(fn ($query) => $query->where('status', 'sealed')->orWhere(fn ($query) => $query->awaitingPhysicalReceipt()))->select('driver_id'))
             ->with('driver')->orderBy('capacity_kg')->orderBy('id')->get();
-        $vehicle = $vehicles->first(fn ($fleet) => ! Delivery::riderHasActiveWork($fleet->assigned_driver_id));
+        $vehicle = $vehicles->first(fn ($fleet) => ! $fleet->hasBusyCourier());
 
         return $vehicle ? ['id' => $vehicle->id, 'plate_number' => $vehicle->plate_number, 'vehicle_type' => $vehicle->vehicle_type,
             'model' => $vehicle->model, 'capacity_kg' => $vehicle->capacity_kg,
-            'driver_id' => $vehicle->assigned_driver_id, 'driver_name' => $vehicle->driver->name] : null;
+            'driver_id' => $vehicle->assigned_driver_id, 'driver_name' => $vehicle->driverName()] : null;
     }
 }
