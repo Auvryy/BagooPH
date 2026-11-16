@@ -647,8 +647,6 @@ Route::middleware(AdvertisementResponseHeaders::class)->group(function () {
     Route::get('/advertisement/{slug}', [BuyerAdvertisementController::class, 'visit'])->name('advertisements.visit');
     Route::get('/promotions/{slug}', [BuyerAdvertisementController::class, 'show'])->name('promotions.show');
 });
-Route::get('/overview', [MarketplaceController::class, 'index'])->name('overview');
-Route::get('/about', [MarketplaceController::class, 'index'])->name('about');
 
 /*
 |--------------------------------------------------------------------------

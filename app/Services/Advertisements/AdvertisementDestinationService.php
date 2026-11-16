@@ -130,7 +130,7 @@ class AdvertisementDestinationService
 
         return [
             'products' => Product::availableForSale()->where('status', 'active')->where('stock', '>', 0)->orderBy('name')
-                ->get(['id', 'name', 'shop_id'])->map(fn ($product) => ['id' => $product->id, 'name' => $product->name, 'shop_id' => $product->shop_id]),
+                ->get(['id', 'name', 'shop_id', 'category_id'])->map(fn ($product) => ['id' => $product->id, 'name' => $product->name, 'shop_id' => $product->shop_id, 'category_id' => $product->category_id]),
             'shops' => Shop::eligible()->orderBy('name')->get(['id', 'name']),
             'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'offers' => $offers->map(fn ($voucher) => ['id' => $voucher->current_revision_id, 'name' => $voucher->currentRevision->name,

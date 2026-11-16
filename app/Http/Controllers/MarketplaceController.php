@@ -22,59 +22,6 @@ use Inertia\Response;
 
 class MarketplaceController extends Controller
 {
-    public function index(Request $request): Response
-    {
-        $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category'])->availableForSale()->withReviewSummary()
-            ->where('status', 'active');
-
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('category')) {
-            $query->whereHas('category', function ($q) use ($request) {
-                $q->where('slug', $request->input('category'));
-            });
-        }
-
-        if ($request->filled('sort')) {
-            switch ($request->input('sort')) {
-                case 'price_low':
-                    $query->orderBy('price', 'asc');
-                    break;
-                case 'price_high':
-                    $query->orderBy('price', 'desc');
-                    break;
-                case 'popular':
-                    $query->orderBy('sales_count', 'desc');
-                    break;
-                case 'rating':
-                    $query->orderBy('verified_rating', 'desc');
-                    break;
-                default:
-                    $query->latest();
-                    break;
-            }
-        } else {
-            $query->latest();
-        }
-
-        $products = $query->paginate(12)->withQueryString();
-        $categories = Category::where('is_active', true)->withCount('products')->get();
-        $featuredShops = Shop::eligible()->withReviewSummary()->withCount('products')->take(4)->get();
-
-        return Inertia::render('Marketplace/Index', [
-            'products' => $products,
-            'categories' => $categories,
-            'featuredShops' => $featuredShops,
-            'filters' => $request->only(['search', 'category', 'sort']),
-        ]);
-    }
-
     public function catalog(Request $request): Response
     {
         $query = Product::with(['shop' => fn ($shops) => $shops->withReviewSummary(), 'category', 'images'])->availableForSale()->withReviewSummary()

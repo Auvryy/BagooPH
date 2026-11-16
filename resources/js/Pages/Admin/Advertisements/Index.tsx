@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ImagePlus, Plus } from 'lucide-react';
+import { ChevronRight, ImagePlus, Plus } from 'lucide-react';
+import { Badge, type BadgeTone } from '@/Components/ui';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { AdvertisementSummary, Pagination, dateLabel, slotLabel, stateLabel, reviewLabel } from '@/types/advertisements';
 
@@ -14,6 +15,9 @@ export default function Advertisements({ advertisements, available, displayEnabl
     const [pending, setPending] = useState(false);
     const [error, setError] = useState('');
     const search = (event: FormEvent) => { event.preventDefault(); form.get(baseUrl, { preserveState: true, preserveScroll: true }); };
+    // Dropdown filters apply immediately; only the text search waits for Enter.
+    const pick = (key: 'state' | 'scope' | 'review', value: string) => router.get(baseUrl, { ...form.data, [key]: value }, { preserveState: true, preserveScroll: true, replace: true });
+    const tone = (state: string): BadgeTone => state === 'live' ? 'success' : state === 'scheduled' ? 'info' : ['paused', 'unavailable'].includes(state) ? 'warning' : 'neutral';
     const importArtwork = (artwork: string) => {
         setPending(true); setError('');
         router.post(`${baseUrl}/import`, { artwork, source_version: 0, request_key: crypto.randomUUID() }, {
@@ -29,26 +33,26 @@ export default function Advertisements({ advertisements, available, displayEnabl
             {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
             <form onSubmit={search} className="flex flex-wrap items-end gap-3">
                 <label className="text-sm font-semibold">Find an advertisement<input value={form.data.search} maxLength={80} onChange={(e) => form.setData('search', e.target.value)} className="mt-1 block rounded-lg border-slate-300" placeholder="Search titles" /></label>
-                <label className="text-sm font-semibold">Display state<select value={form.data.state} onChange={(e) => form.setData('state', e.target.value)} className="mt-1 block rounded-lg border-slate-300">
+                <label className="text-sm font-semibold">Display state<select value={form.data.state} onChange={(e) => { form.setData('state', e.target.value); pick('state', e.target.value); }} className="mt-1 block rounded-lg border-slate-300">
                     {['all', 'draft', 'live', 'scheduled', 'paused', 'ended', 'archived', 'unavailable'].map((state) => <option key={state} value={state}>{stateLabel(state)}</option>)}
                 </select></label>
-                <label className="text-sm font-semibold">Source<select value={form.data.scope} onChange={(e) => form.setData('scope', e.target.value)} className="mt-1 block rounded-lg border-slate-300"><option value="all">All advertisements</option><option value="platform">Platform editorial</option><option value="seller">Seller proposals</option></select></label>
-                <label className="text-sm font-semibold">Seller review<select value={form.data.review} onChange={(e) => form.setData('review', e.target.value)} className="mt-1 block rounded-lg border-slate-300"><option value="all">All review states</option>{['pending', 'approved', 'changes_requested', 'rejected', 'withdrawn', 'superseded', 'not_submitted'].map((state) => <option key={state} value={state}>{reviewLabel(state)}</option>)}</select></label>
-                <button disabled={form.processing} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold">Apply filters</button>
+                <label className="text-sm font-semibold">Source<select value={form.data.scope} onChange={(e) => { form.setData('scope', e.target.value); pick('scope', e.target.value); }} className="mt-1 block rounded-lg border-slate-300"><option value="all">All advertisements</option><option value="platform">Platform editorial</option><option value="seller">Seller proposals</option></select></label>
+                <label className="text-sm font-semibold">Seller review<select value={form.data.review} onChange={(e) => { form.setData('review', e.target.value); pick('review', e.target.value); }} className="mt-1 block rounded-lg border-slate-300"><option value="all">All review states</option>{['pending', 'approved', 'changes_requested', 'rejected', 'withdrawn', 'superseded', 'not_submitted'].map((state) => <option key={state} value={state}>{reviewLabel(state)}</option>)}</select></label>
+                <button disabled={form.processing} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold">Search</button>
                 {Object.values(form.errors).map((message) => <p role="alert" key={message} className="text-sm text-red-700">{message}</p>)}
             </form>
-            {advertisements.data.length ? <div className="grid gap-4 xl:grid-cols-2">{advertisements.data.map((ad) => <article key={ad.id} className="flex flex-col gap-4 rounded-lg border border-slate-300 bg-white p-4 sm:flex-row">
+            {advertisements.data.length ? <div className="grid gap-4 xl:grid-cols-2">{advertisements.data.map((ad) => <Link href={`${baseUrl}/${ad.id}`} key={ad.id} className="group flex flex-col gap-4 rounded-lg border border-slate-300 bg-white p-4 transition-colors hover:border-[#E00D42] sm:flex-row sm:items-center">
                 {ad.image && <img src={ad.image} alt="" width={1880} height={880} className="h-auto w-full self-start sm:w-40" />}
                 <div className="min-w-0 flex-1 space-y-2">
-                    <Link href={`${baseUrl}/${ad.id}`} className="font-bold text-slate-900 hover:text-[#E00D42]">{ad.title}</Link>
-                    <p className="text-xs font-semibold text-slate-600">{stateLabel(ad.state)}{ad.has_draft ? ' · Unpublished draft' : ''} · {slotLabel(ad.slot)}</p>
+                    <p className="font-bold text-slate-900 group-hover:text-[#E00D42]">{ad.title}</p>
+                    <p className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600"><Badge tone={tone(ad.state)}>{stateLabel(ad.state)}</Badge>{ad.has_draft ? 'Unpublished draft · ' : ''}{slotLabel(ad.slot)}</p>
                     {ad.owner_type === 'seller' && <p className="text-xs font-semibold text-slate-600">Seller proposal · {ad.shop_name} · Review: {reviewLabel(ad.review_state)}</p>}
                     <p className="text-xs text-slate-500">{ad.creator} · {ad.target.label ?? 'Choose a destination'}</p>
                     <p className="text-xs text-slate-500">{dateLabel(ad.starts_at)} – {dateLabel(ad.ends_at)} (Manila)</p>
                     {ad.reason && <p className="text-xs text-amber-800">{ad.reason}</p>}
-                    <Link href={`${baseUrl}/${ad.id}`} className="inline-block text-sm font-semibold text-[#E00D42] underline">Manage advertisement</Link>
                 </div>
-            </article>)}</div> : <div className="flex min-h-56 flex-col items-center justify-center rounded-lg border border-slate-300 bg-white px-6 text-center">
+                <ChevronRight className="hidden h-5 w-5 shrink-0 text-slate-400 group-hover:text-[#E00D42] sm:block" aria-hidden="true" />
+            </Link>)}</div> : <div className="flex min-h-56 flex-col items-center justify-center rounded-lg border border-slate-300 bg-white px-6 text-center">
                 <ImagePlus className="mb-3 h-8 w-8 text-slate-400" /><h2 className="font-bold">No advertisements found</h2><p className="mt-2 max-w-md text-sm text-slate-500">Create a draft or adjust your filters. Buyers continue to see the normal product catalogue when no promotions are live.</p>
             </div>}
             <nav aria-label="Advertisement pages" className="flex items-center justify-between text-sm">

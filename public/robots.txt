@@ -5,7 +5,6 @@ Allow: /buyer/search
 Allow: /buyer/product/
 Allow: /shop/
 Allow: /seller
-Allow: /overview
 Allow: /about
 Allow: /track
 

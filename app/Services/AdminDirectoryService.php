@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Enums\UserRole;
+use App\Models\Category;
 use App\Models\Product;
+use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -43,11 +45,30 @@ class AdminDirectoryService
     {
         $filters = Validator::make($input, [
             'page' => ['nullable', 'integer', 'min:1', 'max:1000000', 'regex:/^[1-9][0-9]*$/D'],
+            'search' => ['nullable', 'string', 'max:100'],
+            'shop' => ['nullable', 'integer', 'min:1'],
+            'category' => ['nullable', 'integer', 'min:1'],
+            'status' => ['nullable', 'in:active,draft'],
+            'compliance' => ['nullable', 'in:allowed,restricted'],
+            'stock' => ['nullable', 'in:out,low'],
         ])->validate();
+        // Filters narrow the list so admins never page through every listing to find one.
+        $query = Product::with(['shop:id,name', 'category:id,name'])
+            ->when(filled($filters['search'] ?? null), fn (Builder $q) => $q->where('name', 'like', '%'.addcslashes(trim($filters['search']), '%_\\').'%'))
+            ->when(filled($filters['shop'] ?? null), fn (Builder $q) => $q->where('shop_id', (int) $filters['shop']))
+            ->when(filled($filters['category'] ?? null), fn (Builder $q) => $q->where('category_id', (int) $filters['category']))
+            ->when(filled($filters['status'] ?? null), fn (Builder $q) => $q->where('status', $filters['status']))
+            ->when(($filters['compliance'] ?? null) === 'restricted', fn (Builder $q) => $q->where('compliance_restricted', true))
+            ->when(($filters['compliance'] ?? null) === 'allowed', fn (Builder $q) => $q->where('compliance_restricted', false))
+            ->when(($filters['stock'] ?? null) === 'out', fn (Builder $q) => $q->where('stock', '<=', 0))
+            ->when(($filters['stock'] ?? null) === 'low', fn (Builder $q) => $q->whereBetween('stock', [1, 5]));
 
         return [
-            'products' => fn () => $this->paginate(Product::with(['shop:id,name', 'category:id,name']), $filters, $path,
+            'products' => fn () => $this->paginate($query, $filters, $path,
                 ['id', 'name', 'shop_id', 'category_id', 'stock', 'price', 'status', 'compliance_restricted']),
+            'filters' => array_intersect_key($filters, array_flip(['search', 'shop', 'category', 'status', 'compliance', 'stock'])),
+            'shops' => fn () => Shop::query()->orderBy('name')->get(['id', 'name']),
+            'categories' => fn () => Category::query()->orderBy('name')->get(['id', 'name']),
             'moderationBaseUrl' => $path,
         ];
     }

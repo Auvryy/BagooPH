@@ -86,7 +86,7 @@ class AdvertisementAssetService
             $this->invalid('Use an image at least 940 x 440 pixels, no more than 4096 pixels on either edge and no more than 16 megapixels.');
         }
         if (abs(($width / $height) / (47 / 22) - 1) > 0.01) {
-            $this->invalid('Use the 47:22 banner shape, such as 1880 x 880 pixels. The image will not be cropped automatically.');
+            $this->invalid('Use the 47:22 banner shape, such as 1880 x 880 pixels. Choose the image again to crop it to that shape.');
         }
 
         return ['mime' => $info['mime'], 'type' => $info[2], 'width' => $width, 'height' => $height,

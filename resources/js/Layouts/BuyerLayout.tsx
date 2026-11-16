@@ -188,10 +188,6 @@ export default function BuyerLayout({
                             <Truck className="w-3.5 h-3.5 text-emerald-300" />
                             <span>Courier Fleet</span>
                         </a>
-                        <span className="text-white/30 hidden sm:inline">|</span>
-                        <Link href="/overview" className="hover:text-white transition flex items-center gap-1 text-white/80 hidden sm:inline">
-                            <span>Platform Showcase</span>
-                        </Link>
                     </div>
 
                     <div className="flex items-center gap-4 text-white/90 font-medium">
@@ -572,7 +568,6 @@ export default function BuyerLayout({
                         <ul className="space-y-2 text-slate-500">
                             {user?.role === 'buyer' && !hideCustomerCare && <li><CustomerServiceAssistant onOpenMessages={() => router.visit(route('buyer.messages'))} /></li>}
                             <li><a href={adminUrl} className="hover:text-slate-900 text-slate-600 text-xs">Admin Governance Console</a></li>
-                            <li><Link href="/overview" className="hover:text-[#E00D42]">Platform Architecture</Link></li>
                             <li><a href="/terms" className="hover:text-[#E00D42]">Terms of Use</a></li>
                             <li><a href="/privacy" className="hover:text-[#E00D42]">Privacy Notice</a></li>
                             <li><span className="text-slate-400">Strict KYC Compliance Verified</span></li>

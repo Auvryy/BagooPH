@@ -63,6 +63,27 @@ class ProductModerationTest extends TestCase
         return $cases;
     }
 
+    public function test_admin_product_list_filters_by_name_shop_category_status_compliance_and_stock(): void
+    {
+        [$admin, , $shop, $product] = $this->listing();
+        $product->update(['name' => 'Vintage Vinyl Record', 'stock' => 0]);
+        $other = Shop::factory()->approved()->create();
+        Product::factory()->create(['shop_id' => $other->id, 'category_id' => $other->root_category_id, 'name' => 'Desk Lamp',
+            'status' => 'draft', 'stock' => 3, 'variants' => null, 'compliance_restricted' => true]);
+        $names = fn (array $query) => collect($this->actingAs($admin)->get('/admin/products?'.http_build_query($query))->assertOk()
+            ->viewData('page')['props']['products']['data'])->pluck('name')->all();
+
+        $this->assertSame(['Vintage Vinyl Record'], $names(['search' => 'vinyl']));
+        $this->assertSame(['Vintage Vinyl Record'], $names(['shop' => $shop->id]));
+        $this->assertSame(['Desk Lamp'], $names(['category' => $other->root_category_id, 'shop' => $other->id]));
+        $this->assertSame(['Desk Lamp'], $names(['status' => 'draft']));
+        $this->assertSame(['Desk Lamp'], $names(['compliance' => 'restricted']));
+        $this->assertSame(['Vintage Vinyl Record'], $names(['stock' => 'out']));
+        $this->assertSame(['Desk Lamp'], $names(['stock' => 'low']));
+        $this->assertSame([], $names(['search' => 'nothing like this']));
+        $this->actingAs($admin)->get('/admin/products?status=deleted')->assertSessionHasErrors('status');
+    }
+
     #[DataProvider('portalStatuses')]
     public function test_reasoned_removal_preserves_seller_state_and_commercial_details(string $host, string $status): void
     {
