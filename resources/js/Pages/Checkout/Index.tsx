@@ -1144,6 +1144,7 @@ export default function CheckoutIndex({
                                             />
                                             <span>I have checked my delivery details and total.</span>
                                         </label>
+                                        <p className="mt-2 text-xs text-ink-600">By placing this order you agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold underline">Terms of Use</a>, including the return and refund rules.</p>
                                     </div>
 
                                     <div className="flex flex-col-reverse gap-3 border-t border-line-200 px-6 py-4 sm:flex-row sm:justify-end">

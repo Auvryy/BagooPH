@@ -573,6 +573,8 @@ export default function BuyerLayout({
                             {user?.role === 'buyer' && !hideCustomerCare && <li><CustomerServiceAssistant onOpenMessages={() => router.visit(route('buyer.messages'))} /></li>}
                             <li><a href={adminUrl} className="hover:text-slate-900 text-slate-600 text-xs">Admin Governance Console</a></li>
                             <li><Link href="/overview" className="hover:text-[#E00D42]">Platform Architecture</Link></li>
+                            <li><a href="/terms" className="hover:text-[#E00D42]">Terms of Use</a></li>
+                            <li><a href="/privacy" className="hover:text-[#E00D42]">Privacy Notice</a></li>
                             <li><span className="text-slate-400">Strict KYC Compliance Verified</span></li>
                         </ul>
                     </div>
