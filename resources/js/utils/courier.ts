@@ -88,7 +88,7 @@ export function selectCourierMapJob(jobs: CourierMapJob[], selectedKey: string |
     return jobs.find((job) => job.key === selectedKey) ?? jobs[0] ?? null;
 }
 
-export function courierPath(path: string, hostname = typeof window === 'undefined' ? '' : window.location.hostname): string {
+export function courierPath(path: string, hostname = typeof window === 'undefined' ? '' : window.location?.hostname ?? ''): string {
     const relative = path.startsWith('/') ? path : `/${path}`;
     return hostname.startsWith('courier.') ? relative : `/courier${relative}`;
 }

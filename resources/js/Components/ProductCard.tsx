@@ -106,14 +106,14 @@ export default function ProductCard({
 
                     {product.shop?.vacation_mode && (
                         <span className="absolute left-1.5 bottom-1.5 z-10 rounded bg-[#F59E0B] text-white px-1.5 py-0.5 text-[9px] font-bold shadow-xs">
-                            On Vacation
+                            On vacation
                         </span>
                     )}
 
                     {isOutOfStock && (
                         <span className="absolute inset-0 bg-slate-800/40 backdrop-blur-[1px] flex items-center justify-center z-10">
                             <span className="bg-[#E00D42] text-white font-bold text-[11px] uppercase px-2.5 py-1 rounded-md tracking-wider shadow-md">
-                                Out of Stock
+                                Out of stock
                             </span>
                         </span>
                     )}

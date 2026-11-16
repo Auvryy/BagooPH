@@ -278,7 +278,7 @@ export default function CheckoutIndex({
         : missingLocation ? 'Delivery province and city are required before matching a logistics company.'
             : missingValidPostal ? 'A valid 4-digit postal code is required for your delivery address to match a logistics hub. Add or edit the postal code in Delivery Address.'
                 : pricing.failure ? pricing.failure
-                    : noServingCompany ? `No available logistics company near ${[data.shipping_city, data.shipping_province].filter(Boolean).join(', ')} (${data.shipping_postal_code})${quote.shops.length > 1 ? ' serves all sellers in your bag' : ' serves this route'}.`
+                    : noServingCompany ? 'Delivery unavailable for this address.'
                         : noSelfPickupHubsForCompany ? `No Bayan Hub self-pickup counter is available near ${[data.shipping_city, data.shipping_province].filter(Boolean).join(', ')} (${data.shipping_postal_code}) for ${selectedCompany?.name}. Choose Doorstep Delivery or another address.`
                             : '';
     const hasInvalidDeliveryLocation = Boolean(errors.shipping_latitude || errors.shipping_longitude);
@@ -287,7 +287,8 @@ export default function CheckoutIndex({
         && (data.delivery_type === 'doorstep' || Boolean(data.pickup_hub_id));
     const canShowQuote = pricing.ready && routeDetailsReady && Boolean(selectedCompany);
     const quoteStatus = pricing.pending ? 'Updating prices, delivery fees and voucher eligibility…'
-        : logisticsUnavailableReason ? logisticsUnavailableReason
+        // The delivery section already explains why; the summary only says what to do next.
+        : logisticsUnavailableReason ? 'Choose another delivery address to continue.'
             : data.delivery_type === 'hub_self_pickup' && !data.pickup_hub_id ? 'Choose a Bayan Hub to check collection coverage.'
                 : !selectedCompany ? 'Choose an eligible logistics company to confirm your delivery total.'
                     : 'Current prices and delivery fees checked.';
@@ -736,6 +737,7 @@ export default function CheckoutIndex({
                                                 )}
 
                                                 <LocationPinPicker
+                                                    compact
                                                     value={data.shipping_latitude !== '' && data.shipping_longitude !== '' && Number.isFinite(Number(data.shipping_latitude)) && Number.isFinite(Number(data.shipping_longitude))
                                                         ? { latitude: Number(data.shipping_latitude), longitude: Number(data.shipping_longitude) } : null}
                                                     onChange={point => { gps.cancel(); setData(previous => ({ ...previous, shipping_latitude: point.latitude, shipping_longitude: point.longitude })); }}

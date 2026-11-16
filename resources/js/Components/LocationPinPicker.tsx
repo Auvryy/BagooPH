@@ -94,10 +94,15 @@ export default function LocationPinPicker({ value, onChange, label = 'Delivery l
         : 'Map tiles could not load. Check your connection and try again.';
     const loadingStatus = value ? 'Loading map… Your pin is still selected.' : 'Loading map…';
 
+    // Instructions and the idle pin state are for screen readers; loading and failure are shown to everyone.
+    const instructions = compact
+        ? 'Use arrow keys to move the map, then press Enter to select your pin.'
+        : 'Click or tap the map to place a pin, then drag it to the address. The map cannot verify that it matches your written address. Keyboard: focus the map and use arrow keys to pan; press Enter to pin its center. Press Tab to reach the zoom controls.';
+
     return <div className="location-pin-picker space-y-2">
-        <p id={instructionsId} className="sr-only">{compact ? 'Use arrow keys to move the map, then press Enter to select your pin.' : 'Click or tap the map to place a pin, then drag it to the address.'}</p>
+        <p id={instructionsId} className="sr-only">{instructions}</p>
         <div ref={container} role="region" aria-label={`${label} map`} aria-describedby={instructionsId} className="relative z-0 isolate h-64 w-full overflow-hidden rounded-xl border border-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42]" />
-        {failed && <p className="text-xs text-rose-600" role="status">{tileFailureStatus}</p>}
+        <p role="status" className={failed ? 'text-xs text-brand-700' : loading ? 'text-xs text-slate-600' : 'sr-only'}>{failed ? tileFailureStatus : loading ? loadingStatus : pinStatus}</p>
         {failed && <button type="button" onClick={() => setAttempt(previous => previous + 1)} className="min-h-[44px] rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Retry map</button>}
     </div>;
 }

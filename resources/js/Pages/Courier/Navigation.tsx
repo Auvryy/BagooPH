@@ -15,6 +15,7 @@ import {
     Truck,
 } from 'lucide-react';
 import CourierLayout from '@/Layouts/CourierLayout';
+import useBodyScrollLock from '@/hooks/useBodyScrollLock';
 import {
     useDynamicCourierNavigation,
     type DynamicNavStop,
@@ -86,6 +87,8 @@ export default function CourierNavigation({
     queues,
 }: NavigationProps) {
     const [isFullscreen, setIsFullscreen] = useState(false);
+    // The full-screen map covers the page; keep the page behind it from scrolling.
+    useBodyScrollLock(isFullscreen);
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<LeafletMap | null>(null);
     const routeLayerRef = useRef<LeafletLayerGroup | null>(null);

@@ -126,9 +126,9 @@ test('seller campaign page separates older recorded uses from verified redemptio
         stats: { campaigns: 2, active: 0, saves: 0, redemptions: 0, legacy_uses: 7, cancelled_allocations: 0,
             budget_cents: 0, committed_cents: 0, spent_cents: 0, released_cents: 0, remaining_cents: 0 } });
     assert.match(html, /New voucher/);
-    assert.match(html, /Save a draft, review its dates and limits, then publish/);
+    assert.match(html, /paid from your shop payout, only when an order with the voucher completes/);
     assert.match(html, /7 older recorded uses/);
-    assert.match(html, /Successful uses/);
+    assert.match(html, /Times used/);
     assert.doesNotMatch(html, /Claims|FREESHIP|Network standard active/);
 });
 

@@ -30,6 +30,7 @@ const overlayHandling = new Map([
     ['resources/js/Pages/Admin/KycQueue.tsx', 'headless-dialog'],
     ['resources/js/Pages/Buyer/OrderDetail.tsx', 'custom-dialog'],
     ['resources/js/Pages/Buyer/ProductDetail.tsx', 'custom-dialog'],
+    ['resources/js/Pages/Courier/Navigation.tsx', 'custom-dialog'],
     ['resources/js/Pages/Buyer/Search.tsx', 'custom-dialog'],
     ['resources/js/Pages/Checkout/Index.tsx', 'headless-dialog'],
     ['resources/js/Pages/Hub/CounterPickup.tsx', 'headless-dialog'],
