@@ -668,7 +668,7 @@ export default function BuyerHome({
                                 onClick={() => setShowFiltersPanel(!showFiltersPanel)}
                                 className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all duration-200 cursor-pointer ${
                                     showFiltersPanel || filters.min_price || filters.max_price || filters.in_stock
-                                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                                        ? 'bg-brand-50 text-brand-700 border-brand-500'
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                                 }`}
                             >

@@ -1022,7 +1022,7 @@ export default function BuyerProfile({
                                             <button
                                                 type="submit"
                                                 disabled={passwordForm.processing}
-                                                className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white font-sans text-xs font-bold uppercase rounded-xl transition shadow-xs"
+                                                className="px-6 py-2.5 border border-line-300 bg-white hover:bg-surface-100 text-ink-900 font-sans text-xs font-bold uppercase rounded-xl transition shadow-xs"
                                             >
                                                 {passwordForm.processing ? 'Updating...' : 'Update Password'}
                                             </button>

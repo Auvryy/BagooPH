@@ -256,7 +256,7 @@ export default function SearchPage({
                                 </div>
                                 <button
                                     type="submit"
-                                    className="w-full py-1.5 bg-slate-900 hover:bg-black text-white rounded-lg font-bold uppercase transition text-[11px]"
+                                    className="w-full py-1.5 border border-line-300 bg-white hover:bg-surface-100 text-ink-900 rounded-lg font-bold uppercase transition text-[11px]"
                                 >
                                     Apply Price
                                 </button>
@@ -627,7 +627,7 @@ export default function SearchPage({
                                         </div>
                                         <button
                                             type="submit"
-                                            className="w-full py-2 bg-slate-900 hover:bg-black text-white rounded-lg font-bold uppercase transition text-[11px]"
+                                            className="w-full py-2 border border-line-300 bg-white hover:bg-surface-100 text-ink-900 rounded-lg font-bold uppercase transition text-[11px]"
                                         >
                                             Apply Price Filter
                                         </button>

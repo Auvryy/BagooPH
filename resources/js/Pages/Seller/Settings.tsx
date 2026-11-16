@@ -88,7 +88,7 @@ export default function SellerSettings({ shop, shopReview, categories, pickupPin
                 <div className="flex items-center gap-2 border-b border-slate-200 pb-3 font-sans text-xs">
                     <Link
                         href={route('seller.settings')}
-                        className="px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 bg-slate-900 text-white shadow-xs"
+                        className="px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 bg-brand-50 text-brand-700"
                     >
                         <Store className="w-3.5 h-3.5" />
                         <span>Store Details & Branding</span>

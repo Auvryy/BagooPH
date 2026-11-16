@@ -474,7 +474,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 type="button"
                                 onClick={handleBatchSchedulePickup}
                                 disabled={isSubmitting || !shopEligible}
-                                className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer font-sans"
+                                className="px-3 py-1.5 border border-line-300 bg-white hover:bg-surface-100 text-ink-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer font-sans"
                             >
                                 <Truck className="w-3.5 h-3.5" />
                                 <span>Mark ready ({selectedOrderIds.length})</span>
