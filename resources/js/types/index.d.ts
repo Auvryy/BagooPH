@@ -197,6 +197,8 @@ export interface StoreTag {
 export interface Product {
     price_range?: { min: string; max: string; regular_min?: string; regular_max?: string };
     sale_offer?: { server_now?: string; effective_price: number; active: SaleSummary | null; upcoming: SaleSummary | null };
+    /** A live shop voucher that applies to this product; checkout applies the best one automatically. */
+    voucher_hint?: { label: string; min_spend: number } | null;
     purchase_limit?: number | null;
     compliance_restricted?: boolean;
     moderation_version?: number;

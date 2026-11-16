@@ -780,7 +780,7 @@ export default function BuyerHome({
                                         <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                         <h4 className="font-bold text-slate-900 text-xs sm:text-sm uppercase">Recommended Products You Might Like</h4>
                                     </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
                                         {relatedProducts.map((product) => (
                                             <ProductCard
                                                 key={product.id}
@@ -794,7 +794,7 @@ export default function BuyerHome({
                             )}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
                             {feedProducts.data.map((product) => (
                                 <ProductCard
                                     key={product.id}
@@ -813,7 +813,7 @@ export default function BuyerHome({
                                 <Sparkles className="w-4 h-4 text-[#E00D42]" />
                                 <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Related Recommendations</h4>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-1.5 sm:gap-2 md:gap-2.5">
                                 {relatedProducts.map((p) => (
                                     <ProductCard
                                         key={p.id}

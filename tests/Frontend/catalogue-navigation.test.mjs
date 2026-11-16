@@ -87,7 +87,7 @@ test('page controls expose real disabled and current states and the correct prod
 
 test('the actual home and search pages render new product records and the active page from returned props', async () => {
     const product = (id, name) => ({ id, name, slug: `everyday-${id}`, price: 100, stock: 2, rating: null, shop: { name: 'Bagoo shop', city: 'Manila' } });
-    for (const [component, Component, key, size] of [['Buyer/Home', ui.Home, 'feedProducts', 18], ['Buyer/Search', ui.Search, 'products', 24]]) {
+    for (const [component, Component, key, size] of [['Buyer/Home', ui.Home, 'feedProducts', 24], ['Buyer/Search', ui.Search, 'products', 24]]) {
         for (const number of [1, 2]) {
             const data = [product(number, `Page ${number} exclusive product`)];
             const products = { data, current_page: number, last_page: 2, per_page: size, total: 30, links: [

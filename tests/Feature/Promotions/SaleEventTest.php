@@ -160,6 +160,9 @@ class SaleEventTest extends TestCase
         $this->actingAs($buyer)->post("/campaign/{$event->id}/claim-all")->assertSessionHas('success');
         $this->actingAs($buyer)->post("/campaign/{$event->id}/claim-all")->assertSessionHas('success');
         $this->assertSame(2, SaleEventClaim::where('buyer_id', $buyer->id)->count());
+        // The buyer phone app talks JSON: claims answer with a message, never a page redirect.
+        $this->actingAs($buyer)->postJson("/campaign/{$event->id}/claim-all")->assertOk()->assertJsonPath('message', 'All vouchers claimed. They apply at checkout.');
+        $this->actingAs($buyer)->postJson('/campaign/vouchers/'.SaleEventVoucher::first()->id.'/claim')->assertOk()->assertJsonPath('claimed', true);
         $this->assertSame([1, 1], SaleEventVoucher::orderBy('id')->pluck('claimed_count')->all());
 
         // A claimed voucher stays in the event; an unclaimed one can be removed.

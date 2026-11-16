@@ -46,11 +46,14 @@ class BuyerCampaignController extends Controller
         return $request->expectsJson() && ! $request->header('X-Inertia') ? response()->json($result) : back()->with('success', $result['message']);
     }
 
-    public function claimAll(Request $request, SaleEvent $event, SaleEventService $events): RedirectResponse
+    public function claimAll(Request $request, SaleEvent $event, SaleEventService $events): JsonResponse|RedirectResponse
     {
         $result = $events->claimAll($request->user(), $event);
         $message = $result['claimed'] === 0 ? 'No vouchers are available to claim right now.'
             : ($result['unavailable'] > 0 ? "{$result['claimed']} vouchers claimed. {$result['unavailable']} were unavailable." : 'All vouchers claimed. They apply at checkout.');
+        if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+            return response()->json([...$result, 'message' => $message], $result['claimed'] === 0 ? 422 : 200);
+        }
 
         return back()->with($result['claimed'] === 0 ? 'error' : 'success', $message);
     }

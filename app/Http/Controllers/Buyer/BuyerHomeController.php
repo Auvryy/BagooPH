@@ -97,7 +97,7 @@ class BuyerHomeController extends Controller
             $request->query->set('sort', 'newest');
         }
         $filters = $discovery->selection($request);
-        $feedProducts = $discovery->paginate($discovery->filter($query, $filters), $filters, 18);
+        $feedProducts = $discovery->paginate($discovery->filter($query, $filters), $filters, 24); // 24 fills 2, 3, 4 and 6 columns
 
         // Subcategories for active category or all active
         $selectedCategory = $filters['category'] !== 'all' && $filters['category'] !== ''

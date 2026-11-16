@@ -192,7 +192,7 @@ export default function CampaignPage({ campaign, vouchers, products, categories,
                         </div>
                     )}
                     {shown.length > 0 ? (
-                        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{shown.map(product => <ProductTile key={product.sale_id} product={product} live={live} />)}</ul>
+                        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{shown.map(product => <ProductTile key={product.sale_id} product={product} live={live} />)}</ul>
                     ) : (
                         <div className="rounded-card border border-line-200 bg-white px-6 py-12">
                             <p className="font-medium text-ink-900">No deals here yet</p>
