@@ -48,12 +48,13 @@ class BuyerAddressTest extends TestCase
 
         $product = Product::create([
             'shop_id' => $shop->id,
-            'category_id' => $category->id,
+            'category_id' => $shop->root_category_id,
             'name' => 'Sample Item',
             'slug' => 'sample-item',
             'price' => 300.00,
             'stock' => 15,
             'status' => 'active',
+            'weight_kg' => 0.5, 'length_cm' => 20, 'width_cm' => 15, 'height_cm' => 10,
         ]);
 
         $buyer = User::factory()->create([
@@ -101,6 +102,7 @@ class BuyerAddressTest extends TestCase
             'phone' => '+639171112222',
             'city' => 'City of Taguig',
             'street' => 'Unit 1204 High Street Residences',
+            'postal_code' => '1634',
             'is_default' => true, // First address automatically becomes default
         ]);
     }
@@ -122,6 +124,7 @@ class BuyerAddressTest extends TestCase
             'phone' => '+63 917 111 0000',
             'city' => 'Makati',
             'street' => '123 Makati Ave',
+            'postal_code' => '1200',
             'is_default' => false,
         ]);
 
@@ -140,6 +143,7 @@ class BuyerAddressTest extends TestCase
             'phone' => '+63 917 000 0001',
             'city' => 'Manila',
             'street' => 'Street 1',
+            'postal_code' => '1200',
             'is_default' => true,
         ]);
 
@@ -151,6 +155,7 @@ class BuyerAddressTest extends TestCase
             'city' => 'Pasig',
             'barangay' => 'San Antonio',
             'street' => 'Street 2',
+            'postal_code' => '1200',
             'is_default' => false,
         ]);
 
@@ -171,6 +176,7 @@ class BuyerAddressTest extends TestCase
             'phone' => '+63 917 000 0001',
             'city' => 'Manila',
             'street' => 'Street 1',
+            'postal_code' => '1200',
             'is_default' => true,
         ]);
 
@@ -182,6 +188,7 @@ class BuyerAddressTest extends TestCase
             'city' => 'Pasig',
             'barangay' => 'San Antonio',
             'street' => 'Street 2',
+            'postal_code' => '1200',
             'is_default' => true,
         ]);
 
@@ -202,6 +209,7 @@ class BuyerAddressTest extends TestCase
             'phone' => '+63 917 000 0001',
             'city' => 'Manila',
             'street' => 'Street 1',
+            'postal_code' => '1200',
             'is_default' => true,
         ]);
 
@@ -211,6 +219,7 @@ class BuyerAddressTest extends TestCase
             'phone' => '+63 917 000 0002',
             'city' => 'Taguig',
             'street' => 'Street 2',
+            'postal_code' => '1200',
             'is_default' => false,
         ]);
 
@@ -235,6 +244,7 @@ class BuyerAddressTest extends TestCase
             'phone' => '+63 917 000 0001',
             'city' => 'Manila',
             'street' => 'Street 1',
+            'postal_code' => '1200',
             'is_default' => false,
         ]);
 
@@ -244,6 +254,7 @@ class BuyerAddressTest extends TestCase
             'phone' => '+63 917 000 0002',
             'city' => 'Taguig',
             'street' => 'Street 2',
+            'postal_code' => '1200',
             'is_default' => true,
         ]);
 
@@ -270,6 +281,7 @@ class BuyerAddressTest extends TestCase
             'phone' => '+63 917 000 0002',
             'city' => 'Cebu',
             'street' => 'Osmena Blvd',
+            'postal_code' => '1200',
             'is_default' => true,
         ]);
 
@@ -290,6 +302,7 @@ class BuyerAddressTest extends TestCase
             'phone' => '+63 917 999 1111',
             'city' => 'Mandaluyong',
             'street' => 'EDSA Crossing',
+            'postal_code' => '1200',
             'is_default' => true,
         ]);
 
@@ -299,6 +312,7 @@ class BuyerAddressTest extends TestCase
             'phone' => '+63 917 999 2222',
             'city' => 'San Juan',
             'street' => 'Greenhills Ave',
+            'postal_code' => '1200',
             'is_default' => false,
         ]);
 
@@ -441,6 +455,7 @@ class BuyerAddressTest extends TestCase
             'city' => 'Quezon City',
             'barangay' => 'Central',
             'street' => '101 Katipunan Ave',
+            'postal_code' => '1200',
             'type' => 'Home',
         ]);
 
