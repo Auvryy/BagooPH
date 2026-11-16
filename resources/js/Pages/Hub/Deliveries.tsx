@@ -46,6 +46,7 @@ interface DeliveryItem {
     destination_hub_latitude?: number | null;
     destination_hub_longitude?: number | null;
     rider_name: string;
+    rider_label?: string;
     total_amount: number;
     payment_method: string;
     item_count: number;
@@ -374,7 +375,7 @@ function HubRegistry({ activeHub, deliveries, counts, filters, eligibleRiders, b
                                             <span className="tabular-nums font-semibold text-zinc-900">{delivery.destination_bin ?? 'Not assigned'}</span>
                                         </p>
                                         <p className="flex items-center justify-between gap-2">
-                                            <span className="text-zinc-500">Delivery rider:</span>
+                                            <span className="text-zinc-500">{delivery.rider_label ?? 'Delivery rider'}:</span>
                                             <span className="font-semibold text-zinc-900">{delivery.rider_name}</span>
                                         </p>
                                         <p className="flex items-center justify-between gap-2">

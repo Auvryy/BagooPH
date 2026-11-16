@@ -809,6 +809,8 @@ class LogisticsHubWorkstationController extends Controller
                     'destination_hub_latitude' => $d->destinationBayanHub?->latitude !== null ? (float) $d->destinationBayanHub->latitude : null,
                     'destination_hub_longitude' => $d->destinationBayanHub?->longitude !== null ? (float) $d->destinationBayanHub->longitude : null,
                     'rider_name' => $d->assignedRider?->name ?? ($d->courier?->name ?? 'Unassigned'),
+                    // Before a delivery rider is assigned, the name shown is the rider who picked it up.
+                    'rider_label' => ! $d->assignedRider && $d->courier ? 'Pickup rider' : 'Delivery rider',
                     'first_mile_rider_name' => $d->courier?->name,
                     'final_mile_rider_name' => $d->assignedRider?->name,
                     'total_amount' => (float) ($d->order?->total_amount ?? 0),
