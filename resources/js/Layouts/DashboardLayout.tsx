@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
+import { isMousePointer, openMenuOnFirstTap } from '@/utils/touchMenu';
 import BagooLogo from '@/Components/BagooLogo';
 import BagooLogisticsLogo from '@/Components/BagooLogisticsLogo';
 import NotificationLink from '@/Components/NotificationLink';
@@ -585,11 +586,13 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                         {/* Merchant / Admin User Avatar Interactive Dropdown */}
                         <div 
                             className="relative"
-                            onMouseEnter={handleUserMenuEnter}
-                            onMouseLeave={handleUserMenuLeave}
+                            onPointerEnter={event => { if (isMousePointer(event)) handleUserMenuEnter(); }}
+                            onPointerLeave={event => { if (isMousePointer(event)) handleUserMenuLeave(); }}
                         >
                             <Link
                                 href={role === 'seller' ? route('seller.profile') : route('profile.edit')}
+                                onClick={event => openMenuOnFirstTap(event, userMenuOpen, setUserMenuOpen)}
+                                aria-haspopup="menu" aria-expanded={userMenuOpen}
                                 className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-zinc-100/80 transition group focus:outline-hidden border border-transparent hover:border-zinc-200/80"
                             >
                                 {user?.avatar ? (
@@ -618,8 +621,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                             {userMenuOpen && (
                                 <div 
                                     className="absolute right-0 top-full -mt-0.5 pt-1 w-56 z-50 animate-scale-in"
-                                    onMouseEnter={handleUserMenuEnter}
-                                    onMouseLeave={handleUserMenuLeave}
+                                    onPointerEnter={event => { if (isMousePointer(event)) handleUserMenuEnter(); }}
+                                    onPointerLeave={event => { if (isMousePointer(event)) handleUserMenuLeave(); }}
                                 >
                                     <div className="bg-white rounded-xl shadow-xl border border-zinc-200/90 py-1.5 text-zinc-800 font-sans">
                                         <div className="px-4 py-2.5 border-b border-zinc-100 font-sans text-xs flex items-center gap-2.5">

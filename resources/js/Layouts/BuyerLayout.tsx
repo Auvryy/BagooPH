@@ -29,6 +29,7 @@ import CustomerServiceAssistant from '@/Components/CustomerServiceAssistant';
 import { getDomainUrl } from '@/utils/domain';
 import useCatalogueSearch from '@/hooks/useCatalogueSearch';
 import CatalogueNavigationNotice from '@/Components/CatalogueNavigationNotice';
+import { isMousePointer, openMenuOnFirstTap } from '@/utils/touchMenu';
 import PortalLink from '@/Components/PortalLink';
 
 interface Props {
@@ -169,13 +170,14 @@ export default function BuyerLayout({
                     {/* 1. TOP UTILITY BAR (VIBRANT BRAND ACCENT) */}
                     <div className="bg-[#C20836] text-white/90 text-xs border-b border-[#A8062E] shrink-0 font-sans">
                 <div className="max-w-[1536px] mx-auto px-2 sm:px-3 md:px-4 py-1.5 flex items-center justify-between font-sans text-xs">
-                    <div className="flex items-center gap-4">
+                    {/* Phones keep one line: Seller Centre and Courier Fleet; the rest shows from small tablets up. */}
+                    <div className="flex min-w-0 items-center gap-3 whitespace-nowrap sm:gap-4">
                         <a href={sellerUrl} className="hover:text-white transition flex items-center gap-1.5 font-bold text-white">
                             <Store className="w-3.5 h-3.5 text-amber-300" />
                             <span>Seller Centre</span>
                         </a>
-                        <span className="text-white/30">|</span>
-                        <a href={sellerRegisterUrl} className="hover:text-white transition text-white/90 font-medium">
+                        <span className="text-white/30 hidden sm:inline">|</span>
+                        <a href={sellerRegisterUrl} className="hover:text-white transition text-white/90 font-medium hidden sm:inline">
                             <span>Start Selling</span>
                         </a>
                         <span className="text-white/30">|</span>
@@ -192,7 +194,7 @@ export default function BuyerLayout({
                     <div className="flex items-center gap-4 text-white/90 font-medium">
                         <PortalLink href={route('buyer.orders.index')} className="hover:text-white transition hidden sm:inline">Track Order</PortalLink>
                         <span className="text-white/30 hidden sm:inline">|</span>
-                        <span className="text-amber-300 font-bold">PHP ₱ (PH)</span>
+                        <span className="text-amber-300 font-bold hidden sm:inline">PHP ₱ (PH)</span>
                     </div>
                 </div>
             </div>
@@ -294,12 +296,13 @@ export default function BuyerLayout({
                                 <div 
                                     ref={userDropdownRef}
                                     className="relative"
-                                    onMouseEnter={handleUserDropdownEnter}
-                                    onMouseLeave={handleUserDropdownLeave}
+                                    onPointerEnter={event => { if (isMousePointer(event)) handleUserDropdownEnter(); }}
+                                    onPointerLeave={event => { if (isMousePointer(event)) handleUserDropdownLeave(); }}
                                 >
                                     <div className="flex items-center gap-1.5 py-1 px-1.5 text-white hover:text-rose-100 transition font-sans text-xs sm:text-sm font-bold group cursor-pointer">
                                         <PortalLink
                                             href={route('buyer.orders.index')}
+                                            onClick={event => openMenuOnFirstTap(event, userDropdownOpen, setUserDropdownOpen)}
                                             className="flex min-w-0 items-center gap-2 focus:outline-hidden"
                                         >
                                             {auth.user.avatar ? (
@@ -334,8 +337,8 @@ export default function BuyerLayout({
                                             id="buyer-account-menu"
                                             role="menu"
                                             className="absolute right-0 top-full -mt-0.5 pt-1 w-56 z-50 animate-scale-in"
-                                            onMouseEnter={handleUserDropdownEnter}
-                                            onMouseLeave={handleUserDropdownLeave}
+                                            onPointerEnter={event => { if (isMousePointer(event)) handleUserDropdownEnter(); }}
+                                            onPointerLeave={event => { if (isMousePointer(event)) handleUserDropdownLeave(); }}
                                         >
                                             <div className="bg-white rounded-md shadow-2xl border border-slate-300 py-1.5 text-slate-800 font-sans">
                                                 <div className="px-4 py-2.5 border-b border-slate-100 text-xs flex items-center gap-2.5">

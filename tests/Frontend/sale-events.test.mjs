@@ -62,3 +62,12 @@ test('the admin list leads with one primary action and links each event', async 
     assert.match(html, /href="\/admin\/sale-events\/1"/);
     assert.match(html, />Live</);
 });
+
+test('the event shows its top three vouchers and keeps the rest behind Show all', async () => {
+    const many = [1, 2, 3, 4, 5].map(id => ({ ...voucher, id, code: `CODE${id}`, sold_out: false, claim_limit: null }));
+    const html = await render(ui.Campaign, 'Buyer/Campaign', { campaign: event, vouchers: many, products: [], categories: [], allCampaigns: [], serverNow: '2026-11-16T00:00:00Z' });
+    for (const code of ['CODE1', 'CODE2', 'CODE3']) assert.match(html, new RegExp(code));
+    assert.doesNotMatch(html, /CODE4|CODE5/);
+    assert.match(html, /Show all 5 vouchers/);
+    assert.match(html, /aria-expanded="false"/);
+});

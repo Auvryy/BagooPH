@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Check, Clock, Store } from 'lucide-react';
+import { Check, ChevronDown, Clock, Store } from 'lucide-react';
 import BuyerLayout from '@/Layouts/BuyerLayout';
 import type { PageProps } from '@/types';
 
@@ -17,6 +17,9 @@ interface Props {
     campaign: CampaignSummary; vouchers: EventVoucher[]; products: EventProduct[]; categories: { id: number; name: string; slug: string }[];
     allCampaigns: { slug: string; title: string; badge: string; status: string }[]; serverNow: string;
 }
+
+/** The event shows its best three vouchers first; the rest open on request. */
+const TOP_VOUCHERS = 3;
 
 const peso = (value: number) => `₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const pesoShort = (value: number) => `₱${value.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
@@ -133,6 +136,7 @@ export default function CampaignPage({ campaign, vouchers, products, categories,
     const { auth } = usePage<PageProps>().props;
     const [category, setCategory] = useState<number | null>(null);
     const [busyAll, setBusyAll] = useState(false);
+    const [showAllVouchers, setShowAllVouchers] = useState(false);
     const live = campaign.status === 'live';
     const shown = useMemo(() => (category ? products.filter(product => product.category?.id === category) : products), [products, category]);
     const claimable = vouchers.filter(voucher => !voucher.claimed && !voucher.sold_out).length;
@@ -178,7 +182,14 @@ export default function CampaignPage({ campaign, vouchers, products, categories,
                                 </button>
                             )}
                         </div>
-                        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{vouchers.map(voucher => <VoucherCard key={voucher.id} voucher={voucher} live={live} />)}</ul>
+                        <ul id="event-voucher-list" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(showAllVouchers ? vouchers : vouchers.slice(0, TOP_VOUCHERS)).map(voucher => <VoucherCard key={voucher.id} voucher={voucher} live={live} />)}</ul>
+                        {vouchers.length > TOP_VOUCHERS && (
+                            <button type="button" onClick={() => setShowAllVouchers(open => !open)} aria-expanded={showAllVouchers} aria-controls="event-voucher-list"
+                                className="mt-3 inline-flex h-10 items-center gap-1.5 rounded-control border border-line-300 bg-white px-4 text-sm font-semibold text-ink-900 hover:bg-surface-100">
+                                {showAllVouchers ? 'Show fewer vouchers' : `Show all ${vouchers.length} vouchers`}
+                                <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 ${showAllVouchers ? 'rotate-180' : ''}`} />
+                            </button>
+                        )}
                         <p className="mt-2 text-xs text-ink-600">Claimed vouchers apply at checkout when your order qualifies.</p>
                     </section>
                 )}
