@@ -99,13 +99,14 @@ class DatabaseSeeder extends Seeder
 
         $this->call(RealCarousellProductSeeder::class);
         $this->call(SubCategorySeeder::class);
-        $this->call(VoucherDemoSeeder::class);
         $this->call(AdvertisementDemoSeeder::class);
 
         // Multi-tenant logistics network and supported road topology.
         $this->call(LogisticsNetworkSeeder::class);
         $this->call(SellerDemoSeeder::class);
         $this->call(LogisticsTestingEnvironmentSeeder::class);
+        // Vouchers need the demo seller shop to be approved first (SellerDemoSeeder).
+        $this->call(VoucherDemoSeeder::class);
         $this->call(HubWorkerRolesSeeder::class);
     }
 }

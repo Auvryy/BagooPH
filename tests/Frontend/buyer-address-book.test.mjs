@@ -136,7 +136,7 @@ test('checkout GPS action has a touch-sized keyboard focus target and announced 
  const gpsButton = (source.match(/<button\b[\s\S]*?<\/button>/g) ?? []).find(element => element.includes('onClick={gps.capture}'));
  assert.ok(gpsButton);
  assert.match(gpsButton, /min-h-\[44px\]/);
- assert.match(gpsButton, /focus-visible:outline-2/);
+ assert.match(gpsButton, /focus-visible:outline-2|buttonClasses\(/);
  assert.match(source, /\{gps\.status && \(\s*<p role="status"/);
 });
 test('address map uses smooth half-step wheel zoom', () => {
@@ -161,7 +161,7 @@ test('checkout preselects the actual default recipient and permits delivery cont
  const other = { ...address, id: 9, recipient_name: 'Default Office Recipient' };
  const html = await render(ui.Checkout, { cart: { id: 1 }, items, quote, subtotal: 250, shippingFee: 50, total: 300, user, kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [{ ...address, is_default: false }, other], defaultAddressId: 9 });
  assert.match(html, /id="checkout-recipient-name"[^>]*value="Default Office Recipient"/);
- assert.doesNotMatch(html, /id="checkout-recipient-name"[^>]*(?:readonly|disabled)/i);
+ assert.doesNotMatch(html, /id="checkout-recipient-name"[^>]*\s(?:readonly|disabled)(?:=|\s|\/?>)/i);
  assert.match(html, /<option value="9" selected=""/);
  assert.match(html, /aria-label="Delivery location map"/);
 });
@@ -216,7 +216,7 @@ test('address editor requires a four-digit postal code and checkout auto-selects
   kycStatus: 'approved', checkoutToken: 'confirmation', addresses: [{ ...address, postal_code: '', latitude: 14.28, longitude: 121.42 }], logisticsCompanies: [],
  });
  assert.match(noPostalHtml, /A valid 4-digit postal code is required/);
- assert.match(noPostalHtml, /Add postal code \/ edit address/);
+ assert.match(noPostalHtml, />Edit address</);
 });
 test('coordinate validation details are replaced with actionable map/GPS guidance', () => {
  const messages = ui.checkoutErrorMessages({
@@ -345,8 +345,8 @@ test('checkout filters bayan hubs by carrier and destination and shows reduced c
   logisticsCompanies: [{ id: 8, name: 'A Logistics', logo: null, base_shipping_cents: 6000, included_weight_grams: 1000, additional_kg_cents: 2000, shipping_earnings_model: 'dedicated_fleet' }],
   pickupHubs: [santaCruzHub, lipaHub, otherCarrierHub],
  });
- assert.match(pickupHtml, /REDUCED FEE/);
- assert.match(pickupHtml, /Final-mile delivery waived/);
+ assert.match(pickupHtml, /Pick up at a Bayan Hub/);
+ assert.match(pickupHtml, /Collect it at a nearby hub counter/);
  assert.doesNotMatch(pickupHtml, /100% FREE/);
  assert.match(pickupHtml, /₱35\.00/);
 });

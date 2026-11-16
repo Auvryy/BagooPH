@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { useRef } from 'react';
+import { buttonClasses } from '@/Components/ui';
 
 export default function BuyAgainButton({ url, token, disabled = false }: { url: string; token: string; disabled?: boolean }) {
     const busy = useRef(false);
@@ -14,7 +15,7 @@ export default function BuyAgainButton({ url, token, disabled = false }: { url: 
                 preserveScroll: false,
                 onFinish: () => { busy.current = false; },
             });
-        }} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-bold text-[#E00D42] hover:bg-rose-50 disabled:opacity-50">{form.processing ? 'Adding to Bag…' : 'Buy again'}</button>
-        {error && <p role="alert" className="max-w-sm text-sm font-medium text-rose-700">{error}</p>}
+        }} className={buttonClasses('secondary', 'md')}>{form.processing ? 'Adding to Bag…' : 'Buy again'}</button>
+        {error && <p role="alert" className="max-w-sm text-[13px] text-brand-700">{error}</p>}
     </div>;
 }

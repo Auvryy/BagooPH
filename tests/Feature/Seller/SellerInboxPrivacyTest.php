@@ -3,6 +3,8 @@
 namespace Tests\Feature\Seller;
 
 use App\Models\Message;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Shop;
 use App\Models\User;
@@ -73,5 +75,57 @@ class SellerInboxPrivacyTest extends TestCase
         $seller->update(['status' => 'suspended']);
         $this->actingAs($seller)->get($route)->assertRedirect(route('account.status'));
         $this->assertDatabaseHas('messages', ['receiver_id' => $foreignSeller->id, 'is_read' => false]);
+    }
+
+    public function test_seller_can_message_buyer_who_interacted_via_order_or_cancelled_order_without_prior_chat(): void
+    {
+        $seller = User::factory()->seller()->create();
+        $shop = Shop::factory()->approved()->create(['user_id' => $seller->id]);
+        $product = Product::factory()->create(['shop_id' => $shop->id, 'category_id' => $shop->root_category_id]);
+        $buyerWithOrder = User::factory()->buyer()->create();
+        $unrelatedBuyer = User::factory()->buyer()->create();
+
+        $order = Order::factory()->create([
+            'buyer_id' => $buyerWithOrder->id,
+            'status' => 'cancelled',
+        ]);
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'shop_id' => $shop->id,
+            'quantity' => 1,
+            'unit_price' => 300,
+            'subtotal' => 300,
+        ]);
+
+        $this->actingAs($seller)
+            ->getJson("/chat/messages/{$buyerWithOrder->id}")
+            ->assertOk()
+            ->assertJsonPath('messages', []);
+
+        $this->actingAs($seller)
+            ->post('/messages', [
+                'receiver_id' => $buyerWithOrder->id,
+                'order_id' => $order->id,
+                'product_id' => $product->id,
+                'shop_id' => $shop->id,
+                'message' => 'Hello! We saw your cancelled order and wanted to check if we can help.',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('messages', [
+            'sender_id' => $seller->id,
+            'receiver_id' => $buyerWithOrder->id,
+            'order_id' => $order->id,
+            'message' => 'Hello! We saw your cancelled order and wanted to check if we can help.',
+        ]);
+
+        $this->actingAs($seller)
+            ->post('/messages', [
+                'receiver_id' => $unrelatedBuyer->id,
+                'shop_id' => $shop->id,
+                'message' => 'Unsolicited message without order or chat.',
+            ])
+            ->assertForbidden();
     }
 }

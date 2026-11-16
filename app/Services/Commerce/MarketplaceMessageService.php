@@ -34,9 +34,18 @@ class MarketplaceMessageService
         $pair = ($actor->isBuyer() && ($other->isSeller() || $other->isCourier()))
             || ($actor->isSeller() && ($other->isBuyer() || $other->isCourier()));
         $existing = $this->conversation($actor->id, $otherId)->exists();
-        abort_unless($pair && ($existing || ($actor->isBuyer() && $other->isSeller() && Shop::eligible()->where('user_id', $otherId)->exists())), 403, 'This conversation is not available to your account.');
+        $hasOrder = ($actor->isSeller() && $other->isBuyer() && $this->hasOrderInteraction($otherId, $actor->id))
+            || ($actor->isBuyer() && $other->isSeller() && $this->hasOrderInteraction($actor->id, $otherId));
+        abort_unless($pair && ($existing || $hasOrder || ($actor->isBuyer() && $other->isSeller() && Shop::eligible()->where('user_id', $otherId)->exists())), 403, 'This conversation is not available to your account.');
 
         return $other;
+    }
+
+    private function hasOrderInteraction(int $buyerId, int $sellerId): bool
+    {
+        return Order::where('buyer_id', $buyerId)
+            ->whereHas('items.shop', fn ($query) => $query->where('user_id', $sellerId))
+            ->exists();
     }
 
     private function conversation(int $one, int $two)
@@ -139,7 +148,7 @@ class MarketplaceMessageService
             abort_unless(Product::availableForSale()->whereKey($product->id)->exists(), 403, 'This product is currently unavailable for a new inquiry.');
         }
         if ($sender->isSeller()) {
-            abort_unless($existing, 403, 'A seller can reply to an existing buyer conversation.');
+            abort_unless($existing || $ownedOrder || $this->hasOrderInteraction($buyer->id, $seller->id), 403, 'A seller can reply to an existing buyer conversation.');
         } else {
             abort_unless($existing || $ownedOrder || ($product && Product::availableForSale()->whereKey($product->id)->exists())
                 || ($shop && Shop::eligible()->whereKey($shop->id)->exists()), 403, 'This shop is currently unavailable for a new inquiry.');

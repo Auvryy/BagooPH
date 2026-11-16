@@ -71,6 +71,9 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
     const [chatOrder, setChatOrder] = useState<any | null>(null);
     const [chatMessage, setChatMessage] = useState('');
     const [chatSent, setChatSent] = useState(false);
+    const [chatError, setChatError] = useState('');
+    const [chatHistory, setChatHistory] = useState<any[]>([]);
+    const [chatLoading, setChatLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState(filters.search);
     const [dateFrom, setDateFrom] = useState(filters.from);
     const [dateTo, setDateTo] = useState(filters.to);
@@ -246,26 +249,68 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
         });
     };
 
+    useEffect(() => {
+        const buyerId = chatOrder?.order?.buyer_id;
+        if (!buyerId || typeof window === 'undefined' || typeof window.fetch !== 'function') {
+            setChatHistory([]);
+            return;
+        }
+        let cancelled = false;
+        setChatLoading(true);
+        window.fetch(`/chat/messages/${buyerId}`, {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then(res => (res.ok ? res.json() : null))
+            .then(data => {
+                if (!cancelled && data && Array.isArray(data.messages)) {
+                    setChatHistory(data.messages);
+                }
+            })
+            .catch(() => {})
+            .finally(() => {
+                if (!cancelled) setChatLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [chatOrder?.order?.buyer_id]);
+
     const handleSendQuickChat = (e: React.FormEvent) => {
         e.preventDefault();
         if (!chatOrder || !chatMessage.trim()) return;
+        const trimmed = chatMessage.trim();
         setIsSubmitting(true);
+        setChatError('');
         router.post('/messages', {
             receiver_id: chatOrder.order?.buyer_id,
             order_id: chatOrder.order?.id,
             product_id: chatOrder.product_id,
             shop_id: shop.id,
-            message: chatMessage.trim(),
+            message: trimmed,
         }, {
             preserveScroll: true,
             preserveState: true,
+            onError: errors => {
+                setChatError(Object.values(errors).join(' ') || 'Unable to send message right now. Please try again.');
+            },
             onSuccess: () => {
                 setChatSent(true);
+                setChatHistory(prev => [
+                    ...prev,
+                    {
+                        id: Date.now(),
+                        sender_id: shop.user_id,
+                        receiver_id: chatOrder.order?.buyer_id,
+                        order_id: chatOrder.order?.id,
+                        message: trimmed,
+                        created_at: new Date().toISOString(),
+                    },
+                ]);
+                setChatMessage('');
                 setTimeout(() => {
-                    setChatOrder(null);
-                    setChatMessage('');
                     setChatSent(false);
-                }, 1400);
+                }, 2500);
             },
             onFinish: () => setIsSubmitting(false),
         });
@@ -541,9 +586,16 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                                     <button
                                                         type="button"
                                                         onClick={() => {
+                                                            const recipient = item.order?.recipient_name || item.order?.buyer?.name || 'Customer';
+                                                            const isCancelled = item.order?.status === 'cancelled';
                                                             setChatOrder(item);
-                                                            setChatMessage(`Hello ${item.order?.recipient_name || 'Customer'}! We are preparing your order #${item.order?.order_number}.`);
+                                                            setChatMessage(
+                                                                isCancelled
+                                                                    ? `Hello ${recipient}! We noticed your order #${item.order?.order_number} was cancelled. Let us know if you had any questions or need assistance reordering.`
+                                                                    : `Hello ${recipient}! We are preparing your order #${item.order?.order_number}.`
+                                                            );
                                                             setChatSent(false);
+                                                            setChatError('');
                                                         }}
                                                         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[#E00D42] hover:bg-rose-50 border border-transparent hover:border-rose-200 text-[11px] font-sans font-bold transition cursor-pointer ml-0.5"
                                                         title="1-Click Customer Chat"
@@ -592,8 +644,11 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                             <button
                                                 type="button"
                                                 disabled={!item.order.can_print_waybill || isSubmitting}
-                                                onClick={() => setSelectedOrderForWaybill(item)}
-                                                className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition shadow-2xs cursor-pointer"
+                                                onClick={() => {
+                                                    if (!item.order.can_print_waybill || isSubmitting) return;
+                                                    setSelectedOrderForWaybill(item);
+                                                }}
+                                                className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition shadow-2xs cursor-pointer disabled:opacity-40 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:hover:bg-slate-100 disabled:cursor-not-allowed"
                                                 title="Print Thermal Waybill"
                                             >
                                                 <Printer className="w-3.5 h-3.5" />
@@ -603,11 +658,14 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                             <button
                                                 type="button"
                                                 disabled={!item.order.can_print_waybill || isSubmitting}
-                                                onClick={() => setSelectedOrderForQr(item)}
-                                                className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition shadow-2xs cursor-pointer"
+                                                onClick={() => {
+                                                    if (!item.order.can_print_waybill || isSubmitting) return;
+                                                    setSelectedOrderForQr(item);
+                                                }}
+                                                className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 transition shadow-2xs cursor-pointer disabled:opacity-40 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:hover:bg-slate-100 disabled:cursor-not-allowed"
                                                 title="Show QR Code for Courier Scan & Tracking"
                                             >
-                                                <QrCode className="w-3.5 h-3.5 text-[#E00D42]" />
+                                                <QrCode className={`w-3.5 h-3.5 ${item.order.can_print_waybill && !isSubmitting ? 'text-[#E00D42]' : 'text-slate-400'}`} />
                                             </button>
 
                                             {/* Cancel Icon Button (only if pre-shipped) */}
@@ -762,7 +820,14 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                             <p className="text-slate-600 text-xs">{[orderToAcceptAndPack.order?.recipient_details_available && orderToAcceptAndPack.order?.shipping_address, orderToAcceptAndPack.order?.shipping_city, orderToAcceptAndPack.order?.shipping_province].filter(Boolean).join(', ')}</p>
                         </div>
 
-                        {!orderToAcceptAndPack.order?.recipient_details_available && <p className="rounded-lg bg-rose-50 p-3 text-sm text-[#9F1239]">Street address, phone, map pin and waybill become available after acceptance.</p>}
+                        {!orderToAcceptAndPack.order?.recipient_details_available && (
+                            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3.5 space-y-1.5 text-xs text-[#9F1239]">
+                                <p className="font-semibold text-sm">Street address, phone, map pin and waybill become available after acceptance.</p>
+                                <p className="leading-relaxed text-rose-900/90">
+                                    <strong>Confidentiality &amp; Seller Responsibility:</strong> Under the BagooPH Terms of Use, accepting this order unlocks the buyer’s private delivery information. You must keep all buyer information strictly confidential, use it solely to fulfill this order, and assume full responsibility for protecting buyer data.
+                                </p>
+                            </div>
+                        )}
                         {/* Thermal Waybill Preview Box */}
                         {orderToAcceptAndPack.order?.can_print_waybill && <div className="p-4 border-2 border-dashed border-slate-300 rounded-2xl space-y-3 text-xs bg-slate-50/50 font-sans">
                             <div className="flex items-center justify-between border-b border-slate-300 pb-2">
@@ -826,15 +891,20 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
             {/* 1-CLICK CUSTOMER CHAT MODAL */}
             {typeof document !== 'undefined' && chatOrder && createPortal(
                 <div className="fixed inset-0 z-[9999] overscroll-contain bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto animate-fade-in font-sans">
-                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans max-h-[92vh] overflow-y-auto">
+                    <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-200 my-auto space-y-4 font-sans max-h-[92vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-2 text-[#E00D42] text-xs font-bold font-sans">
                                 <MessageSquare className="w-4 h-4" />
                                 <span>Customer Chat • #{chatOrder.order?.order_number}</span>
+                                {chatOrder.order?.status && (
+                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600">
+                                        {chatOrder.order.status.replaceAll('_', ' ')}
+                                    </span>
+                                )}
                             </div>
                             <button
                                 type="button"
-                                onClick={() => { setChatOrder(null); setChatMessage(''); setChatSent(false); }}
+                                onClick={() => { setChatOrder(null); setChatMessage(''); setChatSent(false); setChatError(''); }}
                                 className="p-1 rounded-lg text-slate-400 hover:text-slate-700 transition cursor-pointer"
                             >
                                 <X className="w-5 h-5" />
@@ -842,8 +912,8 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                         </div>
 
                         {/* Customer info preview */}
-                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
-                            <div className="flex items-center justify-between">
+                        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+                            <div className="flex items-center justify-between gap-2">
                                 <span className="font-bold text-slate-900 text-sm">
                                     {chatOrder.order?.recipient_name || chatOrder.order?.buyer?.name || 'Customer'}
                                 </span>
@@ -852,6 +922,40 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 </span>
                             </div>
                             {renderCustomerInsight(chatOrder.order?.buyer)}
+                            {chatOrder.order?.cancellation_feedback?.reason && (
+                                <div className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
+                                    <span className="font-bold">Buyer cancellation note: </span>
+                                    <span>{chatOrder.order.cancellation_feedback.reason}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Conversation History Thread */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-sans block">
+                                    Conversation History
+                                </label>
+                                {chatLoading && <span className="text-[11px] text-slate-400">Loading messages…</span>}
+                            </div>
+                            <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2 text-xs">
+                                {chatHistory.length === 0 ? (
+                                    <p className="text-slate-500 text-center py-3">
+                                        No messages yet for this buyer. Since the buyer interacted with your shop through order #{chatOrder.order?.order_number}, you can message them directly below.
+                                    </p>
+                                ) : (
+                                    chatHistory.slice(-15).map((msg: any) => {
+                                        const isSellerMsg = Number(msg.sender_id) === Number(shop.user_id);
+                                        return (
+                                            <div key={msg.id} className={`flex flex-col ${isSellerMsg ? 'items-end' : 'items-start'}`}>
+                                                <div className={`max-w-[85%] rounded-2xl px-3 py-2 leading-snug ${isSellerMsg ? 'bg-[#E00D42] text-white rounded-br-xs' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-xs'}`}>
+                                                    <p className="whitespace-pre-wrap break-words">{msg.message}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
                         </div>
 
                         {/* Quick Templates */}
@@ -860,11 +964,18 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 Quick Templates
                             </label>
                             <div className="flex flex-col gap-1.5">
-                                {[
-                                    `Hello ${chatOrder.order?.recipient_name || 'Customer'}! We are currently packing your order #${chatOrder.order?.order_number} and preparing it for courier pickup.`,
-                                    `Hi! Your parcel #${chatOrder.order?.order_number} is packed and scheduled for courier collection today.`,
-                                    `Hello! Could you please verify your delivery address or nearest landmark for order #${chatOrder.order?.order_number}?`,
-                                ].map((template, idx) => (
+                                {(chatOrder.order?.status === 'cancelled'
+                                    ? [
+                                        `Hello ${chatOrder.order?.recipient_name || 'Customer'}! We noticed your order #${chatOrder.order?.order_number} was cancelled. Let us know if you had any questions or need help placing a new order.`,
+                                        `Hi! Thank you for checking out our shop. If there was an issue with order #${chatOrder.order?.order_number}, we are happy to assist you!`,
+                                        `Hello! The item from your cancelled order #${chatOrder.order?.order_number} is still in stock whenever you would like to reorder.`,
+                                    ]
+                                    : [
+                                        `Hello ${chatOrder.order?.recipient_name || 'Customer'}! We are currently packing your order #${chatOrder.order?.order_number} and preparing it for courier pickup.`,
+                                        `Hi! Your parcel #${chatOrder.order?.order_number} is packed and scheduled for courier collection today.`,
+                                        `Hello! Thank you for your order #${chatOrder.order?.order_number}. Let us know if you have any special instructions for your purchase.`,
+                                    ]
+                                ).map((template, idx) => (
                                     <button
                                         key={idx}
                                         type="button"
@@ -892,6 +1003,12 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 />
                             </div>
 
+                            {chatError && (
+                                <div role="alert" className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+                                    {chatError}
+                                </div>
+                            )}
+
                             {chatSent && (
                                 <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2 font-medium">
                                     <Check className="w-4 h-4 text-emerald-600" />
@@ -909,7 +1026,7 @@ export default function SellerOrders({ orders, shop, shopEligible, returnReceipt
                                 <div className="flex items-center gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => { setChatOrder(null); setChatMessage(''); setChatSent(false); }}
+                                        onClick={() => { setChatOrder(null); setChatMessage(''); setChatSent(false); setChatError(''); }}
                                         className="py-2 px-3.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold cursor-pointer"
                                     >
                                         Close

@@ -20,7 +20,7 @@ test('regional route is ordered, named and disclosed as a plan rather than track
     assert.ok(html.indexOf('Origin') < html.indexOf('Mother</li>'));
     assert.ok(html.indexOf('Mother</li>') < html.indexOf('Destination'));
     assert.match(html, /aria-label="Planned route for Test shop"/);
-    assert.match(html, /Tracking updates after handover scans/);
+    assert.match(html, /Tracking updates as your parcel is scanned/);
     assert.match(html, /Your address/);
 });
 test('a changed or failed quote cannot show an old route and pending has accessible feedback', () => {

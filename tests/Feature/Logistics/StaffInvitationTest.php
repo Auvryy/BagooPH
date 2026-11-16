@@ -29,8 +29,10 @@ class StaffInvitationTest extends TestCase
     private function invite(string $kind = 'operator'): User
     {
         $hub = LogisticsHub::where('code', 'BH-LBN-01')->sole();
-        $this->actingAs($hub->company->user)->post('/hub/company-setup/'.$hub->logistics_company_id.'/staff', [
-            'kind' => $kind, 'hub_id' => $hub->id, 'first_name' => 'Maya', 'last_name' => 'Santos',
+        // The owner opens hub accounts; riders are added by the hub's own full-access account.
+        $actor = $kind === 'rider' ? User::where('email', 'losbanos.hub@bagoo.test')->sole() : $hub->company->user;
+        $this->actingAs($actor)->post('/hub/company-setup/'.$hub->logistics_company_id.'/staff', [
+            'kind' => $kind, 'job_role' => 'all', 'hub_id' => $hub->id, 'first_name' => 'Maya', 'last_name' => 'Santos',
             'birthday' => '1995-04-12', 'email' => 'crew-qa@bagoo.test', 'phone' => '09175551831',
         ])->assertSessionHasNoErrors()->assertSessionHas('success');
 

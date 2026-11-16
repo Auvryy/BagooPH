@@ -203,3 +203,26 @@ test('ineligible checkout choices remain disabled while showing scope and the us
     assert.equal(nodes(tree, node => node.props?.type === 'radio')[1].props.disabled, true);
     assert.match(text(tree), /qualifying products/); assert.equal(nodes(tree, node => node.type === ui.Scope)[0].props.offer, offer);
 });
+
+test('seller form explains the minimum a fixed shop discount needs and lets the server fill optional limits', () => {
+    const h = harness(ui.Form, { campaign: null, platform: false, onClose() {} });
+    try {
+        let tree = h.render();
+        assert.match(text(tree), /Paid by your shop/);
+        nodes(tree, node => node.type === 'input' && node.props.placeholder === 'e.g. 50')[0].props.onChange({ target: { value: '50' } });
+        nodes(tree, node => node.type === 'input' && node.props.placeholder === 'e.g. 100')[0].props.onChange({ target: { value: '10' } });
+        tree = h.render();
+        assert.match(text(tree), /Left blank, we use\s+₱55\.56/);
+        nodes(tree, node => node.type === 'input' && node.props.placeholder === 'Auto: 55.56')[0].props.onChange({ target: { value: '30' } });
+        tree = h.render();
+        assert.match(text(tree), /Needs to be at least\s+₱55\.56/);
+        nodes(tree, node => node.type === 'button' && /^Use\s+₱55\.56$/.test(text(node).trim()))[0].props.onClick();
+        tree = h.render();
+        assert.match(text(tree), /Most in total\s*₱500\.00/);
+        nodes(tree, node => node.type === 'form')[0].props.onSubmit({ preventDefault() {}, nativeEvent: { submitter: { value: 'draft' } } });
+        assert.equal(h.submitted[0].data.min_spend, '55.56');
+        assert.equal(h.submitted[0].data.max_discount, '');
+        assert.equal(h.submitted[0].data.budget, '');
+        assert.equal(h.submitted[0].data.per_buyer_limit, '1');
+    } finally { h.close(); }
+});

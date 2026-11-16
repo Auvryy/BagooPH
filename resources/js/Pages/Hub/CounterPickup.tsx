@@ -18,7 +18,8 @@ import {
     ArrowRight,
     Tag,
     AlertCircle,
-    X
+    X,
+    ChevronRight
 } from 'lucide-react';
 
 interface CounterParcel {
@@ -177,7 +178,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             actions={canScan &&
                 <Link
                     href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] active:scale-[0.99] text-white text-xs font-bold font-sans rounded-xl shadow-sm transition"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 active:scale-[0.99] text-white text-xs font-bold font-sans rounded-xl shadow-sm transition"
                 >
                     <ScanLine className="w-4 h-4" />
                     <span>Scan station</span>
@@ -189,12 +190,12 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             <div className="space-y-5 font-sans">
                 <HubPageHeader
                     title="Counter pickup"
-                    roleLabel="Counter releasing desk"
+                    roleLabel={!isCounterHub ? 'Not a pickup counter' : activeHub?.operating_hours ? `Open · ${activeHub.operating_hours}` : 'Counter hours not set'}
                     icon={Store}
                     actions={isCounterHub && canScan ? (
                         <Link
                             href={`${basePath}/scan${activeHub ? `?hub_id=${activeHub.id}` : ''}`}
-                            className="inline-flex items-center gap-2 rounded border border-zinc-400 bg-white px-3.5 py-2 text-xs font-semibold text-[#121316] shadow-2xs transition hover:bg-zinc-50 hover:border-zinc-600"
+                            className="inline-flex items-center gap-2 rounded border border-zinc-400 bg-white px-3.5 py-2 text-xs font-semibold text-ink-900 shadow-2xs transition hover:bg-zinc-50 hover:border-zinc-600"
                         >
                             <ScanLine className="h-4 w-4 text-zinc-600" />
                             Open parcel check-in
@@ -202,80 +203,25 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                     ) : undefined}
                 />
                 {!isCounterHub && <HubNextStep title={activeHub?.tier === 'local_bayan_hub' ? 'Counter pickup is disabled at this hub' : 'Counter pickup is handled by child hubs'} icon={Store}><p>{canConfigureHours ? 'Choose an eligible child hub in the facility switcher to manage its pickup counter. Changing the view does not grant physical handler access.' : 'Use your assigned facility for its recorded parcel work. The company manager and assigned child-hub handler manage counter pickup.'}</p></HubNextStep>}
-                {isCounterHub && canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-xs"><label className="text-sm font-bold text-[#1C1A17]">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-2 w-full rounded-xl border border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white px-3.5 py-2.5 text-xs text-[#1C1A17] font-medium shadow-xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3.5 rounded-xl bg-[#E00D42] hover:bg-[#C20836] px-4 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99]">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-xs text-red-700">{errors.operating_hours}</p>}</form>}
+                {isCounterHub && canConfigureHours && activeHub && <form onSubmit={event => { event.preventDefault(); router.post(`${basePath}/counter/hours`,{hub_id:activeHub.id,operating_hours:hours},{preserveScroll:true,onError:setErrors}); }} className="rounded-xl border border-zinc-200/90 bg-white p-5 sm:p-6 shadow-xs"><label className="text-sm font-bold text-[#1C1A17]">Actual pickup operating hours<input required maxLength={255} value={hours} onChange={event => setHours(event.target.value)} className="mt-2 w-full rounded-xl border border-zinc-200/90 bg-zinc-50/50 hover:bg-white focus:bg-white px-3.5 py-2.5 text-xs text-[#1C1A17] font-medium shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-colors" placeholder="Enter the hours your counter actually opens" /></label><button className="mt-3.5 rounded-xl bg-brand-500 hover:bg-brand-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.99]">Save pickup hours</button>{errors.operating_hours && <p role="alert" className="mt-2 text-xs text-red-700">{errors.operating_hours}</p>}</form>}
                 {isCounterHub && !activeHub?.operating_hours && <p className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-xs font-medium text-amber-900">The company administrator must record actual counter hours before parcels can be staged for pickup.</p>}
 
-                {/* 1. 4-COLUMN NOTION METRIC STRIP */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80 rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
-                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
-                        <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                Ready for Buyer Verification (this page)
-                            </p>
-                            <div className="mt-1.5 flex items-baseline gap-2">
-                                <p className="text-2xl font-bold text-zinc-900 tabular-nums">
-                                    {readyNow}
-                                </p>
-                                <span className="text-xs font-semibold text-zinc-500">ready · Staging & valid claim</span>
-                            </div>
-                        </div>
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/90 bg-zinc-50 text-zinc-700">
-                            <Store className="w-4 h-4" />
-                        </div>
-                    </div>
-
-                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
-                        <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                Needs Attention (this page)
-                            </p>
-                            <div className="mt-1.5 flex items-baseline gap-2">
-                                <p className="text-2xl font-bold text-amber-800 tabular-nums">
-                                    {blockedNow}
-                                </p>
-                                <span className="text-xs font-semibold text-amber-700">parcels · Review the blocker</span>
-                            </div>
-                        </div>
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/90 bg-zinc-50 text-zinc-700">
-                            <AlertCircle className="w-4 h-4" />
-                        </div>
-                    </div>
-
-                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
-                        <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                Recent Verified Collections
-                            </p>
-                            <div className="mt-1.5 flex items-baseline gap-2">
-                                <p className="text-2xl font-bold text-zinc-900 tabular-nums">
-                                    {recentlyCollected.length}
-                                </p>
-                                <span className="text-xs font-semibold text-zinc-500">released · Up to five shown</span>
-                            </div>
-                        </div>
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200/90 bg-zinc-50 text-zinc-700">
-                            <CheckCircle2 className="w-4 h-4" />
-                        </div>
-                    </div>
-
-                    <div className="p-4 sm:p-5 flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                Station Location
-                            </p>
-                            <p className="mt-1.5 text-sm font-bold text-zinc-900 truncate">
-                                {activeHub?.name || 'Local Bayan Hub'}
-                            </p>
-                            <p className="mt-0.5 text-xs text-zinc-500 truncate">
-                                {activeHub?.city_municipality || 'Laguna'} ·{' '}
-                                <span className={`font-semibold ${!isCounterHub ? 'text-zinc-500' : activeHub?.operating_hours ? 'text-emerald-700' : 'text-amber-700'}`}>
-                                    {!isCounterHub ? 'Not a pickup counter' : activeHub?.operating_hours ? 'Hours recorded' : 'Setup required'}
-                                </span>
-                            </p>
-                        </div>
-                        <span className="shrink-0 text-xs tabular-nums font-bold px-2 py-0.5 rounded-md bg-zinc-100 text-[#121316] border border-zinc-200">
-                            {activeHub?.code || 'STATION'}
-                        </span>
+                <div className="grid grid-cols-1 overflow-hidden rounded-card border border-line-200 bg-white sm:grid-cols-3">
+                    <button type="button" onClick={() => setCategoryFilter('ready')} aria-pressed={categoryFilter === 'ready'}
+                        className={`group relative border-b border-line-200 p-4 pr-9 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:border-b-0 sm:border-r sm:p-5 ${categoryFilter === 'ready' ? 'bg-brand-50/60' : 'hover:bg-surface-50'}`}>
+                        <ChevronRight aria-hidden="true" className="absolute right-3 top-4 h-4 w-4 text-ink-400 transition-transform group-hover:translate-x-0.5" />
+                        <span className="block text-[13px] text-ink-600">Ready to release on this page</span>
+                        <p className="mt-1 text-[28px] font-bold leading-9 tabular-nums text-success">{readyNow}</p>
+                    </button>
+                    <button type="button" onClick={() => setCategoryFilter('attention')} aria-pressed={categoryFilter === 'attention'}
+                        className={`group relative border-b border-line-200 p-4 pr-9 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:border-b-0 sm:border-r sm:p-5 ${categoryFilter === 'attention' ? 'bg-brand-50/60' : 'hover:bg-surface-50'}`}>
+                        <ChevronRight aria-hidden="true" className="absolute right-3 top-4 h-4 w-4 text-ink-400 transition-transform group-hover:translate-x-0.5" />
+                        <span className="block text-[13px] text-ink-600">Needs attention on this page</span>
+                        <p className={`mt-1 text-[28px] font-bold leading-9 tabular-nums ${blockedNow > 0 ? 'text-warning' : 'text-ink-900'}`}>{blockedNow}</p>
+                    </button>
+                    <div className="p-4 sm:p-5">
+                        <span className="block text-[13px] text-ink-600">Released recently</span>
+                        <p className="mt-1 text-[28px] font-bold leading-9 tabular-nums text-ink-900">{recentlyCollected.length}</p>
                     </div>
                 </div>
 
@@ -285,19 +231,10 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                     {/* LEFT (8 COLS): STAGED PARCELS FOR HANDOVER */}
                     <div className="lg:col-span-8 bg-white rounded-xl border border-zinc-200/90 shadow-xs overflow-hidden">
                         {/* Cohesive Notion Database Header + Search + Verification Strip */}
-                        <div className="border-b border-zinc-200/80 bg-zinc-50/50 p-5 space-y-3.5">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white border border-zinc-200/90 text-zinc-700 shadow-2xs">
-                                        <Store className="w-3.5 h-3.5" />
-                                    </span>
-                                    <h3 className="text-xs font-bold text-[#1C1A17] font-sans uppercase tracking-wider">
-                                        Counter Parcel Queue
-                                    </h3>
-                                </div>
-                                <span className="inline-flex items-center rounded-md border border-zinc-200/90 bg-white px-2.5 py-0.5 text-xs tabular-nums font-semibold text-zinc-700">
-                                    {counterParcels.total} matching parcels
-                                </span>
+                        <div className="space-y-3 px-5 pt-5">
+                            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                <h3 className="text-base font-semibold text-ink-900">Counter queue</h3>
+                                <span className="text-[13px] tabular-nums text-ink-600">{counterParcels.total} matching parcels</span>
                             </div>
 
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -308,8 +245,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                         aria-label="Search counter parcels"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        placeholder="Tracking code, order number, buyer name or phone..."
-                                        className="w-full pl-9 pr-3.5 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-medium text-[#1C1A17] placeholder:text-zinc-400 focus:outline-none focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 shadow-2xs transition-colors"
+                                        placeholder="Search code, order, buyer or phone"
+                                        className={`${hubInput} pl-9`}
                                     />
                                 </form>
                             </div>
@@ -320,8 +257,8 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 onChange={(id) => setCategoryFilter(id as 'all' | 'ready' | 'attention')}
                                 tabs={[
                                     { id: 'all', label: 'All on page', count: pageParcels.length },
-                                    { id: 'ready', label: 'Ready for Release', count: readyParcels.length },
-                                    { id: 'attention', label: 'Needs Attention / Staging', count: attentionParcels.length },
+                                    { id: 'ready', label: 'Ready to release', count: readyParcels.length },
+                                    { id: 'attention', label: 'Needs attention', count: attentionParcels.length },
                                 ]}
                             />
                         </div>
@@ -330,22 +267,19 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
 
                         {pageParcels.length === 0 ? (
                             <div className="py-14 text-center font-sans">
-                                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-400 mb-3">
-                                    <Store className="w-5 h-5" />
+                                <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface-100 text-ink-500">
+                                    <Store className="h-5 w-5" aria-hidden="true" />
                                 </span>
-                                <p className="text-sm font-bold text-[#1C1A17]">{counterParcels.total > 0 ? 'No parcels on this page' : 'No matching parcels at this counter'}</p>
-                                <p className="text-xs text-zinc-400 mt-1">
-                                    Arrived parcels appear here before staging. Search or change pages to find a parcel.
-                                </p>
+                                <p className="text-sm font-semibold text-ink-900">{counterParcels.total > 0 ? 'No parcels on this page' : 'No matching parcels at this counter'}</p>
                             </div>
                         ) : visibleParcels.length === 0 ? (
                             <div className="py-10 text-center font-sans">
-                                <p className="text-sm font-semibold text-[#121316]">No parcels match this category on the current page</p>
+                                <p className="text-sm font-semibold text-ink-900">No parcels match this category on the current page</p>
                                 <p className="mt-1 text-xs text-zinc-500">Switch back to All on page or check another page.</p>
                                 <button
                                     type="button"
                                     onClick={() => setCategoryFilter('all')}
-                                    className="mt-3 rounded-lg border border-zinc-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-[#121316] shadow-2xs hover:bg-zinc-50 cursor-pointer"
+                                    className="mt-3 rounded-lg border border-zinc-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-ink-900 shadow-2xs hover:bg-zinc-50 cursor-pointer"
                                 >
                                     Show all on page
                                 </button>
@@ -356,7 +290,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     <div key={parcel.id} className="py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2 flex-wrap font-sans">
-                                                <span className="inline-flex items-center rounded-lg border border-zinc-200 bg-zinc-100 px-2.5 py-1 text-xs font-bold tabular-nums tracking-wide text-[#121316] shadow-2xs">
+                                                <span className="inline-flex items-center rounded-lg border border-zinc-200 bg-zinc-100 px-2.5 py-1 text-xs font-bold tabular-nums tracking-wide text-ink-900 shadow-2xs">
                                                     <span className="text-[10px] uppercase font-sans font-extrabold mr-1 text-zinc-500">WAYBILL:</span>{parcel.tracking_number}
                                                 </span>
                                                 <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-zinc-100 text-zinc-700 border border-zinc-200">
@@ -413,7 +347,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                                 type="button"
                                                 onClick={() => openReleaseModal(parcel)}
                                                 disabled={!canRelease(parcel)}
-                                                className="px-4 py-2 bg-[#E00D42] hover:bg-[#C20836] text-white rounded-xl text-xs font-bold font-sans shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+                                                className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-bold font-sans shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
                                             >
                                                 <CheckCircle2 className="w-4 h-4" />
                                                 <span>Release</span>
@@ -430,7 +364,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     : <button type="button" disabled className="rounded-xl border border-zinc-200/90 px-3.5 py-2 text-zinc-400 cursor-not-allowed">Previous</button>}
                                 {counterParcels.next_page_url ? <Link href={counterParcels.next_page_url} preserveScroll className="rounded-xl border border-zinc-200/90 bg-white px-3.5 py-2 font-semibold text-zinc-700 shadow-xs hover:bg-zinc-50 hover:text-zinc-900 transition-colors">Next</Link>
                                     : <button type="button" disabled className="rounded-xl border border-zinc-200/90 px-3.5 py-2 text-zinc-400 cursor-not-allowed">Next</button>}
-                                {counterParcels.current_page > counterParcels.last_page && <Link href={counterParcels.first_page_url} className="rounded-xl border border-zinc-300 bg-zinc-100 px-3.5 py-2 font-bold text-[#121316] shadow-xs">First page</Link>}
+                                {counterParcels.current_page > counterParcels.last_page && <Link href={counterParcels.first_page_url} className="rounded-xl border border-zinc-300 bg-zinc-100 px-3.5 py-2 font-bold text-ink-900 shadow-xs">First page</Link>}
                             </nav>
                         </div>
                         </div>
@@ -484,7 +418,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
             {/* RELEASE VERIFICATION MODAL */}
             {selectedParcel && (
                 <Dialog open onClose={() => { if (!submitting) setSelectedParcel(null); }} className="relative z-50 font-sans">
-                    <DialogBackdrop className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity" />
+                    <DialogBackdrop className="fixed inset-0 bg-brand-900/45 backdrop-blur-xs transition-opacity" />
                     <div className="fixed inset-0 flex items-center justify-center p-4">
                     <DialogPanel className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-2xl">
                         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-100 px-6 py-5">
@@ -492,7 +426,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 <DialogTitle className="text-base font-bold text-[#1C1A17]">
                                     Verify counter handover
                                 </DialogTitle>
-                                <p className="text-xs text-[#121316] tabular-nums font-bold mt-1">
+                                <p className="text-xs text-ink-900 tabular-nums font-bold mt-1">
                                     {selectedParcel.tracking_number}
                                 </p>
                                 {selectedParcel.claim && <p className="mt-1 text-xs text-zinc-500">Holding deadline: {new Date(selectedParcel.claim.expires_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })} PHT · {selectedParcel.claim.status}</p>}
@@ -512,7 +446,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-5">
                             <label className="block text-xs font-bold text-[#1C1A17]">Actual parcel waybill<input required disabled={submitting} value={barcode} onChange={event => setBarcode(event.target.value)} className={`${hubInput} mt-1.5`} placeholder="Scan or type waybill number" /></label>
                             <WaybillCamera onScan={setBarcode} disabled={submitting || !currentSelectedParcel || !canRelease(currentSelectedParcel)} instruction="Scan the parcel waybill, then check the buyer’s ID, private claim code and payment before confirming handover." />
-                            <label className="flex items-start gap-2.5 text-xs text-zinc-700 leading-relaxed font-medium"><input type="checkbox" required disabled={submitting} checked={identityConfirmed} onChange={event => setIdentityConfirmed(event.target.checked)} className="mt-0.5 rounded border-zinc-300 text-[#121316] focus:ring-[#121316]" />I checked a valid photo ID matching buyer account #{selectedParcel.buyer_id} and the name below.</label>
+                            <label className="flex items-start gap-2.5 text-xs text-zinc-700 leading-relaxed font-medium"><input type="checkbox" required disabled={submitting} checked={identityConfirmed} onChange={event => setIdentityConfirmed(event.target.checked)} className="mt-0.5 rounded border-zinc-300 text-ink-900 focus:ring-[#121316]" />I checked a valid photo ID matching buyer account #{selectedParcel.buyer_id} and the name below.</label>
                             <div>
                                 <label htmlFor="counter-recipient-name" className="mb-1.5 block text-xs font-bold text-[#1C1A17]">
                                     Recipient name on the ID
@@ -568,7 +502,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                     <p className="font-bold text-[10px] uppercase tracking-wider text-amber-800">Collect Cash on Delivery</p>
                                     <label className="block text-xs font-semibold">Actual cash tender<input required disabled={submitting} inputMode="decimal" value={cashReceived} onChange={event => setCashReceived(event.target.value)} className={`${hubInput} mt-1`} /></label>
                                     <label className="block text-xs font-semibold">Change returned<input required disabled={submitting} inputMode="decimal" value={changeGiven} onChange={event => setChangeGiven(event.target.value)} className={`${hubInput} mt-1`} /></label>
-                                    <label className="flex items-start gap-2.5 text-xs font-medium"><input required type="checkbox" checked={cashConfirmed} onChange={event => setCashConfirmed(event.target.checked)} className="mt-0.5 rounded border-zinc-300 text-[#121316] focus:ring-[#121316]" />I received the cash and returned any correct change.</label>
+                                    <label className="flex items-start gap-2.5 text-xs font-medium"><input required type="checkbox" checked={cashConfirmed} onChange={event => setCashConfirmed(event.target.checked)} className="mt-0.5 rounded border-zinc-300 text-ink-900 focus:ring-[#121316]" />I received the cash and returned any correct change.</label>
                                     <p className="text-base font-extrabold mt-1 text-[#1C1A17]">
                                         ₱{selectedParcel.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </p>
@@ -590,7 +524,7 @@ export default function HubCounterPickup({ activeHub, counterParcels, recentlyCo
                                 <button
                                     type="submit"
                                     disabled={submitting || !currentSelectedParcel || !canRelease(currentSelectedParcel)}
-                                    className="rounded-xl bg-[#E00D42] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#C20836] disabled:opacity-50 active:scale-[0.99]"
+                                    className="rounded-xl bg-brand-500 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-brand-600 disabled:opacity-50 active:scale-[0.99]"
                                 >
                                     {submitting ? 'Releasing...' : 'Confirm Handover'}
                                 </button>

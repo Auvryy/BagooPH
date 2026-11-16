@@ -340,29 +340,29 @@ export function ScanModeControls({
 }) {
     const modes: Array<{ id: ScanOperationMode; label: string }> = [
         {
-            id: 'verify',
-            label: '2-Step Verify',
+            id: 'direct',
+            label: 'Scan & receive',
         },
         {
-            id: 'direct',
-            label: '1-Scan Direct',
+            id: 'verify',
+            label: 'Check first',
         },
     ];
 
     return (
         <section
             aria-label="Scanner speed and safety mode"
-            className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-xs space-y-3"
+            className="space-y-3"
         >
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                    <h2 className="text-[13px] font-medium text-ink-600">
                         Scan mode
                     </h2>
                     <div
                         role="radiogroup"
                         aria-label="Scanning workflow mode"
-                        className="inline-flex items-center rounded-lg border border-zinc-200 bg-slate-100/80 p-0.5 gap-0.5"
+                        className="inline-flex items-center gap-0.5 rounded-control border border-line-300 bg-white p-0.5"
                     >
                         {modes.map((option) => {
                             const active = scanMode === option.id;
@@ -373,13 +373,9 @@ export function ScanModeControls({
                                     role="radio"
                                     aria-checked={active}
                                     onClick={() => onModeChange(option.id)}
-                                    className={`rounded-md px-3 py-1 text-xs font-semibold transition cursor-pointer ${
-                                        active
-                                            ? option.id === 'direct'
-                                                ? 'border border-[#C20836] bg-[#E00D42] text-white shadow-2xs'
-                                                : 'border border-zinc-200 bg-white text-[#121316] shadow-2xs'
-                                            : 'border border-transparent text-zinc-600 hover:text-[#121316]'
-                                    }`}
+                                    className={`min-h-8 rounded-[4px] px-3 text-[13px] font-medium transition-colors cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 ${
+ active ? 'bg-brand-50 text-brand-600' : 'text-ink-700 hover:bg-surface-100'
+ }`}
                                 >
                                     {option.label}
                                 </button>
@@ -400,7 +396,7 @@ export function ScanModeControls({
                             <button
                                 type="button"
                                 onClick={onOpenBatchQueue}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-[#C20836] hover:bg-rose-100 transition cursor-pointer"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-brand-600 hover:bg-rose-100 transition cursor-pointer"
                             >
                                 <Layers className="h-3.5 w-3.5" />
                                 <span>{queuedCount} queued offline · Sync</span>
@@ -411,7 +407,9 @@ export function ScanModeControls({
             </div>
 
             {scanMode === 'direct' && (
-                <div className="grid gap-3 border-t border-zinc-200 pt-3 sm:grid-cols-2">
+                <details className="border-t border-line-200 pt-3">
+                <summary className="cursor-pointer text-[13px] font-medium text-ink-600">Optional lane guards</summary>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <label className="block text-xs font-semibold text-zinc-700">
                         Lane Action Lock (optional guard)
                         <select
@@ -438,6 +436,7 @@ export function ScanModeControls({
                         />
                     </label>
                 </div>
+                </details>
             )}
         </section>
     );
@@ -467,11 +466,11 @@ export function BatchQueueWorkbench({
         >
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 pb-3.5">
                 <div className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-[#121316]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-ink-900">
                         <Layers className="h-4 w-4" />
                     </span>
                     <div>
-                        <h3 className="text-sm font-semibold text-[#121316]">
+                        <h3 className="text-sm font-semibold text-ink-900">
                             Batch Queue ({queue.length} pending)
                         </h3>
                         <p className="text-xs text-zinc-500">
@@ -517,7 +516,7 @@ export function BatchQueueWorkbench({
                     {queue.map((item, idx) => (
                         <li key={item.request_token} className="flex items-center justify-between gap-3 px-4 py-2.5 text-xs">
                             <div className="min-w-0">
-                                <span className="font-semibold text-[#121316] tabular-nums">
+                                <span className="font-semibold text-ink-900 tabular-nums">
                                     #{idx + 1} · {item.barcode}
                                 </span>
                                 <p className="mt-0.5 text-xs text-zinc-500">
@@ -543,8 +542,8 @@ export function BatchQueueWorkbench({
             {lastSync && (
                 <div className="rounded-xl border border-zinc-200/90 bg-zinc-50/60 p-4 space-y-3" aria-label="Latest batch replay report">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-[#121316]">
-                            <Zap className="h-4 w-4 text-[#E00D42]" />
+                        <div className="flex items-center gap-2 text-xs font-semibold text-ink-900">
+                            <Zap className="h-4 w-4 text-brand-500" />
                             <span>Last Batch Replay Results</span>
                         </div>
                         <span className="text-xs font-medium text-zinc-600 tabular-nums">
@@ -555,11 +554,11 @@ export function BatchQueueWorkbench({
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 text-xs">
                         <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
                             <span className="block text-zinc-500">Submitted</span>
-                            <strong className="text-sm font-bold text-[#121316] tabular-nums">{lastSync.summary.submitted}</strong>
+                            <strong className="text-sm font-bold text-ink-900 tabular-nums">{lastSync.summary.submitted}</strong>
                         </div>
                         <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
                             <span className="block text-zinc-600">Confirmed</span>
-                            <strong className="text-sm font-bold text-[#121316] tabular-nums">{lastSync.summary.confirmed}</strong>
+                            <strong className="text-sm font-bold text-ink-900 tabular-nums">{lastSync.summary.confirmed}</strong>
                         </div>
                         <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2">
                             <span className="block text-zinc-600">Idempotent replay</span>
@@ -581,17 +580,17 @@ export function BatchQueueWorkbench({
                                         {item.outcome === 'rejected' ? (
                                             <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-600" />
                                         ) : (
-                                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#E00D42]" />
+                                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-brand-500" />
                                         )}
-                                        <span className="font-semibold text-[#121316] tabular-nums">{item.barcode}</span>
+                                        <span className="font-semibold text-ink-900 tabular-nums">{item.barcode}</span>
                                         <span
                                             className={`rounded-md border px-2 py-0.5 text-xs font-semibold ${
-                                                item.outcome === 'confirmed'
-                                                    ? 'border-zinc-300 bg-zinc-100 text-[#121316]'
-                                                    : item.outcome === 'duplicate_replay'
-                                                    ? 'border-zinc-200 bg-zinc-100 text-zinc-700'
-                                                    : 'border-red-200 bg-red-50 text-red-800'
-                                            }`}
+ item.outcome === 'confirmed'
+ ? 'border-zinc-300 bg-zinc-100 text-ink-900'
+ : item.outcome === 'duplicate_replay'
+ ? 'border-zinc-200 bg-zinc-100 text-zinc-700'
+ : 'border-red-200 bg-red-50 text-red-800'
+ }`}
                                         >
                                             {item.outcome === 'duplicate_replay' ? 'Replayed' : item.outcome}
                                         </span>
@@ -623,7 +622,7 @@ export function GatePassDialog({
         <Modal show={Boolean(gatePass)} onClose={onClose} maxWidth="lg">
             {gatePass && (
                 <div className="overflow-hidden bg-white font-sans">
-                    <div className="bg-[#E00D42] p-6 text-white">
+                    <div className="bg-brand-500 p-6 text-white">
                         <div className="flex items-center justify-between">
                             <span className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">
                                 <ShieldCheck className="h-3.5 w-3.5" />
@@ -647,7 +646,7 @@ export function GatePassDialog({
                                 <span>Source Hub</span>
                                 <span>Destination Hub</span>
                             </div>
-                            <div className="flex items-center justify-between text-sm font-bold text-[#121316]">
+                            <div className="flex items-center justify-between text-sm font-bold text-ink-900">
                                 <span>{gatePass.source_hub.name} ({gatePass.source_hub.code})</span>
                                 <ArrowRight className="mx-2 h-4 w-4 text-zinc-400" />
                                 <span>{gatePass.destination_hub.name} ({gatePass.destination_hub.code})</span>
@@ -657,12 +656,12 @@ export function GatePassDialog({
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1 rounded-xl border border-zinc-200 p-3.5">
                                 <span className="block text-xs font-medium text-zinc-500">Assigned Driver</span>
-                                <div className="text-sm font-bold text-[#121316]">{gatePass.driver_name}</div>
+                                <div className="text-sm font-bold text-ink-900">{gatePass.driver_name}</div>
                                 <div className="text-xs text-zinc-500">{gatePass.driver_phone}</div>
                             </div>
                             <div className="space-y-1 rounded-xl border border-zinc-200 p-3.5">
                                 <span className="block text-xs font-medium text-zinc-500">Vehicle Plate &amp; Class</span>
-                                <div className="text-sm font-bold text-[#121316]">{gatePass.vehicle_plate}</div>
+                                <div className="text-sm font-bold text-ink-900">{gatePass.vehicle_plate}</div>
                                 <div className="text-xs font-semibold capitalize text-zinc-600">{gatePass.vehicle_type.replace(/_/g, ' ')}</div>
                             </div>
                         </div>
@@ -670,13 +669,13 @@ export function GatePassDialog({
                         <div className="space-y-2 rounded-xl border border-zinc-200 p-4">
                             <div className="flex items-center justify-between">
                                 <span className="font-semibold text-zinc-700">Payload Weight Utilization</span>
-                                <span className="font-bold text-[#121316] tabular-nums">
+                                <span className="font-bold text-ink-900 tabular-nums">
                                     {gatePass.total_weight_kg.toFixed(1)} kg / {gatePass.vehicle_capacity_kg} kg ({gatePass.utilization_pct}%)
                                 </span>
                             </div>
                             <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
                                 <div
-                                    className="h-2 rounded-full bg-[#E00D42]"
+                                    className="h-2 rounded-full bg-brand-500"
                                     style={{ width: `${Math.min(100, Math.max(8, gatePass.utilization_pct))}%` }}
                                 />
                             </div>
@@ -694,7 +693,7 @@ export function GatePassDialog({
                                 </span>
                                 <div className="flex flex-wrap gap-1.5">
                                     {gatePass.seals.map((seal, idx) => (
-                                        <span key={idx} className="rounded-md border border-zinc-300 bg-white px-2 py-0.5 text-xs font-semibold text-[#121316] tabular-nums">
+                                        <span key={idx} className="rounded-md border border-zinc-300 bg-white px-2 py-0.5 text-xs font-semibold text-ink-900 tabular-nums">
                                             {seal}
                                         </span>
                                     ))}
@@ -712,7 +711,7 @@ export function GatePassDialog({
                                     </span>
                                 </div>
                             </div>
-                            <span className="rounded border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-xs font-bold uppercase text-[#121316]">
+                            <span className="rounded border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-xs font-bold uppercase text-ink-900">
                                 CLEARED
                             </span>
                         </div>

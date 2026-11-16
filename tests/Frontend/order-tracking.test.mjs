@@ -99,7 +99,7 @@ test('the buyer rail has circular current-step markup without restyling the shar
     assert.equal((buyer.match(/data-milestone=/g) ?? []).length, 5);
     assert.match(buyer, /aria-current="step"/);
     assert.match(buyer, /rounded-full/);
-    assert.match(buyer, /bg-amber-300/);
+    assert.match(buyer, /ring-brand-50/);
     assert.match(buyer, /<summary[^>]*>[\s\S]*Collected from seller[\s\S]*<\/summary>/);
     assert.match(buyer, /Journey checkpoints \(1\)/);
     assert.match(buyer, /Checkpoint not recorded|Not recorded/);
@@ -410,10 +410,10 @@ test('journey opens by default and completed notice-only updates are red without
     assert.ok(html.indexOf('Your order was confirmed') > html.indexOf('</summary>'));
     assert.match(html, /Mark read/);
     const past = html.match(/<li[^>]*data-journey-entry="notice-confirmed"[\s\S]*?<\/li>/)[0];
-    assert.match(past, /border-\[#E00D42\] bg-\[#E00D42\]/);
-    assert.doesNotMatch(past, /border-slate-300 bg-white/);
+    assert.match(past, /bg-brand-200/);
+    assert.doesNotMatch(past, /border-line-300 bg-white/);
     const current = html.match(/<li[^>]*data-journey-entry="checkpoint-1"[\s\S]*?<\/li>/)[0];
-    assert.match(current, /border-amber-500 bg-amber-300/);
+    assert.match(current, /bg-brand-500 ring-4 ring-brand-50/);
     assert.equal(ui.buyerMilestones(data)[2].recorded, false);
 });
 
@@ -442,7 +442,7 @@ test('See more retains older visits and unread actions while the latest five upd
         assert.equal((recent.match(/data-journey-entry=/g) ?? []).length, 5);
         assert.match(recent, new RegExp(`start="${count - 4}"`));
         assert.match(recent, new RegExp(`data-journey-entry="checkpoint-${count}"`));
-        assert.match(recent, /border-amber-500 bg-amber-300/);
+        assert.match(recent, /bg-brand-500 ring-4 ring-brand-50/);
         assert.match(recent, /Mark read/);
         for (let id = 1; id <= count; id++) assert.equal((html.match(new RegExp(`data-journey-entry="checkpoint-${id}"`, 'g')) ?? []).length, 1);
         assert.ok(html.indexOf(earlier) < html.indexOf(recent));
@@ -450,21 +450,21 @@ test('See more retains older visits and unread actions while the latest five upd
     }
 });
 
-test('completed circles are red, the current circle is yellow and a pending product review has one accessible action', () => {
+test('completed circles are solid red, the current circle is red-outlined and a pending product review has one accessible action', () => {
     const data = { ...tracking, placed_at: order.created_at, commercial_status: 'completed', parcel_status: 'delivered',
         history: [point(1, 'confirmed'), point(2, 'picked_up'), point(3, 'delivered'), point(4, 'buyer_completed')] };
     const pending = { ...order, status: 'completed', items: [{ id: 1, review: null }] };
     const html = renderToStaticMarkup(createElement(ui.Panel, { tracking: data, buyerOrder: pending, variant: 'buyer', onReview() {} }));
     const rail = html.match(/<ol aria-label="Order milestones"[^>]*>([\s\S]*?)<\/ol>/)[1];
-    assert.equal((rail.match(/border-\[#E00D42\] bg-\[#E00D42\] text-white/g) ?? []).length, 4);
-    assert.equal((rail.match(/border-amber-500 bg-amber-300/g) ?? []).length, 1);
+    assert.equal((rail.match(/border-brand-500 bg-brand-500 text-white/g) ?? []).length, 4);
+    assert.equal((rail.match(/border-brand-500 bg-white text-brand-600 ring-4 ring-brand-50/g) ?? []).length, 1);
     assert.match(rail, /aria-current="step" data-milestone="review"/);
     assert.match(rail, /Write a product review/);
     assert.equal((rail.match(/<button /g) ?? []).length, 1);
     assert.match(renderToStaticMarkup(createElement(ui.Panel, { tracking: data, buyerOrder: pending, variant: 'buyer', onReview() {}, refreshing: true })), /<button[^>]*disabled=""/);
 });
 
-test('tracking precedes package items with red prices and grouped courier, full addresses and notes', async () => {
+test('tracking precedes package items with neutral item prices, a red total and grouped courier, full addresses and notes', async () => {
     const html = await render(ui.Detail, { ...detailProps, order: { ...order,
         items: [{ id: 10, quantity: 2, unit_price: 300, color: 'Blue', size: 'Large', product: { name: 'Everyday Bag', slug: 'everyday-bag' } }],
         delivery: { ...order.delivery, logistics_partner: 'Bagoo Dispatch', pickup_store_name: 'Bagoo Crafts', pickup_address: '12 Mabini Street, Manila',
@@ -476,8 +476,8 @@ test('tracking precedes package items with red prices and grouped courier, full 
     assert.ok(progress > -1 && start > progress && end > start);
     for (const text of ['Everyday Bag', 'Bagoo Dispatch', 'Marco Cruz', '12 Mabini Street, Manila', '45 Sampaguita Street, Pasig', 'Please call on arrival.', 'BGO-PARCEL', 'Blue / Large']) assert.ok(packageItems.includes(text), text);
     assert.match(packageItems, /<summary[^>]*>[\s\S]*Delivery details[\s\S]*Bagoo Dispatch[\s\S]*<\/summary>/);
-    assert.match(packageItems, /<p class="[^"]*text-\[#E00D42\][^"]*">₱600\.00<\/p>/);
-    assert.match(packageItems, /Total amount<\/span><span class="[^"]*text-\[#E00D42\][^"]*">₱650\.00/);
+    assert.match(packageItems, /<p class="[^"]*text-ink-900[^"]*">₱600\.00<\/p>/);
+    assert.match(packageItems, /Total amount<\/span><span class="[^"]*text-brand-500[^"]*">₱650\.00/);
     assert.doesNotMatch(packageItems, /truncate|src=""/);
     assert.doesNotMatch(html, /Assigned Courier Fleet|Next step/);
 });

@@ -47,7 +47,7 @@ export default function CommandSheet({ commands, bins }: Props) {
 
                     <button
                         onClick={handlePrint}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-[#E00D42] hover:bg-[#C20836] rounded-xl shadow-xs transition cursor-pointer"
+                        className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 rounded-xl shadow-xs transition cursor-pointer"
                     >
                         <Printer className="h-4 w-4" />
                         Print Barcode Sheet (A4 / Letter)
@@ -60,8 +60,8 @@ export default function CommandSheet({ commands, bins }: Props) {
                 {/* Title Banner */}
                 <div className="border-b-2 border-zinc-900 pb-5 mb-8 flex items-end justify-between">
                     <div>
-                        <div className="flex items-center gap-2 text-xs tabular-nums font-bold uppercase tracking-wider text-[#C20836]">
-                            <Zap className="h-4 w-4 fill-current text-[#E00D42]" />
+                        <div className="flex items-center gap-2 text-xs tabular-nums font-bold uppercase tracking-wider text-brand-600">
+                            <Zap className="h-4 w-4 fill-current text-brand-500" />
                             Bagoo Logistics Hub Operation Sheet
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 mt-1 uppercase font-sans">
@@ -80,7 +80,7 @@ export default function CommandSheet({ commands, bins }: Props) {
                 {/* Section 1: Workstation Command Barcodes */}
                 <section className="mb-10">
                     <div className="flex items-center gap-2 mb-3">
-                        <Zap className="h-5 w-5 text-[#E00D42]" />
+                        <Zap className="h-5 w-5 text-brand-500" />
                         <h2 className="text-lg font-black uppercase tracking-wide text-zinc-900 font-sans">
                             1. Operational Command Barcodes
                         </h2>
@@ -96,7 +96,7 @@ export default function CommandSheet({ commands, bins }: Props) {
                                 className="bg-white border border-zinc-300 print:border-2 print:border-zinc-900 rounded-xl p-6 flex flex-col items-center justify-between text-center shadow-xs hover:border-zinc-400 hover:shadow-sm transition-all print:shadow-none print:break-inside-avoid"
                             >
                                 <div className="mb-2">
-                                    <span className="inline-block px-3 py-1 rounded-lg text-[11px] tabular-nums font-bold bg-[#E00D42] text-white uppercase tracking-wider">
+                                    <span className="inline-block px-3 py-1 rounded-chip text-xs tabular-nums font-semibold bg-brand-50 text-brand-600">
                                         Command
                                     </span>
                                     <h3 className="text-base font-bold text-zinc-900 mt-2">

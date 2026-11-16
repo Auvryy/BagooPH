@@ -456,7 +456,7 @@ class ShipmentLossReconciliationTest extends TestCase
                 'status' => 'active',
             ]);
             $driver->courierProfile->update(['logistics_company_id' => $plan->logistics_company_id, 'assigned_hub_id' => $src->id, 'vehicle_id' => $fleet->id, 'is_available' => true]);
-            $this->actingAs($owner)->get('/hub/manifests')->assertOk();
+            $this->actingAs($this->flowHandler($src))->get('/hub/manifests')->assertOk();
             $created = $this->postJson('/hub/manifests', [
                 'source_hub_id' => $src->id,
                 'destination_hub_id' => $dst->id,
@@ -467,7 +467,7 @@ class ShipmentLossReconciliationTest extends TestCase
             ])->assertCreated();
             $nextManifest = LogisticsManifest::findOrFail($created->json('manifest.id'));
             $this->actingAs($this->flowHandler($src))->postJson('/hub/manifests/'.$nextManifest->id.'/load', $this->flowManifestPayload($nextManifest, ['barcode' => $case->parcel->barcode]))->assertOk();
-            $this->actingAs($owner)->postJson('/hub/manifests/'.$nextManifest->id.'/seal', $this->flowManifestPayload($nextManifest))->assertOk();
+            $this->actingAs($this->flowHandler($src))->postJson('/hub/manifests/'.$nextManifest->id.'/seal', $this->flowManifestPayload($nextManifest))->assertOk();
             $this->actingAs($this->flowHandler($src))->postJson('/hub/manifests/'.$nextManifest->id.'/dispatch', $this->flowManifestPayload($nextManifest))->assertOk();
             $this->actingAs($this->flowHandler($dst))->postJson('/hub/manifests/'.$nextManifest->id.'/receive', $this->flowManifestPayload($nextManifest, ['barcode' => $case->parcel->barcode]))->assertOk();
             $this->actingAs($owner)->postJson('/hub/manifests/'.$nextManifest->id.'/close', $this->flowManifestPayload($nextManifest))->assertOk();

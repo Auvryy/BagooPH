@@ -56,14 +56,14 @@ function CashActionDialog({ target, account, base, requestToken, onClose }: { ta
         <CourierDialog open title={titles[target.action]} onClose={() => { if (!busy) onClose(); }} busy={busy}>
             <form onSubmit={submit} className="space-y-4">
                 <div className="rounded-lg border border-zinc-200/90 bg-zinc-50/70 p-3">
-                    <p className="text-sm font-bold text-[#121316]">{account.order_number}</p>
+                    <p className="text-sm font-bold text-ink-900">{account.order_number}</p>
                     <p className="mt-1 text-xs text-zinc-500">{account.hub_name} · Original due {cashMoney(account.expected_cents)}</p>
                 </div>
                 {target.action === 'offer' && <p className="text-sm leading-relaxed text-zinc-600">Choose the person receiving the actual cash. Your responsibility stays recorded until they confirm their count.</p>}
                 {target.action === 'authorize-recovery' && <p className="text-sm leading-relaxed text-zinc-600">The original hub is restricted. This authorization covers only the named rider’s recorded cash and lasts 24 hours. It does not restore operational access.</p>}
                 {(target.action === 'offer' || target.action === 'authorize-recovery') && (
                     <>
-                        <label htmlFor="cash-holder" className="block text-sm font-semibold text-[#121316]">
+                        <label htmlFor="cash-holder" className="block text-sm font-semibold text-ink-900">
                             Recorded cash holder
                             <select
                                 id="cash-holder"
@@ -85,7 +85,7 @@ function CashActionDialog({ target, account, base, requestToken, onClose }: { ta
                             </select>
                             <CourierFieldError message={errors.holder_id} />
                         </label>
-                        <label htmlFor="cash-recipient" className="block text-sm font-semibold text-[#121316]">
+                        <label htmlFor="cash-recipient" className="block text-sm font-semibold text-ink-900">
                             Receiving person
                             <select id="cash-recipient" required value={recipientId} disabled={busy} onChange={event => setRecipientId(event.target.value)} className={cashInput}>
                                 <option value="">Choose the receiving person</option>
@@ -99,7 +99,7 @@ function CashActionDialog({ target, account, base, requestToken, onClose }: { ta
                     </>
                 )}
                 {target.action === 'offer' && (
-                    <label className="block text-sm font-semibold text-[#121316]" htmlFor="cash-offer-amount">
+                    <label className="block text-sm font-semibold text-ink-900" htmlFor="cash-offer-amount">
                         Cash being handed over
                         <input id="cash-offer-amount" required inputMode="decimal" autoComplete="off" pattern="(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,2})?" value={amount} disabled={busy} onChange={event => setAmount(event.target.value)} className={cashInput} />
                         <p className="mt-2 text-xs font-normal text-zinc-500">Partial handovers keep the remaining responsibility with the original holder.</p>
@@ -111,7 +111,7 @@ function CashActionDialog({ target, account, base, requestToken, onClose }: { ta
                         <p className="text-sm leading-relaxed text-zinc-600">
                             Count the cash received from <strong>{account.pending?.holder_name}</strong>. Expected handover: <strong>{cashMoney(due)}</strong>.
                         </p>
-                        <label className="block text-sm font-semibold text-[#121316]" htmlFor="cash-counted">
+                        <label className="block text-sm font-semibold text-ink-900" htmlFor="cash-counted">
                             Actual cash counted
                             <input id="cash-counted" required inputMode="decimal" autoComplete="off" pattern="(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,2})?" value={received} disabled={busy} onChange={event => setReceived(event.target.value)} placeholder="0.00" className={cashInput} />
                             <CourierFieldError message={errors.received_amount} />
@@ -121,8 +121,8 @@ function CashActionDialog({ target, account, base, requestToken, onClose }: { ta
                                 {delta === 0 ? 'Your count matches the offered amount.' : `${delta < 0 ? 'Shortage' : 'Overage'}: ${cashMoney(Math.abs(delta))}. Explain the difference below.`}
                             </p>
                         )}
-                        <label className="flex items-start gap-3 rounded-lg border border-zinc-200/90 p-3 text-sm text-[#121316]">
-                            <input type="checkbox" required disabled={busy} checked={confirmed} onChange={event => setConfirmed(event.target.checked)} className="mt-0.5 rounded border-zinc-300 text-[#E00D42] focus:ring-[#E00D42]" />
+                        <label className="flex items-start gap-3 rounded-lg border border-zinc-200/90 p-3 text-sm text-ink-900">
+                            <input type="checkbox" required disabled={busy} checked={confirmed} onChange={event => setConfirmed(event.target.checked)} className="mt-0.5 rounded border-zinc-300 text-brand-500 focus:ring-brand-500" />
                             <span>I physically received and counted this cash.</span>
                         </label>
                         <CourierFieldError message={errors.receipt_confirmed} />
@@ -136,7 +136,7 @@ function CashActionDialog({ target, account, base, requestToken, onClose }: { ta
                                 : `Overage of ${cashMoney(difference.difference_cents)}. The extra cash stays separately recorded with its receiving holder and does not increase this order’s COD.`}
                         </p>
                         {difference.difference_cents < 0 && (
-                            <label className="block text-sm font-semibold text-[#121316]" htmlFor="cash-recovery-receipt">
+                            <label className="block text-sm font-semibold text-ink-900" htmlFor="cash-recovery-receipt">
                                 Verified recovery receipt
                                 <select id="cash-recovery-receipt" required value={reference} disabled={busy} onChange={event => setReference(event.target.value)} className={cashInput}>
                                     <option value="">Choose the actual recovery receipt</option>
@@ -158,14 +158,14 @@ function CashActionDialog({ target, account, base, requestToken, onClose }: { ta
                     </p>
                 )}
                 {!['cancel', 'authorize-recovery'].includes(target.action) && !(target.action === 'adjust' && difference && difference.difference_cents < 0) && (
-                    <label className="block text-sm font-semibold text-[#121316]" htmlFor="cash-evidence-reference">
+                    <label className="block text-sm font-semibold text-ink-900" htmlFor="cash-evidence-reference">
                         {target.action === 'receive' ? 'Receipt reference' : 'Evidence reference'}
                         <input id="cash-evidence-reference" required maxLength={120} value={reference} disabled={busy} onChange={event => setReference(event.target.value)} className={cashInput} placeholder="Reference on the cash receipt" />
                         <CourierFieldError message={errors.evidence_reference} />
                     </label>
                 )}
                 {(needsReason || target.action === 'receive') && (
-                    <label className="block text-sm font-semibold text-[#121316]" htmlFor="cash-reason">
+                    <label className="block text-sm font-semibold text-ink-900" htmlFor="cash-reason">
                         {target.action === 'receive' ? 'Explanation of any difference' : 'Review explanation'}
                         <textarea id="cash-reason" rows={3} required={needsReason} minLength={needsReason ? 10 : undefined} maxLength={1000} value={reason} disabled={busy} onChange={event => setReason(event.target.value)} className={cashInput} />
                         <CourierFieldError message={errors.reason} />
@@ -202,7 +202,7 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                             <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
                                 {account.source_kind === 'rider_collection' ? 'Doorstep collection' : account.source_kind === 'counter_collection' ? 'Counter collection' : 'Older record review'}
                             </p>
-                            <h2 className="mt-1 text-lg font-bold text-[#121316]">{account.order_number}</h2>
+                            <h2 className="mt-1 text-lg font-bold text-ink-900">{account.order_number}</h2>
                             <p className="mt-0.5 break-all tabular-nums text-xs text-zinc-500">{account.tracking_number}</p>
                         </div>
                         <CashBadge status={account.status} />
@@ -211,12 +211,12 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                         <div className="mb-5 flex flex-wrap items-end justify-between gap-4 border-b border-zinc-100 pb-5">
                             <div>
                                 <p className="text-xs font-semibold text-zinc-500">Original COD due</p>
-                                <p className="mt-1 tabular-nums text-3xl font-bold tracking-tight tabular-nums text-[#121316] sm:text-4xl">{cashMoney(account.expected_cents)}</p>
+                                <p className="mt-1 tabular-nums text-3xl font-bold tracking-tight tabular-nums text-ink-900 sm:text-4xl">{cashMoney(account.expected_cents)}</p>
                             </div>
                             <div className="flex items-center gap-2.5 rounded-lg border border-zinc-200/80 bg-zinc-50/70 px-3.5 py-2.5 text-sm">
                                 <Building2 className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden="true" />
                                 <div>
-                                    <p className="text-xs font-semibold text-[#121316]">{account.hub_name}</p>
+                                    <p className="text-xs font-semibold text-ink-900">{account.hub_name}</p>
                                     <p className="mt-0.5 text-[11px] text-zinc-500">{account.company_name}</p>
                                 </div>
                             </div>
@@ -230,21 +230,21 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                         {pending && (
                             <section className="overflow-hidden rounded-xl border border-zinc-200/90 border-l-4 border-l-[#E00D42] bg-white p-5 shadow-xs">
                                 <div className="flex items-center gap-2">
-                                    <Clock3 className="h-4 w-4 text-[#E00D42]" aria-hidden="true" />
-                                    <h2 className="text-sm font-semibold text-[#121316]">Handover awaiting receipt</h2>
+                                    <Clock3 className="h-4 w-4 text-brand-500" aria-hidden="true" />
+                                    <h2 className="text-sm font-semibold text-ink-900">Handover awaiting receipt</h2>
                                 </div>
                                 <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_1fr]">
                                     <div className="rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3">
                                         <p className="text-xs text-zinc-500">Recorded source</p>
-                                        <p className="mt-1 text-sm font-semibold text-[#121316]">{pending.holder_name}</p>
+                                        <p className="mt-1 text-sm font-semibold text-ink-900">{pending.holder_name}</p>
                                     </div>
                                     <ArrowRight className="hidden self-center text-zinc-400 sm:block" aria-hidden="true" />
                                     <div className="rounded-lg border border-rose-200/80 bg-rose-50/70 p-3">
                                         <p className="text-xs text-zinc-600">Receiving person</p>
-                                        <p className="mt-1 text-sm font-semibold text-[#121316]">{pending.recipient_name}</p>
+                                        <p className="mt-1 text-sm font-semibold text-ink-900">{pending.recipient_name}</p>
                                     </div>
                                 </div>
-                                <p className="mt-4 tabular-nums text-2xl font-bold tabular-nums text-[#121316]">{cashMoney(pending.amount_cents)}</p>
+                                <p className="mt-4 tabular-nums text-2xl font-bold tabular-nums text-ink-900">{cashMoney(pending.amount_cents)}</p>
                                 <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">The recipient must count and confirm the cash before the recorded holder changes.</p>
                                 <div className="mt-4 flex flex-wrap gap-2">
                                     {pending.can_receive && <button className={cashPrimary} onClick={() => setTarget({ action: 'receive' })}><Receipt className="h-4 w-4" aria-hidden="true" />Confirm counted cash</button>}
@@ -263,7 +263,7 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                         <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                             <div className="flex items-center gap-2 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                 <Wallet className="h-4 w-4 text-zinc-500" aria-hidden="true" />
-                                <h2 className="text-sm font-semibold text-[#121316]">Current cash responsibilities</h2>
+                                <h2 className="text-sm font-semibold text-ink-900">Current cash responsibilities</h2>
                             </div>
                             <div className="p-5">
                                 <div className="space-y-3">
@@ -271,13 +271,13 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                                         <div key={`${holder.stage}-${holder.user_id}`} className="rounded-lg border border-zinc-200/90 bg-zinc-50/30 p-4">
                                             <div className="flex flex-wrap justify-between gap-3">
                                                 <div>
-                                                    <p className="text-sm font-semibold text-[#121316]">{holder.name}</p>
+                                                    <p className="text-sm font-semibold text-ink-900">{holder.name}</p>
                                                     <p className="mt-0.5 text-xs text-zinc-500">
                                                         {holder.stage === 'rider' ? 'Collecting rider' : holder.stage === 'hub' ? 'Hub cash holder' : 'Platform cash recipient'}
                                                         {holder.restricted ? ' · Account restricted' : ''}
                                                     </p>
                                                 </div>
-                                                <p className="tabular-nums text-lg font-bold tabular-nums text-[#121316]">{cashMoney(holder.amount_cents)}</p>
+                                                <p className="tabular-nums text-lg font-bold tabular-nums text-ink-900">{cashMoney(holder.amount_cents)}</p>
                                             </div>
                                             {holder.can_offer && editable && !pending && (
                                                 <button className={`${cashButton} mt-3`} onClick={() => setTarget({ action: 'offer', holderId: holder.user_id })}>
@@ -305,13 +305,13 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                             <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                                 <div className="flex items-center gap-2 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
                                     <AlertTriangle className="h-4 w-4 text-amber-700" aria-hidden="true" />
-                                    <h2 className="text-sm font-semibold text-[#121316]">Cash differences and reviews</h2>
+                                    <h2 className="text-sm font-semibold text-ink-900">Cash differences and reviews</h2>
                                 </div>
                                 <ul className="space-y-3 p-5">
                                     {differences.map(([reference, difference]) => (
                                         <li key={reference} className={`rounded-lg border p-4 ${difference.resolved_by ? 'border-zinc-200/90 bg-zinc-50/60' : 'border-amber-200 bg-amber-50/80'}`}>
                                             <div className="flex flex-wrap justify-between gap-2">
-                                                <p className="text-sm font-semibold text-[#121316]">
+                                                <p className="text-sm font-semibold text-ink-900">
                                                     {difference.difference_cents < 0 ? 'Shortage' : 'Overage'} · <span className="tabular-nums">{cashMoney(Math.abs(difference.difference_cents))}</span>
                                                 </p>
                                                 <p className="text-xs font-semibold text-zinc-600">{difference.resolved_by ? 'Reviewed' : 'Review required'}</p>
@@ -331,20 +331,20 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
 
                         <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                             <div className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                <h2 className="text-sm font-semibold text-[#121316]">Recorded cash history</h2>
+                                <h2 className="text-sm font-semibold text-ink-900">Recorded cash history</h2>
                                 <p className="mt-0.5 text-xs text-zinc-500">Original receipts remain available after every handover and review.</p>
                             </div>
                             <ol className="space-y-5 p-5">
                                 {account.history.map(event => (
                                     <li key={event.reference} className="relative border-l-2 border-zinc-200 pl-5">
-                                        <span className={`absolute -left-[7px] top-1 h-3 w-3 rounded-full ${event.event_type === 'platform_reconciled' ? 'bg-emerald-600' : 'bg-[#E00D42]'}`} aria-hidden="true" />
+                                        <span className={`absolute -left-[7px] top-1 h-3 w-3 rounded-full ${event.event_type === 'platform_reconciled' ? 'bg-emerald-600' : 'bg-brand-500'}`} aria-hidden="true" />
                                         <div className="flex flex-wrap items-start justify-between gap-2">
                                             <div>
-                                                <h3 className="text-sm font-semibold text-[#121316]">{cashEventLabel[event.event_type] ?? 'Cash review'}</h3>
+                                                <h3 className="text-sm font-semibold text-ink-900">{cashEventLabel[event.event_type] ?? 'Cash review'}</h3>
                                                 <p className="mt-0.5 text-xs text-zinc-500">{event.actor_name} · {cashDate(event.created_at)} (Asia/Manila)</p>
                                             </div>
                                             {event.amount_cents !== 0 && (
-                                                <p className="tabular-nums text-sm font-bold tabular-nums text-[#121316]">
+                                                <p className="tabular-nums text-sm font-bold tabular-nums text-ink-900">
                                                     {event.event_type === 'adjustment' && event.amount_cents > 0 ? '+' : ''}{cashMoney(event.amount_cents)}
                                                 </p>
                                             )}
@@ -359,7 +359,7 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                                         {event.reason && <p className="mt-1.5 text-xs leading-relaxed text-zinc-600">{event.reason}</p>}
                                         {event.evidence_reference && <p className="mt-1.5 break-words tabular-nums text-xs text-zinc-500">Evidence: {event.evidence_reference}</p>}
                                         <details className="mt-2 text-xs text-zinc-500">
-                                            <summary className="w-fit cursor-pointer py-1 font-semibold text-[#C20836]">Receipt reference</summary>
+                                            <summary className="w-fit cursor-pointer py-1 font-semibold text-brand-600">Receipt reference</summary>
                                             <p className="mt-1 break-all tabular-nums">{event.reference}</p>
                                             {event.source_reference && <p className="mt-1.5 break-all tabular-nums">Linked original: {event.source_reference}</p>}
                                         </details>
@@ -372,25 +372,25 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
                     <aside className="space-y-5 xl:sticky xl:top-4">
                         <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                             <div className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                <h2 className="text-sm font-semibold text-[#121316]">Saved order amounts</h2>
+                                <h2 className="text-sm font-semibold text-ink-900">Saved order amounts</h2>
                             </div>
                             <div className="p-5">
                                 <dl className="space-y-2.5 text-xs">
                                     <div className="flex justify-between gap-2">
                                         <dt className="text-zinc-500">Product subtotal</dt>
-                                        <dd className="tabular-nums font-semibold tabular-nums text-[#121316]">{cashMoney(account.product_subtotal_cents)}</dd>
+                                        <dd className="tabular-nums font-semibold tabular-nums text-ink-900">{cashMoney(account.product_subtotal_cents)}</dd>
                                     </div>
                                     <div className="flex justify-between gap-2">
                                         <dt className="text-zinc-500">Order discount</dt>
-                                        <dd className="tabular-nums font-semibold tabular-nums text-[#121316]">−{cashMoney(account.discount_cents)}</dd>
+                                        <dd className="tabular-nums font-semibold tabular-nums text-ink-900">−{cashMoney(account.discount_cents)}</dd>
                                     </div>
                                     <div className="flex justify-between gap-2">
                                         <dt className="text-zinc-500">Shipping</dt>
-                                        <dd className="tabular-nums font-semibold tabular-nums text-[#121316]">{cashMoney(account.shipping_cents)}</dd>
+                                        <dd className="tabular-nums font-semibold tabular-nums text-ink-900">{cashMoney(account.shipping_cents)}</dd>
                                     </div>
                                     <div className="flex justify-between gap-2 border-t border-zinc-100 pt-2.5 text-sm">
-                                        <dt className="font-bold text-[#121316]">COD due</dt>
-                                        <dd className="tabular-nums font-bold tabular-nums text-[#121316]">{cashMoney(account.expected_cents)}</dd>
+                                        <dt className="font-bold text-ink-900">COD due</dt>
+                                        <dd className="tabular-nums font-bold tabular-nums text-ink-900">{cashMoney(account.expected_cents)}</dd>
                                     </div>
                                 </dl>
                                 <p className="mt-4 text-xs leading-relaxed text-zinc-500">Shipping stays separate from product proceeds. These amounts do not represent a seller or rider payout.</p>
@@ -399,8 +399,8 @@ export default function CodDetail({ account, base, mode, isOnline, can_reconcile
 
                         <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
                             <div className="flex items-center gap-2 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                <ShieldCheck className={`h-4 w-4 ${account.status === 'reconciled' ? 'text-emerald-600' : 'text-[#E00D42]'}`} aria-hidden="true" />
-                                <h2 className="text-sm font-semibold text-[#121316]">Platform reconciliation</h2>
+                                <ShieldCheck className={`h-4 w-4 ${account.status === 'reconciled' ? 'text-emerald-600' : 'text-brand-500'}`} aria-hidden="true" />
+                                <h2 className="text-sm font-semibold text-ink-900">Platform reconciliation</h2>
                             </div>
                             <div className="p-5">
                                 {account.status === 'reconciled' ? (

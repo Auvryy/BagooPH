@@ -138,14 +138,14 @@ export default function HubConveyorRail({
             {/* Compact Notion Workflow Header */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-zinc-100">
                 <div className="flex items-center gap-2">
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-zinc-100 border border-zinc-200 text-[#121316]">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-zinc-100 border border-zinc-200 text-ink-900">
                         <Package className="h-3.5 w-3.5" />
                     </span>
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-700">
                         Hub Pipeline
                     </h2>
                     {trackingNumber && (
-                        <span className="text-xs font-semibold text-[#121316] bg-zinc-100 px-2.5 py-0.5 rounded-md border border-zinc-200">
+                        <span className="text-xs font-semibold text-ink-900 bg-zinc-100 px-2.5 py-0.5 rounded-md border border-zinc-200">
                             {trackingNumber}
                         </span>
                     )}
@@ -157,7 +157,7 @@ export default function HubConveyorRail({
                             Resolving stage…
                         </span>
                     ) : hasScannedParcel ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#121316] px-2.5 py-0.5 rounded-md border border-[#121316]">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-brand-500 px-2.5 py-0.5 rounded-md border border-brand-500">
                             <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />
                             <span>Station {HUB_STATIONS[activeIndex].number}: {HUB_STATIONS[activeIndex].title}</span>
                         </span>
@@ -182,21 +182,21 @@ export default function HubConveyorRail({
                             type="button"
                             onClick={() => onStationClick && onStationClick(station.id)}
                             className={`group relative flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition focus:outline-none cursor-pointer ${
-                                isStationActive
-                                    ? 'border-[#121316] bg-zinc-100/90 text-[#121316] shadow-xs'
-                                    : isStationCompleted
-                                        ? 'border-emerald-200/80 bg-emerald-50/50 text-emerald-900 hover:border-emerald-300'
-                                        : 'border-zinc-200/80 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
-                            }`}
+ isStationActive
+ ? 'border-brand-500 bg-zinc-100/90 text-ink-900 shadow-xs'
+ : isStationCompleted
+ ? 'border-emerald-200/80 bg-emerald-50/50 text-emerald-900 hover:border-emerald-300'
+ : 'border-zinc-200/80 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
+ }`}
                         >
                             <div
                                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition ${
-                                    isStationActive
-                                        ? 'border-[#121316] bg-[#121316] text-white shadow-2xs'
-                                        : isStationCompleted
-                                            ? 'border-emerald-600 bg-emerald-600 text-white'
-                                            : 'border-zinc-200 bg-zinc-50 text-zinc-500 group-hover:bg-[#121316] group-hover:text-white group-hover:border-[#121316]'
-                                }`}
+ isStationActive
+ ? 'border-brand-500 bg-brand-500 text-white shadow-2xs'
+ : isStationCompleted
+ ? 'border-emerald-600 bg-emerald-600 text-white'
+ : 'border-zinc-200 bg-zinc-50 text-zinc-500 group-hover:bg-brand-500 group-hover:text-white group-hover:border-brand-500'
+ }`}
                             >
                                 {isStationCompleted ? (
                                     <CheckCircle2 className="h-3.5 w-3.5 text-white" />
@@ -211,19 +211,19 @@ export default function HubConveyorRail({
                                         Station {station.number}
                                     </span>
                                     {isStationActive && (
-                                        <span className="text-[11px] font-bold text-[#121316]">
+                                        <span className="text-[11px] font-bold text-ink-900">
                                             Active
                                         </span>
                                     )}
                                 </div>
                                 <span
                                     className={`block truncate text-xs font-semibold leading-snug ${
-                                        isStationActive
-                                            ? 'text-[#121316]'
-                                            : isStationCompleted
-                                            ? 'text-emerald-900'
-                                            : 'text-zinc-700'
-                                    }`}
+ isStationActive
+ ? 'text-ink-900'
+ : isStationCompleted
+ ? 'text-emerald-900'
+ : 'text-zinc-700'
+ }`}
                                 >
                                     {station.title}
                                 </span>

@@ -125,7 +125,7 @@ class BuyerReturnCustodyTest extends TestCase
         $origin = LogisticsHub::findOrFail($case->parcel->hub_ids[count($case->parcel->hub_ids) - 1]);
         $this->actingAs($this->flowHandler($origin))->post('/buyer-returns/'.$case->id.'/custody', $this->custodyPayload($case, 'stage', ['hub_id' => $origin->id]))->assertConflict();
         $manifest = $this->prepareLeg($case);
-        $this->actingAs(LogisticsCompany::findOrFail($manifest->logistics_company_id)->user)->get('/hub/manifests')->assertOk();
+        $this->actingAs($this->flowHandler(LogisticsHub::findOrFail($manifest->source_hub_id)))->get('/hub/manifests')->assertOk();
         $this->postJson('/hub/manifests', ['source_hub_id' => $manifest->source_hub_id, 'destination_hub_id' => $origin->id,
             'vehicle_id' => $manifest->vehicle_id, 'direction' => 'buyer_return', 'buyer_return_case_id' => $case->id,
             'creation_token' => session()->get('manifest_creation_token')])->assertConflict();
@@ -142,11 +142,11 @@ class BuyerReturnCustodyTest extends TestCase
         $manifest = $this->prepareLeg($case, 2.5);
         $source = LogisticsHub::findOrFail($manifest->source_hub_id);
         $manager = LogisticsCompany::findOrFail($manifest->logistics_company_id)->user;
-        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertConflict();
+        $this->actingAs($this->flowHandler(LogisticsHub::findOrFail($manifest->source_hub_id)))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertConflict();
         $handler = $this->flowHandler($source);
         $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $case->order->delivery->tracking_number]))->assertUnprocessable();
         $this->postJson('/hub/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $case->parcel->barcode]))->assertOk();
-        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+        $this->actingAs($this->flowHandler(LogisticsHub::findOrFail($manifest->source_hub_id)))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
         $manifest->vehicle->update(['capacity_kg' => 2.49]);
         $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertConflict();
         $manifest->vehicle->update(['capacity_kg' => 2.5, 'status' => 'maintenance']);
@@ -169,7 +169,7 @@ class BuyerReturnCustodyTest extends TestCase
         $destination = $this->flowHandler(LogisticsHub::findOrFail($manifest->destination_hub_id));
         $manager = LogisticsCompany::findOrFail($manifest->logistics_company_id)->user;
         $this->actingAs($source)->postJson('/hub/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $case->parcel->barcode]))->assertOk();
-        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+        $this->actingAs($this->flowHandler(LogisticsHub::findOrFail($manifest->source_hub_id)))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
         $this->actingAs($source)->postJson('/hub/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
         $member = $manifest->buyerReturnParcels()->sole();
         $this->actingAs($destination)->postJson('/hub/manifests/'.$manifest->id.'/report-discrepancy', $this->flowManifestPayload($manifest, [
@@ -196,7 +196,7 @@ class BuyerReturnCustodyTest extends TestCase
         $source = $this->flowHandler(LogisticsHub::findOrFail($manifest->source_hub_id));
         $manager = LogisticsCompany::findOrFail($manifest->logistics_company_id)->user;
         $this->actingAs($source)->postJson('/hub/manifests/'.$manifest->id.'/load', $this->flowManifestPayload($manifest, ['barcode' => $case->parcel->barcode]))->assertOk();
-        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+        $this->actingAs($this->flowHandler(LogisticsHub::findOrFail($manifest->source_hub_id)))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
         $this->actingAs($source)->postJson('/hub/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
         $payload = $this->flowManifestPayload($manifest, ['barcode' => $case->parcel->barcode]);
         DB::unprepared("CREATE TRIGGER fail_buyer_return_receipt BEFORE INSERT ON buyer_return_events WHEN NEW.event_type = 'buyer-return-received' BEGIN SELECT RAISE(ABORT, 'test'); END");

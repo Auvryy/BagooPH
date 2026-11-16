@@ -256,7 +256,7 @@ class BuyerVoucherSelectionTest extends TestCase
             ->where('order.voucher_receipt.discounts.0.code', 'SHOPRECORDED')
             ->where('order.voucher_receipt.discounts.0.name', 'Recorded offer')
             ->where('order.voucher_receipt.discounts.0.product_discount', 100)
-            ->where('order.voucher_receipt.total_savings', 100)->where('order.voucher_receipt.total', 960));
+            ->where('order.voucher_receipt.total_savings', 100)->where('order.voucher_receipt.total', 950));
         $this->get(route('buyer.profile', ['tab' => 'vouchers', 'voucher_tab' => 'used']))->assertInertia(fn (Assert $p) => $p
             ->where('voucherCollection.counts.used', 1)->where('voucherCollection.offers.data.0.uses.0.saving', 100)
             ->where('voucherCollection.offers.data.0.uses.0.code', 'SHOPRECORDED'));

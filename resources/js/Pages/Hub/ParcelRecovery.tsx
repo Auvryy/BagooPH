@@ -36,9 +36,9 @@ const labels: Record<string, string> = {
 };
 const label = (value: string) => labels[value] ?? value.replaceAll('_', ' ');
 const date = (value: string) => new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
-const inputClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-[#121316] shadow-2xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors';
-const buttonClass = 'inline-flex items-center justify-center rounded-lg border border-rose-200 bg-rose-50/85 px-4 py-2 text-xs font-semibold text-[#C20836] shadow-2xs hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] disabled:cursor-not-allowed disabled:opacity-50 transition-colors cursor-pointer';
-const primaryClass = 'inline-flex items-center justify-center gap-2 rounded-lg bg-[#E00D42] hover:bg-[#C20836] px-4 py-2 text-xs font-bold text-white shadow-xs transition disabled:cursor-not-allowed disabled:opacity-50';
+const inputClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-ink-900 shadow-2xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-colors';
+const buttonClass = 'inline-flex items-center justify-center rounded-lg border border-line-300 bg-white px-4 py-2 text-xs font-semibold text-ink-900 hover:bg-surface-100 hover:border-brand-500 disabled:cursor-not-allowed disabled:opacity-50 transition-colors cursor-pointer';
+const primaryClass = 'inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 hover:bg-brand-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition disabled:cursor-not-allowed disabled:opacity-50';
 
 export default function ParcelRecovery({ observations, selectedObservation: selected, filters, basePath, manifestPath, requestToken, creationToken, vehicles }: Props) {
     const pending = useRef(false);
@@ -84,18 +84,18 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                             type="button"
                             aria-pressed={filters.status === value}
                             onClick={() => router.get(basePath, { status: value }, { preserveScroll: true })}
-                            className={`${buttonClass} ${filters.status === value ? 'border-rose-300 bg-rose-50/80 text-[#E00D42] font-bold' : ''}`}
+                            className={`${buttonClass} ${filters.status === value ? 'border-rose-300 bg-rose-50/80 text-brand-500 font-bold' : ''}`}
                         >
                             {text}
                         </button>
                     ))}
                 </div>
 
-                <div className="grid items-start gap-6 lg:grid-cols-[340px_1fr]">
+                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[340px_1fr]">
                     {/* Left: Reported Observations Sidebar */}
                     <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                         <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                            <h2 className="text-sm font-bold text-[#121316]">Reported observations</h2>
+                            <h2 className="text-sm font-bold text-ink-900">Reported observations</h2>
                         </header>
                         <div className="p-3.5 space-y-2.5">
                             {!observations.data.length && (
@@ -109,15 +109,15 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                                     key={observation.id}
                                     href={observation.url}
                                     className={`block rounded-xl border p-4 transition-all duration-150 ${
-                                        selected?.id === observation.id
-                                            ? 'border-rose-300 bg-rose-50/60 ring-1 ring-rose-200/60 shadow-xs'
-                                            : 'border-zinc-200/90 bg-white hover:border-zinc-300 hover:bg-zinc-50/40 shadow-2xs'
-                                    }`}
+ selected?.id === observation.id
+ ? 'border-rose-300 bg-rose-50/60 ring-1 ring-rose-200/60 shadow-xs'
+ : 'border-zinc-200/90 bg-white hover:border-zinc-300 hover:bg-zinc-50/40 shadow-2xs'
+ }`}
                                 >
-                                    <span className="inline-block break-all rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
+                                    <span className="inline-block break-all rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-brand-500">
                                         {observation.barcode}
                                     </span>
-                                    <p className="mt-2.5 text-xs font-bold text-[#121316]">{observation.observedHub}</p>
+                                    <p className="mt-2.5 text-xs font-bold text-ink-900">{observation.observedHub}</p>
                                     <p className="mt-1.5 text-xs font-semibold text-zinc-700">{label(observation.state)}</p>
                                     <p className="mt-1 text-xs text-zinc-500">{date(observation.reportedAt)}</p>
                                 </Link>
@@ -178,7 +178,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                             {/* Observation Overview Card */}
                             <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                                 <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                    <h2 className="break-all rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
+                                    <h2 className="break-all rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-brand-500">
                                         {selected.barcode}
                                     </h2>
                                     <span className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700">
@@ -189,15 +189,15 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                                     <dl className="grid gap-4 sm:grid-cols-2 rounded-xl border border-zinc-200/80 bg-zinc-50/30 p-4">
                                         <div>
                                             <dt className="text-xs text-zinc-500 font-medium">Observed facility</dt>
-                                            <dd className="mt-1 text-sm font-bold text-[#121316]">{selected.observedHub}</dd>
+                                            <dd className="mt-1 text-sm font-bold text-ink-900">{selected.observedHub}</dd>
                                         </div>
                                         <div>
                                             <dt className="text-xs text-zinc-500 font-medium">Recorded custodian</dt>
-                                            <dd className="mt-1 text-sm font-bold text-[#121316]">{selected.custody}</dd>
+                                            <dd className="mt-1 text-sm font-bold text-ink-900">{selected.custody}</dd>
                                         </div>
                                         <div>
                                             <dt className="text-xs text-zinc-500 font-medium">Original expected hub</dt>
-                                            <dd className="mt-1 text-sm font-bold text-[#121316]">{selected.expectedHub ?? 'Not established'}</dd>
+                                            <dd className="mt-1 text-sm font-bold text-ink-900">{selected.expectedHub ?? 'Not established'}</dd>
                                         </div>
                                         <div>
                                             <dt className="text-xs text-zinc-500 font-medium">Reported by</dt>
@@ -206,7 +206,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                                     </dl>
                                     <p className="whitespace-pre-wrap text-sm text-zinc-700 leading-relaxed">{selected.notes}</p>
                                     {selected.manifestUrl && (
-                                        <Link href={selected.manifestUrl} className="inline-block text-xs font-bold text-[#E00D42] hover:text-[#C20836] underline underline-offset-4">
+                                        <Link href={selected.manifestUrl} className="inline-block text-xs font-bold text-brand-500 hover:text-brand-600 underline underline-offset-4">
                                             Open the observation manifest
                                         </Link>
                                     )}
@@ -227,7 +227,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                                                 This parcel has a reviewed handover hold. Only its specifically authorized original recovery can continue, after the known holder acknowledges possession. The hold ends at the correct receiving hub.
                                             </p>
                                             {selected.handoverIssueUrl && (
-                                                <Link href={selected.handoverIssueUrl} className="mt-2 inline-block font-bold text-[#E00D42]">
+                                                <Link href={selected.handoverIssueUrl} className="mt-2 inline-block font-bold text-brand-500">
                                                     Review handover authorization
                                                 </Link>
                                             )}
@@ -240,7 +240,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                             {(selected.canAuthorize || selected.canIntake || selected.canWithdraw) && (
                                 <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                                     <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                        <h2 className="text-sm font-bold text-[#121316]">Next action</h2>
+                                        <h2 className="text-sm font-bold text-ink-900">Next action</h2>
                                     </header>
                                     <div className="p-5 sm:p-6 space-y-4">
                                         <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed">
@@ -253,7 +253,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                                         {selected.canIntake && (
                                             <>
                                                 <WaybillCamera disabled={busy} onScan={barcode => form.setData('barcode', barcode)} />
-                                                <label className="block text-xs font-bold text-[#121316]">
+                                                <label className="block text-xs font-bold text-ink-900">
                                                     Actual waybill
                                                     <input
                                                         required
@@ -267,7 +267,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                                                 </label>
                                             </>
                                         )}
-                                        <label className="block text-xs font-bold text-[#121316]">
+                                        <label className="block text-xs font-bold text-ink-900">
                                             Reason or receiving notes
                                             <textarea
                                                 required
@@ -312,7 +312,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                             {selected.case && (
                                 <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                                     <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                        <h2 className="text-sm font-bold text-[#121316]">Recovery progress</h2>
+                                        <h2 className="text-sm font-bold text-ink-900">Recovery progress</h2>
                                         <p className="mt-0.5 break-all tabular-nums text-xs text-zinc-500">{selected.case.reference}</p>
                                     </header>
                                     <div className="p-5 sm:p-6 space-y-5">
@@ -367,13 +367,13 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
 
                                         <div className="flex flex-wrap gap-3">
                                             {selected.case.originalManifestUrl && (
-                                                <Link href={selected.case.originalManifestUrl} className="text-xs font-bold text-[#E00D42] hover:text-[#C20836] underline underline-offset-4">
+                                                <Link href={selected.case.originalManifestUrl} className="text-xs font-bold text-brand-500 hover:text-brand-600 underline underline-offset-4">
                                                     Original receiving manifest
                                                 </Link>
                                             )}
                                             {selected.case.transfers.map(item =>
                                                 item.url ? (
-                                                    <Link key={item.reference} href={item.url} className="break-all text-xs tabular-nums text-zinc-600 hover:text-[#121316]">
+                                                    <Link key={item.reference} href={item.url} className="break-all text-xs tabular-nums text-zinc-600 hover:text-ink-900">
                                                         {item.reference} · {label(item.status)}
                                                     </Link>
                                                 ) : (
@@ -389,7 +389,7 @@ export default function ParcelRecovery({ observations, selectedObservation: sele
                                             <ol className="mt-3.5 space-y-4">
                                                 {selected.case.events.map(event => (
                                                     <li key={event.reference} className="border-l-2 border-zinc-200 pl-4">
-                                                        <p className="text-sm font-bold text-[#121316]">{label(event.type)}</p>
+                                                        <p className="text-sm font-bold text-ink-900">{label(event.type)}</p>
                                                         <p className="mt-0.5 text-xs text-zinc-500">
                                                             {event.actor}{event.hub ? ` · ${event.hub}` : ''} · {date(event.recordedAt)}
                                                         </p>

@@ -8,7 +8,6 @@ use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
-use App\Models\User;
 use App\Services\AccountClosureService;
 use App\Services\AccountRestrictionService;
 use App\Services\ResourceRestrictionService;
@@ -126,7 +125,7 @@ class ManifestCustodyTest extends TestCase
         $delivery = $this->flowDelivery($this->newFlowOrder(), 'arrived_at_origin_hub');
         [$manifest, $manager, $handler] = $this->prepare($delivery);
         $actor = match ($role) {
-            'manager' => $manager, 'handler' => $handler,
+            'manager' => $manifest->company->user, 'handler' => $handler,
             'wrong_handler' => $this->flowHandler(LogisticsHub::findOrFail($manifest->destination_hub_id)),
             'foreign_manager' => $this->createApprovedUser('logistics'),
             default => $this->createApprovedUser($role),
@@ -311,7 +310,7 @@ class ManifestCustodyTest extends TestCase
         $before = $this->snapshot($manifest, $delivery);
         $this->postJson($prefix.'/manifests/'.$manifest->id.'/receive', $input)->assertOk();
         $this->assertSame($before, $this->snapshot($manifest, $delivery));
-        $this->actingAs($manager)->postJson($prefix.'/manifests/'.$manifest->id.'/close', $this->payload($manifest))->assertOk()->assertJsonPath('manifest.status', 'closed');
+        $this->actingAs($manifest->company->user)->postJson($prefix.'/manifests/'.$manifest->id.'/close', $this->payload($manifest))->assertOk()->assertJsonPath('manifest.status', 'closed');
         $this->assertNull($manifest->parcels()->sole()->active_delivery_id);
         $this->assertSame('arrived_at_mother_hub', $delivery->fresh()->status);
         $this->assertSame('at_sorting_center', $delivery->order->fresh()->status);
@@ -339,10 +338,10 @@ class ManifestCustodyTest extends TestCase
         $after = $this->snapshot($manifest, $second);
         $this->postJson('/hub/manifests/'.$manifest->id.'/report-discrepancy', $report)->assertOk();
         $this->assertSame($after, $this->snapshot($manifest, $second));
-        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/resolve-discrepancy', $this->payload($manifest, ['source_event_id' => $source->id, 'notes' => 'It should have been received.']))->assertConflict();
+        $this->actingAs($manifest->company->user)->postJson('/hub/manifests/'.$manifest->id.'/resolve-discrepancy', $this->payload($manifest, ['source_event_id' => $source->id, 'notes' => 'It should have been received.']))->assertConflict();
         $this->postJson('/hub/manifests/'.$manifest->id.'/close', $this->payload($manifest))->assertConflict();
         $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->payload($manifest, ['barcode' => $second->tracking_number, 'notes' => 'The parcel was found and its actual waybill scanned.']))->assertOk()->assertJsonPath('manifest.status', 'received');
-        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/close', $this->payload($manifest))->assertConflict();
+        $this->actingAs($manifest->company->user)->postJson('/hub/manifests/'.$manifest->id.'/close', $this->payload($manifest))->assertConflict();
         $resolution = $this->payload($manifest, ['source_event_id' => $source->id, 'notes' => 'The later receiving scan accounts for this parcel.']);
         $this->postJson('/hub/manifests/'.$manifest->id.'/resolve-discrepancy', $resolution)->assertOk();
         $record = $manifest->events()->where('event_type', 'resolve-discrepancy')->sole();
@@ -376,14 +375,14 @@ class ManifestCustodyTest extends TestCase
         $this->assertSame($barcode, $source->barcode_scanned);
         $this->assertSame($before, [$delivery->fresh()->getRawOriginal(), $delivery->checkpoints()->get()->toArray()]);
         if ($kind !== 'duplicate') {
-            $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/resolve-discrepancy', $this->payload($manifest, ['source_event_id' => $source->id, 'notes' => 'The issue looks resolved.']))->assertConflict();
+            $this->actingAs($manifest->company->user)->postJson('/hub/manifests/'.$manifest->id.'/resolve-discrepancy', $this->payload($manifest, ['source_event_id' => $source->id, 'notes' => 'The issue looks resolved.']))->assertConflict();
             $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/receive', $this->payload($manifest, ['barcode' => $delivery->tracking_number, 'notes' => 'Rechecked the intact parcel and scanned its actual waybill.']))->assertOk();
         }
         if (in_array($kind, ['extra', 'wrong_hub'], true)) {
             $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/correct-discrepancy', $this->payload($manifest, ['source_event_id' => $source->id, 'barcode' => $delivery->tracking_number, 'notes' => 'Correct the observed code.']))->assertForbidden();
             $this->actingAs($receiver)->postJson('/hub/manifests/'.$manifest->id.'/correct-discrepancy', $this->payload($manifest, ['source_event_id' => $source->id, 'barcode' => $delivery->tracking_number, 'notes' => 'The first entry was a transcription mistake; this is the actual received waybill.']))->assertOk();
         }
-        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/resolve-discrepancy', $this->payload($manifest, ['source_event_id' => $source->id, 'notes' => 'Reviewed the original observation and supporting handler record.']))->assertOk();
+        $this->actingAs($manifest->company->user)->postJson('/hub/manifests/'.$manifest->id.'/resolve-discrepancy', $this->payload($manifest, ['source_event_id' => $source->id, 'notes' => 'Reviewed the original observation and supporting handler record.']))->assertOk();
         $this->postJson('/hub/manifests/'.$manifest->id.'/close', $this->payload($manifest))->assertOk();
         $this->assertSame(1, $delivery->checkpoints()->where('checkpoint_type', 'arrived_at_mother_hub')->count());
         $this->assertSame('at_sorting_center', $delivery->order->fresh()->status);
@@ -496,7 +495,7 @@ class ManifestCustodyTest extends TestCase
         DB::table('logistics_manifest_parcels')->where('manifest_id', $manifest->id)->update(['received_at' => now(), 'received_by_id' => $handler->id, 'receipt_condition' => 'intact']);
         DB::table('logistics_manifests')->where('id', $manifest->id)->update(['status' => 'received']);
         $before = $this->snapshot($manifest, $delivery);
-        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/close', $this->payload($manifest))->assertConflict();
+        $this->actingAs($manifest->company->user)->postJson('/hub/manifests/'.$manifest->id.'/close', $this->payload($manifest))->assertConflict();
         $this->assertSame($before, $this->snapshot($manifest, $delivery));
     }
 
@@ -538,7 +537,7 @@ class ManifestCustodyTest extends TestCase
         // These are initial vehicle eligibility conditions; no physical custody is fabricated.
         $vehicle->update(['hub_id' => $source->id, 'vehicle_type' => $vehicleType]);
         $driver->courierProfile->update(['assigned_hub_id' => $source->id]);
-        $this->actingAs($manager)->get('/hub/manifests')->assertOk();
+        $this->actingAs($this->flowHandler($source))->get('/hub/manifests')->assertOk();
         $input = ['source_hub_id' => $source->id, 'destination_hub_id' => $destination->id, 'vehicle_id' => $vehicle->id,
             'creation_token' => session()->get('manifest_creation_token'), 'type' => 'client-choice', 'vehicle_type' => 'client-choice'];
         $before = $this->snapshot($manifest, $delivery);
@@ -557,7 +556,8 @@ class ManifestCustodyTest extends TestCase
     {
         $source = LogisticsHub::findOrFail($delivery->origin_bayan_hub_id);
         $company = LogisticsCompany::findOrFail($delivery->logistics_company_id);
-        $manager = User::findOrFail($company->user_id);
+        // The source hub's full-access account prepares and seals cargo; the company owner only monitors.
+        $manager = $this->flowHandler($source);
         $driver = $this->createApprovedUser('courier');
         $vehicle = LogisticsFleet::create(['logistics_company_id' => $company->id, 'hub_id' => $source->id,
             'plate_number' => 'MNF-'.str_pad((string) (LogisticsFleet::count() + 1), 4, '0', STR_PAD_LEFT), 'vehicle_type' => 'l300_van', 'model' => 'Bagoo Feeder Van',

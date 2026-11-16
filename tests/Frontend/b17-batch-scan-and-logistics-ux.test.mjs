@@ -323,17 +323,19 @@ async function submitBarcode(h, value) {
     return result;
 }
 
-test('ScanStation always boots in 2-Step Verify mode even with stale localStorage overrides', async (t) => {
+test('ScanStation boots in one-scan Scan & receive mode, and Check first still inspects before confirming', async (t) => {
     const h = createScannerHarness(t, {
-        bagoo_scan_mode: 'direct',
+        bagoo_scan_mode: 'verify',
         scan_mode: 'continuous',
         continuous: 'true',
         auto_advance: 'true',
     });
 
     h.render();
-    const verifyRadio = h.button('2-Step Verify');
-    assert.equal(verifyRadio.props['aria-checked'], true);
+    assert.equal(h.button('Scan & receive').props['aria-checked'], true);
+    h.button('Check first').props.onClick();
+    h.render();
+    assert.equal(h.button('Check first').props['aria-checked'], true);
 
     await submitBarcode(h, 'BGO-VERIFY-01');
     h.render();
@@ -344,7 +346,7 @@ test('ScanStation always boots in 2-Step Verify mode even with stale localStorag
     assert.equal(h.calls[0].body.barcode, 'BGO-VERIFY-01');
 });
 
-test('1-Scan Direct Confirm posts to batch endpoint for parcels, forces inspect on BAG-/RMB-/BRT-, and packs open Mother Bag', async (t) => {
+test('Scan & receive posts to batch endpoint for parcels, forces inspect on BAG-/RMB-/BRT-, and packs open Mother Bag', async (t) => {
     const h = createScannerHarness(t);
     h.response = (path, body) => {
         if (path === '/hub/scan/batch') {
@@ -431,9 +433,9 @@ test('1-Scan Direct Confirm posts to batch endpoint for parcels, forces inspect 
     };
 
     h.render();
-    h.button('1-Scan Direct').props.onClick();
+    h.button('Scan & receive').props.onClick();
     h.render();
-    assert.equal(h.button('1-Scan Direct').props['aria-checked'], true);
+    assert.equal(h.button('Scan & receive').props['aria-checked'], true);
 
     await submitBarcode(h, 'BGO-DIRECT-21');
     h.render();
@@ -505,13 +507,15 @@ test('Offline buffering works automatically in any mode on network cutoff, syncs
     h.navigator.onLine = false;
     h.window.dispatchEvent(new Event('offline'));
     h.render();
+    h.button('Check first').props.onClick();
+    h.render();
 
-    // Still in default 2-Step Verify mode — no manual Offline mode toggle needed!
+    // In Check first mode — no manual Offline mode toggle needed!
     submitBarcode(h, 'BGO-OFF-1');
     h.render();
 
-    // Even in 1-Scan Direct mode, offline scans buffer automatically instead of hitting the network.
-    h.button('1-Scan Direct').props.onClick();
+    // Even in Scan & receive mode, offline scans buffer automatically instead of hitting the network.
+    h.button('Scan & receive').props.onClick();
     h.render();
     submitBarcode(h, 'BGO-OFF-BAD');
     h.render();
@@ -723,7 +727,7 @@ test('All Hub and Courier views render role guidance, category tabs, and calm no
     }
     const workspaceCss = readFileSync(join(root, 'resources/css/logistics-workspace.css'), 'utf8');
     assert.match(workspaceCss, /border-radius:\s*4px;/);
-    assert.match(workspaceCss, /border-color:\s*#CBD5E1;/);
+    assert.match(workspaceCss, /border-color:\s*#E7E5E4;/);
 });
 
 test('All touched Hub and Courier UI files keep zero font-mono and zero emoji characters in source', () => {

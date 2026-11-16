@@ -17,6 +17,7 @@ use App\Services\BuyerAccessService;
 use App\Services\Logistics\HandoverHoldService;
 use App\Services\Logistics\LogisticsTripService;
 use App\Services\Notifications\GovernanceNoticeService;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Auth\Events\CurrentDeviceLogout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -47,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Voucher links carry a numeric ID; anything else is a missing page, never a database error.
+        Route::pattern('voucher', '[0-9]+');
         Event::listen(Login::class, fn (Login $event) => app(AccountSessionService::class)->pendingLogin($event));
         foreach ([Logout::class, CurrentDeviceLogout::class] as $event) {
             Event::listen($event, function ($event) {

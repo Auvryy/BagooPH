@@ -47,8 +47,8 @@ class VoucherProductScopeService
 
         return Product::availableForSale()->where('shop_id', $shop->id)
             ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q->whereLike('name', '%'.$search.'%')->orWhereLike('sku', '%'.$search.'%')))
-            ->orderBy('name')->orderBy('id')->paginate(12, ['id', 'name', 'sku', 'featured_image'])->withQueryString()
-            ->through(fn ($product) => $product->only(['id', 'name', 'sku', 'featured_image']));
+            ->orderBy('name')->orderBy('id')->paginate(12, ['id', 'name', 'sku', 'price', 'featured_image'])->withQueryString()
+            ->through(fn ($product) => $product->only(['id', 'name', 'sku', 'price', 'featured_image']));
     }
 
     public function sellerRows(?int $shopId, array $terms): array
@@ -60,8 +60,8 @@ class VoucherProductScopeService
         $eligible = Product::availableForSale()->where('shop_id', $shopId)->whereIn('id', $ids)->pluck('id');
 
         return Product::where('shop_id', $shopId)->whereIn('id', $ids)->orderBy('name')->orderBy('id')
-            ->get(['id', 'name', 'sku', 'featured_image'])->map(fn ($product) => [
-                ...$product->only(['id', 'name', 'sku', 'featured_image']), 'eligible' => $eligible->contains($product->id),
+            ->get(['id', 'name', 'sku', 'price', 'featured_image'])->map(fn ($product) => [
+                ...$product->only(['id', 'name', 'sku', 'price', 'featured_image']), 'eligible' => $eligible->contains($product->id),
             ])->all();
     }
 

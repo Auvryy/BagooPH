@@ -27,9 +27,9 @@ second conflicting copy of those instructions.
   descriptive commits are allowed. Only the user pushes.
 - Use isolated SQLite `:memory:` for ordinary tests; never reset the development
   or production PostgreSQL database for testing.
-- Follow each portal's existing design. The shared identity uses `#E00D42`,
-  Plus Jakarta Sans, Philippine pesos and Shopping Bag wording. The rider's local
-  8px corners and blush surfaces are defined in AGENTS and the rider/style guides.
+- The website design is being redone from scratch. Only the brand red `#E00D42`
+  (with `#C20836` and `#A1052B`), Philippine pesos and Shopping Bag wording are
+  fixed; see the Product Language and UI section of AGENTS.
 - Check actual seeders for demo identities/passwords; use [Getting started](GETTING_STARTED.md)
   for their documented source defaults. Do not restore retired demo shortcuts,
   role conversion or simulator routes.

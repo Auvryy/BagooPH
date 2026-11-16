@@ -36,7 +36,7 @@ export default function Exceptions({
                             <span className="text-zinc-300">·</span>
                             <span>{monitoringSummary.open_investigations} open missing-parcel {monitoringSummary.open_investigations === 1 ? 'investigation' : 'investigations'}</span>
                         </div>
-                        <Link href="/governance/monitoring" className="rounded-lg bg-[#E00D42] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#C20836]">
+                        <Link href="/governance/monitoring" className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-600">
                             Open SLA monitoring
                         </Link>
                     </div>
@@ -45,10 +45,10 @@ export default function Exceptions({
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs">
                     <div className="flex flex-wrap items-center gap-3">
                         {logistics && <SlidersHorizontal className="h-4 w-4 text-zinc-400" aria-hidden="true" />}
-                        <label className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-semibold text-[#121316]">
+                        <label className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-semibold text-ink-900">
                             Case type
                             <select
-                                className="max-w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-medium text-[#121316] shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                                className="max-w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-medium text-ink-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                                 value={filters.kind ?? ''}
                                 onChange={e => filter('kind', e.target.value)}
                             >
@@ -59,10 +59,10 @@ export default function Exceptions({
                                 <option value="pickup">Counter holding</option>
                             </select>
                         </label>
-                        <label className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-semibold text-[#121316]">
+                        <label className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-semibold text-ink-900">
                             Review status
                             <select
-                                className="max-w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-medium text-[#121316] shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                                className="max-w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-medium text-ink-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                                 value={filters.status ?? 'open'}
                                 onChange={e => filter('status', e.target.value)}
                             >
@@ -116,16 +116,16 @@ export default function Exceptions({
                         <Link
                             key={`${item.kind}-${item.id}`}
                             href={`/exceptions/${item.kind}/${item.id}`}
-                            className="rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs transition-colors hover:border-[#E00D42]"
+                            className="rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs transition-colors hover:border-brand-500"
                         >
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <h2 className="text-sm font-bold text-[#121316]">{item.orderNumber ?? item.reference}</h2>
+                                <h2 className="text-sm font-bold text-ink-900">{item.orderNumber ?? item.reference}</h2>
                                 <span className="rounded-md border border-zinc-200/90 bg-zinc-50 px-2 py-0.5 text-xs font-semibold capitalize text-zinc-700">{item.status}</span>
                             </div>
                             <p className="mt-1 text-xs text-zinc-500">
                                 <span className="tabular-nums">{item.trackingNumber ?? item.reference}</span> · {item.companyName ?? 'Platform review'}
                             </p>
-                            <p className="mt-2 text-xs sm:text-sm font-medium text-[#121316]">{item.reason.replaceAll('_', ' ')}</p>
+                            <p className="mt-2 text-xs sm:text-sm font-medium text-ink-900">{item.reason.replaceAll('_', ' ')}</p>
                             <p className="mt-1.5 text-xs text-zinc-500">Responsible: {item.responsibleName ?? 'Awaiting assignment'}</p>
                             {item.status === 'open' && (
                                 <p className={`mt-2 text-xs font-medium ${item.canResolve ? 'text-emerald-700' : 'text-amber-800'}`}>
@@ -144,8 +144,8 @@ export default function Exceptions({
                                     key={index}
                                     href={link.url}
                                     className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                        link.active ? 'border-[#E00D42] bg-[#E00D42] text-white' : 'border-zinc-200/90 bg-white text-zinc-700 hover:bg-zinc-50'
-                                    }`}
+ link.active ? 'border-brand-500 bg-brand-500 text-white' : 'border-zinc-200/90 bg-white text-zinc-700 hover:bg-zinc-50'
+ }`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />
                             ) : (

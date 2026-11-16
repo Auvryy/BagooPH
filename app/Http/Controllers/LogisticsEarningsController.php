@@ -16,6 +16,10 @@ class LogisticsEarningsController extends Controller
         if ($actor->isCourier()) {
             return redirect()->route('courier.earnings');
         }
+        if ($actor->isSeller()) {
+            // A seller's product share is followed on Finances and Payouts; this page is for delivery partners.
+            return redirect('/financial-oversight');
+        }
         $this->encryptSensitiveHistory($request);
 
         return Inertia::render('Finance/DeliveryEarnings', [

@@ -28,27 +28,27 @@ export default function Resources({ resources, types, filters, baseUrl }: Props)
                     className="flex flex-col gap-3 rounded-xl border border-zinc-200/90 bg-white p-4 shadow-xs sm:flex-row"
                 >
                     <div>
-                        <label htmlFor="resource-type" className="block text-xs font-semibold text-[#121316]">Resource type</label>
+                        <label htmlFor="resource-type" className="block text-xs font-semibold text-ink-900">Resource type</label>
                         <select
                             id="resource-type"
                             value={filters.type}
                             onChange={event => filter(event.target.value)}
-                            className="mt-1.5 w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-xs font-medium capitalize text-[#121316] shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                            className="mt-1.5 w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-xs font-medium capitalize text-ink-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                         >
                             {types.map(type => <option key={type} value={type}>{type}</option>)}
                         </select>
                     </div>
                     <div className="flex-1">
-                        <label htmlFor="resource-search" className="block text-xs font-semibold text-[#121316]">Name or vehicle plate</label>
+                        <label htmlFor="resource-search" className="block text-xs font-semibold text-ink-900">Name or vehicle plate</label>
                         <input
                             id="resource-search"
                             value={search}
                             onChange={event => setSearch(event.target.value)}
                             maxLength={100}
-                            className="mt-1.5 w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-xs font-medium text-[#121316] shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                            className="mt-1.5 w-full rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-xs font-medium text-ink-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                         />
                     </div>
-                    <button type="submit" className="self-end rounded-lg bg-[#E00D42] px-4 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-[#C20836]">
+                    <button type="submit" className="self-end rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-brand-600">
                         Search
                     </button>
                 </form>
@@ -77,9 +77,9 @@ export default function Resources({ resources, types, filters, baseUrl }: Props)
                                 className="flex flex-col gap-4 rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs sm:flex-row sm:items-start sm:justify-between"
                             >
                                 <div>
-                                    <h2 className="text-sm font-bold text-[#121316]">{resource.name}</h2>
+                                    <h2 className="text-sm font-bold text-ink-900">{resource.name}</h2>
                                     <p className="mt-1 text-xs capitalize text-zinc-600">
-                                        Local activity: <strong className="text-[#121316]">{resource.status.replaceAll('_', ' ')}</strong> · {resource.eligible ? 'Eligible for new work' : 'Unavailable for new work'}
+                                        Local activity: <strong className="text-ink-900">{resource.status.replaceAll('_', ' ')}</strong> · {resource.eligible ? 'Eligible for new work' : 'Unavailable for new work'}
                                     </p>
                                     <div className="mt-3 space-y-1 text-xs text-zinc-500">
                                         {resource.parents.map(parent => (
@@ -89,7 +89,7 @@ export default function Resources({ resources, types, filters, baseUrl }: Props)
                                 </div>
                                 <Link
                                     href={`${baseUrl}/${resource.type}/${resource.id}`}
-                                    className="shrink-0 self-start rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 shadow-2xs transition hover:bg-zinc-50 hover:text-[#121316]"
+                                    className="shrink-0 self-start rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 shadow-2xs transition hover:bg-zinc-50 hover:text-ink-900"
                                 >
                                     Review activity
                                 </Link>
@@ -106,8 +106,8 @@ export default function Resources({ resources, types, filters, baseUrl }: Props)
                                     key={index}
                                     href={link.url}
                                     className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                        link.active ? 'border-[#E00D42] bg-[#E00D42] text-white' : 'border-zinc-200/90 bg-white text-zinc-700 hover:bg-zinc-50'
-                                    }`}
+ link.active ? 'border-brand-500 bg-brand-500 text-white' : 'border-zinc-200/90 bg-white text-zinc-700 hover:bg-zinc-50'
+ }`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />
                             ) : (

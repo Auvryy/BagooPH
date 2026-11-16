@@ -13,35 +13,35 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
     const form = useForm({ action: 'assign', responsible_user_id: '', reason: '', source_token: item.sourceToken, request_token: requestToken });
     useEffect(() => { form.setData(data => ({ ...data, source_token: item.sourceToken, request_token: requestToken })); }, [item.sourceToken, requestToken]);
     const claim = item.state.source.details;
-    const inputClass = 'mt-1.5 block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-[#121316] shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15';
+    const inputClass = 'mt-1.5 block w-full rounded-lg border border-zinc-200/90 bg-white px-3.5 py-2 text-xs font-medium text-ink-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15';
 
     return (
         <DashboardLayout title="Exception review" subtitle={item.orderNumber ?? item.reference}>
             <Head title="Exception review" />
             <div className="space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Link href="/exceptions" className="inline-flex items-center rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-[#E00D42] shadow-2xs hover:bg-zinc-50">
+                    <Link href="/exceptions" className="inline-flex items-center rounded-lg border border-zinc-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-brand-500 shadow-2xs hover:bg-zinc-50">
                         Back to delivery exceptions
                     </Link>
                     <p className="text-xs text-zinc-500">
-                        <span className="tabular-nums">{item.trackingNumber ?? item.reference}</span> · {item.companyName ?? 'Platform review'} · <span className="font-semibold capitalize text-[#121316]">{item.status}</span>
+                        <span className="tabular-nums">{item.trackingNumber ?? item.reference}</span> · {item.companyName ?? 'Platform review'} · <span className="font-semibold capitalize text-ink-900">{item.status}</span>
                     </p>
                 </div>
 
-                <p className="text-sm font-semibold text-[#121316]">{human(item.reason)}</p>
-                {item.financialReviewUrl && <Link href={item.financialReviewUrl} className="inline-flex rounded-lg border border-rose-200 bg-rose-50/85 px-4 py-2 text-sm font-semibold text-[#C20836] hover:bg-[#E00D42] hover:text-white">Review returned-parcel finances</Link>}
+                <p className="text-sm font-semibold text-ink-900">{human(item.reason)}</p>
+                {item.financialReviewUrl && <Link href={item.financialReviewUrl} className="inline-flex rounded-lg border border-line-300 bg-white px-4 py-2 text-sm font-semibold text-ink-900 hover:bg-surface-100">Review returned-parcel finances</Link>}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                     <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
-                        <h2 className="text-sm font-semibold text-[#121316]">Parcel responsibility</h2>
-                        <p className="mt-2 text-xs text-zinc-700">Custodian: <strong className="text-[#121316]">{item.state.holderName}</strong> ({human(item.state.custody?.kind ?? 'unverified')})</p>
+                        <h2 className="text-sm font-semibold text-ink-900">Parcel responsibility</h2>
+                        <p className="mt-2 text-xs text-zinc-700">Custodian: <strong className="text-ink-900">{item.state.holderName}</strong> ({human(item.state.custody?.kind ?? 'unverified')})</p>
                         <p className="mt-1 text-xs text-zinc-700">Parcel: {human(item.state.parcel?.delivery_status ?? 'unverified')}</p>
                         <p className="mt-1 text-xs text-zinc-700">Follow-up: {item.responsibleName ?? 'Awaiting assignment'}</p>
                         <p className="mt-2.5 text-xs leading-relaxed text-zinc-500">Assignment records who follows up. A physical scan records who receives the parcel.</p>
                     </section>
 
                     <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
-                        <h2 className="text-sm font-semibold text-[#121316]">Cash evidence</h2>
+                        <h2 className="text-sm font-semibold text-ink-900">Cash evidence</h2>
                         <p className="mt-2 text-xs text-zinc-700">
                             {item.state.cash.evidence === 'not_cod'
                                 ? 'This order does not use COD.'
@@ -55,12 +55,12 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
                 </div>
 
                 <p className="text-xs text-zinc-600">
-                    Facilities: <span className="font-medium text-[#121316]">{item.state.hubs.map(hub => `${hub.name}${hub.is_active ? '' : ' (restricted)'}`).join(' · ') || 'Unverified'}</span>
+                    Facilities: <span className="font-medium text-ink-900">{item.state.hubs.map(hub => `${hub.name}${hub.is_active ? '' : ' (restricted)'}`).join(' · ') || 'Unverified'}</span>
                 </p>
 
                 {item.kind === 'pickup' && (
                     <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
-                        <h2 className="text-sm font-semibold text-[#121316]">Counter holding</h2>
+                        <h2 className="text-sm font-semibold text-ink-900">Counter holding</h2>
                         <p className="mt-2 text-xs text-zinc-700">Ready: {when(claim.ready_at)} · Deadline: {when(claim.expires_at)} (Asia/Manila)</p>
                         <p className="mt-1 text-xs text-zinc-700">
                             {claim.expired ? 'Holding deadline reached' : 'Within holding period'} · {claim.locked ? `Verification locked until ${when(claim.locked_until)}` : human(claim.status ?? 'unverified')}
@@ -74,20 +74,20 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
                 )}
 
                 {item.recoveryUrl && (
-                    <Link href={item.recoveryUrl} className="inline-block rounded-lg border border-zinc-200/90 bg-white px-4 py-2 text-xs font-semibold text-[#E00D42] shadow-2xs hover:bg-zinc-50">
+                    <Link href={item.recoveryUrl} className="inline-block rounded-lg border border-zinc-200/90 bg-white px-4 py-2 text-xs font-semibold text-brand-500 shadow-2xs hover:bg-zinc-50">
                         Review original hub handover authorization
                     </Link>
                 )}
 
                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
-                    <h2 className="text-sm font-semibold text-[#121316]">Recorded evidence</h2>
+                    <h2 className="text-sm font-semibold text-ink-900">Recorded evidence</h2>
                     {Object.entries(item.state.events).map(([group, events]) => events.length > 0 && (
                         <div key={group} className="mt-4">
                             <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 capitalize">{human(group)}</h3>
                             <ul className="mt-2 divide-y divide-zinc-100">
                                 {events.map(event => (
                                     <li key={event.reference} className="py-2.5 text-xs">
-                                        <p className="font-medium text-[#121316]">
+                                        <p className="font-medium text-ink-900">
                                             {event.actorName ?? 'Recorded actor'} · <span className="tabular-nums text-zinc-500">{event.reference}</span> · {human(event.event_type ?? event.reason_code ?? 'recorded attempt')}
                                             {event.attempt_number && ` · attempt ${event.attempt_number}`}
                                         </p>
@@ -97,7 +97,7 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
                                             {event.retry_at && ` · Retry: ${when(event.retry_at)}`}
                                         </p>
                                         {group === 'attempts' && (
-                                            <a href={`/exceptions/attempt/${event.id}/proof`} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-semibold text-[#E00D42] hover:underline">
+                                            <a href={`/exceptions/attempt/${event.id}/proof`} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-semibold text-brand-500 hover:underline">
                                                 View retained proof
                                             </a>
                                         )}
@@ -119,8 +119,8 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
                         }}
                         className="space-y-4 overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs"
                     >
-                        <h2 className="text-sm font-semibold text-[#121316]">Review decision</h2>
-                        <label className="block text-xs font-semibold text-[#121316]">
+                        <h2 className="text-sm font-semibold text-ink-900">Review decision</h2>
+                        <label className="block text-xs font-semibold text-ink-900">
                             Action
                             <select className={inputClass} value={form.data.action} onChange={e => form.setData('action', e.target.value)}>
                                 <option value="assign">Assign follow-up responsibility</option>
@@ -128,7 +128,7 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
                             </select>
                         </label>
                         {form.data.action === 'assign' && (
-                            <label className="block text-xs font-semibold text-[#121316]">
+                            <label className="block text-xs font-semibold text-ink-900">
                                 Responsible person
                                 <select required className={inputClass} value={form.data.responsible_user_id} onChange={e => form.setData('responsible_user_id', e.target.value)}>
                                     <option value="">Choose a person</option>
@@ -141,24 +141,24 @@ export default function ExceptionDetail({ exception: item, requestToken }: { exc
                         {form.data.action === 'resolve' && (
                             <p className="text-xs font-medium text-emerald-700">Supporting references: {Object.values(item.state.support).join(', ')}</p>
                         )}
-                        <label className="block text-xs font-semibold text-[#121316]">
+                        <label className="block text-xs font-semibold text-ink-900">
                             Reason
                             <textarea required minLength={5} maxLength={1000} className={inputClass} value={form.data.reason} onChange={e => form.setData('reason', e.target.value)} />
                         </label>
                         {Object.entries(form.errors).map(([key, error]) => <p key={key} className="text-xs text-rose-700">{error}</p>)}
-                        <button disabled={form.processing} className="rounded-lg bg-[#E00D42] px-4 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-[#C20836] disabled:opacity-50">
+                        <button disabled={form.processing} className="rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-brand-600 disabled:opacity-50">
                             Record decision
                         </button>
                     </form>
                 )}
 
                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
-                    <h2 className="text-sm font-semibold text-[#121316]">Decision history</h2>
+                    <h2 className="text-sm font-semibold text-ink-900">Decision history</h2>
                     {!item.history.length && <p className="mt-2 text-xs text-zinc-500">No oversight decision recorded yet.</p>}
                     <ul className="mt-2 divide-y divide-zinc-100">
                         {item.history.map(event => (
                             <li key={event.reference} className="py-3 text-xs">
-                                <p className="font-medium text-[#121316]">{event.actor_name} · {human(event.action)} · <span className="font-normal text-zinc-500">{when(event.created_at)}</span></p>
+                                <p className="font-medium text-ink-900">{event.actor_name} · {human(event.action)} · <span className="font-normal text-zinc-500">{when(event.created_at)}</span></p>
                                 <p className="mt-1 text-zinc-600">{event.reason}</p>
                                 <p className="mt-1 tabular-nums text-zinc-500">
                                     {event.reference} · Follow-up: {event.responsible_name ?? 'Unassigned'}

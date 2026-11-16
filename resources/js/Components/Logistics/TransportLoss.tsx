@@ -95,7 +95,7 @@ function LossForm({ value, manifestId, version, basePath }: Props) {
     };
 
     const isUnarrivedBags = value.eligible_scope_kind === 'unarrived_bags';
-    const field = 'mt-2 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 focus:border-[#E00D42] focus:ring-[#E00D42]';
+    const field = 'mt-2 w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-900 focus:border-brand-500 focus:ring-brand-500';
 
     return (
         <form onSubmit={submit} className="space-y-4" aria-busy={form.processing || undefined}>
@@ -116,7 +116,7 @@ function LossForm({ value, manifestId, version, basePath }: Props) {
                     disabled={form.processing}
                     checked={form.data.transport_loss_confirmed}
                     onChange={event => form.setData('transport_loss_confirmed', event.target.checked)}
-                    className="mt-1 rounded border-slate-300 text-[#E00D42]"
+                    className="mt-1 rounded border-slate-300 text-brand-500"
                 />
                 I independently confirmed this transport or these unopened sacks never arrived and no physical arrival or bag opening is fabricated.
             </label>
@@ -151,7 +151,7 @@ function LossForm({ value, manifestId, version, basePath }: Props) {
             ))}
             <button
                 disabled={form.processing}
-                className="rounded-lg bg-[#E00D42] px-4 py-3 text-sm font-bold text-white hover:bg-[#C20836] disabled:opacity-50"
+                className="rounded-lg bg-brand-500 px-4 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50"
             >
                 {form.processing ? 'Recording transport loss…' : 'Confirm whole-transport loss'}
             </button>
@@ -188,7 +188,7 @@ export default function TransportLoss(props: Props) {
                     {record.proof_url && (
                         <a
                             href={record.proof_url}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#C20836] hover:underline"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:underline"
                         >
                             <FileText className="h-4 w-4" />
                             Download private loss evidence

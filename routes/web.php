@@ -55,6 +55,7 @@ use App\Http\Controllers\Logistics\CompanySetupController;
 use App\Http\Controllers\Logistics\DeliveryRecoveryController;
 use App\Http\Controllers\Logistics\HandoverIssueController;
 use App\Http\Controllers\Logistics\HandoverRecoveryController;
+use App\Http\Controllers\Logistics\HubTeamController;
 use App\Http\Controllers\Logistics\LogisticsHubWorkstationController;
 use App\Http\Controllers\Logistics\LogisticsManifestController;
 use App\Http\Controllers\Logistics\MotherBagController;
@@ -454,6 +455,7 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::get('/mother-bags', [MotherBagController::class, 'index']);
         Route::post('/mother-bags', [MotherBagController::class, 'store'])->middleware('throttle:30,1');
         Route::post('/mother-bags/pack', [MotherBagController::class, 'pack'])->middleware('throttle:60,1');
+        Route::post('/mother-bags/{bag}/dispatch', [MotherBagController::class, 'dispatch'])->whereUuid('bag')->middleware('throttle:30,1');
         Route::post('/mother-bags/{bag}/{action}', [MotherBagController::class, 'command'])->whereUuid('bag')->where('action', 'add|remove|seal|reopen|load|unload|open')->middleware('throttle:60,1');
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest');
         Route::post('/manifests', [LogisticsManifestController::class, 'store']);
@@ -474,6 +476,8 @@ $registerHubRoutes = function () use ($registerResourceRestrictionRoutes, $regis
         Route::post('/counter/hours', [LogisticsHubWorkstationController::class, 'pickupHours']);
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub']);
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource']);
+        Route::get('/team', [HubTeamController::class, 'index']);
+        Route::post('/team/staff', [HubTeamController::class, 'store'])->middleware('throttle:10,1');
         Route::patch('/handlers/{handler}/job-role', [LogisticsHubWorkstationController::class, 'updateHandlerJobRole'])->whereNumber('handler');
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('logistics.scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake']);
@@ -801,6 +805,7 @@ Route::middleware('auth')->group(function () {
 
     // Live Chat / Messaging Endpoints
     Route::get('/messages', [ChatController::class, 'buyerInbox'])->middleware('buyer.approved')->name('messages');
+    Route::post('/messages', [ChatController::class, 'sendMessage'])->name('messages.send');
     Route::get('/chat/messages/{receiverId}', [ChatController::class, 'getMessages'])->where('receiverId', '[1-9][0-9]{0,17}')->name('chat.messages');
     Route::get('/chat/attachments/{message}', [ChatController::class, 'attachment'])->where('message', '[1-9][0-9]{0,17}')->name('chat.attachment');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
@@ -869,6 +874,7 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
         Route::get('/{advertisement}/preview', [SellerPromotionController::class, 'preview'])->whereNumber('advertisement')->name('preview');
     });
     Route::get('/messages', [ChatController::class, 'sellerInbox'])->name('messages.index');
+    Route::post('/messages', [ChatController::class, 'sendMessage'])->name('messages.store');
     Route::get('/reviews', [SellerReviewController::class, 'index'])->name('reviews.index');
     Route::post('/reviews/{review}/reply', [SellerReviewController::class, 'reply'])->middleware('throttle:30,1')->name('reviews.reply');
     Route::post('/reviews/{review}/dispute', [SellerReviewController::class, 'dispute'])->middleware('throttle:20,1')->name('reviews.dispute');
@@ -1008,6 +1014,7 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::get('/mother-bags', [MotherBagController::class, 'index'])->name('mother-bags.index');
         Route::post('/mother-bags', [MotherBagController::class, 'store'])->middleware('throttle:30,1')->name('mother-bags.store');
         Route::post('/mother-bags/pack', [MotherBagController::class, 'pack'])->middleware('throttle:60,1');
+        Route::post('/mother-bags/{bag}/dispatch', [MotherBagController::class, 'dispatch'])->whereUuid('bag')->middleware('throttle:30,1')->name('mother-bags.dispatch');
         Route::post('/mother-bags/{bag}/{action}', [MotherBagController::class, 'command'])->whereUuid('bag')->where('action', 'add|remove|seal|reopen|load|unload|open')->middleware('throttle:60,1')->name('mother-bags.command');
         Route::get('/manifests/{manifest}', [LogisticsManifestController::class, 'show'])->whereNumber('manifest')->name('manifests.show');
         Route::post('/manifests', [LogisticsManifestController::class, 'store'])->name('manifests.store');
@@ -1028,6 +1035,8 @@ Route::prefix('hub')->name('hub.')->group(function () use ($registerResourceRest
         Route::post('/counter/hours', [LogisticsHubWorkstationController::class, 'pickupHours'])->name('counter.hours');
         Route::post('/switch-hub', [LogisticsHubWorkstationController::class, 'switchHub'])->name('switchHub');
         Route::post('/placements', [LogisticsHubWorkstationController::class, 'placeResource'])->name('placements');
+        Route::get('/team', [HubTeamController::class, 'index'])->name('team');
+        Route::post('/team/staff', [HubTeamController::class, 'store'])->middleware('throttle:10,1')->name('team.staff');
         Route::patch('/handlers/{handler}/job-role', [LogisticsHubWorkstationController::class, 'updateHandlerJobRole'])->whereNumber('handler')->name('handlers.job-role');
         Route::get('/scan', [LogisticsHubWorkstationController::class, 'scanStation'])->name('scan.station');
         Route::post('/scan', [LogisticsHubWorkstationController::class, 'scanIntake'])->name('scan');

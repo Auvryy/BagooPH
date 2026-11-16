@@ -295,7 +295,7 @@ class ReturnCustodyTest extends TestCase
         $driver->courierProfile->update(['logistics_company_id' => $parcel->logistics_company_id, 'assigned_hub_id' => $hub->id,
             'vehicle_id' => $vehicle->id, 'is_available' => true]);
         foreach ([['outbound', $nextId], ['return', $wrongMother->id]] as [$direction, $destination]) {
-            $manager = $hub->company->user;
+            $manager = $this->flowHandler($hub);
             $this->actingAs($manager)->get('/hub/manifests')->assertOk();
             $id = $this->postJson('/hub/manifests', ['direction' => $direction, 'source_hub_id' => $hub->id, 'destination_hub_id' => $destination,
                 'vehicle_id' => $vehicle->id, 'creation_token' => session()->get('manifest_creation_token')])->assertCreated()->json('manifest.id');

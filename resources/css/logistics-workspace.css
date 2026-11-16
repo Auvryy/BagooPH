@@ -1,38 +1,66 @@
 .logistics-workspace {
+    /* Redesign tokens: docs/DESIGN_SYSTEM.md (warm neutrals, no black fills) */
     height: 100dvh;
-    background: #F7F7F5;
-    --hub-outline: #CBD5E1;
-}
-.logistics-workspace > aside {
-    box-shadow: 1px 0 0 rgba(18, 19, 22, 0.14);
+    background: #FAFAF9;
+    color: #1C1917;
+    --hub-outline: #E7E5E4;
 }
 .logistics-workspace > div > header {
     height: 60px;
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 1px 2px rgba(18, 19, 22, 0.04);
+    background: #FFFFFF;
 }
 .logistics-workspace main {
-    background: #F8F9FA;
+    background: #FAFAF9;
     padding: 28px 36px;
 }
 .logistics-workspace main > div {
     max-width: 1400px;
 }
 .logistics-workspace :where(.rounded-sm) {
-    border-radius: 3px;
-}
-.logistics-workspace :where(.rounded, .rounded-md) {
     border-radius: 4px;
 }
-.logistics-workspace :where(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl) {
-    border-radius: 5px;
+.logistics-workspace :where(.rounded, .rounded-md) {
+    border-radius: 6px;
 }
-.logistics-workspace :where(.border-zinc-100, .border-zinc-200, .border-zinc-200\/60, .border-zinc-200\/70, .border-zinc-200\/80, .border-zinc-200\/90, .border-slate-100, .border-slate-200, .border-slate-200\/60, .border-slate-200\/80, .border-slate-200\/90) {
-    border-color: #CBD5E1;
+.logistics-workspace :where(.rounded-lg, .rounded-xl) {
+    border-radius: 8px;
 }
-.logistics-workspace :where(.divide-zinc-100, .divide-zinc-200, .divide-zinc-200\/80, .divide-slate-100, .divide-slate-200) > :not(:first-child) {
-    border-color: #CBD5E1;
+.logistics-workspace :where(.rounded-2xl, .rounded-3xl) {
+    border-radius: 10px;
+}
+/* Softer, warm borders: heavy grey outlines made every screen feel boxed in. */
+.logistics-workspace :where(.border-zinc-100, .border-zinc-200, .border-zinc-200\/60, .border-zinc-200\/70, .border-zinc-200\/80, .border-zinc-200\/90, .border-zinc-300, .border-slate-100, .border-slate-200, .border-slate-200\/60, .border-slate-200\/80, .border-slate-200\/90, .border-slate-300) {
+    border-color: #E7E5E4;
+}
+.logistics-workspace :where(.border-zinc-400, .border-slate-400) {
+    border-color: #D6D3D1;
+}
+.logistics-workspace :where(.divide-zinc-100, .divide-zinc-200, .divide-zinc-200\/80, .divide-zinc-300, .divide-slate-100, .divide-slate-200, .divide-slate-300) > :not(:first-child) {
+    border-color: #E7E5E4;
+}
+/* Warm neutral text and surfaces in place of cool zinc/slate and near-black. */
+.logistics-workspace :where(.text-\[\#121316\], .text-zinc-900, .text-slate-900, .text-zinc-950) {
+    color: #1C1917;
+}
+.logistics-workspace :where(.text-zinc-800, .text-slate-800, .text-zinc-700, .text-slate-700) {
+    color: #44403C;
+}
+.logistics-workspace :where(.text-zinc-600, .text-slate-600, .text-zinc-500, .text-slate-500) {
+    color: #57534E;
+}
+.logistics-workspace :where(.text-zinc-400, .text-slate-400) {
+    color: #78716C;
+}
+.logistics-workspace :where(.bg-zinc-50, .bg-slate-50, .bg-zinc-50\/50, .bg-zinc-50\/60, .bg-zinc-50\/70, .bg-slate-50\/50, .bg-slate-50\/70) {
+    background-color: #FAFAF9;
+}
+.logistics-workspace :where(.bg-zinc-100, .bg-slate-100) {
+    background-color: #F5F5F4;
+}
+/* Fewer shouting labels. */
+.logistics-workspace main :where(.uppercase.tracking-wider, .uppercase.tracking-widest) {
+    text-transform: none;
+    letter-spacing: 0;
 }
 .logistics-workspace :where(.font-mono, code, kbd, samp, pre) {
     font-family: inherit;
@@ -41,12 +69,12 @@
 .logistics-workspace main :where(h1, h2, h3) {
     letter-spacing: -0.025em;
 }
-.logistics-workspace main :where(section.bg-white, article.bg-white, .shadow-sm.bg-white, .shadow-xs.bg-white) {
-    box-shadow: 0 1px 2px rgba(18, 19, 22, 0.05);
+.logistics-workspace main :where(section.bg-white, article.bg-white, .shadow-sm.bg-white, .shadow-xs.bg-white, .shadow-2xs.bg-white) {
+    box-shadow: none;
 }
 .logistics-workspace main :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
-    border-radius: 4px;
-    border-color: #94A3B8;
+    border-radius: 6px;
+    border-color: #D6D3D1;
 }
 .logistics-workspace main :where(select) {
     background-position: right 0.75rem center;
@@ -55,23 +83,23 @@
     outline-offset: 2px;
 }
 .logistics-workspace main :where(th) {
-    background: #FAFAFA;
-    font-size: 12px;
-    font-weight: 600;
-    color: #52525B;
+    background: #FAFAF9;
+    font-size: 13px;
+    font-weight: 500;
+    color: #57534E;
 }
 .logistics-workspace main :where(tbody tr):hover {
-    background-color: #FAFAFA;
+    background-color: #FAFAF9;
 }
 .logistics-workspace main :where(td, th) {
-    border-color: #CBD5E1;
+    border-color: #E7E5E4;
 }
 .logistics-workspace main :where(button, a, input, select, textarea):focus-visible {
     outline: 2px solid #E00D42;
     outline-offset: 2px;
 }
 .logistics-navigation-drawer :where(button, a, input, select, textarea):focus-visible {
-    outline: 2px solid #ffffff;
+    outline: 2px solid #E00D42;
     outline-offset: 2px;
 }
 .logistics-workspace .hub-step-rail {
@@ -83,7 +111,7 @@
     font-family: inherit;
 }
 .hub-network-map .leaflet-control-zoom {
-    border: 1px solid #CBD5E1;
+    border: 1px solid #E7E5E4;
     border-radius: 4px;
     overflow: hidden;
     box-shadow: 0 2px 6px rgba(18, 19, 22, 0.08);
@@ -98,9 +126,9 @@
 }
 .hub-network-map .leaflet-tooltip {
     padding: 7px 10px;
-    border: 1px solid #CBD5E1;
-    border-radius: 4px;
-    color: #18181B;
+    border: 1px solid #E7E5E4;
+    border-radius: 6px;
+    color: #1C1917;
     font-family: inherit;
     font-size: 11px;
     box-shadow: 0 2px 8px rgba(18, 19, 22, 0.08);
@@ -170,4 +198,39 @@
         transition-duration: 0ms !important;
         animation-duration: 0ms !important;
     }
+}
+
+/* Clickable affordance: every fold-out shows a chevron that turns when open. */
+.logistics-workspace main details > summary:not(.inline) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    list-style: none;
+}
+.logistics-workspace main details > summary:not(.inline)::-webkit-details-marker {
+    display: none;
+}
+.logistics-workspace main details > summary:not(.inline)::after {
+    content: '';
+    flex-shrink: 0;
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-left: auto;
+    margin-right: 0.15rem;
+    border-right: 2px solid #78716C;
+    border-bottom: 2px solid #78716C;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 150ms ease-out;
+}
+.logistics-workspace main details[open] > summary:not(.inline)::after {
+    transform: translateY(2px) rotate(-135deg);
+}
+.logistics-workspace main details > summary:not(.inline):hover::after {
+    border-color: #1C1917;
+}
+
+/* Tabs sit in a horizontally scrolling row: draw their focus ring inside so it is not clipped. */
+.logistics-workspace main [role="tab"]:focus-visible,
+.logistics-workspace main [aria-label="Handover report filters"] a:focus-visible {
+    outline-offset: -2px;
 }

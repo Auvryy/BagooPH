@@ -432,7 +432,8 @@ class SharedTransportTripTest extends TestCase
     {
         [$reverse, $outbound, $case, $forward, $handler] = $this->cargo();
         $other = LogisticsManifest::where('logistics_company_id', $reverse->logistics_company_id)->where('destination_hub_id', '!=', $reverse->destination_hub_id)->firstOrFail();
-        $this->actingAs($reverse->sourceHub->company->user)->postJson('/hub/manifests/trips', $this->grouping($reverse, $other))->assertConflict();
+        $first = $reverse->id < $other->id ? $reverse : $other;
+        $this->actingAs($this->flowHandler($first->sourceHub))->postJson('/hub/manifests/trips', $this->grouping($reverse, $other))->assertConflict();
         $this->assertDatabaseCount('logistics_transport_trips', 0);
         $trip = LogisticsTransportTrip::findOrFail($this->actingAs($handler)->postJson('/hub/manifests/trips', $this->grouping($reverse, $outbound))->assertCreated()->json('trip.id'));
         $this->postJson('/hub/manifests/trips/'.$trip->id.'/dispatch', [...$this->tripPayload($trip), 'version' => 2])->assertConflict();

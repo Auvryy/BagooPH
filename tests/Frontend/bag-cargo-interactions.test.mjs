@@ -47,27 +47,27 @@ const autoPackProps = { ...props, selectedBag: null };
 
 test('packing page exposes automatic packing when no bag is selected and selected bag limits without auto-pack clutter', t=>{
     const idle=harness(t,ui.Bags,autoPackProps);idle.render();const idleContent=text(idle.tree);
-    for(const phrase of ['Scan into the next open bag','Reusable sack tag','Find bag & add parcel'])assert.ok(idleContent.includes(phrase),phrase);
+    for(const phrase of ['Pack a parcel','Reusable sack tag','Add to bag'])assert.ok(idleContent.includes(phrase),phrase);
 
     const h=harness(t);h.render();const content=text(h.tree);
-    for(const phrase of ['Pack and seal','SACK-001','Packing capacity','Auto-pack parcel'])assert.ok(content.includes(phrase),phrase);
+    for(const phrase of ['Pack parcels','Seal & dispatch','SACK-001','Packing capacity','Auto-pack parcel'])assert.ok(content.includes(phrase),phrase);
     assert.doesNotMatch(content,/Scan into the next open bag|Mother Bag progress|Load truck|Verify seal/);
     const meters=nodes(h.tree).filter(n=>n.type===ui.CapacityMeter);assert.equal(meters.length,3);
     assert.equal(meters.find(n=>n.props.label==='Weight').props.value,13);
 });
 test('two rapid packing submits send one command and preserve the actual barcode and readings', t=>{
     const h=harness(t,ui.Bags,autoPackProps);h.render();Object.assign(h.forms[1].data,{source_hub_id:'1',barcode:'BGO-ACTUAL',handling:{...ui.emptyHandling(),weight_kg:'13',length_cm:'20',width_cm:'20',height_cm:'20',confirmed:true}});h.render();
-    const form=h.formContaining('Find bag & add parcel');form.props.onSubmit(event);form.props.onSubmit(event);
+    const form=h.formContaining('Add to bag');form.props.onSubmit(event);form.props.onSubmit(event);
     assert.equal(h.posts.length,1);assert.equal(h.posts[0][0],'/hub/mother-bags/pack');assert.equal(h.posts[0][1].barcode,'BGO-ACTUAL');assert.equal(h.posts[0][1].handling.weight_kg,'13');assert.equal(h.posts[0][1].request_token,'PACK');
 });
 test('failed packing retains user input and retry token even when validation redirects refresh server tokens', t=>{
-    const h=harness(t,ui.Bags,autoPackProps);h.render();h.forms[1].setData('barcode','BGO-KEEP');h.forms[1].setData('physical_tag','SACK-KEEP');h.render();h.formContaining('Find bag & add parcel').props.onSubmit(event);
+    const h=harness(t,ui.Bags,autoPackProps);h.render();h.forms[1].setData('barcode','BGO-KEEP');h.forms[1].setData('physical_tag','SACK-KEEP');h.render();h.formContaining('Add to bag').props.onSubmit(event);
     h.forms[1].errors={packing:'Measure this outer package first.'};h.posts[0][2].onFinish();h.props.packingToken='NEW-SERVER-TOKEN';h.render();
     assert.equal(h.forms[1].data.barcode,'BGO-KEEP');assert.equal(h.forms[1].data.physical_tag,'SACK-KEEP');assert.equal(h.forms[1].data.request_token,'PACK');assert.match(text(h.tree),/Measure this outer package first/);
-    h.formContaining('Find bag & add parcel').props.onSubmit(event);assert.equal(h.posts[1][1].request_token,'PACK');
+    h.formContaining('Add to bag').props.onSubmit(event);assert.equal(h.posts[1][1].request_token,'PACK');
 });
 test('successful packing clears only the scanned parcel and rotates its request token',t=>{
-    const h=harness(t,ui.Bags,autoPackProps);h.render();Object.assign(h.forms[1].data,{source_hub_id:'1',barcode:'BGO-ONE',physical_tag:'SACK-001'});h.render();h.formContaining('Find bag & add parcel').props.onSubmit(event);h.posts[0][2].onSuccess();h.posts[0][2].onFinish();
+    const h=harness(t,ui.Bags,autoPackProps);h.render();Object.assign(h.forms[1].data,{source_hub_id:'1',barcode:'BGO-ONE',physical_tag:'SACK-001'});h.render();h.formContaining('Add to bag').props.onSubmit(event);h.posts[0][2].onSuccess();h.posts[0][2].onFinish();
     assert.equal(h.forms[1].data.barcode,'');assert.equal(h.forms[1].data.source_hub_id,'1');assert.equal(h.forms[1].data.physical_tag,'SACK-001');assert.notEqual(h.forms[1].data.request_token,'PACK');
 });
 test('bag validation preserves typed seal and errors until a committed bag version changes',t=>{
@@ -76,7 +76,7 @@ test('bag validation preserves typed seal and errors until a committed bag versi
     h.props.selectedBag.version++;h.render();assert.equal(h.forms[2].data.seal_number,'');assert.equal(h.forms[2].data.request_token,'VALIDATION-REFRESH');
 });
 test('missing migration keeps existing history visible with a clear blocker and no automatic submission',t=>{
-    const h=harness(t,ui.Bags,{...props,packingAvailable:false});h.render();assert.match(text(h.tree),/additive database migration/);assert.doesNotMatch(text(h.tree),/Find bag & add parcel/);assert.match(text(h.tree),/BAG-ONE/);
+    const h=harness(t,ui.Bags,{...props,packingAvailable:false});h.render();assert.match(text(h.tree),/additive database migration/);assert.doesNotMatch(text(h.tree),/Add to bag/);assert.match(text(h.tree),/BAG-ONE/);
 });
 test('unknown capacity is not presented as measured zero',()=>{
     const html=renderToStaticMarkup(createElement(ui.CapacityMeter,{value:null,max:25,label:'Weight',unit:'kg'}));assert.match(html,/Unknown/);assert.doesNotMatch(html,/>0 \/ 25/);
@@ -136,9 +136,9 @@ test('mother bags auto-select active hub, expose capacity presets, continuous pa
     assert.equal(idle.forms[0].data.source_hub_id, '1');
     assert.equal(idle.forms[1].data.source_hub_id, '1');
 
-    const presetSelect = nodes(idle.tree).find(n => n.type === 'select' && nodes(n).some(c => c.props?.value === 'custom'));
-    assert.ok(presetSelect, 'Preset dropdown should include custom limits option');
-    presetSelect.props.onChange({ target: { value: 'custom' } });
+    const customSize = nodes(idle.tree).find(n => n.type === 'input' && n.props?.type === 'radio' && n.props?.value === 'custom');
+    assert.ok(customSize, 'Bag size options should include custom limits');
+    customSize.props.onChange();
     idle.render();
     assert.match(text(idle.tree), /Max parcels/);
 
@@ -167,4 +167,43 @@ test('mother bags auto-select active hub, expose capacity presets, continuous pa
     assert.equal(h.posts.length, 1);
     assert.equal(h.posts[0][0], '/hub/mother-bags/bag-1/remove');
     assert.equal(h.posts[0][1].barcode, 'BGO-REVERT-1');
+});
+
+test('a sealed bag dispatches in one step with its only truck preselected, and arriving bags auto-fill tag and seal', t => {
+    const sealedH = harness(t, ui.Bags, {
+        ...props,
+        dispatchVehicles: [{ id: 9, hub_id: 1, plate: 'VAN-9', type: 'l300_van', driver: 'Rico' }],
+        selectedBag: {
+            ...bag,
+            status: 'sealed',
+            seal_number: 'SEAL-1',
+            version: 3,
+        },
+    });
+    sealedH.render();
+    const dispatch = sealedH.forms.find(form => 'vehicle_id' in form.data);
+    assert.equal(dispatch.data.vehicle_id, '9');
+    assert.match(text(sealedH.tree), /Seal & dispatch to/);
+    assert.match(text(sealedH.tree), /VAN-9/);
+    assert.doesNotMatch(text(sealedH.tree), /Load onto a vehicle|Vehicle trip/);
+
+    const transitH = harness(t, ui.Bags, {
+        ...props,
+        selectedBag: {
+            ...bag,
+            status: 'in_transit',
+            seal_number: 'SEAL-1',
+            canPack: false,
+            canOpen: true,
+            version: 4,
+        },
+    });
+    transitH.render();
+    assert.equal(transitH.forms[2].data.barcode, 'BAG-ONE');
+    assert.equal(transitH.forms[2].data.seal_number, 'SEAL-1');
+    assert.equal(transitH.forms[2].data.seal_intact, true);
+    assert.match(text(transitH.tree), /Scan bag QR \/ barcode/);
+    assert.doesNotMatch(text(transitH.tree), /Fill tag and seal from this bag/);
+    const scanBtn = nodes(transitH.tree).find(n => n.type === 'button' && text(n).includes('Scan bag QR / barcode'));
+    assert.ok(scanBtn, 'Verify arriving seal should provide a camera scanner button for the master bag tag');
 });

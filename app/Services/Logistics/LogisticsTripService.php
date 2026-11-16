@@ -186,7 +186,7 @@ class LogisticsTripService
     private function authorize(User $actor, int $hubId): void
     {
         $actor = User::findOrFail($actor->id);
-        abort_unless($actor->isLogistics() && app(LogisticsManifestService::class)->canManageAtHub($actor, LogisticsHub::findOrFail($hubId)), 403);
+        abort_unless($actor->isLogistics() && app(LogisticsManifestService::class)->handlesCargoAtHub($actor, LogisticsHub::findOrFail($hubId)), 403);
     }
 
     private function capacity(Collection $manifests): array

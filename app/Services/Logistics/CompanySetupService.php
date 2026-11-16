@@ -34,6 +34,31 @@ class CompanySetupService
         return $company;
     }
 
+    /**
+     * The company owner opens each hub with its one full-access hub account. From then on that hub runs its own
+     * team: it adds intake and pack/dispatch workers and riders, but only for itself.
+     */
+    private function staffAuthority(User $actor, int $companyId, array $data): LogisticsCompany
+    {
+        $eligibility = app(LogisticsEligibilityService::class);
+        $teamHub = $eligibility->teamHub($actor);
+        $runsTargetHub = HubHandler::eligible()->where('user_id', $actor->id)->where('hub_id', (int) $data['hub_id'])
+            ->where('logistics_company_id', $companyId)->exists()
+            && $eligibility->canManageHubTeam($actor, LogisticsHub::findOrFail((int) $data['hub_id']));
+        if ($runsTargetHub) {
+            return LogisticsCompany::eligible()->findOrFail($companyId);
+        }
+        if ($teamHub && ! $eligibility->isCompanyManager($actor, $companyId)) {
+            throw new DomainException('Add people only to the hub you run.');
+        }
+        $company = $this->owner($actor, $companyId);
+        if ($data['kind'] !== 'operator' || ($data['job_role'] ?? HubHandler::JOB_ROLE_ALL) !== HubHandler::JOB_ROLE_ALL) {
+            throw new DomainException('Create the hub account here. That hub then adds its own workers and riders.');
+        }
+
+        return $company;
+    }
+
     public function hub(User $actor, int $companyId, array $input): LogisticsHub
     {
         $data = Validator::make($input, [
@@ -89,7 +114,7 @@ class CompanySetupService
         $email = strtolower(trim($data['email']));
 
         return DB::transaction(function () use ($actor, $companyId, $data, $role, $email) {
-            $company = $this->owner($actor, $companyId);
+            $company = $this->staffAuthority($actor, $companyId, $data);
             app(LogisticsEligibilityService::class)->lockNetwork($company->id, [$actor->id], [$data['hub_id']]);
             Validator::make(['email' => $email], ['email' => [new UniqueAccountEmail(role: $role)]])->validate();
             $hub = LogisticsHub::eligible()->where('logistics_company_id', $company->id)->findOrFail($data['hub_id']);

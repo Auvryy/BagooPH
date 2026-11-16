@@ -47,7 +47,8 @@ class AcceptedRiderCompanyJourneyTest extends TestCase
         } else {
             $request = $requests->submit($rider, [...$input, 'request_token' => (string) Str::uuid()]);
         }
-        $offer = $this->actingAs($owner)->postJson('/hub/rider-company-requests/'.$request['id'].'/offers', [
+        // The Bayan Hub that will employ the rider answers the application, not the company owner.
+        $offer = $this->actingAs($this->flowHandler($hub))->postJson('/hub/rider-company-requests/'.$request['id'].'/offers', [
             'expected_version' => 1, 'request_token' => (string) Str::uuid(), 'hub_id' => $hub->id,
             'terms' => 'Report to the recorded Bayan Hub and agree your daily working schedule.'])->assertOk()->json('data');
         $accept = ['expected_version' => 2, 'offer_id' => $offer['offer']['id'], 'terms_hash' => $offer['offer']['terms_hash'], 'acknowledged' => true];

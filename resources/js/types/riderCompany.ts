@@ -96,6 +96,9 @@ export type CompanyRiderIntake = { available: false } | {
     has_eligible_hub: boolean;
     request_token: string;
     requests: CompanyRequestPage<CompanyJoinRequest>;
+    can_decide?: boolean;
+    can_change_intake?: boolean;
+    review_hub_id?: string | null;
     offers_available?: boolean;
     hubs?: { id: string; name: string; tier: string; barangays: string[] }[];
     vehicles?: { id: string; hub_id: string; plate: string }[];

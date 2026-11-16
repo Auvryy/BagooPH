@@ -238,7 +238,7 @@ class WholeTransportLossTest extends TestCase
         ]);
         $driver->courierProfile->update(['logistics_company_id' => $company->id, 'assigned_hub_id' => $hub->id, 'vehicle_id' => $vehicle->id, 'is_available' => true]);
 
-        $this->actingAs($manager)->get('/hub/manifests')->assertOk();
+        $this->actingAs($this->flowHandler($hub))->get('/hub/manifests')->assertOk();
         $manifest = LogisticsManifest::findOrFail($this->postJson('/hub/manifests', [
             'source_hub_id' => $hub->id,
             'destination_hub_id' => $destination->id,
@@ -263,7 +263,7 @@ class WholeTransportLossTest extends TestCase
         ]);
         $bag = $bags->command($bag, $handler, 'seal', ['version' => $bag->version, 'seal_number' => 'BAG-SEAL-77']);
         $bag = $bags->command($bag, $handler, 'load', ['version' => $bag->version, 'barcode' => $bag->reference, 'seal_number' => $bag->seal_number, 'manifest_id' => $manifest->id]);
-        $this->actingAs($manager)->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
+        $this->actingAs($this->flowHandler($hub))->postJson('/hub/manifests/'.$manifest->id.'/seal', $this->flowManifestPayload($manifest))->assertOk();
         $this->actingAs($handler)->postJson('/hub/manifests/'.$manifest->id.'/dispatch', $this->flowManifestPayload($manifest))->assertOk();
 
         $receiver = $this->flowHandler($destination);

@@ -396,10 +396,17 @@ class OrderLifecycleService
         if ($refund) {
             $paymentMessage = 'The original payment was returned to the buyer’s Bagoo Wallet.';
         }
+        $directReason = null;
+        if ($cancelled && ! $request) {
+            $directReason = $order->delivery?->relationLoaded('checkpoints')
+                ? $order->delivery->checkpoints->where('checkpoint_type', 'cancelled')->sortByDesc('id')->first()?->notes
+                : $order->delivery?->checkpoints()->where('checkpoint_type', 'cancelled')->latest('id')->value('notes');
+        }
 
         return ['allowed' => $allowed && ! $cancelled, 'mode' => $requestable ? 'request' : 'direct',
             'code' => $cancelled ? 'cancelled' : (($request['status'] ?? null) === 'pending' ? 'pending' : ($allowed ? 'before_pickup' : 'unavailable')),
             'message' => $message ?? ($buyer && ($order->shipping_quote['cancellation_policy_version'] ?? 1) === 2 ? 'You can cancel directly before seller acceptance.' : 'Cancel before the order is ready for pickup or a rider claims it.'),
+            'reason' => $directReason ?: ($request ? ($request['reason'].(! empty($request['notes']) ? ': '.$request['notes'] : '')) : null),
             'payment_message' => $paymentMessage,
             'refund' => $refund?->only(['reference', 'amount_cents', 'created_at']), 'request' => $request];
     }

@@ -48,7 +48,7 @@ export default function HubPicker({
                         type="button"
                         disabled={disabled}
                         onClick={() => setShowMap(true)}
-                        className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50/80 px-2 py-0.5 text-[11px] font-semibold text-[#C20836] hover:bg-[#E00D42] hover:text-white hover:border-[#E00D42] transition disabled:opacity-50 cursor-pointer"
+                        className="inline-flex items-center gap-1 rounded-md border border-line-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-ink-900 hover:bg-surface-100 hover:border-brand-500 transition disabled:opacity-50 cursor-pointer"
                     >
                         <MapPinned className="h-3 w-3" />
                         Choose on map
@@ -62,7 +62,7 @@ export default function HubPicker({
                     onChange={(e) => onChange(e.target.value)}
                     disabled={disabled}
                     aria-invalid={Boolean(error)}
-                    className="w-full truncate rounded-xl border border-zinc-300 bg-white pl-3.5 pr-9 py-2.5 text-sm font-medium text-[#121316] shadow-xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition disabled:bg-zinc-100 disabled:text-zinc-500 cursor-pointer"
+                    className="w-full truncate rounded-xl border border-zinc-300 bg-white pl-3.5 pr-9 py-2.5 text-sm font-medium text-ink-900 shadow-xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition disabled:bg-zinc-100 disabled:text-zinc-500 cursor-pointer"
                 >
                     <option value="">{placeholder || 'Select facility…'}</option>
                     {hubs.map((hub) => (
@@ -83,7 +83,7 @@ export default function HubPicker({
             {error && <p role="alert" className="text-xs text-rose-700">{error}</p>}
 
             <Dialog open={showMap} onClose={() => setShowMap(false)} className="relative z-[90]">
-                <DialogBackdrop className="fixed inset-0 bg-zinc-950/50" />
+                <DialogBackdrop className="fixed inset-0 bg-brand-900/45" />
                 <div className="fixed inset-0 flex items-center justify-center p-3 sm:p-6">
                     <DialogPanel className="flex max-h-[90dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl">
                         <header className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
@@ -117,7 +117,7 @@ export default function HubPicker({
                                         aria-label="Search map hubs"
                                         value={query}
                                         onChange={(event) => setQuery(event.target.value)}
-                                        className="w-full rounded-xl border border-zinc-300 bg-white pl-9 pr-3 py-2 text-xs text-zinc-900 shadow-xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15"
+                                        className="w-full rounded-xl border border-zinc-300 bg-white pl-9 pr-3 py-2 text-xs text-zinc-900 shadow-xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                                         placeholder="Search town or hub"
                                     />
                                 </div>
@@ -132,10 +132,10 @@ export default function HubPicker({
                                                 setShowMap(false);
                                             }}
                                             className={`w-full rounded-xl border p-3.5 text-left transition cursor-pointer ${
-                                                selected?.id === hub.id
-                                                    ? 'border-rose-300 bg-rose-50/80'
-                                                    : 'border-zinc-200 bg-white hover:bg-zinc-50'
-                                            }`}
+ selected?.id === hub.id
+ ? 'border-rose-300 bg-rose-50/80'
+ : 'border-zinc-200 bg-white hover:bg-zinc-50'
+ }`}
                                         >
                                             <span className="block text-sm font-semibold text-zinc-900">{hub.name}</span>
                                             <span className="mt-1 block text-xs text-zinc-500">

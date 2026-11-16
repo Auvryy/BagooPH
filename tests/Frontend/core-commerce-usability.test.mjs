@@ -141,10 +141,10 @@ test('self-pickup keeps every required address field editable and never replaces
     assert.equal(h.quoteInput.shipping_city, 'Santa Cruz');
     assert.equal(h.quoteInput.pickup_hub_id, '3');
     assert.match(text(tree), /Santa Cruz Bayan Hub/);
-    assert.match(text(tree), /REDUCED FEE/);
+    assert.match(text(tree), /Pick up at a Bayan Hub/);
     assert.doesNotMatch(text(tree), /100% FREE/);
     assert.equal(h.data.payment_method, 'cod');
-    assert.match(text(tree), /Payment mode:.*Cash on Delivery \(COD\)/);
+    assert.match(text(tree), /Paying with\s+Cash on delivery/);
     assert.doesNotMatch(text(tree), /SMS|100% Escrow|guaranteed delivery|Mon–Sat 8:00/);
     radio(tree, 'doorstep').props.onChange(); tree = h.render();
     assert.equal(h.quoteInput.pickup_hub_id, ''); assert.equal(h.data.shipping_address, address.street);
@@ -176,13 +176,13 @@ test('checkout saved address dropdown stays visible and caret toggles expand or 
     const h = harness({ addresses: [address, second] }); let tree = h.render();
     assert.ok(field(tree, 'checkout-saved-address'), 'saved address selector is visible while minimized');
     assert.equal(field(tree, 'checkout-address-editor'), undefined, 'pinned saved address starts minimized');
-    const headerExpand = all(tree, node => node.type === 'button' && node.props['aria-controls'] === 'checkout-address-editor' && text(node).includes('Edit / Change'))[0];
+    const headerExpand = all(tree, node => node.type === 'button' && node.props['aria-controls'] === 'checkout-address-editor' && text(node).includes('Edit'))[0];
     assert.equal(headerExpand.props['aria-expanded'], false);
     assert.ok(all(headerExpand, node => node.type?.displayName === 'ChevronDown').length, 'collapsed toggle renders ChevronDown');
     headerExpand.props.onClick(); tree = h.render();
     assert.ok(field(tree, 'checkout-address-editor'), 'clicking caret toggle expands the address editor');
     assert.ok(field(tree, 'checkout-saved-address'), 'saved address selector stays visible while expanded');
-    const footerMinimize = all(tree, node => node.type === 'button' && node.props['aria-controls'] === 'checkout-address-editor' && text(node).includes('Minimize Address'))[0];
+    const footerMinimize = all(tree, node => node.type === 'button' && node.props['aria-controls'] === 'checkout-address-editor' && text(node).includes('Done'))[0];
     assert.equal(footerMinimize.props['aria-expanded'], true);
     assert.ok(all(footerMinimize, node => node.type?.displayName === 'ChevronUp').length, 'expanded minimize button renders ChevronUp');
     footerMinimize.props.onClick(); tree = h.render();

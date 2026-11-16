@@ -20,6 +20,7 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Prepare a readable pull request description for the final branch handoff, covering the combined outcome and validation. Individual commit descriptions explain their own logical changes; a branch description must reflect the final scope.
 - Commit bodies do not automatically populate GitHub's pull request description. Prepare a separate PR title and body, and report whether they were saved on GitHub or remain a local draft. Use an authorized connected integration when available; never publish commits on the user's behalf.
 - Report every commit created, including its short hash and subject.
+- The repository owner is the sole author of every commit and pull request. Never add co-author trailers, AI tool or model names, or "generated with" footers to commits, PRs, code or documentation, and never change the Git author identity.
 - Preserve unrelated user changes.
 - Never store real IP addresses, hostnames, credentials, private keys, or secrets. Use placeholders such as `<SERVER_IP>`.
 - Tests must use isolated SQLite `:memory:` and must never wipe the PostgreSQL development/production database.
@@ -54,18 +55,9 @@ Keep work direct, scoped, and concise. Inspect existing code before changing it;
 - Use the original BagooPH/Bagoo identity and Philippine pesos (`PHP` / `₱`). Avoid third-party commercial brand names in code, fixtures, assets, and documentation.
 - Customer-facing copy uses “Bag,” “Shopping Bag,” and “Add to Bag.” Follow existing database/class names such as `Cart` when required by the codebase.
 - No emojis in code, UI copy, comments, commit messages, or repository documentation.
-- Primary accent: `#E00D42`. Never use black/dark fills (`bg-[#121316]`, `bg-[#1C1A17]`, `bg-zinc-900`, `bg-black`) for step badges, user avatars, chart bars, map pins, or UI cards inside the workspace canvas; always use Bagoo brand colors (`#E00D42`, `#C20836`, `#9F1239`, and `rose-50`/`rose-200` tints).
-- Use Plus Jakarta Sans as the single typeface across every page, portal, component, chart, email, and data field. Never use monospace / "nerd font" (`font-mono`, JetBrains Mono, Inter, or another display/body font) on numbers, KPIs, tracking codes, or badges.
-- Always highlight clickable buttons with clear Bagoo brand color contrast (`border-rose-200 bg-rose-50/85 text-[#C20836] hover:bg-[#E00D42] hover:text-white` for secondary buttons, and solid `bg-[#E00D42] text-white` for primary buttons) so users immediately know when an element is clickable.
-- Use the October 4 rider corner refinement: cards, dialogs, inputs, buttons, navigation, badges, inset panels, and maps use 8px radii across rider pages. This refinement supersedes the initial 4px adjustment and earlier larger rider radii. Keep empty-state icon tiles and their icons upright, without decorative rotation. Avatars, status dots, timeline markers, progress tracks, and duty-switch shapes may remain circular or pill-shaped.
-- Use explicit local radius classes for this direction; do not change global theme radii or restyle unrelated portals without scope. Keep readable grouping and clear form controls.
-- Across Dashboard, Trips, Messages, and Profile, follow the latest October 4 surface preference: use the almost-white blush canvas `#FFFAFB`, soft card shadows, and transparent or very subtle card outlines. Keep input boundaries, focus states, status distinctions, and necessary row separators clear. Rider search and dropdown controls use light boundaries with clear hover/focus states. Keep this treatment local to the rider portal.
-- Rider Messages sits directly below the global header without a page heading/date chip or enclosing card. Keep contacts and conversation history independently scrollable and the composer outside the history scroll area; account for the visual viewport and mobile navigation. Desktop contacts and chat have one subtle vertical divider. Phones/tablets use one pane with a Back button to return to contacts. Use stored avatars with initials as the fallback. Rider Profile uses a cover area, actual account ID/identity summary, and dedicated Information, Edit information, Privacy and security, Assignment, and Vehicle sections backed by existing fields and actions.
-- Rider navigation uses one persistent hamburger in the header. Desktop navigation starts at 1280px (`xl`); smaller widths, including tablets, use the drawer and bottom navigation without a sidebar margin. Keep the shell, chat visibility/read acknowledgement, bottom-navigation clearance, and responsive CSS aligned with this breakpoint; JavaScript uses the shared `courierDesktopMedia` query. Keep the desktop sidebar 17.5rem (280px) wide, with synchronized 260ms sidebar/content glide transitions and reduced-motion support. Do not duplicate the desktop toggle inside the sidebar. The mobile drawer may have its own close button.
-- Use visible borders: normally `border-slate-300` in light UI and `border-slate-700`/`800` in dark UI.
-- Avoid gradients and ornamental clutter on authentication screens. Preserve the split-screen login/register layout.
-- Floating navigation menus must be absolute and must not shift layout. Preserve the existing overlap/grace-period pattern.
-- Prefer Inertia navigation and focused updates for ordinary same-origin actions. Preserve useful state and scroll, show saved-result feedback and avoid unnecessary full browser refreshes. Buyer notification previews and full pages retain the buyer portal's own design and navigation.
+- Brand colors are the only fixed visual rule: primary red `#E00D42` with darker shades `#C20836` and `#A1052B` (Tailwind `brand` palette).
+- The website's visual design and UX are being redesigned from scratch. Previous layout, typography, radius, surface, border, button, and navigation styling rules are retired. Do not treat the current UI, older audits, or plan documents as the design reference. `docs/DESIGN_SYSTEM.md` is the only design reference.
+- Prefer Inertia navigation and focused updates for ordinary same-origin actions. Preserve useful state and scroll, show saved-result feedback and avoid unnecessary full browser refreshes.
 - Keep layouts responsive and avoid continuous GPU-heavy effects.
 
 ## Documentation Routing
@@ -84,8 +76,7 @@ Read only the documentation relevant to the task:
 - Courier: `docs/COURIER_FLOW.md`
 - Logistics/hub: `docs/SORTING_CENTER_LOGISTICS_FLOW.md` and `docs/MASTER_LOGISTICS_SPECIFICATION.md`
 - Admin/commission/governance: `docs/ADMIN_FLOW.md`
-- UI/style: `docs/STYLE_GUIDE.md`
-- Rider interface and mobile interactions: `docs/RIDER_UI_DESIGN.md`
+- UI/UX design system for the redesign: `docs/DESIGN_SYSTEM.md`
 - Schema: inspect migrations/models first; use `docs/SCHEMA.md` as supporting context.
 - History only when requested: `docs/PROGRESS.md`.
 - Never read `docs/ERP_COMPONENTS_SPECIFICATION.md` or original PDFs for current business rules; they are preserved strictly as original historical curriculum material. Current authoritative rules are in `docs/new-docs-era/README.md` and `docs/SYSTEM_FLOW_AND_SPECIFICATIONS.md`.
@@ -96,7 +87,7 @@ When documentation conflicts with executable code, identify the mismatch. For cu
 
 - Run focused tests for changed behavior, then broader tests when risk warrants it.
 - For frontend changes, run `npm run build`; for backend/domain changes, run the relevant PHP tests. Use `./bagoo.sh` equivalents when host permissions or dependencies require Docker.
-- Never open a visible browser, use browser automation, or take screenshots for routine testing or visual checks. Prefer automated tests, builds, static inspection, and user-provided screenshots. Use browser UI testing only when the user explicitly requests it for that task.
+- For UI changes, verify the result visually: take headless browser screenshots of the affected pages on the local development site (phone and desktop widths) and fix what looks wrong. Use the seeded demo accounts, keep screenshots out of tracked files, and never point automation at production or real user data. Automated tests and builds remain required.
 - Do not claim success when checks are blocked or failing; state the exact blocker.
 - After coding, report a brief before/after rating for the specific UI, feature, or flow changed. Explain the user-visible improvement, the supporting verification, and remaining gaps. Treat ratings as scoped engineering assessments; do not raise overall flow readiness for unrelated or unverified work. Record lasting implementation evidence and ratings in `docs/CORE_FLOW_ROADMAP.md`.
 - Keep final responses short: outcome, verification, commits created, and any blocker. Do not include token estimates or a commit command unless requested.

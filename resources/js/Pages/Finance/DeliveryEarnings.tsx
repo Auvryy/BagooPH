@@ -1,5 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Banknote, Clock3, ReceiptText } from 'lucide-react';
+import { Banknote, ReceiptText } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import { HubBadge, HubPanel, HubPageHeader, hubButton } from '@/Components/Logistics/Workspace';
 import type { PageProps } from '@/types';
@@ -14,23 +14,17 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
         <DashboardLayout title="Delivery earnings">
             <Head title="Delivery earnings" />
             <div className="space-y-6">
-                <HubPageHeader title="Delivery earnings" icon={Banknote} description="Released earnings are recorded entitlements. Cash payments and virtual credits retain their original payment records." />
+                <HubPageHeader title="Delivery earnings" icon={Banknote} roleLabel="Cash & earnings" description="Released earnings are recorded entitlements. Cash payments and virtual credits retain their original payment records." />
 
-                <div className="grid grid-cols-1 divide-y divide-zinc-200/80 overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-                    {[
-                        { label: 'Released earnings', value: summary.confirmed_cents, icon: Banknote },
-                        { label: 'Awaiting COD handover', value: summary.pending_cents, icon: Clock3 },
-                    ].map(({ label, value, icon: Icon }) => (
-                        <div key={label} className="p-5 sm:p-6">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-semibold text-zinc-500">{label}</span>
-                                <span className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-200/80 bg-zinc-50 text-zinc-600">
-                                    <Icon className="h-3.5 w-3.5" />
-                                </span>
-                            </div>
-                            <p className="mt-2.5 tabular-nums text-2xl font-bold tracking-tight tabular-nums text-[#121316] sm:text-3xl">{money(value)}</p>
-                        </div>
-                    ))}
+                <div className="grid grid-cols-1 divide-y divide-line-200 overflow-hidden rounded-card border border-line-200 bg-white sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                    <div className="p-5 sm:p-6">
+                        <p className="text-[13px] text-ink-600">Released earnings</p>
+                        <p className="mt-1 text-[28px] font-bold leading-9 tabular-nums text-success">{money(summary.confirmed_cents)}</p>
+                    </div>
+                    <div className="p-5 sm:p-6">
+                        <p className="text-[13px] text-ink-600">Awaiting COD handover</p>
+                        <p className={`mt-1 text-[28px] font-bold leading-9 tabular-nums ${summary.pending_cents > 0 ? 'text-warning' : 'text-ink-900'}`}>{money(summary.pending_cents)}</p>
+                    </div>
                 </div>
 
                 <HubPanel title="Original earnings entries" description="Each entry keeps its original order, amount, funding source and release status." icon={<ReceiptText className="h-4 w-4" />}>
@@ -40,12 +34,12 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
                                 <article key={entry.id} className="rounded-xl border border-zinc-200/90 bg-zinc-50/40 p-4">
                                     <div className="flex flex-wrap items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <h3 className="break-all text-sm font-semibold text-[#121316]">{entry.order_number}</h3>
+                                            <h3 className="break-all text-sm font-semibold text-ink-900">{entry.order_number}</h3>
                                             <p className="mt-0.5 break-all tabular-nums text-xs text-zinc-500">{entry.tracking_number}</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xs text-zinc-500">Net earnings</p>
-                                            <p className="mt-0.5 tabular-nums text-lg font-bold tabular-nums text-[#121316]">{money(entry.net_amount_cents)}</p>
+                                            <p className="mt-0.5 tabular-nums text-lg font-bold tabular-nums text-ink-900">{money(entry.net_amount_cents)}</p>
                                         </div>
                                     </div>
                                     <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200/80 pt-3">
@@ -59,7 +53,7 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
                         </div>
                     )}
 
-                    <div className={logistics ? 'hidden overflow-x-auto md:block' : 'overflow-x-auto'}>
+                    <div className={`${logistics ? 'hidden overflow-x-auto md:block' : 'overflow-x-auto'} ${entries.data.length === 0 ? '!hidden' : ''}`}>
                         <table className="w-full min-w-[680px] text-left text-sm">
                             <thead className="border-b border-zinc-200/80 text-xs text-zinc-500">
                                 <tr>
@@ -72,12 +66,12 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
                                 {entries.data.map(entry => (
                                     <tr key={entry.id} className="transition-colors hover:bg-zinc-50/50">
                                         <td className="py-3.5 pr-4">
-                                            <p className="font-semibold text-[#121316]">{entry.order_number}</p>
+                                            <p className="font-semibold text-ink-900">{entry.order_number}</p>
                                             <p className="mt-0.5 tabular-nums text-xs text-zinc-500">{entry.tracking_number}</p>
                                         </td>
                                         <td className="py-3.5 pr-4 text-zinc-700"><span className="capitalize">{entry.role}</span><p className="mt-1 break-all text-xs text-zinc-500">Receipt: {entry.source_reference}</p></td>
                                         <td className="py-3.5 pr-4 text-zinc-600">{entry.pool.replaceAll('_', ' ')}{entry.virtual_only ? ' · Virtual' : ' · COD'}</td>
-                                        <td className="py-3.5 pr-4 tabular-nums font-semibold tabular-nums text-[#121316]">
+                                        <td className="py-3.5 pr-4 tabular-nums font-semibold tabular-nums text-ink-900">
                                             {money(entry.net_amount_cents)}
                                             {entry.amount_cents !== entry.net_amount_cents && <p className="mt-0.5 font-sans text-xs font-normal text-zinc-500">Gross {money(entry.amount_cents)}</p>}
                                         </td>
@@ -91,12 +85,11 @@ export default function DeliveryEarnings({ summary, entries }: Props) {
                     </div>
 
                     {entries.data.length === 0 && (
-                        <div className="flex min-h-44 flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50/40 py-10 text-center">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200/90 bg-white text-zinc-500 shadow-2xs">
-                                <ReceiptText className="h-4 w-4" />
+                        <div className="flex min-h-36 flex-col items-center justify-center rounded-control bg-surface-50 py-8 text-center">
+                            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-100 text-ink-500">
+                                <ReceiptText className="h-4 w-4" aria-hidden="true" />
                             </span>
-                            <p className="mt-3 text-sm font-semibold text-[#121316]">No delivery earnings recorded yet</p>
-                            <p className="mt-1 text-xs text-zinc-500">Actual origin intake and verified delivery create these entries.</p>
+                            <p className="mt-3 text-sm font-semibold text-ink-900">No delivery earnings yet</p>
                         </div>
                     )}
                 </HubPanel>

@@ -417,4 +417,18 @@ test('direct cancellation keeps the server-provided original policy explanation'
     const h = harness(BuyerCancel, { url: '/orders/30/cancel', reasons: ['Ordered by mistake'], mode: 'direct', description: 'This original purchase permits cancellation before readiness.' });
     const tree = h.render(); assert.match(text(tree), /original purchase permits cancellation before readiness/);
     assert.doesNotMatch(text(tree), /seller reviews your request/);
+    const cancelledTree = CancelFeedback({
+        feedback: {
+            allowed: false,
+            mode: 'direct',
+            code: 'cancelled',
+            message: 'Order cancelled. Delivery will not proceed.',
+            reason: 'Ordered by mistake: Bought wrong variant, will reorder.',
+            payment_message: 'No COD payment was collected.',
+            refund: null,
+            request: null,
+        },
+    });
+    assert.match(text(cancelledTree), /Buyer cancellation reason & note:/);
+    assert.match(text(cancelledTree), /Ordered by mistake: Bought wrong variant, will reorder\./);
 });

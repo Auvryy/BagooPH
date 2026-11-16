@@ -337,8 +337,9 @@ export default function ScanStation({
     const [dwsHeight, setDwsHeight] = useState<string>('');
     const [dwsWeightGrams, setDwsWeightGrams] = useState<string>('');
 
-    // Always default to 2-step inspect mode so saved storage preferences never auto-confirm custody.
-    const [scanMode, setScanMode] = useState<ScanOperationMode>('verify');
+    // One scan receives the parcel: the server only applies the step this hub and worker are allowed to do,
+    // and rejects wrong-company or misrouted parcels. "Check first" stays available for unusual parcels.
+    const [scanMode, setScanMode] = useState<ScanOperationMode>('direct');
     const [pinnedAction, setPinnedAction] = useState<string>('ANY_PERMITTED_PARCEL_STEP');
     const [locationBarcode, setLocationBarcode] = useState<string>('');
     const [queuedScans, setQueuedScans] = useState<QueuedScanItem[]>([]);
@@ -832,48 +833,45 @@ export default function ScanStation({
             <Head title="Scan Station — Logistics Hub — BagooPH" />
 
             {/* Compact Workstation Header */}
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight text-[#121316]">Scan station</h1>
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+                <div className="min-w-0">
+                    <h1 className="text-[28px] font-bold leading-[34px] tracking-tight text-ink-900">Scan station</h1>
                     {activeHub && (
-                        <div className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-xs shadow-2xs">
-                            <Building2 className="h-3.5 w-3.5 text-zinc-500" />
-                            <span className="font-semibold text-[#121316]">{activeHub.name}</span>
-                            <span className="rounded border border-zinc-200 bg-slate-100/80 px-1.5 py-0.5 text-[11px] font-bold text-zinc-700 tabular-nums">
-                                {activeHub.code}
-                            </span>
-                        </div>
+                        <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-600">
+                            <Building2 className="h-4 w-4 text-ink-500" aria-hidden="true" />
+                            <span>{activeHub.name} · {activeHub.code}</span>
+                        </p>
                     )}
                 </div>
 
-                <section aria-label="Station counts and expected arrivals" className="flex flex-wrap items-center gap-5 text-xs">
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="text-base font-bold text-[#121316] tabular-nums">{stats.parcels_in_hub}</span>
-                        <span className="font-medium text-zinc-500">In custody</span>
+                <section aria-label="Station counts and expected arrivals" className="flex flex-wrap items-end gap-6">
+                    <div>
+                        <p className="text-xl font-bold leading-7 text-ink-900 tabular-nums">{stats.parcels_in_hub}</p>
+                        <p className="text-xs text-ink-600">In custody</p>
                     </div>
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="text-base font-bold text-[#121316] tabular-nums">{stats.ready_pickup}</span>
-                        <span className="font-medium text-zinc-500">Counter ready</span>
+                    <div>
+                        <p className="text-xl font-bold leading-7 text-ink-900 tabular-nums">{stats.ready_pickup}</p>
+                        <p className="text-xs text-ink-600">Counter ready</p>
                     </div>
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="text-base font-bold text-[#121316] tabular-nums">{stats.dispatched_today}</span>
-                        <span className="font-medium text-zinc-500">Dispatched</span>
+                    <div>
+                        <p className="text-xl font-bold leading-7 text-ink-900 tabular-nums">{stats.dispatched_today}</p>
+                        <p className="text-xs text-ink-600">Dispatched today</p>
                     </div>
                 </section>
             </div>
 
             {/* Underline Navigation Tabs + Live Wedge Status */}
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200">
-                <div role="group" aria-label="Scanner views" className="-mb-px flex max-w-full items-center gap-6 overflow-x-auto text-xs font-sans">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-line-200">
+                <div role="group" aria-label="Scanner views" className="-mb-px flex max-w-full items-center gap-6 overflow-x-auto text-sm font-sans">
                     <button
                         type="button"
                         onClick={() => setActiveTab('scan')}
                         aria-pressed={activeTab === 'scan'}
                         className={`inline-flex items-center gap-2 border-b-2 py-2.5 font-semibold transition cursor-pointer shrink-0 ${
-                            activeTab === 'scan'
-                                ? 'border-[#E00D42] text-[#E00D42]'
-                                : 'border-transparent text-zinc-600 hover:text-[#121316]'
-                        }`}
+ activeTab === 'scan'
+ ? 'border-brand-500 text-brand-500'
+ : 'border-transparent text-zinc-600 hover:text-ink-900'
+ }`}
                     >
                         <ScanLine className="w-3.5 h-3.5" />
                         <span>Scan parcels</span>
@@ -884,15 +882,15 @@ export default function ScanStation({
                         onClick={() => setActiveTab('batch')}
                         aria-pressed={activeTab === 'batch'}
                         className={`inline-flex items-center gap-2 border-b-2 py-2.5 font-semibold transition cursor-pointer shrink-0 ${
-                            activeTab === 'batch'
-                                ? 'border-[#E00D42] text-[#E00D42]'
-                                : 'border-transparent text-zinc-600 hover:text-[#121316]'
-                        }`}
+ activeTab === 'batch'
+ ? 'border-brand-500 text-brand-500'
+ : 'border-transparent text-zinc-600 hover:text-ink-900'
+ }`}
                     >
                         <Layers className="w-3.5 h-3.5" />
                         <span>Batch queue</span>
                         {queuedScans.length > 0 && (
-                            <span className="rounded border border-rose-300 bg-rose-50 px-1.5 py-0.5 text-[11px] font-bold text-[#C20836] tabular-nums">
+                            <span className="rounded-chip bg-brand-50 px-1.5 py-0.5 text-xs font-medium text-brand-600 tabular-nums">
                                 {queuedScans.length}
                             </span>
                         )}
@@ -904,15 +902,15 @@ export default function ScanStation({
                             onClick={() => setActiveTab('counter')}
                             aria-pressed={activeTab === 'counter'}
                             className={`inline-flex items-center gap-2 border-b-2 py-2.5 font-semibold transition cursor-pointer shrink-0 ${
-                                activeTab === 'counter'
-                                    ? 'border-[#E00D42] text-[#E00D42]'
-                                    : 'border-transparent text-zinc-600 hover:text-[#121316]'
-                            }`}
+ activeTab === 'counter'
+ ? 'border-brand-500 text-brand-500'
+ : 'border-transparent text-zinc-600 hover:text-ink-900'
+ }`}
                         >
                             <Boxes className="w-3.5 h-3.5" />
                             <span>Counter queue</span>
                             {counterTotal > 0 && (
-                                <span className="rounded border border-zinc-300 bg-zinc-100 px-1.5 py-0.5 text-[11px] font-bold text-zinc-800 tabular-nums">
+                                <span className="rounded-chip bg-surface-100 px-1.5 py-0.5 text-xs font-medium text-ink-700 tabular-nums">
                                     {counterTotal}
                                 </span>
                             )}
@@ -924,10 +922,10 @@ export default function ScanStation({
                         onClick={() => setActiveTab('logs')}
                         aria-pressed={activeTab === 'logs'}
                         className={`inline-flex items-center gap-2 border-b-2 py-2.5 font-semibold transition cursor-pointer shrink-0 ${
-                            activeTab === 'logs'
-                                ? 'border-[#E00D42] text-[#E00D42]'
-                                : 'border-transparent text-zinc-600 hover:text-[#121316]'
-                        }`}
+ activeTab === 'logs'
+ ? 'border-brand-500 text-brand-500'
+ : 'border-transparent text-zinc-600 hover:text-ink-900'
+ }`}
                     >
                         <Clock className="w-3.5 h-3.5" />
                         <span>Scan history</span>
@@ -935,13 +933,11 @@ export default function ScanStation({
                 </div>
 
                 <div className="pb-2">
-                    <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
-                        isOnline
-                            ? 'border-zinc-200 bg-white text-[#121316]'
-                            : 'border-amber-300 bg-amber-50 text-amber-900'
-                    }`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${isOnline ? 'bg-[#E00D42]' : 'bg-amber-600'}`} />
-                        {isOnline ? 'Wedge Ready' : 'Offline · Auto-queue'}
+                    <span className={`inline-flex items-center gap-1.5 rounded-chip px-2 py-1 text-xs font-medium ${
+ isOnline ? 'bg-success-soft text-success' : 'bg-warning-soft text-warning'
+ }`}>
+                        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${isOnline ? 'bg-success' : 'bg-warning'}`} />
+                        {isOnline ? 'Scanner ready' : 'Offline · scans will queue'}
                     </span>
                 </div>
             </div>
@@ -963,13 +959,13 @@ export default function ScanStation({
                     )}
 
                     {scanMessage && (
-                        <div role="status" className={`${lastResult?.alreadyReceived ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-white border-zinc-200 text-[#121316]'} border rounded-xl p-4 flex items-start gap-3 shadow-xs`}>
-                            <CheckCircle2 className={`w-5 h-5 ${lastResult?.alreadyReceived ? 'text-amber-700' : 'text-[#E00D42]'} flex-shrink-0 mt-0.5`} />
+                        <div role="status" className={`${lastResult?.alreadyReceived ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-white border-zinc-200 text-ink-900'} border rounded-xl p-4 flex items-start gap-3 shadow-xs`}>
+                            <CheckCircle2 className={`w-5 h-5 ${lastResult?.alreadyReceived ? 'text-amber-700' : 'text-brand-500'} flex-shrink-0 mt-0.5`} />
                             <div className="text-xs font-medium font-sans leading-relaxed">{scanMessage}</div>
                         </div>
                     )}
 
-                    {returnResult && <section className="mb-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-xs"><h2 className="font-bold text-zinc-900">Buyer return {returnResult.reference}</h2><p className="mt-2 break-all text-xs text-zinc-600">{returnResult.barcode}</p><p className="mt-2 text-xs text-zinc-600">This scan identifies the return. Record its actual intake or manifest receipt from the case.</p><Link href={returnResult.href} className="mt-4 inline-flex rounded-lg bg-[#E00D42] px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#C20836] transition cursor-pointer">Open buyer return</Link></section>}
+                    {returnResult && <section className="mb-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-xs"><h2 className="font-bold text-zinc-900">Buyer return {returnResult.reference}</h2><p className="mt-2 break-all text-xs text-zinc-600">{returnResult.barcode}</p><p className="mt-2 text-xs text-zinc-600">This scan identifies the return. Record its actual intake or manifest receipt from the case.</p><Link href={returnResult.href} className="mt-4 inline-flex rounded-lg bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-brand-600 transition cursor-pointer">Open buyer return</Link></section>}
 
                     <ScanModeControls
                         scanMode={scanMode}
@@ -989,22 +985,19 @@ export default function ScanStation({
                             <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden">
                                 <div className="p-5 space-y-4">
                                     <div className="flex items-center justify-between gap-3">
-                                        <label htmlFor="barcode-field" className="text-sm font-bold text-[#121316] font-sans">
+                                        <label htmlFor="barcode-field" className="text-sm font-bold text-ink-900 font-sans">
                                             Scan or enter waybill
                                         </label>
 
                                         <button
                                             type="button"
                                             onClick={() => setAudioEnabled(!audioEnabled)}
-                                            className={`px-3 py-1 rounded-lg border transition shadow-2xs flex items-center gap-1.5 text-xs font-semibold font-sans cursor-pointer ${
-                                                audioEnabled
-                                                    ? 'bg-white border-zinc-200 text-[#121316] hover:bg-zinc-50'
-                                                    : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'
-                                            }`}
-                                            title={audioEnabled ? 'Sound Enabled' : 'Sound Muted'}
+                                            aria-pressed={audioEnabled}
+                                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line-300 bg-white text-ink-700 transition-colors hover:border-ink-400 hover:bg-surface-100 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 cursor-pointer"
+                                            title={audioEnabled ? 'Sound on' : 'Sound off'}
                                         >
-                                            {audioEnabled ? <Volume2 className="w-3.5 h-3.5 text-[#E00D42]" /> : <VolumeX className="w-3.5 h-3.5" />}
-                                            <span>{audioEnabled ? 'Audio ON' : 'Muted'}</span>
+                                            {audioEnabled ? <Volume2 className="h-4 w-4" aria-hidden="true" /> : <VolumeX className="h-4 w-4 text-ink-400" aria-hidden="true" />}
+                                            <span className="sr-only">{audioEnabled ? 'Audio ON' : 'Muted'}</span>
                                         </button>
                                     </div>
 
@@ -1024,13 +1017,13 @@ export default function ScanStation({
                                                     placeholder="Ready for scanner — or type tracking code..."
                                                     disabled={isSubmitting}
                                                     autoFocus
-                                                    className="min-h-11 w-full bg-white border border-zinc-300 text-zinc-900 placeholder-zinc-400 rounded-xl pl-10 pr-3.5 py-2 text-sm font-sans focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 shadow-2xs outline-hidden transition"
+                                                    className="min-h-11 w-full bg-white border border-zinc-300 text-zinc-900 placeholder-zinc-400 rounded-xl pl-10 pr-3.5 py-2 text-sm font-sans focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 shadow-2xs outline-hidden transition"
                                                 />
                                             </div>
                                             <button
                                                 type="submit"
                                                 disabled={isSubmitting || !barcodeInput.trim()}
-                                                className="px-5 py-2 bg-[#E00D42] hover:bg-[#C20836] border border-[#C20836] disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 font-sans cursor-pointer shrink-0 disabled:cursor-not-allowed"
+                                                className="px-5 py-2 bg-brand-500 hover:bg-brand-600 border border-brand-600 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 font-sans cursor-pointer shrink-0 disabled:cursor-not-allowed"
                                             >
                                                 {isSubmitting ? (
                                                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1041,10 +1034,6 @@ export default function ScanStation({
                                                     </>
                                                 )}
                                             </button>
-                                        </div>
-
-                                        <div className="text-xs text-zinc-500">
-                                            Press <kbd className="rounded border border-zinc-200 bg-slate-50 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-700">Enter</kbd> or trigger laser wedge
                                         </div>
                                     </form>
                                 </div>
@@ -1082,17 +1071,17 @@ export default function ScanStation({
                                             </div>
                                         </div>
                                         <span className={`text-xs px-2.5 py-1 rounded-sm font-bold uppercase tabular-nums ${
-                                            masterBagResult.status === 'received'
-                                                ? 'bg-zinc-100 text-[#121316] border border-zinc-300'
-                                                : 'bg-amber-100 text-amber-800 border border-amber-300'
-                                        }`}>
+ masterBagResult.status === 'received'
+ ? 'bg-zinc-100 text-ink-900 border border-zinc-300'
+ : 'bg-amber-100 text-amber-800 border border-amber-300'
+ }`}>
                                             {masterBagResult.status}
                                         </span>
                                     </div>
 
                                     <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5 text-center shadow-2xs">
                                         <p className="text-xs tracking-wider text-zinc-500 uppercase font-bold">Master Bag Tag</p>
-                                        <p className="text-2xl font-black tracking-tight text-[#121316] mt-1">{masterBagResult.reference}</p>
+                                        <p className="text-2xl font-black tracking-tight text-ink-900 mt-1">{masterBagResult.reference}</p>
                                         <p className="text-xs text-zinc-600 mt-1.5">
                                             Numbered Tamper Seal: <span className="text-zinc-900 font-bold">{masterBagResult.seal_number || 'N/A'}</span>
                                         </p>
@@ -1100,7 +1089,7 @@ export default function ScanStation({
 
                                     <div className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4">
                                         <p className="text-sm text-zinc-700">Bag identified. Check the actual seal, then scan each parcel at receiving.</p>
-                                        <button type="button" disabled={isSubmitting} onClick={openBagReceiving} className="w-full rounded-lg bg-[#E00D42] px-4 py-3 text-sm font-bold text-white hover:bg-[#C20836] disabled:opacity-50 cursor-pointer">Open bag receiving</button>
+                                        <button type="button" disabled={isSubmitting} onClick={openBagReceiving} className="w-full rounded-lg bg-brand-500 px-4 py-3 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 cursor-pointer">Open bag receiving</button>
                                     </div>
 
                                     {masterBagResult.parcels && masterBagResult.parcels.length > 0 && (
@@ -1109,7 +1098,7 @@ export default function ScanStation({
                                             <div className="max-h-36 overflow-y-auto divide-y divide-zinc-100 text-xs tabular-nums">
                                                 {masterBagResult.parcels.map((p, idx) => (
                                                     <div key={idx} className="py-1.5 flex items-center justify-between">
-                                                        <span className="text-[#121316] font-semibold">{p.tracking_number}</span>
+                                                        <span className="text-ink-900 font-semibold">{p.tracking_number}</span>
                                                         <span className="text-zinc-500 text-xs">{p.order_number ? `#${p.order_number}` : ''}</span>
                                                     </div>
                                                 ))}
@@ -1145,7 +1134,7 @@ export default function ScanStation({
                                                 </div>
                                             </div>
                                             <div className="shrink-0 text-right">
-                                                <span className="inline-flex items-center justify-center rounded-xl bg-[#E00D42] px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs">
+                                                <span className="inline-flex items-center justify-center rounded-chip bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-600">
                                                     {lastResult.delivery.destination_bin ? `BIN: ${lastResult.delivery.destination_bin}` : 'SORT QUEUE'}
                                                 </span>
                                             </div>
@@ -1193,7 +1182,7 @@ export default function ScanStation({
                                                 </div>
                                                 <div className="rounded-lg bg-zinc-100 p-2.5 border border-zinc-200">
                                                     <span className="text-[10px] uppercase font-bold text-zinc-500 block">Chargeable</span>
-                                                    <span className="font-extrabold text-[#121316] tabular-nums">
+                                                    <span className="font-extrabold text-ink-900 tabular-nums">
                                                         {lastResult.delivery.dws.chargeable_weight_kg.toFixed(2)} kg
                                                     </span>
                                                 </div>
@@ -1201,10 +1190,10 @@ export default function ScanStation({
                                             <div className="flex items-center justify-between pt-1 text-[11px] text-zinc-500 border-t border-zinc-100">
                                                 <span>Volume: <strong className="text-zinc-700">{lastResult.delivery.dws.volume_cbm.toFixed(4)} CBM</strong></span>
                                                 <span className={`px-2 py-0.5 rounded font-bold uppercase text-[10px] ${
-                                                    lastResult.delivery.dws.is_oversized
-                                                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                                        : 'bg-zinc-100 text-[#121316] border border-zinc-300'
-                                                }`}>
+ lastResult.delivery.dws.is_oversized
+ ? 'bg-amber-100 text-amber-800 border border-amber-300'
+ : 'bg-zinc-100 text-ink-900 border border-zinc-300'
+ }`}>
                                                     {lastResult.delivery.dws.is_oversized ? 'Loose Freight (Oversized)' : 'Standard Mother Bag Pouch'}
                                                 </span>
                                             </div>
@@ -1222,7 +1211,7 @@ export default function ScanStation({
                                                         {lastResult.delivery.mother_bag_slotting.bagged ? 'Recorded packing' : 'Suggested packing'}
                                                     </span>
                                                 </div>
-                                                <span className="text-xs font-bold text-[#121316] bg-white border border-zinc-300 px-2.5 py-0.5 rounded-lg tabular-nums">
+                                                <span className="text-xs font-bold text-ink-900 bg-white border border-zinc-300 px-2.5 py-0.5 rounded-lg tabular-nums">
                                                     {lastResult.delivery.mother_bag_slotting.reference || 'New bag required'}
                                                 </span>
                                             </div>
@@ -1237,7 +1226,7 @@ export default function ScanStation({
                                                 </div>
                                                 <div className="w-full bg-zinc-200/80 rounded-full h-2 overflow-hidden">
                                                     <div
-                                                        className="bg-[#E00D42] h-2 rounded-full transition-all duration-300"
+                                                        className="bg-brand-500 h-2 rounded-full transition-all duration-300"
                                                         style={{ width: `${Math.min(100, Math.max(5, lastResult.delivery.mother_bag_slotting.capacity_pct || 2))}%` }}
                                                     />
                                                 </div>
@@ -1268,7 +1257,7 @@ export default function ScanStation({
                                                     </div>
                                                 )}
                                             {slotFeedback && (
-                                                <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-[#121316]">
+                                                <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-ink-900">
                                                     {slotFeedback}
                                                 </p>
                                             )}
@@ -1305,7 +1294,7 @@ export default function ScanStation({
                                     {(lastResult.delivery.guidance.action === 'manifest' || lastResult.prompt.manifest_url) && lastResult.delivery.guidance.can_act && (
                                         <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-6 shadow-xs space-y-4">
                                             <div className="flex items-start gap-3.5">
-                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E00D42] text-white shadow-xs">
+                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-500">
                                                     <Truck className="h-5 w-5" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
@@ -1314,7 +1303,7 @@ export default function ScanStation({
                                                             Next Operational Step
                                                         </span>
                                                         {lastResult.alreadyReceived && (
-                                                            <span className="rounded-lg border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-bold text-[#121316]">
+                                                            <span className="rounded-lg border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-bold text-ink-900">
                                                                 Intake Verified
                                                             </span>
                                                         )}
@@ -1333,7 +1322,7 @@ export default function ScanStation({
                                                         type="button"
                                                         disabled={isSubmitting}
                                                         onClick={() => triggerFastDispatch(lastResult.delivery.routing_target?.id)}
-                                                        className="inline-flex items-center gap-2 rounded-xl bg-[#E00D42] px-5 py-3 text-sm font-bold text-white shadow-xs hover:bg-[#C20836] transition cursor-pointer active:scale-98 disabled:opacity-50"
+                                                        className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-5 py-3 text-sm font-bold text-white shadow-xs hover:bg-brand-600 transition cursor-pointer active:scale-98 disabled:opacity-50"
                                                     >
                                                         <Zap className="h-4 w-4 fill-current text-white" />
                                                         <span>{`Prepare manifest to ${lastResult.delivery.routing_target?.code || 'next hub'}`}</span>
@@ -1364,7 +1353,7 @@ export default function ScanStation({
                                                 type="button"
                                                 onClick={confirmScanAction}
                                                 disabled={isSubmitting}
-                                                className="w-full rounded-xl bg-[#E00D42] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#C20836] disabled:bg-zinc-300 shadow-xs cursor-pointer transition"
+                                                className="w-full rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white hover:bg-brand-600 disabled:bg-zinc-300 shadow-xs cursor-pointer transition"
                                             >
                                                 {isSubmitting
                                                     ? 'Recording action...'
@@ -1377,14 +1366,14 @@ export default function ScanStation({
 
                                     <div className="flex flex-wrap gap-2.5">
                                         <button type="button" disabled={isSubmitting} onClick={() => handleBarcodeProcess(lastResult.delivery.tracking_number)}
-                                            className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 disabled:opacity-50 shadow-2xs hover:bg-zinc-50 hover:text-[#121316] transition cursor-pointer">Check for updates</button>
+                                            className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 disabled:opacity-50 shadow-2xs hover:bg-zinc-50 hover:text-ink-900 transition cursor-pointer">Check for updates</button>
                                         {lastResult.delivery.registry_url && !lastResult.delivery.guidance.can_act && <Link href={lastResult.delivery.registry_url}
-                                            className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-[#121316] transition">View parcel records</Link>}
+                                            className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-ink-900 transition">View parcel records</Link>}
                                         <button type="button" disabled={isSubmitting} onClick={() => {
                                             setLastResult(null); setScanMessage(null); setSlotFeedback(null); setBarcodeInput('');
                                              setDwsLength(''); setDwsWidth(''); setDwsHeight(''); setDwsWeightGrams('');
                                             barcodeInputRef.current?.focus();
-                                        }} className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 disabled:opacity-50 shadow-2xs hover:bg-zinc-50 hover:text-[#121316] transition cursor-pointer">Scan next parcel</button>
+                                        }} className="rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 disabled:opacity-50 shadow-2xs hover:bg-zinc-50 hover:text-ink-900 transition cursor-pointer">Scan next parcel</button>
                                     </div>
 
                                     {/* Collapsible DWS Volumetric Weight Sizing Tool */}
@@ -1410,7 +1399,7 @@ export default function ScanStation({
                                                         placeholder="0.0"
                                                         value={dwsLength}
                                                         onChange={(e) => setDwsLength(e.target.value)}
-                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition"
+                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition"
                                                     />
                                                 </div>
                                                 <div>
@@ -1422,7 +1411,7 @@ export default function ScanStation({
                                                         placeholder="0.0"
                                                         value={dwsWidth}
                                                         onChange={(e) => setDwsWidth(e.target.value)}
-                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition"
+                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition"
                                                     />
                                                 </div>
                                                 <div>
@@ -1434,7 +1423,7 @@ export default function ScanStation({
                                                         placeholder="0.0"
                                                         value={dwsHeight}
                                                         onChange={(e) => setDwsHeight(e.target.value)}
-                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition"
+                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition"
                                                     />
                                                 </div>
                                                 <div>
@@ -1446,7 +1435,7 @@ export default function ScanStation({
                                                         placeholder="0"
                                                         value={dwsWeightGrams}
                                                         onChange={(e) => setDwsWeightGrams(e.target.value)}
-                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-[#E00D42] focus:ring-2 focus:ring-[#E00D42]/15 transition"
+                                                        className="w-full rounded-xl border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-2xs focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition"
                                                     />
                                                 </div>
                                             </div>
@@ -1460,7 +1449,7 @@ export default function ScanStation({
                                                     </div>
                                                     <div className="flex items-center gap-1.5">
                                                         <span className="text-zinc-500 font-medium">Billable:</span>
-                                                        <span className="font-bold text-[#121316] bg-zinc-100 border border-zinc-300 px-2.5 py-1 rounded-lg tabular-nums">
+                                                        <span className="font-bold text-ink-900 bg-zinc-100 border border-zinc-300 px-2.5 py-1 rounded-lg tabular-nums">
                                                             {dwsBillableKg.toFixed(2)} kg
                                                         </span>
                                                     </div>
@@ -1482,7 +1471,7 @@ export default function ScanStation({
                                         </div>
                                         <div className="text-right">
                                             <div className="text-xs uppercase text-zinc-500 font-sans font-bold tracking-wider">Waybill Code</div>
-                                            <div className="text-xs font-bold text-[#121316] bg-white px-2.5 py-1 rounded-lg border border-zinc-200 inline-block mt-0.5 tabular-nums">
+                                            <div className="text-xs font-bold text-ink-900 bg-white px-2.5 py-1 rounded-lg border border-zinc-200 inline-block mt-0.5 tabular-nums">
                                                 {lastResult.delivery.tracking_number}
                                             </div>
                                         </div>
@@ -1519,7 +1508,7 @@ export default function ScanStation({
                                     </div>
 
                                     {lastResult.scanEvidence && <details className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 text-xs text-zinc-700">
-                                        <summary className="cursor-pointer font-semibold text-[#121316]">Scan evidence · {lastResult.scanEvidence.route_hub_count} route hub(s)</summary>
+                                        <summary className="cursor-pointer font-semibold text-ink-900">Scan evidence · {lastResult.scanEvidence.route_hub_count} route hub(s)</summary>
                                         <div className="mt-3 space-y-2">
                                             {lastResult.scanEvidence.latest_record && <><p className="break-all font-semibold">{lastResult.scanEvidence.latest_record.reference}</p><p>{lastResult.scanEvidence.latest_record.actor || 'No named actor recorded'} · {lastResult.scanEvidence.latest_record.type.replaceAll('_', ' ')} · {lastResult.scanEvidence.latest_record.recorded_at ? new Date(lastResult.scanEvidence.latest_record.recorded_at).toLocaleString('en-PH') : 'Time not recorded'}</p></>}
                                             <p>{lastResult.scanEvidence.submitted_waybill_records} submitted waybill record(s) · {lastResult.scanEvidence.inherited_departure_records} departure record(s) using retained load evidence · {lastResult.scanEvidence.derived_local_records} local route record(s)</p>
@@ -1543,65 +1532,57 @@ export default function ScanStation({
                                     {/* Command Terminal Header */}
                                     <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                                Routing Terminal
-                                            </span>
-                                            <span className="rounded bg-slate-100/80 border border-zinc-200 px-2 py-0.5 text-[11px] font-bold text-zinc-700 tabular-nums">
-                                                {activeHub?.code || 'STATION'}
-                                            </span>
+                                            <h3 className="text-base font-semibold text-ink-900">Routing</h3>
                                         </div>
                                         <a
                                             href={`${basePath}/command-sheet`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1.5 text-xs text-zinc-600 hover:text-[#E00D42] font-semibold transition"
+                                            className="inline-flex items-center gap-1.5 text-xs text-zinc-600 hover:text-brand-500 font-semibold transition"
                                         >
                                             <Printer className="h-3.5 w-3.5" />
-                                            <span>Print Sheet</span>
+                                            <span>Print commands</span>
                                         </a>
                                     </div>
 
                                     {/* Centered Idle Body */}
                                     <div className="px-5 pt-7 pb-5">
                                         <div className="flex flex-col items-center text-center py-4">
-                                            <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-500">
-                                                <QrCode className="w-5 h-5" />
+                                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-100 text-ink-500">
+                                                <QrCode className="w-5 h-5" aria-hidden="true" />
                                             </div>
-                                            <h4 className="mt-3 font-bold text-sm text-[#121316] font-sans">
+                                            <h4 className="mt-3 text-base font-semibold text-ink-900 font-sans">
                                                 Ready for the next parcel
                                             </h4>
-                                            <p className="mt-1 text-xs text-zinc-500">
-                                                Scan a waybill or barcode command to begin routing.
-                                            </p>
                                         </div>
 
                                         {/* Hardware & Keyboard Command Matrix */}
-                                        <div className="mt-6 border-t border-zinc-100 pt-4 space-y-2.5">
-                                            <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700">
-                                                <Zap className="h-3.5 w-3.5 text-[#E00D42]" />
-                                                <span>2D / 1D Laser Wedge Commands</span>
-                                            </div>
-                                            <div className="space-y-2 text-xs">
+                                        <details className="group mt-6 border-t border-line-200 pt-3">
+                                            <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-control py-1 text-[13px] font-medium text-ink-700 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 [&::-webkit-details-marker]:hidden">
+                                                <Zap className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
+                                                <span>Scanner commands</span>
+                                            </summary>
+                                            <div className="mt-2 space-y-2 text-[13px]">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="text-zinc-600">Confirm intake or bag seal</span>
-                                                    <kbd className="rounded border border-zinc-200 bg-slate-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800">
+                                                    <kbd className="rounded-chip bg-surface-100 px-2 py-0.5 tabular-nums text-xs font-medium text-ink-700">
                                                         CMD-CONFIRM
                                                     </kbd>
                                                 </div>
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="text-zinc-600">Fast dispatch to route target</span>
-                                                    <kbd className="rounded border border-zinc-200 bg-slate-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800">
+                                                    <kbd className="rounded-chip bg-surface-100 px-2 py-0.5 tabular-nums text-xs font-medium text-ink-700">
                                                         CMD-DISPATCH
                                                     </kbd>
                                                 </div>
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="text-zinc-600">Reset terminal &amp; focus input</span>
-                                                    <kbd className="rounded border border-zinc-200 bg-slate-50 px-2 py-0.5 tabular-nums text-[11px] font-bold text-zinc-800">
+                                                    <kbd className="rounded-chip bg-surface-100 px-2 py-0.5 tabular-nums text-xs font-medium text-ink-700">
                                                         CMD-CLEAR
                                                     </kbd>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </details>
                                     </div>
                                 </div>
                             )}
@@ -1654,10 +1635,10 @@ export default function ScanStation({
                                                         {activeHub?.code} {'->'} {corridor.destination_hub.name}
                                                     </span>
                                                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide border ${
-                                                        corridor.leg_type === 'line_haul'
-                                                            ? 'bg-purple-50 text-purple-700 border-purple-200'
-                                                            : 'bg-blue-50 text-blue-700 border-blue-200'
-                                                    }`}>
+ corridor.leg_type === 'line_haul'
+ ? 'bg-purple-50 text-purple-700 border-purple-200'
+ : 'bg-blue-50 text-blue-700 border-blue-200'
+ }`}>
                                                         {corridor.leg_type === 'line_haul' ? 'Line-Haul Trunk' : 'Municipal Feeder'}
                                                     </span>
                                                     {corridor.sizing.is_upgrade && (
@@ -1690,10 +1671,10 @@ export default function ScanStation({
                                                         <div className="w-full bg-zinc-200 rounded-full h-1.5 overflow-hidden">
                                                             <div
                                                                 className={`h-1.5 rounded-full ${
-                                                                    (corridor.sizing.payload_utilization_pct ?? 0) > 90
-                                                                        ? 'bg-amber-500'
-                                                                        : 'bg-[#E00D42]'
-                                                                }`}
+ (corridor.sizing.payload_utilization_pct ?? 0) > 90
+ ? 'bg-amber-500'
+ : 'bg-brand-500'
+ }`}
                                                                 style={{ width: `${Math.min(100, Math.max(0, corridor.sizing.payload_utilization_pct ?? 0))}%` }}
                                                             />
                                                         </div>
@@ -1712,7 +1693,7 @@ export default function ScanStation({
                                                     type="button"
                                                     disabled={isSubmitting || !corridor.can_dispatch}
                                                     onClick={() => triggerFastDispatch(corridor.destination_hub.id, true)}
-                                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#E00D42] px-5 py-3 text-xs font-bold text-white shadow-xs hover:bg-[#C20836] active:scale-98 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3 text-xs font-bold text-white shadow-xs hover:bg-brand-600 active:scale-98 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                                                 >
                                                     <Zap className="h-4 w-4 fill-current text-white" />
                                                     <span>Prepare manifest</span>

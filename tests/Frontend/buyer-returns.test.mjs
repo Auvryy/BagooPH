@@ -251,7 +251,8 @@ test('manifest preparation selects an actual accepted buyer return and retains o
         assert.equal(h.form.data.source_hub_id, '3'); assert.equal(h.form.data.destination_hub_id, '2'); assert.equal(h.form.data.buyer_return_case_id, '11');
         assert.equal(h.form.data.buyer_return_recovery_id, '27'); assert.match(html, /Authorized recovery/);
         const hubs = [...html.matchAll(/<select\b[^>]*disabled=""[^>]*>/g)].map(match => match[0]);
-        assert.equal(hubs.length, 2); assert.ok(hubs.every(input => /\bdisabled(?:=|\s|>)/.test(input)));
+        assert.equal(hubs.length, 1); assert.ok(hubs.every(input => /\bdisabled(?:=|\s|>)/.test(input)));
+        assert.doesNotMatch(html, /<select\b(?![^>]*disabled)[^>]*>[\s\S]*?Destination Bayan Hub/); assert.match(html, /Destination Bayan Hub/);
         h.control(node => node.type === 'input' && node.props.name === 'transfer-vehicle' && String(node.props.value) === '5').onChange();
         h.submit();
         assert.equal(h.posts[0].url, '/hub/manifests'); assert.equal(h.posts[0].data.direction, 'buyer_return');

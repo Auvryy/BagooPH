@@ -9,11 +9,20 @@ use App\Services\Orders\CheckoutQuoteService;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\VoucherDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class VoucherDemoSeederTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // The full seeder writes demo banner files; keep them off the real development disks.
+        Storage::fake('local');
+        Storage::fake('public');
+    }
 
     public function test_demo_campaigns_use_the_real_writer_without_invented_bookmarks_or_uses(): void
     {

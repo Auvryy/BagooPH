@@ -49,8 +49,7 @@ class NewEraMotherBagTest extends TestCase
         $vehicle = LogisticsFleet::create(['logistics_company_id' => $parcel->logistics_company_id, 'hub_id' => $parcel->origin_bayan_hub_id,
             'plate_number' => 'QA-BAG-001', 'vehicle_type' => 'l300_van', 'capacity_kg' => 10000, 'status' => 'active', 'assigned_driver_id' => $driver->id]);
         $driver->courierProfile->update(['logistics_company_id' => $parcel->logistics_company_id, 'assigned_hub_id' => $parcel->origin_bayan_hub_id, 'vehicle_id' => $vehicle->id]);
-        $owner = $parcel->originBayanHub->company->user;
-        $this->actingAs($owner)->get('/hub/manifests')->assertOk();
+        $this->actingAs($this->flowHandler($parcel->originBayanHub))->get('/hub/manifests')->assertOk();
         $response = $this->postJson('/hub/manifests', ['source_hub_id' => $parcel->origin_bayan_hub_id, 'destination_hub_id' => $parcel->origin_mother_hub_id,
             'vehicle_id' => $vehicle->id, 'creation_token' => session()->get('manifest_creation_token')])->assertCreated();
 
@@ -83,9 +82,8 @@ class NewEraMotherBagTest extends TestCase
         $this->assertSame(0, $manifest->parcels()->count());
         $bag = $this->command($bag, 'load', ['barcode' => $bag->reference, 'seal_number' => $bag->seal_number, 'manifest_id' => $manifest->id]);
         $this->assertSame(1, $manifest->parcels()->where('included', true)->count());
-        $owner = $parcel->originBayanHub->company->user;
         $member = $manifest->parcels()->sole();
-        $this->actingAs($owner)->postJson('/hub/manifests/'.$manifest->id.'/remove', $this->flowManifestPayload($manifest, ['parcel_id' => $member->id, 'notes' => 'Attempt to split a loaded sealed bag.']))->assertConflict();
+        $this->actingAs($this->flowHandler($parcel->originBayanHub))->postJson('/hub/manifests/'.$manifest->id.'/remove', $this->flowManifestPayload($manifest, ['parcel_id' => $member->id, 'notes' => 'Attempt to split a loaded sealed bag.']))->assertConflict();
         $bag = $this->command($bag, 'unload', ['barcode' => $bag->reference, 'seal_number' => $bag->seal_number, 'notes' => 'Correct the truck loading before departure.']);
         $this->assertSame(0, $manifest->parcels()->where('included', true)->count());
         $this->assertNull($bag->manifest_id);
@@ -108,9 +106,8 @@ class NewEraMotherBagTest extends TestCase
         $manifest = $this->manifest($first);
         $bag = $this->command($bag, 'load', ['barcode' => $bag->reference, 'seal_number' => $bag->seal_number, 'manifest_id' => $manifest->id]);
         $service = app(LogisticsManifestService::class);
-        $owner = $first->originBayanHub->company->user;
         $sender = $this->flowHandler($first->originBayanHub);
-        $service->command($manifest->fresh(), $owner, 'seal', $this->flowManifestPayload($manifest));
+        $service->command($manifest->fresh(), $this->flowHandler($first->originBayanHub), 'seal', $this->flowManifestPayload($manifest));
         $before = [$manifest->fresh()->getAttributes(), $first->fresh()->getAttributes(), $second->fresh()->getAttributes(), DB::table('delivery_checkpoints')->count(), DB::table('logistics_manifest_events')->count()];
         Event::listen('eloquent.updating: '.Delivery::class, function (Delivery $parcel) use ($second): void {
             if ($parcel->id === $second->id && $parcel->status === 'in_transit_to_mother_hub') {

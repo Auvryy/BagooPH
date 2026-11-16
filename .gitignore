@@ -38,3 +38,9 @@ TEST_READY.md
 /docs/Task Management.md
 __pycache__/
 public/build_old/
+
+# Local assistant configuration (never tracked)
+CLAUDE.md
+CLAUDE.local.md
+/.claude/
+/.mcp.json

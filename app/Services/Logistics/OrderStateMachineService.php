@@ -8,6 +8,7 @@ use App\Models\DeliveryAttempt;
 use App\Models\DeliveryCheckpoint;
 use App\Models\DispatchEscalation;
 use App\Models\HubHandler;
+use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
 use App\Models\Order;
@@ -18,12 +19,12 @@ use App\Services\Finance\LogisticsEarningsService;
 use App\Services\Finance\ShipmentLossReconciliationService;
 use App\Services\Monitoring\EtaCalculationService;
 use App\Services\Monitoring\SlaClockService;
-use Illuminate\Support\Facades\Schema;
 use App\Services\Orders\AutomaticDeliveryCompletionService;
 use App\Services\Wallet\WalletHandoverService;
 use App\Services\Wallet\WalletPaymentService;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 class OrderStateMachineService
@@ -440,9 +441,9 @@ class OrderStateMachineService
             throw new DomainException('Only an authorized logistics operator may perform a facility scan.');
         }
 
-        $isScopedCompanyAdmin = $this->isCompanyAdmin($actor, $delivery->logistics_company_id);
+        // Company owners monitor; only a handler assigned to this facility performs custody work, rider assignment included.
         $hasHandlerAssignment = HubHandler::eligible()->where('user_id', $actor->id)->where('hub_id', $hub->id)->lockForUpdate()->first();
-        if (! $hasHandlerAssignment && ! ($targetStatus === self::STATUS_ASSIGNED_TO_RIDER && $isScopedCompanyAdmin)) {
+        if (! $hasHandlerAssignment || LogisticsCompany::where('user_id', $actor->id)->exists()) {
             throw new DomainException('This operator is not assigned to the scanned facility.');
         }
 
@@ -595,10 +596,5 @@ class OrderStateMachineService
     private function resolveHub(mixed $hubId): ?LogisticsHub
     {
         return $hubId ? LogisticsHub::eligible()->whereKey($hubId)->first() : null;
-    }
-
-    private function isCompanyAdmin(User $actor, ?int $companyId): bool
-    {
-        return $this->eligibility->isCompanyManager($actor, $companyId);
     }
 }

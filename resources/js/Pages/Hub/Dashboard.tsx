@@ -9,15 +9,14 @@ import {
     ChevronRight,
     Package,
     ScanLine,
-    Send,
     Store,
-    Truck,
 } from 'lucide-react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import {
     HubCategoryTabs,
     HubPageHeader,
     hubButton,
+    hubInput,
     hubPrimary,
 } from '@/Components/Logistics/Workspace';
 
@@ -152,29 +151,21 @@ export default function HubDashboard({
         {
             label: 'Parcels in custody',
             value: stats.parcels_in_custody,
-            helper: scope.mode === 'company' ? 'Across the network' : selectedHub?.code ?? 'Selected facility',
-            icon: Package,
             accent: false,
         },
         {
             label: 'Ready for dispatch',
             value: stats.ready_for_dispatch,
-            helper: 'Sorted or assigned',
-            icon: Send,
             accent: false,
         },
         {
             label: 'Needs attention',
             value: stats.exceptions,
-            helper: 'Failed or returning',
-            icon: AlertTriangle,
             accent: stats.exceptions > 0,
         },
         {
             label: 'Dispatched today',
             value: stats.dispatched_today,
-            helper: 'Verified outbound scans',
-            icon: Truck,
             accent: false,
         },
     ];
@@ -184,18 +175,18 @@ export default function HubDashboard({
             title="Operations Overview"
             subtitle={
                 <span className="flex items-center gap-1.5 text-xs text-zinc-600">
-                    <span className="font-semibold text-[#121316]">{scope.company_name}</span>
+                    <span className="font-semibold text-ink-900">{scope.company_name}</span>
                     {scope.company_code && <span className="text-zinc-400">· {scope.company_code}</span>}
                 </span>
             }
             actions={
                 <div className="flex items-center gap-2">
                     <PortalLink href={route('hub.counter')} className={`hidden sm:inline-flex ${hubButton}`}>
-                        <Store className="h-3.5 w-3.5 text-zinc-500" />
+                        <Store className="h-4 w-4 text-ink-500" aria-hidden="true" />
                         Counter pickup
                     </PortalLink>
                     <PortalLink href={route(scope.can_scan ? 'hub.scan.station' : 'hub.deliveries')} className={hubPrimary}>
-                        {scope.can_scan ? <ScanLine className="h-3.5 w-3.5" /> : <Package className="h-3.5 w-3.5" />}
+                        {scope.can_scan ? <ScanLine className="h-4 w-4" aria-hidden="true" /> : <Package className="h-4 w-4" aria-hidden="true" />}
                         {scope.can_scan ? 'Scan parcel' : 'View parcels'}
                     </PortalLink>
                 </div>
@@ -207,17 +198,17 @@ export default function HubDashboard({
                 {/* Editorial Workspace Header with Integrated Facility Scope Selector */}
                 <HubPageHeader
                     title="Operations overview"
-                    roleLabel={scope.can_view_company ? 'Logistics Manager' : 'Assigned Facility Handler'}
+                    roleLabel={scope.can_view_company ? `Company admin · ${scope.company_name}` : 'Hub operator'}
                     icon={Building2}
                     actions={
                         <div className="flex flex-wrap items-center gap-2.5">
-                            <label className="flex items-center gap-2 rounded border border-zinc-400 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 shadow-2xs">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Scope</span>
+                            <label className="flex items-center gap-2 text-sm text-ink-600">
+                                <span>Showing</span>
                                 {scope.can_view_company ? (
                                     <select
                                         value={scope.selected_hub_id ?? ''}
                                         onChange={(event) => changeScope(event.target.value)}
-                                        className="border-0 bg-transparent py-0.5 pl-1 pr-7 text-xs font-semibold text-[#121316] focus:ring-0 cursor-pointer"
+                                        className={`${hubInput} w-auto min-w-[220px] cursor-pointer font-medium`}
                                     >
                                         <option value="">All facilities ({scope.company_name})</option>
                                         {scope.hubs.map((hub) => (
@@ -227,28 +218,18 @@ export default function HubDashboard({
                                         ))}
                                     </select>
                                 ) : (
-                                    <span className="font-semibold text-[#121316]">
+                                    <span className="font-semibold text-ink-900">
                                         {selectedHub ? `${selectedHub.name} (${selectedHub.code})` : 'Assigned facility'}
                                     </span>
                                 )}
                             </label>
-                            <PortalLink
-                                href={activeAttention[0]?.href ?? (scope.can_scan ? route('hub.scan.station') : route('hub.network'))}
-                                className={hubPrimary}
-                            >
-                                {activeAttention.length ? (
-                                    <>
-                                        <AlertTriangle className="h-3.5 w-3.5" />
-                                        <span>Review {activeAttention[0].count} attention {activeAttention[0].count === 1 ? 'item' : 'items'}</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <ScanLine className="h-3.5 w-3.5" />
-                                        <span>{scope.can_scan ? 'Open scan station' : 'View hub network'}</span>
-                                    </>
-                                )}
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </PortalLink>
+                            {activeAttention.length > 0 && (
+                                <PortalLink href={activeAttention[0].href} className={hubButton}>
+                                    <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
+                                    <span>Review {activeAttention[0].count} attention {activeAttention[0].count === 1 ? 'item' : 'items'}</span>
+                                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                                </PortalLink>
+                            )}
                         </div>
                     }
                 />
@@ -259,10 +240,10 @@ export default function HubDashboard({
                         activeId={activeCategory}
                         onChange={(id) => setActiveCategory(id as typeof activeCategory)}
                         tabs={[
-                            { id: 'all', label: 'All Workspace' },
-                            { id: 'urgent', label: 'Needs Action Now', count: totalAttentionCount },
-                            { id: 'pipeline', label: 'Parcel Movement' },
-                            { id: 'facilities', label: 'Facilities & Logs', count: facilities.length },
+                            { id: 'all', label: 'Everything' },
+                            { id: 'urgent', label: 'Needs action', count: totalAttentionCount },
+                            { id: 'pipeline', label: 'Parcel movement' },
+                            { id: 'facilities', label: 'Facilities', count: facilities.length },
                         ]}
                     />
                 </div>
@@ -270,31 +251,16 @@ export default function HubDashboard({
                 {/* Unified Architectural 4-Column Metric Strip */}
                 <section
                     aria-label="Operational metrics"
-                    className="grid grid-cols-1 divide-y divide-zinc-200/80 overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs sm:grid-cols-2 sm:divide-y-0 sm:divide-x xl:grid-cols-4"
+                    className="grid grid-cols-1 divide-y divide-line-200 overflow-hidden rounded-card border border-line-200 bg-white sm:grid-cols-2 sm:divide-y-0 sm:divide-x xl:grid-cols-4"
                 >
-                    {metrics.map((metric) => {
-                        const Icon = metric.icon;
-                        return (
-                            <div key={metric.label} className="flex flex-col justify-between p-5 transition-colors hover:bg-zinc-50/50">
-                                <div className="flex items-center justify-between gap-3">
-                                    <span className="text-xs font-medium text-zinc-500">{metric.label}</span>
-                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 text-zinc-700">
-                                        <Icon className="h-3.5 w-3.5" />
-                                    </span>
-                                </div>
-                                <div className="mt-3 flex items-baseline justify-between gap-2">
-                                    <p
-                                        className={`text-3xl font-bold tracking-tight tabular-nums ${
-                                            metric.accent ? 'text-red-700' : 'text-[#121316]'
-                                        }`}
-                                    >
-                                        {metric.value}
-                                    </p>
-                                    <span className="truncate text-[11px] font-medium text-zinc-400">{metric.helper}</span>
-                                </div>
-                            </div>
-                        );
-                    })}
+                    {metrics.map((metric) => (
+                        <div key={metric.label} className="p-5">
+                            <p className="text-[13px] text-ink-600">{metric.label}</p>
+                            <p className={`mt-1 text-[28px] font-bold leading-9 tabular-nums ${metric.accent ? 'text-warning' : 'text-ink-900'}`}>
+                                {metric.value}
+                            </p>
+                        </div>
+                    ))}
                 </section>
 
                 {/* Two-Column Operational Command Grid */}
@@ -305,10 +271,9 @@ export default function HubDashboard({
                             {/* 7-Day Parcel Movement */}
                             {(activeCategory === 'all' || activeCategory === 'pipeline') && (
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                    <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-[#121316]">Parcel movement</h2>
-                                            <p className="text-xs text-zinc-500">Verified inbound and outbound scans · last 7 days</p>
+                                            <h2 className="text-base font-semibold text-ink-900">Parcel movement <span className="font-normal text-ink-500">· last 7 days</span></h2>
                                         </div>
                                         <div className="flex items-center gap-3 text-xs font-medium text-zinc-600">
                                             <span className="flex items-center gap-1.5">
@@ -316,7 +281,7 @@ export default function HubDashboard({
                                                 Inbound
                                             </span>
                                             <span className="flex items-center gap-1.5">
-                                                <span className="h-2.5 w-2.5 rounded-xs bg-[#E00D42]" />
+                                                <span className="h-2.5 w-2.5 rounded-xs bg-brand-500" />
                                                 Outbound
                                             </span>
                                         </div>
@@ -333,7 +298,7 @@ export default function HubDashboard({
                                                             title={`${day.date}: ${day.inbound} inbound`}
                                                         />
                                                         <div
-                                                            className="w-3 rounded-t-xs bg-[#E00D42] sm:w-4 transition-all hover:opacity-80"
+                                                            className="w-3 rounded-t-xs bg-brand-500 sm:w-4 transition-all hover:opacity-80"
                                                             style={{ height: `${Math.max(day.outbound > 0 ? 10 : 2, (day.outbound / maxMovement) * 100)}%` }}
                                                             title={`${day.date}: ${day.outbound} outbound`}
                                                         />
@@ -350,12 +315,11 @@ export default function HubDashboard({
                                     ) : (
                                         <div className="flex items-center justify-between gap-4 px-5 py-6">
                                             <div className="flex items-center gap-3">
-                                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-700">
+                                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-100 text-ink-500">
                                                     <ScanLine className="h-4 w-4" />
                                                 </span>
                                                 <div>
-                                                    <p className="text-xs font-semibold text-[#121316]">No parcel movement this week</p>
-                                                    <p className="text-xs text-zinc-500">Inbound and outbound scans will populate this 7-day chart.</p>
+                                                    <p className="text-sm font-medium text-ink-900">No parcel movement this week</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -366,10 +330,9 @@ export default function HubDashboard({
                             {/* Facilities Capacity & Load */}
                             {(activeCategory === 'all' || activeCategory === 'facilities') && (
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                                    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                    <div className="flex items-center justify-between px-5 pt-5 pb-3">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-[#121316]">Facilities</h2>
-                                            <p className="text-xs text-zinc-500">Capacity and operational load</p>
+                                            <h2 className="text-base font-semibold text-ink-900">Facilities</h2>
                                         </div>
                                         <PortalLink
                                             href={route('hub.network')}
@@ -383,54 +346,29 @@ export default function HubDashboard({
                                     {facilities.length === 0 ? (
                                         <div className="px-5 py-8 text-center text-xs text-zinc-500">No accessible facilities in this scope.</div>
                                     ) : (
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full border-collapse text-left text-xs">
-                                                <thead>
-                                                    <tr className="border-b border-zinc-100 bg-zinc-50/60 text-[11px] font-semibold text-zinc-500">
-                                                        <th className="px-5 py-3">Facility</th>
-                                                        <th className="px-4 py-3">Tier</th>
-                                                        <th className="px-4 py-3 text-right">Custody</th>
-                                                        <th className="px-4 py-3 text-right">Exceptions</th>
-                                                        <th className="px-4 py-3 text-right">Fleet</th>
-                                                        <th className="px-5 py-3 text-right">Utilization</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-zinc-100">
-                                                    {facilities.map((facility) => (
-                                                        <tr key={facility.id} className="transition-colors hover:bg-zinc-50/60">
-                                                            <td className="px-5 py-3">
-                                                                <p className="font-semibold text-[#121316]">{facility.name}</p>
-                                                                <p className="text-[11px] font-medium text-zinc-400">
-                                                                    {facility.code} · {facility.city_municipality}
-                                                                </p>
-                                                            </td>
-                                                            <td className="px-4 py-3">
-                                                                <span className="inline-flex rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
-                                                                    {formatTier(facility.tier)}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right font-semibold tabular-nums text-[#121316]">
-                                                                {facility.parcels}
-                                                            </td>
-                                                            <td
-                                                                className={`px-4 py-3 text-right font-semibold tabular-nums ${
-                                                                    facility.exceptions > 0 ? 'text-red-700' : 'text-zinc-500'
-                                                                }`}
-                                                            >
-                                                                {facility.exceptions}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right tabular-nums text-zinc-600">{facility.active_fleet}</td>
-                                                            <td className="px-5 py-3 text-right">
-                                                                <span className="font-semibold tabular-nums text-[#121316]">
-                                                                    {facility.utilization_rate}%
-                                                                </span>
-                                                                <span className="ml-1 text-[11px] text-zinc-400">of {facility.capacity}</span>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                        <ul className="divide-y divide-line-200 border-t border-line-200">
+                                            {facilities.map((facility) => (
+                                                <li key={facility.id} className="px-5 py-4">
+                                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            <p className="truncate text-sm font-semibold text-ink-900">{facility.name}</p>
+                                                            <p className="text-xs text-ink-600">{facility.code} · {facility.city_municipality} · {formatTier(facility.tier)}</p>
+                                                        </div>
+                                                        <dl className="flex gap-5 text-right">
+                                                            <div><dt className="text-xs text-ink-500">Custody</dt><dd className="text-sm font-semibold tabular-nums text-ink-900">{facility.parcels}</dd></div>
+                                                            <div><dt className="text-xs text-ink-500">Exceptions</dt><dd className={`text-sm font-semibold tabular-nums ${facility.exceptions > 0 ? 'text-warning' : 'text-ink-900'}`}>{facility.exceptions}</dd></div>
+                                                            <div><dt className="text-xs text-ink-500">Fleet</dt><dd className="text-sm font-semibold tabular-nums text-ink-900">{facility.active_fleet}</dd></div>
+                                                        </dl>
+                                                    </div>
+                                                    <div className="mt-3 flex items-center gap-3" title={`${facility.utilization_rate}% of ${facility.capacity} parcels`}>
+                                                        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-100" role="img" aria-label={`${facility.utilization_rate}% of ${facility.capacity} parcel capacity used`}>
+                                                            <span className={`block h-full rounded-full ${facility.utilization_rate >= 90 ? 'bg-brand-500' : facility.utilization_rate >= 70 ? 'bg-warning' : 'bg-success'}`} style={{ width: `${Math.max(2, Math.min(100, facility.utilization_rate))}%` }} />
+                                                        </span>
+                                                        <span className="shrink-0 text-xs tabular-nums text-ink-600">{facility.utilization_rate}% of {facility.capacity}</span>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
                                     )}
                                 </section>
                             )}
@@ -443,10 +381,9 @@ export default function HubDashboard({
                             {/* Needs Attention Worklist */}
                             {(activeCategory === 'all' || activeCategory === 'urgent') && (
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                                    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                    <div className="flex items-center justify-between px-5 pt-5 pb-3">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-[#121316]">Needs attention</h2>
-                                            <p className="text-xs text-zinc-500">Ready for the next handover &amp; open work</p>
+                                            <h2 className="text-base font-semibold text-ink-900">Needs attention</h2>
                                         </div>
                                         <span className="rounded-md border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-zinc-800">
                                             {totalAttentionCount} open
@@ -456,16 +393,15 @@ export default function HubDashboard({
                                     {activeAttention.length === 0 ? (
                                         <div className="flex items-center justify-between gap-3 px-5 py-5">
                                             <div className="flex items-center gap-3">
-                                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600">
+                                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success-soft text-success">
                                                     <CheckCircle2 className="h-4 w-4" />
                                                 </span>
                                                 <div>
-                                                    <p className="text-xs font-semibold text-[#121316]">No urgent operational work</p>
-                                                    <p className="text-xs text-zinc-500">No attention items are recorded in this view.</p>
+                                                    <p className="text-sm font-medium text-ink-900">Nothing needs attention right now</p>
                                                 </div>
                                             </div>
                                             {scope.can_scan && (
-                                                <PortalLink href={route('hub.scan.station')} className={hubButton}>
+                                                <PortalLink href={route('hub.scan.station')} className={`${hubButton} shrink-0 whitespace-nowrap`}>
                                                     Scan station
                                                 </PortalLink>
                                             )}
@@ -497,10 +433,9 @@ export default function HubDashboard({
                             {/* Recent Scan Activity */}
                             {(activeCategory === 'all' || activeCategory === 'facilities') && (
                                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-xs">
-                                    <div className="flex items-center justify-between border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
+                                    <div className="flex items-center justify-between px-5 pt-5 pb-3">
                                         <div>
-                                            <h2 className="text-sm font-semibold text-[#121316]">Recent scan activity</h2>
-                                            <p className="text-xs text-zinc-500">Latest verified custody events</p>
+                                            <h2 className="text-base font-semibold text-ink-900">Recent scan activity</h2>
                                         </div>
                                         <PortalLink
                                             href={route(scope.can_scan ? 'hub.scan.station' : 'hub.deliveries')}
@@ -521,10 +456,10 @@ export default function HubDashboard({
                                                 >
                                                     <div className="min-w-0 flex-1">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-bold text-[#121316] tabular-nums">
+                                                            <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-bold text-ink-900 tabular-nums">
                                                                 {activity.tracking_number}
                                                             </span>
-                                                            <span className="truncate font-semibold text-[#121316]">
+                                                            <span className="truncate font-semibold text-ink-900">
                                                                 {formatEvent(activity.event)}
                                                             </span>
                                                         </div>

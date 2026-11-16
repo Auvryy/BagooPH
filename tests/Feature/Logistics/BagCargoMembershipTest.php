@@ -48,8 +48,7 @@ class BagCargoMembershipTest extends TestCase
         $vehicle = LogisticsFleet::create(['logistics_company_id' => $parcel->logistics_company_id, 'hub_id' => $parcel->origin_bayan_hub_id,
             'plate_number' => 'QA-BAG-001', 'vehicle_type' => 'l300_van', 'capacity_kg' => 10000, 'status' => 'active', 'assigned_driver_id' => $driver->id]);
         $driver->courierProfile->update(['logistics_company_id' => $parcel->logistics_company_id, 'assigned_hub_id' => $parcel->origin_bayan_hub_id, 'vehicle_id' => $vehicle->id]);
-        $owner = $parcel->originBayanHub->company->user;
-        $this->actingAs($owner)->get('/hub/manifests')->assertOk();
+        $this->actingAs($this->flowHandler($parcel->originBayanHub))->get('/hub/manifests')->assertOk();
         $response = $this->postJson('/hub/manifests', ['source_hub_id' => $parcel->origin_bayan_hub_id, 'destination_hub_id' => $parcel->origin_mother_hub_id,
             'vehicle_id' => $vehicle->id, 'creation_token' => session()->get('manifest_creation_token')])->assertCreated();
 

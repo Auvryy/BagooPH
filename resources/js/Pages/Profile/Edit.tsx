@@ -16,7 +16,6 @@ import {
     ShieldCheck, 
     Lock, 
     MapPin, 
-    Trash2, 
     ArrowLeft,
     CheckCircle2,
     Calendar,
@@ -68,7 +67,7 @@ export default function Edit({
             {/* Top Navigation Breadcrumb / Back Link */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-300">
                 <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg border flex items-center justify-center font-bold shadow-2xs shrink-0 ${
+                    <div className={`w-10 h-10 rounded-lg border flex items-center justify-center font-bold shadow-2xs shrink-0 ${role === 'logistics' ? 'hidden' : ''} ${
                         role === 'seller' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                         role === 'courier' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                         'bg-rose-50 text-[#E00D42] border-rose-200'
@@ -86,7 +85,7 @@ export default function Edit({
                              role === 'courier' ? 'Courier Fleet Settings' :
                              role === 'logistics' ? 'Account & security' : 'Account Settings'}
                         </h1>
-                        <p className="text-xs text-slate-600 font-medium">
+                        <p className={`text-xs text-slate-600 font-medium ${role === 'logistics' ? 'hidden' : ''}`}>
                             {role === 'admin' ? 'Manage root credentials, platform governance keys, and account authentication' :
                              'Manage your personal profile, contact information, and security credentials'}
                         </p>
@@ -106,14 +105,14 @@ export default function Edit({
             {user && (
                 <div className="bg-white rounded-xl p-6 border border-slate-300 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-14 h-14 rounded-xl bg-[#E00D42] text-white font-bold text-xl flex items-center justify-center border border-[#C20836] shadow-xs shrink-0">
+                        <div className={`w-14 h-14 bg-[#E00D42] text-white font-bold text-xl flex items-center justify-center shrink-0 ${role === 'logistics' ? 'rounded-full' : 'rounded-xl border border-[#C20836] shadow-xs'}`}>
                             {user.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="space-y-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                                 <h2 className="text-lg font-bold text-[#121316] truncate">{user.name}</h2>
-                                <span className={`px-2.5 py-0.5 rounded border text-xs font-semibold flex items-center gap-1 ${
-                                    role === 'admin'
+                                <span className={`px-2.5 py-0.5 text-xs font-semibold flex items-center gap-1 ${role === 'logistics' ? 'rounded-chip bg-success-soft text-success' : 'rounded border'} ${
+                                    role === 'logistics' ? '' : role === 'admin'
                                         ? 'bg-rose-50 text-[#C20836] border-rose-300'
                                         : 'bg-emerald-50 text-emerald-800 border-emerald-300'
                                 }`}>
@@ -122,7 +121,7 @@ export default function Edit({
                                 </span>
                             </div>
                             <p className="text-xs text-slate-600 break-all">{user.email}</p>
-                            <p className="text-xs text-[#C20836] uppercase font-bold tracking-wide">
+                            <p className={role === 'logistics' ? 'text-[13px] text-ink-600' : 'text-xs text-[#C20836] uppercase font-bold tracking-wide'}>
                                 {role === 'admin' ? 'Platform Super Administrator' :
                                  role === 'seller' ? 'Verified Merchant' :
                                  role === 'courier' ? 'Fleet Logistics Rider' :
@@ -181,12 +180,7 @@ export default function Edit({
             <AccountIdentitySettings theme={role === 'buyer' ? 'buyer' : role === 'courier' ? 'courier' : 'seller'} />
 
             {/* 4. Danger Zone: Delete Account */}
-            <section className="bg-white rounded-xl p-6 border border-rose-300 shadow-xs space-y-4">
-                <div className="flex items-center gap-2.5 pb-4 border-b border-rose-200 text-xs font-bold text-[#C20836] uppercase tracking-wider">
-                    <Trash2 className="w-4 h-4" />
-                    <span>Danger Zone</span>
-                </div>
-
+            <section aria-label="Close account" className="rounded-card border border-line-200 bg-white p-6">
                 <DeleteUserForm className="w-full" closure={closure!} />
             </section>
         </div>

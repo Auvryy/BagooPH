@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Plus, FileText } from 'lucide-react';
 import { PageProps } from '@/types';
 import UploadHint from '@/Components/UploadHint';
-import { IssueFrame, IssueBadge, IssueNotice, IssueError, issueButton, issuePrimary, issueKind, issueDate, type IssueSummary } from '@/Components/HandoverUI';
+import { IssueFrame, IssueBadge, IssueNotice, IssueError, issueButton, issueKind, issueDate, type IssueSummary } from '@/Components/HandoverUI';
 import { AuthRequestError, AuthRequestScope, authRequest } from '@/utils/authRequests';
 
 interface Props {
@@ -11,7 +11,7 @@ interface Props {
     status: 'open' | 'recovered' | 'dismissed' | 'all'; canReport: boolean; isOnline: boolean;
 }
 
-const fieldClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-[#121316] shadow-2xs focus:border-[#E00D42] focus:outline-none focus:ring-2 focus:ring-[#E00D42]/15 transition-colors';
+const fieldClass = 'mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-ink-900 shadow-2xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-colors';
 
 export default function Index({ issues, status, canReport, isOnline }: Props) {
     const { auth } = usePage<PageProps>().props;
@@ -59,13 +59,13 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                 <IssueNotice />
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs font-semibold text-zinc-600">
-                        {issues.total} {issues.total === 1 ? 'report' : 'reports'} in this view
+                    <p className="text-[13px] text-ink-600">
+                        {issues.total} {issues.total === 1 ? 'report' : 'reports'}
                     </p>
                     {canReport && (
                         <button
                             type="button"
-                            className="inline-flex items-center gap-2 rounded-lg bg-[#E00D42] hover:bg-[#C20836] px-4 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
+                            className="inline-flex items-center gap-2 rounded-lg bg-brand-500 hover:bg-brand-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
                             aria-expanded={showForm}
                             aria-controls="handover-report"
                             disabled={busy}
@@ -80,14 +80,14 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                 {canReport && showForm && (
                     <section id="handover-report" className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                         <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                            <h2 className="text-sm sm:text-base font-bold text-[#121316]">Report an unrecorded handover</h2>
+                            <h2 className="text-sm sm:text-base font-bold text-ink-900">Report an unrecorded handover</h2>
                             <p className="mt-0.5 text-xs text-zinc-500">
                                 Use the waybill on the actual parcel. Describe what you observed; supporting evidence helps your company review it.
                             </p>
                         </header>
                         <form onSubmit={submit} className="p-5 sm:p-6 space-y-4">
                             <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2">
-                                <label htmlFor="issue-barcode" className="text-xs font-bold text-[#121316]">
+                                <label htmlFor="issue-barcode" className="text-xs font-bold text-ink-900">
                                     Waybill number
                                     <input
                                         id="issue-barcode"
@@ -101,7 +101,7 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                                     />
                                     <IssueError id="issue-barcode-error" message={errors.barcode} />
                                 </label>
-                                <label htmlFor="issue-kind" className="text-xs font-bold text-[#121316]">
+                                <label htmlFor="issue-kind" className="text-xs font-bold text-ink-900">
                                     What was missed?
                                     <select
                                         id="issue-kind"
@@ -115,7 +115,7 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                                     </select>
                                     <IssueError id="issue-kind-error" message={errors.kind} />
                                 </label>
-                                <label htmlFor="issue-holder" className="text-xs font-bold text-[#121316]">
+                                <label htmlFor="issue-holder" className="text-xs font-bold text-ink-900">
                                     Who reportedly has the parcel?
                                     <input
                                         id="issue-holder"
@@ -131,7 +131,7 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                                     />
                                     <IssueError id="issue-holder-error" message={errors.reported_holder} />
                                 </label>
-                                <label htmlFor="issue-location" className="text-xs font-bold text-[#121316]">
+                                <label htmlFor="issue-location" className="text-xs font-bold text-ink-900">
                                     Reported location
                                     <input
                                         id="issue-location"
@@ -146,7 +146,7 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                                     />
                                     <IssueError id="issue-location-error" message={errors.reported_location} />
                                 </label>
-                                <label htmlFor="issue-notes" className="text-xs font-bold text-[#121316] sm:col-span-2">
+                                <label htmlFor="issue-notes" className="text-xs font-bold text-ink-900 sm:col-span-2">
                                     What happened?
                                     <textarea
                                         id="issue-notes"
@@ -162,7 +162,7 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                                     />
                                     <IssueError id="issue-notes-error" message={errors.notes} />
                                 </label>
-                                <label htmlFor="issue-evidence" className="text-xs font-bold text-[#121316] sm:col-span-2">
+                                <label htmlFor="issue-evidence" className="text-xs font-bold text-ink-900 sm:col-span-2">
                                     Supporting document
                                     <input
                                         id="issue-evidence"
@@ -185,7 +185,7 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                             <button
                                 type="submit"
                                 disabled={busy}
-                                className="rounded-lg bg-[#E00D42] hover:bg-[#C20836] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
+                                className="rounded-lg bg-brand-500 hover:bg-brand-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition disabled:opacity-50"
                             >
                                 {busy ? 'Saving report…' : 'Submit report'}
                             </button>
@@ -193,13 +193,13 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                     </section>
                 )}
 
-                <nav aria-label="Handover report filters" className={`flex gap-2 ${auth.user?.role === 'logistics' ? 'overflow-x-auto pb-1 [&>*]:shrink-0' : 'flex-wrap'}`}>
+                <nav aria-label="Handover report filters" className="flex gap-1 overflow-x-auto border-b border-line-200 [&>*]:shrink-0">
                     {(['open', 'recovered', 'dismissed', 'all'] as const).map(value => (
                         <Link
                             key={value}
                             href={`/handover-issues?status=${value}`}
                             preserveScroll
-                            className={status === value ? issuePrimary : issueButton}
+                            className={`-mb-px inline-flex min-h-10 items-center border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 ${status === value ? 'border-brand-500 text-brand-600' : 'border-transparent text-ink-600 hover:border-line-300 hover:text-ink-900'}`}
                             aria-current={status === value ? 'page' : undefined}
                         >
                             {value === 'open' ? 'Open' : value === 'dismissed' ? 'Dismissed' : value === 'recovered' ? 'Recovered' : 'All reports'}
@@ -208,26 +208,23 @@ export default function Index({ issues, status, canReport, isOnline }: Props) {
                 </nav>
 
                 {issues.data.length === 0 ? (
-                    <section className="flex min-h-60 flex-col items-center justify-center rounded-xl border border-zinc-200/90 bg-white p-6 text-center shadow-xs">
-                        <FileText className="h-8 w-8 text-zinc-400" aria-hidden="true" />
-                        <h2 className="mt-3 text-base font-bold text-[#121316]">No handover reports here</h2>
-                        <p className="mt-1.5 max-w-md text-xs sm:text-sm text-zinc-500">
-                            {canReport ? 'Report a missed step on a parcel you handle when there is an actual issue.' : 'Reports from involved staff appear here for independent review.'}
-                        </p>
+                    <section className="flex min-h-48 flex-col items-center justify-center rounded-card border border-line-200 bg-white p-6 text-center">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-success-soft text-success"><FileText className="h-5 w-5" aria-hidden="true" /></span>
+                        <h2 className="mt-3 text-base font-semibold text-ink-900">No handover reports here</h2>
                     </section>
                 ) : (
                     <div className="grid gap-4 lg:grid-cols-2">
                         {issues.data.map(issue => (
                             <article key={issue.id} className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                                 <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                    <h2 className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-[#E00D42]">
+                                    <h2 className="rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 tabular-nums text-xs font-bold text-brand-500">
                                         {issue.order_number}
                                     </h2>
                                     <IssueBadge state={issue.state} />
                                 </header>
                                 <div className="p-5">
                                     <p className="break-words text-xs tabular-nums font-semibold text-zinc-700">Waybill: {issue.tracking_number}</p>
-                                    <p className="mt-2 text-sm font-bold text-[#121316]">{issueKind[issue.kind]}</p>
+                                    <p className="mt-2 text-sm font-bold text-ink-900">{issueKind[issue.kind]}</p>
                                     <p className="mt-1.5 text-xs text-zinc-500">Reported by {issue.reporter_name}</p>
                                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4">
                                         <p className="text-xs text-zinc-500">{issueDate(issue.created_at)} · Manila time</p>

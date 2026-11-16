@@ -49,7 +49,9 @@ class RiderCompanyOfferService
 
         return DB::transaction(function () use ($actor, $source, $data, $intent, $fingerprint) {
             [$company, $request] = $this->locked($source);
-            abort_unless(app(LogisticsEligibilityService::class)->isCompanyManager($actor, $company->id) && $this->requests->companyOwner($actor), 403);
+            $reviewHub = $this->requests->hubReviewer($actor);
+            abort_unless($reviewHub && $reviewHub->logistics_company_id === $company->id && $reviewHub->id === $intent['hub_id'], 403,
+                'Offer work only at the child hub you run.');
             if ($receipt = $this->replay($actor, $request, $data['request_token'], $fingerprint)) {
                 return $receipt;
             }
@@ -88,7 +90,9 @@ class RiderCompanyOfferService
 
         return DB::transaction(function () use ($actor, $source, $action, $data, $fingerprint) {
             [$company, $request] = $this->locked($source);
-            abort_unless(app(LogisticsEligibilityService::class)->isCompanyManager($actor, $company->id) && $this->requests->companyOwner($actor), 403);
+            $reviewHub = $this->requests->hubReviewer($actor);
+            abort_unless($reviewHub && $reviewHub->logistics_company_id === $company->id
+                && ($action === 'rejected' || $request->currentOffer?->hub_id === $reviewHub->id), 403);
             if ($receipt = $this->replay($actor, $request, $data['request_token'], $fingerprint)) {
                 return $receipt;
             }
@@ -149,7 +153,7 @@ class RiderCompanyOfferService
             $event = $this->transition($request, $rider, 'accepted', $data['request_token'], $fingerprint, $offer, null, $consent->accepted_at);
             // Recheck authorization after every required writer, including the outbox.
             $this->requests->rider($rider);
-            abort_unless($this->requests->companyOwner(User::findOrFail($offer->issuer_id)), 409, 'Company eligibility changed while accepting.');
+            abort_unless($this->requests->hubReviewer(User::findOrFail($offer->issuer_id))?->id === $offer->hub_id, 409, 'Company eligibility changed while accepting.');
             $profile = CourierProfile::where('user_id', $rider->id)->firstOrFail();
             try {
                 app(LogisticsEligibilityService::class)->assertCourierScope($profile, $request->logistics_company_id, $offer->hub_id);
@@ -207,10 +211,11 @@ class RiderCompanyOfferService
 
     private function companyRequest(User $actor, mixed $id): RiderCompanyRequest
     {
-        abort_unless($this->requests->companyOwner($actor), 403);
+        $reviewHub = $this->requests->hubReviewer($actor);
+        abort_unless($reviewHub, 403, 'Rider applications are handled by the child hub that will employ the rider.');
         Validator::make(['request_id' => $id], ['request_id' => ['required', $this->number()]])->validate();
 
-        return RiderCompanyRequest::whereKey($id)->whereIn('logistics_company_id', app(LogisticsEligibilityService::class)->managedCompanies($actor)->select('id'))->firstOrFail();
+        return RiderCompanyRequest::whereKey($id)->where('logistics_company_id', $reviewHub->logistics_company_id)->firstOrFail();
     }
 
     private function locked(RiderCompanyRequest $source): array
@@ -401,14 +406,15 @@ class RiderCompanyOfferService
             'assignment' => $offer->display, 'issued_at' => $offer->issued_at->toISOString(), 'expires_at' => $offer->expires_at->toISOString()];
     }
 
-    public function companyChoices(LogisticsCompany $company, array $query, array $links): array
+    public function companyChoices(LogisticsCompany $company, array $query, array $links, ?int $hubId = null): array
     {
         if (! $this->available()) {
             return ['offers_available' => false, 'hubs' => [], 'vehicles' => [], 'roster' => null];
         }
         $page = $query['rider_roster_page'] ?? 1;
         Validator::make(['rider_roster_page' => $page], ['rider_roster_page' => ['required', $this->number(), 'integer', 'min:1', 'max:1000000']])->validate();
-        $riders = CourierProfile::where('logistics_company_id', $company->id)->with(['user', 'hub', 'vehicle'])->orderBy('id');
+        $riders = CourierProfile::where('logistics_company_id', $company->id)->when($hubId, fn ($q) => $q->where('assigned_hub_id', $hubId))
+            ->with(['user', 'hub', 'vehicle'])->orderBy('id');
         $roster = (clone $riders)->paginate(15, ['*'], 'rider_roster_page', (int) $page);
         if ($page > $roster->lastPage()) {
             $roster = $riders->paginate(15, ['*'], 'rider_roster_page', $roster->lastPage());
@@ -423,10 +429,10 @@ class RiderCompanyOfferService
         ]);
 
         return ['offers_available' => true, 'roster' => $roster,
-            'hubs' => LogisticsHub::eligible()->where('logistics_company_id', $company->id)->orderBy('name')->get()
+            'hubs' => LogisticsHub::eligible()->where('logistics_company_id', $company->id)->when($hubId, fn ($q) => $q->whereKey($hubId))->orderBy('name')->get()
                 ->map(fn ($hub) => ['id' => (string) $hub->id, 'name' => $hub->name, 'tier' => $hub->tier,
                     'barangays' => $hub->isBayanHub() ? ($hub->coverage_barangays ?? []) : []]),
-            'vehicles' => LogisticsFleet::ready()->where('logistics_company_id', $company->id)->whereNull('assigned_driver_id')
+            'vehicles' => LogisticsFleet::ready()->where('logistics_company_id', $company->id)->when($hubId, fn ($q) => $q->where('hub_id', $hubId))->whereNull('assigned_driver_id')
                 ->whereNotIn('id', CourierProfile::whereNotNull('vehicle_id')->select('vehicle_id'))->orderBy('plate_number')->get()->map(fn ($vehicle) => [
                     'id' => (string) $vehicle->id, 'hub_id' => (string) $vehicle->hub_id, 'plate' => $vehicle->plate_number])];
     }

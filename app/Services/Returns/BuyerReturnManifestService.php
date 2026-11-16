@@ -42,7 +42,7 @@ class BuyerReturnManifestService
         $actor = User::findOrFail($actor->id);
         Validator::make($input, ['source_hub_id' => ['required', new AsciiPositiveInteger, 'integer', 'min:1']])->validate();
         $source = LogisticsHub::eligible()->find($input['source_hub_id']);
-        abort_unless($source && $this->manifests->canManageAtHub($actor, $source), 403);
+        abort_unless($source && $this->manifests->handlesCargoAtHub($actor, $source), 403);
         $company = LogisticsCompany::eligible()->findOrFail($source->logistics_company_id);
         $data = Validator::make($input, ['source_hub_id' => ['required', new AsciiPositiveInteger, 'integer'],
             'destination_hub_id' => ['required', new AsciiPositiveInteger, 'integer'], 'vehicle_id' => ['required', new AsciiPositiveInteger, 'integer'],
@@ -64,7 +64,7 @@ class BuyerReturnManifestService
             $driverId = LogisticsFleet::whereKey($data['vehicle_id'])->value('assigned_driver_id');
             $this->eligibility->lockNetwork($company->id, [$actor->id, $driverId], [$data['source_hub_id'], $data['destination_hub_id']]);
             $actor = User::findOrFail($actor->id);
-            abort_unless($this->manifests->canManageAtHub($actor, LogisticsHub::findOrFail($data['source_hub_id'])), 403);
+            abort_unless($this->manifests->handlesCargoAtHub($actor, LogisticsHub::findOrFail($data['source_hub_id'])), 403);
             $case = BuyerReturnCase::whereKey($case->id)->lockForUpdate()->firstOrFail();
             $parcel = BuyerReturnParcel::where('buyer_return_case_id', $case->id)->lockForUpdate()->firstOrFail();
             $recovery = app(BuyerReturnRecoveryService::class)->active($parcel, true);
@@ -166,7 +166,7 @@ class BuyerReturnManifestService
             $manifest = LogisticsManifest::whereKey($snapshot->id)->lockForUpdate()->firstOrFail();
             abort_unless($actor->isLogistics() && $actor->canAccessPortal() && $manifest->direction === 'buyer_return'
                 && $manifest->buyer_return_case_id === $case->id && $parcel->logistics_company_id === $manifest->logistics_company_id, 403);
-            $manager = in_array($action, ['remove', 'seal', 'reopen', 'close', 'resolve-discrepancy'], true);
+            $manager = in_array($action, ['close', 'resolve-discrepancy'], true);
             $hubId = in_array($action, ['receive', 'close', 'report-discrepancy', 'correct-discrepancy', 'resolve-discrepancy'], true) ? $manifest->destination_hub_id : $manifest->source_hub_id;
             abort_unless($manager ? $this->manifests->canManageAtHub($actor, LogisticsHub::findOrFail($hubId))
                 : $this->eligibility->canScan($actor, LogisticsHub::findOrFail($hubId)), 403);

@@ -345,6 +345,7 @@ class VoucherCampaignService
         $input['discount_value'] = $this->normalizePercent($input['discount_type'] ?? null, $input['discount_value'] ?? null);
         $input['code'] = is_string($input['code'] ?? null) && trim($input['code'], ' ') !== ''
             ? strtoupper(trim($input['code'], ' ')) : ($voucher?->code ?? 'BGO'.strtoupper(substr(hash('sha256', $key), 0, 9)));
+        $input = $this->withSimpleDefaults($input, $issuer);
         $data = Validator::make($input, [
             'code' => $voucher
                 ? ['required', 'string', Rule::in([$voucher->code])]
@@ -357,7 +358,10 @@ class VoucherCampaignService
             'starts_at' => 'required|date', 'ends_at' => 'required|date|after:starts_at',
             'shop_id' => 'prohibited', 'issuer_type' => 'prohibited', 'funding_party' => 'prohibited', 'actor_id' => 'prohibited',
             'is_active' => 'prohibited', 'current_revision_id' => 'prohibited', 'used_count' => 'prohibited',
-        ], ['code.regex' => 'Use 4–12 letters and numbers without spaces or symbols.'])->validate();
+        ], ['code.regex' => 'Use 4–12 letters and numbers without spaces or symbols.',
+            'max_discount.required' => 'Set the most a buyer can save per order.',
+            'usage_limit.required' => 'Enter how many vouchers you want to give.',
+            'per_buyer_limit.lte' => 'Uses per buyer cannot be more than the total vouchers.'])->validate();
         if ($voucher && $data['code'] !== $voucher->code) {
             throw ValidationException::withMessages(['code' => 'Keep the original campaign code. Create a separate campaign for another code.']);
         }
@@ -388,6 +392,50 @@ class VoucherCampaignService
             'global_limit' => (int) $data['usage_limit'], 'per_buyer_limit' => (int) $data['per_buyer_limit'],
             'starts_at' => CarbonImmutable::parse($data['starts_at'], 'Asia/Manila')->utc()->toIso8601String(),
             'ends_at' => CarbonImmutable::parse($data['ends_at'], 'Asia/Manila')->utc()->toIso8601String()];
+    }
+
+    /**
+     * Fill the fields a simple form leaves blank, so sellers and admins only answer what matters:
+     * a fixed or shipping discount caps itself at its own amount, one use per buyer by default, no minimum
+     * unless set, and a spending ceiling of "max saving per order x number of vouchers". Explicit values win.
+     */
+    private function withSimpleDefaults(array $input, string $issuer): array
+    {
+        $blank = fn (string $key) => ! array_key_exists($key, $input) || $input[$key] === null || (is_string($input[$key]) && trim($input[$key]) === '');
+        $money = fn ($value) => is_string($value) || is_int($value) || is_float($value) ? preg_match(CodMoney::RULE, (string) $value) === 1 : false;
+        if ($blank('min_spend')) {
+            // A shop's peso-off voucher must fit inside the seller's share of the qualifying items, so a blank
+            // minimum becomes the smallest order that keeps the payout covered. Percent and Bagoo offers need none.
+            $input['min_spend'] = '0';
+            if ($issuer === 'shop' && ($input['discount_type'] ?? null) === 'fixed' && $money($input['discount_value'] ?? null)) {
+                $discount = CodMoney::cents((string) $input['discount_value']);
+                if (! $blank('max_discount') && $money($input['max_discount'])) {
+                    $discount = min($discount, CodMoney::cents((string) $input['max_discount']));
+                }
+                if ($discount > 0) {
+                    $minimum = (int) ceil($discount / 0.9);
+                    while (SellerSettlementService::split($minimum)['seller_cents'] < $discount) {
+                        $minimum++;
+                    }
+                    $input['min_spend'] = number_format($minimum / 100, 2, '.', '');
+                }
+            }
+        }
+        if ($blank('per_buyer_limit')) {
+            $input['per_buyer_limit'] = 1;
+        }
+        $type = $input['discount_type'] ?? null;
+        if ($blank('max_discount') && in_array($type, ['fixed', 'free_shipping'], true) && $money($input['discount_value'] ?? null)
+            && CodMoney::cents((string) $input['discount_value']) > 0) {
+            $input['max_discount'] = (string) $input['discount_value'];
+        }
+        $limit = $input['usage_limit'] ?? null;
+        if ($blank('budget') && $money($input['max_discount'] ?? null) && (is_int($limit) || (is_string($limit) && ctype_digit($limit)))
+            && (int) $limit >= 1 && (int) $limit <= 1000000) {
+            $input['budget'] = number_format(CodMoney::cents((string) $input['max_discount']) * (int) $limit / 100, 2, '.', '');
+        }
+
+        return $input;
     }
 
     private function normalizePercent(mixed $type, mixed $value): mixed

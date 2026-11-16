@@ -479,7 +479,7 @@ class B17BatchScanAndThroughputTest extends TestCase
             'is_available' => true,
         ]);
 
-        $this->actingAs($manager)->get('/hub/manifests')->assertOk();
+        $this->actingAs($this->flowHandler($originHub))->get('/hub/manifests')->assertOk();
         $manifestResp = $this->postJson('/hub/manifests', [
             'source_hub_id' => $originHub->id,
             'destination_hub_id' => $motherHub->id,
@@ -499,7 +499,7 @@ class B17BatchScanAndThroughputTest extends TestCase
             'seal_number' => 'B17-SEAL-0001',
             'manifest_id' => $feederManifest->id,
         ])->assertOk();
-        $this->actingAs($manager)->postJson("/hub/manifests/{$feederManifest->id}/seal", $this->flowManifestPayload($feederManifest))->assertOk();
+        $this->actingAs($this->flowHandler($originHub))->postJson("/hub/manifests/{$feederManifest->id}/seal", $this->flowManifestPayload($feederManifest))->assertOk();
         $this->actingAs($originHandler)->postJson("/hub/manifests/{$feederManifest->id}/dispatch", $this->flowManifestPayload($feederManifest))->assertOk();
 
         // 5. Mother Hub opens bag, receives parcel & closes manifest, then uses B17 Batch Queue scan to sort to line haul.

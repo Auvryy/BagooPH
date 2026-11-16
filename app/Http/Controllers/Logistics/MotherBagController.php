@@ -10,6 +10,7 @@ use App\Services\Logistics\CargoHandlingService;
 use App\Services\Logistics\LogisticsEligibilityService;
 use App\Services\Logistics\MotherBagService;
 use DomainException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -59,6 +60,7 @@ class MotherBagController extends Controller
             'manifests' => LogisticsManifest::whereIn('source_hub_id', $stations->pluck('id'))->where('status', 'draft')
                 ->with(['vehicle', 'driver'])->get()->map(fn ($manifest) => $manifest->only(['id', 'reference', 'source_hub_id', 'destination_hub_id'])
                     + ['vehicle_plate' => $manifest->vehicle?->plate_number, 'driver_name' => $manifest->driver?->name]),
+            'dispatchVehicles' => $selected && $selected->source ? MotherBagService::dispatchVehicles($selected->source, $selected->destination) : [],
             'packingAvailable' => $handling->available(), 'packingToken' => (string) Str::uuid(), 'commandToken' => (string) Str::uuid(),
             'creationToken' => (string) Str::uuid(), 'basePath' => $request->is('hub/*') ? '/hub/mother-bags' : '/mother-bags',
         ]);
@@ -87,6 +89,20 @@ class MotherBagController extends Controller
         }
 
         return redirect(($request->is('hub/*') ? '/hub/mother-bags' : '/mother-bags').'?bag='.$bag->id)->with('success', 'Parcel assigned to its open bag. Place it inside before sealing.');
+    }
+
+    public function dispatch(Request $request, MotherBag $bag, MotherBagService $service)
+    {
+        try {
+            $result = $service->dispatchBag($bag, $request->user(), $request->all());
+        } catch (DomainException|AuthorizationException $error) {
+            return $request->expectsJson() ? response()->json(['message' => $error->getMessage()], 409) : back()->withErrors(['bag' => $error->getMessage()]);
+        }
+        if ($request->expectsJson()) {
+            return response()->json(['bag' => $result['bag']->only(['id', 'reference', 'status', 'version']), 'manifest' => $result['manifest']->only(['id', 'reference', 'status'])]);
+        }
+
+        return back()->with('success', "Bag sealed and on its way · {$result['manifest']->reference}");
     }
 
     public function command(Request $request, MotherBag $bag, string $action, MotherBagService $service)

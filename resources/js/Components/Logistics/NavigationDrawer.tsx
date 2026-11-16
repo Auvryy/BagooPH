@@ -22,7 +22,7 @@ export default function NavigationDrawer({ enabled, open, onClose, children }: {
 
     return <Dialog open={open} onClose={onClose} unmount={false} className="logistics-navigation-drawer relative z-[60] font-sans">
         <DialogTitle className="sr-only">Workspace navigation</DialogTitle>
-        <DialogBackdrop className="fixed inset-0 bg-slate-950/40" />
+        <DialogBackdrop className="fixed inset-0 bg-brand-900/45" />
         <DialogPanel className="contents">{children}</DialogPanel>
     </Dialog>;
 }

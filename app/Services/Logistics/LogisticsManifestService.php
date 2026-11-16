@@ -62,7 +62,7 @@ class LogisticsManifestService
         $actor = User::findOrFail($actor->id);
         Validator::make($input, ['source_hub_id' => $this->idRules()])->validate();
         $source = LogisticsHub::eligible()->find($input['source_hub_id']);
-        if (! $source || ! $this->canManageAtHub($actor, $source)) {
+        if (! $source || ! $this->handlesCargoAtHub($actor, $source)) {
             throw new AuthorizationException('An assigned source-hub handler must prepare this manifest.');
         }
         $company = LogisticsCompany::eligible()->findOrFail($source->logistics_company_id);
@@ -103,7 +103,7 @@ class LogisticsManifestService
             $driverId = LogisticsFleet::whereKey($input['vehicle_id'])->value('assigned_driver_id');
             $this->eligibility->lockNetwork($company->id, [$actor->id, $driverId], [$input['source_hub_id'], $input['destination_hub_id'], ...($recovery?->hub_ids ?? [])]);
             $actor = User::findOrFail($actor->id);
-            if (! $this->canManageAtHub($actor, LogisticsHub::findOrFail($input['source_hub_id']))) {
+            if (! $this->handlesCargoAtHub($actor, LogisticsHub::findOrFail($input['source_hub_id']))) {
                 throw new AuthorizationException('Your assignment to this source hub is no longer available.');
             }
             $existing = LogisticsManifest::where('created_by_id', $actor->id)->where('creation_token', $input['creation_token'])->first();
@@ -755,20 +755,27 @@ class LogisticsManifestService
 
     public function canManageAtHub(User $actor, LogisticsHub $hub): bool
     {
+        // Reviews (closing, resolving discrepancies) are open to the company owner. Cargo handling is not: see handlesCargoAtHub.
         return $actor->isLogistics() && $actor->canAccessPortal()
             && ($this->eligibility->isCompanyAdministrator($actor, $hub->logistics_company_id)
                 || $this->eligibility->canScan($actor, $hub));
+    }
+
+    /** Only staff assigned to the hub prepare, load, seal, reopen or dispatch its cargo. The company owner never does. */
+    public function handlesCargoAtHub(User $actor, LogisticsHub $hub): bool
+    {
+        return $actor->isLogistics() && $actor->canAccessPortal() && $this->eligibility->canScan($actor, $hub);
     }
 
     private function authorizeCommand(LogisticsManifest $manifest, User $actor, string $action): void
     {
         $receiving = in_array($action, ['receive', 'close', 'close-recovery', 'report-discrepancy', 'correct-discrepancy', 'resolve-discrepancy'], true);
         $hub = LogisticsHub::findOrFail($receiving ? $manifest->destination_hub_id : $manifest->source_hub_id);
-        $management = in_array($action, ['remove', 'seal', 'reopen', 'close', 'close-recovery', 'resolve-discrepancy'], true);
-        if (! ($management ? $this->canManageAtHub($actor, $hub) : $this->eligibility->canScan($actor, $hub))) {
+        $review = in_array($action, ['close', 'close-recovery', 'resolve-discrepancy'], true);
+        if (! ($review ? $this->canManageAtHub($actor, $hub) : $this->handlesCargoAtHub($actor, $hub))) {
             throw new AuthorizationException('An active assignment to the responsible source or receiving hub is required.');
         }
-        if (! $this->eligibility->isCompanyAdministrator($actor, $hub->logistics_company_id) && $this->eligibility->canScan($actor, $hub)) {
+        if ($this->eligibility->canScan($actor, $hub)) {
             if ($receiving && ! $this->eligibility->canIntake($actor, $hub)) {
                 throw new AuthorizationException('Your current hub job role is Pack & Dispatch only. Ask a manager to switch your role to Entry / Intake.');
             }

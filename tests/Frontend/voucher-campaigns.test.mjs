@@ -50,7 +50,7 @@ test('admin can suspend shop campaigns and only edit its own platform offers', a
  const html=await render(Admin,'Admin/Vouchers',{campaigns:{data:[campaign,{...campaign,id:2,code:'BAGOO_TEST',issuer_type:'platform',shop_name:null,state:'paused'}],current_page:1,last_page:1},stats},'admin');
  assert.match(html,/New Bagoo voucher/); assert.match(html,/Suspend/); assert.match(html,/Resume/); assert.doesNotMatch(html,/>Budget</);
  assert.equal((html.match(/>Edit draft</g)||[]).length,1);
- assert.match(html,/Committed promotion cost/); assert.match(html,/Settled promotion expense/);
+ assert.match(html,/Reserved for open orders/); assert.match(html,/>Spent</);
 });
 test('ended campaigns retain history and have no new publication action', async () => {
  const html=await render(Seller,'Seller/Vouchers',{campaigns:{data:[{...campaign,state:'archived'}],current_page:1,last_page:1},stats,shop:{id:1}},'seller');

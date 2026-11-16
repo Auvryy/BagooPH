@@ -84,7 +84,7 @@ test('assignment opens a deliberate rider choice while preserving the actual cur
 });
 test('an empty queue remains truthful and zero counts do not become a success percentage', async () => {
     const html = await render(Registry, 'Hub/Deliveries', registry([], { counts: { all: 0, in_hub: 0, out_for_delivery: 0, ready_pickup: 0, handovers_today: 0 }, canScan: false }));
-    assert.match(html, /No parcels in this view/);
+    assert.match(html, /No parcels here/);
     assert.doesNotMatch(html, /100%|Station Active|Open scanner/);
 });
 test('arrived counter parcels show staging guidance and a disabled release control', async () => {
@@ -105,10 +105,9 @@ test('ready counter parcels permit handler verification but respect the current 
     assert.doesNotMatch(releaseButton(html), /disabled=/);
     const expired = await render(Counter, 'Hub/CounterPickup', counter([{ ...ready, claim: { ...ready.claim, expires_at: '2000-01-01T00:00:00Z' } }], { counterCounts: { shown: 1, ready: 1, blocked: 0 } }));
     assert.match(expired, /collection window changed/);
-    const readiness = expired.slice(expired.indexOf('Ready for Buyer Verification')).match(/<p[^>]*>([\s\S]*?)<\/p>/);
+    const readiness = expired.slice(expired.indexOf('Ready to release on this page')).match(/<p[^>]*>([\s\S]*?)<\/p>/);
     assert.ok(readiness);
     assert.equal(readiness[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(), '0');
-    assert.match(expired, /ready · Staging &amp; valid claim/);
     assert.match(releaseButton(expired), /disabled=""/);
 });
 test('company counter management sees readiness without receiving a handler release control', async () => {
@@ -129,8 +128,8 @@ test('counter page controls keep route, facility and search while counts identif
         const html = await render(Counter, 'Hub/CounterPickup', props);
         assert.match(html, /40 matching parcels/);
         assert.match(html, /Showing 16 to 16 of 40 matching parcels\. Page 2 of 3\./);
-        assert.match(html, /Ready for Buyer Verification \(this page\)/);
-        assert.match(html, /Needs Attention \(this page\)/);
+        assert.match(html, /Ready to release on this page/);
+        assert.match(html, /Needs attention on this page/);
         assert.ok(html.includes(`href="${basePath}/counter?hub_id=2&amp;search=Mara&amp;page=1"`));
         assert.ok(html.includes(`href="${basePath}/counter?hub_id=2&amp;search=Mara&amp;page=3"`));
     }

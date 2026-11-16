@@ -49,7 +49,7 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
         <ReturnLayout>
             <Head title={`${item.reference} — BagooPH returns`} />
             <div className={`${auth.user?.role === 'logistics' ? 'max-w-5xl' : 'mx-auto max-w-5xl py-4'} space-y-6`}>
-                <Link href="/buyer-returns" className="inline-flex items-center gap-2 text-xs font-bold text-zinc-600 hover:text-[#121316]">
+                <Link href="/buyer-returns" className="inline-flex items-center gap-2 text-xs font-bold text-zinc-600 hover:text-ink-900">
                     <ArrowLeft className="h-4 w-4" />
                     All returns
                 </Link>
@@ -60,10 +60,10 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                             <HubPageHeader title="Return parcel" icon={PackageCheck} description={`Purchase ${item.order.order_number} · ${item.reference}`} />
                         ) : (
                             <>
-                                <h1 className="inline-block break-all rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 tabular-nums text-sm font-bold text-[#E00D42]">
+                                <h1 className="inline-block break-all rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 tabular-nums text-sm font-bold text-brand-500">
                                     {item.reference}
                                 </h1>
-                                <p className="mt-2 text-sm font-semibold text-[#121316]">Purchase {item.order.order_number}</p>
+                                <p className="mt-2 text-sm font-semibold text-ink-900">Purchase {item.order.order_number}</p>
                             </>
                         )}
                         <div className="mt-3">
@@ -92,7 +92,7 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                         {item.custody && <ReturnCustodyPanel custody={item.custody} caseId={item.id} version={item.version} />}
                         {item.money && <ReturnMoneyPanel value={item.money} caseId={item.id} version={item.version} />}
                         {item.fault_review && <section className="rounded-xl border border-rose-200 bg-rose-50/50 p-5">
-                            <h2 className="text-sm font-bold text-[#C20836]">Recorded fault review</h2>
+                            <h2 className="text-sm font-bold text-brand-600">Recorded fault review</h2>
                             <p className="mt-2 font-semibold text-slate-900">{item.fault_review.fault === 'seller' ? 'Seller / item fault' : item.fault_review.fault === 'courier' ? 'Courier-company fault' : 'Fault not determined under the original policy'}</p>
                             <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-700">{item.fault_review.reason}</p>
                             {item.fault_review.evidence && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-600">{item.fault_review.evidence}</p>}
@@ -102,13 +102,13 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                         {/* Purchased Items */}
                         <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                             <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                <h2 className="text-sm font-bold text-[#121316]">Purchased items</h2>
+                                <h2 className="text-sm font-bold text-ink-900">Purchased items</h2>
                             </header>
                             <div className="p-5 sm:p-6">
                                 <ul className="divide-y divide-zinc-100">
                                     {item.items.map(line => (
                                         <li key={line.id} className="py-3 first:pt-0">
-                                            <p className="break-words text-sm font-bold text-[#121316]">{line.purchase.name}</p>
+                                            <p className="break-words text-sm font-bold text-ink-900">{line.purchase.name}</p>
                                             <p className="mt-1 text-xs text-zinc-500">
                                                 {[line.purchase.color, line.purchase.size].filter(Boolean).join(' · ')} · Returning {line.quantity}
                                             </p>
@@ -116,7 +116,7 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                                     ))}
                                 </ul>
                                 <div className="mt-5 border-t border-zinc-100 pt-4">
-                                    <h3 className="text-xs font-bold text-[#121316]">{reasons[item.reason] ?? 'Item problem'}</h3>
+                                    <h3 className="text-xs font-bold text-ink-900">{reasons[item.reason] ?? 'Item problem'}</h3>
                                     <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-700">{item.description}</p>
                                 </div>
                             </div>
@@ -125,7 +125,7 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                         {/* Private Photos */}
                         <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                             <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                <h2 className="text-sm font-bold text-[#121316]">Private photos</h2>
+                                <h2 className="text-sm font-bold text-ink-900">Private photos</h2>
                                 <p className="mt-0.5 text-xs text-zinc-500">Available to the involved owners and authorized reviewers.</p>
                             </header>
                             <div className="p-5 sm:p-6">
@@ -136,7 +136,7 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                                                 href={photo.url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-zinc-50/40 px-3.5 py-2.5 text-xs font-bold text-[#E00D42] hover:bg-rose-50/70 hover:border-rose-200 transition-colors"
+                                                className="flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-zinc-50/40 px-3.5 py-2.5 text-xs font-bold text-brand-500 hover:bg-rose-50/70 hover:border-rose-200 transition-colors"
                                             >
                                                 <FileImage className="h-4 w-4" />
                                                 {photo.purpose === 'intake' ? 'Hub intake' : photo.purpose === 'seller-receive' ? 'Seller receipt' : 'Request photo'} {index + 1}
@@ -151,15 +151,15 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                         {/* Decisions and Updates */}
                         <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                             <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                <h2 className="text-sm font-bold text-[#121316]">Decisions and updates</h2>
+                                <h2 className="text-sm font-bold text-ink-900">Decisions and updates</h2>
                             </header>
                             <div className="p-5 sm:p-6">
                                 <ol className="ml-2 border-l border-zinc-200 pl-6">
                                     {item.history.map(event => (
                                         <li key={event.reference} className="relative pb-6 last:pb-0">
-                                            <span className="absolute -left-[29px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#E00D42] ring-1 ring-zinc-300" aria-hidden="true" />
+                                            <span className="absolute -left-[29px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-brand-500 ring-1 ring-zinc-300" aria-hidden="true" />
                                             <div className="flex flex-wrap justify-between gap-2">
-                                                <h3 className="text-sm font-bold text-[#121316]">{returnLabels[event.target_status] ?? 'Return update'}</h3>
+                                                <h3 className="text-sm font-bold text-ink-900">{returnLabels[event.target_status] ?? 'Return update'}</h3>
                                                 <p className="text-xs text-zinc-500">{returnDate(event.created_at)}</p>
                                             </div>
                                             <p className="mt-1 text-xs capitalize text-zinc-500">{event.actor_role}</p>
@@ -175,7 +175,7 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                         {/* What Happens Next */}
                         <section className="rounded-xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden">
                             <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                <h2 className="text-sm font-bold text-[#121316]">What happens next?</h2>
+                                <h2 className="text-sm font-bold text-ink-900">What happens next?</h2>
                             </header>
                             <div className="p-5">
                                 <p className="text-xs sm:text-sm leading-6 text-zinc-600">
@@ -203,18 +203,18 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                                 </p>
                                 <dl className="mt-4 space-y-3 border-t border-zinc-100 pt-4 text-xs">
                                     <div>
-                                        <dt className="font-bold text-[#121316]">Seller response by</dt>
+                                        <dt className="font-bold text-ink-900">Seller response by</dt>
                                         <dd className="mt-1 text-zinc-600">{returnDate(item.response_until)}</dd>
                                     </div>
                                     {item.appeal_until && (
                                         <div>
-                                            <dt className="font-bold text-[#121316]">Request admin review by</dt>
+                                            <dt className="font-bold text-ink-900">Request admin review by</dt>
                                             <dd className="mt-1 text-zinc-600">{returnDate(item.appeal_until)}</dd>
                                         </div>
                                     )}
                                     {item.dropoff_until && (
                                         <div>
-                                            <dt className="font-bold text-[#121316]">Physical drop-off by</dt>
+                                            <dt className="font-bold text-ink-900">Physical drop-off by</dt>
                                             <dd className="mt-1 text-zinc-600">{returnDate(item.dropoff_until)}</dd>
                                         </div>
                                     )}
@@ -230,17 +230,17 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                                 aria-busy={form.processing || undefined}
                             >
                                 <header className="border-b border-zinc-100 bg-zinc-50/40 px-5 py-3.5">
-                                    <h2 className="text-sm font-bold text-[#121316]">Update this return</h2>
+                                    <h2 className="text-sm font-bold text-ink-900">Update this return</h2>
                                 </header>
                                 <div className="p-5 space-y-4">
-                                    <label className="block text-xs font-bold text-[#121316]">
+                                    <label className="block text-xs font-bold text-ink-900">
                                         Action
                                         <select
                                             required
                                             disabled={form.processing || refreshing}
                                             value={form.data.action}
                                             onChange={event => form.setData({ ...form.data, action: event.target.value, fault: '', fault_evidence: '' })}
-                                            className="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-[#121316] focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                            className="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-ink-900 focus:border-brand-500 focus:ring-brand-500"
                                         >
                                             <option value="">Choose an action</option>
                                             {item.actions.map(action => (
@@ -250,18 +250,18 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                                     </label>
                                     {['approve', 'review-fault'].includes(form.data.action) && <div className="space-y-3 rounded-lg border border-rose-200 bg-rose-50/60 p-3">
                                         <label className="block text-xs font-bold text-slate-800">Fault finding
-                                            <select value={form.data.fault} onChange={event => form.setData('fault', event.target.value)} required={form.data.action === 'review-fault' || item.refund_policy_version === 2} disabled={form.processing || refreshing} className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]">
+                                            <select value={form.data.fault} onChange={event => form.setData('fault', event.target.value)} required={form.data.action === 'review-fault' || item.refund_policy_version === 2} disabled={form.processing || refreshing} className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500">
                                                 <option value="">Choose the evidenced fault</option>
                                                 <option value="seller">Seller / item fault</option>
                                                 {auth.user?.role === 'admin' && <option value="courier">Courier-company fault</option>}
                                             </select>
                                         </label>
                                         {form.data.fault === 'courier' && <label className="block text-xs font-bold text-slate-800">Supporting transit evidence
-                                            <textarea required minLength={10} maxLength={1000} rows={3} value={form.data.fault_evidence} onChange={event => form.setData('fault_evidence', event.target.value)} disabled={form.processing || refreshing} className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" />
+                                            <textarea required minLength={10} maxLength={1000} rows={3} value={form.data.fault_evidence} onChange={event => form.setData('fault_evidence', event.target.value)} disabled={form.processing || refreshing} className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-brand-500" />
                                             <span className="mt-1 block text-xs font-normal text-slate-600">10–1,000 characters. Reference the actual observations and retained handovers.</span>
                                         </label>}
                                     </div>}
-                                    <label className="block text-xs font-bold text-[#121316]">
+                                    <label className="block text-xs font-bold text-ink-900">
                                         Reason
                                         <textarea
                                             required
@@ -271,7 +271,7 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                                             disabled={form.processing || refreshing}
                                             value={form.data.reason}
                                             onChange={event => form.setData('reason', event.target.value)}
-                                            className="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-[#121316] focus:border-[#E00D42] focus:ring-[#E00D42]"
+                                            className="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-ink-900 focus:border-brand-500 focus:ring-brand-500"
                                         />
                                         <span className="mt-1 block text-xs font-normal text-zinc-500">
                                             10–{reasonLimit.toLocaleString()} characters. Explain the actual decision.
@@ -283,7 +283,7 @@ export default function ShowReturn({ returnCase: item }: { returnCase: ReturnCas
                                     <button
                                         type="submit"
                                         disabled={form.processing || refreshing || !form.data.action}
-                                        className="w-full rounded-lg bg-[#E00D42] px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-[#C20836] disabled:opacity-50 transition"
+                                        className="w-full rounded-lg bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-brand-600 disabled:opacity-50 transition"
                                     >
                                         {form.processing ? 'Saving…' : actionNames[form.data.action] ?? 'Save update'}
                                     </button>

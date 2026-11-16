@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { AlertCircle, ArrowRight, Check, Clock, Copy, MapPin, Package, RefreshCw, Search, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Check, Copy, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import BagooLogo from '@/Components/BagooLogo';
+import { Notice, buttonClasses, inputClasses } from '@/Components/ui';
 import { EtaPresentation, PageProps } from '@/types';
 
 interface Checkpoint {
@@ -32,6 +33,19 @@ interface Props {
     observedAt?: string | null;
 }
 
+/** Buyer-facing journey stages; each server status maps onto one of them. */
+const STAGES = ['Ordered', 'Picked up', 'In transit', 'Out for delivery', 'Delivered'] as const;
+
+const STAGE_BY_STATUS: Record<string, number> = {
+    placed: 0, confirmed: 0, preparing: 0, ready_for_pickup: 0,
+    picked_up: 1,
+    at_sorting_center: 2, in_transit: 2, sorted: 2, assigned_to_rider: 2,
+    out_for_delivery: 3,
+    delivered: 4, completed: 4,
+};
+
+const EXCEPTION_STATUSES = ['delivery_failed', 'returned', 'cancelled'];
+
 function formatDate(value: string | null): string {
     if (!value) return 'Not recorded';
     return new Intl.DateTimeFormat('en-PH', {
@@ -39,6 +53,27 @@ function formatDate(value: string | null): string {
         timeStyle: 'short',
         timeZone: 'Asia/Manila',
     }).format(new Date(value));
+}
+
+function JourneyProgress({ stage }: { stage: number }) {
+    return (
+        <ol aria-label="Delivery progress" className="grid grid-cols-5 gap-1">
+            {STAGES.map((label, index) => {
+                const done = index < stage;
+                const current = index === stage;
+                return (
+                    <li key={label} aria-current={current ? 'step' : undefined} className="min-w-0">
+                        <span aria-hidden="true" className={`block h-1.5 rounded-full ${done || current ? 'bg-brand-500' : 'bg-line-200'}`} />
+                        <span className={`mt-2 flex items-center gap-1 text-xs leading-4 sm:text-[13px] ${current ? 'font-semibold text-brand-600' : done ? 'text-ink-700' : 'text-ink-500'}`}>
+                            {done && <Check className="hidden h-3.5 w-3.5 shrink-0 text-brand-500 sm:block" aria-hidden="true" />}
+                            <span className="truncate">{label}</span>
+                        </span>
+                        <span className="sr-only">{done ? ' (done)' : current ? ' (current)' : ' (upcoming)'}</span>
+                    </li>
+                );
+            })}
+        </ol>
+    );
 }
 
 export default function Tracking({ parcel, searchedNumber, notFound, validationMessage, statusLabels = {}, checkpointLabels = {}, observedAt }: Props) {
@@ -52,14 +87,16 @@ export default function Tracking({ parcel, searchedNumber, notFound, validationM
         setCopyMessage('');
     }, [searchedNumber]);
 
+    const lookUp = (number: string) => router.get(route('track.show'), { number }, {
+        preserveScroll: true,
+        onStart: () => setSearching(true),
+        onFinish: () => setSearching(false),
+    });
+
     const handleSearch = (event: FormEvent) => {
         event.preventDefault();
         if (!inputNumber.trim() || searching) return;
-        router.get(route('track.show'), { number: inputNumber.trim().toUpperCase() }, {
-            preserveScroll: true,
-            onStart: () => setSearching(true),
-            onFinish: () => setSearching(false),
-        });
+        lookUp(inputNumber.trim().toUpperCase());
     };
 
     const handleCopy = async () => {
@@ -72,122 +109,145 @@ export default function Tracking({ parcel, searchedNumber, notFound, validationM
         }
     };
 
-    const exception = parcel && ['delivery_failed', 'returned', 'cancelled'].includes(parcel.status);
-    const delivered = parcel && ['delivered', 'completed'].includes(parcel.status);
-    const statusStyle = exception
-        ? 'border-amber-300 bg-amber-50 text-amber-900'
-        : delivered
-            ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
-            : 'border-slate-300 bg-slate-100 text-slate-800';
+    const exception = parcel ? EXCEPTION_STATUSES.includes(parcel.status) : false;
+    const delivered = parcel ? ['delivered', 'completed'].includes(parcel.status) : false;
+    const stage = parcel ? STAGE_BY_STATUS[parcel.status] : undefined;
+    const history = parcel ? [...parcel.checkpoints].reverse() : [];
+    const etaLabel = parcel ? (parcel.eta?.label ?? (parcel.estimated_delivery_at ? formatDate(parcel.estimated_delivery_at) : null)) : null;
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
+        <div className="min-h-screen bg-surface-50 font-sans text-ink-900">
             <Head title="Track your parcel | BagooPH" />
-            <header className="border-b border-slate-300 bg-white">
-                <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-                    <Link href={route('marketplace')} className="flex items-center gap-3" aria-label="BagooPH marketplace">
-                        <BagooLogo className="h-9 w-9" />
-                        <span className="text-sm font-bold text-slate-900">BagooPH</span>
+            <header className="border-b border-line-200 bg-white">
+                <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+                    <Link href={route('marketplace')} className="flex items-center gap-2.5" aria-label="BagooPH marketplace">
+                        <BagooLogo className="h-8 w-8" />
+                        <span className="text-sm font-semibold text-ink-900">BagooPH</span>
                     </Link>
-                    <Link href={route(auth.user ? 'dashboard' : 'login')} className="inline-flex items-center gap-2 rounded-sm border border-slate-300 px-3 py-2 text-xs font-semibold hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E00D42]">
-                        {auth.user ? 'Open your portal' : 'Sign in'}
+                    <Link href={route(auth.user ? 'dashboard' : 'login')} className={buttonClasses('secondary', 'sm')}>
+                        {auth.user ? 'Open your account' : 'Sign in'}
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </Link>
                 </div>
             </header>
 
-            <main className="mx-auto max-w-5xl space-y-5 px-4 py-6 sm:px-6 sm:py-10">
-                <section className="rounded-lg border border-slate-300 bg-white p-5 sm:p-7" aria-labelledby="tracking-title">
-                    <p className="mb-2 text-xs font-semibold text-[#E00D42]">Parcel tracking</p>
-                    <h1 id="tracking-title" className="text-2xl font-extrabold tracking-tight text-slate-900">Follow your parcel</h1>
-                    <p id="tracking-help" className="mt-2 text-sm text-slate-500">Enter the tracking number from your waybill or order details.</p>
-                    <form onSubmit={handleSearch} className="mt-5 space-y-2">
-                        <label htmlFor="tracking-number" className="block text-xs font-semibold">Tracking number</label>
+            <main className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6 sm:py-12">
+                <section aria-labelledby="tracking-title">
+                    <h1 id="tracking-title" className="text-[28px] font-bold leading-[34px] tracking-tight text-ink-900">Track your parcel</h1>
+                    <p id="tracking-help" className="mt-1 text-sm text-ink-600">Enter the tracking number from your waybill or order details.</p>
+                    <form onSubmit={handleSearch} className="mt-5">
+                        <label htmlFor="tracking-number" className="sr-only">Tracking number</label>
                         <div className="flex flex-col gap-2 sm:flex-row">
                             <div className="relative flex-1">
-                                <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-500" aria-hidden="true" />
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" aria-hidden="true" />
                                 <input id="tracking-number" name="number" type="text" required maxLength={64} autoCapitalize="characters" autoComplete="off" spellCheck={false}
+                                    placeholder="e.g. BGO-1A2B3C"
                                     value={inputNumber} onChange={(event) => setInputNumber(event.target.value)}
                                     aria-describedby={validationMessage ? 'tracking-help tracking-error' : 'tracking-help'} aria-invalid={!!validationMessage}
-                                    className="w-full rounded-sm border border-slate-300 py-2.5 pl-10 pr-3 text-sm focus:border-[#E00D42] focus:ring-[#E00D42]" />
+                                    className={`${inputClasses} h-12 pl-10 font-mono uppercase tracking-wide placeholder:normal-case placeholder:tracking-normal placeholder:font-sans`} />
                             </div>
-                            <button type="submit" disabled={searching || !inputNumber.trim()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-sm bg-[#E00D42] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#C20836] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E00D42] disabled:opacity-50">
-                                <Search className="h-4 w-4" aria-hidden="true" />{searching ? 'Searching...' : 'Track parcel'}
+                            <button type="submit" disabled={searching || !inputNumber.trim()} className={buttonClasses('primary', 'lg', 'sm:w-auto')}>
+                                {searching ? 'Searching…' : 'Track parcel'}
                             </button>
                         </div>
-                        {validationMessage && <p id="tracking-error" role="alert" className="text-xs text-[#E00D42]">{validationMessage}</p>}
+                        {validationMessage && <p id="tracking-error" role="alert" className="mt-2 text-[13px] text-brand-700">{validationMessage}</p>}
                     </form>
                 </section>
 
                 {notFound && (
-                    <div role="status" className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
-                        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" aria-hidden="true" />
-                        <div><h2 className="text-sm font-bold text-amber-950">Parcel not found</h2><p className="mt-1 text-sm text-amber-900">Check the tracking number on your waybill and try again. Order numbers are available in your account.</p></div>
-                    </div>
+                    <Notice tone="warning" role="status" title="We couldn't find that parcel">
+                        Check the tracking number on your waybill and try again. You can also find it in your orders after signing in.
+                    </Notice>
                 )}
 
-                <div className="flex items-start gap-3 rounded-lg border border-slate-300 bg-white p-4 text-sm">
-                    <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-slate-600" aria-hidden="true" />
-                    <p className="text-slate-600">Recipient details are masked for privacy. For delivery actions or receipt confirmation, open your account portal.</p>
-                </div>
-
                 {parcel && (
-                    <div className="grid gap-5 lg:grid-cols-3">
-                        <section className="space-y-5 rounded-lg border border-slate-300 bg-white p-5 sm:p-6 lg:col-span-3" aria-labelledby="parcel-status">
-                            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                                <div>
-                                    <p className="text-xs text-slate-500">Waybill tracking number</p>
-                                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                                        <h2 id="parcel-status" className="break-all text-lg font-bold text-slate-900">{parcel.tracking_number}</h2>
-                                        <button type="button" onClick={handleCopy} aria-label="Copy tracking number" className="rounded-sm border border-slate-300 p-2 text-slate-600 hover:bg-slate-50">
-                                            {copyMessage === 'Tracking number copied.' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    <>
+                        <section aria-labelledby="parcel-status" className="rounded-card border border-line-200 bg-white">
+                            <div className="space-y-5 p-5 sm:p-6">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        <span className="text-[13px] text-ink-600">Tracking number</span>
+                                        <span className="break-all font-mono text-sm font-medium text-ink-900">{parcel.tracking_number}</span>
+                                        <button type="button" onClick={handleCopy} aria-label="Copy tracking number" className="rounded-control p-1.5 text-ink-500 hover:bg-surface-100 hover:text-ink-900">
+                                            {copyMessage === 'Tracking number copied.' ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
                                         </button>
                                     </div>
-                                    <p aria-live="polite" className="mt-1 text-xs text-slate-500">{copyMessage}</p>
+                                    <p aria-live="polite" className="text-xs text-ink-600">{copyMessage}</p>
                                 </div>
-                                <span className={`self-start rounded-xs border px-2.5 py-1.5 text-xs font-bold ${statusStyle}`}>{statusLabels[parcel.status] ?? 'Status recorded'}</span>
+
+                                <div>
+                                    <h2 id="parcel-status" className={`text-2xl font-bold leading-8 ${exception ? 'text-warning' : 'text-ink-900'}`}>
+                                        {statusLabels[parcel.status] ?? 'Status recorded'}
+                                    </h2>
+                                    {delivered && parcel.delivered_at
+                                        ? <p className="mt-1 text-sm text-ink-700">Delivered {formatDate(parcel.delivered_at)}</p>
+                                        : !exception && etaLabel && <p className="mt-1 text-sm text-ink-700">Estimated arrival <span className="font-semibold text-ink-900">{etaLabel}</span></p>}
+                                </div>
+
+                                {!exception && stage !== undefined && <JourneyProgress stage={stage} />}
+
+                                {exception && (
+                                    <Notice tone="warning">
+                                        {parcel.status === 'delivery_failed' ? 'The latest delivery attempt was unsuccessful. Sign in to see what happens next.' : parcel.status === 'returned' ? 'This parcel has been returned to the seller.' : 'This order was cancelled.'}
+                                    </Notice>
+                                )}
+                                {parcel.eta?.pause_notice && <Notice tone="warning" role="status">{parcel.eta.pause_notice}</Notice>}
+                                {parcel.eta?.delay_notice && !parcel.eta?.pause_notice && <Notice tone="info" role="status">{parcel.eta.delay_notice}</Notice>}
+                                {parcel.status === 'delivered' && <Notice tone="success">Delivery is recorded. The buyer can confirm receipt from their orders page.</Notice>}
+
+                                <dl className="grid gap-4 border-t border-line-200 pt-5 text-sm sm:grid-cols-2">
+                                    <div>
+                                        <dt className="text-[13px] text-ink-600">Delivering to</dt>
+                                        <dd className="mt-0.5 font-medium text-ink-900">{parcel.delivery_address}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-[13px] text-ink-600">Recipient</dt>
+                                        <dd className="mt-0.5 font-medium text-ink-900">{parcel.delivery_recipient_name} <span className="font-normal text-ink-600">· {parcel.delivery_phone}</span></dd>
+                                    </div>
+                                </dl>
                             </div>
-                            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
-                                <p>Checked {formatDate(observedAt ?? null)} · Philippine time</p>
-                                <button type="button" disabled={searching} onClick={() => router.get(route('track.show'), { number: parcel.tracking_number }, {
-                                    preserveScroll: true, onStart: () => setSearching(true), onFinish: () => setSearching(false),
-                                })} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw className="h-4 w-4" aria-hidden="true" />{searching ? 'Refreshing…' : 'Refresh tracking'}</button>
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-200 px-5 py-3 sm:px-6">
+                                <p className="text-xs text-ink-600">Checked {formatDate(observedAt ?? null)} · Philippine time</p>
+                                <button type="button" disabled={searching} onClick={() => lookUp(parcel.tracking_number)} className={buttonClasses('ghost', 'sm', '-mr-2')}>
+                                    <RefreshCw className={`h-4 w-4 ${searching ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+                                    {searching ? 'Refreshing…' : 'Refresh tracking'}
+                                </button>
                             </div>
-                            {exception && <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{parcel.status === 'delivery_failed' ? 'The latest delivery attempt was unsuccessful. Check your account for follow-up details.' : parcel.status === 'returned' ? 'The parcel has been returned to the seller.' : 'This order was cancelled.'}</p>}
-                            {parcel.eta?.pause_notice && <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{parcel.eta.pause_notice}</p>}
-                            {parcel.eta?.delay_notice && !parcel.eta?.pause_notice && <p role="status" className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">{parcel.eta.delay_notice}</p>}
-                            {parcel.status === 'delivered' && <p className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">Delivery is recorded. The buyer can confirm receipt from their orders page.</p>}
-                            <dl className="grid gap-4 border-t border-slate-300 pt-4 sm:grid-cols-3">
-                                <div><dt className="flex items-center gap-1.5 text-xs text-slate-500"><MapPin className="h-4 w-4" aria-hidden="true" />Delivery area</dt><dd className="mt-1 text-sm font-semibold">{parcel.delivery_address}</dd></div>
-                                <div><dt className="flex items-center gap-1.5 text-xs text-slate-500"><Clock className="h-4 w-4" aria-hidden="true" />Estimated delivery</dt><dd className="mt-1 text-sm font-semibold">{parcel.eta?.label ?? (parcel.estimated_delivery_at ? formatDate(parcel.estimated_delivery_at) : 'Not yet scheduled')}</dd></div>
-                                <div><dt className="flex items-center gap-1.5 text-xs text-slate-500"><Package className="h-4 w-4" aria-hidden="true" />Delivered at</dt><dd className="mt-1 text-sm font-semibold">{formatDate(parcel.delivered_at)}</dd></div>
-                            </dl>
                         </section>
 
-                        <section className="rounded-lg border border-slate-300 bg-white p-5 sm:p-6 lg:col-span-2" aria-labelledby="milestones-title">
-                            <h2 id="milestones-title" className="text-sm font-bold text-slate-900">Recorded milestones</h2>
-                            <p className="mt-1 text-xs text-slate-500">Times shown in Philippine time.</p>
-                            {parcel.checkpoints.length === 0 ? <p className="mt-5 text-sm text-slate-500">No milestones recorded yet. Check back after the next parcel handoff.</p> : (
-                                <ol className="mt-5 space-y-0">
-                                    {parcel.checkpoints.map((checkpoint, index) => (
-                                        <li key={`${checkpoint.checkpoint_type}-${index}`} className="relative border-l border-slate-300 pb-5 pl-5 last:pb-0">
-                                            <span className={`absolute -left-1.5 top-1 h-3 w-3 rounded-xs border ${index === parcel.checkpoints.length - 1 ? 'border-[#E00D42] bg-[#E00D42]' : 'border-slate-400 bg-white'}`} aria-hidden="true" />
-                                            <div className="flex flex-col justify-between gap-1 sm:flex-row sm:gap-3"><h3 className="text-sm font-semibold">{checkpointLabels[checkpoint.checkpoint_type] ?? 'Parcel milestone'}</h3><time dateTime={checkpoint.created_at} className="shrink-0 text-xs text-slate-500">{formatDate(checkpoint.created_at)}</time></div>
-                                            <p className="mt-1 text-xs text-slate-500">{checkpoint.location_name}</p>
+                        <section aria-labelledby="milestones-title" className="rounded-card border border-line-200 bg-white p-5 sm:p-6">
+                            <h2 id="milestones-title" className="text-lg font-semibold text-ink-900">Parcel history</h2>
+                            {history.length === 0 ? (
+                                <p className="mt-3 text-sm text-ink-600">No updates yet. The first update appears when the parcel is handed over or scanned.</p>
+                            ) : (
+                                <ol className="mt-5">
+                                    {history.map((checkpoint, index) => (
+                                        <li key={`${checkpoint.checkpoint_type}-${checkpoint.created_at}-${index}`} className="relative flex gap-4 pb-6 last:pb-0">
+                                            {index < history.length - 1 && <span aria-hidden="true" className="absolute left-[5px] top-4 h-full w-px bg-line-200" />}
+                                            <span aria-hidden="true" className={`relative mt-1.5 h-[11px] w-[11px] shrink-0 rounded-full ${index === 0 ? 'bg-brand-500 ring-4 ring-brand-50' : 'border-2 border-line-300 bg-white'}`} />
+                                            <div className="min-w-0 flex-1 sm:flex sm:items-baseline sm:justify-between sm:gap-4">
+                                                <div className="min-w-0">
+                                                    <h3 className={`text-sm ${index === 0 ? 'font-semibold text-ink-900' : 'font-medium text-ink-700'}`}>{checkpointLabels[checkpoint.checkpoint_type] ?? 'Parcel update'}</h3>
+                                                    <p className="mt-0.5 text-[13px] text-ink-600">{checkpoint.location_name}</p>
+                                                </div>
+                                                <time dateTime={checkpoint.created_at} className="mt-0.5 block shrink-0 text-xs tabular-nums text-ink-500 sm:mt-0">{formatDate(checkpoint.created_at)}</time>
+                                            </div>
                                         </li>
                                     ))}
                                 </ol>
                             )}
                         </section>
-
-                        <aside className="self-start rounded-lg border border-slate-300 bg-white p-5 sm:p-6" aria-labelledby="recipient-title">
-                            <h2 id="recipient-title" className="text-sm font-bold text-slate-900">Recipient</h2>
-                            <dl className="mt-4 space-y-3 text-sm"><div><dt className="text-xs text-slate-500">Name</dt><dd className="mt-1 font-semibold">{parcel.delivery_recipient_name}</dd></div><div><dt className="text-xs text-slate-500">Contact</dt><dd className="mt-1 font-semibold">{parcel.delivery_phone}</dd></div></dl>
-                            <p className="mt-4 border-t border-slate-300 pt-4 text-xs leading-relaxed text-slate-500">Open your account for full delivery details and receipt confirmation.</p>
-                        </aside>
-                    </div>
+                    </>
                 )}
-                {!parcel && !notFound && !validationMessage && <div className="py-8 text-center"><Package className="mx-auto h-8 w-8 text-slate-400" aria-hidden="true" /><p className="mt-3 text-sm text-slate-500">Your parcel milestones will appear here.</p></div>}
+
+                {!parcel && !notFound && !validationMessage && (
+                    <p className="text-sm text-ink-600">Your parcel's progress and history will appear here.</p>
+                )}
+
+                <p className="flex items-start gap-2 text-xs text-ink-600">
+                    <ShieldCheck className="mt-px h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span>Recipient details are partly hidden for privacy. Sign in to your account for full delivery details and to confirm receipt.</span>
+                </p>
             </main>
         </div>
     );
