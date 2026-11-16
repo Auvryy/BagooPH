@@ -558,12 +558,12 @@ class RiderCompanyOffersTest extends TestCase
         $this->assertSame('accepted', $this->request->fresh()->status);
         $this->assertDatabaseCount('rider_company_consents', 1);
         $this->assertSame($before, DB::table('notifications')->count());
-        $this->assertSame(3, NotificationDelivery::whereNull('delivered_at')->count());
+        $this->assertSame(4, NotificationDelivery::whereNull('delivered_at')->count());
         DB::unprepared('DROP TRIGGER rc02_notice_outage');
         $this->travel(2)->minutes();
         $this->artisan('notifications:deliver-pending')->assertSuccessful();
         $this->artisan('notifications:deliver-pending')->assertSuccessful();
-        $this->assertSame($before + 3, DB::table('notifications')->count());
+        $this->assertSame($before + 4, DB::table('notifications')->count());
         $retry = $this->offers->riderDecision($this->rider, $this->request->id, 'accepted', $input);
         $this->assertSame($first['recorded_at'], $retry['recorded_at']);
         $this->assertDatabaseCount('logistics_placement_records', 1);

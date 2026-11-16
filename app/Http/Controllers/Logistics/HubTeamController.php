@@ -39,24 +39,22 @@ class HubTeamController extends Controller
                 'is_you' => $handler->user_id === $user->id,
                 'invite_pending' => (bool) $handler->user->must_change_password,
             ]);
-        $riders = $hub->isBayanHub()
-            ? CourierProfile::where('assigned_hub_id', $hub->id)->where('logistics_company_id', $hub->logistics_company_id)
-                ->with('user:id,name,email,must_change_password')->orderBy('id')->get()->filter(fn ($profile) => $profile->user)->values()
-                ->map(fn (CourierProfile $profile) => [
-                    'id' => $profile->id,
-                    'name' => $profile->user->name,
-                    'email' => $profile->user->email,
-                    'on_duty' => (bool) $profile->is_available,
-                    'barangay' => $profile->assigned_barangay,
-                    'invite_pending' => (bool) $profile->user->must_change_password,
-                ])
-            : collect();
+        $riders = CourierProfile::where('assigned_hub_id', $hub->id)->where('logistics_company_id', $hub->logistics_company_id)
+            ->with('user:id,name,email,must_change_password')->orderBy('id')->get()->filter(fn ($profile) => $profile->user)->values()
+            ->map(fn (CourierProfile $profile) => [
+                'id' => $profile->id,
+                'name' => $profile->user->name,
+                'email' => $profile->user->email,
+                'on_duty' => (bool) $profile->is_available,
+                'barangay' => $profile->assigned_barangay,
+                'invite_pending' => (bool) $profile->user->must_change_password,
+            ]);
 
         return Inertia::render('Hub/Team', [
             'hub' => ['id' => $hub->id, 'name' => $hub->name, 'code' => $hub->code, 'is_bayan' => $hub->isBayanHub(), 'company_id' => $hub->logistics_company_id],
             'workers' => $workers,
             'riders' => $riders,
-            'riderIntake' => $hub->isBayanHub() ? app(RiderCompanyRequestService::class)->companyWorkspace($user, $request->query()) : null,
+            'riderIntake' => app(RiderCompanyRequestService::class)->companyWorkspace($user, $request->query()),
         ]);
     }
 

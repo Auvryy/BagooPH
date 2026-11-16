@@ -3,6 +3,7 @@
 namespace App\Services\Logistics;
 
 use App\Models\CourierProfile;
+use App\Models\HubHandler;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class RiderCompanyOfferService
@@ -32,6 +34,54 @@ class RiderCompanyOfferService
     {
         return $this->requests->available() && Schema::hasTable('rider_company_offers')
             && Schema::hasTable('rider_company_consents') && Schema::hasTable('rider_company_scope_changes') && Schema::hasColumn('logistics_placement_records', 'rider_company_consent_id');
+    }
+
+    public function invite(User $actor, array $input): array
+    {
+        $this->requireAvailable();
+        $data = $this->validate($input, ['email' => ['required', 'string', 'email', 'max:255'],
+            'hub_id' => ['required', $this->number()], 'vehicle_id' => ['nullable', $this->number()],
+            'barangay' => ['nullable', 'string', new ApplicationText('notes', 1, 255)],
+            'terms' => ['required', 'string', new ApplicationText('notes', 5, 2000)], 'request_token' => $this->token()],
+            ['email' => 255, 'terms' => 2000, 'barangay' => 255]);
+        $hub = LogisticsHub::eligible()->findOrFail($data['hub_id']);
+        abort_unless($this->requests->canReview($actor, $hub->logistics_company_id, $hub->id), 403);
+        $fingerprint = $this->fingerprint(['action' => 'invited', ...Arr::except($data, 'request_token')]);
+        // Exact-email invitations avoid exposing a directory of rider accounts.
+        $rider = User::where('role', 'courier')->whereRaw('LOWER(email) = ?', [mb_strtolower($data['email'])])->first();
+        if (! $rider || ! $rider->isEligibleCourier() || $rider->email_verified_at === null) {
+            throw ValidationException::withMessages(['email' => 'Enter the sign-in email of an approved rider account.']);
+        }
+        $this->expireForRider($rider);
+
+        return DB::transaction(function () use ($actor, $hub, $rider, $data, $fingerprint) {
+            $company = $this->requests->lock($hub->logistics_company_id, $rider->id);
+            CourierProfile::where('user_id', $rider->id)->lockForUpdate()->first();
+            if ($event = RiderCompanyRequestEvent::where('actor_id', $actor->id)->where('request_token', $data['request_token'])->first()) {
+                abort_unless($event->action === 'invited' && hash_equals($event->fingerprint, $fingerprint), 409, 'This submission key records another invitation.');
+
+                return [...$this->present(RiderCompanyRequest::findOrFail($event->rider_company_request_id)), 'replayed' => true];
+            }
+            $rider = $this->requests->rider($rider);
+            abort_unless($this->requests->canReview($actor, $company->id, $hub->id), 403);
+            abort_if($this->requests->applicationBlocker($rider, $rider->courierProfile), 409, 'This rider already has an assignment or needs reviewed rider information.');
+            abort_if(RiderCompanyRequest::where('rider_id', $rider->id)->whereIn('status', ['pending', 'offered'])->exists(), 409,
+                'This rider has an open application or invitation. Review it before sending another invitation.');
+            $request = RiderCompanyRequest::create(['reference' => 'RC-'.Str::ulid(), 'logistics_company_id' => $company->id,
+                'rider_id' => $rider->id, 'invited_by_id' => $actor->id, 'requested_hub_id' => $hub->id,
+                'request_token' => $data['request_token'], 'submission_fingerprint' => $fingerprint,
+                'intake_version' => $company->rider_intake_version,
+                'company_snapshot' => ['name' => $company->name, 'hub' => ['id' => (string) $hub->id, 'name' => $hub->name, 'code' => $hub->code]],
+                'profile_snapshot' => ['name' => $rider->name, 'email' => $rider->email, 'phone' => null, 'city' => null,
+                    'province' => null, 'vehicle_type' => null, 'approval_status' => $rider->kyc_status],
+                'sharing_acknowledged' => false, 'status' => 'pending', 'version' => 1, 'submitted_at' => now()]);
+            RiderCompanyRequestEvent::create(['rider_company_request_id' => $request->id, 'actor_id' => $actor->id,
+                'request_token' => $data['request_token'], 'fingerprint' => $fingerprint, 'action' => 'invited',
+                'request_version' => 1, 'result' => $this->requests->result($request), 'recorded_at' => $request->submitted_at]);
+
+            return $this->issue($actor, $request->id, ['expected_version' => 1, 'request_token' => (string) Str::uuid(),
+                'hub_id' => $hub->id, 'vehicle_id' => $data['vehicle_id'] ?? null, 'barangay' => $data['barangay'] ?? null, 'terms' => $data['terms']]);
+        });
     }
 
     public function issue(User $actor, mixed $requestId, array $input): array
@@ -49,9 +99,10 @@ class RiderCompanyOfferService
 
         return DB::transaction(function () use ($actor, $source, $data, $intent, $fingerprint) {
             [$company, $request] = $this->locked($source);
-            $reviewHub = $this->requests->hubReviewer($actor);
-            abort_unless($reviewHub && $reviewHub->logistics_company_id === $company->id && $reviewHub->id === $intent['hub_id'], 403,
-                'Offer work only at the child hub you run.');
+            abort_unless($this->requests->canReview($actor, $company->id, $intent['hub_id']), 403,
+                'Offer work only at a hub you manage.');
+            abort_if($request->requested_hub_id && $request->requested_hub_id !== $intent['hub_id'], 403,
+                'This application is for another hub.');
             if ($receipt = $this->replay($actor, $request, $data['request_token'], $fingerprint)) {
                 return $receipt;
             }
@@ -90,9 +141,8 @@ class RiderCompanyOfferService
 
         return DB::transaction(function () use ($actor, $source, $action, $data, $fingerprint) {
             [$company, $request] = $this->locked($source);
-            $reviewHub = $this->requests->hubReviewer($actor);
-            abort_unless($reviewHub && $reviewHub->logistics_company_id === $company->id
-                && ($action === 'rejected' || $request->currentOffer?->hub_id === $reviewHub->id), 403);
+            abort_unless($this->requests->canReview($actor, $company->id,
+                $request->currentOffer?->hub_id ?? $request->requested_hub_id), 403);
             if ($receipt = $this->replay($actor, $request, $data['request_token'], $fingerprint)) {
                 return $receipt;
             }
@@ -153,7 +203,7 @@ class RiderCompanyOfferService
             $event = $this->transition($request, $rider, 'accepted', $data['request_token'], $fingerprint, $offer, null, $consent->accepted_at);
             // Recheck authorization after every required writer, including the outbox.
             $this->requests->rider($rider);
-            abort_unless($this->requests->hubReviewer(User::findOrFail($offer->issuer_id))?->id === $offer->hub_id, 409, 'Company eligibility changed while accepting.');
+            abort_unless($this->requests->canReview(User::findOrFail($offer->issuer_id), $request->logistics_company_id, $offer->hub_id), 409, 'Company eligibility changed while accepting.');
             $profile = CourierProfile::where('user_id', $rider->id)->firstOrFail();
             try {
                 app(LogisticsEligibilityService::class)->assertCourierScope($profile, $request->logistics_company_id, $offer->hub_id);
@@ -211,11 +261,12 @@ class RiderCompanyOfferService
 
     private function companyRequest(User $actor, mixed $id): RiderCompanyRequest
     {
-        $reviewHub = $this->requests->hubReviewer($actor);
-        abort_unless($reviewHub, 403, 'Rider applications are handled by the child hub that will employ the rider.');
         Validator::make(['request_id' => $id], ['request_id' => ['required', $this->number()]])->validate();
+        $request = RiderCompanyRequest::findOrFail($id);
+        abort_unless($this->requests->canReview($actor, $request->logistics_company_id,
+            $request->currentOffer?->hub_id ?? $request->requested_hub_id), 403);
 
-        return RiderCompanyRequest::whereKey($id)->where('logistics_company_id', $reviewHub->logistics_company_id)->firstOrFail();
+        return $request;
     }
 
     private function locked(RiderCompanyRequest $source): array
@@ -241,8 +292,8 @@ class RiderCompanyOfferService
     private function assertIntent(RiderCompanyRequest $request, int $hubId, ?int $vehicleId, ?string $barangay): void
     {
         $company = LogisticsCompany::findOrFail($request->logistics_company_id);
-        abort_unless($this->requests->companyOwner(User::findOrFail($company->user_id)) && $company->rider_intake_enabled
-            && $this->requests->intakeRecorded($company), 409, 'The company is not accepting assignments.');
+        abort_unless($this->requests->companyOwner(User::findOrFail($company->user_id)) && ($request->invited_by_id !== null || ($company->rider_intake_enabled
+            && $this->requests->intakeRecorded($company))), 409, 'The company is not accepting assignments.');
         $rider = $this->requests->rider(User::findOrFail($request->rider_id));
         abort_if($this->requests->applicationBlocker($rider, $rider->courierProfile) !== null, 409,
             'The rider is no longer available for a first company assignment.');
@@ -470,12 +521,19 @@ class RiderCompanyOfferService
         $request = RiderCompanyRequest::findOrFail($event->rider_company_request_id);
         $ownerId = LogisticsCompany::whereKey($request->logistics_company_id)->value('user_id');
         $title = match ($event->action) {
-            'submitted' => 'A rider company request was submitted', 'offered' => 'A company assignment offer is ready',
+            'submitted' => 'A rider hub application was submitted', 'offered' => 'A company assignment offer is ready',
             'accepted' => 'The rider accepted the company assignment', 'rejected' => 'The company request was declined',
             'declined' => 'The rider declined the assignment offer', 'cancelled' => 'The company withdrew its assignment offer',
             'withdrawn' => 'The rider withdrew the company request', 'expired' => 'The company assignment offer expired',
         };
-        foreach ([$request->rider_id => 'rider-company-assignment', $ownerId => 'company-rider-requests'] as $id => $target) {
+        $targets = [$request->rider_id => 'rider-company-assignment', $ownerId => 'company-rider-requests'];
+        $hubId = $request->currentOffer?->hub_id ?? $request->requested_hub_id;
+        if ($hubId) {
+            foreach (HubHandler::eligible()->where('hub_id', $hubId)->where(fn ($q) => $q->where('job_role', 'all')->orWhereNull('job_role'))->pluck('user_id') as $operatorId) {
+                $targets[$operatorId] = 'company-rider-requests';
+            }
+        }
+        foreach ($targets as $id => $target) {
             if (! $id) {
                 continue;
             }

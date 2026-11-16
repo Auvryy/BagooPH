@@ -6,11 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Rules\RegistrationDocument;
 use App\Services\AccountRegistrationService;
+use App\Services\AccountReviewService;
 use App\Services\ApplicationValidationService;
 use App\Services\BirthDateEligibility;
 use App\Services\BuyerAccessService;
-use App\Services\AccountReviewService;
 use App\Services\KycSubmissionService;
+use App\Services\Logistics\RiderCompanyRequestService;
 use App\Services\MasterCategoryService;
 use App\Services\RegistrationPolicyService;
 use App\Services\VerificationDocumentService;
@@ -48,7 +49,7 @@ class RegisteredUserController extends Controller
      */
     public function createCourier(): Response
     {
-        return Inertia::render('Auth/CourierRegister', ['birthDateLimits' => app(BirthDateEligibility::class)->limits(), 'policies' => app(RegistrationPolicyService::class)->contract()]);
+        return Inertia::render('Auth/CourierRegister', ['hiringHubs' => app(RiderCompanyRequestService::class)->registrationHubs(), 'birthDateLimits' => app(BirthDateEligibility::class)->limits(), 'policies' => app(RegistrationPolicyService::class)->contract()]);
     }
 
     /**

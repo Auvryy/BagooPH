@@ -119,6 +119,7 @@ export function registrationInputErrors(data: Record<string, unknown>, limits: B
         if (!['Motorcycle', 'Scooter', 'Sedan / Van'].includes(value('vehicle_type'))) errors.vehicle_type = 'Choose an available vehicle.';
         add('plate_number', plateNumberError(value('plate_number'), value('vehicle_type')));
         add('license_number', licenseNumberError(value('license_number')));
+        if (value('requested_hub_id') && data.hub_sharing_acknowledged !== true) errors.hub_sharing_acknowledged = 'Agree to share your profile with the selected hub, or choose after account approval.';
     }
     if (role === 'logistics') {
         if (checking(1)) {

@@ -68,7 +68,7 @@ class RiderCompanyRequestService
             $companies->whereHas('hubs', fn ($hub) => $hub->eligible()->where('province', $filters['company_province']));
         }
         $companies->with(['hubs' => fn ($hub) => $hub->eligible()->orderBy('province')->orderBy('city_municipality')->orderBy('id')
-            ->select('id', 'logistics_company_id', 'province', 'city_municipality')]);
+            ->select('id', 'name', 'code', 'tier', 'logistics_company_id', 'province', 'city_municipality')]);
         $links = ['tab' => 'assignment', ...$filters];
         $companyPage = $this->paginate($companies->orderBy('name')->orderBy('id'), 'company_page', $filters['company_page'], $links)
             ->through(fn (LogisticsCompany $company) => $this->companySummary($company));
@@ -104,6 +104,7 @@ class RiderCompanyRequestService
         $hubId = $query['hub_id'] ?? null;
         $links = (is_int($hubId) || is_string($hubId)) && preg_match('/\A[1-9][0-9]*\z/', (string) $hubId) ? ['hub_id' => $hubId] : [];
         $pending = $this->paginate(RiderCompanyRequest::where('logistics_company_id', $company->id)
+            ->when($reviewHub, fn ($q) => $q->where(fn ($scope) => $scope->where('requested_hub_id', $reviewHub->id)->orWhereNull('requested_hub_id')))
             ->with(['events', 'rider.courierProfile'])->orderByDesc('id'), 'rider_request_page', (int) $page, $links)
             ->through(fn ($request) => [...app(RiderCompanyOfferService::class)->present($request), 'rider_eligible' => $request->rider !== null
                 && $request->rider->isEligibleCourier() && $request->rider->email_verified_at !== null
@@ -112,9 +113,60 @@ class RiderCompanyRequestService
         return ['available' => true, 'enabled' => (bool) $company->rider_intake_enabled, 'version' => $company->rider_intake_version,
             'history_available' => $this->intakeRecorded($company), 'has_eligible_hub' => $company->hubs()->eligible()->exists(),
             'request_token' => (string) Str::uuid(), 'requests' => $pending,
-            // The child hub that will employ the rider decides; the company owner only watches and sets intake.
-            'can_decide' => $reviewHub !== null, 'can_change_intake' => $owner, 'review_hub_id' => $reviewHub ? (string) $reviewHub->id : null,
+            // Hub operators review their own hub; owners may review across their company.
+            'can_decide' => $reviewHub !== null || $owner, 'can_change_intake' => $owner, 'review_hub_id' => $reviewHub ? (string) $reviewHub->id : null,
             ...app(RiderCompanyOfferService::class)->companyChoices($company, $query, $links, $reviewHub?->id)];
+    }
+
+    public function canReview(User $actor, int $companyId, ?int $hubId = null): bool
+    {
+        if ($this->companyOwner($actor) && app(LogisticsEligibilityService::class)->isCompanyManager($actor, $companyId)) {
+            return $hubId === null || LogisticsHub::eligible()->where('logistics_company_id', $companyId)->whereKey($hubId)->exists();
+        }
+        $hub = $this->hubReviewer($actor);
+
+        return $hub && $hub->logistics_company_id === $companyId && ($hubId === null || $hub->id === $hubId);
+    }
+
+    public function registrationHubs(): array
+    {
+        if (! $this->available() || ! Schema::hasColumn('rider_company_requests', 'requested_hub_id')) {
+            return [];
+        }
+
+        return LogisticsHub::eligible()->whereIn('logistics_company_id', $this->directory()->select('logistics_companies.id'))
+            ->with('company')->orderBy('name')->get()->map(fn ($hub) => [
+                'id' => (string) $hub->id, 'name' => $hub->name, 'company' => $hub->company->name,
+                'tier' => $hub->tier,
+            ])->all();
+    }
+
+    public function registrationApplication(User $rider, int $hubId): void
+    {
+        $hub = LogisticsHub::eligible()->find($hubId);
+        abort_unless($hub, 409, 'This hub is no longer accepting applications.');
+        $company = $this->lock($hub->logistics_company_id, $rider->id);
+        abort_unless($this->directory()->whereKey($company->id)->exists(), 409, 'This company is no longer accepting applications.');
+        $data = ['request_token' => (string) Str::uuid()];
+        $fingerprint = $this->fingerprint(['registration' => $rider->id, 'hub_id' => $hubId, 'sharing_acknowledged' => true]);
+        $request = $this->createApplication($rider, $company, $rider->courierProfile, $data, $fingerprint, $hub);
+        $this->present($request);
+        app(RiderCompanyOfferService::class)->notice($request->events()->firstOrFail());
+    }
+
+    private function createApplication(User $rider, LogisticsCompany $company, ?CourierProfile $profile, array $data, string $fingerprint, ?LogisticsHub $hub): RiderCompanyRequest
+    {
+        $request = RiderCompanyRequest::create(['reference' => 'RC-'.Str::ulid(), 'logistics_company_id' => $company->id,
+            'rider_id' => $rider->id, 'request_token' => $data['request_token'], 'submission_fingerprint' => $fingerprint,
+            'requested_hub_id' => $hub?->id, 'intake_version' => $company->rider_intake_version,
+            'company_snapshot' => ['name' => $company->name, ...($hub ? ['hub' => ['id' => (string) $hub->id, 'name' => $hub->name, 'code' => $hub->code]] : [])],
+            'profile_snapshot' => $this->profileSummary($rider, $profile), 'note' => $data['note'] ?? null,
+            'sharing_acknowledged' => true, 'status' => 'pending', 'version' => 1, 'submitted_at' => now()]);
+        RiderCompanyRequestEvent::create(['rider_company_request_id' => $request->id, 'actor_id' => $rider->id,
+            'request_token' => $data['request_token'], 'fingerprint' => $fingerprint, 'action' => 'submitted',
+            'request_version' => 1, 'result' => $this->result($request), 'recorded_at' => $request->submitted_at]);
+
+        return $request;
     }
 
     public function changeIntake(User $actor, array $input): array
@@ -154,11 +206,11 @@ class RiderCompanyRequestService
     public function submit(User $actor, array $input): array
     {
         $this->requireAvailable();
-        $data = $this->validate($input, ['company_id' => ['required', $this->number()], 'intake_version' => ['required', $this->number()],
+        $data = $this->validate($input, ['company_id' => ['required', $this->number()], 'requested_hub_id' => ['nullable', $this->number()], 'intake_version' => ['required', $this->number()],
             'sharing_acknowledged' => ['required', 'boolean', 'accepted'], 'note' => ['nullable', 'string', new ApplicationText('notes', 5, 500)],
             'request_token' => $this->token()], ['note' => 500]);
         $fingerprint = $this->fingerprint(['action' => 'submitted', 'company_id' => (int) $data['company_id'],
-            'intake_version' => (int) $data['intake_version'], 'sharing_acknowledged' => true, 'note' => $data['note'] ?? null]);
+            'intake_version' => (int) $data['intake_version'], 'sharing_acknowledged' => true, 'note' => $data['note'] ?? null, ...(isset($data['requested_hub_id']) ? ['requested_hub_id' => (int) $data['requested_hub_id']] : [])]);
         $this->rider($actor);
         app(RiderCompanyOfferService::class)->expireForRider($actor);
 
@@ -175,15 +227,10 @@ class RiderCompanyRequestService
             abort_unless($company->rider_intake_version === (int) $data['intake_version'], 409, 'Company intake changed. Refresh the company before applying.');
             abort_if(RiderCompanyRequest::where('rider_id', $rider->id)->whereIn('status', ['pending', 'offered'])->exists(), 409,
                 'You already have an open company request. Withdraw it before choosing another company.');
-            $request = RiderCompanyRequest::create(['reference' => 'RC-'.Str::ulid(), 'logistics_company_id' => $company->id,
-                'rider_id' => $rider->id, 'request_token' => $data['request_token'], 'submission_fingerprint' => $fingerprint,
-                'intake_version' => $company->rider_intake_version, 'company_snapshot' => ['name' => $company->name],
-                'profile_snapshot' => $this->profileSummary($rider, $profile), 'note' => $data['note'] ?? null,
-                'sharing_acknowledged' => true, 'status' => 'pending', 'version' => 1, 'submitted_at' => now()]);
+            $hub = isset($data['requested_hub_id']) ? LogisticsHub::eligible()->where('logistics_company_id', $company->id)->find($data['requested_hub_id']) : null;
+            abort_if(isset($data['requested_hub_id']) && ! $hub, 409, 'Choose an available hub in this company.');
+            $request = $this->createApplication($rider, $company, $profile, $data, $fingerprint, $hub);
             $result = $this->result($request);
-            RiderCompanyRequestEvent::create(['rider_company_request_id' => $request->id, 'actor_id' => $rider->id,
-                'request_token' => $data['request_token'], 'fingerprint' => $fingerprint, 'action' => 'submitted',
-                'request_version' => 1, 'result' => $result, 'recorded_at' => $request->submitted_at]);
             $rider = $this->rider($rider);
             abort_if($this->applicationBlocker($rider, $profile?->fresh()) !== null, 409, 'Rider eligibility changed while saving the request.');
             abort_unless($this->directory()->whereKey($company->id)->exists(), 409, 'Company intake is no longer available.');
@@ -210,7 +257,7 @@ class RiderCompanyRequestService
         $original['version'] = 1;
         $original['withdrawn_at'] = null;
         $created = $events->first();
-        $valid = $created && $created->action === 'submitted' && $created->actor_id === $request->rider_id
+        $valid = $created && $created->action === ($request->invited_by_id ? 'invited' : 'submitted') && $created->actor_id === ($request->invited_by_id ?? $request->rider_id)
             && $created->request_version === 1 && $created->request_token === $request->request_token
             && hash_equals($created->fingerprint, $request->submission_fingerprint)
             && $created->recorded_at->equalTo($request->submitted_at)
@@ -243,6 +290,8 @@ class RiderCompanyRequestService
     {
         return ['id' => (string) $request->id, 'reference' => $request->reference,
             'company' => ['id' => (string) $request->logistics_company_id, 'name' => $request->company_snapshot['name']],
+            ...($request->requested_hub_id ? ['requested_hub' => $request->company_snapshot['hub']] : []),
+            ...($request->invited_by_id ? ['invited' => true] : []),
             'status' => $request->status, 'version' => $request->version, 'note' => $request->note,
             'sharing_acknowledged' => $request->sharing_acknowledged, 'shared_profile' => array_intersect_key($request->profile_snapshot,
                 array_fill_keys(['name', 'email', 'phone', 'city', 'province', 'vehicle_type', 'approval_status'], true)),
@@ -265,7 +314,7 @@ class RiderCompanyRequestService
         }
 
         return ['id' => (string) $company->id, 'name' => $company->name, 'logo' => $logo,
-            'intake_version' => $company->rider_intake_version, 'areas' => $company->hubs->map(fn ($hub) => [
+            'intake_version' => $company->rider_intake_version, 'hubs' => $company->hubs->map(fn ($hub) => ['id' => (string) $hub->id, 'name' => $hub->name, 'code' => $hub->code, 'tier' => $hub->tier])->values()->all(), 'areas' => $company->hubs->map(fn ($hub) => [
                 'province' => $hub->province, 'city' => $hub->city_municipality,
             ])->unique(fn ($area) => json_encode($area))->values()->all()];
     }
@@ -308,7 +357,7 @@ class RiderCompanyRequestService
         return $rider;
     }
 
-    /** The child (Bayan) hub whose full-access operator reviews rider applications and offers work at that hub. */
+    /** Full-access operators review applications for their own facility at either tier. */
     public function hubReviewer(User $actor): ?LogisticsHub
     {
         $operator = User::find($actor->id);
@@ -317,7 +366,7 @@ class RiderCompanyRequestService
         }
         $hub = app(LogisticsEligibilityService::class)->teamHub($operator);
 
-        return $hub?->isBayanHub() ? $hub : null;
+        return $hub;
     }
 
     public function companyOwner(User $actor): bool

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Rules\MiddleInitial;
 use App\Rules\RegistrationDocument;
 use App\Rules\UniqueAccountEmail;
+use App\Services\Logistics\RiderCompanyRequestService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 
@@ -100,6 +102,10 @@ class AccountRegistrationService
         if ($role === 'buyer') {
             $rules = app(RegistrationDeliveryPinService::class)->addRules($rules);
         }
+        if ($role === 'courier') {
+            $rules['requested_hub_id'] = ['nullable', 'integer', Rule::in(array_column(app(RiderCompanyRequestService::class)->registrationHubs(), 'id'))];
+            $rules['hub_sharing_acknowledged'] = ['exclude_without:requested_hub_id', 'required', 'boolean', 'accepted'];
+        }
         if ($role === 'seller') {
             $rules['pickup_latitude'] = ['bail', 'nullable', 'required_with:pickup_longitude', 'numeric', 'regex:/\A-?[0-9]+(?:\.[0-9]{1,7})?\z/', 'between:-90,90'];
             $rules['pickup_longitude'] = ['bail', 'nullable', 'required_with:pickup_latitude', 'numeric', 'regex:/\A-?[0-9]+(?:\.[0-9]{1,7})?\z/', 'between:-180,180'];
@@ -152,7 +158,7 @@ class AccountRegistrationService
             ],
             'courier' => [
                 [...$name, 'birthday', 'email', 'phone', ...$location],
-                ['vehicle_type', 'plate_number', 'license_number'],
+                ['vehicle_type', 'plate_number', 'license_number', 'requested_hub_id', 'hub_sharing_acknowledged'],
                 [...$password, 'id_document', 'driver_license', 'or_cr_document', ...$policies],
             ],
             'logistics' => [
@@ -231,6 +237,9 @@ class AccountRegistrationService
                 $account['email_verified_at'] = $verified ? now() : null;
 
                 $user = app(ApplicationRegistrationService::class)->register($account + ['_franchise_path' => $franchisePath], $validated);
+                if ($user->isCourier() && ! empty($validated['requested_hub_id'])) {
+                    app(RiderCompanyRequestService::class)->registrationApplication($user, (int) $validated['requested_hub_id']);
+                }
                 app(RegistrationPolicyService::class)->record($user, $requireVerifiedEmail ? 'native' : 'web');
 
                 return $user;

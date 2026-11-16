@@ -11,6 +11,12 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class RiderCompanyOfferController extends Controller
 {
+    public function invite(Request $request, RiderCompanyOfferService $service): JsonResponse|RedirectResponse
+    {
+        return $this->command($request, fn () => $service->invite($request->user(), $request->except('_token', '_method')),
+            'Invitation sent. The rider must accept before joining your hub.');
+    }
+
     public function store(Request $request, string $companyRequest, RiderCompanyOfferService $service): JsonResponse|RedirectResponse
     {
         return $this->command($request, fn () => $service->issue($request->user(), $companyRequest, $request->except('_token', '_method')),
