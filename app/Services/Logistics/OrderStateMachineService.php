@@ -334,6 +334,7 @@ class OrderStateMachineService
             self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT => ['kind' => 'manifest',
                 'manifest_id' => $transport->manifest_id, 'manifest_reference' => $transport->manifest->reference,
                 'vehicle_id' => $transport->manifest->vehicle_id, 'driver_id' => $transport->manifest->driver_id,
+                ...($transport->manifest->transport_driver_id ? ['transport_driver_id' => $transport->manifest->transport_driver_id, 'transport_driver_name' => $transport->manifest->transport_driver_name] : []),
                 'manifest_scan_reference' => $transport->reference, 'source_scan_reference' => $transport->payload['source_scan_reference']],
             self::STATUS_OUT_FOR_DELIVERY => $barcode ? ['kind' => 'courier', 'user_id' => $actor->id] : ['kind' => 'unknown', 'reason' => 'Final-mile handoff lacks a submitted waybill.'],
             self::STATUS_DELIVERED => $barcode ? ['kind' => 'buyer', 'user_id' => $delivery->order->buyer_id] : ['kind' => 'unknown', 'reason' => 'Recipient handoff lacks a submitted waybill.'],
@@ -351,7 +352,7 @@ class OrderStateMachineService
         $departure = in_array($status, [self::STATUS_IN_TRANSIT_TO_MOTHER_HUB, self::STATUS_IN_TRANSIT_TO_DEST_HUB, self::STATUS_RETURN_IN_TRANSIT], true);
         $manifest = $scan?->manifest;
         if ($manifest) {
-            app(ParcelCustodyGuard::class)->independentTransport($actor, $manifest->driver_id);
+            app(ParcelCustodyGuard::class)->independentTransport($actor, $manifest->driver_id, $manifest->transport_driver_id);
         }
         if (! $scan || ! $manifest || $scan->event_type !== ($departure ? 'parcel_dispatched' : 'parcel_received')
             || $scan->actor_id !== $actor->id || $scan->hub_id !== $hub?->id || $scan->parcel?->delivery_id !== $delivery->id

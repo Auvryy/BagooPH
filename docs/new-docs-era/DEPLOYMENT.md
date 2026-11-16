@@ -4,6 +4,12 @@ Deploy the complete branch together. Its controllers, quote fields, bagging scre
 
 ## Existing installation
 
+The account-free transport-driver release also requires
+`2026_11_17_180000_add_company_transport_drivers`. Keep the site in maintenance
+while updating code and running `./bagoo.sh deploy`; it applies this additive
+migration automatically. A missing `logistics_transport_drivers` table means
+that migration has not run. Run `./bagoo.sh verify` before reopening the site.
+
 1. Take the normal database and private-upload backup.
 2. Install the reviewed branch through the existing Docker deployment process (`./bagoo.sh deploy`). Apply pending migrations with `php artisan migrate --force` inside the application container, then clear/rebuild the application caches and frontend assets.
 3. Keep the scheduler running. `wallet:release-delivered` retries automatic virtual proceeds after legitimate account/return blockers clear; the existing payment-expiry, pickup-holding and notification jobs remain necessary.

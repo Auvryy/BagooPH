@@ -73,11 +73,21 @@ class LogisticsManifest extends Model
     {
         static::creating(fn (self $manifest) => $manifest->reference = 'MFT-'.strtoupper((string) Str::uuid()));
         static::updating(function (self $manifest) {
-            if ($manifest->isDirty(['reference', 'logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'created_by_id', 'creation_token', 'creation_fingerprint', 'type', 'direction', 'created_at', 'parcel_recovery_case_id', 'recovery_leg_index'])) {
+            if ($manifest->isDirty(['reference', 'logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'transport_driver_id', 'transport_driver_name', 'created_by_id', 'creation_token', 'creation_fingerprint', 'type', 'direction', 'created_at', 'parcel_recovery_case_id', 'recovery_leg_index'])) {
                 throw new LogicException('Manifest identity must be retained.');
             }
         });
         static::deleting(fn () => throw new LogicException('Manifest history must be retained.'));
+    }
+
+    public function transportDriver(): BelongsTo
+    {
+        return $this->belongsTo(LogisticsTransportDriver::class, 'transport_driver_id');
+    }
+
+    public function driverName(): string
+    {
+        return $this->transport_driver_name ?? $this->driver?->name ?? 'Unassigned driver';
     }
 
     public function company(): BelongsTo
@@ -175,6 +185,6 @@ class LogisticsManifest extends Model
 
     public function state(): array
     {
-        return $this->only(['id', 'reference', 'logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'direction', 'status', 'version', 'sealed_at', 'dispatched_at', 'received_at', 'closed_at', 'dispatcher_id', 'receiver_id']);
+        return ($this->transport_driver_id ? $this->only(['transport_driver_id', 'transport_driver_name']) : []) + $this->only(['id', 'reference', 'logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'direction', 'status', 'version', 'sealed_at', 'dispatched_at', 'received_at', 'closed_at', 'dispatcher_id', 'receiver_id']);
     }
 }

@@ -202,6 +202,7 @@ class WholeTransportLossService
                     'manifest_id' => $manifest->id,
                     'actor_id' => $actor->id,
                     'driver_id' => $manifest->driver_id,
+                    'transport_driver_id' => $manifest->transport_driver_id, 'transport_driver_name' => $manifest->transport_driver_name,
                     'vehicle_id' => $manifest->vehicle_id,
                     'manifest_version' => $manifest->version,
                     'trip_version' => $trip?->version,

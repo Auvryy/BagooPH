@@ -59,7 +59,7 @@ class MotherBagController extends Controller
             ]),
             'manifests' => LogisticsManifest::whereIn('source_hub_id', $stations->pluck('id'))->where('status', 'draft')
                 ->with(['vehicle', 'driver'])->get()->map(fn ($manifest) => $manifest->only(['id', 'reference', 'source_hub_id', 'destination_hub_id'])
-                    + ['vehicle_plate' => $manifest->vehicle?->plate_number, 'driver_name' => $manifest->driver?->name]),
+                    + ['vehicle_plate' => $manifest->vehicle?->plate_number, 'driver_name' => $manifest->driverName()]),
             'dispatchVehicles' => $selected && $selected->source ? MotherBagService::dispatchVehicles($selected->source, $selected->destination) : [],
             'packingAvailable' => $handling->available(), 'packingToken' => (string) Str::uuid(), 'commandToken' => (string) Str::uuid(),
             'creationToken' => (string) Str::uuid(), 'basePath' => $request->is('hub/*') ? '/hub/mother-bags' : '/mother-bags',

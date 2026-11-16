@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Logistics;
 use App\Http\Controllers\Concerns\EncryptsSensitiveHistory;
 use App\Http\Controllers\Controller;
 use App\Models\BuyerReturnParcel;
-use App\Models\Delivery;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifest;
@@ -105,7 +104,7 @@ class LogisticsManifestController extends Controller
                         ]),
                     ] + app(BuyerReturnBagService::class)->presentation($shared);
                 } elseif ($selected->status === 'sealed' && $this->service->handlesCargoAtHub($actor, $source)) {
-                    $tripCandidates = $query->clone()->where($selected->only(['logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id']))
+                    $tripCandidates = $query->clone()->where($selected->only(['logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'transport_driver_id']))
                         ->where('status', 'sealed')->whereIn('direction', ['outbound', 'return', 'buyer_return'])
                         ->whereNotIn('id', DB::table('logistics_trip_manifests')->whereNotNull('active_manifest_id')->select('manifest_id'))
                         ->orderBy('id')->limit(100)->get(['id', 'reference', 'direction']);
@@ -184,11 +183,9 @@ class LogisticsManifestController extends Controller
             'hubs' => LogisticsHub::eligible()->whereIn('logistics_company_id', $companyIds)->orderBy('name')->get(['id', 'name', 'code', 'tier', 'logistics_company_id', 'parent_hub_id', 'latitude', 'longitude', 'address', 'city_municipality', 'province']),
             'sourceHubIds' => $sourceHubIds,
             'preparationRoute' => $preparationRoute,
-            'vehicles' => $sourceHubs->isNotEmpty() ? LogisticsFleet::ready()->whereIn('vehicle_type', ['l300_van', 'wing_truck'])->whereIn('logistics_company_id', $companyIds)->whereIn('hub_id', $sourceHubIds)->whereNotNull('assigned_driver_id')
-                ->whereHas('driver.courierProfile', fn ($profile) => $profile->operational()->where('is_available', true))
-                ->whereNotIn('assigned_driver_id', LogisticsManifest::awaitingPhysicalReceipt()->select('driver_id'))
-                ->with('driver')->orderBy('plate_number')->get()->reject(fn ($fleet) => Delivery::riderHasActiveWork($fleet->assigned_driver_id))->values()->map(fn ($fleet) => ['id' => $fleet->id, 'hub_id' => $fleet->hub_id,
-                    'plate_number' => $fleet->plate_number, 'vehicle_type' => $fleet->vehicle_type, 'driver_name' => $fleet->driver->name, 'capacity_kg' => $fleet->capacity_kg]) : [],
+            'vehicles' => $sourceHubs->isNotEmpty() ? LogisticsFleet::dispatchReady()->whereIn('vehicle_type', ['l300_van', 'wing_truck'])->whereIn('logistics_company_id', $companyIds)->whereIn('hub_id', $sourceHubIds)
+                ->with('driver')->orderBy('plate_number')->get()->reject(fn ($fleet) => $fleet->hasBusyCourier())->values()->map(fn ($fleet) => ['id' => $fleet->id, 'hub_id' => $fleet->hub_id,
+                    'plate_number' => $fleet->plate_number, 'vehicle_type' => $fleet->vehicle_type, 'driver_name' => $fleet->driverName(), 'capacity_kg' => $fleet->capacity_kg]) : [],
             'basePath' => $request->is('hub/*') ? '/hub/manifests' : '/manifests',
         ]);
     }
@@ -314,7 +311,7 @@ class LogisticsManifestController extends Controller
             'receiptCounts' => $this->service->receiptCounts($manifest),
             'source' => $manifest->sourceHub->only(['id', 'name', 'code', 'tier', 'latitude', 'longitude', 'city_municipality', 'province']),
             'destination' => $manifest->destinationHub->only(['id', 'name', 'code', 'tier', 'latitude', 'longitude', 'city_municipality', 'province']),
-            'vehicle_plate' => $manifest->vehicle->plate_number, 'driver_name' => $manifest->driver->name,
+            'vehicle_plate' => $manifest->vehicle->plate_number, 'driver_name' => $manifest->driverName(),
             'recoveryUrl' => $manifest->parcel_recovery_case_id
                 ? (request()->is('hub/*') ? '/hub' : '').'/parcel-recovery/'.$manifest->recoveryCase->observation_event_id : null];
     }

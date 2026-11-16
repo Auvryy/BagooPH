@@ -168,17 +168,23 @@ class HubHandoverRecoveryService
             $vehicle = $manifest->vehicle;
             $profile = CourierProfile::where('user_id', $manifest->driver_id)->first();
             $driver = $manifest->driver;
-            abort_unless($driver?->isCourier() && ! $driver->closed_at && $driver->email_verified_at && $driver->isKycApproved()
+            $validTransportDriver = $manifest->transport_driver_id && $vehicle
+                && $vehicle->transport_driver_id === $manifest->transport_driver_id && $vehicle->assigned_driver_id === null
+                && $manifest->transportDriver?->logistics_company_id === $parcel->logistics_company_id
+                && $vehicle->hub_id === $manifest->source_hub_id && $vehicle->logistics_company_id === $parcel->logistics_company_id
+                && $vehicle->vehicle_type === ($manifest->type === 'line_haul' ? 'wing_truck' : 'l300_van');
+            abort_unless($validTransportDriver || ($driver?->isCourier() && ! $driver->closed_at && $driver->email_verified_at && $driver->isKycApproved()
                 && $driver->hasEligibleBirthDate() && in_array($driver->status, ['active', 'inactive', 'suspended'], true)
                 && $vehicle && $profile && $profile->logistics_company_id === $parcel->logistics_company_id
                 && $vehicle->logistics_company_id === $parcel->logistics_company_id
                 && $vehicle->hub_id === $manifest->source_hub_id && $vehicle->assigned_driver_id === $manifest->driver_id
                 && $profile->vehicle_id === $vehicle->id && $profile->assigned_hub_id === $manifest->source_hub_id
                 && $vehicle->vehicle_type === ($manifest->type === 'line_haul' ? 'wing_truck' : 'l300_van')
-                && $manifest->type === ($manifest->sourceHub->isMotherHub() && $manifest->destinationHub->isMotherHub() ? 'line_haul' : 'feeder'), 409,
-                'Retain the original responsible driver and correct vehicle; do not guess a replacement transport.');
+                && $manifest->type === ($manifest->sourceHub->isMotherHub() && $manifest->destinationHub->isMotherHub() ? 'line_haul' : 'feeder')), 409,
+                'Retain the original named driver and vehicle rather than guessing a replacement.');
             $context += ['hub_id' => $manifest->destination_hub_id, 'holder_hub_id' => $manifest->source_hub_id,
                 'handler_hub_id' => $manifest->destination_hub_id, 'driver_id' => $manifest->driver_id,
+                ...($manifest->transport_driver_id ? ['transport_driver_id' => $manifest->transport_driver_id, 'transport_driver_name' => $manifest->transport_driver_name] : []),
                 'member_id' => $member?->id, 'manifest' => $this->manifestSnapshot($manifest), 'route' => $route];
         } else {
             abort_unless($mode === 'hub_existing', 422);

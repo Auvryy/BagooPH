@@ -392,15 +392,12 @@ class MotherBagService
         // Feeder runs use a closed van and Mother-to-Mother line-haul a wing truck; pickup bikes never carry bags.
         $types = $destination ? [app(LogisticsManifestService::class)->legType($hub, $destination) === 'line_haul' ? 'wing_truck' : 'l300_van'] : ['l300_van', 'wing_truck'];
 
-        return LogisticsFleet::ready()->where('logistics_company_id', $hub->logistics_company_id)->where('hub_id', $hub->id)->whereIn('vehicle_type', $types)
-            ->whereNotNull('assigned_driver_id')
-            ->whereHas('driver.courierProfile', fn ($profile) => $profile->operational()->where('is_available', true))
-            ->whereNotIn('assigned_driver_id', LogisticsManifest::awaitingPhysicalReceipt()->select('driver_id'))
+        return LogisticsFleet::dispatchReady()->where('logistics_company_id', $hub->logistics_company_id)->where('hub_id', $hub->id)->whereIn('vehicle_type', $types)
             ->whereNotIn('id', LogisticsManifest::awaitingPhysicalReceipt()->whereNotNull('vehicle_id')->select('vehicle_id'))
             ->with('driver:id,name')->orderBy('plate_number')->get()
-            ->reject(fn ($vehicle) => Delivery::riderHasActiveWork($vehicle->assigned_driver_id))
+            ->reject(fn ($vehicle) => $vehicle->hasBusyCourier())
             ->map(fn (LogisticsFleet $vehicle) => ['id' => $vehicle->id, 'hub_id' => $vehicle->hub_id, 'plate' => $vehicle->plate_number,
-                'type' => $vehicle->vehicle_type, 'driver' => $vehicle->driver?->name])->values()->all();
+                'type' => $vehicle->vehicle_type, 'driver' => $vehicle->driverName()])->values()->all();
     }
 
     /**

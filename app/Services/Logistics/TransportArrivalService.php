@@ -72,18 +72,22 @@ class TransportArrivalService
             abort_unless($manifest->version === (int) $data['version'] && (! $trip || $trip->status === 'dispatched')
                 && $this->presentation($actor, $manifest)['can_record'], 409, 'Review the current original loss accounting and actual transport before recording arrival.');
             $fleet = LogisticsFleet::whereKey($manifest->vehicle_id)->lockForUpdate()->firstOrFail();
-            $driver = User::findOrFail($manifest->driver_id);
-            abort_unless($fleet->logistics_company_id === $manifest->logistics_company_id && $fleet->assigned_driver_id === $driver->id
-                && $fleet->status === 'active' && $driver->isCourier()
-                && app(LogisticsEligibilityService::class)->isOperational($driver->courierProfile)
-                && $driver->courierProfile->logistics_company_id === $manifest->logistics_company_id
-                && $driver->courierProfile->assigned_hub_id === $manifest->source_hub_id
-                && $driver->courierProfile->vehicle_id === $fleet->id
-                && strtoupper($fleet->plate_number) === $data['vehicle_plate'], 409,
-                'Check the actual original vehicle plate and its distinct assigned driver; do not substitute another transport.');
+            $driver = $manifest->driver_id ? User::findOrFail($manifest->driver_id) : null;
+            $external = $manifest->transport_driver_id ? $manifest->transportDriver : null;
+            $validDriver = $external
+                ? $fleet->transport_driver_id === $external->id && $fleet->assigned_driver_id === null
+                    && $external->logistics_company_id === $manifest->logistics_company_id && $external->hub_id === $manifest->source_hub_id
+                : $driver && $fleet->assigned_driver_id === $driver->id && $driver->isCourier()
+                    && app(LogisticsEligibilityService::class)->isOperational($driver->courierProfile)
+                    && $driver->courierProfile->logistics_company_id === $manifest->logistics_company_id
+                    && $driver->courierProfile->assigned_hub_id === $manifest->source_hub_id
+                    && $driver->courierProfile->vehicle_id === $fleet->id;
+            abort_unless($fleet->logistics_company_id === $manifest->logistics_company_id && $fleet->status === 'active'
+                && $validDriver && strtoupper($fleet->plate_number) === $data['vehicle_plate'], 409,
+                'Check the actual original vehicle plate and named driver; do not substitute another transport.');
             $root = null;
             foreach ($manifests as $related) {
-                foreach (['logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id'] as $field) {
+                foreach (['logistics_company_id', 'source_hub_id', 'destination_hub_id', 'vehicle_id', 'driver_id', 'transport_driver_id'] as $field) {
                     abort_unless($related->{$field} === $manifest->{$field}, 409, 'Retain the exact original shared transport identities.');
                 }
                 abort_unless($related->dispatched_at && in_array($related->status, ['dispatched', 'received', 'closed'], true)
@@ -95,7 +99,7 @@ class TransportArrivalService
                     'hub_id' => $related->destination_hub_id, 'event_type' => 'transport-arrived', 'barcode_scanned' => null,
                     'manifest_parcel_id' => null, 'reason' => $data['reason'], 'source_state' => $related->state(), 'target_state' => $related->state(),
                     'request_token' => $data['request_token'], 'request_fingerprint' => $fingerprint,
-                    'payload' => ['vehicle_id' => $fleet->id, 'driver_id' => $driver->id, 'vehicle_plate' => $data['vehicle_plate'],
+                    'payload' => ['vehicle_id' => $fleet->id, 'driver_id' => $driver?->id, ...($external ? ['transport_driver_id' => $external->id, 'transport_driver_name' => $manifest->transport_driver_name] : []), 'vehicle_plate' => $data['vehicle_plate'],
                         'trip_id' => $trip?->id, 'manifest_ids' => $ids, 'no_parcel_receipt' => true, 'no_bag_receipt' => true, 'no_money_moved' => true]]);
                 $related->increment('version');
                 if ($related->id === $manifest->id) {

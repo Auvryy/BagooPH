@@ -317,7 +317,8 @@ class ParcelRecoveryService
         $event = $this->event($case, $actor, 'transfer_departed', $before, DeliveryCheckpoint::state($parcel), $scan->reason ?? 'Scanned onto the authorized recovery transfer.', $manifest->source_hub_id, $scan->barcode_scanned, $scan);
         $this->checkpoint($case, $parcel, $actor, $manifest->sourceHub, $event, 'parcel_recovery_departed', $before, $custody,
             ['kind' => 'manifest', 'manifest_id' => $manifest->id, 'manifest_reference' => $manifest->reference,
-                'vehicle_id' => $manifest->vehicle_id, 'driver_id' => $manifest->driver_id, 'manifest_scan_reference' => $scan->reference,
+                'vehicle_id' => $manifest->vehicle_id, 'driver_id' => $manifest->driver_id,
+                ...($manifest->transport_driver_id ? ['transport_driver_id' => $manifest->transport_driver_id, 'transport_driver_name' => $manifest->transport_driver_name] : []), 'manifest_scan_reference' => $scan->reference,
                 'source_scan_reference' => $scan->payload['source_scan_reference'], 'parcel_recovery_reference' => $case->reference], $manifest);
     }
 

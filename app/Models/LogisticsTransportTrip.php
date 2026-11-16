@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -23,6 +24,21 @@ class LogisticsTransportTrip extends Model
             }
         });
         static::deleting(fn () => throw new LogicException('Trip history must be retained.'));
+    }
+
+    public function driver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'driver_id');
+    }
+
+    public function transportDriver(): BelongsTo
+    {
+        return $this->belongsTo(LogisticsTransportDriver::class, 'transport_driver_id');
+    }
+
+    public function driverName(): string
+    {
+        return $this->transport_driver_name ?? $this->driver?->name ?? 'Unassigned driver';
     }
 
     public function manifests()

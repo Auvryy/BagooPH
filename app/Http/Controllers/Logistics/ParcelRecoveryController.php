@@ -7,7 +7,6 @@ use App\Models\Delivery;
 use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsFleet;
 use App\Models\LogisticsHub;
-use App\Models\LogisticsManifest;
 use App\Models\LogisticsManifestEvent;
 use App\Rules\AsciiPositiveInteger;
 use App\Services\Logistics\HandoverHoldService;
@@ -107,13 +106,11 @@ class ParcelRecoveryController extends Controller
                 }
                 $sourceHub = $hubs->get($case->hub_ids[$case->leg_index]);
                 $type = $sourceHub->isMotherHub() && $hubs->get($next)->isMotherHub() ? 'wing_truck' : 'l300_van';
-                $vehicles = LogisticsFleet::ready()->where('logistics_company_id', $case->logistics_company_id)->where('hub_id', $sourceHub->id)
-                    ->where('vehicle_type', $type)->whereNotNull('assigned_driver_id')
-                    ->whereHas('driver.courierProfile', fn ($profile) => $profile->where('is_available', true))
-                    ->whereNotIn('assigned_driver_id', LogisticsManifest::where('status', 'dispatched')->select('driver_id'))
+                $vehicles = LogisticsFleet::dispatchReady()->where('logistics_company_id', $case->logistics_company_id)->where('hub_id', $sourceHub->id)
+                    ->where('vehicle_type', $type)
                     ->with('driver')->orderBy('id')->get()
-                    ->reject(fn ($vehicle) => Delivery::riderHasActiveWork($vehicle->assigned_driver_id))->values()
-                    ->map(fn ($vehicle) => ['id' => $vehicle->id, 'plate' => $vehicle->plate_number, 'driver' => $vehicle->driver?->name]);
+                    ->reject(fn ($vehicle) => $vehicle->hasBusyCourier())->values()
+                    ->map(fn ($vehicle) => ['id' => $vehicle->id, 'plate' => $vehicle->plate_number, 'driver' => $vehicle->driverName()]);
             }
             $parcel = $case?->delivery;
             $knownParcel = $parcel ?? (isset($proposal['facts']['delivery_id']) ? Delivery::find($proposal['facts']['delivery_id']) : null);
