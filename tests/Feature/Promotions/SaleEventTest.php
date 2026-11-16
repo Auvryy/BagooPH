@@ -142,6 +142,7 @@ class SaleEventTest extends TestCase
     public function test_open_vouchers_stay_usable_by_everyone_and_claim_all_claims_each_once(): void
     {
         $event = $this->event();
+        $this->voucher(); // an unrelated voucher, so voucher ids and event-entry ids differ
         $platform = $this->voucher();
         $shopVoucher = $this->voucher($this->shop);
         app(SaleEventService::class)->addVoucher($this->admin, $event, ['voucher_id' => $platform->id]);
@@ -150,6 +151,12 @@ class SaleEventTest extends TestCase
 
         $buyer = $this->createApprovedUser('buyer');
         $this->assertFalse(EventVoucherGate::blocked(VoucherRevision::findOrFail($platform->current_revision_id), $buyer));
+        // The page hands out event-entry ids, never voucher ids, so Claim targets the right voucher.
+        $entries = SaleEventVoucher::orderBy('id')->get();
+        $this->assertNotSame($entries[1]->id, $entries[1]->voucher_id);
+        $this->actingAs($buyer)->get('/campaign/'.$event->slug)->assertInertia(fn (Assert $page) => $page
+            ->where('vouchers.0.id', $entries[0]->id)->where('vouchers.0.voucher_id', $entries[0]->voucher_id)
+            ->where('vouchers.1.id', $entries[1]->id)->where('vouchers.1.voucher_id', $entries[1]->voucher_id));
         $this->actingAs($buyer)->post("/campaign/{$event->id}/claim-all")->assertSessionHas('success');
         $this->actingAs($buyer)->post("/campaign/{$event->id}/claim-all")->assertSessionHas('success');
         $this->assertSame(2, SaleEventClaim::where('buyer_id', $buyer->id)->count());

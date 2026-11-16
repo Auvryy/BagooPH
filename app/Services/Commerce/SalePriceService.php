@@ -25,12 +25,7 @@ class SalePriceService
             'fallback_cents' => $store ? $this->saleCents($store, $regular, $regular) : $regular,
             'store_id' => $store?->id,
             'store_type' => $store?->discount_type ?? 'fixed', 'store_percentage' => $store?->percentage,
-            'store_price' => $store ? CodMoney::cents($store->price) : null,
-            'flash_cents' => null,
-            'flash_id' => null,
-            'flash_type' => 'fixed', 'flash_percentage' => null,
-            'flash_price' => null,
-            'flash_remaining' => 0];
+            'store_price' => $store ? CodMoney::cents($store->price) : null];
     }
 
     public function unitPrice(Product $product, string $regularUnitPrice): string
@@ -128,16 +123,8 @@ class SalePriceService
         }
     }
 
-    public function release(OrderItem $item): void
-    {
-        if (! $item->product_sale_id) {
-            return;
-        }
-        $sale = ProductSale::whereKey($item->product_sale_id)->where('product_id', $item->product_id)->lockForUpdate()->first();
-        if ($sale && $sale->kind === 'flash' && $sale->used_quantity >= $item->quantity) {
-            $sale->decrement('used_quantity', $item->quantity);
-        }
-    }
+    /** Store sales have no quantity to give back; kept so cancellations stay a single call per line. */
+    public function release(OrderItem $item): void {}
 
     public function present(Product $product): array
     {

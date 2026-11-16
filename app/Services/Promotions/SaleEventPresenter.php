@@ -39,7 +39,9 @@ class SaleEventPresenter
                 return null;
             }
 
+            // Voucher terms first: their own 'id' is the voucher, and the claim button must use the event entry id.
             return [
+                ...($revision ? app(CheckoutQuoteService::class)->present($revision) : ['code' => $voucher?->code, 'name' => $voucher?->name]),
                 'id' => $entry->id,
                 'voucher_id' => $entry->voucher_id,
                 'claim_limit' => $entry->claim_limit,
@@ -47,7 +49,6 @@ class SaleEventPresenter
                 'sold_out' => $entry->claim_limit !== null && $entry->claimed_count >= $entry->claim_limit,
                 'claimed' => in_array($entry->id, $mine, true),
                 'usable' => $usable,
-                ...($revision ? app(CheckoutQuoteService::class)->present($revision) : ['code' => $voucher?->code, 'name' => $voucher?->name]),
             ];
         })->filter()->values()->all();
     }
