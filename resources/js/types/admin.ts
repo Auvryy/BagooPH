@@ -50,7 +50,7 @@ export interface AdminLogisticsProps {
     }>;
     couriers: {
         id: number; name: string; phone: string | null; status: string; kyc_status: string | null;
-        on_duty: boolean | null; network_eligible: boolean; company_id: number | null; hub_id: number | null;
+        on_duty: boolean | null; network_eligible: boolean; company_id: number | null; hub_id: number | null; company_name?: string | null; hub_name?: string | null;
         linked_open_parcels: number; live_presence: null;
     }[];
     filters: { search: string; status: string };

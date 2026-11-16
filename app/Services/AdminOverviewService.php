@@ -143,11 +143,12 @@ class AdminOverviewService
                 'current_hub' => $delivery->currentHub?->only(['id', 'name']),
                 'order_url' => $delivery->order_id ? '/my-orders/'.$delivery->order_id : null,
             ]),
-            'couriers' => User::where('role', 'courier')->with('courierProfile')->orderByDesc('id')->limit(12)->get()->map(fn ($user) => [
+            'couriers' => User::where('role', 'courier')->with(['courierProfile.company:id,name', 'courierProfile.hub:id,name'])->orderByDesc('id')->limit(12)->get()->map(fn ($user) => [
                 ...$user->only(['id', 'name', 'phone', 'status', 'kyc_status']),
                 'on_duty' => $user->courierProfile?->is_available,
                 'network_eligible' => $user->courierProfile && $eligibleProfileIds->contains($user->courierProfile->id),
                 'company_id' => $user->courierProfile?->logistics_company_id, 'hub_id' => $user->courierProfile?->assigned_hub_id,
+                'company_name' => $user->courierProfile?->company?->name, 'hub_name' => $user->courierProfile?->hub?->name,
                 'linked_open_parcels' => (int) $linkedCounts->get($user->id, 0), 'live_presence' => null,
             ])->all(),
             'filters' => ['search' => $filters['search'] ?? '', 'status' => $filters['status'] ?? 'all'], 'statusOptions' => $options,
