@@ -80,6 +80,14 @@ class CargoHandlingService
             throw new DomainException('Choose a valid Mother Bag capacity preset or custom limit.');
         }
 
+        foreach (['max_count' => 'parcel limit', 'max_weight_kg' => 'weight limit'] as $field => $label) {
+            if (! isset($input[$field]) || ! is_numeric($input[$field])) {
+                throw new DomainException("Enter the custom {$label} as a number.");
+            }
+        }
+        if (! (isset($input['max_volume_cm3']) && is_numeric($input['max_volume_cm3'])) && ! (isset($input['max_volume_m3']) && is_numeric($input['max_volume_m3']))) {
+            throw new DomainException('Enter the custom volume limit as a number.');
+        }
         $maxCount = isset($input['max_count']) && is_numeric($input['max_count']) ? (int) $input['max_count'] : self::BAG_PARCELS;
         $maxWeight = isset($input['max_weight_kg']) && is_numeric($input['max_weight_kg']) ? round((float) $input['max_weight_kg'], 3) : (float) self::BAG_WEIGHT_KG;
         $maxVolumeCm3 = isset($input['max_volume_cm3']) && is_numeric($input['max_volume_cm3'])

@@ -356,7 +356,7 @@ export default function MotherBags({ bags, selectedBag: bag, hubs, manifests, cr
                                         <div className="grid grid-cols-3 gap-2">
                                             <label className="text-xs font-medium text-ink-700">
                                                 Max parcels
-                                                <input type="number" min={1} max={500} required className={`${hubInput} mt-1 tabular-nums`} value={create.data.max_count} onChange={event => create.setData('max_count', event.target.value)} />
+                                                <input type="number" inputMode="numeric" step={1} min={1} max={500} required className={`${hubInput} mt-1 tabular-nums`} value={create.data.max_count} onChange={event => create.setData('max_count', event.target.value)} />
                                             </label>
                                             <label className="text-xs font-medium text-ink-700">
                                                 Max kg

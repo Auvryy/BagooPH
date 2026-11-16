@@ -583,7 +583,7 @@ export default function GovernanceModeration({
                                 </label>
                                 <label className="block font-semibold text-slate-700">
                                     Amount (Centavos)
-                                    <input type="number" min={100} value={manualPenaltyForm.data.amount_cents} onChange={e => manualPenaltyForm.setData('amount_cents', e.target.value)} className="mt-1 w-full rounded-lg border-slate-300 text-xs" />
+                                    <input type="number" inputMode="numeric" step={1} min={100} value={manualPenaltyForm.data.amount_cents} onChange={e => manualPenaltyForm.setData('amount_cents', e.target.value)} className="mt-1 w-full rounded-lg border-slate-300 text-xs" />
                                 </label>
                                 <textarea rows={2} required value={manualPenaltyForm.data.reason} onChange={e => manualPenaltyForm.setData('reason', e.target.value)} placeholder="Penalty reason…" className="w-full rounded-lg border-slate-300 text-xs" />
                                 <textarea rows={2} required value={manualPenaltyForm.data.evidence_summary} onChange={e => manualPenaltyForm.setData('evidence_summary', e.target.value)} placeholder="Corroborating evidence summary…" className="w-full rounded-lg border-slate-300 text-xs" />
@@ -671,7 +671,7 @@ export default function GovernanceModeration({
                             </label>
                             <label className="block font-semibold text-slate-700">
                                 Measured Hub Weight (Grams)
-                                <input type="number" min={1} required value={scaleForm.data.measured_weight_grams} onChange={e => scaleForm.setData('measured_weight_grams', e.target.value)} placeholder="e.g. 3200" className="mt-1 w-full rounded-lg border-slate-300 text-xs" />
+                                <input type="number" inputMode="numeric" step={1} min={1} required value={scaleForm.data.measured_weight_grams} onChange={e => scaleForm.setData('measured_weight_grams', e.target.value)} placeholder="e.g. 3200" className="mt-1 w-full rounded-lg border-slate-300 text-xs" />
                             </label>
                             <label className="block font-semibold text-slate-700">
                                 Operator Notes

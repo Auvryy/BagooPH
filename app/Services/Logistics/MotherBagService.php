@@ -43,10 +43,15 @@ class MotherBagService
             'physical_tag' => ['nullable', 'string', 'max:80', 'regex:/\A[A-Z0-9-]+\z/'],
             'physical_checked' => 'sometimes|boolean',
             'capacity_preset' => 'nullable|string|in:standard,compact,bulk,custom',
-            'max_count' => 'nullable|integer|between:1,500',
-            'max_weight_kg' => 'nullable|numeric|min:1|max:200',
+            // A custom bag needs its own limits; a blank field must not quietly fall back to the standard size.
+            'max_count' => 'required_if:capacity_preset,custom|nullable|integer|between:1,500',
+            'max_weight_kg' => 'required_if:capacity_preset,custom|nullable|numeric|min:1|max:200|decimal:0,3',
             'max_volume_cm3' => 'nullable|integer|between:10000,2000000',
             'max_volume_m3' => 'nullable|numeric|min:0.01|max:2.0',
+        ], [
+            'max_count.*' => 'Enter how many parcels the bag holds, from 1 to 500.',
+            'max_weight_kg.*' => 'Enter the bag weight limit in kg, from 1 to 200.',
+            'max_volume_m3.*' => 'Enter the bag volume in cubic metres, from 0.01 to 2.',
         ])->validate();
 
         return DB::transaction(function () use ($actor, $data) {

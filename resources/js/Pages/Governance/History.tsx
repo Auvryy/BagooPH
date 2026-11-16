@@ -26,11 +26,11 @@ export default function History({ events, filters, sources, subjectTypes, scope 
         <>
             <label className="text-xs font-semibold text-ink-900">
                 {companyView ? 'Resource record number' : 'Subject ID'}
-                <input type="number" min="1" className={control} value={input.subject_id} onChange={event => change('subject_id', event.target.value)} />
+                <input type="number" inputMode="numeric" step="1" min="1" className={control} value={input.subject_id} onChange={event => change('subject_id', event.target.value)} />
             </label>
             <label className="text-xs font-semibold text-ink-900">
                 {companyView ? 'Reviewer account number' : 'Reviewer ID'}
-                <input type="number" min="1" className={control} value={input.actor_id} onChange={event => change('actor_id', event.target.value)} />
+                <input type="number" inputMode="numeric" step="1" min="1" className={control} value={input.actor_id} onChange={event => change('actor_id', event.target.value)} />
             </label>
             <label className="text-xs font-semibold text-ink-900">
                 From (Philippine date)

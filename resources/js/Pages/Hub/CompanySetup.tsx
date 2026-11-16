@@ -270,7 +270,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                         />
                                     </Field>
                                     <Field label="Parcel capacity" error={facility.errors.capacity}>
-                                        <input required type="number" min={1} max={1000000} value={facility.data.capacity} onChange={event => facility.setData('capacity', Number(event.target.value))} className={hubInput} />
+                                        <input required type="number" inputMode="numeric" step={1} min={1} max={1000000} value={facility.data.capacity} onChange={event => facility.setData('capacity', Number(event.target.value))} className={hubInput} />
                                     </Field>
                                     <Field label="Actual collection hours" error={facility.errors.operating_hours}>
                                         <input value={facility.data.operating_hours} onChange={event => facility.setData('operating_hours', event.target.value)} className={hubInput} placeholder="Monday to Saturday, 8 AM to 5 PM" />
@@ -444,7 +444,7 @@ export default function CompanySetup({ company, companies, canProvision, hubs, s
                                         <input required inputMode="decimal" value={tariff.data.base_fee} onChange={event => tariff.setData('base_fee', event.target.value)} className={hubInput} />
                                     </Field>
                                     <Field label="Included weight (grams)" error={tariff.errors.included_weight_grams}>
-                                        <input required type="number" min={1} value={tariff.data.included_weight_grams} onChange={event => tariff.setData('included_weight_grams', Number(event.target.value))} className={hubInput} />
+                                        <input required type="number" inputMode="numeric" step={1} min={1} value={tariff.data.included_weight_grams} onChange={event => tariff.setData('included_weight_grams', Number(event.target.value))} className={hubInput} />
                                     </Field>
                                     <Field label="Each additional started kg (PHP)" error={tariff.errors.additional_kg_fee}>
                                         <input required inputMode="decimal" value={tariff.data.additional_kg_fee} onChange={event => tariff.setData('additional_kg_fee', event.target.value)} className={hubInput} />
