@@ -264,6 +264,8 @@ class RiderHandoverApiTest extends TestCase
         $this->postJson('/api/v1/rider/handover-recoveries/'.$grant->id.'/acknowledge', $input)->assertOk();
         $this->assertSame($before, $parcel->fresh()->getRawOriginal());
         $this->assertTrue(Delivery::riderHasActiveWork($holder->id));
+        // The held parcel arrives inside its sealed Mother Bag: the hub opens the bag before the corrective receipt.
+        $this->openFlowMotherBags($manifest, $this->flowHandler($grant->hub));
         $this->receipt($issue, $grant);
         $this->assertSame('arrived_at_mother_hub', $parcel->fresh()->status);
         $this->assertSame('recovered', $issue->fresh()->state);

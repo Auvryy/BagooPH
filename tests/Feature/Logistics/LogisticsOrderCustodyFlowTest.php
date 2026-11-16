@@ -4,6 +4,7 @@ namespace Tests\Feature\Logistics;
 
 use App\Models\CourierProfile;
 use App\Models\Delivery;
+use App\Models\DeliveryCheckpoint;
 use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Order;
@@ -34,7 +35,8 @@ class LogisticsOrderCustodyFlowTest extends TestCase
     public function test_waybill_scans_record_origin_and_mother_hub_custody_one_step_at_a_time(): void
     {
         $originHandler = User::where('email', 'losbanos.hub@bagoo.test')->firstOrFail();
-        $motherHandler = User::where('email', 'motherhub@bagoo.test')->firstOrFail();
+        // The company owner only monitors; a mother-hub floor worker receives the cargo.
+        $motherHandler = $this->flowHandler(LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail());
         $pickupRider = User::where('email', 'pickup.rider@bagoo.test')->firstOrFail();
         $originHub = LogisticsHub::where('code', 'BH-LBN-01')->firstOrFail();
         $motherHub = LogisticsHub::where('code', 'MH-LAG-01')->firstOrFail();
@@ -53,6 +55,7 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             'delivery_type' => 'doorstep',
             'status' => OrderStateMachineService::STATUS_PICKED_UP,
         ]);
+        $this->recordPickupCustody($delivery, $pickupRider);
 
         $this->confirmScan(
             $originHandler,
@@ -110,6 +113,7 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             'current_hub_id' => null,
             'status' => OrderStateMachineService::STATUS_PICKED_UP,
         ]);
+        $this->recordPickupCustody($delivery, $pickupRider);
 
         $response = $this->actingAs($originHandler)->postJson(route('hub.scan'), [
             'barcode' => $delivery->tracking_number,
@@ -497,5 +501,12 @@ class LogisticsOrderCustodyFlowTest extends TestCase
             'action' => $action,
             'expected_status' => $expectedStatus,
         ])->assertOk()->assertJsonPath('confirmed', true);
+    }
+
+    /** The pickup rider's recorded handover, as the real pickup scan saves it. */
+    private function recordPickupCustody(Delivery $delivery, User $rider): void
+    {
+        DeliveryCheckpoint::record($delivery, OrderStateMachineService::STATUS_PICKED_UP, actor: $rider,
+            barcodeScanned: $delivery->tracking_number, evidence: ['custody_after' => ['kind' => 'courier', 'user_id' => $rider->id]]);
     }
 }

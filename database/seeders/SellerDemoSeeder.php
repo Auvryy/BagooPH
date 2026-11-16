@@ -45,7 +45,8 @@ class SellerDemoSeeder extends Seeder
                     'status' => 'active', 'rating' => 0,
                 ]);
                 $shop = Shop::whereKey($shop->id)->lockForUpdate()->firstOrFail();
-                if ($shop->pickup_latitude === null || $shop->pickup_longitude === null) {
+                // Only the demo shop gets map coordinates filled in; a real shop keeps what its seller saved.
+                if ($shop->slug === 'apex-gear-and-studio' && ($shop->pickup_latitude === null || $shop->pickup_longitude === null)) {
                     $shop->update(['pickup_latitude' => 14.1674, 'pickup_longitude' => 121.2430]);
                 }
                 if ($shop->review_status === null && $shop->review_decision_id === null

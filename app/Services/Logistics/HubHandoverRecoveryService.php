@@ -500,6 +500,11 @@ class HubHandoverRecoveryService
     private function manifestReceipt(Delivery $parcel, User $actor, HandoverRecoveryGrant $grant, array $context, string $barcode, string $notes): void
     {
         $manifest = LogisticsManifest::whereKey($context['reference_id'])->lockForUpdate()->firstOrFail();
+        // Like any receipt, a parcel that travelled inside a Mother Bag is taken out only after the bag's seal is
+        // verified and the bag opened; a still-sealed bag keeps its recorded contents.
+        if ($context['member_id']) {
+            app(MotherBagService::class)->assertReceipt($manifest, $parcel);
+        }
         $before = DeliveryCheckpoint::state($parcel);
         $custody = DeliveryCheckpoint::lastCustody($parcel);
         $target = app(LogisticsManifestService::class)->receiptStatus($manifest);
