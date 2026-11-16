@@ -9,6 +9,7 @@ use App\Services\Orders\CheckoutQuoteService;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\VoucherDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -29,17 +30,20 @@ class VoucherDemoSeederTest extends TestCase
         $this->seed(DatabaseSeeder::class);
         $buyer = User::where('email', 'buyer@bagoo.test')->sole();
         $this->assertTrue(password_verify('Password1234', $buyer->password));
-        $this->assertSame(3, app(CheckoutQuoteService::class)->offers(buyer: $buyer)['count']);
-        $this->assertDatabaseCount('voucher_campaign_actions', 6);
+        $demo = Voucher::where('code', 'like', 'DEMO%')->pluck('id');
+        $offers = collect(app(CheckoutQuoteService::class)->offers(buyer: $buyer)['offers']);
+        $this->assertSame(3, $offers->whereIn('id', $demo)->count());
+        $this->assertSame(6, DB::table('voucher_campaign_actions')->whereIn('voucher_id', $demo)->count());
         $this->assertDatabaseCount('saved_vouchers', 0);
         $this->assertDatabaseCount('voucher_redemptions', 0);
         $this->assertDatabaseCount('voucher_funding_entries', 0);
         $voucher = Voucher::where('code', 'DEMOSHOP100')->sole();
         $original = $voucher->currentRevision->getRawOriginal();
         $voucher->update(['is_active' => false, 'archived_at' => now()]);
+        $vouchers = Voucher::count();
         $this->seed(VoucherDemoSeeder::class);
-        $this->assertDatabaseCount('vouchers', 3);
-        $this->assertDatabaseCount('voucher_campaign_actions', 6);
+        $this->assertSame($vouchers, Voucher::count());
+        $this->assertSame(6, DB::table('voucher_campaign_actions')->whereIn('voucher_id', $demo)->count());
         $this->assertFalse($voucher->fresh()->is_active);
         $this->assertSame($original, $voucher->currentRevision->fresh()->getRawOriginal());
     }

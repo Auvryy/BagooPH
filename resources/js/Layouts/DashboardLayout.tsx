@@ -44,6 +44,7 @@ import {
     AlertTriangle, RotateCcw,
     Hash,
     type LucideIcon,
+    CalendarClock,
 } from 'lucide-react';
 
 interface Props {
@@ -120,6 +121,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                 { name: 'Users', href: route('admin.users'), icon: Users, current: component.startsWith('Admin/Users') || component === 'Admin/AccountContext' || route().current('admin.users*') || url.startsWith('/admin/users') },
                 { name: 'Review requests', href: route('admin.account-reviews.index'), icon: ShieldCheck, current: component.startsWith('Admin/AccountReview') },
                 { name: 'Products', href: route('admin.products'), icon: Package, current: component.startsWith('Admin/Products') || route().current('admin.products*') || url.startsWith('/admin/products') },
+                { name: 'Sale events', href: route('admin.sale-events.index'), icon: CalendarClock, current: component.startsWith('Admin/SaleEvents/') },
                 { name: 'Voucher campaigns', href: route('admin.vouchers.index'), icon: Tag, current: component.startsWith('Admin/Voucher') },
                 { name: 'Advertisements', href: route('admin.advertisements.index'), icon: ImagePlus, current: component.startsWith('Admin/Advertisements/') },
                 { name: 'Logistics', href: route('admin.logistics'), icon: Truck, current: component.startsWith('Admin/Logistics') || route().current('admin.logistics*') || url.startsWith('/admin/logistics') },
@@ -170,6 +172,7 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                     icon: Tag, 
                     current: component.startsWith('Seller/Voucher') || route().current('seller.vouchers.*') || url.startsWith('/seller/vouchers') 
                 },
+                { name: 'Sale events', href: route('seller.sale-events.index'), icon: CalendarClock, current: component.startsWith('Seller/SaleEvents/') },
                 { name: 'Promotions', href: route('seller.promotions.index'), icon: ImagePlus, current: component.startsWith('Seller/Promotions/') },
                 { 
                     name: 'Messages', 

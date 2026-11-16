@@ -221,6 +221,7 @@ class CheckoutQuoteService
         }
         if ($buyer) {
             $query->whereRaw('(select count(*) from voucher_redemptions where voucher_revision_id = voucher_revisions.id and buyer_id = ? and not exists (select 1 from wallet_voucher_restorations where voucher_redemption_id = voucher_redemptions.id)) < voucher_revisions.per_buyer_limit', [$buyer->id]);
+            $query->whereRaw(\App\Services\Promotions\EventVoucherGate::whereUsableSql(), [$buyer->id]);
         }
 
         return $query;
@@ -291,6 +292,9 @@ class CheckoutQuoteService
                 ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('wallet_voucher_restorations')->whereColumn('voucher_redemption_id', 'voucher_redemptions.id'))->count() : 0);
         if ($buyer && $uses >= $revision->per_buyer_limit) {
             return 'You have reached your usage limit for this voucher.';
+        }
+        if ($buyer && \App\Services\Promotions\EventVoucherGate::blocked($revision, $buyer)) {
+            return 'Claim this voucher on its sale event page to use it.';
         }
         if ($revision->issuer_type === 'shop' && (! $shops->has($revision->shop_id) || ! $revision->shop
             || ! ($revision->getAttribute('quote_shop_eligible') ?? app(ShopEligibilityService::class)->isEligible($revision->shop)))) {

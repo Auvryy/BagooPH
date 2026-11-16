@@ -35,10 +35,14 @@ case "$cmd" in
     ;;
   seed)
     docker compose exec app php artisan db:seed "$@"
+    # Seeders run as root; hand stored uploads back to the web server so it can read them.
+    docker compose exec app chown -R www-data:www-data storage/app
     ;;
   fresh)
     docker compose exec -T db psql -U postgres -d bagoo -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO postgres; GRANT ALL ON SCHEMA public TO public;"
     docker compose exec app php artisan migrate --seed "$@"
+    # Seeders run as root; hand stored uploads back to the web server so it can read them.
+    docker compose exec app chown -R www-data:www-data storage/app
     ;;
   npm)
     docker compose exec app npm "$@"

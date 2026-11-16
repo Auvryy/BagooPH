@@ -59,6 +59,12 @@ class BuyerHomeController extends Controller
             0,
             AdvertisementRecommendationService::MAX_RECENT_PRODUCT_VIEWS,
         ));
+        // Live Bagoo sale events lead the carousel, then the reviewed seller and admin promotions.
+        $eventSlides = \App\Models\SaleEvent::live()->whereNotNull('banner_path')->orderBy('ends_at')->limit(3)->get()
+            ->map(fn (\App\Models\SaleEvent $event) => ['id' => 9_000_000 + $event->id, 'title' => $event->title, 'image' => $event->bannerUrl(),
+                'alt_text' => $event->title, 'width' => 1880, 'height' => 880, 'slot' => 'event', 'placement' => 'main',
+                'href' => route('buyer.campaign.show', $event->slug, absolute: false), 'event_slug' => $event->slug])->all();
+        $banners = [...$eventSlides, ...$banners];
 
         $categories = app(BuyerDiscoveryService::class)->categories();
 

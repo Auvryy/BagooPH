@@ -41,21 +41,23 @@ class AdvertisementDemoSeederTest extends TestCase
         $advertisement = Advertisement::where('slug', 'bagoo-demo-homepage-banner')->sole();
         $this->assertSame('BagooPH Demo Collection', $advertisement->latestRevision->title);
         $this->assertSame('Synthetic demo content for local review; not a paid seller placement.', $advertisement->latestRevision->summary);
-        $this->assertCount(1, app(AdvertisementReader::class)->homepage(false));
-        $this->assertDatabaseCount('advertisement_actions', 2);
+        $mine = fn () => collect(app(AdvertisementReader::class)->homepage(false))->filter(fn ($banner) => str_contains($banner['href'], 'bagoo-demo-homepage-banner'));
+        $this->assertCount(1, $mine());
+        $this->assertSame(2, \App\Models\AdvertisementAction::where('advertisement_id', $advertisement->id)->count());
         $this->assertDatabaseCount('orders', 0);
         $this->assertTrue(Storage::disk('local')->exists('advertisements/bagoo-demo-homepage-banner/image.webp'));
 
         $publication = AdvertisementPublication::where('advertisement_id', $advertisement->id)->sole();
+        $ads = Advertisement::count();
         $this->seed(AdvertisementDemoSeeder::class);
-        $this->assertDatabaseCount('advertisements', 1);
-        $this->assertDatabaseCount('advertisement_actions', 2);
-        $this->assertCount(1, app(AdvertisementReader::class)->homepage(false));
+        $this->assertSame($ads, Advertisement::count());
+        $this->assertSame(2, \App\Models\AdvertisementAction::where('advertisement_id', $advertisement->id)->count());
+        $this->assertCount(1, $mine());
 
         $publication->update(['ended_at' => now()]);
         $this->seed(AdvertisementDemoSeeder::class);
         $this->assertNotNull($publication->fresh()->ended_at);
-        $this->assertSame([], app(AdvertisementReader::class)->homepage(false));
+        $this->assertCount(0, $mine());
         $this->assertDatabaseCount('orders', 0);
     }
 }
