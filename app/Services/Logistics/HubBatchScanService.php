@@ -334,7 +334,7 @@ class HubBatchScanService
                 $checkpointRef = DeliveryCheckpoint::query()
                     ->where('delivery_id', $updated->id)
                     ->latest('id')
-                    ->value('reference');
+                    ->value('record_reference');
 
                 ScanRequestLedger::create([
                     'actor_id' => $actor->id,
@@ -427,6 +427,9 @@ class HubBatchScanService
                     );
                 }
             }
+
+            // Keep the real database error for diagnosis; the worker still gets a safe retry message.
+            report($exception);
 
             return $this->recordRejected($batch, $index, $token, $barcode, $candidate->id, $expectedAction, 'Concurrent update prevented batch confirmation. Retry safely with the same token.', $clientScannedAt, $itemStart);
         } catch (ValidationException $exception) {

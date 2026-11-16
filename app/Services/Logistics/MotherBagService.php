@@ -129,6 +129,12 @@ class MotherBagService
                 || app(LogisticsManifestService::class)->nextHub($parcel) !== $next) {
                 throw new DomainException('The parcel must be held at the selected sending hub on its retained next leg.');
             }
+            $arrived = LogisticsManifestParcel::where('active_delivery_id', $parcel->id)->whereNotNull('received_at')
+                ->whereHas('manifest', fn ($q) => $q->where('destination_hub_id', $source->id)->where('status', 'received'))->with('manifest:id,reference')->first();
+            if ($arrived) {
+                // Received here, but its arriving transfer is still open: say exactly what to do next.
+                throw new DomainException("This parcel arrived on transfer {$arrived->manifest->reference}, which is still open. Close that received transfer in Manifests, then pack the parcel.");
+            }
             if (MotherBagParcel::where('active_delivery_id', $parcel->id)->exists() || LogisticsManifestParcel::where('active_delivery_id', $parcel->id)->exists()) {
                 throw new DomainException('This parcel already belongs to an active bag or manifest. Open its original packing record.');
             }

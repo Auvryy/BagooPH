@@ -273,7 +273,13 @@ class LogisticsManifestController extends Controller
             return response()->json(['manifest' => $result['manifest']->state(), 'event_reference' => $result['event']->reference]);
         }
 
-        return back()->with('success', 'The manifest action was recorded.');
+        return back()->with('success', match ($action) {
+            'receive' => $result['manifest']->status === 'received'
+                ? 'Parcel received. Every expected parcel has arrived: check them, then close the transfer.'
+                : 'Parcel receipt recorded.',
+            'close' => 'Transfer closed. Its parcels can now be sorted or packed onward.',
+            default => 'The manifest action was recorded.',
+        });
     }
 
     public function packReturnSack(Request $request, LogisticsTransportTrip $trip, BuyerReturnBagService $bags): JsonResponse|RedirectResponse

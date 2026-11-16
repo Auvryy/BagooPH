@@ -65,6 +65,12 @@ class B17BatchScanAndThroughputTest extends TestCase
             ->assertJsonPath('items.0.status_after', 'arrived_at_origin_hub')
             ->assertJsonPath('scan_result.confirmed', true)
             ->assertJsonPath('scan_result.delivery.status', 'arrived_at_origin_hub');
+        // The batch reports the real checkpoint record (SQLite would accept a misspelled column as a text literal).
+        $this->assertSame(
+            DeliveryCheckpoint::where('delivery_id', $response->json('items.0.delivery_id'))->latest('id')->value('record_reference'),
+            $response->json('items.0.checkpoint_reference')
+        );
+        $this->assertNotSame('reference', $response->json('items.0.checkpoint_reference'));
 
         $this->assertSame('arrived_at_origin_hub', $parcel->fresh()->status);
         $this->assertGreaterThan($beforeCheckpoints, $parcel->checkpoints()->count());
