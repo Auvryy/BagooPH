@@ -7,6 +7,7 @@ import { build } from 'esbuild';
 const root = resolve(import.meta.dirname, '../..');
 
 const overlayHandling = new Map([
+    ['resources/js/Components/Admin/BannerCropper.tsx', 'custom-dialog'],
     ['resources/js/Components/BagooLoadingScreen.tsx', 'decorative'],
     ['resources/js/Components/BuyerAddressEditor.tsx', 'headless-dialog'],
     ['resources/js/Components/BuyerApplicationModal.tsx', 'headless-dialog'],

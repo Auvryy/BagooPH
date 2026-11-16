@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
 import PromotionAiTools from '@/Components/PromotionAiTools';
+import ProductPicker from '@/Components/Admin/ProductPicker';
+import BannerCropper, { BANNER, bannerCroppable, bannerFits, imageSize } from '@/Components/Admin/BannerCropper';
 import { AdvertisementDetail, Options, dateLabel, slotLabel, stateLabel } from '@/types/advertisements';
 
 interface Props { advertisement: AdvertisementDetail | null; options: Options; slots: string[]; displayEnabled: boolean; baseUrl: string }
@@ -32,6 +34,8 @@ function Editor({ advertisement: ad, options, slots, displayEnabled, baseUrl }: 
     const [reason, setReason] = useState('');
     const [pending, setPending] = useState(false);
     const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
+    const [cropping, setCropping] = useState<{ file: File; size: { width: number; height: number } } | null>(null);
+    const [imageNote, setImageNote] = useState('');
     useEffect(() => {
         if (!form.data.image) { setImagePreview(null); return; }
         const url = URL.createObjectURL(form.data.image);
@@ -64,12 +68,21 @@ function Editor({ advertisement: ad, options, slots, displayEnabled, baseUrl }: 
             onFinish: () => setPending(false),
         });
     };
-    const chooseImage = (file: File | undefined) => {
+    // A wrong-sized image is never just rejected: if a 47:22 banner can be cut from it, the cropper opens.
+    const chooseImage = async (file: File | undefined) => {
         if (!file) return;
-        if (file.size > 5242880 || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-            form.setError('image', 'Choose a JPEG, PNG or WebP image no larger than 5 MiB. The previous image is kept.'); return;
+        setImageNote('');
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            form.setError('image', 'Choose a JPEG, PNG or WebP image. The previous image is kept.'); return;
         }
-        form.clearErrors('image'); form.setData('image', file);
+        let size: { width: number; height: number };
+        try { size = await imageSize(file); } catch { form.setError('image', 'This image could not be read. Choose another file.'); return; }
+        if (bannerFits(size, file.size)) { form.clearErrors('image'); form.setData('image', file); return; }
+        if (!bannerCroppable(size)) {
+            form.setError('image', `This image is ${size.width} × ${size.height}. It is too small: a banner needs at least ${BANNER.minWidth} × ${BANNER.minHeight} pixels. Choose a larger image.`); return;
+        }
+        form.clearErrors('image');
+        setCropping({ file, size });
     };
     const disabled = pending || form.processing || Boolean(ad?.archived);
     const stale = Boolean(ad && form.data.source_version !== ad.version);
@@ -94,17 +107,19 @@ function Editor({ advertisement: ad, options, slots, displayEnabled, baseUrl }: 
                         <label className="block text-sm font-semibold">Title *<input className={fieldClass} value={form.data.title} required maxLength={80} onChange={(e) => form.setData('title', e.target.value)} aria-invalid={Boolean(errors.title)} /></label>
                         <label className="block text-sm font-semibold">Image description *<input className={fieldClass} value={form.data.alt_text} required maxLength={180} onChange={(e) => form.setData('alt_text', e.target.value)} aria-invalid={Boolean(errors.alt_text)} /><span className="mt-1 block text-xs font-normal text-slate-500">Describe the artwork for people using a screen reader. Maximum 180 characters.</span></label>
                         <label className="block text-sm font-semibold">Terms or collection summary<textarea className={fieldClass} value={form.data.summary} maxLength={600} rows={3} onChange={(e) => form.setData('summary', e.target.value)} aria-invalid={Boolean(errors.summary)} /></label>
-                    <label className="block text-sm font-semibold">Artwork {ad ? '(optional replacement)' : '*'}<input type="file" accept="image/jpeg,image/png,image/webp" required={!ad} onChange={(e) => chooseImage(e.target.files?.[0])} className="mt-2 block w-full text-sm" aria-describedby="artwork-hint" aria-invalid={Boolean(errors.image)} />
-                            <span id="artwork-hint" className="mt-2 block text-xs font-normal leading-relaxed text-slate-500">JPEG, PNG or WebP only. Maximum 5 MiB (5,242,880 bytes). Recommended 1880 × 880; minimum 940 × 440, with the same 47:22 shape. Maximum 4096 pixels per edge and 16 megapixels. Artwork is not cropped.</span>
+                    <label className="block text-sm font-semibold">Artwork {ad ? '(optional replacement)' : '*'}<input type="file" accept="image/jpeg,image/png,image/webp" required={!ad && !form.data.image} onChange={(e) => { void chooseImage(e.target.files?.[0]); e.target.value = ''; }} className="mt-2 block w-full text-sm" aria-describedby="artwork-hint" aria-invalid={Boolean(errors.image)} />
+                            <span id="artwork-hint" className="mt-2 block text-xs font-normal leading-relaxed text-slate-500">Best size 1880 × 880 (47:22). Other sizes open a crop step. JPEG, PNG or WebP.</span>
+                            {imageNote && <span role="status" className="mt-1 block text-xs font-normal text-success">{imageNote}</span>}
                         </label>
                     <PromotionAiTools endpoint={`${baseUrl}${ad ? `/${ad.id}` : ''}/assist`} title={form.data.title} altText={form.data.alt_text} summary={form.data.summary} purpose={form.data.purpose} image={form.data.image} disabled={disabled} onUseCopy={(copy) => form.setData(data => ({ ...data, ...copy }))} />
                         <div className="grid gap-4 sm:grid-cols-2">
                             <label className="text-sm font-semibold">Purpose *<select className={fieldClass} value={form.data.purpose} onChange={(e) => form.setData('purpose', e.target.value)}><option value="feature">Product or shop feature</option><option value="event">Event or collection</option><option value="offer">Offer or saving</option></select></label>
                             <label className="text-sm font-semibold">Click destination *<select className={fieldClass} value={form.data.destination_type} onChange={(e) => form.setData({ ...form.data, destination_type: e.target.value, destination_id: '', product_ids: [] })}>{['product', 'shop', 'category', 'collection', 'offer'].map((type) => <option value={type} key={type}>{stateLabel(type)}</option>)}</select></label>
                         </div>
-                        {!collection ? <label className="block text-sm font-semibold">Selected {form.data.destination_type} *<select required className={fieldClass} value={form.data.destination_id} onChange={(e) => form.setData('destination_id', e.target.value)}><option value="">Choose an available destination</option>{destinations.map((target) => <option key={target.id} value={target.id}>{target.name}</option>)}</select></label>
-                            : <fieldset className="rounded-lg border border-slate-300 p-3"><legend className="px-1 text-sm font-semibold">Matching products * ({form.data.product_ids.length}/24)</legend><div className="max-h-64 space-y-2 overflow-y-auto">
-                                {options.products.length ? options.products.map((product) => <label key={product.id} className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1 rounded border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" checked={form.data.product_ids.includes(product.id)} disabled={!form.data.product_ids.includes(product.id) && form.data.product_ids.length >= 24} onChange={(e) => form.setData('product_ids', e.target.checked ? [...form.data.product_ids, product.id] : form.data.product_ids.filter((id) => id !== product.id))} />{product.name}</label>) : <p className="text-sm text-slate-500">No eligible products are available.</p>}
+                        {form.data.destination_type === 'product' ? <div className="text-sm font-semibold">Product to feature *<div className="mt-1 font-normal"><ProductPicker products={options.products} shops={options.shops} categories={options.categories} value={form.data.destination_id ? [Number(form.data.destination_id)] : []} onChange={(ids) => form.setData('destination_id', ids[0]?.toString() ?? '')} disabled={disabled} /></div></div>
+                        : !collection ? <label className="block text-sm font-semibold">Selected {form.data.destination_type} *<select required className={fieldClass} value={form.data.destination_id} onChange={(e) => form.setData('destination_id', e.target.value)}><option value="">Choose an available destination</option>{destinations.map((target) => <option key={target.id} value={target.id}>{target.name}</option>)}</select></label>
+                            : <fieldset><legend className="text-sm font-semibold">Products in this promotion * <span className="font-normal text-slate-500">(up to 24)</span></legend><div className="mt-1">
+                                {options.products.length ? <ProductPicker multiple max={24} products={options.products} shops={options.shops} categories={options.categories} value={form.data.product_ids} onChange={(ids) => form.setData('product_ids', ids)} disabled={disabled} /> : <p className="text-sm text-slate-500">No eligible products are available.</p>}
                             </div></fieldset>}
                         <label className="block text-sm font-semibold">Linked published offer {(form.data.purpose === 'offer' || form.data.destination_type === 'offer') ? '*' : '(optional)'}<select className={fieldClass} value={form.data.offer_revision_id} required={form.data.purpose === 'offer' || form.data.destination_type === 'offer'} onChange={(e) => form.setData('offer_revision_id', e.target.value)}><option value="">No offer linked</option>{options.offers.map((offer) => <option key={offer.id} value={offer.id}>{offer.name} · {offer.code}</option>)}</select><span className="mt-1 block text-xs font-normal text-slate-500">An image does not activate a discount. Its promised saving must match the linked offer, selected products and dates.</span></label>
                         <label className="block text-sm font-semibold">Homepage position *<select className={fieldClass} value={form.data.slot} onChange={(e) => form.setData('slot', e.target.value)}>{slots.map((slot) => <option key={slot} value={slot}>{slotLabel(slot)}</option>)}</select></label>
@@ -143,5 +158,7 @@ function Editor({ advertisement: ad, options, slots, displayEnabled, baseUrl }: 
                 <nav aria-label="Decision history pages" className="flex gap-4 text-sm">{ad.history.prev_page_url && <Link href={ad.history.prev_page_url} preserveScroll>Previous decisions</Link>}{ad.history.next_page_url && <Link href={ad.history.next_page_url} preserveScroll>Next decisions</Link>}</nav>
             </section></>}
         </div>
+        {cropping && <BannerCropper file={cropping.file} size={cropping.size} onCancel={() => setCropping(null)}
+            onCropped={(cropped) => { form.clearErrors('image'); form.setData('image', cropped); setCropping(null); setImageNote('Cropped to the banner shape. Check the preview, then save the draft.'); }} />}
     </DashboardLayout>;
 }

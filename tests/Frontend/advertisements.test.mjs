@@ -156,7 +156,7 @@ test('admin empty and disabled states explain the display behavior without inven
 });
 test('admin creation shows exact upload limits and typed destinations without arbitrary URL entry', async () => {
     const html = await render(ui.AdminEditor, { advertisement: null, options: { products: [{ id: 1, name: 'Everyday bag' }], shops: [], categories: [], offers: [] }, slots: ['main_1', 'side_1'], displayEnabled: true, baseUrl: '/admin/advertisements' }, 'admin');
-    for (const text of ['5 MiB (5,242,880 bytes)', '940 × 440', '47:22', '180 characters', 'Click destination', 'Asia/Manila', 'Save draft']) assert.ok(html.includes(text), text);
+    for (const text of ['1880 × 880', '47:22', 'crop step', '180 characters', 'Click destination', 'Asia/Manila', 'Save draft']) assert.ok(html.includes(text), text);
     assert.match(html, /accept="image\/jpeg,image\/png,image\/webp"/);
     assert.doesNotMatch(html, /type="url"|name="destination_url"|>Publish now</);
 });

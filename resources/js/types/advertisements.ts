@@ -33,7 +33,7 @@ export interface AdvertisementDetail extends AdvertisementSummary {
     slug: string; draft: Draft; publications: Publication[]; history: Pagination<History>;
 }
 export interface Options {
-    products: { id: number; name: string; shop_id: number }[];
+    products: { id: number; name: string; shop_id: number; category_id?: number | null }[];
     shops: { id: number; name: string }[]; categories: { id: number; name: string }[];
     offers: { id: number; name: string; code: string; shop_id: number | null; starts_at: string; ends_at: string }[];
 }
