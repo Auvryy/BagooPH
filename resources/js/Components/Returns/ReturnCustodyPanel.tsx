@@ -1,11 +1,12 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useForm, usePage } from '@inertiajs/react';
-import { MapPin, PackageCheck } from 'lucide-react';
+import { Check, Copy, MapPin, PackageCheck } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import Barcode from '@/Components/Barcode';
 import useRequestError from '@/hooks/useCourierRequestError';
 import type { PageProps } from '@/types';
 import { HubNextStep, HubRoute, hubButton } from '@/Components/Logistics/Workspace';
 import WaybillCamera from '@/Components/WaybillCamera';
-import WaybillCodes from '@/Components/WaybillCodes';
 import { emptyHandling, HandlingSummary, type Handling } from '@/Components/Logistics/CargoHandling';
 
 export interface ReturnCustody {
@@ -19,6 +20,28 @@ export interface ReturnCustody {
     can_dropoff?: boolean;
     loss_hold?: string | null;
 }
+/** The return's own code, shown once: barcode and QR side by side with a copy button and one short hint. */
+function ReturnCode({ code }: { code: string }) {
+    const [copied, setCopied] = useState(false);
+    const copy = () => { void navigator.clipboard?.writeText(code).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); };
+    return <div className="rounded-card border border-line-200 bg-white p-4">
+        <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+                <p className="text-xs font-medium text-ink-600">Return code</p>
+                <p className="mt-1 break-all font-mono text-base font-semibold text-ink-900">{code}</p>
+            </div>
+            <button type="button" onClick={copy} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-control border border-line-300 px-2.5 text-[13px] font-semibold text-ink-700 hover:bg-surface-100" aria-label="Copy return code">
+                {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}{copied ? 'Copied' : 'Copy'}
+            </button>
+        </div>
+        <div className="mt-3 flex items-center gap-4">
+            <div className="min-w-0 flex-1"><Barcode value={code} height={44} width={1.3} margin={4} background="#ffffff" className="h-auto max-w-full" /></div>
+            <QRCodeSVG value={code} size={72} level="M" marginSize={2} className="shrink-0" title={`Return ${code}`} />
+        </div>
+        <p className="mt-3 text-xs text-ink-600">Show this code with the returned items. The original delivery waybill cannot record this return.</p>
+    </div>;
+}
+
 const input = 'mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:border-[#E00D42] focus:ring-[#E00D42]';
 
 export default function ReturnCustodyPanel({ custody, caseId, version }: { custody: ReturnCustody; caseId: number; version: number }) {
@@ -58,7 +81,8 @@ export default function ReturnCustodyPanel({ custody, caseId, version }: { custo
                 : `Recorded at ${custody.current_hub_name ?? 'the assigned hub'}. Continue only the next actual handover.`;
     return <section className="rounded-2xl border border-slate-300 bg-white p-5 sm:p-6" aria-label="Actual return custody">
         <div className="flex items-center gap-2"><PackageCheck className="h-5 w-5 text-[#E00D42]" aria-hidden="true" /><h2 className="text-lg font-bold text-slate-900">{logistics ? 'Return handover' : 'Return parcel'}</h2></div>
-        {logistics && <p className="mt-4 text-sm leading-6 text-slate-700">{holderText}</p>}
+        {/* What is happening now comes first, then the code, then the route. */}
+        <p className={`mt-3 text-sm leading-6 ${logistics ? 'text-slate-700' : 'rounded-control bg-surface-100 px-3 py-2 text-ink-900'}`}>{holderText}</p>
         {custody.loss_hold && <div role="status" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">{custody.loss_hold}</div>}
         {custody.recovery && <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50/50 p-4"><p className="text-sm font-semibold text-[#9F1239]">Route recovery · {custody.recovery.state.replaceAll('_', ' ')}</p><p className="mt-1 text-xs leading-5 text-slate-600">{custody.recovery.active_route ? 'The authorized recovery path is shown below. The original return route resumes at its expected hub.' : ['observed', 'authorized'].includes(custody.recovery.state) ? 'An unexpected-hub observation is under review. Physical custody has not changed.' : 'The retained recovery history is available with this return.'}</p>{custody.recovery.url && <Link className={`${hubButton} mt-3`} href={custody.recovery.url}>Open route recovery</Link>}</div>}
         {logistics && custody.handling && <div className="mt-3 rounded-lg bg-rose-50 p-3"><HandlingSummary value={custody.handling} /></div>}
@@ -72,11 +96,10 @@ export default function ReturnCustodyPanel({ custody, caseId, version }: { custo
             {nextHub.name}’s receiving handler checks the separate return barcode and actual parcel condition, then records its receipt on the original manifest.
         </HubNextStep></div>}
         {logistics && custody.hubs.length > 0 && <div className="mt-5"><HubRoute stops={custody.hubs} currentHubId={custody.custody.kind === 'hub' ? custody.hubs[custody.position]?.id : null} label={custody.recovery?.active_route ? 'Authorized recovery route' : 'Saved return route'} /></div>}
-        {custody.barcode && <div className="mt-4 rounded-xl border border-slate-300 bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-600">Separate return barcode</p><p className="mt-2 break-all text-base font-bold text-slate-900">{custody.barcode}</p><p className="mt-2 text-xs leading-5 text-slate-600">Show this reference with the returned items. The original delivery waybill cannot record this return.</p></div>}
-        {custody.barcode && (logistics ? <details className="mt-4 rounded-lg border border-slate-200 p-3"><summary className="cursor-pointer text-sm font-semibold text-slate-700">Barcode and QR for this return</summary><div className="mt-4 max-w-sm"><WaybillCodes trackingNumber={custody.barcode} compact /></div></details> : <div className="mt-4 max-w-sm"><WaybillCodes trackingNumber={custody.barcode} compact /></div>)}
-        {!logistics && <p className="mt-4 text-sm leading-6 text-slate-700">{holderText}</p>}
-        {custody.weight_grams !== null && <p className="mt-2 text-xs text-slate-500">Accepted return weight: {(custody.weight_grams / 1000).toFixed(3)} kg</p>}
-        {!logistics && custody.hubs.length > 0 && <ol className="mt-5 ml-2 border-l border-slate-300 pl-5">{custody.hubs.map((hub, index) => <li key={`${index}-${hub.id}`} className="relative pb-4 last:pb-0"><span className={`absolute -left-[25px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white ring-1 ring-slate-300 ${!buyerHolding && index <= custody.position ? 'bg-[#E00D42]' : 'bg-slate-300'}`} aria-hidden="true" /><p className="text-sm font-semibold text-slate-900">{hub.name}</p><p className="mt-1 text-xs text-slate-500">{hub.code}{!buyerHolding && index === custody.position && custody.custody.kind === 'hub' ? ' · Current holder' : ''}</p>{buyerHolding && index === 0 && <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-slate-600"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />{hub.address}{hub.operating_hours ? ` · ${hub.operating_hours}` : ''}</p>}</li>)}</ol>}
+        {custody.barcode && logistics && <details className="mt-4 rounded-card border border-line-200 p-3"><summary className="cursor-pointer text-sm font-semibold text-ink-700">Barcode and QR for this return</summary><div className="mt-3 max-w-md"><ReturnCode code={custody.barcode} /></div></details>}
+        {custody.barcode && !logistics && <div className="mt-4 max-w-md"><ReturnCode code={custody.barcode} /></div>}
+        {logistics && custody.weight_grams !== null && <p className="mt-2 text-xs text-ink-600">Accepted return weight: {(custody.weight_grams / 1000).toFixed(3)} kg</p>}
+        {!logistics && custody.hubs.length > 0 && <><p className="mt-5 text-xs font-medium uppercase tracking-wide text-ink-600">Return route</p><ol className="mt-3 ml-2 border-l border-slate-300 pl-5">{custody.hubs.map((hub, index) => <li key={`${index}-${hub.id}`} className="relative pb-4 last:pb-0"><span className={`absolute -left-[25px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white ring-1 ring-slate-300 ${!buyerHolding && index <= custody.position ? 'bg-[#E00D42]' : 'bg-slate-300'}`} aria-hidden="true" /><p className="text-sm font-semibold text-slate-900">{hub.name}</p><p className="mt-1 text-xs text-slate-500">{hub.code}{!buyerHolding && index === custody.position && custody.custody.kind === 'hub' ? ' · Current holder' : ''}{index === 0 && custody.weight_grams !== null ? ` · Accepted return weight: ${(custody.weight_grams / 1000).toFixed(3)} kg` : ''}</p>{buyerHolding && index === 0 && <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-slate-600"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />{hub.address}{hub.operating_hours ? ` · ${hub.operating_hours}` : ''}</p>}</li>)}</ol></>}
         {custody.manifest_url && <Link href={custody.manifest_url} className="mt-4 inline-flex rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-[#C20836]">Open actual manifest</Link>}
         {custody.actions.length > 0 && <form onSubmit={submit} className="mt-6 space-y-4 border-t border-slate-300 pt-5" aria-busy={form.processing || undefined}>
             {logistics ? <fieldset disabled={form.processing} className="space-y-2"><legend className="mb-2 text-sm font-semibold text-slate-700">Actual handover</legend>{custody.actions.map(option => <label key={`${option.action}-${option.hub_id}`} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${option.action === form.data.action ? 'border-rose-300 bg-rose-50/50' : 'border-slate-200'}`}><input type="radio" required name="return-handover" checked={option.action === form.data.action} onChange={() => form.setData({ ...form.data, action: option.action, hub_id: option.hub_id, condition: '', photo: null })} className="mt-0.5 border-slate-300 text-[#E00D42] focus:ring-[#E00D42]" /><span className="text-sm font-semibold text-slate-800">{option.label}</span></label>)}</fieldset> : <label className="block text-sm font-semibold text-slate-700">Actual handover<select required disabled={form.processing} className={input} value={form.data.action} onChange={event => { const item = custody.actions.find(item => item.action === event.target.value); form.setData({ ...form.data, action: event.target.value, hub_id: item?.hub_id ?? null, condition: '', photo: null }); }}><option value="">Choose the recorded step</option>{custody.actions.map(option => <option key={`${option.action}-${option.hub_id}`} value={option.action}>{option.label}</option>)}</select></label>}
