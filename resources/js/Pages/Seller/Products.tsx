@@ -1922,7 +1922,7 @@ export default function SellerProducts({ products, categories, shop, filters = {
 
                                                 {assignedTo ? (
                                                     <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center">
-                                                        <span className="px-2 py-1 rounded-full bg-slate-900 text-white font-bold text-[10px] shadow-sm font-sans">
+                                                        <span className="px-2 py-1 rounded-full bg-surface-100 text-ink-700 font-bold text-[10px] shadow-sm font-sans">
                                                             Assigned: {assignedTo.name}
                                                         </span>
                                                     </div>

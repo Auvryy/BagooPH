@@ -54,12 +54,16 @@ function OversightOverview({ records, totals, filters, mode, error, stateOptions
                     ) : (
                         <>
                             <h2 className="text-sm font-semibold text-ink-900">{mode === 'seller' ? 'Your proceeds and payments' : 'Recorded money and its sources'}</h2>
+                            {/* The explanation stays one click away instead of filling the top of the page. */}
+                            <details className="mt-1.5 group">
+                            <summary className="cursor-pointer text-[13px] font-medium text-ink-700 underline underline-offset-2">How these totals work</summary>
                             <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-zinc-600">
                                 {mode === 'seller'
                                     ? 'See proceeds awaiting payment and payments backed by recorded receipts. Payouts shows the payment history for each order. Sales report shows completed sales and estimated shares.'
                                     : 'Cash cards follow the same money at different stages. Review each stage separately. Product proceeds use the original 90% seller and 10% platform split, with shipping and discounts shown separately.'}
                             </p>
                             <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-zinc-500">Date filters use the original cash collection date in Philippine time. Orders awaiting collection use their order date. Each card links to the records contributing to that total.</p>
+                            </details>
                         </>
                     )}
                 </section>

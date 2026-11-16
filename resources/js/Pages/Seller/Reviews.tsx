@@ -1,3 +1,4 @@
+import PortalLink from '@/Components/PortalLink';
 import { useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import DashboardLayout from '@/Layouts/DashboardLayout';
@@ -92,7 +93,7 @@ export default function SellerReviews({ reviews, stats, shop, filters = { rating
                     <MessageSquare className="mx-auto h-6 w-6 text-slate-400" />
                     <h3 className="font-bold text-slate-800">{filters.rating ? 'No reviews with this rating' : 'No customer reviews yet'}</h3>
                     <p className="text-xs text-slate-500">Completed purchases can be reviewed after verified delivery.</p>
-                </div>}
+                <PortalLink href="/seller/products" className="mt-3 inline-flex h-9 items-center rounded-control border border-line-300 bg-white px-3 text-[13px] font-semibold text-ink-900 hover:bg-surface-100">View products</PortalLink></div>}
                 <div className="divide-y divide-slate-300">
                     {reviews.data.map(review => <article key={review.id} className="space-y-3 py-6 first:pt-0">
                         <div className="flex items-start justify-between gap-3">

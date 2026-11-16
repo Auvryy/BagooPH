@@ -564,7 +564,8 @@ export default function DashboardLayout({ children, title, subtitle, actions }: 
                                         <span>{activeHub?.name || logisticsCompany?.name || 'Logistics'}</span>
                                     </span>
                                     <span className="hidden sm:inline text-ink-400" aria-hidden="true">/</span>
-                                    <p className="truncate text-sm font-semibold text-ink-900">{title}</p>
+                                    {/* Phones show the page's own large title below; skip the cut-off copy here. */}
+                                    <p className="hidden truncate text-sm font-semibold text-ink-900 sm:block">{title}</p>
                                 </div>
                             ) : (
                                 <>

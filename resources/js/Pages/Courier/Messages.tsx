@@ -1,3 +1,4 @@
+import PortalLink from '@/Components/PortalLink';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, MessageSquare, Search, Send } from 'lucide-react';
@@ -152,7 +153,7 @@ export default function CourierMessages({ conversations, currentUserId, selected
                                     </span>
                                 </button>;
                             })}
-                            {!filtered.length && <p className="p-4 text-sm leading-relaxed text-slate-600">{conversations.length ? 'No conversations match that search.' : 'Conversations appear for your assigned pickups and final-mile deliveries.'}</p>}
+                            {!filtered.length && <div className="p-4"><p className="text-sm leading-relaxed text-slate-600">{conversations.length ? 'No conversations match that search.' : 'Conversations appear for your assigned pickups and final-mile deliveries.'}</p>{!conversations.length && <PortalLink href={courierPath('/deliveries')} className="mt-3 inline-flex h-9 items-center rounded-control border border-line-300 bg-white px-3 text-[13px] font-semibold text-ink-900 hover:bg-surface-100">Open deliveries</PortalLink>}</div>}
                         </div>
                         <p className="shrink-0 px-5 py-3 text-xs leading-relaxed text-slate-500">Refresh for new messages. Drafts stay in this page while you switch conversations.</p>
                     </aside>

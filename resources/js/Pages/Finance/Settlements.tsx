@@ -19,10 +19,13 @@ export default function Settlements({ records, filters, can_release }: {
             <div className="space-y-5">
                 <section className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-5 shadow-xs">
                     <h2 className="text-sm font-semibold text-[#121316]">Product proceeds and payment evidence</h2>
+                    <details className="mt-1.5">
+                    <summary className="cursor-pointer text-[13px] font-medium text-ink-700 underline underline-offset-2">How payouts work</summary>
                     <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-zinc-600">
                         The gross product split is 90% for the seller and 10% for Bagoo. Shop-funded offers reduce the seller’s net payout; Bagoo-funded offers are a separate platform cost. Earnings release on verified delivery; external cash payment still requires reconciled COD and a real receipt.
                     </p>
                     {can_release && <p className="mt-1.5 text-xs text-zinc-500">Recording payment confirms an existing transfer and its receipt. Bagoo does not transfer money from this page.</p>}
+                    </details>
                 </section>
 
                 <form onSubmit={submit} className="grid items-end gap-3 overflow-hidden rounded-xl border border-zinc-200/90 bg-white p-4 sm:grid-cols-[1fr_240px_auto] shadow-xs">
