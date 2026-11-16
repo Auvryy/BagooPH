@@ -1,5 +1,45 @@
 # BagooPH Core Flow Roadmap
 
+## November 17: account-free truck and van drivers
+
+Truck/van drivers now have company-owned transport-person records containing a
+name, optional contact, hub and active status. They have no email, password,
+Bagoo account or courier role. Fleet can add a name while creating or editing a
+truck/van, or select an existing transport person at that company/hub. Multiple
+trucks with distinct named drivers can prepare the same Mother Hub route. Pickup
+and delivery couriers keep their separate invitation, account and duty flow.
+Existing seeded courier-linked transport remains supported without rewriting
+historical roles or receipts. Replacing an unused legacy truck assignment closes
+the old rider duty safely, releases its vehicle link and retains placement history.
+
+Manifests, shared trips, returns, custody and loss evidence retain a transport
+person ID and frozen name alongside nullable historical courier-driver IDs.
+Vehicle type, sending hub, active company/person/vehicle and unreceived transport
+checks still govern availability. Driver IDs from the two identity spaces are
+never substituted for one another. SQL NOT IN predicates omit null legacy user
+IDs, so an external-driver manifest cannot hide unrelated pickup/delivery riders.
+
+Scoped account-free registration-to-dispatch assessment: **0/10 to 8/10**.
+Verification passed **157 tests / 12,679 assertions** across manifest custody,
+shared trips, loss, handover recovery and buyer-return custody. The final new
+transport/fleet/existing-rider-invitation run passed **15 tests / 442 assertions**;
+these runs overlap. New trucks were created with driver names only, without new
+User/CourierProfile rows; real Mother Bags were dispatched and their parcels
+received. Separate trucks prepared the same Mother Hub route. New evidence
+identity fields reject rewriting. Eighteen frontend logistics checks, PHP
+formatting and production build passed. Full TypeScript still reports the four
+unchanged-file errors recorded below.
+
+The additive company-transport-driver migration was applied to local PostgreSQL.
+The reported local Dashboard error was a missing logistics_transport_drivers
+table before that migration. Browser checks after migration returned HTTP 200
+for Dashboard, Fleet, manifests and Mother Bags; desktop and phone screenshots
+confirmed the name-only vehicle form and no email field. Deployment must run
+migrations before serving this release; ./bagoo.sh deploy includes that step.
+No reseeding or database reset is required. The migration retains existing
+SQLite indexes/evidence triggers as well as PostgreSQL driver/history constraints.
+
+
 ## November 17: newly registered truck dispatch and driver selection
 
 Vehicle registration previously saved no driver; seeded trucks had both the

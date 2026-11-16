@@ -101,6 +101,13 @@ Platform Admin governs marketplace approval, policy, financial audit, and tracea
 
 Platform Admin owns account KYC approval; a company's acceptance or hub placement of an already approved courier is a separate operational decision. Approval does not clear an independent suspension, and inactive/suspended admins cannot use the KYC exemption to retain privileges. [ADMIN_FLOW.md](ADMIN_FLOW.md) defines review authority and suspension recovery across all roles under the validation contract.
 
+Truck and van transport drivers are company-owned named people records with no
+Bagoo user account, email or courier role. Fleet operators may add a driver name
+directly or reuse an available transport person in the same company/hub. Each
+active truck has one named driver; many trucks may serve the same route. Their
+manifest and trip identities are retained separately from historical courier
+user IDs. Pickup/delivery courier registration and invitation remain separate.
+
 The first rider-company association requires a retained rider application or hub invitation, a current versioned assignment offer and the rider's own acknowledged acceptance. Riders may select an eligible working hub at signup or when applying later. Full-access operators at either hub tier decide applications for their own hub; the company owner can decide across the company. Direct invitations target existing approved courier accounts and do not require a prior rider application or invent profile-sharing consent. Consent, placement and required history commit together, leaving duty off. Offers expire after seven calendar days and reserve no fleet capacity. Existing company associations retain their original provenance; same-company moves preserve custody and cash guards. Company transfer, departure and employment/payroll administration are outside this joining workflow.
 
 Each account's role is fixed at creation. Admin cannot convert an existing account to another role, even before approval or transaction history. Another public role requires a separate registration with its required evidence and approval; orders, shops, custody, cash, and review history stay with their original account. Role conversion and migration are not project features.
