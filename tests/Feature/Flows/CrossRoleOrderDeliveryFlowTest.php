@@ -99,7 +99,9 @@ class CrossRoleOrderDeliveryFlowTest extends TestCase
             'item_ids' => [$item->id],
             'payment_method' => 'cod',
         ];
-        $this->actingAs($buyer)->post(route('checkout.store'), $checkoutPayload)->assertRedirect(route('buyer.orders.index'));
+        // Sent like the buyer app (background request without asking for JSON): it must get the page redirect, not JSON.
+        $this->actingAs($buyer)->withHeaders(['X-Requested-With' => 'XMLHttpRequest', 'Accept' => '*/*'])->post(route('checkout.store'), $checkoutPayload)->assertRedirect(route('buyer.orders.index'));
+        $this->flushHeaders();
 
         $order = Order::with('delivery')->firstOrFail();
         $delivery = $order->delivery;
