@@ -154,7 +154,7 @@ class FinancialPenaltyService
             }
 
             $amountCents = (int) ($data['amount_cents'] ?? self::DEFAULT_SLA_PENALTY_CENTS);
-            $summary = trim((string) ($data['evidence_summary'] ?? "Verified geo-fenced {$lockedClock->stage} SLA breach for delivery {$delivery->tracking_number} under hub {$hub?->name} with active coverage and no pauses."));
+            $summary = trim((string) ($data['evidence_summary'] ?? "Verified geo-fenced {$lockedClock->clock_kind} SLA breach for delivery {$delivery->tracking_number} under hub {$hub?->name} with active coverage and no pauses."));
 
             return FinancialPenalty::create([
                 'reference' => 'PEN-'.Str::upper(Str::random(10)),
@@ -171,7 +171,7 @@ class FinancialPenaltyService
                 'evidence_summary' => $summary,
                 'evidence_refs' => [
                     'sla_clock_id' => $lockedClock->id,
-                    'stage' => $lockedClock->stage,
+                    'stage' => $lockedClock->clock_kind,
                     'delivery_id' => $delivery->id,
                     'hub_id' => $hub?->id,
                     'breach_at' => $breachMoment->toIso8601String(),

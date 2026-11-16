@@ -150,7 +150,7 @@ interface HeldReviewItem {
 
 interface BreachedClockItem {
     id: number;
-    stage: string;
+    clock_kind: string;
     breach_at: string | null;
     delivery?: { id: number; tracking_number: string } | null;
     company?: { id: number; name: string } | null;
