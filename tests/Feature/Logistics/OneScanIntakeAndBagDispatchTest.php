@@ -158,7 +158,7 @@ class OneScanIntakeAndBagDispatchTest extends TestCase
         $this->assertSame('in_transit_to_mother_hub', $second->fresh()->status);
     }
 
-    public function test_mother_hub_intake_worker_receives_with_one_phone_scan_and_bagging_waits_for_the_sort(): void
+    public function test_mother_hub_intake_worker_receives_with_one_phone_scan_and_a_bagged_parcel_still_seals(): void
     {
         $parcel = $this->flowDelivery($this->newFlowOrder('ready_for_pickup'), 'picked_up');
         $origin = LogisticsHub::findOrFail($parcel->origin_bayan_hub_id);
@@ -190,15 +190,19 @@ class OneScanIntakeAndBagDispatchTest extends TestCase
         $this->assertSame('arrived_at_mother_hub', $parcel->fresh()->status);
         $this->assertSame('closed', $manifest->fresh()->status);
 
-        // A parcel still waiting for its sort is not bagged; the worker is told to sort it first.
+        // Bagging stands in for the sort: an unsorted parcel can be bagged, and a later sort scan is refused so the
+        // bag's packed record stays valid for sealing.
         $destination = LogisticsHub::findOrFail($parcel->fresh()->destination_mother_hub_id !== $mother->id ? $parcel->destination_mother_hub_id : $parcel->destination_bayan_hub_id);
         $motherBagger = $this->worker($mother, HubHandler::JOB_ROLE_PACK_DISPATCH);
         $next = $bags->create($motherBagger, ['source_hub_id' => $mother->id, 'destination_hub_id' => $destination->id, 'creation_token' => (string) Str::uuid(), 'capacity_preset' => 'compact']);
-        try {
-            $bags->command($next, $motherBagger, 'add', ['version' => $next->version, 'barcode' => $parcel->tracking_number, 'handling' => $handling]);
-            $this->fail('An unsorted parcel was bagged.');
-        } catch (\DomainException $error) {
-            $this->assertSame('Sort this parcel for its next hub before bagging it: scan it once at intake.', $error->getMessage());
+        $bags->command($next, $motherBagger, 'add', ['version' => $next->version, 'barcode' => $parcel->tracking_number, 'handling' => $handling]);
+        $sort = $this->withToken($phone)->postJson('/api/v1/logistics/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $mother->id, 'mode' => 'inspect'])->json('prompt');
+        if (($sort['action'] ?? null) === 'SORT_TO_LINE_HAUL') {
+            $this->withToken($phone)->postJson('/api/v1/logistics/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $mother->id, 'mode' => 'confirm',
+                'action' => $sort['action'], 'expected_status' => $sort['expected_status']])->assertStatus(409);
         }
+        $this->assertSame('arrived_at_mother_hub', $parcel->fresh()->status);
+        $bags->command(MotherBag::findOrFail($next->id), $motherBagger, 'seal', ['version' => MotherBag::findOrFail($next->id)->version, 'seal_number' => 'SL-MOTHER-2']);
+        $this->assertSame('sealed', MotherBag::findOrFail($next->id)->status);
     }
 }

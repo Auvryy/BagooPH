@@ -13,6 +13,7 @@ use App\Models\LogisticsManifestEvent;
 use App\Models\LogisticsManifestParcel;
 use App\Models\MissingParcelInvestigation;
 use App\Models\MotherBag;
+use App\Models\MotherBagParcel;
 use App\Models\Order;
 use App\Models\SlaPause;
 use App\Models\User;
@@ -43,6 +44,7 @@ use App\Services\Monitoring\EtaCalculationService;
 use App\Services\Returns\BuyerReturnRecoveryService;
 use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -1249,6 +1251,13 @@ class LogisticsHubWorkstationController extends Controller
             return $this->operationError($request, 'The scan instruction no longer matches the parcel route. Scan the waybill again.', 409);
         }
 
+        // Bagging already chooses the next hub. Sorting a parcel that is inside an open or sealed bag would change
+        // its packed custody and stop the bag from sealing or leaving, so the bag stands in for the sort.
+        if ($requestedAction === 'SORT_TO_LINE_HAUL' && MotherBagParcel::where('active_delivery_id', $delivery->id)
+            ->whereHas('bag', fn ($bag) => $bag->whereIn('status', ['open', 'sealed']))->exists()) {
+            return $this->operationError($request, 'This parcel is already in a Mother Bag for its next hub, so it needs no separate sort.', 409);
+        }
+
         $stateMachine = app(OrderStateMachineService::class);
 
         try {
@@ -1344,7 +1353,7 @@ class LogisticsHubWorkstationController extends Controller
         if ($manifest->status === 'received') {
             try {
                 $manifests->command($manifest, $actor, 'close', ['version' => $manifest->version, 'request_token' => (string) Str::uuid()]);
-            } catch (DomainException|ValidationException|\Illuminate\Auth\Access\AuthorizationException) {
+            } catch (DomainException|ValidationException|AuthorizationException) {
                 // A disputed or incomplete manifest stays open for its review on the Manifests screen.
             }
         }

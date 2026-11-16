@@ -4,6 +4,9 @@ namespace Tests\Feature\Logistics;
 
 use App\Models\Delivery;
 use App\Models\LogisticsHub;
+use App\Models\LogisticsManifest;
+use App\Models\LogisticsManifestParcel;
+use App\Models\MotherBag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -101,19 +104,32 @@ class WaybillScanWorkflowTest extends TestCase
     }
 
     #[DataProvider('portals')]
-    public function test_inbound_transport_opens_the_actual_manifest_without_permitting_a_loose_receipt(string $base, string $path): void
+    public function test_inbound_transport_is_received_on_its_actual_manifest_with_one_scan(string $base, string $path): void
     {
         $parcel = $this->flowDelivery($this->newFlowOrder(), 'in_transit_to_mother_hub');
         $hub = LogisticsHub::findOrFail($parcel->origin_mother_hub_id);
         $manifestId = $parcel->latestCustodyCheckpoint->custody_after['manifest_id'];
-        $before = $this->snapshot($parcel);
-        $this->actingAs($this->flowHandler($hub))->postJson($base.'/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id])
-            ->assertOk()->assertJsonPath('delivery.guidance.action', 'manifest')->assertJsonPath('delivery.guidance.can_act', true)
-            ->assertJsonPath('delivery.guidance.href', $path.'/manifests/'.$manifestId.'?hub_id='.$hub->id)
-            ->assertJsonPath('prompt.requires_confirmation', false);
+        $handler = $this->flowHandler($hub);
+        $bag = MotherBag::where('manifest_id', $manifestId)->first();
+        if ($bag) {
+            // Still sealed: the worker is told to open the bag first and no receipt is offered or accepted.
+            $this->actingAs($handler)->postJson($base.'/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id])
+                ->assertOk()->assertJsonPath('delivery.guidance.action', 'bag')->assertJsonPath('prompt.requires_confirmation', false);
+            $this->postJson($base.'/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id, 'mode' => 'confirm',
+                'action' => 'RECEIVE_AT_MOTHER_HUB', 'expected_status' => 'in_transit_to_mother_hub'])->assertStatus(409);
+            $this->assertSame('in_transit_to_mother_hub', $parcel->fresh()->status);
+            $this->openFlowMotherBags(LogisticsManifest::findOrFail($manifestId), $handler);
+        }
+        // Scanning now offers the receipt instead of sending the worker to the Manifests screen.
+        $prompt = $this->actingAs($handler)->postJson($base.'/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id])
+            ->assertOk()->assertJsonPath('delivery.guidance.action', 'scan')->assertJsonPath('prompt.requires_confirmation', true)->json('prompt');
+        // A stale instruction is still refused, so nothing is received loosely.
         $this->postJson($base.'/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id, 'mode' => 'confirm',
-            'action' => 'RECEIVE_AT_MOTHER_HUB', 'expected_status' => 'in_transit_to_mother_hub'])->assertStatus(409);
-        $this->assertSame($before, $this->snapshot($parcel));
+            'action' => 'RECEIVE_AT_DESTINATION_HUB', 'expected_status' => 'in_transit_to_mother_hub'])->assertStatus(409);
+        $this->postJson($base.'/scan', ['barcode' => $parcel->tracking_number, 'hub_id' => $hub->id, 'mode' => 'confirm',
+            'action' => $prompt['action'], 'expected_status' => $prompt['expected_status']])->assertOk()->assertJsonPath('confirmed', true);
+        $this->assertSame('arrived_at_mother_hub', $parcel->fresh()->status);
+        $this->assertNotNull(LogisticsManifestParcel::where('manifest_id', $manifestId)->where('delivery_id', $parcel->id)->value('received_at'));
     }
 
     public function test_scanned_next_steps_do_not_grant_access_at_another_hub_or_to_company_management(): void

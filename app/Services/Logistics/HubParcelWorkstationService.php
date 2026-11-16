@@ -7,6 +7,7 @@ use App\Models\DeliveryCheckpoint;
 use App\Models\HandoverIssue;
 use App\Models\LogisticsHub;
 use App\Models\LogisticsManifestEvent;
+use App\Models\MotherBagParcel;
 use App\Models\ParcelRecoveryCase;
 use App\Models\PickupClaimEvent;
 use App\Models\ShipmentFinancialPlan;
@@ -379,6 +380,12 @@ class HubParcelWorkstationService
                     ->whereHas('parcels', fn ($members) => $members->where('delivery_id', $parcel->id)->where('included', true)->whereNull('received_at'))
                     ->first();
             if ($incoming) {
+                // A parcel inside a Mother Bag is received only after the bag's seal is verified and the bag opened.
+                if (MotherBagParcel::where('active_delivery_id', $parcel->id)->whereHas('bag', fn ($bag) => $bag->where('manifest_id', $incoming->id)->whereNull('opened_at'))->exists()) {
+                    return $next('Scan its Mother Bag tag and verify the seal first', 'Assigned receiving handler', 'bag', $handler,
+                        '/mother-bags?hub_id='.$hub->id, $handler ? null : 'An assigned receiving handler must open the arriving bag.');
+                }
+
                 // One scan records the manifest receipt (see LogisticsHubWorkstationController::receiveOnArrivingManifest).
                 return $next('Scan to receive the parcel from its incoming manifest', 'Assigned receiving handler', 'scan', $handler,
                     '/scan', $handler ? null : 'An assigned receiving handler must record the manifest receipt.');
